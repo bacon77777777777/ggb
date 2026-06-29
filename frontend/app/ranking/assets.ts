@@ -1,0 +1,13 @@
+export const imgAvatar = "/images/avatar.png";
+export const img = "/images/rank/a905419587b8b2c9ad193eb8b3f51bb289e0e3a5.png";
+export const imgAvatar1 = "/images/avatar.png";
+export const img1 = "/images/rank/9c9ef4d615beb3186a56d28fef10f9cdd18697b8.png";
+export const imgAvatar2 = "/images/avatar.png";
+export const img2 = "/images/rank/8f4bac901e28df7af3cabcd53e5cd1fe6be005d2.png";
+export const imgEllipse1001 = "/images/rank/795215b9ea74fa7031b1303f8925374330445cc4.png";
+export const imgEllipse1002 = "/images/rank/2d565030b2533406857317613ae86bc813dd3a67.png";
+export const imgEllipse1003 = "/images/rank/b133f41f4effe2f3eca924daf7a479ac1342c0c0.png";
+export const imgEllipse1004 = "/images/rank/443d15f1a18f654973456a3d5a59338ae6559084.png";
+export const imgEllipse1005 = "/images/rank/a847a6ca155d8c08f205264772415730f06e6fc0.png";
+export const imgEllipse1006 = "/images/rank/52c6b5c025604dc006f5628015b3528188112644.png";
+export const imgEllipse1007 = "/images/rank/1071c10c92b278b152362b62445a9f9cc3749160.png";

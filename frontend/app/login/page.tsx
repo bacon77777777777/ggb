@@ -1,0 +1,474 @@
+'use client'
+
+import Link from 'next/link'
+import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { Input } from '@/components/ui'
+import SolidButton from '@/components/ui/SolidButton'
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+
+function AuthContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user } = useAuth()
+  const messageParam = searchParams.get('message')
+  const errorParam = searchParams.get('error')
+  
+  // State Machine
+  const [view, setView] = useState<'login' | 'register'>('login')
+  const [step, setStep] = useState<1 | 2 | 3>(1) // For register flow
+  
+  // Form Data
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  
+  // UI State
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+
+  // Initialize view based on URL or defaults
+  useEffect(() => {
+    if (searchParams.get('view') === 'register') {
+      setView('register')
+    }
+  }, [searchParams])
+
+  // Timer for OTP
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(c => c - 1), 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [countdown])
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      // If we are in the middle of registration (step 3), don't redirect yet
+      // unless we are just visiting the page
+      if (view === 'register' && step === 3) {
+        // User is authenticated (verified OTP), now setting password
+        return
+      }
+      
+      router.replace('/')
+    }
+  }, [user, router, view, step])
+
+  const translateAuthError = (msg?: string | null) => {
+    if (!msg) return null
+    const m = msg.toLowerCase()
+    if (m.includes('invalid login credentials')) return '帳號或密碼不正確'
+    if (m.includes('email not confirmed')) return '電子郵件尚未驗證'
+    if (m.includes('token has expired') || m.includes('invalid token')) return '驗證碼無效或已過期'
+    if (m.includes('too many requests')) return '嘗試次數過多，請稍後再試'
+    if (m.includes('user not found')) return '找不到此帳號'
+    if (m.includes('already registered')) return '此信箱已被註冊'
+    if (m.includes('password should be')) return '密碼長度需為 6 個字元以上'
+    return msg || '發生錯誤，請稍後再試'
+  }
+
+  const handleError = (err: unknown) => {
+    const msg =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err && 'message' in err && typeof (err as { message?: unknown }).message === 'string'
+          ? (err as { message: string }).message
+          : null
+
+    console.error(err)
+    setError(translateAuthError(msg))
+    setIsLoading(false)
+  }
+
+  // --- Actions ---
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      handleError(error)
+    } else {
+      router.push('/')
+      router.refresh()
+    }
+  }
+
+  const handleRegisterStep1 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    // Basic email validation
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setError('請輸入有效的電子信箱')
+      setIsLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    })
+
+    if (error) {
+      handleError(error)
+    } else {
+      setIsLoading(false)
+      setStep(2)
+      setCountdown(60)
+    }
+  }
+
+  const handleRegisterStep2 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    if (!otp || otp.length < 6) {
+      setError('請輸入 6 位數驗證碼')
+      setIsLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: 'email'
+    })
+
+    if (error) {
+      handleError(error)
+    } else {
+      // Success! User is now logged in (session created).
+      // Move to Step 3 to set password.
+      setIsLoading(false)
+      setStep(3)
+    }
+  }
+
+  const handleRegisterStep3 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    if (password.length < 6) {
+      setError('密碼長度至少需 6 個字元')
+      setIsLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({
+      password
+    })
+
+    if (error) {
+      handleError(error)
+    } else {
+      // Complete!
+      router.push('/?message=註冊成功')
+      router.refresh()
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (countdown > 0) return
+    setIsLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+    })
+    if (error) {
+      handleError(error)
+    } else {
+      setIsLoading(false)
+      setCountdown(60)
+      setError(null)
+    }
+  }
+
+  const getTitle = () => {
+    if (view === 'login') return '登入'
+    if (step === 1) return '註冊'
+    if (step === 2) return '輸入驗證碼'
+    if (step === 3) return '設定密碼'
+    return '註冊'
+  }
+
+  const handleBack = () => {
+    if (view === 'register') {
+      if (step === 1) setView('login')
+      else if (step === 2) setStep(1)
+      else if (step === 3) router.push('/')
+    } else {
+      router.push('/')
+    }
+  }
+
+  // --- Renders ---
+
+  // Common styles
+  const inputBaseClass = "border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400"
+  const divider = (
+    <div className="relative my-6">
+      <div className="absolute inset-0 flex items-center">
+        <div className="w-full border-t border-neutral-200 dark:border-neutral-800"></div>
+      </div>
+      <div className="relative flex justify-center text-xs">
+        <span className="bg-white dark:bg-neutral-950 px-4 text-neutral-400">
+          或
+        </span>
+      </div>
+    </div>
+  )
+
+  const renderLogin = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="space-y-4 mb-8">
+        <Input
+          name="email"
+          type="email"
+          placeholder="請輸入電子信箱"
+          required
+          className={inputBaseClass}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+        />
+        
+        <div>
+           <Input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="請輸入密碼"
+            required
+            className={inputBaseClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+            rightIcon={
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPassword(!showPassword);
+                  }}
+                  className="text-neutral-400 hover:text-neutral-600 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+                <div className="w-[1px] h-4 bg-neutral-300 dark:bg-neutral-700"></div>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-sm text-blue-500 hover:underline whitespace-nowrap"
+                >
+                  忘記密碼
+                </Link>
+              </div>
+            }
+          />
+        </div>
+      </div>
+
+      <SolidButton
+        onClick={handleLogin}
+        isLoading={isLoading}
+      >
+        登入
+      </SolidButton>
+
+      {divider}
+      <SocialLoginButtons />
+      
+      {/* Fixed bottom registration link - placeholder for layout spacing */}
+      <div className="h-[60px]" />
+    </div>
+  )
+
+  const renderRegisterStep1 = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="mb-8">
+        <Input
+          name="email"
+          type="email"
+          placeholder="請輸入電子信箱"
+          required
+          className={inputBaseClass}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+        />
+      </div>
+
+      <SolidButton
+        onClick={handleRegisterStep1}
+        isLoading={isLoading}
+      >
+        下一步
+      </SolidButton>
+
+      {divider}
+      <SocialLoginButtons />
+    </div>
+  )
+
+  const renderRegisterStep2 = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="mb-8 mt-4">
+        <p className="text-sm text-neutral-500 mb-8 text-center">
+          您的一次性驗證碼 (OTP) 已透過電子郵件發送至 <br/><span className="font-medium text-neutral-900 dark:text-neutral-200">{email}</span>
+        </p>
+      </div>
+
+      <div className="mb-8">
+        <input
+          type="text"
+          maxLength={6}
+          className="w-full text-center text-3xl font-bold tracking-[0.5em] h-14 border-b-2 border-neutral-200 focus:border-primary focus:outline-none bg-transparent"
+          placeholder="000000"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+        />
+      </div>
+
+      <SolidButton
+        onClick={handleRegisterStep2}
+        isLoading={isLoading}
+      >
+        下一步
+      </SolidButton>
+
+      <div className="mt-6 text-center">
+        {countdown > 0 ? (
+          <span className="text-neutral-400 text-sm">請稍等 {countdown} 秒重新傳送</span>
+        ) : (
+          <button 
+            onClick={handleResendOtp}
+            className="text-neutral-500 hover:text-neutral-900 text-sm font-medium"
+            disabled={isLoading}
+          >
+            重新傳送驗證碼
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
+  const renderRegisterStep3 = () => (
+    <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="mb-8 mt-4">
+        <p className="text-sm text-neutral-500 text-center">
+          為了您的帳號安全，請設定一組高強度密碼
+        </p>
+      </div>
+
+      <div className="mb-8">
+        <Input
+          name="password"
+          type={showPassword ? 'text' : 'password'}
+          placeholder="設定密碼 (至少 6 位元)"
+          required
+          className={inputBaseClass}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+          rightIcon={showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          onRightIconClick={() => setShowPassword(!showPassword)}
+        />
+      </div>
+
+      <SolidButton
+        onClick={handleRegisterStep3}
+        isLoading={isLoading}
+      >
+        完成註冊
+      </SolidButton>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
+      <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-50 px-4">
+        <button onClick={handleBack} className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <h1 className="text-lg font-black text-neutral-900 dark:text-white">{getTitle()}</h1>
+      </div>
+
+      <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
+        <div className="w-full max-w-sm">
+          {/* Global Error/Message */}
+          {(error || messageParam || errorParam) && (
+            <div className={cn(
+              "mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center",
+              error || errorParam 
+                ? "bg-red-50 text-red-600 border border-red-100" 
+                : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+            )}>
+              {error || translateAuthError(errorParam) || messageParam}
+            </div>
+          )}
+
+          {/* View Content */}
+          <div className="bg-white dark:bg-neutral-950">
+            {view === 'login' && renderLogin()}
+            {view === 'register' && step === 1 && renderRegisterStep1()}
+            {view === 'register' && step === 2 && renderRegisterStep2()}
+            {view === 'register' && step === 3 && renderRegisterStep3()}
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Link */}
+      {(view === 'login' || (view === 'register' && step === 1)) && (
+        <div className="fixed bottom-6 left-0 right-0 text-center pb-safe z-50 pointer-events-auto">
+          <span className="text-neutral-500 text-sm">
+            {view === 'login' ? '還沒有帳號嗎？ ' : '已經有帳號了嗎？ '}
+          </span>
+          <button 
+            onClick={() => {
+              if (view === 'login') {
+                setView('register')
+                setStep(1)
+              } else {
+                setView('login')
+              }
+              setError(null)
+            }}
+            className="text-primary text-sm font-medium hover:underline pointer-events-auto"
+          >
+            {view === 'login' ? '註冊' : '登入'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex justify-center items-center">Loading...</div>}>
+      <AuthContent />
+    </Suspense>
+  );
+}

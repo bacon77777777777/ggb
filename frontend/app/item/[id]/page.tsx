@@ -1,0 +1,2088 @@
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { Database } from '@/types/database.types';
+import { Button } from '@/components/ui';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX } from 'lucide-react';
+import ProductCard from '@/components/ProductCard';
+import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import CopyableTruncatedField from '@/components/ui/CopyableTruncatedField';
+import ProductBadge from '@/components/ui/ProductBadge';
+import Image from 'next/image';
+
+import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
+import GachaMachine, { Prize } from '@/components/GachaMachine';
+import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
+import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
+import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
+import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
+import { ImageButton } from '@/components/ui/ImageButton';
+import { useAlert } from '@/components/ui/AlertDialog';
+import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
+import { GachaResultModal } from '@/components/shop/GachaResultModal';
+import { MissionService } from '@/services/mission';
+
+type PackSelectionCarouselHandle = {
+  goToNext: () => void;
+};
+
+const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, { cardScale: number }>(
+  (_props, ref) => {
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const offsetRef = useRef(0);
+    const [offset, setOffset] = useState(0);
+    const rafIdRef = useRef<number | null>(null);
+    const isDraggingRef = useRef(false);
+    const startXRef = useRef(0);
+    const startOffsetRef = useRef(0);
+    const lastOffsetRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    const lastActiveIndexRef = useRef(0);
+    const muteTickRef = useRef(false);
+
+    const PACK_COUNT = 9;
+
+    const normalizeOffset = (value: number) => {
+      const modulo = PACK_COUNT;
+      if (modulo <= 0) return 0;
+      const mod = value % modulo;
+      return mod < 0 ? mod + modulo : mod;
+    };
+
+    const ensureAudioContext = () => {
+      if (typeof window === 'undefined') return null;
+      let ctx = audioCtxRef.current;
+      if (!ctx) {
+        const AC = (window as typeof window & { webkitAudioContext?: typeof AudioContext }).AudioContext
+          || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        audioCtxRef.current = ctx;
+      }
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      return ctx || null;
+    };
+
+    const playTickSound = () => {
+      if (muteTickRef.current) return;
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(720, now);
+
+      gainNode.gain.setValueAtTime(0.18, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.05);
+    };
+
+    const updateActiveIndexFromOffset = (value: number) => {
+      const nearest = normalizeOffset(Math.round(value));
+      if (nearest !== lastActiveIndexRef.current) {
+        lastActiveIndexRef.current = nearest;
+        setActiveIndex(nearest);
+        playTickSound();
+      }
+    };
+
+    const setOffsetBoth = (value: number) => {
+      const normalized = normalizeOffset(value);
+      offsetRef.current = normalized;
+      setOffset(normalized);
+      updateActiveIndexFromOffset(normalized);
+    };
+
+    const stopAnimation = () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+
+    const animateToOffset = (target: number) => {
+      stopAnimation();
+      const start = offsetRef.current;
+      const delta = target - start;
+      if (Math.abs(delta) < 0.001) {
+        return;
+      }
+      const duration = 260;
+      const startTime = performance.now();
+
+      const step = (time: number) => {
+        const t = Math.min(1, (time - startTime) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = start + delta * eased;
+        setOffsetBoth(value);
+        if (t < 1) {
+          rafIdRef.current = requestAnimationFrame(step);
+        } else {
+          rafIdRef.current = null;
+        }
+      };
+
+      rafIdRef.current = requestAnimationFrame(step);
+    };
+
+    const beginDrag = (clientX: number) => {
+      if (typeof window !== 'undefined') {
+        const edgeThreshold = 32;
+        muteTickRef.current = clientX <= edgeThreshold;
+      } else {
+        muteTickRef.current = false;
+      }
+      if (!muteTickRef.current) {
+        ensureAudioContext();
+      }
+      stopAnimation();
+      isDraggingRef.current = true;
+      startXRef.current = clientX;
+      startOffsetRef.current = offsetRef.current;
+      lastOffsetRef.current = offsetRef.current;
+      lastTimeRef.current = performance.now();
+    };
+
+    const moveDrag = (clientX: number) => {
+      if (!isDraggingRef.current) return;
+      const dx = clientX - startXRef.current;
+      const sensitivity = 140;
+      const nextOffset = startOffsetRef.current - dx / sensitivity;
+      const now = performance.now();
+      const dt = now - lastTimeRef.current;
+      if (dt > 0) {
+        lastTimeRef.current = now;
+        lastOffsetRef.current = nextOffset;
+      }
+      setOffsetBoth(nextOffset);
+    };
+
+    const endDrag = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      const current = offsetRef.current;
+      const target = Math.round(current);
+      animateToOffset(target);
+    };
+
+    useImperativeHandle(ref, () => ({
+      goToNext: () => {
+        muteTickRef.current = false;
+        const target = offsetRef.current + 1;
+        animateToOffset(target);
+      },
+    }));
+
+    useEffect(() => {
+      return () => {
+        stopAnimation();
+      };
+    }, []);
+
+    return (
+      <div
+        className="relative w-full"
+        style={{
+          height: 463,
+          maxWidth: 420,
+          perspective: 1200,
+        }}
+      >
+        <div
+          className="relative w-full h-full"
+          style={{ touchAction: 'none' }}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            beginDrag(event.clientX);
+          }}
+          onPointerMove={(event) => {
+            if (!isDraggingRef.current) return;
+            event.preventDefault();
+            moveDrag(event.clientX);
+          }}
+          onPointerUp={(event) => {
+            event.preventDefault();
+            endDrag();
+          }}
+          onPointerLeave={() => {
+            endDrag();
+          }}
+          onTouchStart={(event) => {
+            const touch = event.touches[0];
+            if (!touch) return;
+            event.preventDefault();
+            beginDrag(touch.clientX);
+          }}
+          onTouchMove={(event) => {
+            if (!isDraggingRef.current) return;
+            const touch = event.touches[0];
+            if (!touch) return;
+            event.preventDefault();
+            moveDrag(touch.clientX);
+          }}
+          onTouchEnd={(event) => {
+            event.preventDefault();
+            endDrag();
+          }}
+        >
+          {Array.from({ length: PACK_COUNT }).map((_, index) => {
+            const total = PACK_COUNT;
+            let rawOffset = index - offset;
+            if (rawOffset > total / 2) {
+              rawOffset -= total;
+            } else if (rawOffset < -total / 2) {
+              rawOffset += total;
+            }
+            const roundedOffset = Math.round(rawOffset);
+            const isCenter = roundedOffset === 0;
+            const isNear = Math.abs(roundedOffset) === 1;
+            const radius = 306 * 1.14;
+            const stepAngle = 360 / total;
+            const angle = rawOffset * stepAngle;
+            const angleRad = (angle * Math.PI) / 180;
+            const isBehind = Math.cos(angleRad) < 0;
+            const translateZ = isCenter ? radius * 1.05 : radius * 0.9;
+
+            const centerScale = 1.35;
+            const sideScale = 0.8;
+            const distance = Math.min(Math.abs(rawOffset), 2);
+            const t = 1 - distance / 2;
+            const scale = sideScale + (centerScale - sideScale) * t;
+            const opacity = 1;
+            const zIndex = isCenter ? 4 : isNear ? 3 : 1;
+            const isActive = index === activeIndex;
+
+            return (
+              <div
+                key={index}
+                className="absolute inset-0 flex items-center justify-center"
+                style={{
+                  transform: `rotateY(${angle}deg) translateZ(${translateZ}px) scale(${scale})`,
+                  transformStyle: 'preserve-3d',
+                  transition: isDraggingRef.current ? 'none' : 'transform 260ms ease-out',
+                  pointerEvents: isActive ? 'auto' : 'none',
+                  opacity,
+                  zIndex,
+                }}
+              >
+                <div className="relative">
+                  <ProductPackViewer3D
+                    packImage={isBehind ? '/images/card/back.png' : '/images/card/front.png'}
+                    interactive={isActive}
+                    showSSRGlare={false}
+                  />
+                  {!isCenter && (
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        WebkitMaskImage: "url('/images/card/mask.svg')",
+                        maskImage: "url('/images/card/mask.svg')",
+                        WebkitMaskSize: 'contain',
+                        maskSize: 'contain',
+                        WebkitMaskRepeat: 'no-repeat',
+                        maskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                        maskPosition: 'center',
+                      }}
+                    >
+                      <div className="w-full h-full bg-black/40" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+);
+
+PackSelectionCarousel.displayName = 'PackSelectionCarousel';
+
+export default function ProductDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { user, isAuthenticated, refreshProfile } = useAuth();
+  const { showToast } = useToast();
+  const { showAlert } = useAlert();
+  const [supabase] = useState(() => createClient());
+
+  const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
+  const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number } | null>(null);
+  const [recommendations, setRecommendations] = useState<Database['public']['Tables']['products']['Row'][]>([]);
+  
+  // Purchase Flow State
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [isGachaOpen, setIsGachaOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [wonPrizes, setWonPrizes] = useState<Prize[]>([]);
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Result Modal State
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [drawResults, setDrawResults] = useState<{ 
+    ticket_number: number; 
+    prize_level: string; 
+    prize_name: string;
+    image_url?: string;
+    is_last_one?: boolean;
+  }[]>([]);
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
+  const [cardScale, setCardScale] = useState(1);
+  const [isCardImageMode, setIsCardImageMode] = useState(false);
+  const packCarouselRef = useRef<PackSelectionCarouselHandle | null>(null);
+  const openingVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false);
+  const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
+
+  useEffect(() => {
+    if (params.id) {
+      // Use a timeout to avoid blocking or tracking accidental clicks
+      const timer = setTimeout(() => {
+        MissionService.trackEvent('view_product', { product_id: params.id })
+          .catch(err => console.error('Mission track error:', err));
+        const productId = Number(params.id)
+        if (Number.isFinite(productId)) {
+          supabase.rpc('track_hot_tags_product_view', { p_product_id: productId }).then(
+            () => undefined,
+            () => undefined
+          )
+        }
+      }, 2000); // 2 seconds delay to count as a "view"
+      return () => clearTimeout(timer);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    const updateIsMobile = () => {
+      if (typeof window === 'undefined') return;
+      setIsMobile(window.innerWidth < 768);
+    };
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => {
+      window.removeEventListener('resize', updateIsMobile);
+    };
+  }, []);
+
+  useEffect(() => {
+    const baseWidth = 375;
+    const maxWidth = 560;
+
+    const updateScale = () => {
+      if (typeof window === 'undefined') return;
+      const width = Math.min(window.innerWidth, maxWidth);
+      setCardScale(width / baseWidth);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => {
+      window.removeEventListener('resize', updateScale);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user || !product) return;
+
+    const checkFollowStatus = async () => {
+      const { count } = await supabase
+        .from('product_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('product_id', product.id);
+      
+      setIsFollowed(!!count);
+    };
+
+    checkFollowStatus();
+  }, [user, product, supabase]);
+
+  const handleFollowToggle = async () => {
+    if (!user || !product) {
+      router.push('/login');
+      return;
+    }
+
+    const newStatus = !isFollowed;
+    setIsFollowed(newStatus);
+
+    try {
+      if (newStatus) {
+        const { error } = await supabase
+          .from('product_follows')
+          .insert({ user_id: user.id, product_id: product.id });
+        if (error) throw error;
+        showToast('已加入關注清單', 'success');
+      } else {
+        const { error } = await supabase
+          .from('product_follows')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', product.id);
+        if (error) throw error;
+        showToast('已取消關注', 'success');
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      setIsFollowed(!newStatus);
+      showToast('操作失敗，請稍後再試', 'error');
+    }
+  };
+
+  const handleShowResults = async () => {
+    setShowResultModal(true);
+    if (drawResults.length > 0 || !product) return;
+
+    setIsLoadingResults(true);
+    try {
+      const { data, error } = await supabase
+        .from('draw_records')
+        .select('ticket_number, prize_level, prize_name, image_url, is_last_one')
+        .eq('product_id', product.id)
+        .order('ticket_number', { ascending: true });
+
+      if (error) throw error;
+      
+      let rows = data || [];
+      const hasLastOneRow = rows.some(
+        r => r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || r.ticket_number === 0
+      );
+      if (!hasLastOneRow) {
+        const { data: prizeRows } = await supabase
+          .from('product_prizes')
+          .select('level, name, image_url, remaining')
+          .eq('product_id', product.id);
+        const normalRemaining = (prizeRows || [])
+          .filter(p => !(p.level?.toLowerCase?.().includes('last one') || p.level?.includes?.('最後賞')))
+          .reduce((sum, p) => sum + (p.remaining || 0), 0);
+        if (normalRemaining === 0) {
+          const loPrize = (prizeRows || []).find(p => p.level?.toLowerCase?.().includes('last one') || p.level?.includes?.('最後賞'));
+          if (loPrize) {
+            rows = [
+              ...rows, 
+              {
+                ticket_number: 0,
+                prize_level: loPrize.level || 'Last One',
+                prize_name: loPrize.name || '最後賞',
+                image_url: loPrize.image_url || '',
+                is_last_one: true
+              }
+            ];
+          }
+        }
+      }
+
+      const sortedData = (rows || []).sort((a, b) => {
+        const isALastOne = a.is_last_one || a.prize_level.includes('Last One') || a.prize_level.includes('LAST ONE') || a.prize_level.includes('最後賞') || a.ticket_number === 0;
+        const isBLastOne = b.is_last_one || b.prize_level.includes('Last One') || b.prize_level.includes('LAST ONE') || b.prize_level.includes('最後賞') || b.ticket_number === 0;
+        
+        if (isALastOne && !isBLastOne) return 1;
+        if (!isALastOne && isBLastOne) return -1;
+        return (a.ticket_number || 0) - (b.ticket_number || 0);
+      });
+
+      setDrawResults(sortedData);
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      showToast('無法載入抽獎結果', 'error');
+    } finally {
+      setIsLoadingResults(false);
+    }
+  };
+
+  const handleDrawClick = () => {
+    if (product?.type === 'ichiban') {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      if (isMobile) {
+        router.push(`/item/${params.id}/select`);
+      } else {
+        setIsTicketModalOpen(true);
+      }
+      return;
+    }
+
+    console.log('[GA] event: begin_checkout', { items: [{ item_id: product?.id, item_name: product?.name }] });
+    setIsPurchaseModalOpen(true);
+  };
+
+  const handleChangePack = () => {
+    packCarouselRef.current?.goToNext();
+  };
+
+  const handleTrialCard = () => {
+    if (!product) return;
+    if ((typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended') {
+      showToast('商品已完抽', 'info');
+      return;
+    }
+
+    const scoreLevel = (levelRaw: string) => {
+      const level = String(levelRaw || '').trim()
+      if (level.includes('A賞') || level === 'A') return 1000
+      if (level.includes('SSR')) return 1000
+      if (level.includes('最後賞') || /last\s*one/i.test(level)) return 950
+      if (level.includes('SP賞') || level.includes('SP')) return 900
+      if (level.includes('S賞') || level === 'S') return 880
+      if (level.includes('B賞') || level === 'B') return 800
+      if (level.includes('C賞') || level === 'C') return 700
+      if (level.includes('D賞') || level === 'D') return 650
+      if (level.includes('隱藏')) return 820
+      if (level.includes('限定')) return 810
+      if (level.includes('傳說')) return 800
+      if (level.includes('超稀有')) return 750
+      if (level.includes('稀有')) return 700
+      if (level.includes('普通')) return 650
+      if (level.includes('小賞')) return 100
+      return 500
+    }
+
+    const best = prizes.length > 0
+      ? prizes.reduce((acc, cur) => {
+          const accScore = scoreLevel(acc.level || '')
+          const curScore = scoreLevel(cur.level || '')
+          if (curScore !== accScore) return curScore > accScore ? cur : acc
+          if (cur.image_url && !acc.image_url) return cur
+          return acc
+        }, prizes[0])
+      : null
+
+    const rarity: Prize['rarity'] = String(best?.level || 'SSR')
+    const trialPrize: Prize = {
+      id: `trial-${best?.id ?? rarity}`,
+      name: String(best?.name || rarity),
+      rarity,
+      image_url: best?.image_url || '/images/card/00001.png',
+      grade: rarity,
+      is_last_one: false,
+    }
+
+    setWonPrizes([trialPrize]);
+    setIsVideoMuted(false);
+    setIsVideoOpen(true);
+  };
+
+  const handlePurchaseConfirm = async (quantity: number, options?: { usePoints: boolean, couponId?: string }) => {
+    if (!product || !user) return;
+
+    if (product.status === 'ended' || product.remaining === 0) {
+      setIsPurchaseModalOpen(false);
+      showToast('商品已完抽', 'info');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      console.log('[GA] event: purchase_attempt', { item_id: product.id, quantity });
+      
+      const { data, error } = await supabase.rpc('play_gacha_locked', {
+        p_product_id: product.id,
+        p_count: quantity,
+        p_use_points: options?.usePoints || false,
+        p_coupon_id: options?.couponId || null
+      });
+
+      if (error) throw error;
+
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('購買失敗，商品可能已售完或剩餘數量不足');
+      }
+
+      interface PlayGachaResult {
+        name: string;
+        grade: string;
+        image_url: string;
+        ticket_number?: number;
+        is_last_one?: boolean;
+      }
+
+      const rawResults = data as unknown as PlayGachaResult[];
+      const results = rawResults.map((item, index) => ({
+        id: item.ticket_number !== undefined ? String(item.ticket_number) : `${product.id}-${index}`,
+        name: item.name,
+        rarity: item.grade,
+        image_url: item.image_url,
+        grade: item.grade,
+        is_last_one: item.is_last_one,
+        ticket_number: item.ticket_number
+      }));
+
+      console.log('[GA] event: purchase', { 
+        transaction_id: rawResults[0]?.ticket_number,
+        value: product.price * quantity,
+        currency: 'G',
+        items: results.map(r => ({ item_id: r.id, item_name: r.name, item_category: r.grade }))
+      });
+
+      setWonPrizes(results);
+      setIsPurchaseModalOpen(false);
+      // Refresh user profile to update points/tokens balance immediately
+      if (refreshProfile) {
+        refreshProfile();
+      }
+
+      if (product.type === 'card') {
+        setIsVideoMuted(false);
+        setIsVideoOpen(true);
+      } else {
+        setIsGachaOpen(true);
+      }
+      
+    } catch (error: unknown) {
+      console.error('Purchase error:', error);
+      let errorMessage = '購買失敗';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Try to extract message from common error objects
+        const errObj = error as { message?: string; error_description?: string; details?: string };
+        errorMessage = errObj.message || errObj.error_description || errObj.details || JSON.stringify(error);
+      }
+      
+      console.log('[GA] event: purchase_error', { error: errorMessage });
+      showToast(errorMessage || '購買失敗，請稍後再試', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGachaComplete = () => {
+    router.push(`/profile?tab=warehouse&product_id=${params.id}`);
+  };
+
+  const handleBattleEffectComplete = () => {
+    setIsGachaOpen(false);
+    setIsPrizeModalOpen(true);
+  };
+
+  const handleGachaContinue = () => {
+    setIsGachaOpen(false);
+    setWonPrizes([]);
+    fetchData();
+  };
+
+  const handleVideoEnd = () => {
+    setIsVideoOpen(false);
+    if (wonPrizes.length > 0) {
+      setIsPrizeModalOpen(true);
+    }
+    setIsVideoMuted(false);
+  };
+
+  const handleVideoError = () => {
+    setIsVideoOpen(false);
+    if (wonPrizes.length > 0) {
+      setIsPrizeModalOpen(true);
+    }
+    setIsVideoMuted(false);
+  };
+
+  const battleResults: BattleCardItem[] = useMemo(
+    () =>
+      wonPrizes.map(prize => {
+        const raw = (prize.grade || prize.rarity || '').toUpperCase();
+        const rarity: BattleCardItem['rarity'] =
+          raw === 'SSR' || raw.includes('SSR')
+            ? 'SSR'
+            : raw === 'SR' || raw.includes('SR')
+              ? 'SR'
+              : raw === 'R' || raw.includes('R')
+                ? 'R'
+                : 'N';
+
+        let cardFrontImage = '/images/card/00004.png';
+        if (rarity === 'SSR') cardFrontImage = '/images/card/00001.png';
+        else if (rarity === 'SR') cardFrontImage = '/images/card/00002.png';
+        else if (rarity === 'R') cardFrontImage = '/images/card/00003.png';
+
+        return {
+          id: prize.id,
+          rarity,
+          cardFrontImage,
+        };
+      }),
+    [wonPrizes]
+  );
+
+  const fetchData = useCallback(async () => {
+    try {
+      const productId = parseInt(params.id as string);
+      if (isNaN(productId)) return;
+
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .neq('status', 'pending')
+        .single();
+      
+      if (productError) throw productError;
+
+      if (productData?.type === 'blindbox') {
+        router.replace(`/blindbox/${productId}`);
+        return;
+      }
+
+      setProduct(productData);
+
+      const { data: prizesData, error: prizesError } = await supabase
+        .from('product_prizes')
+        .select('*')
+        .eq('product_id', productId)
+        .order('level', { ascending: true });
+      
+      if (prizesError) throw prizesError;
+      setPrizes(prizesData || []);
+
+      const { data: recData } = await supabase
+        .from('products')
+        .select('*')
+        .neq('id', productId)
+        .eq('status', 'active')
+        .limit(4);
+      
+      if (recData) setRecommendations(recData);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [params.id, router, supabase, setProduct, setPrizes, setRecommendations, setIsLoading]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setIsLoading(false);
+        showToast('連線逾時，請重新整理頁面', 'error');
+      }
+    }, 8000);
+
+    fetchData().finally(() => {
+      clearTimeout(timeoutId);
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [params.id, fetchData, showToast]);
+
+  useEffect(() => {
+    if (!isVideoOpen) return;
+    const el = openingVideoRef.current;
+    if (!el) return;
+    try {
+      el.currentTime = 0;
+      el.play().catch(() => undefined);
+    } catch {
+    }
+  }, [isVideoOpen]);
+
+  useEffect(() => {
+    const productId = parseInt(params.id as string);
+    if (isNaN(productId)) return;
+
+    console.log('Setting up realtime subscription for product:', productId);
+
+    const channel = supabase
+      .channel(`product-${productId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'products',
+          filter: `id=eq.${productId}`,
+        },
+        (payload) => {
+          const newProduct = payload.new as Database['public']['Tables']['products']['Row'];
+          setProduct((prev) => (prev ? { ...prev, ...newProduct } : null));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'product_prizes',
+          filter: `product_id=eq.${productId}`,
+        },
+        (payload) => {
+          const newPrize = payload.new as Database['public']['Tables']['product_prizes']['Row'];
+          
+          setPrizes((prev) => {
+            const currentPrize = prev.find(p => p.id === newPrize.id);
+            
+            if (currentPrize && newPrize.remaining < currentPrize.remaining) {
+              setTimeout(() => {
+                showToast(
+                  <span className="flex items-center gap-2">
+                    <span className="bg-accent-red text-white text-[10px] px-1.5 py-0.5 rounded font-black">{newPrize.level}賞</span>
+                    <span>被抽走了！剩餘 {newPrize.remaining} 個</span>
+                  </span>,
+                  'info'
+                );
+              }, 0);
+            }
+
+            return prev.map((prize) =>
+              prize.id === newPrize.id ? { ...prize, ...newPrize } : prize
+            );
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [params.id, supabase, showToast]);
+
+  // Handle back button click
+  // const handleBackClick = () => {
+  //   // Always redirect to home page
+  //   router.push('/');
+  // };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        {/* Remove duplicated loading indicator */}
+        <div className="flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <span className="text-xs font-black tracking-widest">載入商品中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-4">
+        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">找不到商品</h1>
+        <p className="text-neutral-500 dark:text-neutral-400 font-bold mb-6">您查看的商品可能已經下架或不存在。</p>
+        <Link href="/">
+          <Button size="lg">返回首頁</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const validPrizes = prizes.filter(p => 
+    p.level !== 'Last One' && 
+    p.level !== 'LAST ONE' && 
+    !p.level.includes('最後賞')
+  );
+  
+  const totalRemaining =
+    typeof product.remaining === 'number'
+      ? product.remaining
+      : (prizes.length > 0
+          ? validPrizes.reduce((acc, prize) => acc + (prize.remaining || 0), 0)
+          : 0);
+
+  const totalItems =
+    typeof product.total_count === 'number'
+      ? product.total_count
+      : (prizes.length > 0
+          ? validPrizes.reduce((acc, prize) => acc + (prize.total || 0), 0)
+          : 0);
+
+  const fairnessHref = `/fairness/${product.id}`;
+  const isSoldOut =
+    (typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended';
+
+  const handleGoToFairness = () => {
+    if (!isAuthenticated) {
+      showAlert({
+        title: '提示',
+        message: '請先登入會員',
+        type: 'info',
+        confirmText: '前往登入',
+        onConfirm: () => router.push(`/login?redirect=${encodeURIComponent(fairnessHref)}`),
+      });
+      return;
+    }
+    router.push(fairnessHref);
+  };
+
+  if (product.type === 'gacha') {
+    return <GachaProductDetail product={product} prizes={prizes} />;
+  }
+
+  // Handle back button click
+  // const handleBackClick = () => {
+  //   // Always redirect to home page
+  //   router.push('/');
+  // };
+
+  if (product.type === 'card') {
+    const baseCardWidth = 375
+    const baseCardHeight = baseCardWidth * (932 / 750)
+    const scaleSpacerHeight = Math.max(0, (cardScale - 1) * baseCardHeight)
+
+    return (
+      <div
+        className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
+        style={{
+          backgroundImage: isMobile ? undefined : "url('/images/card/pcbg.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <div className="w-full flex justify-center">
+          <div
+            className="relative overflow-hidden"
+            style={{
+              width: 375,
+              transform: `scale(${cardScale})`,
+              transformOrigin: 'top center',
+            }}
+          >
+            <div>
+              <div
+                className="relative w-full"
+                style={{
+                  aspectRatio: '750/932',
+                  backgroundImage: "url('/images/card/bg.png')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                }}
+              >
+              {!isCardImageMode && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center justify-center px-4 rounded-full"
+                  style={{
+                    top: 40,
+                    height: 24,
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    maxWidth: 320,
+                    zIndex: 20,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span
+                    className="font-black text-center truncate"
+                    style={{
+                      color: '#FFFF30',
+                      fontSize: 16,
+                    }}
+                  >
+                    {product.name}
+                  </span>
+                </div>
+              )}
+
+                <button
+                  type="button"
+                  className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
+                  style={{
+                    top: 340,
+                    height: 20,
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    zIndex: 20,
+                  }}
+                  onClick={() => setIsCardImageMode(prev => !prev)}
+                >
+                  <span
+                    className="font-medium"
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 12,
+                    }}
+                  >
+                    點擊卡包顯示圖片
+                  </span>
+                </button>
+
+                <div
+                  className="absolute left-1/2 -translate-x-1/2"
+                  style={{
+                    top: 42,
+                    width: 167,
+                    height: 167,
+                    zIndex: 20,
+                  }}
+                >
+                  <div className="relative w-full h-full">
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        opacity: isCardImageMode ? 0 : 1,
+                        pointerEvents: 'none',
+                        transition: 'opacity 200ms ease-out',
+                      }}
+                    />
+                    {product.id && (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                        style={{
+                          opacity: isCardImageMode ? 1 : 0,
+                          pointerEvents: isCardImageMode ? 'auto' : 'none',
+                          transition: 'opacity 200ms ease-out',
+                        }}
+                        onClick={() => setIsCardImageMode(false)}
+                      >
+                        <Image
+                          src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                          alt={product.name}
+                          width={167}
+                          height={167}
+                          className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
+                  style={{
+                    width: 375,
+                    zIndex: 10,
+                  }}
+                >
+                  <div
+                    className="relative w-full flex items-center justify-center"
+                    style={{ bottom: isMobile ? '40px' : '35px' }}
+                  >
+                    <PackSelectionCarousel cardScale={cardScale} ref={packCarouselRef} />
+                  </div>
+                </div>
+
+                <ImageButton
+                  src="/images/gacha/btn2.png"
+                  alt="換一包"
+                  text="換一包"
+                  className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+                  textClassName="text-base md:text-lg"
+                  style={{
+                    left: '5.33%',
+                    top: '84.5%',
+                    width: '25.06%',
+                    height: '11.2%',
+                    zIndex: 20,
+                  }}
+                  onClick={handleChangePack}
+                />
+
+                <ImageButton
+                  src="/images/gacha/btn1.png"
+                  alt="立即開包"
+                  text={isSoldOut ? '查看結果' : '立即開包'}
+                  className="absolute"
+                  textClassName="text-base md:text-lg"
+                  style={{
+                    left: '31.73%',
+                    top: '84.5%',
+                    width: '36.53%',
+                    height: '11.2%',
+                    zIndex: 20,
+                  }}
+                  onClick={isSoldOut ? handleShowResults : handleDrawClick}
+                />
+
+                <ImageButton
+                  src="/images/gacha/btn2.png"
+                  alt="試試看"
+                  text="試試看"
+                  className="absolute"
+                  textClassName="text-base md:text-lg"
+                  style={{
+                    left: '69.6%',
+                    top: '84.5%',
+                    width: '25.06%',
+                    height: '11.2%',
+                    zIndex: 20,
+                  }}
+                  onClick={handleTrialCard}
+                />
+
+                {isSoldOut && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                    style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
+                  >
+                    <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
+                      <span className="text-[14px] font-black tracking-widest text-yellow-300">
+                        該商品已完抽
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {scaleSpacerHeight > 0 && (
+          <div
+            aria-hidden="true"
+            style={{
+              height: Math.ceil(scaleSpacerHeight),
+            }}
+          />
+        )}
+
+        <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
+          <div className="space-y-2 sm:space-y-5">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+              <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
+                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">店家配率表</h2>
+              </div>
+              
+              <div className="overflow-x-auto relative custom-scrollbar">
+                <table className="w-full min-w-[480px] text-left">
+                  <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
+                    <tr>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
+                      <th
+                        className={cn(
+                          "px-2 sm:px-6 py-2 sm:py-3 text-right uppercase tracking-widest w-[96px] sm:w-[128px] whitespace-nowrap",
+                          "sticky right-0 z-20 bg-neutral-50/90 dark:bg-neutral-900/90 backdrop-blur-sm"
+                        )}
+                      >
+                        剩餘 / 總數
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                    {prizes.filter(p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level.includes('最後賞')).map((prize, index) => (
+                      <tr 
+                        key={index} 
+                        className={cn(
+                          "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer",
+                          prize.remaining === 0 && "opacity-50"
+                        )}
+                        onClick={() => setViewingPrize({
+                          name: prize.name,
+                          image_url: prize.image_url || undefined,
+                          level: prize.level,
+                          total: prize.total,
+                          remaining: prize.remaining
+                        })}
+                      >
+                        <td className="px-2 sm:px-6 py-2 sm:py-3.5">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg border border-primary/10 whitespace-nowrap">
+                              {prize.level}
+                            </span>
+                            <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
+                              {prize.name}
+                            </div>
+                          </div>
+                        </td>
+                        <td
+                          className={cn(
+                            "px-2 sm:px-6 py-2 sm:py-3.5 text-right w-[96px] sm:w-[128px] whitespace-nowrap align-middle",
+                            "sticky right-0 z-10 bg-white dark:bg-neutral-900",
+                            "group-hover:bg-neutral-50/80 dark:group-hover:bg-neutral-800/80"
+                          )}
+                        >
+                          <span className="font-black text-sm sm:text-base tracking-tighter text-neutral-900 dark:text-neutral-50">
+                            {prize.remaining.toLocaleString()}<span className="text-neutral-200 dark:text-neutral-700 mx-1">/</span>{prize.total.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
+                <span className="font-black text-accent-red text-sm sm:text-base tracking-widest uppercase">
+                  合計
+                </span>
+                <span className="text-lg sm:text-2xl font-black tracking-tighter whitespace-nowrap">
+                  <span className="font-black text-accent-red">
+                    {totalRemaining.toLocaleString()}
+                  </span>
+                  <span className="text-accent-red/30 mx-1">/</span>
+                  <span className="font-black text-neutral-700 dark:text-neutral-400">
+                    {totalItems.toLocaleString()}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {prizes.find(p => p.level === 'Last One' || p.level === 'LAST ONE' || p.level.includes('最後賞')) && (
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-1">
+                {(() => {
+                  const lastOnePrize = prizes.find(p => p.level === 'Last One' || p.level === 'LAST ONE' || p.level.includes('最後賞'));
+                  if (!lastOnePrize) return null;
+                  const lastOneImage =
+                    lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
+                      ? lastOnePrize.image_url
+                      : '/images/item.png';
+                  
+                  return (
+                    <button
+                      type="button"
+                      className="w-full text-left bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-neutral-900 dark:text-neutral-100 shadow-xl relative overflow-hidden group border border-yellow-200/60 dark:border-yellow-700/40"
+                      onClick={() =>
+                        setViewingPrize({
+                          name: lastOnePrize.name,
+                          image_url: lastOnePrize.image_url || undefined,
+                          level: lastOnePrize.level,
+                          total: lastOnePrize.total,
+                          remaining: lastOnePrize.remaining,
+                        })
+                      }
+                    >
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/20 dark:bg-yellow-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100" />
+                      
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/60 dark:bg-white/10 rounded-xl flex-shrink-0 relative overflow-hidden border border-yellow-200/60 dark:border-white/10">
+                          <Image 
+                            src={lastOneImage}
+                            alt={lastOnePrize.name}
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            unoptimized
+                          />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                             <span className="px-2 py-0.5 bg-yellow-400 text-neutral-900 text-[10px] font-black rounded tracking-wider shadow-lg shadow-yellow-400/30 font-[Chiron_GoRound_TC]">
+                               最後賞
+                             </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight mb-1 truncate">
+                            {lastOnePrize.name}
+                          </h3>
+                          <p className="text-[10px] sm:text-xs text-yellow-800/80 dark:text-yellow-300/80 font-bold">
+                            購買最後一張籤即可獲得此獎項
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
+              <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent-emerald/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="w-5 h-5 sm:w-7 sm:h-7 text-accent-emerald stroke-[2.5]" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">公平性驗證</h2>
+                  <p className="text-[13px] sm:text-sm text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-widest mt-0.5">確保抽獎過程的透明與公正</p>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
+                  <Info className="w-3.5 h-3.5 stroke-[3]" />
+                  公平性驗證機制
+                </div>
+                <div className="space-y-1 sm:space-y-2">
+                  <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed">
+                    每次抽獎會記錄隨機種子 Seed、籤號與對應的 TXID Hash。完抽後會公開 Seed，任何人都可以在公平性驗證頁輸入 Seed 與籤號，重算隨機值與 TXID Hash 來確認結果無法事後被修改。
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 pt-1 sm:pt-2">
+                <div className="space-y-1.5 sm:space-y-2.5">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                    <Trophy className="w-3.5 h-3.5" /> 隨機種子 (TXID)
+                  </div>
+                  <CopyableTruncatedField
+                    value={(totalRemaining === 0 && product.seed) ? (product.seed as string) : ''}
+                    placeholder="完抽後公布"
+                    fieldClassName={cn(
+                      (totalRemaining === 0 && product.seed) ? '' : 'text-neutral-400 dark:text-neutral-500 tracking-widest'
+                    )}
+                  />
+                </div>
+                
+                <div className="space-y-1.5 sm:space-y-2.5">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                    <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
+                  </div>
+                  <CopyableTruncatedField
+                    value={product.txid_hash || ''}
+                    placeholder="尚未生成，請稍後再試"
+                  />
+                </div>
+              </div>
+
+              {isSoldOut && (
+                <div className="pt-3 sm:pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
+                    公平性驗證頁：
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoToFairness}
+                    className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
+                  >
+                    前往公平性驗證頁
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
+              <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">上市時間</span>
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">
+                    {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className="w-2 h-4 sm:w-2.5 sm:h-5 bg-accent-red rounded-sm shadow-sm shadow-accent-red/20" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
+                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
+                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
+                  抽獎注意事項
+                </h4>
+                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
+                  </li>
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
+                  </li>
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>商品庫庫存會即時更新，售完為止。</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2 sm:pt-8">
+              <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
+                <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
+                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
+                {recommendations.map((item) => (
+                  <ProductCard 
+                    key={item.id} 
+                    id={item.id}
+                    name={item.name}
+                    image={item.image_url || ''}
+                    price={item.price}
+                    remaining={item.remaining}
+                    total={item.total_count}
+                    isHot={item.is_hot || false}
+                    category={item.category || ''}
+                    type={item.type}
+                    status={item.status}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {viewingPrize && (
+          <div
+            className="fixed inset-0 z-[2200] bg-black/80 flex items-center justify-center"
+            onClick={() => setViewingPrize(null)}
+          >
+            <div
+              className="relative w-[80vw] max-w-sm max-h-[80vh] flex flex-col items-center justify-center gap-3"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] text-center px-3">
+                {viewingPrize.name}
+              </div>
+              <Image
+                src={viewingPrize.image_url || '/images/item.png'}
+                alt={viewingPrize.name}
+                width={800}
+                height={800}
+                className="max-w-full max-h-full object-contain rounded-2xl"
+                unoptimized
+              />
+            </div>
+          </div>
+        )}
+
+        {isVideoOpen && (
+          <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
+            <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
+              <video
+                ref={openingVideoRef}
+                src={openingVideoSrc}
+                className="w-full h-full object-cover"
+                preload="auto"
+                muted={isVideoMuted}
+                playsInline
+                onEnded={handleVideoEnd}
+                onError={handleVideoError}
+              />
+              <button
+                type="button"
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
+                onClick={() => {
+                  setIsVideoMuted((prev) => {
+                    const next = !prev;
+                    const el = openingVideoRef.current;
+                    if (el) {
+                      el.muted = next;
+                      if (!next) {
+                        el.play().catch(() => undefined);
+                      }
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {isVideoMuted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                type="button"
+                className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
+                onClick={handleVideoEnd}
+              >
+                SKIP
+              </button>
+            </div>
+          </div>
+        )}
+
+        <GachaResultModal
+          isOpen={isPrizeModalOpen}
+          onClose={() => {
+            setIsPrizeModalOpen(false);
+            setWonPrizes([]);
+            fetchData();
+          }}
+          results={wonPrizes}
+        />
+
+        {showResultModal && (
+          <PrizeResultModal
+            isOpen={showResultModal}
+            onClose={() => setShowResultModal(false)}
+            isLoading={isLoadingResults}
+            results={drawResults.map(r => ({
+              grade: r.prize_level,
+              name: r.prize_name,
+              isOpened: true,
+              image_url: r.image_url || '',
+              is_last_one: r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || (r.ticket_number === 0),
+              ticket_number: r.ticket_number || 0
+            }))}
+            skipRevealAnimation={true}
+          />
+        )}
+
+        {product && (
+          <PurchaseConfirmationModal
+            isOpen={isPurchaseModalOpen}
+            onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
+            onConfirm={handlePurchaseConfirm}
+            product={product}
+            userTokens={user?.tokens || 0}
+            userPoints={user?.points || 0}
+            isProcessing={isProcessing}
+            onTopUp={() => router.push('/topup')}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0">
+      <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
+          <div className="lg:col-span-4 lg:sticky lg:top-24">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+              <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
+                <div className="w-full h-full flex items-center justify-center text-white/20 group-hover:scale-105 transition-transform duration-500">
+                  <Image
+                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                
+                {((typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended') && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                    <Image 
+                      src="/images/sale.svg" 
+                      alt="完抽" 
+                      width={120}
+                      height={120}
+                      className="w-28 h-auto transform scale-110 drop-shadow-xl"
+                      unoptimized
+                    />
+                  </div>
+                )}
+                
+                <div className="absolute top-0 right-0 z-10 flex flex-col items-end pointer-events-none">
+                  {product.is_hot && (
+                    <div className="h-6 px-2 inline-flex items-center rounded-tr-lg rounded-bl-lg bg-[#EE4D2D] text-white text-[11px] font-black border border-white/10 leading-none transform origin-top-right scale-150">
+                      熱門
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-3 sm:p-6 space-y-2 sm:space-y-5">
+                <h1 className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">
+                  {product.type && (
+                    <span
+                      className={cn(
+                        "inline-block align-middle mr-2",
+                        product.type === 'ichiban' && "sm:mt-1"
+                      )}
+                    >
+                      <ProductBadge type={product.type as 'ichiban' | 'blindbox' | 'gacha' | 'custom'} />
+                    </span>
+                  )}
+                  <span className="align-middle">
+                    {product.name}
+                  </span>
+                </h1>
+                {product.is_preorder && (
+                  <div className="mt-1">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200">
+                      <span className="text-[11px] font-black">預購商品</span>
+                      <span className="text-[11px] font-bold">
+                        預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString() : '待公布'}
+                      </span>
+                    </span>
+                  </div>
+                )}
+                
+                <div className="hidden lg:flex items-end justify-between gap-2 pb-5 border-b border-neutral-50 dark:border-neutral-800">
+                  <div className="flex items-baseline gap-2">
+                    <Image
+                      src="/images/gcoin.png"
+                      alt="G Coin"
+                      width={20}
+                      height={20}
+                      className="w-5 h-5 object-contain"
+                    />
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
+                      <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
+                    </div>
+                  </div>
+                  <div className="text-sm font-black text-neutral-500 leading-none mb-1 text-right">
+                    優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 hidden lg:block">
+                  <div className="flex items-center gap-3">
+          <Button 
+                      onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
+                      size="lg"
+                      className={cn(
+                        "flex-1 h-[44px] text-lg font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2",
+                        totalRemaining === 0 
+                          ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
+                          : "shadow-accent-red/20"
+                      )}
+                      variant={totalRemaining === 0 ? "secondary" : "danger"}
+                      disabled={false}
+                    >
+                      {totalRemaining === 0
+                        ? '查看結果'
+                        : product.type === 'ichiban'
+                          ? '立即抽獎'
+                          : '立即轉蛋'}
+                    </Button>
+
+                    <button className="w-[44px] h-[44px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95">
+                      <Share2 className="w-5 h-5 stroke-[2.5]" />
+                    </button>
+                    
+                    <button 
+                      onClick={handleFollowToggle}
+                      className={cn(
+                        "w-[44px] h-[44px] rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border",
+                        isFollowed 
+                          ? "bg-accent-red text-white border-accent-red shadow-accent-red/20" 
+                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-accent-red hover:border-accent-red/50"
+                      )}
+                    >
+                      <Heart className={cn("w-5 h-5 stroke-[2.5]", isFollowed && "fill-current")} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-8 space-y-2 sm:space-y-5">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+              <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
+                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">店家配率表</h2>
+              </div>
+              
+              <div className="overflow-x-auto relative custom-scrollbar">
+                <table className="w-full min-w-[480px] text-left">
+                  <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
+                    <tr>
+                      <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
+                      <th
+                        className={cn(
+                          "px-2 sm:px-6 py-2 sm:py-3 text-right uppercase tracking-widest w-[96px] sm:w-[128px] whitespace-nowrap",
+                          "sticky right-0 z-20 bg-neutral-50/90 dark:bg-neutral-900/90 backdrop-blur-sm"
+                        )}
+                      >
+                        剩餘 / 總數
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                    {prizes.filter(p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level.includes('最後賞')).map((prize, index) => (
+                      <tr 
+                        key={index} 
+                        className={cn(
+                          "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer",
+                          prize.remaining === 0 && "opacity-50"
+                        )}
+                        onClick={() => setViewingPrize({
+                          name: prize.name,
+                          image_url: prize.image_url || undefined,
+                          level: prize.level,
+                          total: prize.total,
+                          remaining: prize.remaining
+                        })}
+                      >
+                        <td className="px-2 sm:px-6 py-2 sm:py-3.5">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg border border-primary/10 whitespace-nowrap">
+                              {prize.level}
+                            </span>
+                            <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
+                              {prize.name}
+                            </div>
+                          </div>
+                        </td>
+                        <td
+                          className={cn(
+                            "px-2 sm:px-6 py-2 sm:py-3.5 text-right w-[96px] sm:w-[128px] whitespace-nowrap align-middle",
+                            "sticky right-0 z-10 bg-white dark:bg-neutral-900",
+                            "group-hover:bg-neutral-50/80 dark:group-hover:bg-neutral-800/80"
+                          )}
+                        >
+                          <span className="font-black text-sm sm:text-base tracking-tighter text-neutral-900 dark:text-neutral-50">
+                            {prize.remaining.toLocaleString()}<span className="text-neutral-200 dark:text-neutral-700 mx-1">/</span>{prize.total.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
+                <span className="font-black text-accent-red text-sm sm:text-base tracking-widest uppercase">
+                  合計
+                </span>
+                <span className="text-lg sm:text-2xl font-black tracking-tighter whitespace-nowrap">
+                  <span className="font-black text-accent-red">
+                    {totalRemaining.toLocaleString()}
+                  </span>
+                  <span className="text-accent-red/30 mx-1">/</span>
+                  <span className="font-black text-neutral-700 dark:text-neutral-400">
+                    {totalItems.toLocaleString()}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {prizes.find(p => p.level === 'Last One' || p.level === 'LAST ONE' || p.level.includes('最後賞')) && (
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-1">
+                {(() => {
+                  const lastOnePrize = prizes.find(p => p.level === 'Last One' || p.level === 'LAST ONE' || p.level.includes('最後賞'));
+                  if (!lastOnePrize) return null;
+                  const lastOneImage =
+                    lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
+                      ? lastOnePrize.image_url
+                      : '/images/item.png';
+                  
+                  return (
+                    <button
+                      type="button"
+                      className="w-full text-left bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-neutral-900 dark:text-neutral-100 shadow-xl relative overflow-hidden group border border-yellow-200/60 dark:border-yellow-700/40"
+                      onClick={() =>
+                        setViewingPrize({
+                          name: lastOnePrize.name,
+                          image_url: lastOnePrize.image_url || undefined,
+                          level: lastOnePrize.level,
+                          total: lastOnePrize.total,
+                          remaining: lastOnePrize.remaining,
+                        })
+                      }
+                    >
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/20 dark:bg-yellow-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100" />
+                      
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/60 dark:bg-white/10 rounded-xl flex-shrink-0 relative overflow-hidden border border-yellow-200/60 dark:border-white/10">
+                          <Image 
+                            src={lastOneImage}
+                            alt={lastOnePrize.name}
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            unoptimized
+                          />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                             <span className="px-2 py-0.5 bg-yellow-400 text-neutral-900 text-[10px] font-black rounded tracking-wider shadow-lg shadow-yellow-400/30 font-[Chiron_GoRound_TC]">
+                               最後賞
+                             </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight mb-1 truncate">
+                            {lastOnePrize.name}
+                          </h3>
+                          <p className="text-[10px] sm:text-xs text-yellow-800/80 dark:text-yellow-300/80 font-bold">
+                            購買最後一張籤即可獲得此獎項
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
+              <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent-emerald/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="w-5 h-5 sm:w-7 sm:h-7 text-accent-emerald stroke-[2.5]" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">公平性驗證</h2>
+                  <p className="text-[13px] sm:text-sm text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-widest mt-0.5">確保抽獎過程的透明與公正</p>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
+                  <Info className="w-3.5 h-3.5 stroke-[3]" />
+                  公平性驗證機制
+                </div>
+                <div className="space-y-1 sm:space-y-2">
+                  <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed">
+                    每次抽獎會記錄隨機種子 Seed、籤號與對應的 TXID Hash。完抽後會公開 Seed，任何人都可以在公平性驗證頁輸入 Seed 與籤號，重算隨機值與 TXID Hash 來確認結果無法事後被修改。
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 pt-1 sm:pt-2">
+                <div className="space-y-1.5 sm:space-y-2.5">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                    <Trophy className="w-3.5 h-3.5" /> 隨機種子 (TXID)
+                  </div>
+                  <CopyableTruncatedField
+                    value={(totalRemaining === 0 && product.seed) ? (product.seed as string) : ''}
+                    placeholder="完抽後公布"
+                    fieldClassName={cn(
+                      (totalRemaining === 0 && product.seed) ? '' : 'text-neutral-400 dark:text-neutral-500 tracking-widest'
+                    )}
+                  />
+                </div>
+                
+                <div className="space-y-1.5 sm:space-y-2.5">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                    <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
+                  </div>
+                  <CopyableTruncatedField
+                    value={product.txid_hash || ''}
+                    placeholder="尚未生成，請稍後再試"
+                  />
+                </div>
+              </div>
+
+              {product.type === 'ichiban' && isSoldOut && (
+                <div className="pt-3 sm:pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
+                  <div className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
+                    公平性驗證頁：
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoToFairness}
+                    className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
+                  >
+                    前往公平性驗證頁
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
+              <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">上市時間</span>
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">
+                    {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className="w-2 h-4 sm:w-2.5 sm:h-5 bg-accent-red rounded-sm shadow-sm shadow-accent-red/20" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
+                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
+                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
+                  抽獎注意事項
+                </h4>
+                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
+                  </li>
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
+                  </li>
+                  <li className="flex gap-2 sm:gap-3">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
+                    <span>商品庫庫存會即時更新，售完為止。</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2 sm:pt-8">
+              <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
+                <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
+                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
+                {recommendations.map((item) => (
+                  <ProductCard 
+                    key={item.id} 
+                    id={item.id}
+                    name={item.name}
+                    image={item.image_url || ''}
+                    price={item.price}
+                    remaining={item.remaining}
+                    total={item.total_count}
+                    isHot={item.is_hot || false}
+                    category={item.category || ''}
+                    type={item.type}
+                    status={item.status}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {viewingPrize && (
+          <div
+            className="fixed inset-0 z-[2200] bg-black/80 flex items-center justify-center"
+            onClick={() => setViewingPrize(null)}
+          >
+            <div
+              className="relative w-[80vw] max-w-sm max-h-[80vh] flex flex-col items-center justify-center gap-3"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] text-center px-3">
+                {viewingPrize.name}
+              </div>
+              <Image
+                src={viewingPrize.image_url || '/images/item.png'}
+                alt={viewingPrize.name}
+                width={800}
+                height={800}
+                className="max-w-full max-h-full object-contain rounded-2xl"
+                unoptimized
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 h-auto min-h-16 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 flex items-center lg:hidden z-50 shadow-modal">
+          <div className="flex items-center gap-4 w-full pb-2">
+            <div className="flex flex-col items-center justify-center pl-2">
+              <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400 leading-none mb-1 whitespace-nowrap">
+                優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-yellow shadow-sm">
+                  <Image
+                    src="/images/gcoin.png"
+                    alt="G"
+                    width={10}
+                    height={10}
+                    className="object-contain"
+                  />
+                </div>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-[28px] font-black text-accent-red font-amount leading-none tracking-tighter">{product.price.toLocaleString()}</span>
+                  <span className="text-sm font-black text-neutral-400 dark:text-neutral-500 leading-none uppercase tracking-widest">/抽</span>
+                </div>
+              </div>
+            </div>
+            <Button 
+              onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
+              size="lg"
+              className={cn(
+                "flex-1 h-[44px] text-base font-black rounded-xl shadow-xl transition-all active:scale-[0.95] flex items-center justify-center gap-2",
+                totalRemaining === 0 
+                  ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
+                  : "shadow-accent-red/20"
+              )}
+              variant={totalRemaining === 0 ? "secondary" : "danger"}
+              disabled={false}
+            >
+              {totalRemaining === 0
+                ? '查看結果'
+                : product.type === 'ichiban'
+                  ? '立即抽獎'
+                  : '立即轉蛋'}
+            </Button>
+          </div>
+        </div>
+
+        {showResultModal && (
+          <PrizeResultModal
+            isOpen={showResultModal}
+            onClose={() => setShowResultModal(false)}
+            isLoading={isLoadingResults}
+            results={drawResults.map(r => ({
+              grade: r.prize_level,
+              name: r.prize_name,
+              isOpened: true,
+              image_url: r.image_url || '',
+              is_last_one: r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || (r.ticket_number === 0),
+              ticket_number: r.ticket_number || 0
+            }))}
+            skipRevealAnimation={true}
+          />
+        )}
+
+        {product && (
+          <PurchaseConfirmationModal
+            isOpen={isPurchaseModalOpen}
+            onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
+            onConfirm={handlePurchaseConfirm}
+            product={product}
+            userTokens={user?.tokens || 0}
+            userPoints={user?.points || 0}
+            isProcessing={isProcessing}
+            onTopUp={() => router.push('/topup')}
+          />
+        )}
+
+        {product.type === 'ichiban' ? (
+          <GachaMachine 
+            isOpen={isGachaOpen}
+            prizes={wonPrizes}
+            onGoToWarehouse={handleGachaComplete}
+            onContinue={handleGachaContinue}
+          />
+        ) : (
+          <GachaBattleEffect
+            isOpen={isGachaOpen}
+            pullResults={battleResults}
+            onComplete={handleBattleEffectComplete}
+            productType={product.type}
+          />
+        )}
+
+        <GachaResultModal
+          isOpen={isPrizeModalOpen}
+          onClose={() => {
+            setIsPrizeModalOpen(false);
+            setWonPrizes([]);
+            fetchData();
+          }}
+          results={wonPrizes}
+        />
+
+        {/* 其他型別統一使用戰鬥演出 */}
+
+        {isTicketModalOpen && (
+          <div className="fixed inset-0 z-[2100] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsTicketModalOpen(false)}
+            />
+            <div className="relative z-[2101] w-full max-w-[640px] max-h-[90vh] px-4">
+              <TicketSelectionFlow
+                isModal
+                onClose={() => setIsTicketModalOpen(false)}
+                onRefreshProduct={fetchData}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
