@@ -9,25 +9,11 @@ export async function GET() {
 
     const supabaseAdmin = getSupabaseAdmin()
 
+    // Use * so the page keeps working even if this environment is missing
+    // some later user-table migrations such as invite_code / points.
     const { data: users, error: usersError } = await supabaseAdmin
       .from('users')
-      .select(
-            `
-            id,
-            invite_code,
-            name,
-            email,
-            phone,
-            tokens,
-            points,
-            status,
-            total_spent,
-            total_draws,
-            address,
-            created_at,
-            last_login_at
-          `
-          )
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (usersError) {
@@ -135,6 +121,98 @@ export async function GET() {
     console.error('Error fetching admin users with stats:', error)
     return NextResponse.json(
       { error: error.message || '載入會員統計失敗' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await requireAdminSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await request.json()
+    const name = String(body?.name || '').trim()
+    const email = String(body?.email || '').trim().toLowerCase()
+    const password = String(body?.password || '')
+    const phone = String(body?.phone || '').trim()
+    const address = String(body?.address || '').trim()
+    const status = body?.status === 'inactive' ? 'inactive' : 'active'
+    const tokens = Math.max(0, Number.parseInt(String(body?.tokens ?? '0'), 10) || 0)
+
+    if (!name) {
+      return NextResponse.json({ error: '會員名稱不可為空' }, { status: 400 })
+    }
+    if (!email) {
+      return NextResponse.json({ error: '電子郵件不可為空' }, { status: 400 })
+    }
+    if (!password || password.length < 6) {
+      return NextResponse.json({ error: '密碼至少需要 6 碼' }, { status: 400 })
+    }
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name,
+      },
+    })
+
+    if (createAuthError) throw createAuthError
+
+    const authUserId = authData.user?.id
+    if (!authUserId) {
+      return NextResponse.json({ error: '建立會員失敗' }, { status: 500 })
+    }
+
+    const payload = {
+      id: authUserId,
+      name,
+      email,
+      phone: phone || null,
+      tokens,
+      status,
+      address: address || null,
+    }
+
+    const { data: createdUser, error: upsertError } = await supabaseAdmin
+      .from('users')
+      .upsert(payload, { onConflict: 'id' })
+      .select('id, name, email, phone, tokens, status, address, created_at')
+      .single()
+
+    if (upsertError) {
+      await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => undefined)
+      throw upsertError
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: createdUser.id,
+        userId: createdUser.id,
+        inviteCode: null,
+        name: createdUser.name ?? '',
+        email: createdUser.email ?? '',
+        phone: createdUser.phone ?? '',
+        tokens: typeof (createdUser as any).tokens === 'number' ? (createdUser as any).tokens : 0,
+        points: 0,
+        registerDate: createdUser.created_at ?? new Date().toISOString(),
+        lastLoginDate: '',
+        lastLoginIp: '',
+        status: createdUser.status === 'inactive' ? 'inactive' : 'active',
+        totalOrders: 0,
+        totalSpent: 0,
+        totalDraws: 0,
+        address: createdUser.address ?? '',
+      },
+    })
+  } catch (error: any) {
+    console.error('Error creating admin user:', error)
+    return NextResponse.json(
+      { error: error?.message || '建立會員失敗' },
       { status: 500 }
     )
   }

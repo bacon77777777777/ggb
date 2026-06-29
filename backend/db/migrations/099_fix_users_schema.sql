@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.users CASCADE;
 -- 2. Recreate users table with UUID primary key
 CREATE TABLE public.users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  user_id SERIAL, -- Optional: Keep a numeric ID for internal reference
+  user_id UUID GENERATED ALWAYS AS (id) STORED UNIQUE,
   name TEXT,
   email TEXT,
   phone TEXT,

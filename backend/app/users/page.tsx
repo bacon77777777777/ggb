@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 import { 
@@ -34,6 +34,26 @@ interface User {
   totalSpent: number
   totalDraws: number
   address?: string
+}
+
+interface CreateUserForm {
+  name: string
+  email: string
+  password: string
+  phone: string
+  tokens: string
+  status: 'active' | 'inactive'
+  address: string
+}
+
+const EMPTY_CREATE_USER_FORM: CreateUserForm = {
+  name: '',
+  email: '',
+  password: '',
+  phone: '',
+  tokens: '0',
+  status: 'active',
+  address: ''
 }
 
 export default function UsersPage() {
@@ -77,38 +97,79 @@ export default function UsersPage() {
 
   // 使用集中的使用者資料
   const [users, setUsers] = useState<User[]>([])
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createUserForm, setCreateUserForm] = useState<CreateUserForm>(EMPTY_CREATE_USER_FORM)
+  const [createUserError, setCreateUserError] = useState('')
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
   
   // 使用者狀態管理（用於開關切換）
   const [userStatuses, setUserStatuses] = useState<{ [key: string]: 'active' | 'inactive' }>({})
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true)
-      try {
-        const res = await fetch('/api/admin/users')
-        if (!res.ok) {
-          console.error('Error fetching users:', await res.text())
-          return
-        }
-
-        const data: User[] = await res.json()
-        if (Array.isArray(data)) {
-          setUsers(data)
-          const statuses: { [key: string]: 'active' | 'inactive' } = {}
-          data.forEach(user => {
-            statuses[user.id] = user.status
-          })
-          setUserStatuses(statuses)
-        }
-      } catch (err) {
-        console.error('Unexpected error:', err)
-      } finally {
-        setIsLoading(false)
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/admin/users')
+      if (!res.ok) {
+        console.error('Error fetching users:', await res.text())
+        return
       }
-    }
 
-    void fetchUsers()
+      const data: User[] = await res.json()
+      if (Array.isArray(data)) {
+        setUsers(data)
+        const statuses: { [key: string]: 'active' | 'inactive' } = {}
+        data.forEach(user => {
+          statuses[user.id] = user.status
+        })
+        setUserStatuses(statuses)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    void fetchUsers()
+  }, [fetchUsers])
+
+  const handleCreateUser = async () => {
+    setCreateUserError('')
+    setIsCreatingUser(true)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: createUserForm.name,
+          email: createUserForm.email,
+          password: createUserForm.password,
+          phone: createUserForm.phone,
+          tokens: createUserForm.tokens,
+          status: createUserForm.status,
+          address: createUserForm.address,
+        })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCreateUserError(data?.error || '新增會員失敗')
+        return
+      }
+
+      setIsCreateModalOpen(false)
+      setCreateUserForm(EMPTY_CREATE_USER_FORM)
+      await fetchUsers()
+    } catch (err) {
+      console.error('Failed to create user:', err)
+      setCreateUserError('新增會員失敗')
+    } finally {
+      setIsCreatingUser(false)
+    }
+  }
 
   // 篩選處理
   const filteredUsers = useMemo(() => {
@@ -469,6 +530,13 @@ export default function UsersPage() {
             searchPlaceholder="搜尋ID、推薦碼、名稱、電子郵件..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
+            showAddButton={true}
+            addButtonText="+ 新增會員"
+            onAddClick={() => {
+              setCreateUserError('')
+              setCreateUserForm(EMPTY_CREATE_USER_FORM)
+              setIsCreateModalOpen(true)
+            }}
             showExportCSV={true}
             onExportCSV={handleExportCSV}
             showDensity={true}
@@ -658,6 +726,112 @@ export default function UsersPage() {
           >
             確定
           </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (isCreatingUser) return
+          setIsCreateModalOpen(false)
+        }}
+        title="新增會員"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">會員名稱</label>
+            <input
+              type="text"
+              value={createUserForm.name}
+              onChange={(e) => setCreateUserForm(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="請輸入會員名稱"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">電子郵件</label>
+            <input
+              type="email"
+              value={createUserForm.email}
+              onChange={(e) => setCreateUserForm(prev => ({ ...prev, email: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="member@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">登入密碼</label>
+            <input
+              type="text"
+              value={createUserForm.password}
+              onChange={(e) => setCreateUserForm(prev => ({ ...prev, password: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="至少 6 碼"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">電話</label>
+              <input
+                type="text"
+                value={createUserForm.phone}
+                onChange={(e) => setCreateUserForm(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="09xxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">初始代幣</label>
+              <input
+                type="number"
+                min="0"
+                value={createUserForm.tokens}
+                onChange={(e) => setCreateUserForm(prev => ({ ...prev, tokens: e.target.value }))}
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">地址</label>
+            <input
+              type="text"
+              value={createUserForm.address}
+              onChange={(e) => setCreateUserForm(prev => ({ ...prev, address: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="選填"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">狀態</label>
+            <select
+              value={createUserForm.status}
+              onChange={(e) => setCreateUserForm(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }))}
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="active">啟用</option>
+              <option value="inactive">停用</option>
+            </select>
+          </div>
+          {createUserError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {createUserError}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setIsCreateModalOpen(false)}
+              className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
+              disabled={isCreatingUser}
+            >
+              取消
+            </button>
+            <button
+              onClick={handleCreateUser}
+              disabled={isCreatingUser}
+              className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
+            >
+              {isCreatingUser ? '新增中...' : '建立會員'}
+            </button>
+          </div>
         </div>
       </Modal>
     </AdminLayout>
