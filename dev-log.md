@@ -1,5 +1,16 @@
 # 開發日誌 (Development Log)
 
+## 2026-06-29 ggb 上線遷移啟動 (ggb Cutover Kickoff)
+
+### 進度摘要 (Progress)
+- GitHub：建立 `bacon77777777777/ggb` 並成功推送 `main`（已設定追蹤 `origin/main`）。
+- Backend：強化 `backend/scripts/manual_migrate.js`，可依序套用 `backend/db/migrations/*.sql`（用於新 Supabase 建齊 schema，不搬舊資料）。
+- Supabase：已建立新專案 `ggb-prod` 並取得 API keys（待使用 Transaction/Pooler 連線字串執行 migrations）。
+
+### 待辦 (Next)
+- Supabase：使用 Transaction/Pooler 的 `SUPABASE_DB_URL` 跑 `manual_migrate.js`，並驗證 `feature_flags`、`sell(view_count/escrow)` 相關 migrations 全部成功。
+- Vercel：建立 `ggb-frontend`（Root=frontend）與 `ggb-backend`（Root=backend），分別填入 env vars，確認 build/deploy 與線上驗證項目。
+
 ## 2026-02-28 任務系統 V2 (Mission System V2)
 
 ### 新增功能 (New Features)
