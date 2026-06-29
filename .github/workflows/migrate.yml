@@ -1,0 +1,111 @@
+name: Supabase Migrations
+
+# Runs whenever migration files are pushed to main.
+# Requires SUPABASE_DB_URL secret:
+#   Supabase Dashboard → Settings → Database → Connection string (URI / direct connection)
+#   Format: postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
+#
+# Add it at: GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/db/migrations/**.sql'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (list pending migrations without applying)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Ensure migration log table
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB_URL" <<'EOF'
+            CREATE TABLE IF NOT EXISTS public._migration_log (
+              filename  TEXT        PRIMARY KEY,
+              checksum  TEXT,
+              applied_at TIMESTAMPTZ DEFAULT NOW(),
+              success   BOOLEAN     DEFAULT TRUE
+            );
+          EOF
+
+      - name: Apply pending migrations
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+
+          applied=0
+          skipped=0
+          failed=0
+
+          for f in $(ls backend/db/migrations/*.sql | sort -V); do
+            filename=$(basename "$f")
+            checksum=$(md5sum "$f" | cut -d' ' -f1)
+
+            # Check if already applied successfully
+            result=$(psql "$DB_URL" -t -A -c \
+              "SELECT success FROM public._migration_log WHERE filename = '$filename';" \
+              2>/dev/null || echo "")
+
+            if [ "$result" = "t" ]; then
+              echo "⏭  skip  $filename"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "📋  pending  $filename"
+              applied=$((applied + 1))
+              continue
+            fi
+
+            echo "▶  applying  $filename"
+            if psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f" 2>&1; then
+              psql "$DB_URL" -c "
+                INSERT INTO public._migration_log (filename, checksum, success)
+                VALUES ('$filename', '$checksum', TRUE)
+                ON CONFLICT (filename) DO UPDATE
+                  SET applied_at = NOW(), checksum = EXCLUDED.checksum, success = TRUE;
+              "
+              echo "✓  applied  $filename"
+              applied=$((applied + 1))
+            else
+              psql "$DB_URL" -c "
+                INSERT INTO public._migration_log (filename, checksum, success)
+                VALUES ('$filename', '$checksum', FALSE)
+                ON CONFLICT (filename) DO UPDATE
+                  SET applied_at = NOW(), checksum = EXCLUDED.checksum, success = FALSE;
+              " || true
+              echo "✗  failed   $filename"
+              failed=$((failed + 1))
+              exit 1
+            fi
+          done
+
+          echo ""
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry run complete — $applied pending, $skipped already applied"
+          else
+            echo "Done — $applied applied, $skipped skipped"
+          fi
