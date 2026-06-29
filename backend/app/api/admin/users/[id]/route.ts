@@ -18,50 +18,83 @@ export async function GET(
 
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('*, orders(count)')
+      .select('*')
       .eq('id', id)
       .single()
     if (userError) throw userError
 
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from('orders')
-      .select(
-        `
-          *,
-          items:order_items (
-            id,
-            product_name,
-            prize_name,
-            prize_level,
-            quantity,
-            product_id
-          )
-        `
-      )
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
-    if (ordersError) throw ordersError
+    let orders: any[] = []
+    {
+      const { data, error } = await supabaseAdmin
+        .from('orders')
+        .select(
+          `
+            *,
+            items:order_items (
+              id,
+              product_name,
+              prize_name,
+              prize_level,
+              quantity,
+              product_id
+            )
+          `
+        )
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+      if (error) {
+        const message = String(error.message || '')
+        const isMissingTable =
+          message.includes("Could not find the table 'public.orders'") ||
+          message.includes('relation "public.orders" does not exist')
+        if (!isMissingTable) throw error
+      } else {
+        orders = data ?? []
+      }
+    }
 
-    const { data: draws, error: drawsError } = await supabaseAdmin
-      .from('draw_records')
-      .select(
-        `
-          *,
-          product:products (name, price, product_code)
-        `
-      )
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
-    if (drawsError) throw drawsError
+    let draws: any[] = []
+    {
+      const { data, error } = await supabaseAdmin
+        .from('draw_records')
+        .select(
+          `
+            *,
+            product:products (name, price, product_code)
+          `
+        )
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+      if (error) {
+        const message = String(error.message || '')
+        const isMissingTable =
+          message.includes("Could not find the table 'public.draw_records'") ||
+          message.includes('relation "public.draw_records" does not exist')
+        if (!isMissingTable) throw error
+      } else {
+        draws = data ?? []
+      }
+    }
 
-    const { data: recharges, error: rechargesError } = await supabaseAdmin
-      .from('recharge_records')
-      .select('*')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
-    if (rechargesError) throw rechargesError
+    let recharges: any[] = []
+    {
+      const { data, error } = await supabaseAdmin
+        .from('recharge_records')
+        .select('*')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+      if (error) {
+        const message = String(error.message || '')
+        const isMissingTable =
+          message.includes("Could not find the table 'public.recharge_records'") ||
+          message.includes('relation "public.recharge_records" does not exist')
+        if (!isMissingTable) throw error
+      } else {
+        recharges = data ?? []
+      }
+    }
 
-    return NextResponse.json({ user, orders: orders ?? [], draws: draws ?? [], recharges: recharges ?? [] })
+    return NextResponse.json({ user, orders, draws, recharges })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })
   }
