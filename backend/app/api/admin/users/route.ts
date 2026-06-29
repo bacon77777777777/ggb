@@ -67,12 +67,23 @@ export async function GET() {
       }
     }
 
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from('orders')
-      .select('user_id')
+    let orders: Array<{ user_id: string | null }> = []
+    {
+      const { data, error } = await supabaseAdmin
+        .from('orders')
+        .select('user_id')
 
-    if (ordersError) {
-      throw ordersError
+      // New cutover databases may not have legacy marketplace tables yet.
+      // Missing stats tables should not block the member list itself.
+      if (error) {
+        const message = String(error.message || '')
+        const isMissingTable =
+          message.includes("Could not find the table 'public.orders'") ||
+          message.includes('relation "public.orders" does not exist')
+        if (!isMissingTable) throw error
+      } else {
+        orders = (data as Array<{ user_id: string | null }>) ?? []
+      }
     }
 
     const orderCountMap = new Map<string, number>()
@@ -82,12 +93,21 @@ export async function GET() {
       orderCountMap.set(row.user_id, prev + 1)
     }
 
-    const { data: draws, error: drawsError } = await supabaseAdmin
-      .from('draw_records')
-      .select('user_id')
+    let draws: Array<{ user_id: string | null }> = []
+    {
+      const { data, error } = await supabaseAdmin
+        .from('draw_records')
+        .select('user_id')
 
-    if (drawsError) {
-      throw drawsError
+      if (error) {
+        const message = String(error.message || '')
+        const isMissingTable =
+          message.includes("Could not find the table 'public.draw_records'") ||
+          message.includes('relation "public.draw_records" does not exist')
+        if (!isMissingTable) throw error
+      } else {
+        draws = (data as Array<{ user_id: string | null }>) ?? []
+      }
     }
 
     const drawCountMap = new Map<string, number>()
