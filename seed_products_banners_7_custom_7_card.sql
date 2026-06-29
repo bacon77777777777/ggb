@@ -4,7 +4,7 @@ DECLARE
   v_category_card_id UUID;
   v_product_id BIGINT;
   i INTEGER;
-  v_supabase_url TEXT := 'https://qgziszozkdskdstexsvw.supabase.co';
+  v_supabase_url TEXT := 'https://YOUR_SUPABASE_PROJECT.supabase.co';
 BEGIN
   SELECT id INTO v_category_custom_id FROM public.categories WHERE name = '自製賞' LIMIT 1;
   IF v_category_custom_id IS NULL THEN

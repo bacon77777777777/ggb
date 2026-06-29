@@ -9,15 +9,19 @@ const { createClient } = require('@supabase/supabase-js');
 // But usually for "create a test user", standard signup is fine if email confirmation is off.
 // If email confirmation is ON, we can't easily verify it without access to the inbox or DB.
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://qgziszozkdskdstexsvw.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnemlzem96a2Rza2RzdGV4c3Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NDU2ODksImV4cCI6MjA4NTMyMTY4OX0.3Oa7lo0BaC53MqIIjsGUjg2joKKvuSwhcAKrNNPi_vE';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function createTestUser() {
-  const email = 'test001@gmail.com';
-  const password = '111111';
-  const fullName = '測試員001';
+  const email = process.env.TEST_EMAIL || 'test001@gmail.com';
+  const password = process.env.TEST_PASSWORD || '111111';
+  const fullName = process.env.TEST_FULL_NAME || '測試員001';
 
   console.log(`Creating user: ${email}...`);
 
