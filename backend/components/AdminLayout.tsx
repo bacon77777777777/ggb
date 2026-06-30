@@ -383,27 +383,32 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const menuGroups = useMemo(
     () => [
       {
-        id: 'lottery',
-        title: '抽獎 / 商城',
+        id: 'home',
+        title: '主頁',
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
+        ],
+      },
+      {
+        id: 'lottery',
+        title: '抽獎管理',
+        items: [
           { name: '商品管理', path: '/products', icon: IconProducts },
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '菜單管理', path: '/categories', icon: IconCategories },
+          { name: '抽獎紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
-          { name: '抽獎管理', path: '/draws', icon: IconDraws },
           { name: '市集管理', path: '/marketplace', icon: IconMarketplace },
-          { name: '儲值管理', path: '/recharges', icon: IconRecharges },
         ],
       },
       {
         id: 'reports',
-        title: '報表',
+        title: '金流報表',
         items: [
-          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
+          { name: '儲值紀錄', path: '/recharges', icon: IconRecharges },
+          { name: '消費紀錄', path: '/reports/consumption', icon: IconReports },
           { name: '商品表現', path: '/reports/products', icon: IconReports },
-          { name: '儲值明細', path: '/reports/recharge', icon: IconReports },
-          { name: '消費明細', path: '/reports/consumption', icon: IconReports },
+          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
         ],
       },
       {

@@ -239,6 +239,29 @@ export default function RechargesPage() {
     }
   ]
 
+  const handleExportCSV = () => {
+    const BOM = '﻿'
+    const headers = ['時間', '訂單編號', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
+    const rows = sortedRecords.map(r => [
+      formatDateTime(r.created_at),
+      r.order_number || '',
+      r.user?.name || '',
+      r.user?.email || '',
+      r.amount,
+      r.bonus,
+      getPaymentMethodLabel(r.payment_method),
+      r.status === 'success' ? '成功' : r.status === 'pending' ? '處理中' : '失敗',
+    ])
+    const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `儲值紀錄_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleLoadMore = () => {
     setIsLoadingMore(true)
     setTimeout(() => {
@@ -251,6 +274,17 @@ export default function RechargesPage() {
     <AdminLayout pageTitle="儲值紀錄" breadcrumbs={[{ label: '儲值紀錄', href: '/recharges' }]}>
       <div className="space-y-6">
         <PageCard>
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              匯出 CSV
+            </button>
+          </div>
           <SearchToolbar
             searchPlaceholder="搜尋用戶、訂單編號..."
             searchValue={searchQuery}

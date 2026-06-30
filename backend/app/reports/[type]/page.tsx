@@ -3,7 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption'
@@ -71,6 +71,11 @@ export default function ReportPage() {
   const { type } = useParams<{ type: string }>()
   const reportType = (type as ReportType) || 'overview'
   const meta = TYPE_META[reportType] ?? TYPE_META.overview
+  const router = useRouter()
+
+  useEffect(() => {
+    if (type === 'recharge') router.replace('/recharges')
+  }, [type, router])
 
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
