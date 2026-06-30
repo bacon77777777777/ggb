@@ -1,7 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -66,25 +66,38 @@ function KpiRow({ label, value, sub, indent = false, bold = false, negative = fa
 export default function SettlementPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
-  const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(0)
+  const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(1) // default 上月
   const [data, setData] = useState<PeriodData | null>(null)
   const [loading, setLoading] = useState(false)
 
   // 費率設定
-  const [newebpayRate, setNewebpayRate] = useState(2)      // 藍新手續費 %
-  const [supplierShare, setSupplierShare] = useState(70)   // 廠商分潤 %
-  const [withholdingRate, setWithholdingRate] = useState(0) // 代扣稅率 %
+  const [newebpayRate, setNewebpayRate] = useState(2)
+  const [supplierShare, setSupplierShare] = useState(70)
+  const [withholdingRate, setWithholdingRate] = useState(0)
   const [showSettings, setShowSettings] = useState(false)
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   const periods = generatePeriods(new Date(), 7)
   const period = periods[selectedPeriodIdx]
 
-  // 載入廠商清單
+  // 點外部關閉費率設定
+  useEffect(() => {
+    if (!showSettings) return
+    const handler = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setShowSettings(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showSettings])
+
+  // 載入廠商清單（API 回傳直接陣列）
   useEffect(() => {
     fetch('/api/admin/suppliers')
       .then(r => r.json())
       .then(json => {
-        const list: Supplier[] = json.data ?? []
+        const list: Supplier[] = Array.isArray(json) ? json : (json.data ?? [])
         setSuppliers(list)
         if (list.length > 0) setSelectedSupplierId(String(list[0].id))
       })
@@ -163,20 +176,83 @@ export default function SettlementPage() {
       <div className="space-y-4">
 
         {/* 頂部控制列 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex flex-wrap items-center gap-4">
-          {/* 廠商選擇 */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
-            <select
-              value={selectedSupplierId}
-              onChange={e => setSelectedSupplierId(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {suppliers.map(s => (
-                <option key={s.id} value={String(s.id)}>{s.name}</option>
-              ))}
-              {suppliers.length === 0 && <option value="">無廠商資料</option>}
-            </select>
+        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            {/* 廠商選擇 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
+              <select
+                value={selectedSupplierId}
+                onChange={e => setSelectedSupplierId(e.target.value)}
+                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[140px]"
+              >
+                {suppliers.map(s => (
+                  <option key={s.id} value={String(s.id)}>{s.name}</option>
+                ))}
+                {suppliers.length === 0 && <option value="">載入中…</option>}
+              </select>
+            </div>
+
+            {/* 匯出 + 費率設定（靠右） */}
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleExport}
+                disabled={!data || loading}
+                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                匯出對帳單
+              </button>
+
+              {/* 費率設定浮動 */}
+              <div className="relative" ref={settingsRef}>
+                <button
+                  onClick={() => setShowSettings(v => !v)}
+                  className={`px-4 py-2 border-2 rounded-lg transition-colors text-sm font-medium shadow-sm flex items-center gap-2 whitespace-nowrap ${
+                    showSettings
+                      ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
+                      : 'bg-white border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:shadow-md'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  費率設定
+                </button>
+
+                {showSettings && (
+                  <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
+                    <div className="space-y-3">
+                      {[
+                        { label: '藍新手續費', value: newebpayRate, setter: setNewebpayRate, unit: '%', min: 0, max: 10 },
+                        { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 1, max: 99 },
+                        { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
+                      ].map(f => (
+                        <div key={f.label} className="flex items-center justify-between gap-3">
+                          <label className="text-sm text-neutral-600 whitespace-nowrap">{f.label}</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={f.value}
+                              min={f.min}
+                              max={f.max}
+                              onChange={e => f.setter(Number(e.target.value))}
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                            <span className="text-sm text-neutral-500">{f.unit}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 期間按鈕 */}
@@ -192,78 +268,24 @@ export default function SettlementPage() {
                 }`}
               >
                 {p.label}
-                {!p.isClosed && (
-                  <span className="ml-1 text-xs opacity-75">進行中</span>
-                )}
+                {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
+                {p.isClosed && !p.isCurrent && <span className="ml-1 text-xs opacity-60">✓</span>}
               </button>
             ))}
           </div>
-
-          {/* 費率設定 toggle */}
-          <button
-            onClick={() => setShowSettings(v => !v)}
-            className="ml-auto flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            費率設定
-          </button>
         </div>
 
-        {/* 費率設定面板 */}
-        {showSettings && (
-          <div className="bg-neutral-50 rounded-xl border border-neutral-200 p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: '藍新手續費', value: newebpayRate, setter: setNewebpayRate, unit: '%', min: 0, max: 10 },
-              { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 1, max: 99 },
-              { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-xs text-neutral-500 mb-1 block">{f.label}</label>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    value={f.value}
-                    min={f.min}
-                    max={f.max}
-                    onChange={e => f.setter(Number(e.target.value))}
-                    className="w-20 text-sm border border-neutral-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <span className="text-sm text-neutral-500">{f.unit}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 期間標題 */}
+        {/* 期間標題列 */}
         {period && (
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-neutral-800">
-                {period.label} 結算期
-              </h2>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                {period.startDate} ～ {period.endDate}
-                {!period.isClosed && (
-                  <span className="ml-2 text-amber-500 font-medium">● 進行中（預估值）</span>
-                )}
-              </p>
-            </div>
-            <button
-              onClick={handleExport}
-              disabled={!data || loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-40"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              匯出對帳單
-            </button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-neutral-700">
+              {period.label} 結算期
+            </h2>
+            <span className="text-xs text-neutral-400">{period.startDate} ～ {period.endDate}</span>
+            <span className="text-xs text-neutral-400">結算日 {period.settlementDate}</span>
+            {period.isCurrent && (
+              <span className="text-xs text-amber-500 font-medium">● 進行中（預估值）</span>
+            )}
           </div>
         )}
 

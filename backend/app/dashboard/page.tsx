@@ -2,8 +2,8 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
-import { useState, useEffect, useRef } from 'react'
-import { startOfDay, endOfDay, subDays, format, parseISO, isWithinInterval } from 'date-fns'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { format } from 'date-fns'
 
 // Types
 interface DashboardStats {
@@ -41,6 +41,28 @@ interface RecentOrder {
   status: string
   created_at: string
   items_count: number
+}
+
+// 自適應寬度 hook
+function useContainerWidth(ref: React.RefObject<HTMLElement | null>) {
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    if (!ref.current) return
+    setWidth(ref.current.getBoundingClientRect().width)
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width))
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [])
+  return width
+}
+
+// Y軸智能格式化
+function fmtY(v: number): string {
+  if (v === 0) return '0'
+  if (Math.abs(v) >= 10000) return `${Math.round(v / 1000)}k`
+  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`
+  if (Math.abs(v) >= 10) return String(Math.round(v))
+  return String(Math.round(v * 10) / 10)
 }
 
 // 小型圖表組件（用於卡片內）
@@ -310,261 +332,179 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
   )
 }
 
-// 趨勢圖表組件（單線）
-function TrendChart({ title, data, colors }: { 
-  title: string, 
-  data: Array<{ date: string, value: number }>, 
+// 趨勢圖表組件（單線）— 自適應寬度
+function TrendChart({ title, data, colors }: {
+  title: string,
+  data: Array<{ date: string, value: number }>,
   colors: string[]
 }) {
-  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; value: number } | null>(null)
-  
-  const maxValue = Math.max(...data.map(d => d.value), 1) // Avoid divide by zero
-  const minValue = 0
-  const range = maxValue - minValue || 1
-  const chartHeight = 200
-  const chartWidth = Math.max(800, 70 + 20 + Math.max(1, data.length) * 64)
-  const padding = { top: 20, right: 20, bottom: 30, left: 70 }
+  const containerRef = useRef<HTMLDivElement>(null)
+  const svgWidth = useContainerWidth(containerRef)
+  const [hovered, setHovered] = useState<{ x: number; y: number; date: string; value: number } | null>(null)
 
-  const points = data.map((item, index) => {
-    const x = padding.left + (index / (data.length - 1 || 1)) * (chartWidth - padding.left - padding.right)
-    const y = padding.top + (chartHeight - padding.top - padding.bottom) - ((item.value - minValue) / range) * (chartHeight - padding.top - padding.bottom)
+  const CH = 180
+  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
+  const maxV = Math.max(...data.map(d => d.value), 1)
+  const range = maxV || 1
+  const W = svgWidth || 600
+
+  const pts = data.map((item, i) => {
+    const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
+    const y = pad.top + (CH - pad.top - pad.bottom) * (1 - item.value / range)
     return { x, y, ...item }
   })
 
-  const pathData = points.map((point, index) => 
-    `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
-  ).join(' ')
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const areaPath = pts.length > 1
+    ? `${linePath} L ${pts[pts.length - 1].x} ${CH - pad.bottom} L ${pts[0].x} ${CH - pad.bottom} Z`
+    : ''
+
+  const step = Math.max(1, Math.ceil(data.length / 8))
+  const dotR = data.length > 20 ? 2 : 3.5
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
-      </div>
-      <div className="h-56 overflow-x-auto">
-        <div className="relative h-56" style={{ width: chartWidth }}>
-          <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full" preserveAspectRatio="xMinYMid meet">
-            {/* 網格線 */}
-            {[0, 1, 2, 3, 4].map((i) => {
-              const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
+      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
+        {svgWidth > 0 && (
+          <svg width={W} height={CH} className="absolute inset-0">
+            <defs>
+              <linearGradient id={`area-${title}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={colors[0]} stopOpacity="0.15" />
+                <stop offset="100%" stopColor={colors[0]} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {[0, 1, 2, 3, 4].map(i => {
+              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
+              const v = maxV * (1 - i / 4)
               return (
-                <line key={`grid-${i}`} x1={padding.left} y1={y} x2={chartWidth - padding.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+                <g key={i}>
+                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(v)}</text>
+                </g>
               )
             })}
-            {/* Y軸標籤 */}
-            {[0, 1, 2, 3, 4].map((i) => {
-              const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
-              const value = maxValue - (i / 4) * range
+            {areaPath && <path d={areaPath} fill={`url(#area-${title})`} />}
+            <path d={linePath} fill="none" stroke={colors[0]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {pts.map((p, i) => {
+              const showLabel = i % step === 0 || i === pts.length - 1
               return (
-                <text key={`y-${i}`} x={padding.left - 15} y={y + 4} textAnchor="end" className="text-base fill-neutral-500 font-medium">
-                  {Math.round(value / 1000)}k
-                </text>
-              )
-            })}
-            {/* 折線 */}
-            <path d={pathData} fill="none" stroke={colors[0]} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            {/* 數據點和hover區域 */}
-            {points.map((point, index) => (
-              <g key={index}>
-                <circle 
-                  cx={point.x} 
-                  cy={point.y} 
-                  r="6" 
-                  fill="transparent"
-                  onMouseEnter={() => setHoveredPoint(point)}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <circle 
-                  cx={point.x} 
-                  cy={point.y} 
-                  r="4" 
-                  fill={colors[0]}
-                  onMouseEnter={() => setHoveredPoint(point)}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                  style={{ cursor: 'pointer' }}
-                />
-              </g>
-            ))}
-            {/* X軸標籤 */}
-            {points.map((point, index) => {
-              const step = Math.ceil(data.length / 8)
-              if (index % step !== 0 && index !== data.length - 1) return null
-              return (
-                <text key={`x-${index}`} x={point.x} y={chartHeight - padding.bottom + 20} textAnchor="middle" className="text-base fill-neutral-500 font-medium">
-                  {point.date}
-                </text>
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r={dotR} fill={colors[0]} />
+                  <circle cx={p.x} cy={p.y} r={12} fill="transparent"
+                    onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} style={{ cursor: 'pointer' }} />
+                  {showLabel && (
+                    <text x={p.x} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{p.date}</text>
+                  )}
+                </g>
               )
             })}
           </svg>
-          {/* Hover提示框 */}
-          {hoveredPoint && (
-            <div
-              className="absolute bg-neutral-900 text-white text-base rounded-lg px-3 py-2 shadow-lg z-10 pointer-events-none"
-              style={{
-                left: `${(hoveredPoint.x / chartWidth) * 100}%`,
-                top: `${(hoveredPoint.y / chartHeight) * 100}%`,
-                transform: 'translate(-50%, -100%)',
-                marginTop: '-10px'
-              }}
-            >
-              <div className="font-semibold whitespace-nowrap">{hoveredPoint.date}</div>
-              <div className="whitespace-nowrap">{hoveredPoint.value.toLocaleString()}</div>
-            </div>
-          )}
-        </div>
+        )}
+        {hovered && (
+          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
+            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
+            <div className="font-medium">{hovered.date}</div>
+            <div>{hovered.value.toLocaleString()}</div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-// 多線折線圖組件
-function MultiLineChart({ title, data, series, colors }: { 
-  title: string, 
-  data: Array<{ date: string, [key: string]: string | number }>, 
+// 多線折線圖組件 — 自適應寬度
+function MultiLineChart({ title, data, series, colors }: {
+  title: string,
+  data: Array<{ date: string, [key: string]: string | number }>,
   series: Array<{ key: string, label: string }>,
   colors: string[]
 }) {
-  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; values: { [key: string]: number } } | null>(null)
-  
-  const allValues = data.flatMap(d => series.map(s => Number(d[s.key]) || 0))
-  const maxValue = Math.max(...allValues, 1) // Avoid divide by zero
-  const minValue = 0
-  const range = maxValue - minValue || 1
-  const chartHeight = 200
-  const chartWidth = Math.max(800, 70 + 20 + Math.max(1, data.length) * 64)
-  const padding = { top: 20, right: 20, bottom: 30, left: 70 }
+  const containerRef = useRef<HTMLDivElement>(null)
+  const svgWidth = useContainerWidth(containerRef)
+  const [hovered, setHovered] = useState<{ x: number; y: number; date: string; values: { [k: string]: number } } | null>(null)
 
-  const seriesPoints = series.map((serie, serieIndex) => {
-    return data.map((item, index) => {
-      const x = padding.left + (index / (data.length - 1 || 1)) * (chartWidth - padding.left - padding.right)
-      const value = Number(item[serie.key]) || 0
-      const y = padding.top + (chartHeight - padding.top - padding.bottom) - ((value - minValue) / range) * (chartHeight - padding.top - padding.bottom)
-      return { x, y, value, date: item.date, key: serie.key }
+  const CH = 180
+  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
+  const allVals = data.flatMap(d => series.map(s => Number(d[s.key]) || 0))
+  const maxV = Math.max(...allVals, 1)
+  const range = maxV || 1
+  const W = svgWidth || 600
+  const step = Math.max(1, Math.ceil(data.length / 8))
+  const dotR = data.length > 20 ? 2 : 3.5
+
+  const seriesPts = series.map(s =>
+    data.map((item, i) => {
+      const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
+      const v = Number(item[s.key]) || 0
+      const y = pad.top + (CH - pad.top - pad.bottom) * (1 - v / range)
+      return { x, y, v, date: item.date, key: s.key }
     })
-  })
-
-  const pathDataList = seriesPoints.map(points => 
-    points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
   )
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
-      </div>
-      <div className="h-56 overflow-x-auto">
-        <div className="relative h-56" style={{ width: chartWidth }}>
-        <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full" preserveAspectRatio="xMinYMid meet">
-          {/* 網格線 */}
-          {[0, 1, 2, 3, 4].map((i) => {
-            const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
-            return (
-              <line key={`grid-${i}`} x1={padding.left} y1={y} x2={chartWidth - padding.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-            )
-          })}
-          {/* Y軸標籤 */}
-          {[0, 1, 2, 3, 4].map((i) => {
-            const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
-            const value = maxValue - (i / 4) * range
-            return (
-              <text key={`y-${i}`} x={padding.left - 15} y={y + 4} textAnchor="end" className="text-base fill-neutral-500 font-medium">
-                {Math.round(value / 1000)}k
-              </text>
-            )
-          })}
-          {/* 多條折線 */}
-          {pathDataList.map((pathData, serieIndex) => (
-            <path 
-              key={serieIndex} 
-              d={pathData} 
-              fill="none" 
-              stroke={colors[serieIndex % colors.length]} 
-              strokeWidth="2.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-            />
-          ))}
-          {/* 數據點和hover區域 */}
-          {seriesPoints[0].map((point, index) => {
-            const allValuesAtPoint = seriesPoints.map(sp => sp[index])
-            return (
-              <g key={index}>
-                <circle 
-                  cx={point.x} 
-                  cy={point.y} 
-                  r="8" 
-                  fill="transparent"
-                  onMouseEnter={() => {
-                    const values: { [key: string]: number } = {}
-                    allValuesAtPoint.forEach(p => {
-                      values[p.key] = p.value
-                    })
-                    setHoveredPoint({ x: point.x, y: point.y, date: point.date, values })
-                  }}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                  style={{ cursor: 'pointer' }}
-                />
-                {allValuesAtPoint.map((p, i) => (
-                  <circle 
-                    key={`${i}-${index}`}
-                    cx={p.x} 
-                    cy={p.y} 
-                    r="4" 
-                    fill={colors[i % colors.length]}
-                    onMouseEnter={() => {
-                      const values: { [key: string]: number } = {}
-                      allValuesAtPoint.forEach(pt => {
-                        values[pt.key] = pt.value
-                      })
-                      setHoveredPoint({ x: p.x, y: p.y, date: p.date, values })
-                    }}
-                    onMouseLeave={() => setHoveredPoint(null)}
+      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
+        {svgWidth > 0 && (
+          <svg width={W} height={CH} className="absolute inset-0">
+            {[0, 1, 2, 3, 4].map(i => {
+              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
+              return (
+                <g key={i}>
+                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(maxV * (1 - i / 4))}</text>
+                </g>
+              )
+            })}
+            {seriesPts.map((pts, si) => (
+              <path key={si}
+                d={pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')}
+                fill="none" stroke={colors[si % colors.length]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              />
+            ))}
+            {data.map((item, i) => {
+              const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
+              return (
+                <g key={i}>
+                  {seriesPts.map((pts, si) => (
+                    <circle key={si} cx={pts[i].x} cy={pts[i].y} r={dotR} fill={colors[si % colors.length]} />
+                  ))}
+                  <rect x={x - 8} y={pad.top} width={16} height={CH - pad.top - pad.bottom} fill="transparent"
                     style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => {
+                      const vals: { [k: string]: number } = {}
+                      seriesPts.forEach(pts => { vals[pts[i].key] = pts[i].v })
+                      setHovered({ x, y: seriesPts[0][i].y, date: item.date as string, values: vals })
+                    }}
+                    onMouseLeave={() => setHovered(null)}
                   />
-                ))}
-              </g>
-            )
-          })}
-          {/* X軸標籤 */}
-          {data.map((item, index) => {
-            const step = Math.ceil(data.length / 8)
-            if (index % step !== 0 && index !== data.length - 1) return null
-
-            const x = padding.left + (index / (data.length - 1 || 1)) * (chartWidth - padding.left - padding.right)
-            return (
-              <text key={`x-${index}`} x={x} y={chartHeight - padding.bottom + 20} textAnchor="middle" className="text-base fill-neutral-500 font-medium">
-                {item.date}
-              </text>
-            )
-          })}
-        </svg>
-        {/* Hover提示框 */}
-        {hoveredPoint && (
-          <div
-            className="absolute bg-neutral-900 text-white text-base rounded-lg px-3 py-2 shadow-lg z-10 pointer-events-none"
-            style={{
-              left: `${(hoveredPoint.x / chartWidth) * 100}%`,
-              top: `${(hoveredPoint.y / chartHeight) * 100}%`,
-              transform: 'translate(-50%, -100%)',
-              marginTop: '-10px'
-            }}
-          >
-            <div className="font-semibold whitespace-nowrap mb-1">{hoveredPoint.date}</div>
-            {series.map((serie) => (
-              <div key={serie.key} className="whitespace-nowrap">
-                {serie.label}: {hoveredPoint.values[serie.key]?.toLocaleString() || 0}
+                  {(i % step === 0 || i === data.length - 1) && (
+                    <text x={x} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.date}</text>
+                  )}
+                </g>
+              )
+            })}
+          </svg>
+        )}
+        {hovered && (
+          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
+            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
+            <div className="font-medium mb-0.5">{hovered.date}</div>
+            {series.map(s => (
+              <div key={s.key} className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: colors[series.indexOf(s) % colors.length] }} />
+                {s.label}: {(hovered.values[s.key] || 0).toLocaleString()}
               </div>
             ))}
           </div>
         )}
-        </div>
       </div>
-      {/* 圖例 */}
-      <div className="flex items-center gap-4 mt-3 text-sm">
-        {series.map((serie, index) => (
-          <div key={serie.key} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: colors[index % colors.length] }}></div>
-            <span className="text-neutral-600">{serie.label}</span>
+      <div className="flex items-center gap-4 mt-2">
+        {series.map((s, i) => (
+          <div key={s.key} className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: colors[i % colors.length] }} />
+            {s.label}
           </div>
         ))}
       </div>
@@ -572,123 +512,75 @@ function MultiLineChart({ title, data, series, colors }: {
   )
 }
 
-// 柱狀圖組件
-function BarChart({ title, data, colors }: { 
-  title: string, 
-  data: Array<{ label: string, value: number }>, 
+// 柱狀圖組件 — 自適應寬度
+function BarChart({ title, data, colors }: {
+  title: string,
+  data: Array<{ label: string, value: number }>,
   colors: string[]
 }) {
-  const [hoveredBar, setHoveredBar] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
-  
-  const maxValue = Math.max(...data.map(d => d.value), 1) // Avoid divide by zero
-  const minValue = 0
-  const range = maxValue - minValue || 1
-  const chartHeight = 200
-  const chartWidth = Math.max(800, 70 + 20 + Math.max(1, data.length) * 44)
-  const padding = { top: 20, right: 20, bottom: 40, left: 70 }
-  const barWidth = (chartWidth - padding.left - padding.right) / (data.length || 1) * 0.6
-  const barGap = (chartWidth - padding.left - padding.right) / (data.length || 1) * 0.4
+  const containerRef = useRef<HTMLDivElement>(null)
+  const svgWidth = useContainerWidth(containerRef)
+  const [hovered, setHovered] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
+
+  const CH = 180
+  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
+  const maxV = Math.max(...data.map(d => d.value), 1)
+  const range = maxV || 1
+  const W = svgWidth || 600
+  const step = Math.max(1, Math.ceil(data.length / 8))
+
+  const innerW = W - pad.left - pad.right
+  const slotW = innerW / Math.max(data.length, 1)
+  const barW = Math.max(slotW * 0.6, 2)
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
-      </div>
-      <div className="h-56 overflow-x-auto">
-        <div className="relative h-56" style={{ width: chartWidth }}>
-        <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-full" preserveAspectRatio="xMinYMid meet">
-          {/* 網格線 */}
-          {[0, 1, 2, 3, 4].map((i) => {
-            const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
-            return (
-              <line key={`grid-${i}`} x1={padding.left} y1={y} x2={chartWidth - padding.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-            )
-          })}
-          {/* Y軸標籤 */}
-          {[0, 1, 2, 3, 4].map((i) => {
-            const y = padding.top + (i / 4) * (chartHeight - padding.top - padding.bottom)
-            const value = maxValue - (i / 4) * range
-            return (
-              <text key={`y-${i}`} x={padding.left - 15} y={y + 4} textAnchor="end" className="text-base fill-neutral-500 font-medium">
-                {Math.round(value / 1000)}k
-              </text>
-            )
-          })}
-          {/* 柱狀圖 */}
-          {data.map((item, index) => {
-            const x = padding.left + index * (barWidth + barGap) + barGap / 2
-            const barHeight = ((item.value - minValue) / range) * (chartHeight - padding.top - padding.bottom)
-            const y = padding.top + (chartHeight - padding.top - padding.bottom) - barHeight
-            // 根據數值大小計算顏色深度（0-1之間）
-            const valueRatio = (item.value - minValue) / range
-            // 使用基礎品牌色
-            const baseColor = colors[0] || '#9333EA'
-            // 根據數值大小選擇顏色：數值越大，使用更深的顏色
-            const colorIndex = Math.min(Math.floor(valueRatio * colors.length), colors.length - 1)
-            const selectedColor = colors[colorIndex] || baseColor
-            
-            return (
-              <g key={index}>
-                <defs>
-                  <linearGradient id={`barGradient-${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor={selectedColor} stopOpacity="0.9" />
-                    <stop offset="100%" stopColor={selectedColor} stopOpacity="1" />
-                  </linearGradient>
-                </defs>
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  fill={`url(#barGradient-${index})`}
-                  rx="2"
-                  onMouseEnter={() => setHoveredBar({ x: x + barWidth / 2, y: y, label: item.label, value: item.value })}
-                  onMouseLeave={() => setHoveredBar(null)}
-                  style={{ cursor: 'pointer' }}
-                  className="hover:opacity-80 transition-opacity"
-                />
-                {data.length <= 20 ? (
-                  <text
-                    x={x + barWidth / 2}
-                    y={y - 5}
-                    textAnchor="middle"
-                    className="text-base fill-neutral-700 font-semibold"
-                  >
-                    {item.value.toLocaleString()}
-                  </text>
-                ) : null}
-              </g>
-            )
-          })}
-          {/* X軸標籤 */}
-          {data.map((item, index) => {
-            const step = Math.ceil(data.length / 8)
-            if (index % step !== 0 && index !== data.length - 1) return null
-
-            const x = padding.left + index * (barWidth + barGap) + barGap / 2 + barWidth / 2
-            return (
-              <text key={`x-${index}`} x={x} y={chartHeight - padding.bottom + 20} textAnchor="middle" className="text-base fill-neutral-500 font-medium">
-                {item.label}
-              </text>
-            )
-          })}
-        </svg>
-        {/* Hover提示框 */}
-        {hoveredBar && (
-          <div
-            className="absolute bg-neutral-900 text-white text-base rounded-lg px-3 py-2 shadow-lg z-10 pointer-events-none"
-            style={{
-              left: `${(hoveredBar.x / chartWidth) * 100}%`,
-              top: `${(hoveredBar.y / chartHeight) * 100}%`,
-              transform: 'translate(-50%, -100%)',
-              marginTop: '-10px'
-            }}
-          >
-            <div className="font-semibold whitespace-nowrap">{hoveredBar.label}</div>
-            <div className="whitespace-nowrap">{hoveredBar.value.toLocaleString()}</div>
+      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
+        {svgWidth > 0 && (
+          <svg width={W} height={CH} className="absolute inset-0">
+            <defs>
+              <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={colors[0]} stopOpacity="0.85" />
+                <stop offset="100%" stopColor={colors[0]} stopOpacity="1" />
+              </linearGradient>
+            </defs>
+            {[0, 1, 2, 3, 4].map(i => {
+              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
+              return (
+                <g key={i}>
+                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(maxV * (1 - i / 4))}</text>
+                </g>
+              )
+            })}
+            {data.map((item, i) => {
+              const cx = pad.left + (i + 0.5) * slotW
+              const bh = Math.max((item.value / range) * (CH - pad.top - pad.bottom), 1)
+              const y = CH - pad.bottom - bh
+              return (
+                <g key={i}>
+                  <rect x={cx - barW / 2} y={y} width={barW} height={bh} fill="url(#barGrad)" rx="2"
+                    onMouseEnter={() => setHovered({ x: cx, y, label: item.label, value: item.value })}
+                    onMouseLeave={() => setHovered(null)}
+                    style={{ cursor: 'pointer' }}
+                    className="hover:opacity-75 transition-opacity"
+                  />
+                  {(i % step === 0 || i === data.length - 1) && (
+                    <text x={cx} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.label}</text>
+                  )}
+                </g>
+              )
+            })}
+          </svg>
+        )}
+        {hovered && (
+          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
+            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
+            <div className="font-medium">{hovered.label}</div>
+            <div>{hovered.value.toLocaleString()}</div>
           </div>
         )}
-        </div>
       </div>
     </div>
   )
