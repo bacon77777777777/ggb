@@ -359,7 +359,9 @@ function TrendChart({ title, data, colors }: {
     ? `${linePath} L ${pts[pts.length - 1].x} ${CH - pad.bottom} L ${pts[0].x} ${CH - pad.bottom} Z`
     : ''
 
-  const step = Math.max(1, Math.ceil(data.length / 8))
+  const labelMinGap = 38
+  const maxLabels = Math.max(1, Math.floor((W - pad.left - pad.right) / labelMinGap))
+  const step = Math.max(1, Math.ceil(data.length / maxLabels))
   const dotR = data.length > 20 ? 2 : 3.5
 
   return (
@@ -387,7 +389,7 @@ function TrendChart({ title, data, colors }: {
             {areaPath && <path d={areaPath} fill={`url(#area-${title})`} />}
             <path d={linePath} fill="none" stroke={colors[0]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             {pts.map((p, i) => {
-              const showLabel = i % step === 0 || i === pts.length - 1
+              const showLabel = i % step === 0
               return (
                 <g key={i}>
                   <circle cx={p.x} cy={p.y} r={dotR} fill={colors[0]} />
@@ -430,7 +432,8 @@ function MultiLineChart({ title, data, series, colors }: {
   const maxV = Math.max(...allVals, 1)
   const range = maxV || 1
   const W = svgWidth || 600
-  const step = Math.max(1, Math.ceil(data.length / 8))
+  const labelMinGap = 38
+  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor((W - pad.left - pad.right) / labelMinGap))))
   const dotR = data.length > 20 ? 2 : 3.5
 
   const seriesPts = series.map(s =>
@@ -479,7 +482,7 @@ function MultiLineChart({ title, data, series, colors }: {
                     }}
                     onMouseLeave={() => setHovered(null)}
                   />
-                  {(i % step === 0 || i === data.length - 1) && (
+                  {i % step === 0 && (
                     <text x={x} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.date}</text>
                   )}
                 </g>
@@ -527,9 +530,8 @@ function BarChart({ title, data, colors }: {
   const maxV = Math.max(...data.map(d => d.value), 1)
   const range = maxV || 1
   const W = svgWidth || 600
-  const step = Math.max(1, Math.ceil(data.length / 8))
-
   const innerW = W - pad.left - pad.right
+  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(innerW / 38))))
   const slotW = innerW / Math.max(data.length, 1)
   const barW = Math.max(slotW * 0.6, 2)
 
@@ -566,7 +568,7 @@ function BarChart({ title, data, colors }: {
                     style={{ cursor: 'pointer' }}
                     className="hover:opacity-75 transition-opacity"
                   />
-                  {(i % step === 0 || i === data.length - 1) && (
+                  {i % step === 0 && (
                     <text x={cx} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.label}</text>
                   )}
                 </g>
