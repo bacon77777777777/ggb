@@ -394,7 +394,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '抽獎管理', path: '/draws', icon: IconDraws },
           { name: '市集管理', path: '/marketplace', icon: IconMarketplace },
           { name: '儲值管理', path: '/recharges', icon: IconRecharges },
-          { name: '報表', path: '/reports', icon: IconReports },
+        ],
+      },
+      {
+        id: 'reports',
+        title: '報表',
+        items: [
+          { name: '儲值明細', path: '/reports/recharge', icon: IconReports },
+          { name: '消費明細', path: '/reports/consumption', icon: IconReports },
+          { name: '期間摘要', path: '/reports/summary', icon: IconReports },
         ],
       },
       {
