@@ -390,6 +390,16 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
+        id: 'reports',
+        title: '金流報表',
+        items: [
+          { name: '儲值紀錄', path: '/recharges', icon: IconRecharges },
+          { name: '商品表現', path: '/reports/products', icon: IconReports },
+          { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
+          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
+        ],
+      },
+      {
         id: 'lottery',
         title: '抽獎管理',
         items: [
@@ -399,33 +409,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '抽獎紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
           { name: '市集管理', path: '/marketplace', icon: IconMarketplace },
-        ],
-      },
-      {
-        id: 'reports',
-        title: '金流報表',
-        items: [
-          { name: '儲值紀錄', path: '/recharges', icon: IconRecharges },
-          { name: '消費紀錄', path: '/reports/consumption', icon: IconReports },
-          { name: '商品表現', path: '/reports/products', icon: IconReports },
-          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
-          { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
-        ],
-      },
-      {
-        id: 'sell',
-        title: '販售',
-        items: [
-          { name: '販售管理', path: '/sell', icon: IconMarketplace },
-          { name: '販售訂單', path: '/sell-orders', icon: IconOrders },
-        ],
-      },
-      {
-        id: 'exchange',
-        title: '交換',
-        items: [
-          { name: '交換管理', path: '/exchange', icon: IconExchange },
-          { name: '交換紀錄', path: '/exchange-orders', icon: IconExchange },
         ],
       },
       {
@@ -442,6 +425,22 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '權限管理', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
           { name: '工具', path: '/tools', icon: IconTools },
+        ],
+      },
+      {
+        id: 'sell',
+        title: '販售',
+        items: [
+          { name: '販售管理', path: '/sell', icon: IconMarketplace },
+          { name: '販售訂單', path: '/sell-orders', icon: IconOrders },
+        ],
+      },
+      {
+        id: 'exchange',
+        title: '交換',
+        items: [
+          { name: '交換管理', path: '/exchange', icon: IconExchange },
+          { name: '交換紀錄', path: '/exchange-orders', icon: IconExchange },
         ],
       },
     ],

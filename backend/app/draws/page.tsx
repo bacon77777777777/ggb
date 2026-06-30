@@ -13,7 +13,7 @@ interface DrawRecord {
   ticket_number: number
   status: string
   user?: { name: string; email: string; id: string }
-  product?: { name: string; image_url: string }
+  product?: { name: string; image_url: string; price?: number }
 }
 
 export default function DrawsPage() {
@@ -207,6 +207,15 @@ export default function DrawsPage() {
       className: 'font-mono'
     },
     {
+      key: 'price',
+      label: '消費(G)',
+      render: (record) => (
+        <span className="tabular-nums text-neutral-600">
+          {record.product?.price != null ? record.product.price.toLocaleString() : '—'}
+        </span>
+      )
+    },
+    {
       key: 'status',
       label: '狀態',
       render: (record) => (
@@ -218,6 +227,29 @@ export default function DrawsPage() {
       )
     }
   ]
+
+  const handleExportCSV = () => {
+    const BOM = '﻿'
+    const headers = ['時間', '用戶姓名', '用戶Email', '商品', '賞品等級', '籤號', '消費(G)', '狀態']
+    const rows = sortedRecords.map(r => [
+      formatDateTime(r.created_at),
+      r.user?.name || '',
+      r.user?.email || '',
+      r.product?.name || '',
+      r.prize_level || '',
+      String(r.ticket_number ?? ''),
+      String(r.product?.price ?? ''),
+      r.status === 'success' ? '成功' : r.status,
+    ])
+    const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `抽獎紀錄_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleLoadMore = () => {
     setIsLoadingMore(true)
@@ -235,6 +267,8 @@ export default function DrawsPage() {
             searchPlaceholder="搜尋用戶、商品、籤號..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
+            showExportCSV={true}
+            onExportCSV={handleExportCSV}
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
