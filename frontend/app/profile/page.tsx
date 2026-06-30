@@ -1102,12 +1102,12 @@ function ProfileContent() {
               prize_level,
               prize_name,
               product_prizes ( level, name, image_url, recycle_value, total ),
-              products ( name, price, type, is_preorder, preorder_available_at )
+              products ( name, price, type )
             `)
             .eq('user_id', user.id)
             .eq('status', 'in_warehouse')
             .order('created_at', { ascending: false });
-            
+
           if (error) throw error;
 
           const items = (data as unknown as DbDrawRecord[]).map((item) => {
@@ -1115,9 +1115,8 @@ function ProfileContent() {
             const price = item.products?.price || 0;
             const quantity = item.product_prizes?.total || 0;
             const productType = item.products?.type || 'unknown';
-            const pmeta = (item as unknown as { products?: { is_preorder?: boolean; preorder_available_at?: string } }).products;
-            const isPreorder = Boolean(pmeta?.is_preorder);
-            const preorderAvailableAt = pmeta?.preorder_available_at || null;
+            const isPreorder = false;
+            const preorderAvailableAt = null;
 
             const grade = item.product_prizes?.level || item.prize_level || '?';
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
