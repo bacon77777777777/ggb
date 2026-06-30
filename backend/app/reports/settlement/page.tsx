@@ -11,6 +11,9 @@ interface PeriodData {
   totalG: number
   rechargeTotal: number
   rechargeCount: number
+  totalActualFee: number
+  hasActualFee: boolean
+  feeByMethod: Record<string, { count: number; fee: number }>
 }
 
 interface Period {
@@ -129,7 +132,10 @@ export default function SettlementPage() {
 
   // 計算結算金額（基底：期間成功儲值 TWD）
   const totalTWD = data?.rechargeTotal ?? 0
-  const newebpayFee = Math.round(totalTWD * (newebpayRate / 100))
+  // 優先使用 DB 儲存的實際手續費；否則用費率估算
+  const newebpayFee = data?.hasActualFee
+    ? (data.totalActualFee ?? 0)
+    : Math.round(totalTWD * (newebpayRate / 100))
   const netRevenue = totalTWD - newebpayFee
   const supplierGross = Math.round(netRevenue * (supplierShare / 100))
   const withholding = Math.round(supplierGross * (withholdingRate / 100))
@@ -228,22 +234,30 @@ export default function SettlementPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
+                      {/* 藍新手續費：有實際資料時顯示實際值 */}
+                      <div className="flex items-center justify-between gap-3">
+                        <label className="text-sm text-neutral-600 whitespace-nowrap">藍新手續費</label>
+                        {data?.hasActualFee ? (
+                          <span className="text-sm font-medium text-emerald-600">{fmt(data.totalActualFee)} 實際</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={newebpayRate} min={0} max={10}
+                              onChange={e => setNewebpayRate(Number(e.target.value))}
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            <span className="text-sm text-neutral-500">% 估算</span>
+                          </div>
+                        )}
+                      </div>
                       {[
-                        { label: '藍新手續費', value: newebpayRate, setter: setNewebpayRate, unit: '%', min: 0, max: 10 },
                         { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 1, max: 99 },
                         { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
                       ].map(f => (
                         <div key={f.label} className="flex items-center justify-between gap-3">
                           <label className="text-sm text-neutral-600 whitespace-nowrap">{f.label}</label>
                           <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              value={f.value}
-                              min={f.min}
-                              max={f.max}
+                            <input type="number" value={f.value} min={f.min} max={f.max}
                               onChange={e => f.setter(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            />
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>
@@ -349,7 +363,9 @@ export default function SettlementPage() {
               <div className="border-t border-neutral-100 my-1" />
 
               <KpiRow
-                label={`藍新手續費（${newebpayRate}%）`}
+                label={data?.hasActualFee
+                  ? `藍新手續費（實際）`
+                  : `藍新手續費（估算 ${newebpayRate}%）`}
                 value={fmt(newebpayFee)}
                 negative
                 indent

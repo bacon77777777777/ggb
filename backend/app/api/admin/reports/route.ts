@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
             .select('product_id, created_at, product:products(id, name, price, supplier_id)')
         ),
         applyDateFilter(
-          supabase.from('recharge_records').select('amount, status, created_at')
+          supabase.from('recharge_records').select('amount, status, created_at, payment_fee')
         ),
       ])
       if (drawRes.error) throw drawRes.error
@@ -216,12 +216,28 @@ export async function GET(request: NextRequest) {
       const rechargeTotal = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
       const rechargeCount = successRecharges.length
 
+      // 實際手續費（各筆加總）
+      const rechargesWithFee = successRecharges.filter(r => r.payment_fee != null)
+      const totalActualFee = rechargesWithFee.reduce((s, r) => s + (r.payment_fee || 0), 0)
+      const hasActualFee = rechargesWithFee.length > 0
+      // 按付款方式分組（供參考）
+      const feeByMethod: Record<string, { count: number; fee: number }> = {}
+      for (const r of rechargesWithFee) {
+        const m = r.payment_method || 'unknown'
+        if (!feeByMethod[m]) feeByMethod[m] = { count: 0, fee: 0 }
+        feeByMethod[m].count += 1
+        feeByMethod[m].fee += r.payment_fee || 0
+      }
+
       return NextResponse.json({
         supplierName: (supplierRes.data as any)?.name ?? '',
         products,
         totalG,
         rechargeTotal,
         rechargeCount,
+        totalActualFee,
+        hasActualFee,
+        feeByMethod,
       })
     }
 
