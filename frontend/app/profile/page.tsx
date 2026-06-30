@@ -2257,7 +2257,7 @@ function ProfileContent() {
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
                             {selectedForDelivery.length <= 5 && (
                               <>
-                                {(flags.sell_escrow || flags.exchange) && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
+                                {flags.exchange && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
                                   (() => {
                                     const item = warehouseItems.find(i => i.id === selectedForDelivery[0])!;
                                     return (
@@ -2322,7 +2322,7 @@ function ProfileContent() {
                           >
                             分解 ({selectedForDelivery.length})
                           </button>
-                          {(flags.sell_escrow || flags.exchange) && (() => {
+                          {flags.exchange && (() => {
                             if (selectedForDelivery.length > 5) return null;
                             if (selectedForDelivery.length !== 1) return null;
                             const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
