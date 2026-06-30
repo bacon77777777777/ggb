@@ -181,45 +181,43 @@ export default function ReportPage() {
       breadcrumbs={[{ label: '報表' }, { label: meta.title, href: `/reports/${reportType}` }]}
     >
       <div className="space-y-4">
-        {/* 工具列 */}
-        <div className="bg-white rounded-lg border border-neutral-200 p-4 flex flex-wrap items-center gap-3">
-          <div className="min-w-[220px] max-w-xs">
+        {/* 工具列 — 對齊儀表板風格 */}
+        <div className="flex items-center gap-3">
+          {/* 左側：日期 + 商品表現專屬篩選 */}
+          <div className="flex items-center gap-2 flex-wrap">
             <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
+            {reportType === 'products' && (
+              <>
+                <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
+                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="">所有廠商</option>
+                  {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                </select>
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="">所有分類</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </>
+            )}
           </div>
 
-          {/* 商品表現專屬篩選 */}
-          {reportType === 'products' && (
-            <>
-              <select
-                value={filterSupplier}
-                onChange={e => setFilterSupplier(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">所有廠商</option>
-                {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-              </select>
-              <select
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">所有分類</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </>
-          )}
-
-          <button onClick={fetchData} disabled={loading} className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">
-            {loading ? '載入中…' : '查詢'}
-          </button>
-          {canExport && (
-            <button onClick={handleExport} className="px-4 py-2 border border-neutral-200 text-sm rounded-lg hover:bg-neutral-50 transition-colors flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              匯出 CSV
+          {/* 右側：查詢 + 匯出 */}
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={fetchData} disabled={loading}
+              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              {loading ? '載入中…' : '查詢'}
             </button>
-          )}
+            {canExport && (
+              <button onClick={handleExport}
+                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                匯出 CSV
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── 營運總覽 ── */}
@@ -234,7 +232,7 @@ export default function ReportPage() {
                 {/* 資金流動 */}
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-500 mb-2 px-1">資金流動</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <KpiCard label="總儲值金額" value={`NT$ ${overview.totalRecharge.toLocaleString()}`} sub={`${overview.totalRechargeCount} 筆`} color="text-purple-600" />
                     <KpiCard label="平均儲值 / 人" value={`NT$ ${overview.avgPerPayer.toLocaleString()}`} sub={`${overview.uniquePayers} 位付費用戶`} color="text-purple-500" />
                     <KpiCard label="總消費代幣" value={`${overview.totalTokenConsumed.toLocaleString()} G`} sub={`${overview.totalDraws} 次抽獎`} color="text-emerald-600" />
@@ -246,7 +244,7 @@ export default function ReportPage() {
                 {/* 會員 */}
                 <div>
                   <h3 className="text-sm font-semibold text-neutral-500 mb-2 px-1">會員</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
                     <KpiCard label="期間新增會員" value={`${overview.newUserCount.toLocaleString()} 人`} color="text-blue-500" />
                     <KpiCard label="期間付費用戶" value={`${overview.uniquePayers.toLocaleString()} 人`} sub={overview.newUserCount > 0 ? `轉換率 ${Math.round(overview.uniquePayers / overview.newUserCount * 100)}%` : undefined} color="text-indigo-600" />
