@@ -9,11 +9,13 @@ interface PeriodData {
   supplierName: string
   products: ProductRow[]
   totalG: number
-  rechargeTotal: number
-  rechargeCount: number
-  totalActualFee: number
+  totalPlatformG: number
+  consumptionShare: number       // 0~1，廠商消費佔全平台比例
+  rechargeTotal: number          // 參考用：期間平台儲值總額
+  rechargeCount: number          // 參考用：儲值筆數
   hasActualFee: boolean
-  feeByMethod: Record<string, { count: number; fee: number }>
+  allocatedActualFee: number | null  // 分攤後的實際手續費
+  platformTotalFee: number | null    // 平台手續費總額（參考）
 }
 
 interface Period {
@@ -130,14 +132,16 @@ export default function SettlementPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // 計算結算金額（基底：期間成功儲值 TWD）
-  const totalTWD = data?.rechargeTotal ?? 0
-  // 優先使用 DB 儲存的實際手續費；否則用費率估算
-  const newebpayFee = data?.hasActualFee
-    ? (data.totalActualFee ?? 0)
+  // 結算基底：廠商商品消費 G（1G = NT$1）
+  const totalTWD = data?.totalG ?? 0
+  const sharePercent = Math.round((data?.consumptionShare ?? 1) * 100)
+
+  // 手續費：有實際資料時用分攤後值，否則用費率估算
+  const newebpayFee = data?.hasActualFee && data.allocatedActualFee != null
+    ? data.allocatedActualFee
     : Math.round(totalTWD * (newebpayRate / 100))
-  const netRevenue = totalTWD - newebpayFee
-  // 代扣稅先從淨收入扣，再做 7:3 拆分
+
+  const netRevenue  = totalTWD - newebpayFee
   const withholding = Math.round(netRevenue * (withholdingRate / 100))
   const netAfterTax = netRevenue - withholding
   const supplierGross = Math.round(netAfterTax * (supplierShare / 100))
@@ -158,14 +162,20 @@ export default function SettlementPage() {
       ...(data.products.map(p => [p.name, String(p.price), String(p.drawCount), String(p.totalG)])),
       [],
       [`項目`, `金額(TWD)`],
-      [`期間儲值總額（${data.rechargeCount}筆）`, String(totalTWD)],
-      [`藍新手續費`, String(-newebpayFee)],
+      [`廠商商品消費（${data.products.reduce((s,p)=>s+p.drawCount,0)}次 × G）`, String(totalTWD)],
+      [`消費佔比`, `${sharePercent}%`],
+      [`藍新手續費${data.hasActualFee ? '（實際分攤）' : `（估算${newebpayRate}%）`}`, String(-newebpayFee)],
       [`淨收入`, String(netRevenue)],
       ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
       ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
       [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
       [`實際應付廠商`, String(supplierNet)],
       [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
+      [],
+      [`--- 參考 ---`, ``],
+      [`期間平台儲值`, String(data.rechargeTotal)],
+      [`儲值筆數`, String(data.rechargeCount)],
+      ...(data.hasActualFee ? [[`平台藍新手續費總額`, String(data.platformTotalFee ?? 0)]] : []),
     ]
     const csv = BOM + rows.map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
@@ -237,11 +247,11 @@ export default function SettlementPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
-                      {/* 藍新手續費：有實際資料時顯示實際值 */}
+                      {/* 藍新手續費：有實際資料時顯示分攤後實際值 */}
                       <div className="flex items-center justify-between gap-3">
                         <label className="text-sm text-neutral-600 whitespace-nowrap">藍新手續費</label>
                         {data?.hasActualFee ? (
-                          <span className="text-sm font-medium text-emerald-600">{fmt(data.totalActualFee)} 實際</span>
+                          <span className="text-sm font-medium text-emerald-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
                         ) : (
                           <div className="flex items-center gap-1">
                             <input type="number" value={newebpayRate} min={0} max={10}
@@ -358,16 +368,30 @@ export default function SettlementPage() {
                 <span className="text-xs text-neutral-400">結算日 {period?.settlementDate}</span>
               </div>
 
+              {/* 基底：廠商商品消費 G */}
               <KpiRow
-                label={`期間儲值總額（${data?.rechargeCount ?? 0} 筆）`}
-                value={fmt(totalTWD)}
+                label={`廠商商品消費（${data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次）`}
+                value={`${(data?.totalG ?? 0).toLocaleString()} G`}
                 bold
               />
+              {/* 消費佔比（多廠商時有意義） */}
+              {(data?.consumptionShare ?? 1) < 0.9999 && (
+                <div className="flex items-center justify-between py-1 pl-4">
+                  <span className="text-xs text-neutral-400">佔全平台消費</span>
+                  <span className="text-xs text-neutral-400 tabular-nums">
+                    {sharePercent}%（全平台 {(data?.totalPlatformG ?? 0).toLocaleString()} G）
+                  </span>
+                </div>
+              )}
+              <div className="border-t border-neutral-100 my-1" />
+
+              {/* 結算 NT$ 基底（1G = 1NT$） */}
+              <KpiRow label="結算金額基底（1G = NT$1）" value={fmt(totalTWD)} bold />
               <div className="border-t border-neutral-100 my-1" />
 
               <KpiRow
                 label={data?.hasActualFee
-                  ? `藍新手續費（實際）`
+                  ? `藍新手續費（實際，佔比分攤）`
                   : `藍新手續費（估算 ${newebpayRate}%）`}
                 value={fmt(newebpayFee)}
                 negative
@@ -379,7 +403,7 @@ export default function SettlementPage() {
               {withholdingRate > 0 && (
                 <>
                   <KpiRow
-                    label={`代扣稅款（${withholdingRate}%，從淨收入扣）`}
+                    label={`代扣稅款（${withholdingRate}%）`}
                     value={fmt(withholding)}
                     negative
                     indent
@@ -407,6 +431,21 @@ export default function SettlementPage() {
                 </div>
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>
+                )}
+              </div>
+
+              {/* 參考資訊 */}
+              <div className="mt-4 pt-3 border-t border-dashed border-neutral-200">
+                <p className="text-xs text-neutral-400 font-medium mb-2">參考 — 期間平台儲值</p>
+                <div className="flex items-center justify-between text-xs text-neutral-400">
+                  <span>儲值總額</span>
+                  <span className="tabular-nums">NT$ {(data?.rechargeTotal ?? 0).toLocaleString()}（{data?.rechargeCount ?? 0} 筆）</span>
+                </div>
+                {data?.hasActualFee && (
+                  <div className="flex items-center justify-between text-xs text-neutral-400 mt-1">
+                    <span>平台藍新手續費總額</span>
+                    <span className="tabular-nums">NT$ {(data?.platformTotalFee ?? 0).toLocaleString()}</span>
+                  </div>
                 )}
               </div>
             </div>

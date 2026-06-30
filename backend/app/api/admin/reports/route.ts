@@ -210,34 +210,35 @@ export async function GET(request: NextRequest) {
 
       const totalG = products.reduce((s, p) => s + p.totalG, 0)
 
-      // 結算基底：期間成功儲值
+      // 全平台消費 G（用於計算廠商消費佔比）
+      const totalPlatformG = draws.reduce((s, d: any) => s + ((d.product?.price) || 0), 0)
+      const consumptionShare = totalPlatformG > 0 ? totalG / totalPlatformG : 1
+
+      // 儲值資料（僅作參考，不作結算基底）
       const recharges: any[] = rechargeRes.data ?? []
       const successRecharges = recharges.filter(r => r.status === 'success')
       const rechargeTotal = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
       const rechargeCount = successRecharges.length
 
-      // 實際手續費（各筆加總）
+      // 實際藍新手續費 → 按消費佔比分攤給廠商
       const rechargesWithFee = successRecharges.filter(r => r.payment_fee != null)
-      const totalActualFee = rechargesWithFee.reduce((s, r) => s + (r.payment_fee || 0), 0)
+      const platformTotalFee = rechargesWithFee.reduce((s, r) => s + (r.payment_fee || 0), 0)
       const hasActualFee = rechargesWithFee.length > 0
-      // 按付款方式分組（供參考）
-      const feeByMethod: Record<string, { count: number; fee: number }> = {}
-      for (const r of rechargesWithFee) {
-        const m = r.payment_method || 'unknown'
-        if (!feeByMethod[m]) feeByMethod[m] = { count: 0, fee: 0 }
-        feeByMethod[m].count += 1
-        feeByMethod[m].fee += r.payment_fee || 0
-      }
+      const allocatedActualFee = hasActualFee
+        ? Math.round(platformTotalFee * consumptionShare)
+        : null
 
       return NextResponse.json({
         supplierName: (supplierRes.data as any)?.name ?? '',
         products,
         totalG,
+        totalPlatformG,
+        consumptionShare,
         rechargeTotal,
         rechargeCount,
-        totalActualFee,
         hasActualFee,
-        feeByMethod,
+        allocatedActualFee,
+        platformTotalFee: hasActualFee ? platformTotalFee : null,
       })
     }
 
