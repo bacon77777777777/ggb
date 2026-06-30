@@ -5,31 +5,30 @@ import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Database } from '@/types/database.types';
 import { X } from 'lucide-react';
+import ProductCard from '@/components/ProductCard';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
-type Product = ProductRow & {
-  release_year?: number | null;
-  release_month?: number | null;
-  distributor?: string | null;
-};
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
 
 interface GachaCollectionListProps {
   productId: number;
-  product: Product;
+  product: ProductRow;
   prizes: Prize[];
   refreshKey?: number;
 }
 
 export function GachaCollectionList({ productId, product, prizes, refreshKey }: GachaCollectionListProps) {
   const { user } = useAuth();
-  const [countByPrizeId, setCountByPrizeId] = useState<Record<number, number>>({});
+  const [collectedIds, setCollectedIds] = useState<Set<number>>(new Set());
+  const [recommendations, setRecommendations] = useState<ProductRow[]>([]);
   const [supabase] = useState(() => createClient());
   const [previewPrize, setPreviewPrize] = useState<Prize | null>(null);
 
+  // 取得用戶已抽到的 prize_id 集合
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -40,34 +39,33 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           .eq('user_id', user.id)
           .eq('product_id', productId);
 
-        const counts: Record<number, number> = {};
-        (data ?? []).forEach((r: any) => {
-          if (r.product_prize_id) counts[r.product_prize_id] = (counts[r.product_prize_id] || 0) + 1;
-        });
-        setCountByPrizeId(counts);
+        const ids = new Set(
+          (data ?? []).map((r: any) => r.product_prize_id).filter((id: any): id is number => id !== null)
+        );
+        setCollectedIds(ids);
       } catch {}
     })();
   }, [user, productId, supabase, refreshKey]);
 
+  // 猜你喜歡：抓同類型其他商品
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('products')
+          .select('*')
+          .eq('type', product.type)
+          .eq('status', 'active')
+          .neq('id', productId)
+          .limit(4);
+        setRecommendations(data ?? []);
+      } catch {}
+    })();
+  }, [productId, product.type, supabase]);
+
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
   );
-
-  const totalCollected = displayPrizes.reduce((s, p) => s + (countByPrizeId[p.id] || 0), 0);
-  const totalRemaining = displayPrizes.reduce((s, p) => s + (p.remaining || 0), 0);
-
-  // 商品資訊 fields
-  const infoRows: { label: string; value: string | null | undefined }[] = [
-    { label: '類別', value: product.category || null },
-    {
-      label: '發行年月',
-      value: product.release_year
-        ? `${product.release_year}年${product.release_month ? product.release_month + '月' : ''}`
-        : null,
-    },
-    { label: '發行商', value: product.distributor || null },
-    { label: '單抽費用', value: product.price ? `${product.price} G` : null },
-  ].filter(r => r.value);
 
   return (
     <div className="space-y-2 sm:space-y-5 w-full">
@@ -84,23 +82,18 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
             <tr>
               <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
-              <th className="px-2 sm:px-3 py-2 sm:py-3 text-right uppercase tracking-widest w-[56px] sm:w-[72px] whitespace-nowrap">已收集</th>
-              <th className="px-2 sm:px-3 py-2 sm:py-3 text-right uppercase tracking-widest w-[56px] sm:w-[72px] whitespace-nowrap">未收集</th>
+              <th className="px-2 sm:px-3 py-2 sm:py-3 text-right uppercase tracking-widest w-[64px] sm:w-[80px] whitespace-nowrap">收集</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
             {displayPrizes.map((prize) => {
-              const collected = countByPrizeId[prize.id] || 0;
-              const remaining = prize.remaining || 0;
+              const isCollected = user ? collectedIds.has(prize.id) : false;
               const imgSrc = prize.image_url && !prize.image_url.startsWith('blob:') ? prize.image_url : null;
 
               return (
                 <tr
                   key={prize.id}
-                  className={cn(
-                    'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors',
-                    remaining === 0 && 'opacity-50'
-                  )}
+                  className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
                 >
                   <td className="px-2 sm:px-6 py-1.5 sm:py-3">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -116,7 +109,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                         {imgSrc ? (
                           <Image src={imgSrc} alt={prize.name} fill className="object-cover" unoptimized />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-300 font-black">NO IMG</div>
+                          <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-300 font-black">—</div>
                         )}
                       </button>
 
@@ -132,70 +125,49 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                     </div>
                   </td>
 
-                  {/* 已收集 */}
-                  <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[56px] sm:w-[72px] align-middle">
-                    <span className={cn(
-                      'font-black text-sm sm:text-base tracking-tighter',
-                      collected > 0 ? 'text-accent-emerald' : 'text-neutral-300 dark:text-neutral-700'
-                    )}>
-                      {user ? collected : '—'}
-                    </span>
-                  </td>
-
-                  {/* 未收集 */}
-                  <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[56px] sm:w-[72px] align-middle">
-                    <span className="font-black text-sm sm:text-base tracking-tighter text-neutral-900 dark:text-neutral-50">
-                      {remaining.toLocaleString()}
-                    </span>
+                  {/* 收集狀態 */}
+                  <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[64px] sm:w-[80px] align-middle">
+                    {!user ? (
+                      <span className="text-[12px] sm:text-[13px] font-black text-neutral-300 dark:text-neutral-600">—</span>
+                    ) : isCollected ? (
+                      <span className="text-[12px] sm:text-[13px] font-black text-accent-emerald">已收集</span>
+                    ) : (
+                      <span className="text-[12px] sm:text-[13px] font-black text-neutral-300 dark:text-neutral-600">未收集</span>
+                    )}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-
-        <div className="flex items-center justify-between px-2 sm:px-6 py-2 sm:py-4 bg-accent-red/5 dark:bg-accent-red/10 border-t-2 border-neutral-50 dark:border-neutral-800">
-          <span className="font-black text-accent-red text-sm sm:text-base tracking-widest uppercase">合計</span>
-          <div className="flex items-center gap-3 sm:gap-6 text-sm sm:text-base font-black tracking-tighter">
-            {user && (
-              <span className={cn('whitespace-nowrap', totalCollected > 0 ? 'text-accent-emerald' : 'text-neutral-300 dark:text-neutral-700')}>
-                已收集 {totalCollected}
-              </span>
-            )}
-            <span className="whitespace-nowrap">
-              <span className="text-accent-red">{totalRemaining.toLocaleString()}</span>
-              <span className="text-accent-red/30 mx-1">/</span>
-              <span className="text-neutral-700 dark:text-neutral-400">
-                {displayPrizes.reduce((s, p) => s + (p.total || 0), 0).toLocaleString()}
-              </span>
-            </span>
-          </div>
-        </div>
       </div>
 
-      {/* 商品資訊 */}
-      {infoRows.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
-          <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-            商品資訊
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
-            {infoRows.map(({ label, value }) => (
-              <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
-                  {label}
-                </span>
-                <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">
-                  {value}
-                </span>
-              </div>
+      {/* 猜你喜歡 */}
+      {recommendations.length > 0 && (
+        <div className="pt-1 sm:pt-2">
+          <div className="flex items-center justify-between mb-2 sm:mb-4 px-1">
+            <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
+            <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">
+              查看更多
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+            {recommendations.map((item) => (
+              <ProductCard
+                key={item.id}
+                id={item.id}
+                name={item.name}
+                image={item.image_url || ''}
+                price={item.price}
+                remaining={item.remaining}
+                total={item.total_count}
+                isHot={item.is_hot || false}
+                category={item.category || ''}
+                type={item.type}
+                status={item.status}
+              />
             ))}
           </div>
-          {product.description && (
-            <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed pt-1">
-              {product.description}
-            </p>
-          )}
         </div>
       )}
 
