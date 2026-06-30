@@ -13,14 +13,15 @@ interface ImageButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
 }
 
 export const ImageButton = React.forwardRef<HTMLButtonElement, ImageButtonProps>(
-  ({ className, src, alt, text, textClassName, pressedSrc, fitByHeight, ...props }, ref) => {
+  ({ className, src, alt, text, textClassName, pressedSrc, fitByHeight, style, ...props }, ref) => {
     const [pressed, setPressed] = React.useState(false);
     return (
       <motion.button
         ref={ref}
         whileHover={{ scale: 1.05, filter: 'brightness(1.05)' }}
         whileTap={{ scale: 0.96 }}
-        onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => { 
+        style={{ touchAction: 'manipulation', ...style }}
+        onPointerDown={(e: React.PointerEvent<HTMLButtonElement>) => {
           setPressed(true); 
           if (props.onPointerDown) props.onPointerDown(e); 
         }}

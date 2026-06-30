@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     apple: '/images/20260629/favicon.png',
   },
   appleWebApp: {
-    title: 'Gacha Go',
+    title: 'GGB',
     capable: true,
     statusBarStyle: 'default',
   },

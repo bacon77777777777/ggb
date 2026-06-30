@@ -21,7 +21,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-2 text-center text-xs text-neutral-500 dark:text-neutral-600">
-          © 2025 吉吉比. All Rights Reserved.
+          © 2025 GGB. All Rights Reserved.
         </div>
       </div>
     </footer>

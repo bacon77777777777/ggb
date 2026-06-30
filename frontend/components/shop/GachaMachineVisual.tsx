@@ -431,7 +431,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
   }, []);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" style={{ touchAction: 'pan-y' }}>
       <div className="absolute inset-0">
         <Image
           src="/images/gacha/main.png"

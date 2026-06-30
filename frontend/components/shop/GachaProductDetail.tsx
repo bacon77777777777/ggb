@@ -332,17 +332,19 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
   };
 
   return (
-    <div
-      className="min-h-screen pt-14 md:pt-0 overflow-x-hidden"
-      style={{
-        backgroundImage: "url('/images/gacha/bg.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#000000',
-      }}
-    >
-      <div className="w-full flex justify-center">
+    <div className="min-h-screen pt-14 md:pt-0 overflow-x-hidden bg-neutral-50 dark:bg-neutral-950">
+      {/* 機台區域 — scale 容器，只含機台視覺，不含下方內容 */}
+      <div
+        className="w-full flex justify-center"
+        style={{
+          marginBottom: Math.round(375 * (932 / 750) * (scale - 1)),
+          backgroundImage: "url('/images/gacha/bg.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: '#000000',
+        }}
+      >
         <div
           className="relative"
           style={{
@@ -366,10 +368,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
           >
             <span
               className="font-black text-center truncate"
-              style={{
-                color: '#FFFF30',
-                fontSize: 16,
-              }}
+              style={{ color: '#FFFF30', fontSize: 16 }}
             >
               {product.name}
             </span>
@@ -384,94 +383,79 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
               pointerEvents: 'none',
             }}
           >
-            <span
-              className="font-medium"
-              style={{
-                color: '#FFFFFF',
-                fontSize: 12,
-              }}
-            >
+            <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
               點擊蛋箱顯示圖片
             </span>
           </div>
           <div className="w-full max-w-[750px] mx-auto">
-            <div className="w-full">
-              <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-                <GachaMachineVisual
-                  state={machineState}
-                  shakeRepeats={shakeRepeats}
-                  onPush={handlePush}
-                  onPurchase={handlePurchaseClick}
-                  onTrial={handleTrial}
-                  onHoleClick={handleHoleClick}
-                  onLoaded={() => setIsMachineLoaded(true)}
-                  isSoldOut={isSoldOut}
-                  pushSoundMode={pushSoundMode}
-                  hasHighTierPending={forceGoldEgg || hasHighTierPending}
-                />
-                <div
-                  className="absolute left-1/2 -translate-x-1/2"
-                  style={{
-                    top: 42,
-                    width: 167,
-                    height: 167,
-                    zIndex: 20,
-                  }}
-                >
-                  <div className="relative w-full h-full">
+            <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+              <GachaMachineVisual
+                state={machineState}
+                shakeRepeats={shakeRepeats}
+                onPush={handlePush}
+                onPurchase={handlePurchaseClick}
+                onTrial={handleTrial}
+                onHoleClick={handleHoleClick}
+                onLoaded={() => setIsMachineLoaded(true)}
+                isSoldOut={isSoldOut}
+                pushSoundMode={pushSoundMode}
+                hasHighTierPending={forceGoldEgg || hasHighTierPending}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{ top: 42, width: 167, height: 167, zIndex: 20 }}
+              >
+                <div className="relative w-full h-full">
+                  <div
+                    className="absolute inset-0 cursor-pointer"
+                    style={{
+                      opacity: isEggBoxImageMode ? 0 : 1,
+                      pointerEvents: isEggBoxImageMode ? 'none' : 'auto',
+                      transition: 'opacity 200ms ease-out',
+                    }}
+                    onClick={() => { if (!product.id) return; setIsEggBoxImageMode(true); }}
+                  />
+                  {product.id && (
                     <div
-                      className="absolute inset-0 cursor-pointer"
+                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
                       style={{
-                        opacity: isEggBoxImageMode ? 0 : 1,
-                        pointerEvents: isEggBoxImageMode ? 'none' : 'auto',
+                        opacity: isEggBoxImageMode ? 1 : 0,
+                        pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
                         transition: 'opacity 200ms ease-out',
                       }}
-                      onClick={() => {
-                        if (!product.id) return;
-                        setIsEggBoxImageMode(true);
-                      }}
-                    />
-                    {product.id && (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                        style={{
-                          opacity: isEggBoxImageMode ? 1 : 0,
-                          pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
-                          transition: 'opacity 200ms ease-out',
+                      onClick={() => setIsEggBoxImageMode(false)}
+                    >
+                      <Image
+                        src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                        alt={product.name}
+                        fill
+                        className="rounded-lg object-fill"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.srcset = '/images/item.png';
+                          target.src = '/images/item.png';
                         }}
-                        onClick={() => setIsEggBoxImageMode(false)}
-                      >
-                        <Image
-                          src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                          alt={product.name}
-                          fill
-                          className="rounded-lg object-fill"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.srcset = '/images/item.png';
-                            target.src = '/images/item.png';
-                          }}
-                        />
-                      </div>
-                    )}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              {!isMachineLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80">
+                  <div className="flex flex-col items-center gap-3 text-white">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <span className="text-xs font-black tracking-widest">載入機台中...</span>
                   </div>
                 </div>
-                {!isMachineLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80">
-                    <div className="flex flex-col items-center gap-3 text-white">
-                      <Loader2 className="w-8 h-8 animate-spin" />
-                      <span className="text-xs font-black tracking-widest">載入機台中...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="w-full">
-              <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
+              )}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 總覽 + 猜你喜歡 — 在 scale 容器外，正常文件流 */}
+      <div className="w-full max-w-[560px] mx-auto px-2 pb-24">
+        <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
       </div>
 
       <GachaResultModal

@@ -435,11 +435,11 @@ function ProfileContent() {
 
   const warehouseTabs: { id: ProductCategoryId; label: string }[] = [
     { id: 'all', label: '全部' },
-    { id: 'ichiban', label: '一番賞' },
-    { id: 'blindbox', label: '盒玩' },
-    { id: 'gacha', label: '轉蛋' },
-    { id: 'card', label: '抽卡' },
-    { id: 'custom', label: '自製賞' },
+    ...(flags.ichiban ? [{ id: 'ichiban' as const, label: '一番賞' }] : []),
+    ...(flags.blindbox ? [{ id: 'blindbox' as const, label: '盒玩' }] : []),
+    ...(flags.gacha ? [{ id: 'gacha' as const, label: '轉蛋' }] : []),
+    ...(flags.card ? [{ id: 'card' as const, label: '抽卡' }] : []),
+    ...(flags.custom ? [{ id: 'custom' as const, label: '自製賞' }] : []),
   ];
 
   const marketTabs: { id: ProductCategoryId; label: string }[] = [
@@ -2257,7 +2257,7 @@ function ProfileContent() {
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
                             {selectedForDelivery.length <= 5 && (
                               <>
-                                {selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
+                                {(flags.sell_escrow || flags.exchange) && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
                                   (() => {
                                     const item = warehouseItems.find(i => i.id === selectedForDelivery[0])!;
                                     return (
@@ -2322,7 +2322,7 @@ function ProfileContent() {
                           >
                             分解 ({selectedForDelivery.length})
                           </button>
-                          {(() => {
+                          {(flags.sell_escrow || flags.exchange) && (() => {
                             if (selectedForDelivery.length > 5) return null;
                             if (selectedForDelivery.length !== 1) return null;
                             const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
@@ -6246,7 +6246,7 @@ function ProfileContent() {
             {/* Mobile Footer Copyright */}
             <div className="py-6 text-center">
               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">
-                © 2025 Gacha Go. All Rights Reserved
+                © 2025 GGB. All Rights Reserved
               </p>
             </div>
           </div>
