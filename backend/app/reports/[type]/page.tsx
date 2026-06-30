@@ -181,43 +181,32 @@ export default function ReportPage() {
       breadcrumbs={[{ label: '報表' }, { label: meta.title, href: `/reports/${reportType}` }]}
     >
       <div className="space-y-4">
-        {/* 工具列 — 對齊儀表板風格 */}
-        <div className="flex items-center gap-3">
-          {/* 左側：日期 + 商品表現專屬篩選 */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
-            {reportType === 'products' && (
-              <>
-                <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  <option value="">所有廠商</option>
-                  {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-                </select>
-                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  <option value="">所有分類</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </>
-            )}
-          </div>
-
-          {/* 右側：查詢 + 匯出 */}
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={fetchData} disabled={loading}
-              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">
-              {loading ? '載入中…' : '查詢'}
+        {/* 工具列 — 靠右對齊，同儀表板風格 */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          {reportType === 'products' && (
+            <>
+              <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="">所有廠商</option>
+                {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+              </select>
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="">所有分類</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </>
+          )}
+          <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
+          {canExport && (
+            <button onClick={handleExport}
+              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              匯出 CSV
             </button>
-            {canExport && (
-              <button onClick={handleExport}
-                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                匯出 CSV
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ── 營運總覽 ── */}
