@@ -730,25 +730,6 @@ function NavbarInner() {
               </Link>
             )}
 
-            {isAuthenticated && isHomePage && (
-              <Link
-                href="/messages"
-                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
-                aria-label="私訊"
-              >
-                <MessageCircle className="w-5 h-5 stroke-[2]" />
-              </Link>
-            )}
-
-            {isAuthenticated && isExchangeOrderFlowPage && (
-              <Link
-                href={exchangeOrderThreadId ? `/messages/${exchangeOrderThreadId}` : '/messages'}
-                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
-                aria-label="私訊"
-              >
-                <MessageCircle className="w-5 h-5 stroke-[2]" />
-              </Link>
-            )}
 
             {isLoading || isForcingLoading || (isAuthenticated && !user) ? (
               <div className="relative ml-1 hidden md:flex items-center gap-2 pl-1 pr-1.5 py-1">
