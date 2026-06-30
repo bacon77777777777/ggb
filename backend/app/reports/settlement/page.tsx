@@ -137,10 +137,12 @@ export default function SettlementPage() {
     ? (data.totalActualFee ?? 0)
     : Math.round(totalTWD * (newebpayRate / 100))
   const netRevenue = totalTWD - newebpayFee
-  const supplierGross = Math.round(netRevenue * (supplierShare / 100))
-  const withholding = Math.round(supplierGross * (withholdingRate / 100))
-  const supplierNet = supplierGross - withholding
-  const platformShare = netRevenue - supplierGross
+  // 代扣稅先從淨收入扣，再做 7:3 拆分
+  const withholding = Math.round(netRevenue * (withholdingRate / 100))
+  const netAfterTax = netRevenue - withholding
+  const supplierGross = Math.round(netAfterTax * (supplierShare / 100))
+  const platformShare = netAfterTax - supplierGross
+  const supplierNet = supplierGross
 
   // 匯出對帳單 CSV
   const handleExport = () => {
@@ -157,10 +159,11 @@ export default function SettlementPage() {
       [],
       [`項目`, `金額(TWD)`],
       [`期間儲值總額（${data.rechargeCount}筆）`, String(totalTWD)],
-      [`藍新手續費(${newebpayRate}%)`, String(-newebpayFee)],
+      [`藍新手續費`, String(-newebpayFee)],
       [`淨收入`, String(netRevenue)],
-      [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
       ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
+      ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
+      [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
       [`實際應付廠商`, String(supplierNet)],
       [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
     ]
@@ -373,6 +376,19 @@ export default function SettlementPage() {
               <div className="border-t border-neutral-200 my-1" />
               <KpiRow label="淨收入" value={fmt(netRevenue)} bold />
 
+              {withholdingRate > 0 && (
+                <>
+                  <KpiRow
+                    label={`代扣稅款（${withholdingRate}%，從淨收入扣）`}
+                    value={fmt(withholding)}
+                    negative
+                    indent
+                  />
+                  <div className="border-t border-neutral-200 my-1" />
+                  <KpiRow label="稅後淨收入" value={fmt(netAfterTax)} bold />
+                </>
+              )}
+
               <div className="border-t border-neutral-100 my-2" />
 
               <div className="flex items-center justify-between py-1">
@@ -383,15 +399,6 @@ export default function SettlementPage() {
                 <span className="text-sm text-neutral-500">平台留存（{100 - supplierShare}%）</span>
                 <span className="text-sm font-medium tabular-nums text-neutral-600">{fmt(platformShare)}</span>
               </div>
-
-              {withholdingRate > 0 && (
-                <KpiRow
-                  label={`代扣稅款（${withholdingRate}%，從廠商分潤扣）`}
-                  value={fmt(withholding)}
-                  negative
-                  indent
-                />
-              )}
 
               <div className="border-t-2 border-neutral-300 mt-3 pt-3">
                 <div className="flex items-center justify-between">

@@ -284,35 +284,6 @@ export default function RechargesPage() {
     <AdminLayout pageTitle="儲值紀錄" breadcrumbs={[{ label: '儲值紀錄', href: '/recharges' }]}>
       <div className="space-y-6">
         <PageCard>
-          {/* 日期區間 + 狀態篩選 — 常駐顯示 */}
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <DateRangePicker
-              startDate={filterStartDate}
-              endDate={filterEndDate}
-              onStartDateChange={setFilterStartDate}
-              onEndDateChange={setFilterEndDate}
-              placeholder="選擇時間範圍"
-            />
-            <select
-              value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="all">全部狀態</option>
-              <option value="success">成功</option>
-              <option value="pending">處理中</option>
-              <option value="failed">失敗</option>
-            </select>
-            {(filterStartDate || filterEndDate || selectedStatus !== 'all') && (
-              <button
-                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setSelectedStatus('all') }}
-                className="text-sm text-neutral-400 hover:text-neutral-600"
-              >
-                清除篩選
-              </button>
-            )}
-          </div>
-
           <SearchToolbar
             searchPlaceholder="搜尋用戶、訂單編號..."
             searchValue={searchQuery}
@@ -322,6 +293,38 @@ export default function RechargesPage() {
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: '狀態',
+                type: 'select',
+                value: selectedStatus,
+                onChange: setSelectedStatus,
+                options: [
+                  { value: 'all', label: '全部狀態' },
+                  { value: 'success', label: '成功' },
+                  { value: 'pending', label: '處理中' },
+                  { value: 'failed', label: '失敗' },
+                ]
+              },
+              {
+                key: 'date',
+                label: '時間範圍',
+                type: 'date-range',
+                startDate: filterStartDate,
+                endDate: filterEndDate,
+                render: () => (
+                  <DateRangePicker
+                    startDate={filterStartDate}
+                    endDate={filterEndDate}
+                    onStartDateChange={setFilterStartDate}
+                    onEndDateChange={setFilterEndDate}
+                    placeholder="選擇時間範圍"
+                  />
+                )
+              }
+            ]}
             showColumnToggle={true}
             columns={[
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
