@@ -636,6 +636,7 @@ export default function BlindboxDetailPage() {
           <div className="w-full">
             <GachaCollectionList
               productId={product.id}
+              product={product as any}
               prizes={prizes}
               refreshKey={collectionRefreshKey}
             />

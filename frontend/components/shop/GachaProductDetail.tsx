@@ -468,7 +468,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
             </div>
 
             <div className="w-full">
-              <GachaCollectionList productId={product.id} prizes={prizes} refreshKey={collectionRefreshKey} />
+              <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
             </div>
           </div>
         </div>
