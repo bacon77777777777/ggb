@@ -174,6 +174,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: rows })
     }
 
+    // ── 廠商結算 ────────────────────────────────────────────────────────────
+    if (tab === 'settlement') {
+      if (!supplierId) return NextResponse.json({ error: 'supplierId required' }, { status: 400 })
+
+      const [supplierRes, drawRes, rechargeRes] = await Promise.all([
+        supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
+        applyDateFilter(
+          supabase.from('draw_records')
+            .select('product_id, created_at, product:products(id, name, price, supplier_id)')
+        ),
+        applyDateFilter(
+          supabase.from('recharge_records').select('amount, status, created_at')
+        ),
+      ])
+      if (drawRes.error) throw drawRes.error
+      if (rechargeRes.error) throw rechargeRes.error
+
+      // 消費明細：只算該廠商商品
+      const draws: any[] = drawRes.data ?? []
+      const supplierDraws = draws.filter(d => String(d.product?.supplier_id) === supplierId)
+
+      const byProduct: Record<number, { name: string; price: number; drawCount: number; totalG: number }> = {}
+      for (const d of supplierDraws) {
+        const p = d.product
+        if (!p) continue
+        if (!byProduct[p.id]) byProduct[p.id] = { name: p.name, price: p.price || 0, drawCount: 0, totalG: 0 }
+        byProduct[p.id].drawCount += 1
+        byProduct[p.id].totalG += p.price || 0
+      }
+
+      const products = Object.entries(byProduct)
+        .map(([id, v]) => ({ id: Number(id), ...v }))
+        .sort((a, b) => b.totalG - a.totalG)
+
+      const totalG = products.reduce((s, p) => s + p.totalG, 0)
+
+      // 結算基底：期間成功儲值
+      const recharges: any[] = rechargeRes.data ?? []
+      const successRecharges = recharges.filter(r => r.status === 'success')
+      const rechargeTotal = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
+      const rechargeCount = successRecharges.length
+
+      return NextResponse.json({
+        supplierName: (supplierRes.data as any)?.name ?? '',
+        products,
+        totalG,
+        rechargeTotal,
+        rechargeCount,
+      })
+    }
+
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
   } catch (error: any) {
     console.error('Reports API error:', error)

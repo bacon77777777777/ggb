@@ -409,6 +409,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '消費紀錄', path: '/reports/consumption', icon: IconReports },
           { name: '商品表現', path: '/reports/products', icon: IconReports },
           { name: '營運總覽', path: '/reports/overview', icon: IconReports },
+          { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
         ],
       },
       {
