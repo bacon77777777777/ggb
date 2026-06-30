@@ -400,9 +400,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'reports',
         title: '報表',
         items: [
+          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
+          { name: '商品表現', path: '/reports/products', icon: IconReports },
           { name: '儲值明細', path: '/reports/recharge', icon: IconReports },
           { name: '消費明細', path: '/reports/consumption', icon: IconReports },
-          { name: '期間摘要', path: '/reports/summary', icon: IconReports },
         ],
       },
       {
