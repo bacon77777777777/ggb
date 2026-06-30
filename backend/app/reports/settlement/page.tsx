@@ -244,7 +244,7 @@ export default function SettlementPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-neutral-800">
-                {period.label}　結算期
+                {period.label} 結算期
               </h2>
               <p className="text-xs text-neutral-400 mt-0.5">
                 {period.startDate} ～ {period.endDate}
