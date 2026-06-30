@@ -393,10 +393,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'reports',
         title: '金流報表',
         items: [
+          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
           { name: '儲值紀錄', path: '/recharges', icon: IconRecharges },
           { name: '商品表現', path: '/reports/products', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
-          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
         ],
       },
       {
