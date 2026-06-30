@@ -161,7 +161,7 @@ export default function FAQPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-0.5">官方 LINE</h3>
-                  <p className="text-sm font-bold text-neutral-900 dark:text-white font-mono">@gachago</p>
+                  <p className="text-sm font-bold text-neutral-900 dark:text-white font-mono">@吉吉比</p>
                 </div>
               </div>
             </div>

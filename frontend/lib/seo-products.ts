@@ -71,7 +71,7 @@ export function buildProductMetadata(product: DbProduct | null): Metadata {
     openGraph: {
       type: 'website',
       url: canonical,
-      siteName: 'GachaGo',
+      siteName: '吉吉比',
       locale: 'zh_TW',
       title,
       description,

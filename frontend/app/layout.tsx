@@ -18,8 +18,8 @@ const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | GachaGo',
-    default: '在線一番賞 GachaGo',
+    template: '%s | 吉吉比',
+    default: '在線轉蛋 吉吉比',
   },
   description: '隨時隨地，享受抽獎樂趣',
   metadataBase: new URL(siteUrl),
@@ -29,15 +29,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: siteUrl,
-    siteName: 'GachaGo',
+    siteName: '吉吉比',
     locale: 'zh_TW',
-    title: '在線一番賞 GachaGo',
+    title: '在線轉蛋 吉吉比',
     description: '隨時隨地，享受抽獎樂趣',
     images: ['/images/20260629/favicon.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: '在線一番賞 GachaGo',
+    title: '在線轉蛋 吉吉比',
     description: '隨時隨地，享受抽獎樂趣',
     images: ['/images/20260629/favicon.png'],
   },
