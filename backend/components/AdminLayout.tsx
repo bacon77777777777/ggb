@@ -369,6 +369,16 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 2l-2 2m-3.5 3.5L10 13l-1 4 4-1 5.5-5.5M7 7l3 3m-5 7h6m-6 4h14" />
     </svg>
   )
+  const IconReports = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  )
+  const IconSuppliers = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  )
 
   const menuGroups = useMemo(
     () => [
@@ -378,11 +388,13 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
           { name: '商品管理', path: '/products', icon: IconProducts },
+          { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '菜單管理', path: '/categories', icon: IconCategories },
           { name: '配送管理', path: '/orders', icon: IconOrders },
           { name: '抽獎管理', path: '/draws', icon: IconDraws },
           { name: '市集管理', path: '/marketplace', icon: IconMarketplace },
           { name: '儲值管理', path: '/recharges', icon: IconRecharges },
+          { name: '報表', path: '/reports', icon: IconReports },
         ],
       },
       {

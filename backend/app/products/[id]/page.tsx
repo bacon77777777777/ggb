@@ -32,6 +32,7 @@ export default function EditProductPage() {
     releaseYear: '',
     releaseMonth: '',
     distributor: '',
+    supplierId: '' as string,
     rarity: 3,
     startedAt: '',  // 開賣時間
     endedAt: '',  // 完抽時間
@@ -107,13 +108,22 @@ export default function EditProductPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [productCode, setProductCode] = useState<string>('')
   const [deletedPrizeIds, setDeletedPrizeIds] = useState<string[]>([])
-  
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([])
+
   // State for small item library
   const [showSmallItemLibrary, setShowSmallItemLibrary] = useState(false)
   const [libraryItems, setLibraryItems] = useState<SmallItem[]>([])
   const [selectedPrizeIndex, setSelectedPrizeIndex] = useState<number | null>(null)
   const [librarySearchQuery, setLibrarySearchQuery] = useState('')
   const [librarySelectedCategory, setLibrarySelectedCategory] = useState('all')
+
+  // Fetch suppliers list
+  useEffect(() => {
+    fetch('/api/admin/suppliers')
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setSuppliers(data) })
+      .catch(() => {})
+  }, [])
 
   // Fetch small items when library is opened
   useEffect(() => {
@@ -256,6 +266,7 @@ export default function EditProductPage() {
             releaseYear: defaultYear,
             releaseMonth: defaultMonth,
             distributor: product.distributor || '',
+            supplierId: product.supplier_id ? String(product.supplier_id) : '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '', // 假設是 ISO 格式
             endedAt: product.ended_at ? product.ended_at.replace('T', ' ').split('.')[0] : '', // 簡單處理
@@ -347,6 +358,7 @@ export default function EditProductPage() {
         is_hot: formData.isHot,
         total_count: calculatedTotalCount,
         distributor: formData.distributor,
+        supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
         // txid_hash: formData.txidHash || null, // Seed and Hash should not be updated via Edit form to preserve fairness
@@ -689,6 +701,22 @@ export default function EditProductPage() {
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 placeholder="例如：萬代南夢宮娛樂"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                供應廠商
+              </label>
+              <select
+                value={formData.supplierId}
+                onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+              >
+                <option value="">— 未指定 —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={String(s.id)}>{s.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
