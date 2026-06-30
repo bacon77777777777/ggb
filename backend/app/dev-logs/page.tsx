@@ -1,0 +1,366 @@
+'use client'
+
+import AdminLayout from '@/components/AdminLayout'
+import { useState, useEffect } from 'react'
+
+type LogType   = 'feature' | 'fix' | 'improvement' | 'issue'
+type LogStatus = 'released' | 'planned' | 'open' | 'in_progress' | 'resolved'
+type Priority  = 'high' | 'medium' | 'low'
+
+interface DevLog {
+  id: number
+  version: string | null
+  title: string
+  description: string | null
+  type: LogType
+  status: LogStatus
+  priority: Priority | null
+  created_at: string
+  updated_at: string
+}
+
+const TYPE_META: Record<LogType, { label: string; color: string }> = {
+  feature:     { label: '新功能', color: 'bg-blue-100 text-blue-700' },
+  fix:         { label: '修復',   color: 'bg-red-100 text-red-700' },
+  improvement: { label: '優化',   color: 'bg-amber-100 text-amber-700' },
+  issue:       { label: '問題',   color: 'bg-purple-100 text-purple-700' },
+}
+
+const STATUS_META: Record<LogStatus, { label: string; color: string }> = {
+  released:   { label: '已發布', color: 'bg-emerald-100 text-emerald-700' },
+  planned:    { label: '計劃中', color: 'bg-neutral-100 text-neutral-500' },
+  open:       { label: '待處理', color: 'bg-red-100 text-red-600' },
+  in_progress:{ label: '進行中', color: 'bg-blue-100 text-blue-600' },
+  resolved:   { label: '已解決', color: 'bg-emerald-100 text-emerald-700' },
+}
+
+const PRIORITY_META: Record<Priority, { label: string; color: string }> = {
+  high:   { label: '高', color: 'text-red-600' },
+  medium: { label: '中', color: 'text-amber-600' },
+  low:    { label: '低', color: 'text-neutral-400' },
+}
+
+const BLANK: Partial<DevLog> = { version: '', title: '', description: '', type: 'feature', status: 'planned', priority: null }
+
+function Badge({ meta }: { meta: { label: string; color: string } }) {
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}>{meta.label}</span>
+}
+
+export default function DevLogsPage() {
+  const [logs, setLogs] = useState<DevLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'changelog' | 'issues'>('changelog')
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState<Partial<DevLog>>(BLANK)
+  const [saving, setSaving] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<LogStatus | 'all'>('all')
+
+  const fetch_ = async () => {
+    setLoading(true)
+    const res = await fetch('/api/admin/dev-logs')
+    if (res.ok) setLogs(await res.json())
+    setLoading(false)
+  }
+
+  useEffect(() => { fetch_() }, [])
+
+  const changelog = logs.filter(l => l.type !== 'issue')
+  const issues    = logs.filter(l => l.type === 'issue')
+
+  // changelog 按版本分組
+  const byVersion: Record<string, DevLog[]> = {}
+  changelog.forEach(l => {
+    const v = l.version || '未定版本'
+    if (!byVersion[v]) byVersion[v] = []
+    byVersion[v].push(l)
+  })
+  const versionGroups = Object.entries(byVersion).sort(([a], [b]) => b.localeCompare(a))
+
+  const filteredIssues = filterStatus === 'all' ? issues : issues.filter(i => i.status === filterStatus)
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.type) return
+    setSaving(true)
+    const isEdit = !!form.id
+    const res = await fetch('/api/admin/dev-logs', {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    if (res.ok) { await fetch_(); setShowForm(false); setForm(BLANK) }
+    setSaving(false)
+  }
+
+  const handleStatusChange = async (id: number, status: LogStatus) => {
+    await fetch('/api/admin/dev-logs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    })
+    setLogs(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('確定要刪除這筆紀錄？')) return
+    await fetch(`/api/admin/dev-logs?id=${id}`, { method: 'DELETE' })
+    setLogs(prev => prev.filter(l => l.id !== id))
+  }
+
+  const startEdit = (log: DevLog) => {
+    setForm({ ...log })
+    setShowForm(true)
+    setActiveTab(log.type === 'issue' ? 'issues' : 'changelog')
+  }
+
+  const openNewForm = (type?: LogType) => {
+    setForm({ ...BLANK, type: type || (activeTab === 'issues' ? 'issue' : 'feature') })
+    setShowForm(true)
+  }
+
+  return (
+    <AdminLayout
+      pageTitle="開發紀錄"
+      breadcrumbs={[{ label: '工具' }, { label: '開發紀錄', href: '/dev-logs' }]}
+    >
+      <div className="space-y-4">
+
+        {/* Tab + 新增按鈕 */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1 bg-neutral-100 p-1 rounded-lg">
+            {([['changelog', '版本紀錄'], ['issues', '問題追蹤']] as const).map(([tab, label]) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === tab ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                {label}
+                <span className="ml-1.5 text-xs opacity-60">
+                  {tab === 'changelog' ? changelog.length : issues.length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => openNewForm()}
+            className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            新增
+          </button>
+        </div>
+
+        {/* 新增 / 編輯表單 */}
+        {showForm && (
+          <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-neutral-800">{form.id ? '編輯紀錄' : '新增紀錄'}</h3>
+              <button onClick={() => { setShowForm(false); setForm(BLANK) }} className="text-neutral-400 hover:text-neutral-600">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">類型</label>
+                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  {Object.entries(TYPE_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
+                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
+                <input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
+                  placeholder="e.g. v1.2.0"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+              {form.type === 'issue' && (
+                <div>
+                  <label className="text-xs text-neutral-500 mb-1 block">優先級</label>
+                  <select value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    <option value="">不設定</option>
+                    {Object.entries(PRIORITY_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
+              <input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="簡短描述這筆紀錄"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">說明</label>
+              <textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3} placeholder="詳細說明、重現步驟、解決方案…"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowForm(false); setForm(BLANK) }}
+                className="px-4 py-2 border border-neutral-200 text-sm rounded-lg hover:bg-neutral-50 transition-colors">
+                取消
+              </button>
+              <button onClick={handleSubmit} disabled={saving || !form.title}
+                className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                {saving ? '儲存中…' : '儲存'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+        ) : (
+          <>
+            {/* ── 版本紀錄 Tab ── */}
+            {activeTab === 'changelog' && (
+              <div className="space-y-4">
+                {versionGroups.length === 0 && (
+                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
+                    尚無版本紀錄
+                  </div>
+                )}
+                {versionGroups.map(([version, entries]) => (
+                  <div key={version} className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-neutral-100 flex items-center gap-3 bg-neutral-50">
+                      <span className="font-bold text-neutral-800 font-mono">{version}</span>
+                      <span className="text-xs text-neutral-400">
+                        {new Date(entries[0].created_at).toLocaleDateString('zh-TW')}
+                      </span>
+                      <span className="text-xs text-neutral-400">{entries.length} 項變更</span>
+                    </div>
+                    <div className="divide-y divide-neutral-50">
+                      {entries.map(log => (
+                        <div key={log.id} className="px-5 py-3 flex items-start gap-3 hover:bg-neutral-50 group">
+                          <div className="flex gap-1.5 mt-0.5 shrink-0">
+                            <Badge meta={TYPE_META[log.type]} />
+                            <Badge meta={STATUS_META[log.status]} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-neutral-800">{log.title}</p>
+                            {log.description && <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{log.description}</p>}
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── 問題追蹤 Tab ── */}
+            {activeTab === 'issues' && (
+              <div className="space-y-3">
+                {/* 狀態篩選 */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {([['all', '全部'], ['open', '待處理'], ['in_progress', '進行中'], ['resolved', '已解決']] as const).map(([s, label]) => (
+                    <button key={s} onClick={() => setFilterStatus(s as LogStatus | 'all')}
+                      className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
+                        filterStatus === s
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-neutral-200 text-neutral-500 hover:border-neutral-300'
+                      }`}>
+                      {label}
+                      <span className="ml-1 opacity-70">
+                        {s === 'all' ? issues.length : issues.filter(i => i.status === s).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {filteredIssues.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
+                    {filterStatus === 'all' ? '尚無問題紀錄' : '此狀態無問題'}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
+                    {filteredIssues.map(log => (
+                      <div key={log.id} className="px-5 py-4 flex items-start gap-3 hover:bg-neutral-50 group">
+                        {/* 優先級指示燈 */}
+                        <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                          log.priority === 'high' ? 'bg-red-500' :
+                          log.priority === 'medium' ? 'bg-amber-400' : 'bg-neutral-300'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <p className="text-sm font-medium text-neutral-800">{log.title}</p>
+                            {log.priority && (
+                              <span className={`text-xs font-medium ${PRIORITY_META[log.priority].color}`}>
+                                {PRIORITY_META[log.priority].label}優先
+                              </span>
+                            )}
+                          </div>
+                          {log.description && <p className="text-xs text-neutral-400 leading-relaxed">{log.description}</p>}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge meta={STATUS_META[log.status]} />
+                            <span className="text-xs text-neutral-400">
+                              {new Date(log.created_at).toLocaleDateString('zh-TW')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* 快速狀態切換 */}
+                          {log.status !== 'resolved' && (
+                            <button
+                              onClick={() => handleStatusChange(log.id, log.status === 'open' ? 'in_progress' : 'resolved')}
+                              className="px-2.5 py-1 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-500 hover:text-neutral-700 transition-colors whitespace-nowrap"
+                            >
+                              {log.status === 'open' ? '→ 進行中' : '→ 已解決'}
+                            </button>
+                          )}
+                          {log.status === 'resolved' && (
+                            <button
+                              onClick={() => handleStatusChange(log.id, 'open')}
+                              className="px-2.5 py-1 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-500 transition-colors"
+                            >
+                              重開
+                            </button>
+                          )}
+                          <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </AdminLayout>
+  )
+}

@@ -425,6 +425,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '權限管理', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
           { name: '工具', path: '/tools', icon: IconTools },
+          { name: '開發紀錄', path: '/dev-logs', icon: IconLogs },
         ],
       },
       {
