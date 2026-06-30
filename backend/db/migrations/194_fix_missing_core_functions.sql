@@ -316,7 +316,7 @@ BEGIN
     INSERT INTO draw_records (
       user_id, product_id, ticket_number, prize_level, prize_name,
       txid_seed, txid_nonce, txid_hash, random_value, profit_rate,
-      image_url, product_prize_id, status, is_last_one
+      prize_image_url, product_prize_id, status, is_last_one
     )
     VALUES (
       v_user_id, p_product_id, v_ticket_no, v_prize.level, v_prize.name,
@@ -355,7 +355,7 @@ BEGIN
 
         INSERT INTO draw_records (
           user_id, product_id, product_prize_id, ticket_number, prize_level, prize_name, status,
-          txid_seed, txid_nonce, txid_hash, random_value, profit_rate, image_url, is_last_one
+          txid_seed, txid_nonce, txid_hash, random_value, profit_rate, prize_image_url, is_last_one
         ) VALUES (
           v_user_id, p_product_id, v_last_one_prize.id, 0, v_last_one_prize.level, v_last_one_prize.name, 'in_warehouse',
           v_seed, v_nonce, v_hash, v_random, 1.0, v_last_one_prize.image_url, TRUE
