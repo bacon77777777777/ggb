@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       const newUsers: any[] = newUserRes.data ?? []
       const totalMembers = totalUserRes.count ?? 0
 
-      const completed = recharges.filter((r) => r.status === 'completed')
+      const completed = recharges.filter((r) => r.status === 'success')
       const totalRecharge = completed.reduce((s, r) => s + (r.amount || 0), 0)
       const totalRechargeCount = completed.length
       const totalTokenConsumed = draws.reduce((s, d: any) => s + (d.product?.price || 0), 0)
