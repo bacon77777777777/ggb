@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // ── 營運總覽 ────────────────────────────────────────────────────────────
     if (tab === 'overview' || tab === 'summary') {
-      const [rechargeRes, drawRes, newUserRes, totalUserRes, couponRes] = await Promise.all([
+      const [rechargeRes, drawRes, newUserRes, totalUserRes, couponRes, historicalPayersRes] = await Promise.all([
         applyDateFilter(supabase.from('recharge_records').select('amount, user_id, status, created_at')),
         applyDateFilter(supabase.from('draw_records').select('id, user_id, prize_level, created_at, product:products(price)')),
         applyDateFilter(supabase.from('users').select('id, created_at')),
@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
           supabase.from('user_coupons').select('used_at, coupon:coupons(discount_type, discount_value)').eq('status', 'used'),
           'used_at'
         ),
+        // 期間前曾付費的 user_id（用於判斷首次付費 vs 回購）
+        start
+          ? supabase.from('recharge_records').select('user_id').eq('status', 'success').lt('created_at', start)
+          : Promise.resolve({ data: [] as { user_id: string }[], error: null }),
       ])
 
       if (rechargeRes.error) throw rechargeRes.error
@@ -72,7 +76,8 @@ export async function GET(request: NextRequest) {
       const totalRechargeCount = completed.length
       const totalTokenConsumed = draws.reduce((s, d: any) => s + (d.product?.price || 0), 0)
       const totalDraws = draws.length
-      const uniquePayers = new Set(completed.map((r) => r.user_id)).size
+      const uniquePayerSet = new Set(completed.map((r) => r.user_id))
+      const uniquePayers = uniquePayerSet.size
       const avgPerPayer = uniquePayers > 0 ? Math.round(totalRecharge / uniquePayers) : 0
       const avgTokenPerDraw = totalDraws > 0 ? Math.round(totalTokenConsumed / totalDraws) : 0
 
@@ -86,6 +91,54 @@ export async function GET(request: NextRequest) {
           if (c.discount_type === 'fixed') couponDiscountFixed += Number(c.discount_value) || 0
           else couponDiscountPercentageCount += 1
         }
+      }
+
+      // ── 轉換漏斗 & 回購分析 ────────────────────────────────────────────
+      // 期間前的歷史付費用戶
+      const historicalPayerIds = new Set((historicalPayersRes.data ?? []).map((r: any) => r.user_id))
+
+      // 首次付費用戶（生命週期第一次，不限當期新舊會員）
+      const firstTimePayers = [...uniquePayerSet].filter(id => !historicalPayerIds.has(id)).length
+      // 回購用戶（本期內付費 2 次以上）
+      const payCountByUser: Record<string, number> = {}
+      completed.forEach(r => { payCountByUser[r.user_id] = (payCountByUser[r.user_id] || 0) + 1 })
+      const repeatPayersInPeriod = Object.values(payCountByUser).filter(c => c > 1).length
+      const repurchaseRateInPeriod = uniquePayers > 0 ? Math.round(repeatPayersInPeriod / uniquePayers * 100) : 0
+      const avgRechargesPerPayer = uniquePayers > 0
+        ? Math.round(completed.length / uniquePayers * 10) / 10
+        : 0
+
+      // 新用戶首購時間分佈（新用戶在期間內的首次儲值距離註冊天數）
+      const newUserMap: Record<string, string> = {}
+      newUsers.forEach((u: any) => { newUserMap[u.id] = u.created_at })
+
+      const firstRechargeByNewUser: Record<string, string> = {}
+      completed.forEach(r => {
+        if (newUserMap[r.user_id]) {
+          if (!firstRechargeByNewUser[r.user_id] || r.created_at < firstRechargeByNewUser[r.user_id]) {
+            firstRechargeByNewUser[r.user_id] = r.created_at
+          }
+        }
+      })
+
+      const daysToFirstPurchase = Object.entries(firstRechargeByNewUser).map(([uid, rechargeAt]) => {
+        const diff = new Date(rechargeAt).getTime() - new Date(newUserMap[uid]).getTime()
+        return diff / (1000 * 60 * 60 * 24)
+      })
+
+      const newUserConversionRate = newUsers.length > 0
+        ? Math.round(daysToFirstPurchase.length / newUsers.length * 100)
+        : 0
+      const avgDaysToFirstPurchase = daysToFirstPurchase.length > 0
+        ? Math.round(daysToFirstPurchase.reduce((s, d) => s + d, 0) / daysToFirstPurchase.length * 10) / 10
+        : null
+      const purchaseTimingDist = {
+        sameDay:     daysToFirstPurchase.filter(d => d < 1).length,
+        within3Days: daysToFirstPurchase.filter(d => d >= 1 && d < 3).length,
+        within7Days: daysToFirstPurchase.filter(d => d >= 3 && d < 7).length,
+        within30Days:daysToFirstPurchase.filter(d => d >= 7 && d < 30).length,
+        over30Days:  daysToFirstPurchase.filter(d => d >= 30).length,
+        neverConverted: newUsers.length - daysToFirstPurchase.length,
       }
 
       // 每日明細
@@ -116,6 +169,18 @@ export async function GET(request: NextRequest) {
           uniquePayers,
           couponDiscountFixed,
           couponDiscountPercentageCount,
+        },
+        funnel: {
+          newUsers: newUsers.length,
+          newUserConversionRate,       // 新用戶中有付費的 %
+          newUserFirstPurchase: daysToFirstPurchase.length,
+          avgDaysToFirstPurchase,      // null 表示沒有轉換
+          purchaseTimingDist,
+          uniquePayers,
+          firstTimePayers,             // 生命週期首次付費
+          repeatPayersInPeriod,        // 本期內付費 2+ 次
+          repurchaseRateInPeriod,      // 本期回購率 %
+          avgRechargesPerPayer,        // 本期平均儲值次數 / 付費用戶
         },
         dailyBreakdown,
       })

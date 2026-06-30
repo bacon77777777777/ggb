@@ -85,6 +85,7 @@ export default function ReportPage() {
   const [rechargeData, setRechargeData] = useState<any[]>([])
   const [consumptionData, setConsumptionData] = useState<any[]>([])
   const [overview, setOverview] = useState<any>(null)
+  const [funnel, setFunnel] = useState<any>(null)
   const [dailyBreakdown, setDailyBreakdown] = useState<any[]>([])
   const [productsData, setProductsData] = useState<any[]>([])
 
@@ -121,7 +122,7 @@ export default function ReportPage() {
       const json = await res.json()
       if (reportType === 'recharge') setRechargeData(json.data ?? [])
       else if (reportType === 'consumption') setConsumptionData(json.data ?? [])
-      else if (reportType === 'overview') { setOverview(json.overview ?? null); setDailyBreakdown(json.dailyBreakdown ?? []) }
+      else if (reportType === 'overview') { setOverview(json.overview ?? null); setFunnel(json.funnel ?? null); setDailyBreakdown(json.dailyBreakdown ?? []) }
       else if (reportType === 'products') setProductsData(json.data ?? [])
     } catch (e: any) { alert(e.message || '載入失敗') }
     finally { setLoading(false) }
@@ -239,6 +240,124 @@ export default function ReportPage() {
                     <KpiCard label="期間付費用戶" value={`${overview.uniquePayers.toLocaleString()} 人`} sub={overview.newUserCount > 0 ? `轉換率 ${Math.round(overview.uniquePayers / overview.newUserCount * 100)}%` : undefined} color="text-indigo-600" />
                   </div>
                 </div>
+
+                {/* 轉換漏斗 & 回購分析 */}
+                {funnel && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                    {/* 轉換漏斗 */}
+                    <div className="bg-white rounded-lg border border-neutral-200 p-4">
+                      <h3 className="text-sm font-semibold text-neutral-500 mb-4">轉換漏斗</h3>
+                      <div className="space-y-2">
+                        {[
+                          {
+                            label: '期間新增會員',
+                            value: funnel.newUsers,
+                            unit: '人',
+                            rate: null,
+                            color: 'bg-blue-500',
+                            width: 100,
+                          },
+                          {
+                            label: '新用戶完成首次儲值',
+                            value: funnel.newUserFirstPurchase,
+                            unit: '人',
+                            rate: funnel.newUserConversionRate,
+                            color: 'bg-indigo-500',
+                            width: funnel.newUsers > 0 ? Math.round(funnel.newUserFirstPurchase / funnel.newUsers * 100) : 0,
+                          },
+                          {
+                            label: '期間付費用戶（含老用戶）',
+                            value: funnel.uniquePayers,
+                            unit: '人',
+                            rate: null,
+                            color: 'bg-violet-500',
+                            width: funnel.newUsers > 0 ? Math.min(100, Math.round(funnel.uniquePayers / funnel.newUsers * 100)) : 0,
+                          },
+                          {
+                            label: '本期回購（期間內 2 次以上）',
+                            value: funnel.repeatPayersInPeriod,
+                            unit: '人',
+                            rate: funnel.repurchaseRateInPeriod,
+                            color: 'bg-emerald-500',
+                            width: funnel.uniquePayers > 0 ? Math.round(funnel.repeatPayersInPeriod / funnel.uniquePayers * 100) : 0,
+                          },
+                        ].map((step, i) => (
+                          <div key={i}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-neutral-500">{step.label}</span>
+                              <div className="flex items-center gap-2">
+                                {step.rate !== null && (
+                                  <span className="text-xs font-semibold text-emerald-600">{step.rate}%</span>
+                                )}
+                                <span className="text-sm font-bold text-neutral-800 tabular-nums">
+                                  {step.value.toLocaleString()} {step.unit}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-neutral-100 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${step.color} transition-all`}
+                                style={{ width: `${Math.max(step.width, step.value > 0 ? 4 : 0)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 回購 & 首購時間分析 */}
+                    <div className="bg-white rounded-lg border border-neutral-200 p-4 space-y-4">
+                      <h3 className="text-sm font-semibold text-neutral-500">付費行為分析</h3>
+
+                      {/* KPI 行 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { label: '首次付費用戶', value: funnel.firstTimePayers, sub: '生命週期首次', color: 'text-indigo-600' },
+                          { label: '本期回購率', value: `${funnel.repurchaseRateInPeriod}%`, sub: `${funnel.repeatPayersInPeriod} 人 2 次以上`, color: 'text-emerald-600' },
+                          { label: '平均儲值次數 / 人', value: `${funnel.avgRechargesPerPayer} 次`, sub: '本期付費用戶', color: 'text-violet-600' },
+                          { label: '首購平均等待天數', value: funnel.avgDaysToFirstPurchase !== null ? `${funnel.avgDaysToFirstPurchase} 天` : '—', sub: '新用戶 → 首儲', color: 'text-orange-500' },
+                        ].map(k => (
+                          <div key={k.label} className="bg-neutral-50 rounded-lg p-3">
+                            <p className="text-xs text-neutral-400 mb-1">{k.label}</p>
+                            <p className={`text-lg font-bold tabular-nums ${k.color}`}>{k.value}</p>
+                            <p className="text-xs text-neutral-400 mt-0.5">{k.sub}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 首購時間分佈 */}
+                      {funnel.newUserFirstPurchase > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-neutral-400 mb-2">新用戶首購時間分佈</p>
+                          <div className="space-y-1.5">
+                            {[
+                              { label: '當天', value: funnel.purchaseTimingDist.sameDay, color: 'bg-emerald-500' },
+                              { label: '1–2 天', value: funnel.purchaseTimingDist.within3Days, color: 'bg-blue-400' },
+                              { label: '3–6 天', value: funnel.purchaseTimingDist.within7Days, color: 'bg-indigo-400' },
+                              { label: '7–29 天', value: funnel.purchaseTimingDist.within30Days, color: 'bg-violet-400' },
+                              { label: '30 天以上', value: funnel.purchaseTimingDist.over30Days, color: 'bg-neutral-400' },
+                              { label: '未轉換', value: funnel.purchaseTimingDist.neverConverted, color: 'bg-red-200' },
+                            ].map(b => {
+                              const total = funnel.newUsers || 1
+                              const pct = Math.round(b.value / total * 100)
+                              return (
+                                <div key={b.label} className="flex items-center gap-2">
+                                  <span className="text-xs text-neutral-400 w-16 shrink-0">{b.label}</span>
+                                  <div className="flex-1 bg-neutral-100 rounded-full h-1.5">
+                                    <div className={`h-1.5 rounded-full ${b.color}`} style={{ width: `${Math.max(pct, b.value > 0 ? 2 : 0)}%` }} />
+                                  </div>
+                                  <span className="text-xs tabular-nums text-neutral-500 w-12 text-right">{b.value} 人 ({pct}%)</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                )}
 
                 {/* 每日明細 */}
                 {dailyBreakdown.length > 0 && (
