@@ -42,7 +42,9 @@ export async function POST(req: Request) {
 
         if (orderNumber.startsWith('TP')) {
           const { error } = await supabaseAdmin.rpc('confirm_topup_order', {
-              p_order_number: orderNumber
+              p_order_number: orderNumber,
+              p_trade_no: String(result.TradeNo || '') || null,
+              p_payment_type: paymentType || null,
           });
           if (error) {
               console.error('Confirm Order Error:', error);

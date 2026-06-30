@@ -8,6 +8,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 interface RechargeRecord {
   id: number
   order_number: string
+  trade_no?: string | null
   user_id: string
   amount: number
   bonus: number
@@ -35,6 +36,7 @@ export default function RechargesPage() {
   const [visibleColumns, setVisibleColumns] = useState<{[key: string]: boolean}>({
     created_at: true,
     order_number: true,
+    trade_no: false,
     user: true,
     amount: true,
     bonus: true,
@@ -182,6 +184,13 @@ export default function RechargesPage() {
       className: 'font-mono text-gray-600'
     },
     {
+      key: 'trade_no',
+      label: '藍新序號',
+      render: (record) => (
+        <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
+      )
+    },
+    {
       key: 'user',
       label: '用戶',
       sortable: true,
@@ -241,10 +250,11 @@ export default function RechargesPage() {
 
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['時間', '訂單編號', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
+    const headers = ['時間', '訂單編號(MerchantOrderNo)', '藍新序號(TradeNo)', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
     const rows = sortedRecords.map(r => [
       formatDateTime(r.created_at),
       r.order_number || '',
+      r.trade_no || '',
       r.user?.name || '',
       r.user?.email || '',
       r.amount,
@@ -319,6 +329,7 @@ export default function RechargesPage() {
             columns={[
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
               { key: 'order_number', label: '訂單編號', visible: visibleColumns.order_number },
+              { key: 'trade_no', label: '藍新序號', visible: visibleColumns.trade_no },
               { key: 'user', label: '用戶', visible: visibleColumns.user },
               { key: 'amount', label: '儲值金額(TWD)', visible: visibleColumns.amount },
               { key: 'bonus', label: '贈送代幣(G)', visible: visibleColumns.bonus },
