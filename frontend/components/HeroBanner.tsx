@@ -84,8 +84,6 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
               unoptimized
               onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
             />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
           </Link>
         </div>
       ))}
@@ -105,7 +103,7 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
       </button>
 
       {/* Dots */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-3">
         {items.map((_, index) => (
           <button
             key={index}
