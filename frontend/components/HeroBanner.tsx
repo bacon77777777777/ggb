@@ -12,21 +12,29 @@ interface Banner {
   link: string;
 }
 
+const DEFAULT_BANNER: Banner = {
+  id: '__default__',
+  image: '/images/banner_defaulet.png',
+  link: '#',
+};
+
 export default function HeroBanner({ banners }: { banners: Banner[] }) {
+  const items = banners.length > 0 ? banners : [DEFAULT_BANNER];
   const [current, setCurrent] = useState(0);
   const touchStart = useRef<number | null>(null);
   const touchEnd = useRef<number | null>(null);
   const minSwipeDistance = 50;
 
   useEffect(() => {
+    if (items.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % banners.length);
+      setCurrent((prev) => (prev + 1) % items.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [items.length]);
 
-  const next = () => setCurrent((prev) => (prev + 1) % banners.length);
-  const prev = () => setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
+  const next = () => setCurrent((prev) => (prev + 1) % items.length);
+  const prev = () => setCurrent((prev) => (prev - 1 + items.length) % items.length);
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchEnd.current = null;
@@ -58,7 +66,7 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {banners.map((banner, index) => (
+      {items.map((banner, index) => (
         <div
           key={banner.id}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
@@ -66,12 +74,12 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
           }`}
         >
           <Link href={banner.link} className="block w-full h-full relative">
-            <Image 
-              src={banner.image || '/images/banner.png'} 
-              alt="Banner" 
+            <Image
+              src={banner.image || '/images/banner_defaulet.png'}
+              alt="Banner"
               fill
-              className="object-fill select-none" 
-              draggable={false} 
+              className="object-fill select-none"
+              draggable={false}
               unoptimized
             />
             {/* Gradient Overlay */}
@@ -96,7 +104,7 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
 
       {/* Dots */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
-        {banners.map((_, index) => (
+        {items.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrent(index)}
