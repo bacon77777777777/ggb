@@ -1131,11 +1131,7 @@ function ProfileContent() {
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             if (price > 0) {
-              if (quantity >= 1 && quantity <= 4) {
-                recycleValue = Math.floor(price / 2);
-              } else {
-                recycleValue = 50;
-              }
+              recycleValue = Math.floor(price * 0.2);
             }
 
             return {
