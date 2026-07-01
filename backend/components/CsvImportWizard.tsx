@@ -132,7 +132,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: h => h.replace(/^﻿/, '').trim(),
+      transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
       complete: result => {
         const hdrs = result.meta.fields ?? []
         const dataRows = (result.data ?? []).filter(r =>
