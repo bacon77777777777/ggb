@@ -23,6 +23,8 @@ export interface Shipment {
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
   address: string
   trackingNumber: string
+  shippingFee: number
+  logisticsType: string
   items: ShipmentItem[]
 }
 

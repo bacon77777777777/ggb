@@ -66,6 +66,7 @@ export default function OrdersPage() {
     quantity: true,
     recipientName: true,
     trackingNumber: true,
+    shippingFee: true,
     shippedAt: true,
     operations: true
   })
@@ -103,6 +104,8 @@ export default function OrdersPage() {
           recipientPhone: order.recipient_phone,
           address: order.address,
           trackingNumber: order.tracking_number || '',
+          shippingFee: order.total_amount || 0,
+          logisticsType: order.logistics_type || 'HOME',
           date: order.submitted_at?.split('T')[0] || '',
           submittedAt: order.submitted_at ? formatDateTime(order.submitted_at) : '',
           shippedAt: order.shipped_at ? formatDateTime(order.shipped_at) : null,
@@ -376,6 +379,10 @@ export default function OrdersPage() {
           aValue = a.trackingNumber || ''
           bValue = b.trackingNumber || ''
           break
+        case 'shippingFee':
+          aValue = a.shippingFee ?? 0
+          bValue = b.shippingFee ?? 0
+          break
         case 'date':
           aValue = new Date(a.date).getTime()
           bValue = new Date(b.date).getTime()
@@ -473,6 +480,7 @@ export default function OrdersPage() {
       { key: 'quantity', label: '數量' },
       { key: 'recipientName', label: '收件資訊' },
       { key: 'trackingNumber', label: '物流單號' },
+      { key: 'shippingFee', label: '運費(TWD)' },
       { key: 'shippedAt', label: '出貨時間' }
     ].filter(col => visibleColumns[col.key as keyof typeof visibleColumns])
     
@@ -499,6 +507,7 @@ export default function OrdersPage() {
           case 'quantity': return shipment.items.length.toString()
           case 'recipientName': return `${shipment.recipientName} | ${shipment.recipientPhone} | ${shipment.address}`
           case 'trackingNumber': return shipment.trackingNumber || ''
+          case 'shippingFee': return String(shipment.shippingFee ?? 0)
           case 'shippedAt': return formatDateTime(shipment.shippedAt)
           default: return ''
         }
@@ -1340,6 +1349,7 @@ export default function OrdersPage() {
               { key: 'quantity', label: '數量', visible: visibleColumns.quantity },
               { key: 'recipientName', label: '收件資訊', visible: visibleColumns.recipientName },
               { key: 'trackingNumber', label: '物流單號', visible: visibleColumns.trackingNumber },
+              { key: 'shippingFee', label: '運費(TWD)', visible: visibleColumns.shippingFee },
               { key: 'shippedAt', label: '出貨時間', visible: visibleColumns.shippedAt }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
@@ -1527,6 +1537,17 @@ export default function OrdersPage() {
                         物流單號
                       </SortableTableHeader>
                     )}
+                    {visibleColumns.shippingFee && (
+                      <SortableTableHeader
+                        sortKey="shippingFee"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        className={getDensityClasses()}
+                      >
+                        運費(TWD)
+                      </SortableTableHeader>
+                    )}
                     {visibleColumns.shippedAt && (
                       <SortableTableHeader
                         sortKey="shippedAt"
@@ -1635,6 +1656,11 @@ export default function OrdersPage() {
                             <span className="font-mono whitespace-nowrap">{shipment.trackingNumber || '-'}</span>
                           </td>
                         )}
+                        {visibleColumns.shippingFee && (
+                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                            <span className="font-mono">{shipment.shippingFee > 0 ? `$${shipment.shippingFee}` : '—'}</span>
+                          </td>
+                        )}
                         {visibleColumns.shippedAt && (
                           <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">
@@ -1642,7 +1668,7 @@ export default function OrdersPage() {
                             </span>
                           </td>
                         )}
-                        <td 
+                        <td
                           className={`${getDensityClasses()} whitespace-nowrap sticky right-0 z-20 border-l border-neutral-200 transition-colors duration-300 ${
                             isHighlighted 
                               ? 'bg-yellow-200' 

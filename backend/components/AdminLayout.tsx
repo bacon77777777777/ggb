@@ -398,6 +398,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
           { name: '商品消費', path: '/reports/products', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
+          { name: '物流明細', path: '/reports/logistics', icon: IconReports },
         ],
       },
       {
@@ -422,6 +423,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '折價券管理', path: '/coupons', icon: IconCoupons },
           { name: '殺率調整', path: '/settings/rates', icon: IconSettings },
           { name: '功能開關', path: '/settings/features', icon: IconSettings },
+          { name: '運費設定', path: '/settings/shipping', icon: IconSettings },
           { name: '管理員清單', path: '/analytics', icon: IconAnalytics },
           { name: '權限管理', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
