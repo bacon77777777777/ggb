@@ -21,14 +21,14 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { name, contact_name, contact_phone, contact_email, address, notes, is_active } = body
+  const { name, contact_name, contact_phone, contact_email, address, notes, is_active, tax_id } = body
 
   if (!name?.trim()) return NextResponse.json({ error: '廠商名稱為必填' }, { status: 400 })
 
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('suppliers')
-    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true })
+    .insert({ name: name.trim(), contact_name, contact_phone, contact_email, address, notes, is_active: is_active ?? true, tax_id: tax_id || null })
     .select()
     .single()
 

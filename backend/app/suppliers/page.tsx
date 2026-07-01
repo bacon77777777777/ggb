@@ -9,6 +9,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 interface Supplier {
   id: number
   name: string
+  tax_id: string | null
   contact_name: string | null
   contact_phone: string | null
   contact_email: string | null
@@ -21,6 +22,7 @@ interface Supplier {
 
 const EMPTY_FORM = {
   name: '',
+  tax_id: '',
   contact_name: '',
   contact_phone: '',
   contact_email: '',
@@ -63,6 +65,7 @@ export default function SuppliersPage() {
     setEditing(s)
     setForm({
       name: s.name,
+      tax_id: s.tax_id ?? '',
       contact_name: s.contact_name ?? '',
       contact_phone: s.contact_phone ?? '',
       contact_email: s.contact_email ?? '',
@@ -79,6 +82,7 @@ export default function SuppliersPage() {
     try {
       const payload = {
         name: form.name.trim(),
+        tax_id: form.tax_id || null,
         contact_name: form.contact_name || null,
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
@@ -140,7 +144,7 @@ export default function SuppliersPage() {
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 border-b border-neutral-100">
                   <tr>
-                    {['廠商名稱', '聯絡人', '電話', 'Email', '狀態', '備註', '建立時間', '操作'].map((h) => (
+                    {['廠商名稱', '統編', '聯絡人', '電話', 'Email', '狀態', '備註', '建立時間', '操作'].map((h) => (
                       <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -149,6 +153,7 @@ export default function SuppliersPage() {
                   {suppliers.map((s) => (
                     <tr key={s.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 font-medium text-neutral-900">{s.name}</td>
+                      <td className="px-4 py-3 text-neutral-600 font-mono text-xs">{s.tax_id ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-600">{s.contact_name ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-600">{s.contact_phone ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-500 text-xs">{s.contact_email ?? '—'}</td>
@@ -191,15 +196,28 @@ export default function SuppliersPage() {
         title={editing ? '編輯廠商' : '新增廠商'}
       >
         <div className="space-y-4 p-1">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">廠商名稱 <span className="text-red-500">*</span></label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="例：靈感文創"
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">廠商名稱 <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="例：靈感文創"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">統一編號</label>
+              <input
+                type="text"
+                value={form.tax_id}
+                onChange={(e) => setForm((f) => ({ ...f, tax_id: e.target.value }))}
+                placeholder="8碼統編"
+                maxLength={8}
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
