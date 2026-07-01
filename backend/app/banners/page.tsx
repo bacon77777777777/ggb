@@ -2,7 +2,7 @@
 
 import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
 import { Switch } from '@/components/ui'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 
@@ -20,6 +20,7 @@ export default function BannersPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const savingLock = useRef(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   
@@ -117,13 +118,14 @@ export default function BannersPage() {
   }
 
   const handleSubmit = async () => {
-    if (isSaving) return
+    if (savingLock.current) return
+    if (!formData.name) {
+      alert('請輸入輪播圖名稱')
+      return
+    }
+    savingLock.current = true
+    setIsSaving(true)
     try {
-      if (!formData.name) {
-        alert('請輸入輪播圖名稱')
-        return
-      }
-      setIsSaving(true)
 
       let finalImageUrl = formData.image_url
 
@@ -190,6 +192,7 @@ export default function BannersPage() {
       console.error('Error saving banner:', error)
       alert(error.message || '儲存失敗')
     } finally {
+      savingLock.current = false
       setIsSaving(false)
     }
   }
@@ -400,9 +403,17 @@ export default function BannersPage() {
               <button
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-w-[72px] justify-center"
               >
-                {isSaving ? '儲存中...' : '儲存'}
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    儲存中
+                  </>
+                ) : '儲存'}
               </button>
             </div>
           </div>
