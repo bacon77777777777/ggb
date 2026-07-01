@@ -69,8 +69,16 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
   );
 
+  const typeLabel: Record<string, string> = {
+    ichiban: '一番賞',
+    blindbox: '盒玩',
+    gacha: '轉蛋',
+    card: '集換式卡牌',
+    custom: '其他',
+  };
+
   const infoRows = [
-    { label: '類別', value: product.category || null },
+    { label: '類別', value: typeLabel[product.type] || product.category || null },
     { label: '代理商', value: product.distributor || '-' },
   ];
 
