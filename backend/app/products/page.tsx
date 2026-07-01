@@ -105,6 +105,8 @@ export default function ProductsPage() {
       '商品圖片',
       '價格',
       '商品類型',
+      '預購商品',
+      '預計出貨時間',
       '顯示菜單',
       '狀態',
       '開賣時間',
@@ -141,6 +143,8 @@ export default function ProductsPage() {
       'main.jpg',
       '300',
       '一番賞',
+      '否',
+      '',
       '人氣動漫專區',
       '上架',
       '2024/03/06 12:00',
@@ -1490,7 +1494,9 @@ export default function ProductsPage() {
                           release_month: releaseMonth,
                           started_at: parseStartedAt(getVal('started_at', '開賣時間')),
                           distributor: (getVal('distributor', '代理商') ?? '').trim() || null,
-                          rarity: toNumber(getVal('rarity', '稀有度'))
+                          rarity: toNumber(getVal('rarity', '稀有度')),
+                          is_preorder: toBool(getVal('is_preorder', '預購商品')),
+                          preorder_available_at: parseStartedAt(getVal('preorder_available_at', '預計出貨時間'))
                         },
                         prizes: prizes,
                         tagIds: []
