@@ -79,7 +79,6 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         </div>
 
         <table className="w-full text-left table-fixed">
-          <thead>
           <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
             {displayPrizes.map((prize) => {
               const isCollected = user ? collectedIds.has(prize.id) : false;

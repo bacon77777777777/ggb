@@ -454,7 +454,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
       </div>
 
       {/* 總覽 + 猜你喜歡 — 在 scale 容器外，正常文件流 */}
-      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-2">
+      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-4">
         <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
       </div>
 
