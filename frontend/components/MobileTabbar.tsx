@@ -74,7 +74,7 @@ function MobileTabbarInner() {
     { name: '首頁', href: '/', icon: Home },
     { name: '排行榜', href: '/ranking', icon: Trophy },
     ...(centerTab ? [centerTab] : []),
-    { name: '福利', href: '/mission', icon: Gift },
+    { name: '簽到', href: '/mission', icon: Gift },
     { name: '會員', href: '/profile', icon: User },
   ];
 
