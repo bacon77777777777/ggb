@@ -40,6 +40,17 @@ const LOGISTICS_TYPE_TEXT: Record<string, string> = {
   CVS: '超商取貨',
 }
 
+function exportCSV(filename: string, headers: string[], rows: (string | number)[][]) {
+  const bom = '﻿'
+  const content = bom + [headers, ...rows]
+    .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n')
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function LogisticsReportPage() {
   const [records, setRecords] = useState<LogisticsRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -75,43 +86,29 @@ export default function LogisticsReportPage() {
         x.order_number.toLowerCase().includes(q) ||
         x.user?.name?.toLowerCase().includes(q) ||
         x.user?.email?.toLowerCase().includes(q) ||
-        x.recipient_name?.toLowerCase().includes(q) ||
         (x.tracking_number || '').toLowerCase().includes(q)
       )
     }
     return r
   }, [records, filterStatus, searchQuery])
 
-  const totalFee = useMemo(() => filtered.reduce((s, r) => s + (r.total_amount || 0), 0), [filtered])
-  const totalItems = useMemo(() => filtered.reduce((s, r) => s + r.items.length, 0), [filtered])
-
   const handleExportCSV = () => {
-    const BOM = '﻿'
-    const headers = ['提交時間', '訂單編號', '用戶', 'Email', '收件人', '電話', '地址/超商',
-      '物流類型', '物流單號', '運費(TWD)', '獎品數', '狀態', '出貨時間']
-    const rows = filtered.map(r => [
-      formatDateTime(r.submitted_at),
-      r.order_number,
-      r.user?.name || '',
-      r.user?.email || '',
-      r.recipient_name || '',
-      r.recipient_phone || '',
-      r.store_name ? `${r.store_name} (${r.address})` : r.address || '',
-      LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type,
-      r.tracking_number || '',
-      r.total_amount || 0,
-      r.items.length,
-      STATUS_TEXT[r.status] || r.status,
-      r.shipped_at ? formatDateTime(r.shipped_at) : '',
-    ])
-    const csv = BOM + [headers, ...rows].map(row => row.map(c => `"${c}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `物流明細_${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    exportCSV(
+      `物流明細_${new Date().toISOString().split('T')[0]}.csv`,
+      ['提交時間', '訂單編號', '用戶', 'Email', '物流類型', '物流單號', '運費(TWD)', '獎品數', '狀態', '出貨時間'],
+      filtered.map(r => [
+        formatDateTime(r.submitted_at),
+        r.order_number,
+        r.user?.name || '',
+        r.user?.email || '',
+        LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type,
+        r.tracking_number || '',
+        r.total_amount || 0,
+        r.items.length,
+        STATUS_TEXT[r.status] || r.status,
+        r.shipped_at ? formatDateTime(r.shipped_at) : '',
+      ])
+    )
   }
 
   const statusColor = (s: string) => {
@@ -128,44 +125,30 @@ export default function LogisticsReportPage() {
 
   return (
     <AdminLayout pageTitle="物流明細" breadcrumbs={[{ label: '物流明細', href: '/reports/logistics' }]}>
-      <div className="space-y-6">
-        {/* 統計 */}
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: '筆數', value: filtered.length },
-            { label: '獎品總數', value: totalItems },
-            { label: '運費合計(TWD)', value: `$${totalFee.toLocaleString()}` },
-          ].map(c => (
-            <div key={c.label} className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
-              <p className="text-sm text-neutral-500">{c.label}</p>
-              <p className="text-2xl font-bold text-neutral-900 font-mono mt-1">{c.value}</p>
-            </div>
-          ))}
+      <div className="space-y-4">
+        {/* 工具列 */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <DateRangePicker
+            startDate={filterStartDate}
+            endDate={filterEndDate}
+            onStartDateChange={setFilterStartDate}
+            onEndDateChange={setFilterEndDate}
+            placeholder="選擇日期範圍"
+          />
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            匯出 CSV
+          </button>
         </div>
 
         <PageCard>
-          {/* 頂部篩選列 */}
-          <div className="flex items-center justify-end gap-2 flex-wrap mb-4">
-            <DateRangePicker
-              startDate={filterStartDate}
-              endDate={filterEndDate}
-              onStartDateChange={setFilterStartDate}
-              onEndDateChange={setFilterEndDate}
-              placeholder="選擇時間範圍"
-            />
-            <button
-              onClick={handleExportCSV}
-              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              匯出 CSV
-            </button>
-          </div>
-
           <SearchToolbar
-            searchPlaceholder="搜尋訂單編號、用戶、收件人、物流單號..."
+            searchPlaceholder="搜尋訂單編號、用戶、物流單號..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             showFilter={true}
@@ -197,7 +180,7 @@ export default function LogisticsReportPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-neutral-200 text-left">
-                    {['提交時間', '訂單編號', '用戶', '收件人', '物流類型', '物流單號', '運費', '獎品數', '狀態', '出貨時間'].map(h => (
+                    {['提交時間', '訂單編號', '用戶', '物流類型', '物流單號', '運費', '獎品數', '狀態', '出貨時間'].map(h => (
                       <th key={h} className="py-2 px-3 font-semibold text-neutral-700 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -210,11 +193,6 @@ export default function LogisticsReportPage() {
                       <td className="py-2 px-3 whitespace-nowrap">
                         <div className="font-medium text-neutral-900">{r.user?.name || '—'}</div>
                         <div className="text-xs text-neutral-400">{r.user?.email || ''}</div>
-                      </td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <div>{r.recipient_name}</div>
-                        <div className="text-xs text-neutral-400">{r.recipient_phone}</div>
-                        <div className="text-xs text-neutral-400 max-w-[180px] truncate">{r.store_name || r.address}</div>
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap text-neutral-600">
                         {LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type}

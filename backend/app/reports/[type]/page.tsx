@@ -8,6 +8,14 @@ import { formatDateTime } from '@/utils/dateFormat'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
+const PRODUCT_TYPE_LABEL: Record<string, string> = {
+  gacha: '轉蛋',
+  ichiban: '一番賞',
+  blindbox: '盒玩',
+  card: '卡片',
+  custom: '自訂',
+}
+
 const TYPE_META: Record<ReportType, { title: string }> = {
   overview:    { title: '營運總覽' },
   products:    { title: '商品消費' },
@@ -103,7 +111,7 @@ export default function ReportPage() {
   // 商品消費篩選
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [filterSupplier, setFilterSupplier] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
+  const [filterType, setFilterType] = useState('')
 
   useEffect(() => {
     const now = new Date()
@@ -126,7 +134,7 @@ export default function ReportPage() {
       const params = new URLSearchParams({ tab: reportType, start, end })
       if (reportType === 'products') {
         if (filterSupplier) params.set('supplierId', filterSupplier)
-        if (filterCategory) params.set('category', filterCategory)
+        if (filterType) params.set('type', filterType)
       }
       const res = await fetch(`/api/admin/reports?${params}`)
       if (!res.ok) throw new Error((await res.json()).error || '載入失敗')
@@ -138,7 +146,7 @@ export default function ReportPage() {
       else if (reportType === 'behavior') setBehaviorData(json)
     } catch (e: any) { alert(e.message || '載入失敗') }
     finally { setLoading(false) }
-  }, [reportType, start, end, filterSupplier, filterCategory])
+  }, [reportType, start, end, filterSupplier, filterType])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -156,8 +164,8 @@ export default function ReportPage() {
       )
     } else if (reportType === 'products') {
       exportCSV(`商品消費_${start}_${end}.csv`,
-        ['商品名稱', '廠商', '類型', '分類', '抽獎次數', '消費金額(G)', '剩餘數量', '總數量', '完抽率(%)'],
-        productsData.map(p => [p.name, p.supplierName ?? '—', p.type ?? '', p.category ?? '', String(p.drawCount), String(p.revenue), String(p.remaining), String(p.totalCount), String(p.completionRate)])
+        ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額(G)', '剩餘數量', '總數量', '完抽率(%)'],
+        productsData.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue), String(p.remaining), String(p.totalCount), String(p.completionRate)])
       )
     } else if (reportType === 'overview' && overview) {
       const rows: string[][] = [
@@ -185,8 +193,8 @@ export default function ReportPage() {
     (reportType === 'products' && productsData.length > 0) ||
     (reportType === 'overview' && !!overview)
 
-  // 分類列表（從商品資料推導）
-  const categories = [...new Set(productsData.map(p => p.category).filter(Boolean))]
+  // 種類列表（從商品資料推導）
+  const productTypes = [...new Set(productsData.map(p => p.type).filter(Boolean))]
 
   return (
     <AdminLayout
@@ -203,10 +211,10 @@ export default function ReportPage() {
                 <option value="">所有廠商</option>
                 {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
               </select>
-              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+              <select value={filterType} onChange={e => setFilterType(e.target.value)}
                 className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
-                <option value="">所有分類</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="">所有種類</option>
+                {productTypes.map(t => <option key={t} value={t}>{PRODUCT_TYPE_LABEL[t] || t}</option>)}
               </select>
             </>
           )}
@@ -429,7 +437,7 @@ export default function ReportPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-100">
                     <tr>
-                      {['#', '商品名稱', '廠商', '分類', '抽獎次數', '消費金額(G)', '剩餘 / 總數', '完抽率'].map(h => (
+                      {['#', '商品名稱', '廠商', '種類', '抽獎次數', '消費金額(G)', '剩餘 / 總數', '完抽率'].map(h => (
                         <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -446,7 +454,7 @@ export default function ReportPage() {
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">{p.supplierName}</span>
                           ) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{p.category || '—'}</td>
+                        <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
                         <td className="px-4 py-3 text-right font-semibold">{p.drawCount.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right font-semibold text-emerald-700">{p.revenue.toLocaleString()} G</td>
                         <td className="px-4 py-3 text-right text-neutral-600 whitespace-nowrap">

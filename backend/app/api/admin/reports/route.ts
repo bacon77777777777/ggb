@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const start = searchParams.get('start')
   const end = searchParams.get('end')
   const supplierId = searchParams.get('supplierId')
-  const category = searchParams.get('category')
+  const productType = searchParams.get('type')
 
   const supabase = getSupabaseAdmin()
 
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
         .select('id, name, type, category, total_count, remaining, supplier_id, supplier:suppliers(id, name)')
         .eq('is_active', true)
       if (supplierId) productQuery = productQuery.eq('supplier_id', supplierId)
-      if (category) productQuery = productQuery.eq('category', category)
+      if (productType) productQuery = productQuery.eq('type', productType)
       const { data: products, error: prodErr } = await productQuery
       if (prodErr) throw prodErr
 

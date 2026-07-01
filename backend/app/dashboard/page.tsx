@@ -311,11 +311,11 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
         </p>
       </div>
       <p className="text-xl font-bold text-neutral-900 whitespace-nowrap font-mono mb-3">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-      {chartData && chartType && chartColor && cardId && (
-        <div className="mb-4 h-10 flex-shrink-0">
+      <div className="mb-4 h-10 flex-shrink-0">
+        {chartData && chartType && chartColor && cardId && (
           <MiniChart data={chartData} type={chartType} color={chartColor} id={cardId} />
-        </div>
-      )}
+        )}
+      </div>
       {trend && trendValue && selectedPeriod && (
         <div className="flex items-center gap-1 text-xs text-neutral-600 mt-auto">
           <span>{getPeriodText(selectedPeriod)}相比 {trendValue}%</span>
@@ -1130,11 +1130,11 @@ export default function DashboardPage() {
         })
         const topProductsList = Array.from(productStats.values())
           .sort((a, b) => b.sales - a.sales)
-          .slice(0, 10)
+          .slice(0, 15)
           .map(p => ({
             name: p.name,
             value: p.sales,
-            change: 0 // We don't have previous period comparison for now
+            change: 0
           }))
         
         setTopProducts(topProductsList)
@@ -1260,7 +1260,7 @@ export default function DashboardPage() {
             })
             setDauData((b.dailyActiveUsers || []).map((d: any) => ({ date: d.date, value: d.count })))
             setTopSeries((b.topSeries || []).slice(0, 15).map((s: any) => ({ name: s.series, value: s.count })))
-            setTopKeywords((b.topSearches || []).slice(0, 10).map((s: any) => ({ name: s.query, value: s.count })))
+            setTopKeywords((b.topSearches || []).slice(0, 15).map((s: any) => ({ name: s.query, value: s.count })))
           }
         } catch (e) {
           console.error('behavior fetch error', e)
@@ -1469,8 +1469,8 @@ export default function DashboardPage() {
         {/* 排名列表 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} />
-          <RankingList title="熱門商品 TOP 10" data={topProducts} />
-          <RankingList title="熱門搜尋字 TOP 10" data={topKeywords} />
+          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} />
+          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} />
         </div>
       </div>
     </AdminLayout>
