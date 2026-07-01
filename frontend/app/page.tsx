@@ -243,13 +243,11 @@ export default function Home() {
 
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryTabId>('all');
   const [direction, setDirection] = useState(0);
-  const [activeSecondaryTab, setActiveSecondaryTab] = useState<string>('all');
+  const [activeSecondaryTab, setActiveSecondaryTab] = useState<string>('featured');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
   const [sellSortMode, setSellSortMode] = useState<SortMode>('latest');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [menus, setMenus] = useState<Array<{ id: string; name: string }>>([]);
-  const [hotTags, setHotTags] = useState<Array<{ id: string; label: string }>>([]);
-  const [tagProductIdsByTagId, setTagProductIdsByTagId] = useState<Record<string, number[]>>({});
   const [menuProductIdsByMenuId, setMenuProductIdsByMenuId] = useState<Record<string, number[]>>({});
 
   type SaleListing = {
@@ -366,19 +364,23 @@ export default function Home() {
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
   }, [activePrimaryTab, hasAnyPrimaryFeature]);
 
-  useEffect(() => {
-    const fetchHotTags = async () => {
-      const res = await fetch('/api/hot-tags?limit=50&days=30', { cache: 'no-store' });
-      const json = await res.json().catch(() => null);
-      const rows = Array.isArray(json?.tags) ? (json.tags as Array<{ id: string; name: string }>) : [];
-      const normalized = rows
-        .map((r) => ({ id: String(r.id || '').trim(), label: String(r.name || '').trim() }))
-        .filter((r) => r.id && r.label)
-        .map((r) => ({ ...r, label: r.label.length > 5 ? r.label.slice(0, 5) : r.label }));
-      setHotTags(normalized);
-    };
-    fetchHotTags();
-  }, []);
+  // Series tabs computed from product data — top 14 series by product count
+  const seriesTabs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of allProducts) {
+      const s = p.series;
+      if (s && typeof s === 'string' && s.trim()) {
+        counts.set(s.trim(), (counts.get(s.trim()) || 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 14)
+      .map(([s]) => ({
+        id: `series:${s}`,
+        label: s.length > 8 ? s.slice(0, 8) : s,
+      }));
+  }, [allProducts]);
 
   const secondaryTabs = useMemo(() => {
     if (activePrimaryTab === 'exchange') {
@@ -396,23 +398,16 @@ export default function Home() {
         if (seen.has(s)) continue;
         seen.add(s);
         ordered.push(s);
-        if (ordered.length >= 20) break;
+        if (ordered.length >= 14) break;
       }
-      return [{ id: 'all', label: '全部' }, ...ordered.map((s) => ({ id: `series:${s}`, label: s }))];
+      return [
+        { id: 'featured', label: '精選' },
+        ...ordered.map((s) => ({ id: `series:${s}`, label: s.length > 8 ? s.slice(0, 8) : s })),
+      ];
     }
-    const fallback = [
-      { id: 'all', label: '全部' },
-      { id: 'hot', label: '熱門' },
-      { id: 'new', label: '最新' },
-    ];
-    const extras = hotTags.map((t) => ({ id: `tag:${t.id}`, label: t.label }));
-    const seen = new Set<string>();
-    return [...fallback, ...extras].filter((t) => {
-      if (seen.has(t.id)) return false;
-      seen.add(t.id);
-      return true;
-    });
-  }, [hotTags, activePrimaryTab, sellListings]);
+    // Default: 精選 + series tabs derived from product data
+    return [{ id: 'featured', label: '精選' }, ...seriesTabs];
+  }, [activePrimaryTab, sellListings, seriesTabs]);
 
   useEffect(() => {
     if (activePrimaryTab === 'exchange') setActivePrimaryTab('all');
@@ -421,27 +416,9 @@ export default function Home() {
       restoringSecondaryTabRef.current = null;
       return;
     }
-    setActiveSecondaryTab('all');
+    setActiveSecondaryTab('featured');
   }, [activePrimaryTab]);
 
-  useEffect(() => {
-    if (!activeSecondaryTab.startsWith('tag:')) return;
-    const tagId = activeSecondaryTab.slice('tag:'.length);
-    if (!tagId || tagProductIdsByTagId[tagId]) return;
-    const fetchProductIds = async () => {
-      const { data, error } = await supabase
-        .from('product_tag_links')
-        .select('product_id')
-        .eq('tag_id', tagId);
-      if (error) return;
-      const rows = (data || []) as Array<{ product_id: number }>;
-      const ids = rows
-        .map((r) => Number(r.product_id))
-        .filter((n: number) => Number.isFinite(n));
-      setTagProductIdsByTagId((prev) => ({ ...prev, [tagId]: Array.from(new Set(ids)) }));
-    };
-    fetchProductIds();
-  }, [activeSecondaryTab, supabase, tagProductIdsByTagId]);
 
   useEffect(() => {
     if (!activePrimaryTab.startsWith('menu:')) return;
@@ -509,14 +486,9 @@ export default function Home() {
       const base = filterByPrimaryTab(products);
       let result = [...base];
 
-      if (activeSecondaryTab === 'hot') {
-        result = result.filter((p) => p.is_hot);
-      }
-
-      if (activeSecondaryTab.startsWith('tag:')) {
-        const tagId = activeSecondaryTab.slice('tag:'.length);
-        const ids = tagProductIdsByTagId[tagId];
-        result = ids ? result.filter((p) => ids.includes(Number(p.id))) : [];
+      if (activeSecondaryTab.startsWith('series:')) {
+        const seriesName = activeSecondaryTab.slice('series:'.length);
+        result = result.filter((p) => p.series === seriesName);
       }
 
       if (sortMode === 'sold-out') {
@@ -1228,7 +1200,12 @@ export default function Home() {
                         isHot={product.is_hot}
                         type={product.type}
                         status={product.status}
-                        onNavigate={persistHomeState}
+                        onNavigate={() => {
+                          persistHomeState();
+                          import('@/lib/trackEvent').then(({ trackEvent }) => {
+                            trackEvent('product_click', { productId: product.id, series: product.series ?? undefined });
+                          });
+                        }}
                       />
                     );
                   });
@@ -1330,7 +1307,7 @@ export default function Home() {
             )}
 
             <div className="flex items-center gap-1.5 py-2 px-2">
-              <div ref={secondaryTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
+              <div ref={secondaryTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
                 <div className="flex items-center gap-1.5">
                   {secondaryTabs.map((tab) => (
                     <button
@@ -1338,10 +1315,9 @@ export default function Home() {
                       data-tab-id={tab.id}
                       onClick={() => {
                         setActiveSecondaryTab(tab.id as typeof activeSecondaryTab);
-                        if (tab.id === 'new') setSortMode('latest');
                       }}
                       className={cn(
-                        "px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
+                        "snap-start flex-shrink-0 px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
                         activeSecondaryTab === tab.id
                           ? "bg-primary text-white"
                           : "bg-neutral-100 text-neutral-600"
@@ -1540,8 +1516,7 @@ export default function Home() {
                               key={tab.id}
                               onClick={() => {
                                 setActiveSecondaryTab(tab.id as typeof activeSecondaryTab);
-                                if (tab.id === 'new') setSortMode('latest');
-                              }}
+                                      }}
                               className={cn(
                                 "px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
                                 activeSecondaryTab === tab.id

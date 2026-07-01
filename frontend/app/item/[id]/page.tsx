@@ -370,7 +370,14 @@ export default function ProductDetailPage() {
           supabase.rpc('track_hot_tags_product_view', { p_product_id: productId }).then(
             () => undefined,
             () => undefined
-          )
+          );
+          // Behavioral event tracking for personalization
+          import('@/lib/trackEvent').then(({ trackEvent }) => {
+            trackEvent('product_view', {
+              productId,
+              series: (product as any)?.series ?? undefined,
+            });
+          });
         }
       }, 2000); // 2 seconds delay to count as a "view"
       return () => clearTimeout(timer);

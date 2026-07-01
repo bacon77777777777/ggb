@@ -53,6 +53,7 @@ export interface Database {
         is_preorder: boolean | null
         preorder_available_at: string | null
         distributor: string | null
+        series: string | null
         created_at: string
       }>
 
