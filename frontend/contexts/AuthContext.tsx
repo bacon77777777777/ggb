@@ -91,15 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
-        // Fetch fresh user data from Supabase Auth to get the latest metadata
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        const metadata = authUser?.user_metadata || {};
-
         return {
           id: data.id,
           name: data.name || email.split('@')[0], // Fallback to email prefix
           full_name: data.name,
-          avatar_url: (metadata.avatar_url as string | undefined) || '/images/avatar.png',
+          avatar_url: data.avatar_url || '/images/avatar/01.png',
           points: data.points || 0,
           tokens: data.tokens || 0,
           tickets: data.tickets || 0,
@@ -160,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             name: email ? email.split('@')[0] : 'User',
             full_name: null,
-            avatar_url: '/images/avatar.png',
+            avatar_url: '/images/avatar/01.png',
             points: 0,
             tokens: 0,
             tickets: 0,
@@ -203,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           name: email ? email.split('@')[0] : 'User',
           full_name: null,
-          avatar_url: '/images/avatar.png',
+          avatar_url: '/images/avatar/01.png',
           points: 0,
           tokens: 0,
           tickets: 0,
