@@ -405,7 +405,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '抽獎管理',
         items: [
           { name: '商品管理', path: '/products', icon: IconProducts },
-          { name: '批量匯入', path: '/products/import', icon: IconProducts },
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '菜單管理', path: '/categories', icon: IconCategories },
           { name: '抽獎紀錄', path: '/draws', icon: IconDraws },

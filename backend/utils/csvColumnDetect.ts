@@ -2,7 +2,7 @@
 
 export type ProductFieldKey =
   | 'name' | 'price' | 'type' | 'image_url' | 'status'
-  | 'display_menu' | 'started_at' | 'distributor' | 'rarity'
+  | 'display_menu' | 'started_at' | 'distributor' | 'series' | 'rarity'
   | 'release_date' | 'is_hot' | 'is_preorder' | 'preorder_available_at'
 
 export interface ProductFieldDef {
@@ -54,6 +54,11 @@ export const PRODUCT_FIELDS: ProductFieldDef[] = [
     key: 'distributor',
     label: '代理商',
     keywords: [/代理/i, /廠商/i, /distributor/i, /供應商/i, /^品牌$/i, /發行/i, /版權/i, /publisher/i],
+  },
+  {
+    key: 'series',
+    label: '系列',
+    keywords: [/系列/i, /\bseries\b/i, /\bip\b/i, /版權系列/i, /作品/i, /題材/i],
   },
   {
     key: 'rarity',
