@@ -46,6 +46,28 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('adminToken')
       const adminId = localStorage.getItem('adminId')
       
+      // Dev mode: auto-login as superadmin
+      if (process.env.NODE_ENV === 'development' && !token) {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'superadmin', password: 'superadmin123' }),
+        })
+        if (res.ok) {
+          const data = (await res.json()) as { user?: AdminUser }
+          if (data?.user) {
+            const today = new Date()
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+            localStorage.setItem('adminToken', 'dev')
+            localStorage.setItem('adminId', data.user.id)
+            localStorage.setItem('adminLoginDate', todayStr)
+            setUser(data.user)
+            setIsAuthenticated(true)
+            return
+          }
+        }
+      }
+
       if (token && adminId && isLoginValid()) {
         try {
           const res = await fetch('/api/admin/auth/me', { method: 'GET', credentials: 'include' })

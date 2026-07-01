@@ -387,14 +387,13 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '主頁',
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
+          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
         ],
       },
       {
         id: 'reports',
         title: '金流報表',
         items: [
-          { name: '營運總覽', path: '/reports/overview', icon: IconReports },
-          { name: '用戶行為', path: '/reports/behavior', icon: IconReports },
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
           { name: '商品消費', path: '/reports/products', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },

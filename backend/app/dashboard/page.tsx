@@ -797,9 +797,8 @@ function PieChart({ title, data, colors }: {
 }
 
 // 排名列表組件
-function RankingList({ title, data }: { title: string, data: Array<{ name: string, value: number | string, change?: number }> }) {
-  // Ensure we have exactly 10 items
-  const displayData = Array(10).fill(null).map((_, index) => {
+function RankingList({ title, data, limit = 10 }: { title: string, data: Array<{ name: string, value: number | string, change?: number }>, limit?: number }) {
+  const displayData = Array(limit).fill(null).map((_, index) => {
     return data[index] || { name: '-', value: '-', change: undefined }
   })
 
@@ -866,6 +865,9 @@ export default function DashboardPage() {
   
   const [topProducts, setTopProducts] = useState<any[]>([])
   const [topKeywords, setTopKeywords] = useState<any[]>([])
+  const [topSeries, setTopSeries] = useState<any[]>([])
+  const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
+  const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
   const [mainChartData, setMainChartData] = useState({
     visitTrend: [] as any[],
     rechargeTrend: [] as any[],
@@ -1137,14 +1139,6 @@ export default function DashboardPage() {
         
         setTopProducts(topProductsList)
 
-        // Top Keywords
-        const topKeywordsList = (searchStats.topKeywords || []).map((k: any) => ({
-            name: k.keyword,
-            value: k.count,
-            change: 0
-        }))
-        setTopKeywords(topKeywordsList)
-
         // Visit Count Stats
         const visitCountVal = visitStats.totalVisitsPeriod || visitStats.totalVisits || 0
         const visitsByDay = visitStats.chartData || []
@@ -1247,12 +1241,30 @@ export default function DashboardPage() {
         })
 
         setMainChartData({
-          visitTrend: [], // No visit data
+          visitTrend: [],
           rechargeTrend: rechargeTrendData,
           rechargeConsume: rechargeConsumeData,
           dailyDraws: dailyDrawsData,
           categoryDraws: categoryDrawsData
         })
+
+        // 用戶行為數據
+        try {
+          const behaviorRes = await fetch(`/api/admin/reports?tab=behavior&start=${dateRangeStart}&end=${dateRangeEnd}`)
+          if (behaviorRes.ok) {
+            const b = await behaviorRes.json()
+            setBehaviorStats({
+              clickTotal: b.clickTotal || 0,
+              converted: b.converted || 0,
+              conversionRate: b.conversionRate || 0,
+            })
+            setDauData((b.dailyActiveUsers || []).map((d: any) => ({ date: d.date, value: d.count })))
+            setTopSeries((b.topSeries || []).slice(0, 15).map((s: any) => ({ name: s.series, value: s.count })))
+            setTopKeywords((b.topSearches || []).slice(0, 10).map((s: any) => ({ name: s.query, value: s.count })))
+          }
+        } catch (e) {
+          console.error('behavior fetch error', e)
+        }
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -1414,7 +1426,13 @@ export default function DashboardPage() {
             cardId="conversionRate"
             selectedPeriod={cardPeriod}
           />
+          <StatCard title="點擊商品數（去重）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} />
+          <StatCard title="點擊後成功抽獎" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} />
+          <StatCard title="點擊→抽轉化率" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} />
         </div>
+
+        {/* DAU 每日活躍用戶 */}
+        <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} />
 
         {/* 圖表區域 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1449,9 +1467,10 @@ export default function DashboardPage() {
         </div>
 
         {/* 排名列表 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} />
           <RankingList title="熱門商品 TOP 10" data={topProducts} />
-          <RankingList title="熱門關鍵字 TOP 10" data={topKeywords} />
+          <RankingList title="熱門搜尋字 TOP 10" data={topKeywords} />
         </div>
       </div>
     </AdminLayout>

@@ -15,6 +15,13 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  // Already logged in → go to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/dashboard')
+    }
+  }, [isAuthenticated, router])
+
   // Log visit to login page
   useEffect(() => {
     const logVisit = async () => {
