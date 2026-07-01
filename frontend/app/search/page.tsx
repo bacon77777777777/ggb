@@ -306,16 +306,19 @@ export default function SearchPage() {
         })
       : allProducts;
 
-    const filteredByFlags = base.filter((p) => {
-      const t = (p as any)?.type as string | null;
-      if (!t) return true;
-      if (t === 'ichiban') return flags.ichiban;
-      if (t === 'blindbox') return flags.blindbox;
-      if (t === 'gacha') return flags.gacha;
-      if (t === 'card') return flags.card;
-      if (t === 'custom') return flags.custom;
-      return true;
-    });
+    // 全部 tab 搜尋時不過濾 flag，確保熱門關鍵字能找到結果
+    const filteredByFlags = activePrimaryTab === 'all'
+      ? base
+      : base.filter((p) => {
+          const t = (p as any)?.type as string | null;
+          if (!t) return true;
+          if (t === 'ichiban') return flags.ichiban;
+          if (t === 'blindbox') return flags.blindbox;
+          if (t === 'gacha') return flags.gacha;
+          if (t === 'card') return flags.card;
+          if (t === 'custom') return flags.custom;
+          return true;
+        });
 
     const filteredByTab =
       activePrimaryTab === 'ichiban' ||
@@ -583,11 +586,11 @@ export default function SearchPage() {
 
       <div className="max-w-7xl mx-auto px-2 pt-3 space-y-4">
         <div className="mt-1 md:hidden">
-          <div className="flex items-baseline justify-between mb-2 px-0.5">
-            <h2 className="text-[14px] sm:text-[15px] font-black text-neutral-900 dark:text-white tracking-tight">
+          <div className="mb-2 px-0.5">
+            <h2 className="text-[14px] sm:text-[15px] font-black text-neutral-900 dark:text-white tracking-tight leading-snug">
               {mobileTitle}
             </h2>
-            <span className="text-[11px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            <span className="text-[11px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest mt-0.5 block">
               {isLoading ? '載入中...' : mobileCountLabel}
             </span>
           </div>
