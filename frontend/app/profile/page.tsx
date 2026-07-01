@@ -6283,7 +6283,7 @@ function ProfileContent() {
             {/* Mobile Footer Copyright */}
             <div className="py-6 text-center">
               <p className="text-[10px] font-black text-neutral-300 uppercase tracking-widest">
-                © 2025 GGB. All Rights Reserved
+                © 2025 吉吉比. All Rights Reserved
               </p>
             </div>
           </div>

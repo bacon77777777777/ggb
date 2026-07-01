@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     apple: '/images/20260629/favicon.png',
   },
   appleWebApp: {
-    title: 'GGB',
+    title: '吉吉比扭蛋',
     capable: true,
     statusBarStyle: 'default',
   },
