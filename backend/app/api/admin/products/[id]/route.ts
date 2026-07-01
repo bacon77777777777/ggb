@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { detectSeriesFromName } from '@/lib/detectSeries'
 
 export async function PUT(
   request: Request,
@@ -23,6 +24,9 @@ export async function PUT(
     const supabaseAdmin = getSupabaseAdmin()
 
     if (product) {
+      if (!product.series && product.name) {
+        product.series = await detectSeriesFromName(product.name, supabaseAdmin) || null
+      }
       const { error: updateError } = await supabaseAdmin.from('products').update(product).eq('id', productId)
       if (updateError) throw updateError
     }

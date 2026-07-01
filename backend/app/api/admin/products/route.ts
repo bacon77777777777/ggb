@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { detectSeriesFromName } from '@/lib/detectSeries'
 import crypto from 'crypto'
 
 type CreateProductPayload = {
@@ -32,12 +33,17 @@ export async function POST(request: Request) {
         ? rawProductCode
         : generateTempProductCode()
 
-    const insertProduct = {
+    const detectedSeries = !product.series
+      ? await detectSeriesFromName(product.name, supabaseAdmin)
+      : null
+
+    const insertProduct: Record<string, any> = {
       ...product,
       category: product.category && String(product.category).trim() !== '' ? product.category : '未分類',
       product_code: productCode,
       seed,
       txid_hash: txidHash,
+      series: product.series || detectedSeries || null,
     }
 
     const { data: created, error: insertError } = await supabaseAdmin

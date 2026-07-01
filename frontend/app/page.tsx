@@ -36,6 +36,8 @@ export default function Home() {
   const { user } = useAuth();
   // Map<series, score> — populated from get_user_series_preferences RPC
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
+  // Map<series, score> — global platform popularity (used as default for new users)
+  const [globalSeriesPop, setGlobalSeriesPop] = useState<Map<string, number>>(new Map());
   const enabledPrimaryFeatureCount =
     (flags.sell ? 1 : 0) +
     (flags.ichiban ? 1 : 0) +
@@ -198,6 +200,23 @@ export default function Home() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch global platform popularity (for all users, used as default sort)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_popular_series');
+        if (cancelled || !Array.isArray(data)) return;
+        const map = new Map<string, number>();
+        for (const row of data as Array<{ series: string; score: number }>) {
+          if (row.series) map.set(row.series, Number(row.score) || 0);
+        }
+        setGlobalSeriesPop(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
 
   // Fetch personalized series preferences for logged-in users
   useEffect(() => {
@@ -389,7 +408,7 @@ export default function Home() {
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
   }, [activePrimaryTab, hasAnyPrimaryFeature]);
 
-  // Series tabs: sort by user preference score first, then product count
+  // Series tabs: personal prefs → global popularity → product count
   const seriesTabs = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of allProducts) {
@@ -401,14 +420,17 @@ export default function Home() {
     return Array.from(counts.entries())
       .sort((a, b) => {
         const prefDiff = (userSeriesPref.get(b[0]) || 0) - (userSeriesPref.get(a[0]) || 0);
-        return prefDiff !== 0 ? prefDiff : b[1] - a[1];
+        if (prefDiff !== 0) return prefDiff;
+        const popDiff = (globalSeriesPop.get(b[0]) || 0) - (globalSeriesPop.get(a[0]) || 0);
+        if (popDiff !== 0) return popDiff;
+        return b[1] - a[1];
       })
       .slice(0, 14)
       .map(([s]) => ({
         id: `series:${s}`,
         label: s.length > 8 ? s.slice(0, 8) : s,
       }));
-  }, [allProducts, userSeriesPref]);
+  }, [allProducts, userSeriesPref, globalSeriesPop]);
 
   const secondaryTabs = useMemo(() => {
     if (activePrimaryTab === 'exchange') {
@@ -549,22 +571,26 @@ export default function Home() {
         result.sort((a, b) => a.price - b.price);
       } else if (sortMode === 'price-desc') {
         result.sort((a, b) => b.price - a.price);
-      } else if (activeSecondaryTab === 'featured' && userSeriesPref.size > 0) {
-        result.sort((a, b) => {
-          const scoreA = userSeriesPref.get(a.series || '') || 0;
-          const scoreB = userSeriesPref.get(b.series || '') || 0;
-          if (scoreA !== scoreB) return scoreB - scoreA;
-          if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
-          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return db - da;
-        });
-      } else {
-        result.sort((a, b) => {
-          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return db - da;
-        });
+      } else if (activeSecondaryTab === 'featured') {
+        const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
+        if (prefMap.size > 0) {
+          result.sort((a, b) => {
+            const scoreA = prefMap.get(a.series || '') || 0;
+            const scoreB = prefMap.get(b.series || '') || 0;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return db - da;
+          });
+        } else {
+          result.sort((a, b) => {
+            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return db - da;
+          });
+        }
       }
 
       if (sortMode !== 'sold-out') {
@@ -577,7 +603,7 @@ export default function Home() {
 
       return result;
     },
-    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref]
+    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop]
   );
 
   const filteredProducts = useMemo(
