@@ -6,13 +6,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 
-type ReportType = 'overview' | 'products' | 'recharge' | 'consumption'
+type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
 const TYPE_META: Record<ReportType, { title: string }> = {
   overview:    { title: '營運總覽' },
   products:    { title: '商品表現' },
   recharge:    { title: '儲值明細' },
   consumption: { title: '消費明細' },
+  behavior:    { title: '用戶行為' },
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -89,6 +90,16 @@ export default function ReportPage() {
   const [dailyBreakdown, setDailyBreakdown] = useState<any[]>([])
   const [productsData, setProductsData] = useState<any[]>([])
 
+  // 用戶行為
+  const [behaviorData, setBehaviorData] = useState<{
+    topSearches: { query: string; count: number }[]
+    topSeries: { series: string; count: number }[]
+    conversionRate: number
+    clickTotal: number
+    converted: number
+    dailyActiveUsers: { date: string; count: number }[]
+  } | null>(null)
+
   // 商品表現篩選
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [filterSupplier, setFilterSupplier] = useState('')
@@ -124,6 +135,7 @@ export default function ReportPage() {
       else if (reportType === 'consumption') setConsumptionData(json.data ?? [])
       else if (reportType === 'overview') { setOverview(json.overview ?? null); setFunnel(json.funnel ?? null); setDailyBreakdown(json.dailyBreakdown ?? []) }
       else if (reportType === 'products') setProductsData(json.data ?? [])
+      else if (reportType === 'behavior') setBehaviorData(json)
     } catch (e: any) { alert(e.message || '載入失敗') }
     finally { setLoading(false) }
   }, [reportType, start, end, filterSupplier, filterCategory])
@@ -562,6 +574,111 @@ export default function ReportPage() {
                   </tfoot>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+        {/* ── 用戶行為 ── */}
+        {reportType === 'behavior' && (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">載入中…</div>
+            ) : !behaviorData ? (
+              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
+            ) : (
+              <>
+                {/* KPI */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-blue-600" />
+                  <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-emerald-600" />
+                  <KpiCard label="點擊 → 抽轉化率" value={`${behaviorData.conversionRate}%`} color="text-amber-600" />
+                </div>
+
+                {/* 每日活躍用戶 */}
+                <div className="bg-white rounded-lg border border-neutral-200 p-4">
+                  <h3 className="text-sm font-semibold text-neutral-500 mb-3">每日活躍用戶（DAU）</h3>
+                  {behaviorData.dailyActiveUsers.length === 0 ? (
+                    <p className="text-sm text-neutral-400 py-4 text-center">此區間無資料</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-neutral-100">
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">日期</th>
+                            <th className="text-right py-2 px-3 text-xs font-semibold text-neutral-500">活躍用戶數</th>
+                            <th className="py-2 px-3 w-40"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            const max = Math.max(...behaviorData.dailyActiveUsers.map(d => d.count), 1)
+                            return behaviorData.dailyActiveUsers.map(d => (
+                              <tr key={d.date} className="border-b border-neutral-50 hover:bg-neutral-50">
+                                <td className="py-2 px-3 font-mono text-xs text-neutral-600">{d.date}</td>
+                                <td className="py-2 px-3 text-right font-semibold text-blue-600">{d.count}</td>
+                                <td className="py-2 px-3">
+                                  <div className="bg-neutral-100 rounded-full h-1.5">
+                                    <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${Math.round(d.count / max * 100)}%` }} />
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* 熱門搜尋字 */}
+                  <div className="bg-white rounded-lg border border-neutral-200 p-4">
+                    <h3 className="text-sm font-semibold text-neutral-500 mb-3">熱門搜尋字 TOP 15</h3>
+                    {behaviorData.topSearches.length === 0 ? (
+                      <p className="text-sm text-neutral-400 py-4 text-center">此區間無搜尋紀錄</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const max = behaviorData.topSearches[0]?.count || 1
+                          return behaviorData.topSearches.map((item, i) => (
+                            <div key={item.query} className="flex items-center gap-3">
+                              <span className="text-xs text-neutral-400 w-5 text-right">{i + 1}</span>
+                              <span className="flex-1 text-sm text-neutral-800 truncate">{item.query}</span>
+                              <div className="w-24 bg-neutral-100 rounded-full h-1.5">
+                                <div className="h-1.5 rounded-full bg-violet-400" style={{ width: `${Math.round(item.count / max * 100)}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold text-neutral-600 w-8 text-right">{item.count}</span>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 最多點擊系列 */}
+                  <div className="bg-white rounded-lg border border-neutral-200 p-4">
+                    <h3 className="text-sm font-semibold text-neutral-500 mb-3">最多點擊系列 TOP 15</h3>
+                    {behaviorData.topSeries.length === 0 ? (
+                      <p className="text-sm text-neutral-400 py-4 text-center">此區間無點擊紀錄</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(() => {
+                          const max = behaviorData.topSeries[0]?.count || 1
+                          return behaviorData.topSeries.map((item, i) => (
+                            <div key={item.series} className="flex items-center gap-3">
+                              <span className="text-xs text-neutral-400 w-5 text-right">{i + 1}</span>
+                              <span className="flex-1 text-sm text-neutral-800 truncate">{item.series}</span>
+                              <div className="w-24 bg-neutral-100 rounded-full h-1.5">
+                                <div className="h-1.5 rounded-full bg-amber-400" style={{ width: `${Math.round(item.count / max * 100)}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold text-neutral-600 w-8 text-right">{item.count}</span>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}

@@ -32,6 +32,7 @@ export default function EditProductPage() {
     releaseYear: '',
     releaseMonth: '',
     distributor: '',
+    series: '',
     supplierId: '' as string,
     rarity: 3,
     startedAt: '',  // 開賣時間
@@ -266,6 +267,7 @@ export default function EditProductPage() {
             releaseYear: defaultYear,
             releaseMonth: defaultMonth,
             distributor: product.distributor || '',
+            series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '', // 假設是 ISO 格式
@@ -358,6 +360,7 @@ export default function EditProductPage() {
         is_hot: formData.isHot,
         total_count: calculatedTotalCount,
         distributor: formData.distributor,
+        series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
@@ -700,6 +703,19 @@ export default function EditProductPage() {
                 onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 placeholder="例如：萬代南夢宮娛樂"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                系列 <span className="text-neutral-400 font-normal">（演算法推薦用）</span>
+              </label>
+              <input
+                type="text"
+                value={formData.series}
+                onChange={(e) => setFormData({ ...formData, series: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                placeholder="例如：寶可夢、鬼滅之刃、蛋黃哥"
               />
             </div>
 

@@ -307,6 +307,95 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // ── 用戶行為 ─────────────────────────────────────────────────────────────
+    if (tab === 'behavior') {
+      const applyBehaviorDate = (q: any) => {
+        if (start) q = q.gte('created_at', start)
+        if (endExclusive) q = q.lt('created_at', endExclusive)
+        return q
+      }
+
+      // 熱門搜尋字（search 事件的 meta.query）
+      const { data: searchEvents } = await applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('meta')
+          .eq('event_type', 'search')
+      )
+      const queryCount = new Map<string, number>()
+      for (const e of searchEvents ?? []) {
+        const q = (e.meta as any)?.query
+        if (q && typeof q === 'string' && q.trim()) {
+          const k = q.trim().toLowerCase()
+          queryCount.set(k, (queryCount.get(k) || 0) + 1)
+        }
+      }
+      const topSearches = Array.from(queryCount.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([query, count]) => ({ query, count }))
+
+      // 最多點擊系列
+      const { data: clickEvents } = await applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('series')
+          .in('event_type', ['product_click', 'series_click'])
+          .not('series', 'is', null)
+      )
+      const seriesCount = new Map<string, number>()
+      for (const e of clickEvents ?? []) {
+        const s = e.series
+        if (s) seriesCount.set(s, (seriesCount.get(s) || 0) + 1)
+      }
+      const topSeries = Array.from(seriesCount.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([series, count]) => ({ series, count }))
+
+      // 點擊→抽轉化（同 product_id 先有 click 再有 draw 的 user 數）
+      const { data: clickUsers } = await applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('user_id, product_id')
+          .eq('event_type', 'product_click')
+          .not('user_id', 'is', null)
+          .not('product_id', 'is', null)
+      )
+      const { data: drawUsers } = await applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('user_id, product_id')
+          .eq('event_type', 'draw')
+          .not('user_id', 'is', null)
+          .not('product_id', 'is', null)
+      )
+      const clickSet = new Set((clickUsers ?? []).map((e: any) => `${e.user_id}:${e.product_id}`))
+      const drawSet = new Set((drawUsers ?? []).map((e: any) => `${e.user_id}:${e.product_id}`))
+      const converted = [...drawSet].filter(k => clickSet.has(k)).length
+      const clickTotal = clickSet.size
+      const conversionRate = clickTotal > 0 ? Math.round((converted / clickTotal) * 1000) / 10 : 0
+
+      // 每日活躍用戶數（DAU）
+      const { data: dauEvents } = await applyBehaviorDate(
+        supabase
+          .from('user_events')
+          .select('user_id, created_at')
+          .not('user_id', 'is', null)
+      )
+      const dauMap = new Map<string, Set<string>>()
+      for (const e of dauEvents ?? []) {
+        const day = (e.created_at as string).slice(0, 10)
+        if (!dauMap.has(day)) dauMap.set(day, new Set())
+        dauMap.get(day)!.add(e.user_id)
+      }
+      const dailyActiveUsers = Array.from(dauMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, users]) => ({ date, count: users.size }))
+
+      return NextResponse.json({ topSearches, topSeries, conversionRate, clickTotal, converted, dailyActiveUsers })
+    }
+
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
   } catch (error: any) {
     console.error('Reports API error:', error)
