@@ -30,8 +30,14 @@ export default function RechargesPage() {
 
   // 篩選與欄位顯示狀態
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  })
+  const [filterEndDate, setFilterEndDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
   
   const [visibleColumns, setVisibleColumns] = useState<{[key: string]: boolean}>({
     created_at: true,

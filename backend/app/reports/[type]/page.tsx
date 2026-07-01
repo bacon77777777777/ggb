@@ -17,7 +17,7 @@ const PRODUCT_TYPE_LABEL: Record<string, string> = {
 }
 
 const TYPE_META: Record<ReportType, { title: string }> = {
-  overview:    { title: '營運總覽' },
+  overview:    { title: '轉換分析' },
   products:    { title: '商品消費' },
   recharge:    { title: '儲值明細' },
   consumption: { title: '消費明細' },
@@ -239,26 +239,12 @@ export default function ReportPage() {
               <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
             ) : (
               <>
-                {/* 資金流動 */}
-                <div>
-                  <h3 className="text-sm font-semibold text-neutral-500 mb-2 px-1">資金流動</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <KpiCard label="總儲值金額" value={`NT$ ${overview.totalRecharge.toLocaleString()}`} sub={`${overview.totalRechargeCount} 筆`} color="text-purple-600" />
-                    <KpiCard label="平均儲值 / 人" value={`NT$ ${overview.avgPerPayer.toLocaleString()}`} sub={`${overview.uniquePayers} 位付費用戶`} color="text-purple-500" />
-                    <KpiCard label="總消費代幣" value={`${overview.totalTokenConsumed.toLocaleString()} G`} sub={`${overview.totalDraws} 次抽獎`} color="text-emerald-600" />
-                    <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-emerald-500" />
-                    <KpiCard label="折價券折損" value={`NT$ ${overview.couponDiscountFixed.toLocaleString()}`} sub={overview.couponDiscountPercentageCount > 0 ? `另有 ${overview.couponDiscountPercentageCount} 張折扣%券` : '固定金額券'} color="text-orange-500" />
-                  </div>
-                </div>
-
-                {/* 會員 */}
-                <div>
-                  <h3 className="text-sm font-semibold text-neutral-500 mb-2 px-1">會員</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
-                    <KpiCard label="期間新增會員" value={`${overview.newUserCount.toLocaleString()} 人`} color="text-blue-500" />
-                    <KpiCard label="期間付費用戶" value={`${overview.uniquePayers.toLocaleString()} 人`} sub={overview.newUserCount > 0 ? `轉換率 ${Math.round(overview.uniquePayers / overview.newUserCount * 100)}%` : undefined} color="text-indigo-600" />
-                  </div>
+                {/* 摘要數據（儀表板未重複的） */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-emerald-600" />
+                  <KpiCard label="折價券折損" value={`NT$ ${overview.couponDiscountFixed.toLocaleString()}`} sub={overview.couponDiscountPercentageCount > 0 ? `另有 ${overview.couponDiscountPercentageCount} 張折扣%券` : '固定金額券'} color="text-orange-500" />
+                  <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
+                  <KpiCard label="首次付費用戶佔比" value={funnel ? `${funnel.newUserConversionRate}%` : '—'} sub="新用戶→首儲轉化" color="text-indigo-600" />
                 </div>
 
                 {/* 轉換漏斗 & 回購分析 */}

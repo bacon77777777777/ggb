@@ -893,7 +893,7 @@ export default function DashboardPage() {
     tokenConsumed: { value: 0, trend: 'down', trendValue: 0, title: '消耗代幣', unit: 'G', chartData: [], chartType: 'bar', chartColor: '#10b981' },
     totalDraws: { value: 0, trend: 'up', trendValue: 0, title: '抽獎次數', unit: '次', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
   totalTokenBalance: { value: 0, trend: 'down', trendValue: 0, title: '總代幣餘額', unit: 'G', chartData: [], chartType: 'line', chartColor: '#EF4444' },
-  abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: 'ABC賞已出數量', unit: '個', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
+  abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: '付費用戶數', unit: '人', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
   visitCount: { value: 0, trend: 'down', trendValue: 0, title: '訪問量', unit: '次', chartData: [], chartType: 'line', chartColor: '#9333EA' },
   registeredUsers: { value: 0, trend: 'up', trendValue: 0, title: '註冊量', unit: '人', chartData: [], chartType: 'line', chartColor: '#10b981' },
     conversionRate: { value: 0, trend: 'up', trendValue: 0, title: '平均客單價', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
@@ -1124,21 +1124,12 @@ export default function DashboardPage() {
         // Mocking balance trend since we don't have balance history
         const balanceData = timeSlots.map(() => totalTokenBalance) 
 
-        const isABCPrizeLevel = (level: unknown) => {
-          const s = String(level || '').trim()
-          if (!s) return false
-          if (/^[ABC]$/.test(s)) return true
-          if (/^[ABC]賞$/.test(s)) return true
-          const upper = s.toUpperCase()
-          if (upper === 'A' || upper === 'B' || upper === 'C') return true
-          return false
-        }
-
-        const abcPrizes = draws?.filter((d: any) => isABCPrizeLevel(d.prize_level)).length || 0
-        const abcByDay = timeSlots.map((slot) => {
-          return (
-            draws?.filter((d: any) => getFilterFn(slot, d.created_at) && isABCPrizeLevel(d.prize_level)).length || 0
-          )
+        // 付費用戶數（期間內有儲值的不重複用戶）
+        const payingUserIdSet = new Set(recharges?.map(r => r.user_id) || [])
+        const uniquePayersCount = payingUserIdSet.size
+        const payersByDay = timeSlots.map(slot => {
+          const ids = new Set(recharges?.filter(r => getFilterFn(slot, r.created_at)).map(r => r.user_id))
+          return ids.size
         })
 
         // Registered Users
@@ -1148,9 +1139,7 @@ export default function DashboardPage() {
         })
 
         // 平均客單價 (avg spend per paying user)
-        const payingUserIdsInPeriod = new Set(recharges?.map(r => r.user_id))
-        const uniquePayerCount = payingUserIdsInPeriod.size
-        const avgSpendPerPayer = uniquePayerCount > 0 ? Math.round(totalRevenue / uniquePayerCount) : 0
+        const avgSpendPerPayer = uniquePayersCount > 0 ? Math.round(totalRevenue / uniquePayersCount) : 0
         const avgSpendByDay = revenueByDay
 
         // Top Products Calculation
@@ -1234,15 +1223,15 @@ export default function DashboardPage() {
             chartType: 'line', 
             chartColor: '#EF4444' 
           },
-          abcPrizeCount: { 
-            value: abcPrizes, 
-            trend: 'up', 
-            trendValue: 0, 
-            title: 'ABC賞已出數量', 
-            unit: '個', 
-            chartData: abcByDay, 
-            chartType: 'bar', 
-            chartColor: '#9333EA' 
+          abcPrizeCount: {
+            value: uniquePayersCount,
+            trend: 'up',
+            trendValue: 0,
+            title: '付費用戶數',
+            unit: '人',
+            chartData: payersByDay,
+            chartType: 'bar',
+            chartColor: '#9333EA'
           },
           visitCount: { 
             value: visitCountVal, 
@@ -1429,7 +1418,7 @@ export default function DashboardPage() {
             chartColor={stats.abcPrizeCount.chartColor}
             cardId="abcPrizeCount"
             selectedPeriod={cardPeriod}
-            tooltip="期間內抽出 A/B/C 等級獎品的次數，用於追蹤高等級獎品庫存消耗速度。"
+            tooltip="期間內完成儲值的不重複用戶數。搭配訪問量與註冊量，可觀察流量→付費的完整轉化鏈路。"
           />
           <StatCard
             title={stats.visitCount.title}

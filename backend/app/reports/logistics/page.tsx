@@ -55,8 +55,14 @@ export default function LogisticsReportPage() {
   const [records, setRecords] = useState<LogisticsRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  })
+  const [filterEndDate, setFilterEndDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
   const [filterStatus, setFilterStatus] = useState('all')
 
   const fetchData = async () => {
