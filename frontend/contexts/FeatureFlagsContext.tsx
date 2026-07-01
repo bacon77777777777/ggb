@@ -8,13 +8,13 @@ export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'c
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  sell: true,
-  ichiban: true,
-  blindbox: true,
-  gacha: true,
-  card: true,
-  custom: true,
-  exchange: true,
+  sell: false,
+  ichiban: false,
+  blindbox: false,
+  gacha: false,
+  card: false,
+  custom: false,
+  exchange: false,
   market: false,
   sell_escrow: false,
 };
