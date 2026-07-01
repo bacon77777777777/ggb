@@ -663,15 +663,31 @@ export default function Home() {
   const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: PanInfo) => {
     const swipe = swipePower(offset.x, velocity.x);
 
-    if (swipe < -swipeConfidenceThreshold) {
-      const currentIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
-      if (currentIndex < primaryTabs.length - 1) {
-        handlePrimaryTabChange(primaryTabs[currentIndex + 1].id);
+    if (hidePrimaryTabs) {
+      // 只有二級 tab 時，左右滑切換二級 tab
+      if (swipe < -swipeConfidenceThreshold) {
+        const currentIndex = secondaryTabs.findIndex((t) => t.id === activeSecondaryTab);
+        if (currentIndex < secondaryTabs.length - 1) {
+          setActiveSecondaryTab(secondaryTabs[currentIndex + 1].id as typeof activeSecondaryTab);
+        }
+      } else if (swipe > swipeConfidenceThreshold) {
+        const currentIndex = secondaryTabs.findIndex((t) => t.id === activeSecondaryTab);
+        if (currentIndex > 0) {
+          setActiveSecondaryTab(secondaryTabs[currentIndex - 1].id as typeof activeSecondaryTab);
+        }
       }
-    } else if (swipe > swipeConfidenceThreshold) {
-      const currentIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
-      if (currentIndex > 0) {
-        handlePrimaryTabChange(primaryTabs[currentIndex - 1].id);
+    } else {
+      // 一級 tab 存在時，左右滑切換一級 tab
+      if (swipe < -swipeConfidenceThreshold) {
+        const currentIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
+        if (currentIndex < primaryTabs.length - 1) {
+          handlePrimaryTabChange(primaryTabs[currentIndex + 1].id);
+        }
+      } else if (swipe > swipeConfidenceThreshold) {
+        const currentIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
+        if (currentIndex > 0) {
+          handlePrimaryTabChange(primaryTabs[currentIndex - 1].id);
+        }
       }
     }
   };
