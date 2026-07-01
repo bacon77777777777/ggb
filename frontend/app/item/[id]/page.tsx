@@ -650,10 +650,17 @@ export default function ProductDetailPage() {
 
       setWonPrizes(results);
       setIsPurchaseModalOpen(false);
-      // Refresh user profile to update points/tokens balance immediately
       if (refreshProfile) {
         refreshProfile();
       }
+
+      import('@/lib/trackEvent').then(({ trackEvent }) => {
+        trackEvent('draw', {
+          productId: product.id,
+          series: (product as any)?.series ?? undefined,
+          meta: { count: quantity },
+        });
+      });
 
       if (product.type === 'card') {
         setIsVideoMuted(false);

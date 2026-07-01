@@ -500,6 +500,14 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       );
       setSelectedTickets([]);
       if (refreshProfile) refreshProfile();
+
+      import('@/lib/trackEvent').then(({ trackEvent }) => {
+        trackEvent('draw', {
+          productId: product.id,
+          series: (product as any)?.series ?? undefined,
+          meta: { count: ticketsToPlay.length },
+        });
+      });
       
       // Check for Last One and trigger celebration
       if (results.some(r => r.is_last_one)) {
