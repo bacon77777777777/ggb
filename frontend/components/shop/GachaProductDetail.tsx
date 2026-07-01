@@ -338,6 +338,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
         className="w-full flex justify-center"
         style={{
           marginBottom: Math.round(375 * (932 / 750) * (scale - 1)),
+          paddingBottom: 24,
           backgroundImage: "url('/images/gacha/bg.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -454,7 +455,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
       </div>
 
       {/* 總覽 + 猜你喜歡 — 在 scale 容器外，正常文件流 */}
-      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-4">
+      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-2">
         <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
       </div>
 
