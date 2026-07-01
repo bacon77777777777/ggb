@@ -102,7 +102,7 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
     
     setForceGoldEgg(false);
     const totalPrice = product.price * quantity;
-    const pointsCost = totalPrice * 4;
+    const pointsCost = totalPrice * 3;
     
     if (options.usePoints) {
       if ((user.points || 0) < pointsCost) {

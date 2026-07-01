@@ -134,7 +134,7 @@ export function PurchaseConfirmationModal({
   }
   
   const finalPrice = Math.max(0, totalPrice - discountAmount);
-  const pointsCost = totalPrice * 4; // Points cost is based on original price
+  const pointsCost = totalPrice * 3;
   
   // Calculate remaining balance after purchase for immediate feedback
   // const remainingTokens = userTokens - finalPrice;
@@ -348,7 +348,7 @@ export function PurchaseConfirmationModal({
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Coins className="w-4 h-4 text-yellow-500" />
-                          使用積分支付 (4積分 = 1代幣)
+                          使用積分支付 (3積分 = 1代幣)
                        </div>
                        <label className="relative inline-flex items-center cursor-pointer">
                          <input 
