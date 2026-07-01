@@ -121,6 +121,11 @@ interface DeliveryOrder {
   tracking: string;
   method: string;
   arrivalDate?: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  address?: string;
+  storeName?: string;
+  logisticsType?: string;
 }
 
 interface DrawHistoryItem {
@@ -243,6 +248,10 @@ interface DbOrder {
   tracking_number: string | null;
   status: string;
   logistics_type?: string | null;
+  recipient_name?: string | null;
+  recipient_phone?: string | null;
+  address?: string | null;
+  store_name?: string | null;
   draw_records: {
     product_prizes: {
       level: string;
@@ -1323,7 +1332,12 @@ function ProfileContent() {
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '/'),
              tracking: order.tracking_number || '-',
              method: displayMethod,
-             arrivalDate: arrivalDate
+             arrivalDate: arrivalDate,
+             recipientName: order.recipient_name || undefined,
+             recipientPhone: order.recipient_phone || undefined,
+             address: order.address || undefined,
+             storeName: order.store_name || undefined,
+             logisticsType: method,
            };
          });
         setDeliveryHistory(orders);
@@ -4036,8 +4050,8 @@ function ProfileContent() {
                               >
                                 <div className="p-3 space-y-3">
                                   {/* Shipping Info */}
-                                  <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-                                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-neutral-50 dark:border-neutral-800">
+                                  <div className="bg-white dark:bg-neutral-900 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm space-y-2">
+                                    <div className="flex items-center justify-between pb-2 border-b border-neutral-50 dark:border-neutral-800">
                                       <span className="text-[11px] text-neutral-400 font-bold">物流方式</span>
                                       <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.method}</span>
                                     </div>
@@ -4046,8 +4060,8 @@ function ProfileContent() {
                                       <div className="flex items-center gap-2">
                                         <span className="text-[12px] font-black text-neutral-900 dark:text-white font-mono">{order.tracking || '-'}</span>
                                         {order.tracking && (
-                                          <Copy 
-                                            className="w-3 h-3 text-neutral-400 cursor-pointer" 
+                                          <Copy
+                                            className="w-3 h-3 text-neutral-400 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               navigator.clipboard.writeText(order.tracking);
@@ -4057,6 +4071,33 @@ function ProfileContent() {
                                         )}
                                       </div>
                                     </div>
+                                    {order.recipientName && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] text-neutral-400 font-bold">收件人</span>
+                                        <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.recipientName}</span>
+                                      </div>
+                                    )}
+                                    {order.recipientPhone && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] text-neutral-400 font-bold">收件人電話</span>
+                                        <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.recipientPhone}</span>
+                                      </div>
+                                    )}
+                                    {order.logisticsType === 'CVS' ? (
+                                      order.storeName && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-neutral-400 font-bold">收件門市</span>
+                                          <span className="text-[12px] font-black text-neutral-900 dark:text-white">{order.storeName}</span>
+                                        </div>
+                                      )
+                                    ) : (
+                                      order.address && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] text-neutral-400 font-bold">收件地址</span>
+                                          <span className="text-[12px] font-black text-neutral-900 dark:text-white text-right max-w-[60%]">{order.address}</span>
+                                        </div>
+                                      )
+                                    )}
                                   </div>
 
                                   <div>
