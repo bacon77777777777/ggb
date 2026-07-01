@@ -79,12 +79,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         </div>
 
         <table className="w-full text-left table-fixed">
-          <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
-            <tr>
-              <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
-              <th className="px-2 sm:px-3 py-2 sm:py-3 text-right uppercase tracking-widest w-[64px] sm:w-[80px] whitespace-nowrap">收集</th>
-            </tr>
-          </thead>
+          <thead>
           <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
             {displayPrizes.map((prize) => {
               const isCollected = user ? collectedIds.has(prize.id) : false;
