@@ -27,7 +27,7 @@ const ITEM_IMAGES = [
   '/images/item/10020.jpg',
 ];
 
-const DEFAULT_IMAGE = '/images/item.png';
+const DEFAULT_IMAGE = '/images/item_defaulet.png';
 
 const getItemImageForId = (id: string | number) => {
   if (ITEM_IMAGES.length === 0) return DEFAULT_IMAGE;

@@ -21,6 +21,7 @@ const DEFAULT_BANNER: Banner = {
 export default function HeroBanner({ banners }: { banners: Banner[] }) {
   const items = banners.length > 0 ? banners : [DEFAULT_BANNER];
   const [current, setCurrent] = useState(0);
+  const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
   const touchStart = useRef<number | null>(null);
   const touchEnd = useRef<number | null>(null);
   const minSwipeDistance = 50;
@@ -75,12 +76,13 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
         >
           <Link href={banner.link} className="block w-full h-full relative">
             <Image
-              src={banner.image || '/images/banner_defaulet.png'}
+              src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
               alt="Banner"
               fill
               className="object-fill select-none"
               draggable={false}
               unoptimized
+              onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
             />
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />

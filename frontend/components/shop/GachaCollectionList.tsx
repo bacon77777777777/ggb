@@ -27,6 +27,8 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   const [recommendations, setRecommendations] = useState<ProductRow[]>([]);
   const [supabase] = useState(() => createClient());
   const [previewPrize, setPreviewPrize] = useState<Prize | null>(null);
+  const [brokenPrizeIds, setBrokenPrizeIds] = useState<Set<number>>(new Set());
+  const markBroken = (id: number) => setBrokenPrizeIds(prev => new Set(prev).add(id));
 
   // 取得用戶已抽到的 prize_id 集合
   useEffect(() => {
@@ -82,7 +84,9 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
             {displayPrizes.map((prize) => {
               const isCollected = user ? collectedIds.has(prize.id) : false;
-              const imgSrc = prize.image_url && !prize.image_url.startsWith('blob:') ? prize.image_url : null;
+              const imgSrc = prize.image_url && !prize.image_url.startsWith('blob:') && !brokenPrizeIds.has(prize.id)
+                ? prize.image_url
+                : null;
 
               return (
                 <tr
@@ -101,7 +105,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                         )}
                       >
                         {imgSrc ? (
-                          <Image src={imgSrc} alt={prize.name} fill className="object-cover" unoptimized />
+                          <Image src={imgSrc} alt={prize.name} fill className="object-cover" unoptimized onError={() => markBroken(prize.id)} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-300 font-black">—</div>
                         )}
@@ -191,12 +195,13 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
               </span>
             </div>
             <Image
-              src={previewPrize.image_url!}
+              src={brokenPrizeIds.has(previewPrize.id) || !previewPrize.image_url ? '/images/item_defaulet.png' : previewPrize.image_url}
               alt={previewPrize.name}
               width={600}
               height={600}
               className="max-w-full max-h-[75vh] object-contain rounded-2xl"
               unoptimized
+              onError={() => markBroken(previewPrize.id)}
             />
           </div>
         </div>,
