@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Papa from 'papaparse'
 import {
   PRODUCT_FIELDS,
@@ -348,7 +349,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 z-[200] flex items-start justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-3xl my-8 shadow-2xl flex flex-col">
 
@@ -627,6 +628,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
