@@ -52,6 +52,7 @@ export interface Database {
         txid_hash: string | null
         is_preorder: boolean | null
         preorder_available_at: string | null
+        distributor: string | null
         created_at: string
       }>
 

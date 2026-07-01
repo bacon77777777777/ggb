@@ -71,8 +71,8 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
 
   const infoRows = [
     { label: '類別', value: product.category || null },
-    { label: '單抽費用', value: product.price ? `${product.price} G` : null },
-  ].filter(r => r.value);
+    { label: '代理商', value: product.distributor || '-' },
+  ];
 
   return (
     <div className="space-y-2 sm:space-y-5 w-full">
@@ -103,17 +103,17 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                       {/* 小圖 */}
                       <button
                         type="button"
-                        onClick={() => imgSrc && setPreviewPrize(prize)}
-                        className={cn(
-                          'w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden',
-                          imgSrc ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'
-                        )}
+                        onClick={() => setPreviewPrize(prize)}
+                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                       >
-                        {imgSrc ? (
-                          <Image src={imgSrc} alt={prize.name} fill className="object-cover" unoptimized onError={() => markBroken(prize.id)} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-300 font-black">—</div>
-                        )}
+                        <Image
+                          src={imgSrc ?? '/images/item_defaulet.png'}
+                          alt={prize.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                          onError={() => markBroken(prize.id)}
+                        />
                       </button>
 
                       {/* 賞別 + 名稱 */}
@@ -146,32 +146,41 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       </div>
 
       {/* 商品資訊 */}
-      {(infoRows.length > 0 || product.description) && (
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
-          <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-            商品資訊
-          </h3>
-          {infoRows.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
-              {infoRows.map(({ label, value }) => (
-                <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
-                    {label}
-                  </span>
-                  <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">
-                    {value}
-                  </span>
-                </div>
-              ))}
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
+        <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+          商品資訊
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
+          {infoRows.map(({ label, value }) => (
+            <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+              <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
+                {label}
+              </span>
+              <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">
+                {value}
+              </span>
             </div>
-          )}
-          {product.description && (
-            <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed pt-1">
-              {product.description}
-            </p>
-          )}
+          ))}
         </div>
-      )}
+        <div className="pt-1">
+          <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
+            注意事項
+          </p>
+          <ol className="space-y-1 list-decimal list-inside">
+            {[
+              '扭蛋&盒玩商品均隨機商品，不可挑款。',
+              '盒玩商品均隨機出貨不拆盒。',
+              '若購買商品為「隨機出貨」即收到商品才會知道款式，出貨時間約3-7個工作日。',
+              '若有商品需自實體門市調貨，到貨時間將會有所延遲，敬請見諒。',
+              '如遇缺款或商品數量不足，將採退費處理且無法指定購買款式，敬請見諒。',
+            ].map((item, i) => (
+              <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
+                {item}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
 
       {/* 猜你喜歡 */}
       {recommendations.length > 0 && (
