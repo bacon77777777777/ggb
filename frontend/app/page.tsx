@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Database } from '@/types/database.types';
 import ProductCard from '@/components/ProductCard';
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
@@ -32,6 +33,9 @@ export default function Home() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
   const { flags } = useFeatureFlags();
+  const { user } = useAuth();
+  // Map<series, score> — populated from get_user_series_preferences RPC
+  const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
   const enabledPrimaryFeatureCount =
     (flags.sell ? 1 : 0) +
     (flags.ichiban ? 1 : 0) +
@@ -194,6 +198,27 @@ export default function Home() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch personalized series preferences for logged-in users
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_user_series_preferences', {
+          p_user_id: user.id,
+          p_limit: 10,
+        });
+        if (cancelled || !Array.isArray(data)) return;
+        const map = new Map<string, number>();
+        for (const row of data as Array<{ series: string; score: number }>) {
+          if (row.series) map.set(row.series, Number(row.score) || 0);
+        }
+        setUserSeriesPref(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, supabase]);
 
   // Fallback timeout to ensure we don't stuck in loading state forever
   useEffect(() => {
@@ -364,7 +389,7 @@ export default function Home() {
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
   }, [activePrimaryTab, hasAnyPrimaryFeature]);
 
-  // Series tabs computed from product data — top 14 series by product count
+  // Series tabs: sort by user preference score first, then product count
   const seriesTabs = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of allProducts) {
@@ -374,13 +399,16 @@ export default function Home() {
       }
     }
     return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => {
+        const prefDiff = (userSeriesPref.get(b[0]) || 0) - (userSeriesPref.get(a[0]) || 0);
+        return prefDiff !== 0 ? prefDiff : b[1] - a[1];
+      })
       .slice(0, 14)
       .map(([s]) => ({
         id: `series:${s}`,
         label: s.length > 8 ? s.slice(0, 8) : s,
       }));
-  }, [allProducts]);
+  }, [allProducts, userSeriesPref]);
 
   const secondaryTabs = useMemo(() => {
     if (activePrimaryTab === 'exchange') {
@@ -521,6 +549,16 @@ export default function Home() {
         result.sort((a, b) => a.price - b.price);
       } else if (sortMode === 'price-desc') {
         result.sort((a, b) => b.price - a.price);
+      } else if (activeSecondaryTab === 'featured' && userSeriesPref.size > 0) {
+        result.sort((a, b) => {
+          const scoreA = userSeriesPref.get(a.series || '') || 0;
+          const scoreB = userSeriesPref.get(b.series || '') || 0;
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return db - da;
+        });
       } else {
         result.sort((a, b) => {
           const da = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -539,7 +577,7 @@ export default function Home() {
 
       return result;
     },
-    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab]
+    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref]
   );
 
   const filteredProducts = useMemo(

@@ -243,6 +243,17 @@ export default function SearchPage() {
     setVisibleCount(10);
   }, [trimmedQuery]);
 
+  // Track search events (debounced 1.5s — fires once user stops typing)
+  useEffect(() => {
+    if (!trimmedQuery) return;
+    const timer = setTimeout(() => {
+      import('@/lib/trackEvent').then(({ trackEvent }) => {
+        trackEvent('search', { meta: { query: trimmedQuery } });
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [trimmedQuery]);
+
   const enabledPrimaryFeatureCount =
     (flags.sell ? 1 : 0) +
     (flags.ichiban ? 1 : 0) +
