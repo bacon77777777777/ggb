@@ -267,7 +267,7 @@ export default function RechargesPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `儲值紀錄_${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `儲值明細_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -281,15 +281,33 @@ export default function RechargesPage() {
   }
 
   return (
-    <AdminLayout pageTitle="儲值紀錄" breadcrumbs={[{ label: '儲值紀錄', href: '/recharges' }]}>
+    <AdminLayout pageTitle="儲值明細" breadcrumbs={[{ label: '儲值明細', href: '/recharges' }]}>
       <div className="space-y-6">
         <PageCard>
+          {/* 頂部篩選列 — 同營運總覽風格：靠右，DateRangePicker + 匯出CSV */}
+          <div className="flex items-center justify-end gap-2 flex-wrap mb-4">
+            <DateRangePicker
+              startDate={filterStartDate}
+              endDate={filterEndDate}
+              onStartDateChange={setFilterStartDate}
+              onEndDateChange={setFilterEndDate}
+              placeholder="選擇時間範圍"
+            />
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              匯出 CSV
+            </button>
+          </div>
+
           <SearchToolbar
             searchPlaceholder="搜尋用戶、訂單編號..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
-            showExportCSV={true}
-            onExportCSV={handleExportCSV}
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
@@ -307,22 +325,6 @@ export default function RechargesPage() {
                   { value: 'pending', label: '處理中' },
                   { value: 'failed', label: '失敗' },
                 ]
-              },
-              {
-                key: 'date',
-                label: '時間範圍',
-                type: 'date-range',
-                startDate: filterStartDate,
-                endDate: filterEndDate,
-                render: () => (
-                  <DateRangePicker
-                    startDate={filterStartDate}
-                    endDate={filterEndDate}
-                    onStartDateChange={setFilterStartDate}
-                    onEndDateChange={setFilterEndDate}
-                    placeholder="選擇時間範圍"
-                  />
-                )
               }
             ]}
             showColumnToggle={true}

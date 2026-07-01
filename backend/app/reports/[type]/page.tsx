@@ -10,7 +10,7 @@ type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavi
 
 const TYPE_META: Record<ReportType, { title: string }> = {
   overview:    { title: '營運總覽' },
-  products:    { title: '商品表現' },
+  products:    { title: '商品消費' },
   recharge:    { title: '儲值明細' },
   consumption: { title: '消費明細' },
   behavior:    { title: '用戶行為' },
@@ -100,7 +100,7 @@ export default function ReportPage() {
     dailyActiveUsers: { date: string; count: number }[]
   } | null>(null)
 
-  // 商品表現篩選
+  // 商品消費篩選
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [filterSupplier, setFilterSupplier] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
@@ -155,7 +155,7 @@ export default function ReportPage() {
         consumptionData.map(d => [formatDateTime(d.created_at), d.user?.name ?? '', d.user?.email ?? '', d.product?.name ?? '', String(d.product?.price ?? 0), d.prize_level ?? '', d.prize_name ?? '', STATUS_LABEL[d.status] ?? d.status])
       )
     } else if (reportType === 'products') {
-      exportCSV(`商品表現_${start}_${end}.csv`,
+      exportCSV(`商品消費_${start}_${end}.csv`,
         ['商品名稱', '廠商', '類型', '分類', '抽獎次數', '消費金額(G)', '剩餘數量', '總數量', '完抽率(%)'],
         productsData.map(p => [p.name, p.supplierName ?? '—', p.type ?? '', p.category ?? '', String(p.drawCount), String(p.revenue), String(p.remaining), String(p.totalCount), String(p.completionRate)])
       )
@@ -413,11 +413,11 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* ── 商品表現 ── */}
+        {/* ── 商品消費 ── */}
         {reportType === 'products' && (
           <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-semibold text-neutral-900">商品表現</h3>
+              <h3 className="font-semibold text-neutral-900">商品消費</h3>
               <span className="text-sm text-neutral-500">共 {productsData.length} 項商品</span>
             </div>
             {loading ? (
