@@ -103,7 +103,7 @@ export function PurchaseConfirmation({
   }
 
   const finalPrice = Math.max(0, totalPrice - discountAmount);
-  const pointsCost = totalPrice * 3;
+  const pointsCost = totalPrice * 4;
   
   const isInsufficientTokens = userTokens < finalPrice;
   const isInsufficientPoints = userPoints < pointsCost;
@@ -304,7 +304,7 @@ export function PurchaseConfirmation({
            <div className="flex justify-between items-center pt-2">
               <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                  <Coins className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-500" />
-                 使用積分支付 (3積分 = 1代幣)
+                 使用積分支付 (4積分 = 1代幣)
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 
