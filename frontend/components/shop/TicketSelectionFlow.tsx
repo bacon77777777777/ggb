@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
+const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
+
 interface TicketSelectionFlowProps {
   isModal?: boolean;
   onClose?: () => void;
@@ -739,12 +741,13 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
                       className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 mb-3 flex items-center justify-center"
                     >
                     <Image
-                      src={aPrizePopupPrize.image_url || '/images/item.png'}
+                      src={aPrizePopupPrize.image_url || ITEM_DEFAULT_IMG}
                       alt={aPrizePopupPrize.name}
                       width={160}
                       height={160}
                       className="w-full h-full object-cover"
                       unoptimized
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = ITEM_DEFAULT_IMG }}
                     />
                   </motion.div>
 
@@ -818,11 +821,12 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               <div className="grid grid-cols-1 sm:grid-cols-2">
                 <div className="relative aspect-square bg-neutral-100">
                   <Image
-                    src={drawnResults[0]?.image_url}
+                    src={drawnResults[0]?.image_url || ITEM_DEFAULT_IMG}
                     alt={drawnResults[0]?.name}
                     fill
                     className="object-cover"
                     unoptimized
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = ITEM_DEFAULT_IMG }}
                   />
                 </div>
                 <div className="p-4 sm:p-6 flex flex-col justify-between gap-3">
@@ -927,12 +931,13 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
                       className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 mb-3 flex items-center justify-center"
                     >
                     <Image
-                      src={aPrizePopupPrize.image_url || '/images/item.png'}
+                      src={aPrizePopupPrize.image_url || ITEM_DEFAULT_IMG}
                       alt={aPrizePopupPrize.name}
                       width={160}
                       height={160}
                       className="w-full h-full object-cover"
                       unoptimized
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = ITEM_DEFAULT_IMG }}
                     />
                   </motion.div>
 

@@ -12,8 +12,11 @@ interface GachaResultModalProps {
   results: Prize[];
 }
 
+const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
+
 export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [imgError, setImgError] = useState(false);
   const hasMultiple = results.length > 1;
   const activePrize = results[activeIndex] || results[0];
   const resultSoundRef = React.useRef<HTMLAudioElement | null>(null);
@@ -54,6 +57,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
 
   const showPrev = () => {
     if (!hasMultiple) return;
+    setImgError(false);
     setActiveIndex((prev) => {
       const nextIndex = prev - 1;
       if (nextIndex < 0) return results.length - 1;
@@ -63,6 +67,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
 
   const showNext = () => {
     if (!hasMultiple) return;
+    setImgError(false);
     setActiveIndex((prev) => {
       const nextIndex = prev + 1;
       if (nextIndex >= results.length) return 0;
@@ -138,14 +143,17 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                   >
                     <Image
                       src={
-                        activePrize.image_url ||
-                        `/images/item/${(activePrize.id ?? '').toString().padStart(5, '0')}.jpg`
+                        imgError
+                          ? ITEM_DEFAULT_IMG
+                          : activePrize.image_url ||
+                            `/images/item/${(activePrize.id ?? '').toString().padStart(5, '0')}.jpg`
                       }
                       alt={activePrize.name}
                       width={160}
                       height={160}
                       className="w-full h-auto object-contain"
                       unoptimized
+                      onError={() => setImgError(true)}
                     />
                   </motion.div>
 
