@@ -278,8 +278,25 @@ function MiniChart({ data, type, color, id }: { data: number[], type: 'line' | '
   }
 }
 
+// 說明 tooltip 組件
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
+        !
+      </div>
+      {show && (
+        <div className="absolute right-0 top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 統計卡片組件
-function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartData, chartType, chartColor, cardId, selectedPeriod }: {
+function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartData, chartType, chartColor, cardId, selectedPeriod, tooltip }: {
   title: string
   value: string | number
   unit?: string
@@ -291,6 +308,7 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
   chartColor?: string
   cardId?: string
   selectedPeriod?: string
+  tooltip?: string
 }) {
   // 根據選擇的時間段顯示對應的文字
   const getPeriodText = (period: string) => {
@@ -305,10 +323,11 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
   
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 hover:bg-neutral-50 transition-all h-full min-h-[100px] flex flex-col">
-      <div className="flex items-start justify-between mb-1.5">
+      <div className="flex items-start justify-between mb-1.5 gap-2">
         <p className="text-sm text-neutral-600">
           {title}{unit && <span className="text-neutral-500">({unit})</span>}
         </p>
+        {tooltip && <InfoTooltip text={tooltip} />}
       </div>
       <p className="text-xl font-bold text-neutral-900 whitespace-nowrap font-mono mb-3">{typeof value === 'number' ? value.toLocaleString() : value}</p>
       <div className="mb-4 h-10 flex-shrink-0">
@@ -333,10 +352,11 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
 }
 
 // 趨勢圖表組件（單線）— 自適應寬度
-function TrendChart({ title, data, colors }: {
+function TrendChart({ title, data, colors, tooltip }: {
   title: string,
   data: Array<{ date: string, value: number }>,
-  colors: string[]
+  colors: string[],
+  tooltip?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWidth = useContainerWidth(containerRef)
@@ -366,7 +386,10 @@ function TrendChart({ title, data, colors }: {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
         {svgWidth > 0 && (
           <svg width={W} height={CH} className="absolute inset-0">
@@ -416,11 +439,12 @@ function TrendChart({ title, data, colors }: {
 }
 
 // 多線折線圖組件 — 自適應寬度
-function MultiLineChart({ title, data, series, colors }: {
+function MultiLineChart({ title, data, series, colors, tooltip }: {
   title: string,
   data: Array<{ date: string, [key: string]: string | number }>,
   series: Array<{ key: string, label: string }>,
-  colors: string[]
+  colors: string[],
+  tooltip?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWidth = useContainerWidth(containerRef)
@@ -447,7 +471,10 @@ function MultiLineChart({ title, data, series, colors }: {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
         {svgWidth > 0 && (
           <svg width={W} height={CH} className="absolute inset-0">
@@ -516,10 +543,11 @@ function MultiLineChart({ title, data, series, colors }: {
 }
 
 // 柱狀圖組件 — 自適應寬度
-function BarChart({ title, data, colors }: {
+function BarChart({ title, data, colors, tooltip }: {
   title: string,
   data: Array<{ label: string, value: number }>,
-  colors: string[]
+  colors: string[],
+  tooltip?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgWidth = useContainerWidth(containerRef)
@@ -537,7 +565,10 @@ function BarChart({ title, data, colors }: {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <h3 className="text-sm font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
         {svgWidth > 0 && (
           <svg width={W} height={CH} className="absolute inset-0">
@@ -589,10 +620,11 @@ function BarChart({ title, data, colors }: {
 }
 
 // 圓餅圖組件
-function PieChart({ title, data, colors }: { 
-  title: string, 
-  data: Array<{ label: string, value: number }>, 
-  colors: string[]
+function PieChart({ title, data, colors, tooltip }: {
+  title: string,
+  data: Array<{ label: string, value: number }>,
+  colors: string[],
+  tooltip?: string
 }) {
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
   
@@ -616,7 +648,8 @@ function PieChart({ title, data, colors }: {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+          <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+          {tooltip && <InfoTooltip text={tooltip} />}
         </div>
         <div className="flex items-center justify-center gap-6">
           <div className="relative">
@@ -797,25 +830,28 @@ function PieChart({ title, data, colors }: {
 }
 
 // 排名列表組件
-function RankingList({ title, data, limit = 10 }: { title: string, data: Array<{ name: string, value: number | string, change?: number }>, limit?: number }) {
+function RankingList({ title, data, limit = 10, tooltip }: { title: string, data: Array<{ name: string, value: number | string, change?: number }>, limit?: number, tooltip?: string }) {
   const displayData = Array(limit).fill(null).map((_, index) => {
     return data[index] || { name: '-', value: '-', change: undefined }
   })
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <h3 className="text-lg font-semibold text-neutral-900 mb-3">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       <div className="space-y-1">
         {displayData.map((item, index) => (
-          <div key={index} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+          <div key={index} className="flex items-center justify-between py-1.5 border-b border-neutral-100 last:border-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                 index < 3 ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-600'
               }`}>
                 {index + 1}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${item.name === '-' ? 'text-neutral-400' : 'text-neutral-900'}`}>{item.name}</p>
+                <p className={`text-xs font-medium line-clamp-2 ${item.name === '-' ? 'text-neutral-400' : 'text-neutral-900'}`}>{item.name}</p>
               </div>
             </div>
             <div className="flex items-center gap-10 flex-shrink-0">
@@ -860,7 +896,7 @@ export default function DashboardPage() {
   abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: 'ABC賞已出數量', unit: '個', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
   visitCount: { value: 0, trend: 'down', trendValue: 0, title: '訪問量', unit: '次', chartData: [], chartType: 'line', chartColor: '#9333EA' },
   registeredUsers: { value: 0, trend: 'up', trendValue: 0, title: '註冊量', unit: '人', chartData: [], chartType: 'line', chartColor: '#10b981' },
-    conversionRate: { value: '0%', trend: 'down', trendValue: 0, title: '轉化率(已註冊且儲值)', unit: '', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
+    conversionRate: { value: 0, trend: 'up', trendValue: 0, title: '平均客單價', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
   })
   
   const [topProducts, setTopProducts] = useState<any[]>([])
@@ -1111,11 +1147,11 @@ export default function DashboardPage() {
           return newUsers.filter(u => getFilterFn(slot, u.created_at)).length
         })
 
-        // Conversion Rate
+        // 平均客單價 (avg spend per paying user)
         const payingUserIdsInPeriod = new Set(recharges?.map(r => r.user_id))
-        const newPayingUsers = newUsers.filter(u => payingUserIdsInPeriod.has(u.id))
-        const conversionVal = newUsers.length > 0 ? (newPayingUsers.length / newUsers.length) * 100 : 0
-        const conversionRateData = timeSlots.map(() => conversionVal)
+        const uniquePayerCount = payingUserIdsInPeriod.size
+        const avgSpendPerPayer = uniquePayerCount > 0 ? Math.round(totalRevenue / uniquePayerCount) : 0
+        const avgSpendByDay = revenueByDay
 
         // Top Products Calculation
         const productStats = new Map<string, {name: string, sales: number, revenue: number}>()
@@ -1228,15 +1264,15 @@ export default function DashboardPage() {
             chartType: 'line', 
             chartColor: '#10b981' 
           },
-          conversionRate: { 
-            value: conversionVal.toFixed(1) + '%', 
-            trend: 'down', 
-            trendValue: 0, 
-            title: '期間轉化率', 
-            unit: '', 
-            chartData: conversionRateData, 
-            chartType: 'line', 
-            chartColor: '#F59E0B' 
+          conversionRate: {
+            value: avgSpendPerPayer,
+            trend: 'up',
+            trendValue: 0,
+            title: '平均客單價',
+            unit: 'TWD',
+            chartData: avgSpendByDay,
+            chartType: 'line',
+            chartColor: '#F59E0B'
           },
         })
 
@@ -1341,6 +1377,7 @@ export default function DashboardPage() {
             chartColor={stats.totalRecharge.chartColor}
             cardId="totalRecharge"
             selectedPeriod={cardPeriod}
+            tooltip="期間內用戶儲值總金額（TWD），直接反映平台收入規模。"
           />
           <StatCard
             title={stats.tokenConsumed.title}
@@ -1353,6 +1390,7 @@ export default function DashboardPage() {
             chartColor={stats.tokenConsumed.chartColor}
             cardId="tokenConsumed"
             selectedPeriod={cardPeriod}
+            tooltip="期間內用戶花費的代幣總量（G），反映抽獎活躍程度。消耗越高代表用戶黏著度越好。"
           />
           <StatCard
             title={stats.totalDraws.title}
@@ -1365,6 +1403,7 @@ export default function DashboardPage() {
             chartColor={stats.totalDraws.chartColor}
             cardId="totalDraws"
             selectedPeriod={cardPeriod}
+            tooltip="期間內完成的抽獎總次數，直接反映用戶參與度與商品吸引力。"
           />
           <StatCard
             title={stats.totalTokenBalance.title}
@@ -1377,6 +1416,7 @@ export default function DashboardPage() {
             chartColor={stats.totalTokenBalance.chartColor}
             cardId="totalTokenBalance"
             selectedPeriod={cardPeriod}
+            tooltip="所有用戶目前持有的代幣總量，代表平台負債（未來須履行的抽獎服務）。持續增加需注意備品備貨。"
           />
           <StatCard
             title={stats.abcPrizeCount.title}
@@ -1389,6 +1429,7 @@ export default function DashboardPage() {
             chartColor={stats.abcPrizeCount.chartColor}
             cardId="abcPrizeCount"
             selectedPeriod={cardPeriod}
+            tooltip="期間內抽出 A/B/C 等級獎品的次數，用於追蹤高等級獎品庫存消耗速度。"
           />
           <StatCard
             title={stats.visitCount.title}
@@ -1401,6 +1442,7 @@ export default function DashboardPage() {
             chartColor={stats.visitCount.chartColor}
             cardId="visitCount"
             selectedPeriod={cardPeriod}
+            tooltip="期間內前台訪問次數（含重複），反映流量規模。搭配註冊量可計算流量獲客效率。"
           />
           <StatCard
             title={stats.registeredUsers.title}
@@ -1413,6 +1455,7 @@ export default function DashboardPage() {
             chartColor={stats.registeredUsers.chartColor}
             cardId="registeredUsers"
             selectedPeriod={cardPeriod}
+            tooltip="期間內新增的註冊用戶數，反映獲客效率。搭配儲值量可觀察新用戶付費轉換情況。"
           />
           <StatCard
             title={stats.conversionRate.title}
@@ -1425,52 +1468,57 @@ export default function DashboardPage() {
             chartColor={stats.conversionRate.chartColor}
             cardId="conversionRate"
             selectedPeriod={cardPeriod}
+            tooltip="期間付費用戶的平均消費金額（總儲值 ÷ 付費人數），即 ARPU。越高代表用戶消費意願越強。"
           />
-          <StatCard title="點擊商品數（去重）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} />
-          <StatCard title="點擊後成功抽獎" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} />
-          <StatCard title="點擊→抽轉化率" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} />
+          <StatCard title="點擊商品數（去重）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} tooltip="去重後的商品點擊次數，反映用戶對商品的瀏覽廣度。同一用戶多次點擊同商品只計一次。" />
+          <StatCard title="點擊後成功抽獎" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} tooltip="用戶點擊商品後實際完成抽獎的次數，反映點擊的轉化質量。" />
+          <StatCard title="點擊→抽轉化率" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} tooltip="商品點擊到實際抽獎的轉化率。越高代表商品吸引力越強，越低代表用戶有猶豫或流失。" />
         </div>
 
         {/* DAU 每日活躍用戶 */}
-        <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} />
+        <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} tooltip="每日有操作行為的不重複用戶數。持續上升代表用戶黏著度良好；驟降需排查是否有異常。" />
 
         {/* 圖表區域 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TrendChart 
-            title="儲值金額趨勢" 
-            data={mainChartData.rechargeTrend} 
+          <TrendChart
+            title="儲值金額趨勢"
+            data={mainChartData.rechargeTrend}
             colors={['#10b981']}
+            tooltip="期間內每日儲值金額變化，用於識別收入高峰與低谷，評估活動或行銷效果。"
           />
-          <MultiLineChart 
-            title="儲值與消耗對比" 
+          <MultiLineChart
+            title="儲值與消耗對比"
             data={mainChartData.rechargeConsume}
             series={[
               { key: 'recharge', label: '儲值金額' },
               { key: 'consume', label: '消耗代幣' }
             ]}
             colors={['#9333EA', '#10b981']}
+            tooltip="同時展示儲值金額與代幣消耗量。儲值高於消耗代表用戶在囤幣；消耗高於儲值代表用戶在花存量。"
           />
         </div>
 
         {/* 多線圖表 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-           <BarChart 
-            title="抽獎次數" 
+          <BarChart
+            title="抽獎次數"
             data={mainChartData.dailyDraws}
             colors={['#9333EA', '#A855F7', '#C084FC', '#D8B4FE']}
+            tooltip="依時間段統計的抽獎次數分布，識別抽獎高峰時段，可作為活動排程參考。"
           />
-          <PieChart 
-            title="分類抽獎次數對比" 
+          <PieChart
+            title="分類抽獎次數對比"
             data={mainChartData.categoryDraws}
             colors={['#9333EA', '#10b981', '#F59E0B', '#EF4444']}
+            tooltip="各商品類型的抽獎次數佔比，用於評估各品類受歡迎程度，指導選品與庫存配置。"
           />
         </div>
 
         {/* 排名列表 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} />
-          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} />
-          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} />
+          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} tooltip="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />
+          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} tooltip="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />
+          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} tooltip="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />
         </div>
       </div>
     </AdminLayout>
