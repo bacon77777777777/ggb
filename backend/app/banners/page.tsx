@@ -19,6 +19,7 @@ interface Banner {
 export default function BannersPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   
@@ -116,11 +117,13 @@ export default function BannersPage() {
   }
 
   const handleSubmit = async () => {
+    if (isSaving) return
     try {
       if (!formData.name) {
         alert('請輸入輪播圖名稱')
         return
       }
+      setIsSaving(true)
 
       let finalImageUrl = formData.image_url
 
@@ -186,6 +189,8 @@ export default function BannersPage() {
     } catch (error: any) {
       console.error('Error saving banner:', error)
       alert(error.message || '儲存失敗')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -394,9 +399,10 @@ export default function BannersPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
+                disabled={isSaving}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                儲存
+                {isSaving ? '儲存中...' : '儲存'}
               </button>
             </div>
           </div>
