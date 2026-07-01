@@ -149,27 +149,23 @@ export default function MissionPage() {
       // Go to Task
       if (mission.title.includes('手機') || mission.title.includes('驗證')) {
         router.push('/profile?tab=settings');
-      } else if (mission.title.includes('免費仔') || mission.title.includes('儲值')) {
+      } else if (mission.title.includes('儲值') || mission.title.includes('免費仔')) {
         router.push('/topup');
       } else if (mission.title.includes('上架')) {
         router.push('/profile?tab=warehouse');
-      } else if (mission.title.includes('瀏覽')) {
-        router.push('/shop');
-      } else if (mission.title.includes('抽獎') || mission.title.includes('手氣')) {
-        router.push('/shop');
       } else if (mission.title.includes('社群') || mission.title.includes('分享')) {
-         // Mock share
-          try {
-            if (mission.periodKey) {
-              await MissionService.trackShare(mission.id, mission.periodKey);
-              showToast('分享成功！', 'success');
-              fetchMissions();
-            }
-          } catch (e) {
-           console.error(e);
-         }
+        try {
+          if (mission.periodKey) {
+            await navigator.clipboard.writeText(window.location.origin);
+            await MissionService.trackShare(mission.id, mission.periodKey);
+            showToast('已複製連結，快去分享吧！', 'success');
+            fetchMissions();
+          }
+        } catch {
+          router.push('/');
+        }
       } else {
-        showToast('請前往完成任務', 'info');
+        router.push('/');
       }
     }
   }, [router, showToast, refreshProfile, fetchMissions, playSuccessSound]);

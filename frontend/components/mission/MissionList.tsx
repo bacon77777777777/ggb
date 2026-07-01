@@ -148,27 +148,24 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
   };
 
   const handleGo = async (mission: UserMission) => {
-    if (mission.condition_type === 'draw_count' || mission.condition_type === 'spend_amount' || mission.condition_type === 'win_sr' || mission.condition_type === 'play_unique_machine') {
-      router.push('/');
-    } else if (mission.condition_type === 'view_product') {
+    if (mission.condition_type === 'spend_amount' || mission.condition_type === 'recharge') {
+      router.push('/topup');
+    } else if (mission.condition_type === 'draw_count' || mission.condition_type === 'win_sr' || mission.condition_type === 'play_unique_machine' || mission.condition_type === 'view_product') {
       router.push('/');
     } else if (mission.condition_type === 'like_ranking') {
       router.push('/ranking');
-    } else if (mission.condition_type === 'recharge') {
-      router.push('/topup');
     } else if (mission.condition_type === 'share_app') {
       try {
         await navigator.clipboard.writeText(window.location.origin);
-        showToast('已複製連結', 'success');
-        
-        // Track share progress
+        showToast('已複製連結，快去分享吧！', 'success');
         await MissionService.trackShare(mission.id, mission.period_key);
         onRefresh();
         refreshProfile();
-      } catch (e) {
-        console.error('Share failed', e);
-        showToast('分享失敗', 'error');
+      } catch {
+        router.push('/');
       }
+    } else {
+      router.push('/');
     }
   };
 
@@ -208,7 +205,7 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
                   </span>
                 ) : (
                   <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
-                    +{mission.reward_coins} 代幣
+                    +{mission.reward_coins} 積分
                   </span>
                 )}
               </div>
