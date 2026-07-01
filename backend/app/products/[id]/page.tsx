@@ -109,7 +109,7 @@ export default function EditProductPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [productCode, setProductCode] = useState<string>('')
   const [deletedPrizeIds, setDeletedPrizeIds] = useState<string[]>([])
-  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([])
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
 
   // State for small item library
   const [showSmallItemLibrary, setShowSmallItemLibrary] = useState(false)
@@ -730,9 +730,15 @@ export default function EditProductPage() {
               >
                 <option value="">— 未指定 —</option>
                 {suppliers.map((s) => (
-                  <option key={s.id} value={String(s.id)}>{s.name}</option>
+                  <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
                 ))}
               </select>
+              {formData.supplierId && (() => {
+                const sup = suppliers.find(s => String(s.id) === formData.supplierId)
+                return sup?.tax_id ? (
+                  <p className="text-xs text-neutral-400 mt-1">統一編號：<span className="font-mono">{sup.tax_id}</span></p>
+                ) : null
+              })()}
             </div>
           </div>
 

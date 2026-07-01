@@ -15,6 +15,12 @@ import { SmallItem } from '@/types/product'
 export default function NewProductPage() {
   const router = useRouter()
   const { addLog } = useLog()
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
+
+  useEffect(() => {
+    fetch('/api/admin/suppliers').then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
+  }, [])
+
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -32,6 +38,7 @@ export default function NewProductPage() {
     releaseMonth: '',
     distributor: '',
     series: '',
+    supplierId: '',
     rarity: 3,
     startedAt: '',  // 開賣時間（選填，格式：YYYY-MM-DD）
     isPreorder: false,
@@ -263,6 +270,7 @@ export default function NewProductPage() {
         release_month: formData.releaseMonth,
         distributor: formData.distributor,
         series: formData.series || null,
+        supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
         rarity: formData.rarity,
         started_at: startedAt,
         image_url: productImageUrl || '/images/item.png',
@@ -526,6 +534,27 @@ export default function NewProductPage() {
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 placeholder="例如：寶可夢、鬼滅之刃、蛋黃哥"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                供應廠商
+              </label>
+              <select
+                value={formData.supplierId}
+                onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+              >
+                <option value="">— 未指定 —</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
+                ))}
+              </select>
+              {formData.supplierId && (() => {
+                const sup = suppliers.find(s => String(s.id) === formData.supplierId)
+                return sup?.tax_id ? (
+                  <p className="text-xs text-neutral-400 mt-1">統一編號：<span className="font-mono">{sup.tax_id}</span></p>
+                ) : null
+              })()}
             </div>
           </div>
 
