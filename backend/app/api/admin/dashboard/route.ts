@@ -40,7 +40,7 @@ export async function GET(request: Request) {
             `
               created_at,
               prize_level,
-              products (id, name, price, category)
+              products (id, name, price, type, category)
             `
           )
           .gte('created_at', startDate.toISOString())

@@ -1006,7 +1006,7 @@ export default function DashboardPage() {
         }
         const { recharges, draws, users } = (await dashboardRes.json()) as {
           recharges: Array<{ amount: number; created_at: string; user_id: string }>
-          draws: Array<{ created_at: string; prize_level: string; products?: { id: number; name: string; price: number; category: any } | null }>
+          draws: Array<{ created_at: string; prize_level: string; products?: { id: number; name: string; price: number; type: string | null; category: any } | null }>
           users: Array<{ created_at: string; tokens: number; id: string }>
         }
 
@@ -1150,13 +1150,16 @@ export default function DashboardPage() {
         const visitsByDay = visitStats.chartData || []
         const visitTrendVal = visitStats.trend || 0
 
-        // Category Draws
+        // Category Draws — group by product type (Chinese label)
+        const typeLabels: Record<string, string> = {
+          gacha: '轉蛋', ichiban: '一番賞', blindbox: '盲盒',
+          card: '卡牌', sell: '二手', custom: '客製', exchange: '交換',
+        }
         const categoryStats = new Map<string, number>()
         draws?.forEach((d: any) => {
-          if (d.products?.category) {
-            const cat = d.products.category
-            categoryStats.set(cat, (categoryStats.get(cat) || 0) + 1)
-          }
+          const raw = d.products?.type || d.products?.category || ''
+          const label = typeLabels[raw] || raw || '其他'
+          categoryStats.set(label, (categoryStats.get(label) || 0) + 1)
         })
         const categoryDrawsData = Array.from(categoryStats.entries()).map(([label, value]) => ({ label, value }))
 
