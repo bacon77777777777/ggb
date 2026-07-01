@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import Papa from 'papaparse'
 import {
   PRODUCT_FIELDS,
@@ -98,6 +98,14 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
   const [prizeGroups, setPrizeGroups] = useState<PrizeGroup[]>([])
   const [defaultType, setDefaultType] = useState<ProductType>('ichiban')
 
+  // Supplier
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/admin/suppliers').then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
+  }, [])
+
   // Import progress
   const [progress, setProgress] = useState(0)
   const [countText, setCountText] = useState('')
@@ -113,6 +121,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
     setRows([])
     setFieldMap({} as any)
     setPrizeGroups([])
+    setSelectedSupplierId('')
     setProgress(0)
     setCountText('')
     setSuccessCount(0)
@@ -248,6 +257,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
           started_at: parseStartedAt(get(fieldMap.started_at)(row)),
           distributor: get(fieldMap.distributor)(row).trim() || null,
           series: get(fieldMap.series)(row).trim() || null,
+          supplier_id: selectedSupplierId ? parseInt(selectedSupplierId) : null,
           rarity: toNumber(get(fieldMap.rarity)(row)),
           is_preorder: toBool(get(fieldMap.is_preorder)(row)),
           preorder_available_at: parseStartedAt(get(fieldMap.preorder_available_at)(row)),
@@ -361,14 +371,40 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
 
           {/* ── Step: Upload ── */}
           {step === 'upload' && (
-            <div
-              className="border-2 border-dashed border-neutral-200 rounded-xl p-12 text-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
-              onClick={() => fileRef.current?.click()}
-            >
-              <div className="text-4xl mb-3">📂</div>
-              <p className="font-semibold text-neutral-700">點擊選擇廠商 CSV 檔案</p>
-              <p className="text-sm text-neutral-400 mt-1">支援任意欄位格式，系統自動偵測映射</p>
-              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+            <div className="space-y-4">
+              {/* 廠商選擇 */}
+              <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-neutral-700 mb-2">選擇供應廠商</p>
+                <select
+                  value={selectedSupplierId}
+                  onChange={e => setSelectedSupplierId(e.target.value)}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">— 未指定廠商 —</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={String(s.id)}>
+                      {s.name}{s.tax_id ? `（${s.tax_id}）` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedSupplierId && (() => {
+                  const sup = suppliers.find(s => String(s.id) === selectedSupplierId)
+                  return sup?.tax_id ? (
+                    <p className="text-xs text-neutral-400 mt-1.5">統一編號：<span className="font-mono">{sup.tax_id}</span></p>
+                  ) : null
+                })()}
+              </div>
+
+              {/* 上傳區 */}
+              <div
+                className="border-2 border-dashed border-neutral-200 rounded-xl p-12 text-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <div className="text-4xl mb-3">📂</div>
+                <p className="font-semibold text-neutral-700">點擊選擇廠商 CSV 檔案</p>
+                <p className="text-sm text-neutral-400 mt-1">支援任意欄位格式，系統自動偵測映射</p>
+                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+              </div>
             </div>
           )}
 
