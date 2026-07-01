@@ -69,6 +69,11 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
   );
 
+  const infoRows = [
+    { label: '類別', value: product.category || null },
+    { label: '單抽費用', value: product.price ? `${product.price} G` : null },
+  ].filter(r => r.value);
+
   return (
     <div className="space-y-2 sm:space-y-5 w-full">
 
@@ -139,6 +144,34 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           </tbody>
         </table>
       </div>
+
+      {/* 商品資訊 */}
+      {(infoRows.length > 0 || product.description) && (
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
+          <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+            商品資訊
+          </h3>
+          {infoRows.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
+              {infoRows.map(({ label, value }) => (
+                <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
+                    {label}
+                  </span>
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {product.description && (
+            <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed pt-1">
+              {product.description}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 猜你喜歡 */}
       {recommendations.length > 0 && (
