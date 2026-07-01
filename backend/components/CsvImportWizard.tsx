@@ -349,7 +349,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 z-[200] flex items-start justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-3xl my-8 shadow-2xl flex flex-col">
 
         {/* Header */}
