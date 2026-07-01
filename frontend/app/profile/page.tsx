@@ -6012,23 +6012,6 @@ function ProfileContent() {
                             router.push(loginHref);
                             return;
                           }
-                          router.push('/messages');
-                        }}
-                        className="w-[32px] h-[32px] bg-black/10 rounded-full flex items-center justify-center backdrop-blur-sm active:bg-black/20 transition-colors relative"
-                      >
-                        <MessageCircle className="w-5 h-5 text-white" />
-                        {!isGuest && unreadMessageCount > 0 && (
-                          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent-red border-2 border-white/20 rounded-full" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <button 
-                        onClick={() => {
-                          if (isGuest) {
-                            router.push(loginHref);
-                            return;
-                          }
                           handleTabChange('settings');
                         }}
                         className="w-[32px] h-[32px] bg-black/10 rounded-full flex items-center justify-center backdrop-blur-sm active:bg-black/20 transition-colors relative"
