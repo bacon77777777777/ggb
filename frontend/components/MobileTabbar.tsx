@@ -24,20 +24,12 @@ function MobileTabbarSkeleton() {
     <div className="fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)]" data-testid="mobile-tabbar">
       <div className="relative h-16 w-full flex items-end">
         <div className="absolute bottom-0 left-0 right-0 h-[56px] bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 transition-colors" />
-        <div className="relative w-full grid grid-cols-5 px-2 h-[56px]">
-          {[0, 1, 2, 3, 4].map((i) => (
+        <div className="relative w-full grid grid-cols-4 px-2 h-[56px]">
+          {[0, 1, 2, 3].map((i) => (
             <div key={i} className="relative h-full flex items-center justify-center">
               <div className="flex flex-col items-center justify-end h-full w-full pb-1.5 relative gap-1">
-                {i === 2 ? (
-                  <div className="absolute -top-6">
-                    <Skeleton className="w-11 h-11 rounded-full border-[3px] border-white dark:border-neutral-900" />
-                  </div>
-                ) : (
-                  <>
-                    <Skeleton className="w-6 h-6 rounded-md" />
-                    <Skeleton className="w-8 h-2 rounded-sm" />
-                  </>
-                )}
+                <Skeleton className="w-6 h-6 rounded-md" />
+                <Skeleton className="w-8 h-2 rounded-sm" />
               </div>
             </div>
           ))}
@@ -64,7 +56,7 @@ function MobileTabbarInner() {
   }
 
   const centerTab = (() => {
-    if (isFlagsLoading) return { name: '交換', href: '/exchange', icon: Box, isCenter: true };
+    if (isFlagsLoading) return null;
     if (flags.exchange && !flags.market) return { name: '交換', href: '/exchange', icon: Box, isCenter: true };
     if (flags.market && !flags.exchange) return { name: '交易所', href: '/market', icon: Store, isCenter: true };
     return null;
