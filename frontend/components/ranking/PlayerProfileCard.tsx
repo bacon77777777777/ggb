@@ -150,7 +150,7 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
                   <div className="grid grid-cols-7 gap-2">
                     {earnedBadges.map((badge, idx) => (
                       <div key={badge.id} className="relative group">
-                        <div className="aspect-square rounded-xl overflow-hidden shadow-md bg-white">
+                        <div className="aspect-square rounded-xl overflow-hidden">
                           <Image
                             src={getMaskSrc(idx)}
                             alt={badge.name}
