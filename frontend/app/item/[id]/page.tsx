@@ -814,12 +814,22 @@ export default function ProductDetailPage() {
   }, [params.id, fetchData, showToast]);
 
   useEffect(() => {
-    supabase.from('module_settings').select('product_type, machine_theme').then(({ data }) => {
-      if (!data) return;
-      const map: Record<string, MachineTheme> = {};
-      for (const row of data) map[row.product_type] = row.machine_theme as MachineTheme;
-      setModuleSettings(map);
-    });
+    const loadModuleSettings = () => {
+      supabase.from('module_settings').select('product_type, machine_theme').then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, MachineTheme> = {};
+        for (const row of data) map[row.product_type] = row.machine_theme as MachineTheme;
+        setModuleSettings(map);
+      });
+    };
+    loadModuleSettings();
+
+    const channel = supabase
+      .channel('module_settings_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'module_settings' }, loadModuleSettings)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [supabase]);
 
   useEffect(() => {

@@ -372,12 +372,8 @@ export default function EditProductPage() {
         image_url: productImageUrl,
       }
 
-      if (formData.releaseYear && formData.releaseMonth) {
-        const m = String(formData.releaseMonth).padStart(2, '0')
-        productData.release_date = `${formData.releaseYear}-${m}-01`
-      } else {
-        productData.release_date = null
-      }
+      productData.release_year = formData.releaseYear || null
+      productData.release_month = formData.releaseMonth || null
 
       const prizePayload = await Promise.all(prizes.map(async (prize) => {
         let prizeImageUrl = prize.imagePreview || '/images/item.png'
@@ -754,22 +750,22 @@ export default function EditProductPage() {
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
               >
                 <option value="">— 跟隨類別預設 —</option>
-                <optgroup label="轉蛋">
-                  <option value="classic_machine">轉蛋 — 物理蛋球轉蛋機（原始經典）</option>
-                  <option value="modern_machine">轉蛋 — 現代膠囊展示機</option>
-                </optgroup>
-                <optgroup label="一番賞">
-                  <option value="classic_capsule">一番賞 — 撕紙互動（原始經典）</option>
-                </optgroup>
-                <optgroup label="盒玩">
-                  <option value="battle_effect">盒玩 — 影片過場（原始經典）</option>
-                </optgroup>
-                <optgroup label="抽卡">
-                  <option value="battle_effect_card">抽卡 — 影片開包（原始經典）</option>
-                </optgroup>
-                <optgroup label="自製賞">
-                  <option value="custom_battle">自製賞 — 影片互動 combo（原始經典）</option>
-                </optgroup>
+                {formData.type === 'gacha' && <>
+                  <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
+                  <option value="modern_machine">現代膠囊展示機</option>
+                </>}
+                {formData.type === 'ichiban' && <>
+                  <option value="classic_capsule">撕紙互動（原始經典）</option>
+                </>}
+                {formData.type === 'blindbox' && <>
+                  <option value="battle_effect">影片過場（原始經典）</option>
+                </>}
+                {formData.type === 'card' && <>
+                  <option value="battle_effect">影片開包（原始經典）</option>
+                </>}
+                {formData.type === 'custom' && <>
+                  <option value="custom_battle">影片互動 combo（原始經典）</option>
+                </>}
               </select>
             </div>
           </div>
