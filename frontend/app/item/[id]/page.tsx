@@ -962,7 +962,8 @@ export default function ProductDetailPage() {
   };
 
   if (product.type === 'gacha') {
-    return <GachaProductDetail product={product} prizes={prizes} />;
+    const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'classic_machine'
+    return <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} />;
   }
 
   // Handle back button click

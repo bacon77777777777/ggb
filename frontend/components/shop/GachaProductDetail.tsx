@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Database } from '@/types/database.types';
 import { GachaMachineVisual } from './GachaMachineVisual';
+import { GachaMachineModern } from './GachaMachineModern';
 import { GachaCollectionList } from './GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { Prize } from '@/components/GachaMachine';
@@ -15,9 +16,15 @@ import Image from 'next/image';
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
   prizes: Database['public']['Tables']['product_prizes']['Row'][];
+  machineTheme?: string;
 }
 
-export function GachaProductDetail({ product, prizes }: GachaProductDetailProps) {
+const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
+  classic_machine: GachaMachineVisual,
+  modern_machine: GachaMachineModern,
+}
+
+export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
@@ -390,18 +397,23 @@ export function GachaProductDetail({ product, prizes }: GachaProductDetailProps)
           </div>
           <div className="w-full max-w-[750px] mx-auto">
             <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-              <GachaMachineVisual
-                state={machineState}
-                shakeRepeats={shakeRepeats}
-                onPush={handlePush}
-                onPurchase={handlePurchaseClick}
-                onTrial={handleTrial}
-                onHoleClick={handleHoleClick}
-                onLoaded={() => setIsMachineLoaded(true)}
-                isSoldOut={isSoldOut}
-                pushSoundMode={pushSoundMode}
-                hasHighTierPending={forceGoldEgg || hasHighTierPending}
-              />
+              {(() => {
+                const MachineComponent = MACHINE_COMPONENTS[machineTheme || 'classic_machine'] ?? GachaMachineVisual
+                return (
+                  <MachineComponent
+                    state={machineState}
+                    shakeRepeats={shakeRepeats}
+                    onPush={handlePush}
+                    onPurchase={handlePurchaseClick}
+                    onTrial={handleTrial}
+                    onHoleClick={handleHoleClick}
+                    onLoaded={() => setIsMachineLoaded(true)}
+                    isSoldOut={isSoldOut}
+                    pushSoundMode={pushSoundMode}
+                    hasHighTierPending={forceGoldEgg || hasHighTierPending}
+                  />
+                )
+              })()}
               <div
                 className="absolute left-1/2 -translate-x-1/2"
                 style={{ top: 42, width: 167, height: 167, zIndex: 20 }}

@@ -34,6 +34,7 @@ export default function EditProductPage() {
     distributor: '',
     series: '',
     supplierId: '' as string,
+    machineTheme: '' as string,
     rarity: 3,
     startedAt: '',  // 開賣時間
     endedAt: '',  // 完抽時間
@@ -269,6 +270,7 @@ export default function EditProductPage() {
             distributor: product.distributor || '',
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
+            machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '', // 假設是 ISO 格式
             endedAt: product.ended_at ? product.ended_at.replace('T', ' ').split('.')[0] : '', // 簡單處理
@@ -362,6 +364,7 @@ export default function EditProductPage() {
         distributor: formData.distributor,
         series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
+        machine_theme: formData.machineTheme || null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
         // txid_hash: formData.txidHash || null, // Seed and Hash should not be updated via Edit form to preserve fairness
@@ -739,6 +742,35 @@ export default function EditProductPage() {
                   <p className="text-xs text-neutral-400 mt-1">統一編號：<span className="font-mono">{sup.tax_id}</span></p>
                 ) : null
               })()}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                抽獎模組 <span className="text-neutral-400 font-normal">（留空 = 跟隨類別預設）</span>
+              </label>
+              <select
+                value={formData.machineTheme}
+                onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+              >
+                <option value="">— 跟隨類別預設 —</option>
+                <optgroup label="轉蛋">
+                  <option value="classic_machine">轉蛋 — 物理蛋球轉蛋機（原始經典）</option>
+                  <option value="modern_machine">轉蛋 — 現代膠囊展示機</option>
+                </optgroup>
+                <optgroup label="一番賞">
+                  <option value="classic_capsule">一番賞 — 撕紙互動（原始經典）</option>
+                </optgroup>
+                <optgroup label="盒玩">
+                  <option value="battle_effect">盒玩 — 影片過場（原始經典）</option>
+                </optgroup>
+                <optgroup label="抽卡">
+                  <option value="battle_effect_card">抽卡 — 影片開包（原始經典）</option>
+                </optgroup>
+                <optgroup label="自製賞">
+                  <option value="custom_battle">自製賞 — 影片互動 combo（原始經典）</option>
+                </optgroup>
+              </select>
             </div>
           </div>
 

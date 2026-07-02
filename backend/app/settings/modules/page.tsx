@@ -12,9 +12,9 @@ const PRODUCT_TYPES: {
   {
     type: 'gacha',
     label: '轉蛋',
-    note: '轉蛋類商品有獨立頁面，模組切換設定保留供未來擴充',
     themes: [
-      { value: 'battle_effect', label: '原始經典', desc: '轉蛋機互動動畫（扭蛋球落下）' },
+      { value: 'classic_machine', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
+      { value: 'modern_machine', label: '現代膠囊機', desc: '格列膠囊展示，側邊把手風格' },
     ],
   },
   {
