@@ -70,7 +70,7 @@ export default function ModuleSettingsPage() {
           <div className="py-12 text-center text-sm text-gray-500">載入中...</div>
         ) : (
           <div className="space-y-4">
-            {PRODUCT_TYPES.map(({ type, label, note, themes }) => (
+            {PRODUCT_TYPES.map(({ type, label, themes }) => (
               <div key={type} className="p-4 border border-gray-200 rounded-lg bg-white">
                 <div className="flex items-center gap-4">
                   <div className="w-20 shrink-0">
@@ -95,9 +95,6 @@ export default function ModuleSettingsPage() {
                     {themes.find(t => t.value === (settings[type] || themes[0].value))?.label}
                   </div>
                 </div>
-                {note && (
-                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">{note}</p>
-                )}
               </div>
             ))}
 
