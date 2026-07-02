@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 const PRODUCT_TYPES: {
   type: string
   label: string
-  note?: string
   themes: { value: string; label: string; desc: string }[]
 }[] = [
   {
@@ -18,36 +17,7 @@ const PRODUCT_TYPES: {
       { value: 'retro_machine', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
     ],
   },
-  {
-    type: 'ichiban',
-    label: '一番賞',
-    note: '一番賞使用獨立選票流程，模組切換設定保留供未來擴充',
-    themes: [
-      { value: 'classic_capsule', label: '原始經典', desc: '撕紙互動動畫（拉票揭曉獎項）' },
-    ],
-  },
-  {
-    type: 'blindbox',
-    label: '盒玩',
-    themes: [
-      { value: 'battle_effect', label: '原始經典', desc: '影片過場動畫（開箱影片演出）' },
-    ],
-  },
-  {
-    type: 'card',
-    label: '抽卡',
-    note: '抽卡類商品有獨立頁面，模組切換設定保留供未來擴充',
-    themes: [
-      { value: 'battle_effect', label: '原始經典', desc: '影片開包動畫（卡包開封演出）' },
-    ],
-  },
-  {
-    type: 'custom',
-    label: '自製賞',
-    themes: [
-      { value: 'custom_battle', label: '原始經典', desc: '自製影片互動動畫（影片+中間互動 combo）' },
-    ],
-  },
+  // 其他類別模組切換開發中，暫時隱藏
 ]
 
 type Setting = { product_type: string; machine_theme: string }

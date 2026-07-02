@@ -740,6 +740,7 @@ export default function EditProductPage() {
               })()}
             </div>
 
+            {formData.type === 'gacha' && (
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 抽獎模組 <span className="text-neutral-400 font-normal">（留空 = 跟隨類別預設）</span>
@@ -750,25 +751,12 @@ export default function EditProductPage() {
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
               >
                 <option value="">— 跟隨類別預設 —</option>
-                {formData.type === 'gacha' && <>
-                  <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
-                  <option value="modern_machine">現代膠囊展示機</option>
-                  <option value="retro_machine">復古街頭扭蛋機</option>
-                </>}
-                {formData.type === 'ichiban' && <>
-                  <option value="classic_capsule">撕紙互動（原始經典）</option>
-                </>}
-                {formData.type === 'blindbox' && <>
-                  <option value="battle_effect">影片過場（原始經典）</option>
-                </>}
-                {formData.type === 'card' && <>
-                  <option value="battle_effect">影片開包（原始經典）</option>
-                </>}
-                {formData.type === 'custom' && <>
-                  <option value="custom_battle">影片互動 combo（原始經典）</option>
-                </>}
+                <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
+                <option value="modern_machine">現代膠囊展示機</option>
+                <option value="retro_machine">復古街頭扭蛋機</option>
               </select>
             </div>
+            )}
           </div>
 
           {/* 熱賣商品標記 */}

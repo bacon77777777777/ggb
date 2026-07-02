@@ -125,7 +125,9 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
 
   // Determine intro video source path
   const introVideoPath = useMemo(() => {
-    return productType === 'custom' ? '/videos/video1.mp4' : '/videos/card.mp4';
+    if (productType === 'custom') return '/videos/video1.mp4';
+    if (productType === 'blindbox') return '/videos/blindbox_op.mp4';
+    return '/videos/card.mp4';
   }, [productType]);
 
   useEffect(() => {
