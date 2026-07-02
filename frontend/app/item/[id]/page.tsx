@@ -373,12 +373,13 @@ export default function ProductDetailPage() {
     const url = window.location.href;
     const name = product?.name || 'GGB';
     const shareText = getShareText();
-    if (navigator.share) {
+    // Only use native share on touch devices (mobile); Mac/desktop uses clipboard
+    const isTouchDevice = navigator.maxTouchPoints > 0;
+    if (navigator.share && isTouchDevice) {
       try {
         await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, text: shareText, url });
       } catch {}
     } else {
-      // Desktop: copy directly without modal
       try {
         await navigator.clipboard.writeText(shareText);
       } catch {

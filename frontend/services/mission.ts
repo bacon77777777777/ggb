@@ -59,11 +59,7 @@ export const MissionService = {
       p_event_type: eventType,
       p_data: data
     });
-
-    if (error) {
-      console.error('Error tracking event:', error);
-      throw error;
-    }
+    if (error) return null;
     return res;
   },
 
