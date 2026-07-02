@@ -359,6 +359,7 @@ export default function RankingPage() {
           userId={profileItem.user_id}
           nickname={profileItem.nickname}
           avatarUrl={profileItem.avatar_url}
+          titleFromRanking={profileItem.title}
           onWorship={handleWorshipFromCard}
           onClose={() => setProfileItem(null)}
           isPlaceholder={profileItem.isPlaceholder}

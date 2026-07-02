@@ -71,10 +71,19 @@ function buildFakeProfile(userId: string, avatarUrl: string): PlayerProfile {
   };
 }
 
+const TITLE_BG: Record<string, string> = {
+  gold:   '#e6a817',
+  red:    '#fc2c54',
+  purple: '#8b5cf6',
+  blue:   '#3b82f6',
+  green:  '#22c55e',
+};
+
 interface Props {
   userId: string;
   nickname?: string;
   avatarUrl?: string;
+  titleFromRanking?: { name: string; color_key: string } | null;
   onWorship: () => void;
   onClose: () => void;
   isPlaceholder?: boolean;
@@ -84,7 +93,7 @@ interface Props {
 const DESIGN_W = 960;
 const DESIGN_H = 877;
 
-export default function PlayerProfileCard({ userId, nickname: propNickname, avatarUrl: propAvatarUrl, onWorship, onClose, isPlaceholder }: Props) {
+export default function PlayerProfileCard({ userId, nickname: propNickname, avatarUrl: propAvatarUrl, titleFromRanking, onWorship, onClose, isPlaceholder }: Props) {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [scale, setScale] = useState(0.5);
@@ -155,6 +164,14 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
 
   const displayName = profile?.nickname || propNickname || '神秘玩家';
   const badges = profile?.badges || [];
+
+  // 優先使用排行榜傳入的稱號，其次才是 DB 查詢結果
+  const displayTitle = profile?.title ?? titleFromRanking ?? null;
+
+  // 找到對應稱號的徽章（按名稱匹配）並固定顯示在最前，即使未解鎖
+  const titleBadge = displayTitle ? badges.find(b => b.name === displayTitle.name) : null;
+  const otherEarnedBadges = badges.filter(b => b.earned && b.id !== titleBadge?.id);
+  const wallBadges = [...(titleBadge ? [titleBadge] : []), ...otherEarnedBadges];
 
   return (
     <>
@@ -236,13 +253,13 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                     {/* Frame4：稱號 + 暱稱 */}
                     <div className="relative flex flex-1 flex-col gap-[16px] items-start min-w-0">
                       {/* Component1：稱號標籤 */}
-                      {profile?.title && (
+                      {displayTitle && (
                         <div
                           className="flex gap-[6px] items-center shrink-0 px-[12px]"
-                          style={{ height: 40, background: '#fc2c54', borderRadius: 20 }}
+                          style={{ height: 40, background: TITLE_BG[displayTitle.color_key] ?? '#fc2c54', borderRadius: 20 }}
                         >
                           <p className="text-white text-[24px] leading-none font-medium whitespace-nowrap">
-                            {profile.title.name}
+                            {displayTitle.name}
                           </p>
                         </div>
                       )}
@@ -296,53 +313,68 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                 className="relative shrink-0 flex items-start mt-[48px]"
                 style={{ width: 768, height: 473 }}
               >
-                {/* Frame8：只顯示已獲得的徽章 */}
+                {/* Frame8：稱號對應徽章固定第一位，其餘顯示已獲得 */}
                 <div className="flex flex-wrap gap-[20px] items-center justify-center w-full content-center">
-                  {badges.filter(b => b.earned).length === 0 ? (
+                  {wallBadges.length === 0 ? (
                     <p className="text-[32px] text-neutral-400">尚未獲得任何徽章</p>
-                  ) : badges.filter(b => b.earned).map((badge, idx) => (
-                    <div
-                      key={badge.id}
-                      className="relative shrink-0 cursor-pointer"
-                      style={{ width: 72, height: 72 }}
-                      onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
-                    >
-                      <img
-                        src={getMaskSrc(badge.sort_order ?? idx)}
-                        alt={badge.name}
-                        width={72}
-                        height={72}
-                        style={{ width: 72, height: 72, objectFit: 'contain' }}
-                      />
-                      {activeBadgeId === badge.id && (
-                        <div
-                          className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20"
-                          style={{ top: 80 }}
-                        >
+                  ) : wallBadges.map((badge, idx) => {
+                    const isTitleBadge = titleBadge?.id === badge.id;
+                    return (
+                      <div
+                        key={badge.id}
+                        className="relative shrink-0 cursor-pointer"
+                        style={{ width: 72, height: 72 }}
+                        onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
+                      >
+                        <img
+                          src={getMaskSrc(badge.sort_order ?? idx)}
+                          alt={badge.name}
+                          width={72}
+                          height={72}
+                          style={{
+                            width: 72, height: 72, objectFit: 'contain',
+                            opacity: isTitleBadge && !badge.earned ? 0.5 : 1,
+                          }}
+                        />
+                        {/* 稱號徽章未解鎖時顯示鎖定遮罩 */}
+                        {isTitleBadge && !badge.earned && (
                           <div
-                            className="absolute left-1/2 -translate-x-1/2"
-                            style={{
-                              top: -10,
-                              width: 0, height: 0,
-                              borderLeft: '10px solid transparent',
-                              borderRight: '10px solid transparent',
-                              borderBottom: '10px solid rgba(0,0,0,0.75)',
-                            }}
-                          />
-                          <div
-                            className="whitespace-nowrap text-white font-semibold rounded-full px-[24px]"
-                            style={{
-                              fontSize: 32,
-                              lineHeight: '56px',
-                              background: 'rgba(0,0,0,0.75)',
-                            }}
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '50%' }}
                           >
-                            {badge.name}
+                            <span style={{ fontSize: 28 }}>🔒</span>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                        {activeBadgeId === badge.id && (
+                          <div
+                            className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20"
+                            style={{ top: 80 }}
+                          >
+                            <div
+                              className="absolute left-1/2 -translate-x-1/2"
+                              style={{
+                                top: -10,
+                                width: 0, height: 0,
+                                borderLeft: '10px solid transparent',
+                                borderRight: '10px solid transparent',
+                                borderBottom: '10px solid rgba(0,0,0,0.75)',
+                              }}
+                            />
+                            <div
+                              className="whitespace-nowrap text-white font-semibold rounded-full px-[24px]"
+                              style={{
+                                fontSize: 32,
+                                lineHeight: '56px',
+                                background: 'rgba(0,0,0,0.75)',
+                              }}
+                            >
+                              {badge.name}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
