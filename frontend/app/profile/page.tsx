@@ -371,7 +371,7 @@ const getArrivalText = (arrivalDate?: string) => {
       return `${String(month).padStart(2, '0')}月${String(date).padStart(2, '0')}日送達`;
     }
     // 預計日期已過但尚未送達 → 保持友善提示
-    return '明日送達';
+    return '今日送達';
   } catch (e) {
     console.error('Date parsing error', e);
   }
