@@ -155,7 +155,21 @@ export interface Mission {
   status: 'pending' | 'completed' | 'claimed';
   type: 'daily' | 'weekly' | 'achievement';
   periodKey?: string;
+  condition_type?: string;
+  target_value?: number;
 }
+
+const ACHIEVEMENT_MASK: Record<string, number> = {
+  'draw_count:1': 1, 'draw_count:30': 2, 'draw_count:100': 3, 'draw_count:500': 4,
+  'draw_count:1000': 5, 'draw_count:5000': 6, 'draw_streak:10': 7, 'draw_streak:20': 8,
+  'login_streak:7': 9, 'login_streak:30': 10, 'login_streak:100': 11,
+  'recharge:1': 1, 'recharge_amount:1000': 2, 'recharge_amount:5000': 3,
+  'recharge_amount:20000': 4, 'recharge_amount:100000': 5, 'topup_streak:5': 6,
+  'topup_streak:10': 7, 'invite_friend:1': 8, 'invite_friend:5': 9,
+  'invite_friend:20': 10, 'invite_friend:100': 11, 'top_prize_first:1': 1,
+  'top_prize_day3:3': 2, 'top_prize_count:10': 3, 'top_prize_count:50': 4,
+  'bad_luck_streak:10': 5, 'single_day_draws:100': 6, 'birthday_draw:1': 7,
+};
 
 interface MissionFrameProps {
   consecutiveDays: number;
@@ -548,7 +562,19 @@ function MissionFrame({
                         <div aria-hidden="true" className="absolute border-[#eee] border-b border-solid inset-0 pointer-events-none" />
                       )}
                       <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
-                        <Helper1 />
+                        {mission.type === 'achievement' && mission.condition_type != null ? (
+                          <div className="relative shrink-0 size-[80px] flex items-center justify-center">
+                            <img
+                              src={`/images/mask/${ACHIEVEMENT_MASK[`${mission.condition_type}:${mission.target_value}`] ?? 1}.png`}
+                              alt=""
+                              width={72}
+                              height={72}
+                              style={{ width: 72, height: 72, objectFit: 'contain' }}
+                            />
+                          </div>
+                        ) : (
+                          <Helper1 />
+                        )}
                         <div className="content-stretch flex flex-col gap-[12px] items-start leading-[normal] not-italic relative shrink-0 w-[232px]">
                           <Helper text={mission.title} text1={`+${mission.reward}積分`} />
                           <p className="font-sans font-normal relative shrink-0 text-[#797979] text-[24px] whitespace-nowrap">{mission.description}</p>

@@ -37,37 +37,37 @@ const MissionIcon = ({ name }: { name: string | null }) => {
   }
 };
 
-// condition_type:target_value → { emoji, title? }
-const ACHIEVEMENT_META: Record<string, { emoji: string; title?: string }> = {
-  'draw_count:1':            { emoji: '🌱' },
-  'draw_count:30':           { emoji: '🎯' },
-  'draw_count:100':          { emoji: '🔥' },
-  'draw_count:500':          { emoji: '⚡', title: '轉蛋狂熱者' },
-  'draw_count:1000':         { emoji: '👑', title: '抽蛋之神' },
-  'draw_count:5000':         { emoji: '🌌', title: '命運支配者' },
-  'draw_streak:10':          { emoji: '📿' },
-  'draw_streak:20':          { emoji: '💎' },
-  'login_streak:7':          { emoji: '📅' },
-  'login_streak:30':         { emoji: '🛡️', title: '全勤戰士' },
-  'login_streak:100':        { emoji: '🏠', title: '吉吉比居民' },
-  'recharge:1':              { emoji: '💳' },
-  'recharge_amount:1000':    { emoji: '💰' },
-  'recharge_amount:5000':    { emoji: '💸' },
-  'recharge_amount:20000':   { emoji: '🌊', title: '小課玩家' },
-  'recharge_amount:100000':  { emoji: '🏆', title: '傳說課長' },
-  'topup_streak:5':          { emoji: '🕯️' },
-  'topup_streak:10':         { emoji: '⛩️', title: '真愛玩家' },
-  'invite_friend:1':         { emoji: '🤝' },
-  'invite_friend:5':         { emoji: '👥' },
-  'invite_friend:20':        { emoji: '📢', title: '人氣王' },
-  'invite_friend:100':       { emoji: '🌍', title: '推廣大使' },
-  'top_prize_first:1':       { emoji: '⭐' },
-  'top_prize_day3:3':        { emoji: '🌟', title: '歐皇' },
-  'top_prize_count:10':      { emoji: '✨', title: '天選之人' },
-  'top_prize_count:50':      { emoji: '🌠', title: '命運代行者' },
-  'bad_luck_streak:10':      { emoji: '💀' },
-  'single_day_draws:100':    { emoji: '💥', title: '火力全開' },
-  'birthday_draw:1':         { emoji: '🎂' },
+// condition_type:target_value → { mask (1-11), title? }
+const ACHIEVEMENT_META: Record<string, { mask: number; title?: string }> = {
+  'draw_count:1':            { mask: 1 },
+  'draw_count:30':           { mask: 2 },
+  'draw_count:100':          { mask: 3 },
+  'draw_count:500':          { mask: 4,  title: '轉蛋狂熱者' },
+  'draw_count:1000':         { mask: 5,  title: '抽蛋之神' },
+  'draw_count:5000':         { mask: 6,  title: '命運支配者' },
+  'draw_streak:10':          { mask: 7 },
+  'draw_streak:20':          { mask: 8 },
+  'login_streak:7':          { mask: 9 },
+  'login_streak:30':         { mask: 10, title: '全勤戰士' },
+  'login_streak:100':        { mask: 11, title: '吉吉比居民' },
+  'recharge:1':              { mask: 1 },
+  'recharge_amount:1000':    { mask: 2 },
+  'recharge_amount:5000':    { mask: 3 },
+  'recharge_amount:20000':   { mask: 4,  title: '小課玩家' },
+  'recharge_amount:100000':  { mask: 5,  title: '傳說課長' },
+  'topup_streak:5':          { mask: 6 },
+  'topup_streak:10':         { mask: 7,  title: '真愛玩家' },
+  'invite_friend:1':         { mask: 8 },
+  'invite_friend:5':         { mask: 9 },
+  'invite_friend:20':        { mask: 10, title: '人氣王' },
+  'invite_friend:100':       { mask: 11, title: '推廣大使' },
+  'top_prize_first:1':       { mask: 1 },
+  'top_prize_day3:3':        { mask: 2,  title: '歐皇' },
+  'top_prize_count:10':      { mask: 3,  title: '天選之人' },
+  'top_prize_count:50':      { mask: 4,  title: '命運代行者' },
+  'bad_luck_streak:10':      { mask: 5 },
+  'single_day_draws:100':    { mask: 6,  title: '火力全開' },
+  'birthday_draw:1':         { mask: 7 },
 };
 
 interface FloatingRewardProps {
@@ -232,8 +232,14 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-3">
                   {type === 'achievement' && (
-                    <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-2xl flex-shrink-0">
-                      {meta?.emoji || '🏅'}
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+                      <img
+                        src={`/images/mask/${meta?.mask ?? 1}.png`}
+                        alt=""
+                        width={40}
+                        height={40}
+                        style={{ width: 40, height: 40, objectFit: 'contain' }}
+                      />
                     </div>
                   )}
                   <div>
@@ -241,7 +247,7 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
                     <p className="text-xs text-neutral-500">{mission.description}</p>
                     {type === 'achievement' && meta?.title && (
                       <span className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-600">
-                        🎖️ 解鎖稱號：{meta.title}
+                        🎖 解鎖稱號：{meta.title}
                       </span>
                     )}
                   </div>

@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "playwright.config.ts",
-    "tests/e2e/**/*"
+    "tests/e2e/**/*",
+    "profilecard/**/*"
   ]
 }

@@ -71,7 +71,9 @@ export default function MissionPage() {
         description: m.description || '',
         status: m.is_claimed ? 'claimed' : (m.is_completed ? 'completed' : 'pending'),
         type: m.type as 'daily' | 'weekly' | 'achievement',
-        periodKey: m.period_key
+        periodKey: m.period_key,
+        condition_type: m.condition_type,
+        target_value: m.target_value,
       }));
       
       setMissions(mappedMissions);
