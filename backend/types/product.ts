@@ -22,6 +22,7 @@ export interface Product {
     name: string
   }[]
   price: number
+  cost?: number
   remaining: number
   status: string
   sales: number

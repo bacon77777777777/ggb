@@ -20,6 +20,7 @@ export default function EditProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
+    cost: '',
     image: null as File | null,
     imagePreview: '',
     status: 'active',
@@ -27,7 +28,7 @@ export default function EditProductPage() {
     categoryId: '',
     type: 'ichiban',
     remaining: '',
-    totalCount: '',  // 商品總數（用於自動計算原始機率）
+    totalCount: '',
     isHot: false,
     releaseYear: '',
     releaseMonth: '',
@@ -36,10 +37,10 @@ export default function EditProductPage() {
     supplierId: '' as string,
     machineTheme: '' as string,
     rarity: 3,
-    startedAt: '',  // 開賣時間
-    endedAt: '',  // 完抽時間
-    txidHash: '',  // TXID Hash（自動生成，不可編輯）
-    seed: '',  // 隨機種子（活動結束後才公布，活動進行中保密）
+    startedAt: '',
+    endedAt: '',
+    txidHash: '',
+    seed: '',
     selectedTagIds: [] as string[],
   })
   
@@ -256,6 +257,7 @@ export default function EditProductPage() {
           setFormData({
             name: product.name,
             price: product.price.toString(),
+            cost: product.cost != null ? product.cost.toString() : '',
             image: null,
             imagePreview: product.image_url || '/images/item.png',
             status: product.status,
@@ -357,6 +359,7 @@ export default function EditProductPage() {
         category: formData.category,
         type: formData.type,
         price: parseInt(formData.price) || 0,
+        cost: formData.cost ? parseFloat(formData.cost) : null,
         remaining: calculatedRemaining,
         status: formData.status,
         is_hot: formData.isHot,
@@ -500,8 +503,8 @@ export default function EditProductPage() {
             />
           </div>
 
-          {/* 價格與分類 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* 價格、成本與分類 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 價格(G) <span className="text-red-500">*</span>
@@ -514,6 +517,21 @@ export default function EditProductPage() {
                 placeholder="0"
                 required
                 min="1"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                成本
+              </label>
+              <input
+                type="number"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                placeholder="0"
+                min="0"
+                step="0.01"
               />
             </div>
 

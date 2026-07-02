@@ -206,6 +206,9 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
       const price = toNumber(priceRaw)
       if (price === null) { rowErrors.push(`「${name}」價格無效：${priceRaw}`); continue }
 
+      const costRaw = get(fieldMap.cost)(row).trim()
+      const cost = costRaw ? toNumber(costRaw) : null
+
       // Build prizes from mapped prize groups
       const prizes: any[] = []
       for (const g of prizeGroups) {
@@ -248,6 +251,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
           category_id: primaryMenuId,
           type,
           price,
+          cost,
           total_count: totalCount,
           remaining: totalCount,
           status: mapStatus(get(fieldMap.status)(row)),

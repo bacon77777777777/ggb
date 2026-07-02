@@ -1,7 +1,7 @@
 // CSV 智能欄位偵測工具
 
 export type ProductFieldKey =
-  | 'name' | 'price' | 'type' | 'image_url' | 'status'
+  | 'name' | 'price' | 'cost' | 'type' | 'image_url' | 'status'
   | 'display_menu' | 'started_at' | 'distributor' | 'series' | 'rarity'
   | 'release_date' | 'is_hot' | 'is_preorder' | 'preorder_available_at'
 
@@ -23,7 +23,12 @@ export const PRODUCT_FIELDS: ProductFieldDef[] = [
     key: 'price',
     label: '價格',
     required: true,
-    keywords: [/價格/i, /售價/i, /\bprice\b/i, /金額/i, /單價/i, /費用/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i, /cost/i],
+    keywords: [/價格/i, /售價/i, /\bprice\b/i, /金額/i, /單價/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i],
+  },
+  {
+    key: 'cost',
+    label: '成本',
+    keywords: [/成本/i, /進貨價/i, /\bcost\b/i, /進價/i, /批價/i, /採購價/i],
   },
   {
     key: 'type',

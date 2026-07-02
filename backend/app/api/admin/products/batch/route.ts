@@ -27,23 +27,29 @@ export async function POST(request: Request) {
       if (updateError) throw updateError
 
       const autoGenerateTxid = Boolean(body?.autoGenerateTxid)
-      if (autoGenerateTxid && status === 'active') {
+      if (status === 'active') {
         const { data: products } = await supabaseAdmin
           .from('products')
-          .select('id, seed, txid_hash')
+          .select('id, seed, txid_hash, started_at')
           .in('id', ids)
 
-        const needs = (products || []).filter((p: any) => !p.txid_hash || !p.seed)
-        for (const p of needs) {
-          const seed = generateSeedHex()
-          const txidHash = sha256Hex(seed)
-          await supabaseAdmin.from('products').update({ seed, txid_hash: txidHash }).eq('id', p.id)
+        const now = new Date().toISOString()
+        for (const p of (products || [])) {
+          const patch: Record<string, any> = {}
+          if (!p.started_at) patch.started_at = now
+          if (autoGenerateTxid && (!p.txid_hash || !p.seed)) {
+            patch.seed = generateSeedHex()
+            patch.txid_hash = sha256Hex(patch.seed)
+          }
+          if (Object.keys(patch).length > 0) {
+            await supabaseAdmin.from('products').update(patch).eq('id', p.id)
+          }
         }
       }
 
       const { data: updated } = await supabaseAdmin
         .from('products')
-        .select('id, status, seed, txid_hash')
+        .select('id, status, seed, txid_hash, started_at')
         .in('id', ids)
 
       return NextResponse.json({ products: updated || [] })

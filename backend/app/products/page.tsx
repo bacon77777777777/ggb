@@ -47,6 +47,7 @@ export default function ProductsPage() {
           category: p.category,
           type: p.type,
           price: p.price,
+          cost: p.cost ?? undefined,
           remaining: p.remaining,
           status: p.status,
           sales: p.sales,
@@ -166,12 +167,13 @@ export default function ProductsPage() {
     name: true,
     type: true,
     price: true,
-    stockAndSales: true,  // 庫存/銷量合併欄位
-    majorStatus: true,  // 大獎狀態欄位
+    cost: false,
+    stockAndSales: true,
+    majorStatus: true,
     visibility: true,
     createdAt: true,
-    startedAt: true,  // 開賣時間欄位
-    endedAt: true,  // 完抽時間欄位
+    startedAt: true,
+    endedAt: true,
     operations: true
   })
   
@@ -223,7 +225,7 @@ export default function ProductsPage() {
 
   // 匯出CSV功能
   const handleExportCSV = () => {
-    const headers = ['編號', '商品名稱', '分類', '種類', '價格(G)', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
+    const headers = ['編號', '商品名稱', '分類', '種類', '價格(G)', '成本', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
     const csvData = sortedProducts.map(product => {
       const normalPrizes = product.prizes.filter(p => !isLastOneLevel(p.level))
       const totalCount = normalPrizes.reduce((sum, s) => sum + s.total, 0)
@@ -249,6 +251,7 @@ export default function ProductsPage() {
         product.category,
         typeName,
         product.price.toString(),
+        product.cost != null ? product.cost.toString() : '',
         stockAndSales,
         majorStatus,
         productVisibility[product.id] ? '是' : '否',
@@ -321,7 +324,7 @@ export default function ProductsPage() {
             const data = await res.json().catch(() => null)
             throw new Error(data?.error || '批量上架失敗')
           }
-          const data = (await res.json()) as { products?: Array<{ id: number; seed?: string | null; txid_hash?: string | null }> }
+          const data = (await res.json()) as { products?: Array<{ id: number; seed?: string | null; txid_hash?: string | null; started_at?: string | null }> }
           const updatedMap = new Map((data.products || []).map(p => [p.id, p]))
 
           const newVisibility = { ...productVisibility }
@@ -337,6 +340,7 @@ export default function ProductsPage() {
               status: 'active',
               seed: u?.seed ?? p.seed,
               txidHash: u?.txid_hash ?? p.txidHash,
+              startedAt: u?.started_at ?? p.startedAt,
             }
           }))
 
@@ -496,6 +500,7 @@ export default function ProductsPage() {
       case 'category': aValue = a.category; bValue = b.category; break
       case 'type': aValue = a.type || 'ichiban'; bValue = b.type || 'ichiban'; break
       case 'price': aValue = a.price; bValue = b.price; break
+      case 'cost': aValue = a.cost ?? -1; bValue = b.cost ?? -1; break
       case 'stockAndSales': 
         // 根據庫存排序（庫存 = 所有獎項剩餘數量總和）
         aValue = a.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
@@ -690,6 +695,7 @@ export default function ProductsPage() {
               { key: 'name', label: '名稱', visible: visibleColumns.name },
               { key: 'type', label: '種類', visible: visibleColumns.type },
               { key: 'price', label: '價格(G)', visible: visibleColumns.price },
+              { key: 'cost', label: '成本', visible: visibleColumns.cost },
               { key: 'stockAndSales', label: '庫存/銷量', visible: visibleColumns.stockAndSales },
               { key: 'majorStatus', label: '大獎狀態', visible: visibleColumns.majorStatus },
               { key: 'visibility', label: '上架', visible: visibleColumns.visibility },
@@ -852,8 +858,13 @@ export default function ProductsPage() {
                   )}
                   {visibleColumns.price && (
                     <SortableTableHeader sortKey="price" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
-                    價格(G)
-                  </SortableTableHeader>
+                      價格(G)
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.cost && (
+                    <SortableTableHeader sortKey="cost" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      成本
+                    </SortableTableHeader>
                   )}
                   {visibleColumns.stockAndSales && (
                     <SortableTableHeader sortKey="stockAndSales" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
@@ -976,6 +987,11 @@ export default function ProductsPage() {
                           <span className="whitespace-nowrap">{product.price}</span>
                         </td>
                       )}
+                      {visibleColumns.cost && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
+                          <span className="whitespace-nowrap">{product.cost != null ? product.cost : '–'}</span>
+                        </td>
+                      )}
                       {visibleColumns.stockAndSales && (
                         <td className={`${getDensityClasses()} text-sm whitespace-nowrap`}>
                           {(() => {
@@ -1033,9 +1049,9 @@ export default function ProductsPage() {
                                   const data = await res.json().catch(() => null)
                                   throw new Error(data?.error || '更新狀態失敗')
                                 }
-                                const data = (await res.json()) as { products?: Array<{ id: number; seed?: string | null; txid_hash?: string | null }> }
+                                const data = (await res.json()) as { products?: Array<{ id: number; seed?: string | null; txid_hash?: string | null; started_at?: string | null }> }
                                 const updated = (data.products || [])[0]
-                                
+
                                 setProductVisibility(prev => ({ ...prev, [product.id]: newVisibility }))
                                 setProducts(prev => prev.map(p => {
                                   if (p.id !== product.id) return p
@@ -1044,6 +1060,7 @@ export default function ProductsPage() {
                                     status: newStatus,
                                     seed: updated?.seed ?? p.seed,
                                     txidHash: updated?.txid_hash ?? p.txidHash,
+                                    startedAt: updated?.started_at ?? p.startedAt,
                                   }
                                 }))
                                 

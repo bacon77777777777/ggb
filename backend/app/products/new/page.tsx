@@ -24,6 +24,7 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
+    cost: '',
     image: null as File | null,
     imagePreview: '/images/item.png',
     status: 'active',
@@ -261,6 +262,7 @@ export default function NewProductPage() {
         category_id: formData.categoryId || null,
         type: formData.type,
         price: parseInt(formData.price) || 0,
+        cost: formData.cost ? parseFloat(formData.cost) : null,
         remaining: remaining,
         status: formData.status,
         sales: 0,
@@ -369,7 +371,7 @@ export default function NewProductPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 價格(G) <span className="text-red-500">*</span>
@@ -382,6 +384,21 @@ export default function NewProductPage() {
                 placeholder="0"
                 required
                 min="1"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                成本
+              </label>
+              <input
+                type="number"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                placeholder="0"
+                min="0"
+                step="0.01"
               />
             </div>
 

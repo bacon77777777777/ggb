@@ -13,6 +13,55 @@
 
 ---
 
+## 2026-07-02
+
+### 本次目標
+- 前台：排行榜 mock 用戶稱號、成就任務圖示修正
+- 後台：商品開賣時間未填入的 bug 修復、新增成本欄位
+
+### 前台（Next.js / frontend）
+
+**排行榜 mock 稱號**
+- `get_leaderboard_whales` / `get_leaderboard_draws` 加入 `mock_titles` CTE，15 個 mock UUID 對應稱號（傳說課長、天選之人、歐皇⋯⋯）
+- `COALESCE(真實稱號, mock稱號)` — 真實用戶稱號優先，mock 兜底
+- 排行榜 4–10 名現在也會顯示稱號 badge
+
+**成就任務圖示**
+- 根因：成就列表使用 `MissionFrame.tsx`（Figma 轉出元件），而非之前誤改的 `MissionList.tsx`
+- `MissionFrame` 內 `Helper1()` 是 SVG 灰圓圈，用於所有任務左側圖示
+- 修改：`Mission` interface 加 `condition_type` / `target_value`；新增 `ACHIEVEMENT_MASK` 對照表；成就任務改用 `/images/mask/*.png`，每日/週任務保留灰圓
+- `mission/page.tsx` 傳遞 `condition_type` / `target_value` 給 `MissionFrame`
+
+**資料卡（PlayerProfileCard）**
+- 關閉按鈕改成和購買確認 Modal 一致的樣式（`p-1 text-neutral-400`，無圓圈）
+
+### 後台（Next.js / backend）
+
+**開賣時間（`started_at`）修復**
+- 根因：`batch/route.ts` 上架時只更新 `status`，未寫入 `started_at`
+- 修正：`status = active` 時，對 `started_at` 為空的商品補寫 `NOW()`
+- batch API 回傳欄位加上 `started_at`，前台 `setProducts` 同步更新 `startedAt` 顯示
+
+**成本欄位（cost）**
+- DB：`ALTER TABLE products ADD COLUMN cost numeric(10,2)`
+- `types/product.ts` 加 `cost?: number`
+- 商品列表（`products/page.tsx`）：
+  - 新增 `成本` 欄（預設隱藏，可透過欄位切換開啟）
+  - 排序支援 `cost`
+  - CSV 匯出加入成本欄
+- 新增商品（`new/page.tsx`）：表單 grid 改 4 欄，在價格後加成本輸入
+- 編輯商品（`[id]/page.tsx`）：表單 grid 改 3 欄（md），加成本輸入
+- CSV 匯入（`CsvImportWizard.tsx` + `csvColumnDetect.ts`）：
+  - 新增 `cost` 欄位偵測（關鍵字：成本/進貨價/cost/批價）
+  - `buildProducts` 讀取並傳入 `cost`
+
+### DB 異動
+| 欄位 | 說明 |
+|---|---|
+| `products.cost` | 新增成本欄，`numeric(10,2)` nullable，`ALTER TABLE` 直接執行 |
+
+---
+
 ## 2026-07-01（後台持續開發）
 
 ### 本次目標
