@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       ? await detectSeriesFromName(product.name, supabaseAdmin)
       : null
 
+    const now = new Date().toISOString()
     const insertProduct: Record<string, any> = {
       ...product,
       category: product.category && String(product.category).trim() !== '' ? product.category : '未分類',
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
       seed,
       txid_hash: txidHash,
       series: product.series || detectedSeries || null,
+      started_at: product.status === 'active' && !product.started_at ? now : (product.started_at ?? null),
     }
 
     const { data: created, error: insertError } = await supabaseAdmin

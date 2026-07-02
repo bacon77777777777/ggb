@@ -27,6 +27,9 @@ export async function PUT(
       if (!product.series && product.name) {
         product.series = await detectSeriesFromName(product.name, supabaseAdmin) || null
       }
+      if (product.status === 'active' && !product.started_at) {
+        product.started_at = new Date().toISOString()
+      }
       const { error: updateError } = await supabaseAdmin.from('products').update(product).eq('id', productId)
       if (updateError) throw updateError
     }
