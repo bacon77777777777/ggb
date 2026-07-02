@@ -124,8 +124,6 @@ export default function RankingPage() {
           amountStr = Math.floor(Number(item.total_spent || 0)).toLocaleString();
         }
 
-        // Mock SQL users have UUIDs starting with 00000000- and don't exist in DB
-        const isMockUser = item.user_id.startsWith('00000000-');
         return {
           user_id: item.user_id,
           rank: item.rank,
@@ -133,7 +131,6 @@ export default function RankingPage() {
           avatar_url: item.avatar_url || imgAvatar,
           amount: amountStr,
           title: item.title_name ? { name: item.title_name, color_key: item.title_color || 'gold' } : null,
-          isPlaceholder: isMockUser,
         };
       });
 

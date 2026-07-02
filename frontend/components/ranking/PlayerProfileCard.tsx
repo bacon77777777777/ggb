@@ -184,7 +184,10 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
 
   // Fetch profile data
   useEffect(() => {
-    if (isPlaceholder) {
+    // isPlaceholder = 排行榜底部「虛位以待」空位
+    // mock UUID (00000000-...) = SQL 假用戶，不存在 DB 但可互動 → 也走假資料路徑
+    const isMockUUID = userId.startsWith('00000000-');
+    if (isPlaceholder || isMockUUID) {
       setProfile(buildFakeProfile(userId, propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
       setLoading(false);
       return;
