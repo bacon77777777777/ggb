@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -363,26 +363,46 @@ export default function ProductDetailPage() {
   const [shareCopied, setShareCopied] = useState(false);
   const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
 
+  const getShareText = () => {
+    const url = window.location.href;
+    const name = product?.name || 'GGB';
+    return `【吉吉比線上轉蛋】${name} ${url}`;
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
-    const title = product?.name || 'GGB';
+    const name = product?.name || 'GGB';
+    const shareText = getShareText();
     if (navigator.share) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, text: shareText, url });
       } catch {}
     } else {
-      setIsShareModalOpen(true);
+      // Desktop: copy directly without modal
+      try {
+        await navigator.clipboard.writeText(shareText);
+      } catch {
+        const el = document.createElement('textarea');
+        el.value = shareText;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
     }
   };
 
   const handleCopyLink = async () => {
+    const shareText = getShareText();
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareText);
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     } catch {
       const el = document.createElement('textarea');
-      el.value = window.location.href;
+      el.value = shareText;
       document.body.appendChild(el);
       el.select();
       document.execCommand('copy');
@@ -1744,9 +1764,14 @@ export default function ProductDetailPage() {
 
                     <button
                       onClick={handleShare}
-                      className="w-[44px] h-[44px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95"
+                      className={cn(
+                        "w-[44px] h-[44px] border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95",
+                        shareCopied
+                          ? "bg-green-50 border-green-400 text-green-500 dark:bg-green-900/20 dark:border-green-600"
+                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50"
+                      )}
                     >
-                      <Share2 className="w-5 h-5 stroke-[2.5]" />
+                      {shareCopied ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Share2 className="w-5 h-5 stroke-[2.5]" />}
                     </button>
                     
                     <button 
@@ -2104,9 +2129,14 @@ export default function ProductDetailPage() {
             </Button>
             <button
               onClick={handleShare}
-              className="w-[44px] h-[44px] shrink-0 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95"
+              className={cn(
+                "w-[44px] h-[44px] shrink-0 border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95",
+                shareCopied
+                  ? "bg-green-50 border-green-400 text-green-500 dark:bg-green-900/20 dark:border-green-600"
+                  : "bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-primary hover:border-primary/50"
+              )}
             >
-              <Share2 className="w-5 h-5 stroke-[2.5]" />
+              {shareCopied ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Share2 className="w-5 h-5 stroke-[2.5]" />}
             </button>
           </div>
         </div>
