@@ -360,7 +360,7 @@ export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, 
         onClick={() => !isPlaceholder && onWorship({ user_id: '', rank, nickname, avatar_url: avatarSrc, amount, isPlaceholder, title })}
       >
         {title && !isPlaceholder && (
-          <div className="w-full flex justify-center mb-0.5">
+          <div className="mb-0.5">
             <TitleBadge title={title} />
           </div>
         )}
