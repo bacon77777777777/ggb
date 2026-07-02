@@ -619,7 +619,6 @@ function MissionFrame({
                       <div className="content-stretch flex gap-[20px] items-center relative shrink-0">
                         {/* 進度顯示：pending 且 target > 1 時才顯示 */}
                         {mission.status === 'pending' &&
-                          (mission.target_value ?? 1) > 1 &&
                           mission.current_value !== undefined && (
                           <span className="shrink-0 text-[24px] font-medium text-[#999] whitespace-nowrap">
                             <span className="text-[#ff6b35]">{Math.min(mission.current_value, mission.target_value ?? 1)}</span>/{mission.target_value}
