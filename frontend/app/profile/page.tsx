@@ -31,7 +31,8 @@ import {
   Store,
   History,
   MessageCircle,
-  Star
+  Star,
+  Medal
 } from 'lucide-react';
 import { AlertModal } from '@/components/ui/AlertModal';
 
@@ -50,6 +51,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 
 import DailyCheckInTab from '@/components/profile/DailyCheckInTab';
+import AchievementsTab from '@/components/profile/AchievementsTab';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -215,6 +217,7 @@ interface TopupHistoryItem {
 
 type TabType =
   | 'check-in'
+  | 'achievements'
   | 'warehouse'
   | 'market'
   | 'delivery'
@@ -899,6 +902,11 @@ function ProfileContent() {
       setActiveWarehouseCategory('all');
       setActiveWarehouseSubCategory('all');
     }
+
+    // 查看抽獎紀錄時追蹤任務
+    if (tab === 'draw-history') {
+      void supabase.rpc('track_mission_event', { p_event_type: 'view_winning_records' });
+    }
   };
 
   // Sync with URL on load
@@ -908,6 +916,7 @@ function ProfileContent() {
       tab &&
       [
         'check-in',
+        'achievements',
         'warehouse',
         ...(flags.market ? (['market'] as const) : []),
         'delivery',
@@ -1962,6 +1971,7 @@ function ProfileContent() {
   const loginHref = '/login?redirect=%2Fprofile';
 
   const navItems = [
+    { id: 'achievements', label: '我的成就', icon: Medal, color: 'text-purple-500' },
     { id: 'warehouse', label: '我的倉庫', icon: Box, color: 'text-primary' },
     { id: 'delivery', label: '配送管理', icon: Truck, color: 'text-accent-emerald' },
     { id: 'draw-history', label: '抽獎紀錄', icon: Trophy, color: 'text-accent-yellow' },
@@ -2003,6 +2013,27 @@ function ProfileContent() {
         return (
           <div className="p-3 lg:p-8">
             <DailyCheckInTab />
+          </div>
+        );
+      case 'achievements':
+        return (
+          <div className="pb-24 md:pb-0">
+            {/* Mobile Layout */}
+            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overflow-y-auto overscroll-none">
+              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center shrink-0">
+                <button onClick={() => router.back()} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <span className="text-[18px] font-black text-neutral-900 dark:text-white ml-1">我的成就</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3">
+                <AchievementsTab />
+              </div>
+            </div>
+            {/* Desktop Layout */}
+            <div className="hidden md:block p-8">
+              <AchievementsTab />
+            </div>
           </div>
         );
       case 'warehouse':
@@ -6114,6 +6145,13 @@ function ProfileContent() {
             {/* Main Menu List */}
             <div className="mx-2 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden divide-y divide-neutral-50 dark:divide-neutral-800">
               {[
+                {
+                  id: 'achievements',
+                  label: '我的成就',
+                  icon: Medal,
+                  color: 'text-purple-500',
+                  onClick: () => handleTabChange('achievements'),
+                },
                 {
                   id: 'warehouse',
                   label: '我的倉庫',

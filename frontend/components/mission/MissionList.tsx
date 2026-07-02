@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UserMission } from '@/services/mission';
-import { CheckCircle2, Trophy, Ticket, Share, Layers, Gift, Eye, Heart, Wallet, Sparkles, LogIn } from 'lucide-react';
+import { CheckCircle2, Trophy, Ticket, Share, Layers, Gift, Eye, Heart, Wallet, Sparkles, LogIn, Calendar, Users, Star, Coins } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,10 @@ const MissionIcon = ({ name }: { name: string | null }) => {
     case 'Heart': return <Heart className="w-5 h-5 text-pink-500" />;
     case 'Wallet': return <Wallet className="w-5 h-5 text-emerald-500" />;
     case 'Sparkles': return <Sparkles className="w-5 h-5 text-amber-400" />;
+    case 'Calendar': return <Calendar className="w-5 h-5 text-blue-500" />;
+    case 'Users': return <Users className="w-5 h-5 text-indigo-500" />;
+    case 'Star': return <Star className="w-5 h-5 text-yellow-500" />;
+    case 'Coins': return <Coins className="w-5 h-5 text-orange-500" />;
     default: return <Gift className="w-5 h-5 text-primary" />;
   }
 };

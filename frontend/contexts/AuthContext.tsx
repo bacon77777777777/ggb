@@ -212,6 +212,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .catch((profileErr) => {
             console.warn('[AuthContext] Profile fetch timed out/failed:', profileErr);
           });
+
+        // 登入時追蹤任務 + 檢查成就（fire-and-forget）
+        if (_event === 'SIGNED_IN') {
+          Promise.allSettled([
+            supabase.rpc('track_mission_event', { p_event_type: 'login' }),
+            supabase.rpc('check_achievements', { p_user_id: session.user.id }),
+          ]).catch(() => {});
+        }
       } else {
         setSupabaseUser(null);
         setUser(null);

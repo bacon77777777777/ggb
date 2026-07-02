@@ -695,6 +695,19 @@ export default function ProductDetailPage() {
         });
       });
 
+      // Fire-and-forget: 任務追蹤 + 成就檢查
+      if (user) {
+        const tokenCost = product.price * quantity;
+        const pointsCost = tokenCost * 3;
+        Promise.allSettled([
+          supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: quantity } }),
+          options?.usePoints
+            ? supabase.rpc('track_mission_event', { p_event_type: 'spend_points', p_data: { amount: pointsCost } })
+            : supabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: tokenCost } }),
+          supabase.rpc('check_achievements', { p_user_id: user.id }),
+        ]).catch(() => {});
+      }
+
       if (product.type === 'card') {
         setIsVideoMuted(false);
         setIsVideoOpen(true);

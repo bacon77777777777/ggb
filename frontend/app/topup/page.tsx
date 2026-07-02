@@ -109,7 +109,16 @@ export default function TopupPage() {
         });
         
         if (error) throw new Error(error.message);
-        
+
+        // Fire-and-forget: 任務追蹤 + 成就檢查
+        if (user) {
+          Promise.allSettled([
+            supabase.rpc('track_mission_event', { p_event_type: 'recharge' }),
+            supabase.rpc('track_mission_event', { p_event_type: 'recharge_amount', p_data: { amount: selectedPlan.amount } }),
+            supabase.rpc('check_achievements', { p_user_id: user.id }),
+          ]).catch(() => {});
+        }
+
         showToast('儲值成功！', 'success');
         if (refreshProfile) await refreshProfile();
         router.push('/profile?tab=topup-history');
