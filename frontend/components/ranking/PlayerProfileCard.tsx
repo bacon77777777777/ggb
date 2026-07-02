@@ -88,6 +88,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [scale, setScale] = useState(0.5);
+  const [activeBadgeId, setActiveBadgeId] = useState<string | null>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -300,7 +301,12 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                   {badges.filter(b => b.earned).length === 0 ? (
                     <p className="text-[32px] text-neutral-400">尚未獲得任何徽章</p>
                   ) : badges.filter(b => b.earned).map((badge, idx) => (
-                    <div key={badge.id} className="relative shrink-0" style={{ width: 72, height: 72 }}>
+                    <div
+                      key={badge.id}
+                      className="relative shrink-0 cursor-pointer"
+                      style={{ width: 72, height: 72 }}
+                      onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
+                    >
                       <img
                         src={getMaskSrc(badge.sort_order ?? idx)}
                         alt={badge.name}
@@ -308,6 +314,34 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                         height={72}
                         style={{ width: 72, height: 72, objectFit: 'contain' }}
                       />
+                      {activeBadgeId === badge.id && (
+                        <div
+                          className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20"
+                          style={{ bottom: 80 }}
+                        >
+                          <div
+                            className="whitespace-nowrap text-white font-semibold rounded-full px-[20px]"
+                            style={{
+                              fontSize: 24,
+                              lineHeight: '44px',
+                              background: 'linear-gradient(135deg, #e876ea, #a34cd7)',
+                              boxShadow: '0 4px 16px rgba(163,76,215,0.4)',
+                            }}
+                          >
+                            {badge.name}
+                          </div>
+                          <div
+                            className="absolute left-1/2 -translate-x-1/2"
+                            style={{
+                              bottom: -10,
+                              width: 0, height: 0,
+                              borderLeft: '8px solid transparent',
+                              borderRight: '8px solid transparent',
+                              borderTop: '10px solid #a34cd7',
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
