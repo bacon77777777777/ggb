@@ -22,9 +22,7 @@ interface RankingRpcItem {
   nickname?: string;
   avatar_url?: string;
   total_spent?: number;
-  big_prize_count?: number;
-  grand_prize_rate?: number;
-  unlucky_rate?: number;
+  draw_count?: number;
 }
 
 export default function RankingPage() {
@@ -32,7 +30,7 @@ export default function RankingPage() {
   const [scale, setScale] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
-  const [activeCategory, setActiveCategory] = useState<'reward' | 'lucky' | 'unlucky'>('reward');
+  const [activeCategory, setActiveCategory] = useState<'reward' | 'draws'>('reward');
   const [rankingData, setRankingData] = useState<RankingItemData[]>([]);
   const [loading, setLoading] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -43,7 +41,7 @@ export default function RankingPage() {
   const { showAlert } = useAlert();
   const supabase = createClient();
 
-  const categories = ['reward', 'lucky', 'unlucky'] as const;
+  const categories = ['reward', 'draws'] as const;
 
   // Responsive Scaling (Mission Page Strategy)
   const updateScale = useCallback(() => {
@@ -99,16 +97,8 @@ export default function RankingPage() {
   const fetchRanking = useCallback(async () => {
     setLoading(true);
     try {
-      let rpcName = 'get_leaderboard_whales';
-      // Default to current tab
+      const rpcName = activeCategory === 'draws' ? 'get_leaderboard_draws' : 'get_leaderboard_whales';
       const rangeParam = activeTab === 'weekly' ? 'week' : 'day';
-
-      if (activeCategory === 'lucky') {
-        rpcName = 'get_leaderboard_lucky';
-      }
-      if (activeCategory === 'unlucky') {
-        rpcName = 'get_leaderboard_unlucky';
-      }
 
       const { data, error } = await supabase.rpc(rpcName, {
         p_range: rangeParam
@@ -124,16 +114,10 @@ export default function RankingPage() {
       const formattedData: RankingItemData[] = (data || []).map((item: RankingRpcItem) => {
         let amountStr = '0';
         
-        if (activeCategory === 'reward') {
+        if (activeCategory === 'draws') {
+          amountStr = (item.draw_count || 0).toLocaleString();
+        } else {
           amountStr = Math.floor(Number(item.total_spent || 0)).toLocaleString();
-        } else if (activeCategory === 'lucky') {
-          amountStr = (item.big_prize_count || 0).toString();
-        } else if (activeCategory === 'unlucky') {
-          // 優先使用 grand_prize_rate (新 RPC)，若無則用 (100 - unlucky_rate) (舊 RPC fallback)
-          const rate = item.grand_prize_rate !== undefined 
-            ? Number(item.grand_prize_rate) 
-            : (100 - Number(item.unlucky_rate || 0));
-          amountStr = Math.max(0, rate).toFixed(2) + '%';
         }
 
         return {
@@ -153,7 +137,7 @@ export default function RankingPage() {
           rank: i,
           nickname: '虛位以待',
           avatar_url: '/images/default.png',
-          amount: activeCategory === 'unlucky' ? '0%' : '0',
+          amount: '0',
           isPlaceholder: true
         });
       }
@@ -253,7 +237,7 @@ export default function RankingPage() {
     }),
   };
 
-  const displayType = activeCategory === 'lucky' ? 'gift' : activeCategory === 'unlucky' ? 'percent' : 'token';
+  const displayType = activeCategory === 'draws' ? 'gift' : 'token';
 
   return (
     <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center">

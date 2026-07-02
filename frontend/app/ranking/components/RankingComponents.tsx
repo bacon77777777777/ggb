@@ -367,22 +367,21 @@ export function BackgroundImageAndText({ text }: BackgroundImageAndTextProps) {
 }
 
 type RankingCategoryTabsProps = {
-  activeCategory: 'reward' | 'lucky' | 'unlucky';
-  onCategoryChange: (category: 'reward' | 'lucky' | 'unlucky') => void;
+  activeCategory: 'reward' | 'draws';
+  onCategoryChange: (category: 'reward' | 'draws') => void;
 };
 
 export function RankingCategoryTabs({ activeCategory, onCategoryChange }: RankingCategoryTabsProps) {
   return (
     <div className="absolute z-10 top-[18.75px] left-[37.5px] content-stretch flex h-[80px] items-center shrink-0 w-[675px] justify-between px-8">
       {[
-        { id: 'reward', label: '賞金榜' },
-        { id: 'lucky', label: '歐皇榜' },
-        { id: 'unlucky', label: '非酋榜' }
+        { id: 'reward', label: '賞金狂人' },
+        { id: 'draws', label: '轉蛋魔人' }
       ].map((tab) => (
         <div 
           key={tab.id}
           className="content-stretch flex flex-[1_0_0] h-full items-center justify-center min-h-px min-w-px relative cursor-pointer"
-          onClick={() => onCategoryChange(tab.id as RankingCategoryTabsProps['activeCategory'])}
+          onClick={() => onCategoryChange(tab.id as 'reward' | 'draws')}
         >
           {activeCategory === tab.id && (
             <motion.div 
