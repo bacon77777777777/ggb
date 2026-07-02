@@ -621,15 +621,9 @@ function MissionFrame({
                         {mission.status === 'pending' &&
                           (mission.target_value ?? 1) > 1 &&
                           mission.current_value !== undefined && (
-                          <div className="flex flex-col items-center shrink-0">
-                            <span className="text-[#ff6b35] font-bold text-[28px] leading-none">
-                              {Math.min(mission.current_value, mission.target_value ?? 1)}
-                            </span>
-                            <div className="w-[48px] h-[2px] bg-[#e0e0e0] my-[4px]" />
-                            <span className="text-[#999] text-[22px] leading-none">
-                              {mission.target_value}
-                            </span>
-                          </div>
+                          <span className="shrink-0 text-[24px] font-medium text-[#999] whitespace-nowrap">
+                            <span className="text-[#ff6b35]">{Math.min(mission.current_value, mission.target_value ?? 1)}</span>/{mission.target_value}
+                          </span>
                         )}
                         {(mission.status === 'claimed' || optimisticClaimedIds.has(mission.id)) ? (
                           <div className="w-[112px] text-center text-gray-400 text-[24px]">已領取</div>
