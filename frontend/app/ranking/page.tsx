@@ -273,6 +273,12 @@ export default function RankingPage() {
           
           <RankingCategoryTabs activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           <RankingTimeTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          {/* 更新時間說明 */}
+          <div className="absolute z-10 text-center w-full" style={{ top: 178 }}>
+            <p className="text-[18px] text-white/50 font-medium">
+              {activeTab === 'daily' ? '每日 00:00 重置' : '每週一 00:00 重置'}
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 grid-rows-1">
             <AnimatePresence initial={false} custom={direction}>
