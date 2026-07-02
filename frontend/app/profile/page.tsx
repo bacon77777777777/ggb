@@ -356,30 +356,22 @@ interface GroupedDrawHistoryItem {
 const getArrivalText = (arrivalDate?: string) => {
   if (!arrivalDate) return null;
   try {
-    // arrivalDate format is likely 'YYYY/MM/DD' or 'YYYY-MM-DD' from the database/API
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
     const arrival = new Date(arrivalDate.replace(/-/g, '/'));
     arrival.setHours(0, 0, 0, 0);
-    
-    if (arrival.getTime() === today.getTime()) {
-      return '今日送達';
-    } else if (arrival.getTime() === tomorrow.getTime()) {
-      return '明日送達';
-    } else if (arrival.getTime() > today.getTime()) {
+
+    if (arrival.getTime() === today.getTime()) return '今日送達';
+    if (arrival.getTime() === tomorrow.getTime()) return '明日送達';
+    if (arrival.getTime() > today.getTime()) {
       const month = arrival.getMonth() + 1;
       const date = arrival.getDate();
-      return `${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日送達`;
-    } else {
-       // Also handle past dates or other future dates if needed
-       const month = arrival.getMonth() + 1;
-       const date = arrival.getDate();
-       return `${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日送達`;
+      return `${String(month).padStart(2, '0')}月${String(date).padStart(2, '0')}日送達`;
     }
+    // 預計日期已過但尚未送達 → 保持友善提示
+    return '明日送達';
   } catch (e) {
     console.error('Date parsing error', e);
   }
@@ -3998,10 +3990,9 @@ function ProfileContent() {
                                  }
                                  if (['submitted', 'processing', 'picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
                                    const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
-                                   const prefix = s === 'shipping' ? '配送中，預計' : '預計';
                                    return (
                                      <div className="text-[13px] font-black text-emerald-500">
-                                       {prefix}{text}
+                                       預計{text}
                                      </div>
                                    );
                                  }
