@@ -74,6 +74,7 @@ export default function MissionPage() {
         periodKey: m.period_key,
         condition_type: m.condition_type,
         target_value: m.target_value,
+        current_value: m.progress ?? 0,
       }));
       
       setMissions(mappedMissions);
