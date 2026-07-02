@@ -579,10 +579,6 @@ export default function ProductDetailPage() {
 
   const handleTrialCard = () => {
     if (!product) return;
-    if ((typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended') {
-      showToast('商品已完抽', 'info');
-      return;
-    }
 
     const scoreLevel = (levelRaw: string) => {
       const level = String(levelRaw || '').trim()
