@@ -162,7 +162,6 @@ export default function RankingPage() {
 
   // 點頭像 → 打開個人資料卡
   const handleAvatarClick = (item: RankingItemData) => {
-    if (item.isPlaceholder || item.user_id.startsWith('0000')) return;
     setProfileUserId(item.user_id);
   };
 
@@ -361,6 +360,7 @@ export default function RankingPage() {
           userId={profileUserId}
           onWorship={handleWorshipFromCard}
           onClose={() => setProfileUserId(null)}
+          isPlaceholder={rankingData.find(r => r.user_id === profileUserId)?.isPlaceholder}
         />
       )}
     </>
