@@ -165,7 +165,16 @@
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT get_leaderboard_whales\\('day'\\) LIMIT 3;\")",
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT get_leaderboard_whales\\('week'\\) LIMIT 3;\")",
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT nickname, total_spent FROM get_leaderboard_whales\\('day'\\) LIMIT 3;\")",
-      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT nickname, total_spent FROM get_leaderboard_whales\\('week'\\) LIMIT 3;\")"
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT nickname, total_spent FROM get_leaderboard_whales\\('week'\\) LIMIT 3;\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name IN \\('total_draws','total_spent','tokens','points','login_streak','birthday'\\);\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -f /Users/bacon/ggb/backend/db/migrations/223_badges_titles.sql)",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -f /Users/bacon/ggb/backend/db/migrations/224_check_achievements.sql)",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT check_achievements\\('c424d203-c75b-454a-920c-9bbb7366a580'\\);\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"ALTER TABLE public.users ADD COLUMN IF NOT EXISTS birthday DATE;\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"\\\\d draw_records\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"DROP FUNCTION get_leaderboard_whales\\(text\\); DROP FUNCTION get_leaderboard_draws\\(text\\);\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT routine_name FROM information_schema.routines WHERE routine_schema='public' AND routine_name LIKE '%leaderboard%';\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT user_id, nickname, title_name FROM get_leaderboard_whales\\('day'\\) LIMIT 3;\")"
     ],
     "additionalDirectories": [
       "/Users/bacon/ggb/backend/app/orders/[id]"

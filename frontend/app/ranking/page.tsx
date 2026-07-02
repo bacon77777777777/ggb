@@ -15,6 +15,7 @@ import {
 import { imgAvatar } from './assets';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
 
 interface RankingRpcItem {
   user_id: string;
@@ -23,6 +24,8 @@ interface RankingRpcItem {
   avatar_url?: string;
   total_spent?: number;
   draw_count?: number;
+  title_name?: string | null;
+  title_color?: string | null;
 }
 
 export default function RankingPage() {
@@ -34,7 +37,8 @@ export default function RankingPage() {
   const [rankingData, setRankingData] = useState<RankingItemData[]>([]);
   const [loading, setLoading] = useState(false);
   const [direction, setDirection] = useState(0);
-  
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+
   const [scaledHeight, setScaledHeight] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -125,7 +129,8 @@ export default function RankingPage() {
           rank: item.rank,
           nickname: item.nickname || '神秘玩家',
           avatar_url: item.avatar_url || imgAvatar,
-          amount: amountStr
+          amount: amountStr,
+          title: item.title_name ? { name: item.title_name, color_key: item.title_color || 'gold' } : null,
         };
       });
 
@@ -155,10 +160,25 @@ export default function RankingPage() {
     fetchRanking();
   }, [fetchRanking]);
 
+  // 點頭像 → 打開個人資料卡
+  const handleAvatarClick = (item: RankingItemData) => {
+    if (item.isPlaceholder || item.user_id.startsWith('0000')) return;
+    setProfileUserId(item.user_id);
+  };
+
+  // 膜拜（從資料卡觸發）
+  const handleWorshipFromCard = async () => {
+    if (!profileUserId) return;
+    const item = rankingData.find(r => r.user_id === profileUserId);
+    if (!item) return;
+    setProfileUserId(null);
+    handleWorshipClick(item);
+  };
+
   // Handle Worship Click
   const handleWorshipClick = (item: RankingItemData) => {
     if (item.isPlaceholder) return;
-    
+
     // Check if user is worshiping themselves
     if (user && item.user_id === user.id) {
       showAlert({ title: '提示', message: '不可膜拜自己', type: 'info' });
@@ -240,6 +260,7 @@ export default function RankingPage() {
   const displayType = activeCategory === 'draws' ? 'gift' : 'token';
 
   return (
+    <>
     <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center">
       <div 
         className="overflow-hidden"
@@ -300,7 +321,7 @@ export default function RankingPage() {
                 className="touch-pan-y col-start-1 row-start-1 w-full"
               >
                 {/* Top 3 Section */}
-                <RankingTop3 data={rankingData} onWorship={handleWorshipClick} type={displayType} />
+                <RankingTop3 data={rankingData} onWorship={handleAvatarClick} type={displayType} />
 
                 {/* List Section (4th - 10th) */}
                 <RankingListContainer>
@@ -311,15 +332,16 @@ export default function RankingPage() {
                 ) : (
                   <>
                     {rankingData.filter(d => d.rank > 3).map((item) => (
-                      <RankingListItem 
+                      <RankingListItem
                         key={item.user_id}
                         rank={item.rank}
                         avatarSrc={item.avatar_url}
                         nickname={item.nickname}
                         amount={item.amount.toString()}
-                        onWorship={() => handleWorshipClick(item)}
+                        onWorship={() => handleAvatarClick(item)}
                         isPlaceholder={item.isPlaceholder}
                         type={displayType}
+                        title={item.title}
                       />
                     ))}
                     
@@ -338,5 +360,15 @@ export default function RankingPage() {
         </div>
       </div>
     </div>
+
+      {/* 個人資料卡 */}
+      {profileUserId && (
+        <PlayerProfileCard
+          userId={profileUserId}
+          onWorship={handleWorshipFromCard}
+          onClose={() => setProfileUserId(null)}
+        />
+      )}
+    </>
   );
 }

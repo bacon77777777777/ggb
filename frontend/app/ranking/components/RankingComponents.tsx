@@ -9,6 +9,22 @@ const imgGCoin = "/images/gcoin.png";
 const imgRanking123 = "/images/rank/ranking123.png";
 const imgDefaultAvatar = "/images/avatar.png";
 
+const TITLE_STYLES: Record<string, string> = {
+  gold:   'bg-gradient-to-r from-yellow-400 to-amber-500',
+  purple: 'bg-gradient-to-r from-purple-500 to-violet-600',
+  red:    'bg-gradient-to-r from-rose-500 to-pink-600',
+  blue:   'bg-gradient-to-r from-blue-500 to-cyan-500',
+  green:  'bg-gradient-to-r from-emerald-500 to-teal-500',
+};
+
+function TitleBadge({ title }: { title: { name: string; color_key: string } }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-white text-[18px] font-bold leading-none mb-1 ${TITLE_STYLES[title.color_key] || TITLE_STYLES.gold}`}>
+      {title.name}
+    </span>
+  );
+}
+
 export type RankingItemData = {
   user_id: string;
   rank: number;
@@ -16,6 +32,7 @@ export type RankingItemData = {
   avatar_url: string;
   amount: string | number;
   isPlaceholder?: boolean;
+  title?: { name: string; color_key: string } | null;
 };
 
 type RankingTop3Props = {
@@ -308,7 +325,7 @@ export function RankingTopDecorations() {
   );
 }
 
-export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, isPlaceholder, type = 'token' }: RankingListItemProps) {
+export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, isPlaceholder, type = 'token', title }: RankingListItemProps) {
   const resolvedAvatarSrc = (avatarSrc && avatarSrc.trim()) ? avatarSrc : imgDefaultAvatar
   return (
     <div className="content-stretch flex gap-[18.75px] items-center py-[18.75px] relative shrink-0 w-full">
@@ -329,10 +346,11 @@ export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, 
           />
         </div>
       </div>
-      <div 
-        className={clsx("content-stretch flex flex-[1_0_0] flex-col gap-[7.813px] items-start min-h-px min-w-px relative cursor-pointer", isPlaceholder && "pointer-events-none cursor-default")}
-        onClick={() => !isPlaceholder && onWorship({ user_id: '', rank, nickname, avatar_url: avatarSrc, amount, isPlaceholder })}
+      <div
+        className={clsx("content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative cursor-pointer", isPlaceholder && "pointer-events-none cursor-default")}
+        onClick={() => !isPlaceholder && onWorship({ user_id: '', rank, nickname, avatar_url: avatarSrc, amount, isPlaceholder, title })}
       >
+        {title && !isPlaceholder && <TitleBadge title={title} />}
         <BackgroundImageAndText6 text={nickname} />
       </div>
       <div className="content-stretch flex gap-[20px] items-center relative shrink-0 ml-auto">
@@ -350,6 +368,7 @@ type RankingListItemProps = {
   onWorship: (item: RankingItemData) => void;
   isPlaceholder?: boolean;
   type?: 'token' | 'gift' | 'percent';
+  title?: { name: string; color_key: string } | null;
 };
 
 
