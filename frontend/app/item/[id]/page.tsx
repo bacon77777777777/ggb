@@ -359,7 +359,38 @@ export default function ProductDetailPage() {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = product?.name || 'GGB';
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch {}
+    } else {
+      setIsShareModalOpen(true);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = window.location.href;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     if (params.id) {
@@ -1702,7 +1733,10 @@ export default function ProductDetailPage() {
                           : '立即轉蛋'}
                     </Button>
 
-                    <button className="w-[44px] h-[44px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95">
+                    <button
+                      onClick={handleShare}
+                      className="w-[44px] h-[44px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95"
+                    >
                       <Share2 className="w-5 h-5 stroke-[2.5]" />
                     </button>
                     
@@ -2139,6 +2173,86 @@ export default function ProductDetailPage() {
                 onClose={() => setIsTicketModalOpen(false)}
                 onRefreshProduct={fetchData}
               />
+            </div>
+          </div>
+        )}
+
+        {/* 分享彈窗 */}
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-[2200] flex items-end sm:items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsShareModalOpen(false)}
+            />
+            <div className="relative z-[2201] w-full max-w-sm mx-4 mb-6 sm:mb-0 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="px-5 pt-5 pb-2">
+                <h3 className="text-[15px] font-bold text-neutral-800 dark:text-white">分享這個商品</h3>
+                <p className="text-[12px] text-neutral-400 mt-0.5 truncate">{product?.name}</p>
+              </div>
+              <div className="grid grid-cols-4 gap-3 px-5 py-4">
+                {/* 複製連結 */}
+                <button
+                  onClick={handleCopyLink}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                    shareCopied
+                      ? "bg-emerald-100 dark:bg-emerald-900/40"
+                      : "bg-neutral-100 dark:bg-neutral-800 group-hover:bg-primary/10"
+                  )}>
+                    {shareCopied
+                      ? <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      : <svg className="w-5 h-5 text-neutral-500 dark:text-neutral-300 group-hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    }
+                  </div>
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{shareCopied ? '已複製' : '複製連結'}</span>
+                </button>
+                {/* LINE */}
+                <a
+                  href={`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#06C755] flex items-center justify-center group-hover:opacity-90 transition-opacity">
+                    <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                  </div>
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">LINE</span>
+                </a>
+                {/* Facebook */}
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#1877F2] flex items-center justify-center group-hover:opacity-90 transition-opacity">
+                    <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  </div>
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Facebook</span>
+                </a>
+                {/* X (Twitter) */}
+                <a
+                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(product?.name || '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-black dark:bg-neutral-700 flex items-center justify-center group-hover:opacity-90 transition-opacity">
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.213 5.567zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  </div>
+                  <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">X</span>
+                </a>
+              </div>
+              <div className="px-5 pb-5">
+                <button
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="w-full py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[14px] font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  取消
+                </button>
+              </div>
             </div>
           </div>
         )}
