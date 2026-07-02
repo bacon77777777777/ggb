@@ -167,7 +167,7 @@ export default function ProductsPage() {
     name: true,
     type: true,
     price: true,
-    cost: false,
+    cost: true,
     stockAndSales: true,
     majorStatus: true,
     visibility: true,
