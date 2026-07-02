@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Database } from '@/types/database.types';
 import { GachaMachineVisual } from './GachaMachineVisual';
 import { GachaMachineModern } from './GachaMachineModern';
+import { GachaMachineRetro } from './GachaMachineRetro';
 import { GachaCollectionList } from './GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { Prize } from '@/components/GachaMachine';
@@ -22,6 +23,7 @@ interface GachaProductDetailProps {
 const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
   classic_machine: GachaMachineVisual,
   modern_machine: GachaMachineModern,
+  retro_machine: GachaMachineRetro,
 }
 
 export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {

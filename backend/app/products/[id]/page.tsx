@@ -753,6 +753,7 @@ export default function EditProductPage() {
                 {formData.type === 'gacha' && <>
                   <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
                   <option value="modern_machine">現代膠囊展示機</option>
+                  <option value="retro_machine">復古街頭扭蛋機</option>
                 </>}
                 {formData.type === 'ichiban' && <>
                   <option value="classic_capsule">撕紙互動（原始經典）</option>

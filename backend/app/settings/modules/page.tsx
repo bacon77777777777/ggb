@@ -15,6 +15,7 @@ const PRODUCT_TYPES: {
     themes: [
       { value: 'classic_machine', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
       { value: 'modern_machine', label: '現代膠囊機', desc: '格列膠囊展示，側邊把手風格' },
+      { value: 'retro_machine', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
     ],
   },
   {
