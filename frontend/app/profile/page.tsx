@@ -245,6 +245,7 @@ interface DbOrder {
   id: string;
   order_number?: string;
   created_at: string;
+  shipped_at?: string | null;
   tracking_number: string | null;
   status: string;
   logistics_type?: string | null;
@@ -1297,17 +1298,17 @@ function ProfileContent() {
           const displayMethod = method === 'CVS' ? '超商取貨' : '宅配通';
           
           if (order.status === 'completed' || order.status === 'delivered') {
-             arrivalDate = '已送達';
-          } else if (['submitted', 'processing', 'picked_up', 'shipping'].includes(order.status)) {
-             // Calculate arrival date: All methods -> +3 days from submission (created_at)
-             const baseDate = new Date(order.created_at);
-             const daysToAdd = 3;
-             baseDate.setDate(baseDate.getDate() + daysToAdd);
-             
-             const y = baseDate.getFullYear();
-             const m = String(baseDate.getMonth() + 1).padStart(2, '0');
-             const d = String(baseDate.getDate()).padStart(2, '0');
-             arrivalDate = `${y}/${m}/${d}`;
+            arrivalDate = '已送達';
+          } else if (order.status === 'submitted' || order.status === 'processing') {
+            arrivalDate = '待出貨';
+          } else if (['picked_up', 'shipping'].includes(order.status)) {
+            // 從實際出貨時間算，沒有則 fallback 到建立時間
+            const baseDate = new Date(order.shipped_at || order.created_at);
+            baseDate.setDate(baseDate.getDate() + 3);
+            const y = baseDate.getFullYear();
+            const m = String(baseDate.getMonth() + 1).padStart(2, '0');
+            const d = String(baseDate.getDate()).padStart(2, '0');
+            arrivalDate = `${y}/${m}/${d}`;
           }
            
            return {
@@ -3984,16 +3985,15 @@ function ProfileContent() {
                               {(() => {
                                  const s = order.status;
                                  if (s === 'delivered' || s === 'completed') {
-                                   return (
-                                     <div className="text-[13px] font-black text-emerald-500">已送達</div>
-                                   );
+                                   return <div className="text-[13px] font-black text-emerald-500">已送達</div>;
                                  }
-                                 if (['submitted', 'processing', 'picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
+                                 if (s === 'submitted' || s === 'processing') {
+                                   return <div className="text-[13px] font-black text-neutral-400">待出貨</div>;
+                                 }
+                                 if (['picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
                                    const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
                                    return (
-                                     <div className="text-[13px] font-black text-emerald-500">
-                                       預計{text}
-                                     </div>
+                                     <div className="text-[13px] font-black text-emerald-500">預計{text}</div>
                                    );
                                  }
                                  return null;

@@ -75,6 +75,10 @@ export async function PUT(
     if (body.status) patch.status = body.status
     if (body.tracking_number !== undefined) patch.tracking_number = body.tracking_number
     if (body.shipped_at !== undefined) patch.shipped_at = body.shipped_at
+    // 切到 picked_up 時自動記錄出貨時間（若尚未設定）
+    if (body.status === 'picked_up' && body.shipped_at === undefined) {
+      patch.shipped_at = new Date().toISOString()
+    }
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('orders')
