@@ -17,6 +17,7 @@ import Image from 'next/image';
 
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import GachaMachine, { Prize } from '@/components/GachaMachine';
+import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
@@ -327,6 +328,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number } | null>(null);
@@ -810,6 +812,15 @@ export default function ProductDetailPage() {
       clearTimeout(timeoutId);
     };
   }, [params.id, fetchData, showToast]);
+
+  useEffect(() => {
+    supabase.from('module_settings').select('product_type, machine_theme').then(({ data }) => {
+      if (!data) return;
+      const map: Record<string, MachineTheme> = {};
+      for (const row of data) map[row.product_type] = row.machine_theme as MachineTheme;
+      setModuleSettings(map);
+    });
+  }, [supabase]);
 
   useEffect(() => {
     if (!isVideoOpen) return;
@@ -2053,21 +2064,28 @@ export default function ProductDetailPage() {
           />
         )}
 
-        {product.type === 'ichiban' ? (
-          <GachaMachine 
-            isOpen={isGachaOpen}
-            prizes={wonPrizes}
-            onGoToWarehouse={handleGachaComplete}
-            onContinue={handleGachaContinue}
-          />
-        ) : (
-          <GachaBattleEffect
-            isOpen={isGachaOpen}
-            pullResults={battleResults}
-            onComplete={handleBattleEffectComplete}
-            productType={product.type}
-          />
-        )}
+        {(() => {
+          const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
+          if (effectiveTheme === 'classic_capsule') {
+            return (
+              <GachaThemeRenderer
+                theme={effectiveTheme || 'classic_capsule'}
+                isOpen={isGachaOpen}
+                prizes={wonPrizes}
+                onGoToWarehouse={handleGachaComplete}
+                onContinue={handleGachaContinue}
+              />
+            );
+          }
+          return (
+            <GachaBattleEffect
+              isOpen={isGachaOpen}
+              pullResults={battleResults}
+              onComplete={handleBattleEffectComplete}
+              productType={product.type}
+            />
+          );
+        })()}
 
         <GachaResultModal
           isOpen={isPrizeModalOpen}
