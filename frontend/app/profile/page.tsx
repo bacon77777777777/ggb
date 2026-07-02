@@ -390,12 +390,14 @@ const getStatusConfig = (status: string) => {
   switch (status) {
     case 'submitted':
     case 'processing':
-    case 'picked_up':
       return { label: '已提交', color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' };
+    case 'picked_up':
+      return { label: '已出貨', color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100' };
     case 'shipping':
       return { label: '配送中', color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' };
     case 'delivered':
-      return { label: '已完成', color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+    case 'completed':
+      return { label: '已送達', color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' };
     case 'cancelled':
       return { label: '已取消', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' };
     default:
@@ -3988,26 +3990,19 @@ function ProfileContent() {
                               </h4>
                               
                               {(() => {
-                                 if (['submitted', 'processing', 'picked_up', 'shipping', 'completed', 'delivered'].includes(order.status) && order.arrivalDate && order.arrivalDate !== '-') {
-                                   // Check if arrivalDate is already a formatted string like '已送達'
-                                   if (order.arrivalDate === '已送達') {
-                                      return null; 
-                                   }
-                                   
-                                   const text = getArrivalText(order.arrivalDate);
-                                   if (text) {
-                                     return (
-                                       <div className="text-[13px] font-black text-emerald-500">
-                                         預計{text}
-                                       </div>
-                                     );
-                                   }
-                                   
-                                   // Fallback if getArrivalText returns null (e.g. date format mismatch), just show the date string
+                                 const s = order.status;
+                                 if (s === 'delivered' || s === 'completed') {
                                    return (
-                                      <div className="text-[13px] font-black text-emerald-500">
-                                         預計{order.arrivalDate}送達
-                                       </div>
+                                     <div className="text-[13px] font-black text-emerald-500">已送達</div>
+                                   );
+                                 }
+                                 if (['submitted', 'processing', 'picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
+                                   const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
+                                   const prefix = s === 'shipping' ? '配送中，預計' : '預計';
+                                   return (
+                                     <div className="text-[13px] font-black text-emerald-500">
+                                       {prefix}{text}
+                                     </div>
                                    );
                                  }
                                  return null;
