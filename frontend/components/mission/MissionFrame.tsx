@@ -588,7 +588,7 @@ function MissionFrame({
                         <div aria-hidden="true" className="absolute border-[#eee] border-b border-solid inset-0 pointer-events-none" />
                       )}
                       <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
-                        {mission.type === 'achievement' && mission.condition_type != null ? (
+                        {mission.type === 'achievement' && mission.condition_type != null && (
                           <div className="relative shrink-0 size-[80px] flex items-center justify-center">
                             <img
                               src={`/images/mask/${ACHIEVEMENT_MASK[`${mission.condition_type}:${mission.target_value}`] ?? 1}.png`}
@@ -598,8 +598,6 @@ function MissionFrame({
                               style={{ width: 72, height: 72, objectFit: 'contain' }}
                             />
                           </div>
-                        ) : (
-                          <Helper1 />
                         )}
                         <div className="content-stretch flex flex-col gap-[8px] items-start leading-[normal] not-italic relative shrink-0 w-[232px]">
                           <Helper text={mission.title} text1={`+${mission.reward}積分`} />
