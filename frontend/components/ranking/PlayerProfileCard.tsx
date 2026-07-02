@@ -33,10 +33,42 @@ const TITLE_STYLES: Record<string, string> = {
   green:  'bg-gradient-to-r from-emerald-500 to-teal-500 text-white',
 };
 
-// 11 mask images, assign by badge index
 const MASK_COUNT = 11;
 function getMaskSrc(index: number) {
   return `/images/mask/${(index % MASK_COUNT) + 1}.png`;
+}
+
+// Preset fake profiles for placeholder ranking slots
+const FAKE_PRESETS = [
+  { nickname: '星光追蹤者', avatarNum: 2, draws: 284, title: { id: 'f1', name: '轉蛋狂熱者', color_key: 'purple' }, badgeIndices: [0, 3, 7] },
+  { nickname: '命運守護者', avatarNum: 3, draws: 512, title: { id: 'f2', name: '抽蛋之神',   color_key: 'gold'   }, badgeIndices: [1, 5] },
+  { nickname: '漩渦指揮官', avatarNum: 4, draws: 167, title: { id: 'f3', name: '課長',       color_key: 'red'    }, badgeIndices: [2, 4, 6, 9] },
+  { nickname: '黃金收藏家', avatarNum: 5, draws: 739, title: null,                                                  badgeIndices: [0, 2] },
+  { nickname: '秘境探索者', avatarNum: 6, draws: 92,  title: { id: 'f4', name: '歐皇',       color_key: 'blue'   }, badgeIndices: [3, 8, 10] },
+  { nickname: '破曉戰士',   avatarNum: 7, draws: 445, title: null,                                                  badgeIndices: [1] },
+  { nickname: '時空漫遊者', avatarNum: 8, draws: 203, title: { id: 'f5', name: '揪團王',     color_key: 'green'  }, badgeIndices: [4, 6] },
+];
+
+function buildFakeProfile(userId: string): PlayerProfile {
+  const num = parseInt(userId.replace('placeholder-', ''), 10) || 0;
+  const preset = FAKE_PRESETS[num % FAKE_PRESETS.length];
+  return {
+    id: userId,
+    nickname: preset.nickname,
+    avatar_url: `/images/avatar/0${preset.avatarNum}.png`,
+    total_draws: preset.draws,
+    total_spent: 0,
+    title: preset.title,
+    badges: preset.badgeIndices.map(i => ({
+      id: `fake-badge-${i}`,
+      name: `勳章 ${i + 1}`,
+      icon: '',
+      category: 'draw',
+      earned: true,
+      earned_at: null,
+      sort_order: i,
+    })),
+  };
 }
 
 interface Props {
@@ -52,7 +84,11 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
   const supabase = createClient();
 
   useEffect(() => {
-    if (isPlaceholder) { setLoading(false); return; }
+    if (isPlaceholder) {
+      setProfile(buildFakeProfile(userId));
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       const { data } = await supabase.rpc('get_player_profile', { p_user_id: userId });
@@ -63,6 +99,7 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
   }, [userId, isPlaceholder]);
 
   const earnedBadges = (profile?.badges || []).filter(b => b.earned);
+  const displayName = profile?.nickname || '神秘玩家';
 
   return (
     <>
@@ -92,7 +129,7 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
             <div className="h-48 flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-purple-300 border-t-purple-600 animate-spin" />
             </div>
-          ) : isPlaceholder || !profile ? (
+          ) : !profile ? (
             <div className="h-48 flex flex-col items-center justify-center gap-2">
               <div className="text-4xl">🌟</div>
               <div className="text-[16px] font-black text-neutral-500">虛位以待</div>
@@ -106,10 +143,11 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
                   <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-lg">
                     <Image
                       src={profile.avatar_url || '/images/avatar/01.png'}
-                      alt={profile.nickname}
+                      alt={displayName}
                       width={80}
                       height={80}
                       className="object-cover w-full h-full"
+                      unoptimized
                     />
                   </div>
                 </div>
@@ -123,7 +161,7 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
                     <div className="h-5 mb-1.5" />
                   )}
                   <div className="text-[22px] font-black text-neutral-800 leading-tight truncate">
-                    {profile.nickname}
+                    {displayName}
                   </div>
                   <div className="text-[12px] text-neutral-500 mt-0.5">
                     累積 {(profile.total_draws || 0).toLocaleString()} 次轉蛋
@@ -138,15 +176,19 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
                 </button>
               </div>
 
-              {/* 徽章牆：只展示已獲得的徽章 */}
-              {earnedBadges.length > 0 && (
-                <div className="px-6 pb-8">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent to-purple-200" />
-                    <span className="text-[14px] font-black text-purple-500 tracking-widest">徽章</span>
-                    <div className="h-px flex-1 bg-gradient-to-l from-transparent to-purple-200" />
-                  </div>
+              {/* 徽章區：固定最低高度，無徽章時顯示提示 */}
+              <div className="px-6 pb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-purple-200" />
+                  <span className="text-[14px] font-black text-purple-500 tracking-widest">徽章</span>
+                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-purple-200" />
+                </div>
 
+                {earnedBadges.length === 0 ? (
+                  <div className="min-h-[80px] flex items-center justify-center text-[13px] text-neutral-400">
+                    尚未獲得徽章
+                  </div>
+                ) : (
                   <div className="grid grid-cols-7 gap-2">
                     {earnedBadges.map((badge, idx) => (
                       <div key={badge.id} className="relative group">
@@ -167,8 +209,8 @@ export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceh
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
         </div>
