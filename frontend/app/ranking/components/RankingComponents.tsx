@@ -356,15 +356,15 @@ export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, 
         </div>
       </div>
       <div
-        className={clsx("content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative cursor-pointer", isPlaceholder && "pointer-events-none cursor-default")}
+        className={clsx("flex flex-[1_0_0] flex-col items-start justify-center min-w-0 cursor-pointer", isPlaceholder && "pointer-events-none cursor-default")}
         onClick={() => !isPlaceholder && onWorship({ user_id: '', rank, nickname, avatar_url: avatarSrc, amount, isPlaceholder, title })}
       >
         {title && !isPlaceholder && (
-          <div className="mb-0.5">
-            <TitleBadge title={title} />
-          </div>
+          <TitleBadge title={title} />
         )}
-        <BackgroundImageAndText6 text={nickname} />
+        <p className="font-normal leading-[1.2] text-[28px] text-white overflow-hidden text-ellipsis whitespace-nowrap w-full" style={{ textShadow: '0px 1.744px 3.488px black' }}>
+          {nickname}
+        </p>
       </div>
       <div className="content-stretch flex gap-[20px] items-center relative shrink-0 ml-auto">
         <BackgroundImageAndText4 text={amount.toString()} type={type} />
