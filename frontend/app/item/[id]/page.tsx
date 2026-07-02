@@ -2075,12 +2075,12 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
-            <Button 
+            <Button
               onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
               size="lg"
               className={cn(
                 "flex-1 h-[44px] text-base font-black rounded-xl shadow-xl transition-all active:scale-[0.95] flex items-center justify-center gap-2",
-                totalRemaining === 0 
+                totalRemaining === 0
                   ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
                   : "shadow-accent-red/20"
               )}
@@ -2093,6 +2093,12 @@ export default function ProductDetailPage() {
                   ? '立即抽獎'
                   : '立即轉蛋'}
             </Button>
+            <button
+              onClick={handleShare}
+              className="w-[44px] h-[44px] shrink-0 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-primary hover:border-primary/50 rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95"
+            >
+              <Share2 className="w-5 h-5 stroke-[2.5]" />
+            </button>
           </div>
         </div>
 
