@@ -53,7 +53,7 @@ export function RankingTop3({ data, onWorship, type }: RankingTop3Props) {
       <div className="content-stretch flex flex-col h-[300.781px] items-center relative shrink-0 w-[218.75px]">
         {rank2 ? (
           <>
-            <div 
+            <div
               className={clsx("cursor-pointer active:scale-95 transition-transform", rank2.isPlaceholder && "pointer-events-none cursor-default")}
               onClick={() => !rank2.isPlaceholder && onWorship(rank2)}
             >
@@ -64,24 +64,25 @@ export function RankingTop3({ data, onWorship, type }: RankingTop3Props) {
                 <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={img} />
               </BackgroundImage>
             </div>
-            <div 
-              className={clsx("content-stretch flex gap-[7.813px] h-[37.5px] items-center relative shrink-0 w-[220.313px] cursor-pointer", rank2.isPlaceholder && "pointer-events-none cursor-default")}
+            <div
+              className={clsx("flex flex-col items-center relative shrink-0 w-[220.313px] cursor-pointer pt-1", rank2.isPlaceholder && "pointer-events-none cursor-default")}
               onClick={() => !rank2.isPlaceholder && onWorship(rank2)}
             >
+              {rank2.title && !rank2.isPlaceholder && <TitleBadge title={rank2.title} />}
               <BackgroundImageAndText6 text={rank2.nickname} additionalClassNames="justify-center text-center" />
             </div>
             <BackgroundImageAndText3 text={rank2.amount.toString()} type={type} />
           </>
         ) : <div className="w-full h-full flex items-center justify-center opacity-30 text-white">虛位以待</div>}
       </div>
-      
+
       {/* 1st Place */}
       <div className="content-stretch flex flex-col h-[359.375px] items-center relative shrink-0 w-[218.75px]">
         {rank1 ? (
           <>
-            <div 
+            <div
               className={clsx("relative shrink-0 size-[187.5px] cursor-pointer active:scale-95 transition-transform", rank1.isPlaceholder && "pointer-events-none cursor-default")}
-              data-name="头像组合/ 富豪榜/ 前三" 
+              data-name="头像组合/ 富豪榜/ 前三"
               onClick={() => !rank1.isPlaceholder && onWorship(rank1)}
             >
               <div className="absolute left-0 size-[187.5px] top-0" data-name="头像组合/ 一般">
@@ -91,10 +92,11 @@ export function RankingTop3({ data, onWorship, type }: RankingTop3Props) {
                 <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={img1} />
               </div>
             </div>
-            <div 
-              className={clsx("content-stretch flex gap-[7.813px] h-[37.5px] items-center relative shrink-0 w-full cursor-pointer", rank1.isPlaceholder && "pointer-events-none cursor-default")}
+            <div
+              className={clsx("flex flex-col items-center relative shrink-0 w-full cursor-pointer pt-1", rank1.isPlaceholder && "pointer-events-none cursor-default")}
               onClick={() => !rank1.isPlaceholder && onWorship(rank1)}
             >
+              {rank1.title && !rank1.isPlaceholder && <TitleBadge title={rank1.title} />}
               <BackgroundImageAndText6 text={rank1.nickname} additionalClassNames="justify-center text-center" />
             </div>
             <BackgroundImageAndText3 text={rank1.amount.toString()} type={type} />
@@ -106,7 +108,7 @@ export function RankingTop3({ data, onWorship, type }: RankingTop3Props) {
       <div className="content-stretch flex flex-col h-[263.281px] items-center relative shrink-0 w-[218.75px]">
         {rank3 ? (
           <>
-            <div 
+            <div
               className={clsx("cursor-pointer active:scale-95 transition-transform", rank3.isPlaceholder && "pointer-events-none cursor-default")}
               onClick={() => !rank3.isPlaceholder && onWorship(rank3)}
             >
@@ -117,10 +119,11 @@ export function RankingTop3({ data, onWorship, type }: RankingTop3Props) {
                 <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={img2} />
               </BackgroundImage>
             </div>
-            <div 
-              className={clsx("content-stretch flex gap-[7.813px] h-[37.5px] items-center relative shrink-0 w-[220.313px] cursor-pointer", rank3.isPlaceholder && "pointer-events-none cursor-default")}
+            <div
+              className={clsx("flex flex-col items-center relative shrink-0 w-[220.313px] cursor-pointer pt-1", rank3.isPlaceholder && "pointer-events-none cursor-default")}
               onClick={() => !rank3.isPlaceholder && onWorship(rank3)}
             >
+              {rank3.title && !rank3.isPlaceholder && <TitleBadge title={rank3.title} />}
               <BackgroundImageAndText6 text={rank3.nickname} additionalClassNames="justify-center text-center" />
             </div>
             <BackgroundImageAndText3 text={rank3.amount.toString()} type={type} />
@@ -350,7 +353,11 @@ export function RankingListItem({ rank, avatarSrc, nickname, amount, onWorship, 
         className={clsx("content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative cursor-pointer", isPlaceholder && "pointer-events-none cursor-default")}
         onClick={() => !isPlaceholder && onWorship({ user_id: '', rank, nickname, avatar_url: avatarSrc, amount, isPlaceholder, title })}
       >
-        {title && !isPlaceholder && <TitleBadge title={title} />}
+        {title && !isPlaceholder && (
+          <div className="w-full flex justify-center mb-0.5">
+            <TitleBadge title={title} />
+          </div>
+        )}
         <BackgroundImageAndText6 text={nickname} />
       </div>
       <div className="content-stretch flex gap-[20px] items-center relative shrink-0 ml-auto">
