@@ -708,7 +708,7 @@ function NavbarInner() {
             {/* Product Page Mobile Actions */}
             {isProductDetailPage && (
               <div className="flex items-center gap-0.5 md:hidden">
-                <button className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-600 dark:text-neutral-400 transition-colors">
+                <button onClick={handleShare} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-600 dark:text-neutral-400 transition-colors active:scale-95">
                   <Share2 className="w-5 h-5 stroke-[2]" />
                 </button>
                 <button 
