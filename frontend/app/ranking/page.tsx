@@ -294,12 +294,6 @@ export default function RankingPage() {
           
           <RankingCategoryTabs activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           <RankingTimeTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          {/* 更新時間說明 */}
-          <div className="absolute z-10 text-center w-full" style={{ top: 178 }}>
-            <p className="text-[18px] text-white/50 font-medium">
-              {activeTab === 'daily' ? '每日 00:00 重置' : '每週一 00:00 重置'}
-            </p>
-          </div>
 
           <div className="grid grid-cols-1 grid-rows-1">
             <AnimatePresence initial={false} custom={direction}>
@@ -347,7 +341,7 @@ export default function RankingPage() {
                     
                     <div className="w-full text-center pt-8 border-t border-white/10 pb-0 mb-0">
                       <p className="text-[#818181] text-[24px] font-normal">
-                        排行榜數據每日更新<br/>
+                        {activeTab === 'daily' ? '排行榜數據每日00:00更新' : '排行榜數據每週一00:00更新'}<br/>
                         每日限膜拜一位大佬，可獲得 10 積分獎勵
                       </p>
                     </div>
