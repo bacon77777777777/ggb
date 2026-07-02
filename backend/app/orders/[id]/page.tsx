@@ -253,7 +253,7 @@ export default function OrderDetailPage() {
                 onChange={(e) => {
                   const newStatus = e.target.value as typeof shipment.status
                   if (confirm(`確定要將狀態從「${getStatusText(shipment.status)}」改為「${getStatusText(newStatus)}」嗎？`)) {
-                    setShipment({ ...shipment, status: newStatus })
+                    updateStatus(newStatus)
                   }
                 }}
                 className="px-4 py-2.5 pr-10 bg-white border-2 border-neutral-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all hover:border-neutral-300 shadow-sm hover:shadow-md appearance-none cursor-pointer"
