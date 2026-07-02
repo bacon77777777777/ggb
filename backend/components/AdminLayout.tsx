@@ -423,6 +423,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '殺率調整', path: '/settings/rates', icon: IconSettings },
           { name: '功能開關', path: '/settings/features', icon: IconSettings },
           { name: '運費設定', path: '/settings/shipping', icon: IconSettings },
+          { name: '抽獎模組設定', path: '/settings/modules', icon: IconSettings },
           { name: '管理員清單', path: '/analytics', icon: IconAnalytics },
           { name: '權限管理', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
