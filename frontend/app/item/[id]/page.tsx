@@ -833,6 +833,23 @@ export default function ProductDetailPage() {
   }, [supabase]);
 
   useEffect(() => {
+    if (!params.id) return;
+    const channel = supabase
+      .channel(`product_machine_theme_${params.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'products', filter: `id=eq.${params.id}` },
+        (payload) => {
+          const newTheme = (payload.new as any).machine_theme ?? null;
+          setProduct(prev => prev ? { ...prev, machine_theme: newTheme } : prev);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, params.id]);
+
+  useEffect(() => {
     if (!isVideoOpen) return;
     const el = openingVideoRef.current;
     if (!el) return;
