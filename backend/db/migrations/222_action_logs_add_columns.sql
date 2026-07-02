@@ -1,0 +1,8 @@
+-- action_logs 補齊 API 送出的欄位
+ALTER TABLE action_logs
+  ADD COLUMN IF NOT EXISTS username TEXT,
+  ADD COLUMN IF NOT EXISTS role     TEXT,
+  ADD COLUMN IF NOT EXISTS target   TEXT,
+  ADD COLUMN IF NOT EXISTS details  TEXT,
+  ADD COLUMN IF NOT EXISTS ip       TEXT,
+  ADD COLUMN IF NOT EXISTS status   TEXT DEFAULT 'success';
