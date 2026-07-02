@@ -38,28 +38,28 @@ function getMaskSrc(index: number) {
   return `/images/mask/${(index % MASK_COUNT) + 1}.png`;
 }
 
-// Preset fake profiles for placeholder ranking slots
-const FAKE_PRESETS = [
-  { nickname: '星光追蹤者', avatarNum: 2, draws: 284, title: { id: 'f1', name: '轉蛋狂熱者', color_key: 'purple' }, badgeIndices: [0, 3, 7] },
-  { nickname: '命運守護者', avatarNum: 3, draws: 512, title: { id: 'f2', name: '抽蛋之神',   color_key: 'gold'   }, badgeIndices: [1, 5] },
-  { nickname: '漩渦指揮官', avatarNum: 4, draws: 167, title: { id: 'f3', name: '課長',       color_key: 'red'    }, badgeIndices: [2, 4, 6, 9] },
-  { nickname: '黃金收藏家', avatarNum: 5, draws: 739, title: null,                                                  badgeIndices: [0, 2] },
-  { nickname: '秘境探索者', avatarNum: 6, draws: 92,  title: { id: 'f4', name: '歐皇',       color_key: 'blue'   }, badgeIndices: [3, 8, 10] },
-  { nickname: '破曉戰士',   avatarNum: 7, draws: 445, title: null,                                                  badgeIndices: [1] },
-  { nickname: '時空漫遊者', avatarNum: 8, draws: 203, title: { id: 'f5', name: '揪團王',     color_key: 'green'  }, badgeIndices: [4, 6] },
+// Preset badge/title combos for placeholder slots (index by rank slot)
+const FAKE_EXTRAS = [
+  { draws: 512, title: { id: 'f1', name: '轉蛋狂熱者', color_key: 'purple' }, badgeIndices: [0, 3, 7] },
+  { draws: 284, title: { id: 'f2', name: '抽蛋之神',   color_key: 'gold'   }, badgeIndices: [1, 5] },
+  { draws: 167, title: { id: 'f3', name: '課長',       color_key: 'red'    }, badgeIndices: [2, 4, 6, 9] },
+  { draws: 739, title: null,                                                   badgeIndices: [0, 2] },
+  { draws: 92,  title: { id: 'f4', name: '歐皇',       color_key: 'blue'   }, badgeIndices: [3, 8, 10] },
+  { draws: 445, title: null,                                                   badgeIndices: [1] },
+  { draws: 203, title: { id: 'f5', name: '揪團王',     color_key: 'green'  }, badgeIndices: [4, 6] },
 ];
 
-function buildFakeProfile(userId: string): PlayerProfile {
+function buildFakeProfile(userId: string, nickname: string, avatarUrl: string): PlayerProfile {
   const num = parseInt(userId.replace('placeholder-', ''), 10) || 0;
-  const preset = FAKE_PRESETS[num % FAKE_PRESETS.length];
+  const extra = FAKE_EXTRAS[num % FAKE_EXTRAS.length];
   return {
     id: userId,
-    nickname: preset.nickname,
-    avatar_url: `/images/avatar/0${preset.avatarNum}.png`,
-    total_draws: preset.draws,
+    nickname,
+    avatar_url: avatarUrl,
+    total_draws: extra.draws,
     total_spent: 0,
-    title: preset.title,
-    badges: preset.badgeIndices.map(i => ({
+    title: extra.title,
+    badges: extra.badgeIndices.map(i => ({
       id: `fake-badge-${i}`,
       name: `勳章 ${i + 1}`,
       icon: '',
@@ -73,19 +73,25 @@ function buildFakeProfile(userId: string): PlayerProfile {
 
 interface Props {
   userId: string;
+  nickname?: string;
+  avatarUrl?: string;
   onWorship: () => void;
   onClose: () => void;
   isPlaceholder?: boolean;
 }
 
-export default function PlayerProfileCard({ userId, onWorship, onClose, isPlaceholder }: Props) {
+export default function PlayerProfileCard({ userId, nickname: propNickname, avatarUrl: propAvatarUrl, onWorship, onClose, isPlaceholder }: Props) {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
     if (isPlaceholder) {
-      setProfile(buildFakeProfile(userId));
+      setProfile(buildFakeProfile(
+        userId,
+        propNickname || '虛位以待',
+        propAvatarUrl || '/images/avatar/01.png',
+      ));
       setLoading(false);
       return;
     }

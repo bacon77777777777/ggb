@@ -37,7 +37,7 @@ export default function RankingPage() {
   const [rankingData, setRankingData] = useState<RankingItemData[]>([]);
   const [loading, setLoading] = useState(false);
   const [direction, setDirection] = useState(0);
-  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [profileItem, setProfileItem] = useState<RankingItemData | null>(null);
 
   const [scaledHeight, setScaledHeight] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -162,15 +162,14 @@ export default function RankingPage() {
 
   // 點頭像 → 打開個人資料卡
   const handleAvatarClick = (item: RankingItemData) => {
-    setProfileUserId(item.user_id);
+    setProfileItem(item);
   };
 
   // 膜拜（從資料卡觸發）
   const handleWorshipFromCard = async () => {
-    if (!profileUserId) return;
-    const item = rankingData.find(r => r.user_id === profileUserId);
-    if (!item) return;
-    setProfileUserId(null);
+    if (!profileItem) return;
+    const item = profileItem;
+    setProfileItem(null);
     handleWorshipClick(item);
   };
 
@@ -355,12 +354,14 @@ export default function RankingPage() {
     </div>
 
       {/* 個人資料卡 */}
-      {profileUserId && (
+      {profileItem && (
         <PlayerProfileCard
-          userId={profileUserId}
+          userId={profileItem.user_id}
+          nickname={profileItem.nickname}
+          avatarUrl={profileItem.avatar_url}
           onWorship={handleWorshipFromCard}
-          onClose={() => setProfileUserId(null)}
-          isPlaceholder={rankingData.find(r => r.user_id === profileUserId)?.isPlaceholder}
+          onClose={() => setProfileItem(null)}
+          isPlaceholder={profileItem.isPlaceholder}
         />
       )}
     </>
