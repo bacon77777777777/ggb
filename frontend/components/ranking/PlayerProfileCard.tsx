@@ -30,44 +30,114 @@ function getMaskSrc(index: number) {
   return `/images/mask/${(index % MASK_COUNT) + 1}.png`;
 }
 
-const FAKE_NAMES = ['轉蛋狂魔', '歐皇降臨', '傳說課長', '招財喵喵', '錦鯉本鯉', '彩虹歐巴', '天選之人', '命運支配者', '抽蛋之神', '非洲酋長'];
+// ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
+const TITLE_TO_BADGE_ID: Record<string, string> = {
+  '轉蛋狂熱者': 'draw_500',
+  '抽蛋之神':   'draw_1000',
+  '命運支配者': 'draw_5000',
+  '全勤戰士':   'login_streak_30',
+  '吉吉比居民': 'login_streak_100',
+  '小課玩家':   'topup_20000',
+  '傳說課長':   'topup_100000',
+  '真愛玩家':   'topup_streak_10',
+  '人氣王':     'refer_20',
+  '推廣大使':   'refer_100',
+  '歐皇':       'lucky_day3',
+  '天選之人':   'lucky_10',
+  '命運代行者': 'lucky_50',
+  '火力全開':   'single_day_100',
+};
 
-const FAKE_EXTRAS = [
-  { draws: 512, title: { id: 'f1', name: '轉蛋狂熱者', color_key: 'purple' }, earnedSlots: [0, 3, 7, 12, 18] },
-  { draws: 284, title: { id: 'f2', name: '抽蛋之神',   color_key: 'gold'   }, earnedSlots: [1, 5, 8, 14] },
-  { draws: 167, title: { id: 'f3', name: '傳說課長',   color_key: 'red'    }, earnedSlots: [2, 4, 6, 9, 20] },
-  { draws: 739, title: { id: 'f6', name: '全勤戰士',   color_key: 'blue'   }, earnedSlots: [0, 2, 10, 16] },
-  { draws: 92,  title: { id: 'f4', name: '歐皇',       color_key: 'gold'   }, earnedSlots: [3, 8, 10, 22] },
-  { draws: 445, title: { id: 'f7', name: '人氣王',     color_key: 'green'  }, earnedSlots: [1, 5, 19] },
-  { draws: 203, title: { id: 'f5', name: '揪團王',     color_key: 'purple' }, earnedSlots: [4, 6, 7, 21] },
-  { draws: 318, title: { id: 'f8', name: '天選之人',   color_key: 'red'    }, earnedSlots: [0, 2, 9, 17] },
-  { draws: 651, title: { id: 'f9', name: '命運支配者', color_key: 'gold'   }, earnedSlots: [1, 3, 5, 7, 25] },
-  { draws: 421, title: { id: 'f0', name: '火力全開',   color_key: 'red'    }, earnedSlots: [2, 6, 10, 28] },
-];
+// ── 徽章 ID → sort_order（對應 migration 223 badges.sort_order）──
+const BADGE_SORT: Record<string, number> = {
+  first_draw: 1, draw_30: 2, draw_100: 3, draw_500: 4, draw_1000: 5, draw_5000: 6,
+  draw_streak_10: 7, draw_streak_20: 8, login_streak_7: 9, login_streak_30: 10,
+  login_streak_100: 11, first_topup: 12, topup_1000: 13, topup_5000: 14,
+  topup_20000: 15, topup_100000: 16, topup_streak_5: 17, topup_streak_10: 18,
+  refer_1: 19, refer_5: 20, refer_20: 21, refer_100: 22,
+  lucky_first: 23, lucky_day3: 24, lucky_10: 25, lucky_50: 26,
+  duplicate_10: 27, single_day_100: 28, birthday_draw: 29,
+};
 
-// Total achievement badge count — matches the 29 tasks in migration 227
+// ── 徽章 ID → 中文名稱（對應 migration 223 badges.name）──
+const BADGE_NAME: Record<string, string> = {
+  first_draw: '初心試煉', draw_30: '命運啟程', draw_100: '停不下來',
+  draw_500: '轉蛋成癮', draw_1000: '抽蛋之神', draw_5000: '命運支配者',
+  draw_streak_10: '每日修行', draw_streak_20: '永不缺席',
+  login_streak_7: '習慣養成', login_streak_30: '全勤戰士',
+  login_streak_100: '常駐居民', first_topup: '初次獻祭',
+  topup_1000: '小課怡情', topup_5000: '荷包失守',
+  topup_20000: '錢包蒸發', topup_100000: '課長降臨',
+  topup_streak_5: '每日供奉', topup_streak_10: '信仰充值',
+  refer_1: '初級召集人', refer_5: '揪團王', refer_20: '傳教士',
+  refer_100: '信徒滿天下', lucky_first: '一發入魂',
+  lucky_day3: '天命之子', lucky_10: '命運眷顧',
+  lucky_50: '神明代抽', duplicate_10: '非洲酋長',
+  single_day_100: '火力全開', birthday_draw: '壽星最大',
+};
+
+// ── 與 DB mock 用戶（00000000-...0001~0010）一致的假資料 ──
+const MOCK_USER_DATA: Record<number, {
+  draws: number;
+  title: { id: string; name: string; color_key: string } | null;
+  earnedBadgeIds: string[];
+}> = {
+  1: { draws: 512, title: { id: 'legend_whale',   name: '傳說課長',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','draw_100','topup_100000','first_topup'] },
+  2: { draws: 284, title: { id: 'gacha_addict',   name: '轉蛋狂熱者', color_key: 'purple' }, earnedBadgeIds: ['first_draw','draw_30','draw_100','draw_500'] },
+  3: { draws: 167, title: { id: 'lucky_king',     name: '歐皇',       color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3'] },
+  4: { draws: 739, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3','lucky_10'] },
+  5: { draws: 92,  title: { id: 'full_attendance',name: '全勤戰士',   color_key: 'blue'   }, earnedBadgeIds: ['first_draw','login_streak_7','login_streak_30'] },
+  6: { draws: 445, title: { id: 'popularity_king',name: '人氣王',     color_key: 'green'  }, earnedBadgeIds: ['first_draw','refer_1','refer_5','refer_20'] },
+  7: { draws: 203, title: null,                                                               earnedBadgeIds: ['first_draw','draw_30','draw_100'] },
+  8: { draws: 318, title: { id: 'full_power',     name: '火力全開',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','single_day_100'] },
+  9: { draws: 651, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_10'] },
+  10:{ draws: 421, title: { id: 'fate_ruler',     name: '命運支配者', color_key: 'gold'   }, earnedBadgeIds: ['first_draw','draw_500','draw_1000','draw_5000'] },
+};
+
 const TOTAL_BADGES = 29;
 
-function buildFakeProfile(userId: string, avatarUrl: string): PlayerProfile {
-  const num = parseInt(userId.replace('placeholder-', ''), 10) || 0;
-  const extra = FAKE_EXTRAS[num % FAKE_EXTRAS.length];
-  const fakeName = FAKE_NAMES[num % FAKE_NAMES.length];
-  return {
-    id: userId,
-    nickname: fakeName,
-    avatar_url: avatarUrl,
-    total_draws: extra.draws,
-    total_spent: 0,
-    title: extra.title,
-    badges: Array.from({ length: TOTAL_BADGES }, (_, i) => ({
-      id: `fake-badge-${i}`,
-      name: `勳章 ${i + 1}`,
+function buildFakeProfile(
+  userId: string,
+  avatarUrl: string,
+  titleFromRanking?: { name: string; color_key: string } | null
+): PlayerProfile {
+  // Extract index for mock UUIDs (00000000-...000N) or placeholder-N
+  let mockNum = 0;
+  const mockMatch = userId.match(/00000000-0000-0000-0000-0+(\d+)$/);
+  if (mockMatch) {
+    mockNum = parseInt(mockMatch[1], 10); // 1-10
+  } else {
+    mockNum = (parseInt(userId.replace('placeholder-', ''), 10) || 1);
+  }
+
+  const data = MOCK_USER_DATA[mockNum] ?? MOCK_USER_DATA[1];
+  // Ranking title takes priority over static fake title
+  const title = titleFromRanking
+    ? { id: 'mock', ...titleFromRanking }
+    : data.title;
+
+  // Build badge array: all 29 slots, mark earned ones by badge ID match
+  const earnedSet = new Set(data.earnedBadgeIds);
+  const badges: Badge[] = Object.entries(BADGE_SORT)
+    .sort(([, a], [, b]) => a - b)
+    .map(([id, sort_order]) => ({
+      id,
+      name: BADGE_NAME[id] || id,
       icon: '',
       category: 'draw',
-      earned: extra.earnedSlots.includes(i),
+      earned: earnedSet.has(id),
       earned_at: null,
-      sort_order: i,
-    })),
+      sort_order,
+    }));
+
+  return {
+    id: userId,
+    nickname: '', // caller uses propNickname
+    avatar_url: avatarUrl,
+    total_draws: data.draws,
+    total_spent: 0,
+    title,
+    badges,
   };
 }
 
@@ -115,7 +185,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
   // Fetch profile data
   useEffect(() => {
     if (isPlaceholder) {
-      setProfile(buildFakeProfile(userId, propAvatarUrl || '/images/avatar/01.png'));
+      setProfile(buildFakeProfile(userId, propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
       setLoading(false);
       return;
     }
@@ -165,12 +235,25 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
   const displayName = profile?.nickname || propNickname || '神秘玩家';
   const badges = profile?.badges || [];
 
-  // 優先使用排行榜傳入的稱號，其次才是 DB 查詢結果
+  // 真實用戶稱號優先，無則採用排行榜稱號
   const displayTitle = profile?.title ?? titleFromRanking ?? null;
 
-  // 找到對應稱號的徽章（按名稱匹配）並固定顯示在最前，即使未解鎖
-  const titleBadge = displayTitle ? badges.find(b => b.name === displayTitle.name) : null;
-  const otherEarnedBadges = badges.filter(b => b.earned && b.id !== titleBadge?.id);
+  // 稱號 → badge ID → 在 badges 陣列中找對應徽章（DB 用戶有正確 ID）
+  // 若找不到（fake/not-found 用戶），合成一個 synthetic badge 供顯示
+  const titleBadgeId = displayTitle ? TITLE_TO_BADGE_ID[displayTitle.name] : null;
+  const titleBadge: Badge | null = titleBadgeId
+    ? (badges.find(b => b.id === titleBadgeId) ?? {
+        id: titleBadgeId,
+        name: BADGE_NAME[titleBadgeId] || displayTitle!.name,
+        icon: '',
+        category: 'draw',
+        earned: false,
+        earned_at: null,
+        sort_order: BADGE_SORT[titleBadgeId] ?? 1,
+      })
+    : null;
+
+  const otherEarnedBadges = badges.filter(b => b.earned && b.id !== titleBadgeId);
   const wallBadges = [...(titleBadge ? [titleBadge] : []), ...otherEarnedBadges];
 
   return (
