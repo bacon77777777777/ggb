@@ -771,9 +771,9 @@ export default function OrdersPage() {
           
           // Log
           if (shouldMerge) {
-            addLog('合併生成物流號 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆相同收件人的訂單合併生成物流單號`, 'success')
+            addLog('合併生成配送單 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆相同收件人的訂單合併生成物流單號`, 'success')
           } else {
-            addLog('批量生成物流號 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆訂單生成物流單號`, 'success')
+            addLog('批量生成配送單 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆訂單生成物流單號`, 'success')
           }
           
           // Show Success Modal
@@ -828,7 +828,7 @@ export default function OrdersPage() {
   const handleBatchGenerate = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要生成物流號的訂單')
+      alert('請先選擇要生成配送單的訂單')
       return
     }
     
@@ -839,7 +839,7 @@ export default function OrdersPage() {
     })
     
     if (submittedOrders.length === 0) {
-      alert('選中的訂單中沒有可生成物流號的訂單（僅已提交狀態可生成）')
+      alert('選中的訂單中沒有可生成配送單的訂單（僅已提交狀態可生成）')
       return
     }
     
@@ -1104,7 +1104,7 @@ export default function OrdersPage() {
           setShowMergeModal(false)
           setSelectedMergeGroups(new Set())
         }}
-        title="合併生成物流號"
+        title="合併生成配送單"
         size="lg"
         footer={
           <>
@@ -1259,7 +1259,7 @@ export default function OrdersPage() {
             activeColor="primary"
           />
           <StatsCard
-            title="可合併生成物流號"
+            title="可合併生成配送單"
             value={groupableCount}
             unit="組"
             onClick={() => setShowMergeModal(true)}
@@ -1356,7 +1356,7 @@ export default function OrdersPage() {
             selectedCount={selectedOrders.size}
             batchActions={[
               ...(selectedStatus === 'submitted' && getSelectedOrdersStats().submitted > 0 ? [{
-                label: '批量生成物流號',
+                label: '批量生成配送單',
                 onClick: handleBatchGenerate,
                 variant: 'primary' as const,
                 count: getSelectedOrdersStats().submitted
@@ -1368,7 +1368,7 @@ export default function OrdersPage() {
                 count: getSelectedOrdersStats().printable
               }] : []),
               ...(selectedStatus === 'all' && getSelectedOrdersStats().submitted > 0 && getSelectedOrdersStats().printable === 0 ? [{
-                label: '批量生成物流號',
+                label: '批量生成配送單',
                 onClick: handleBatchGenerate,
                 variant: 'primary' as const,
                 count: getSelectedOrdersStats().submitted
@@ -1716,7 +1716,7 @@ export default function OrdersPage() {
                                 }}
                                 className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
                             >
-                              生成物流號
+                              生成配送單
                             </button>
                             )}
                             
