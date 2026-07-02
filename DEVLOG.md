@@ -13,6 +13,66 @@
 
 ---
 
+## 2026-07-02（補）
+
+### 本次目標
+- 修復多個 Vercel build 錯誤
+- 排行榜排序亂、圖片遺失、稱號位置跑掉
+- 商品管理：成本欄位預設顯示、開賣時間持續未填 bug
+- 玩家資料卡徽章牆互動
+- 成就頁稱號標籤
+
+### 前台（Next.js / frontend）
+
+**Build 修復**
+- `GachaMachineRetro.tsx:68`：`let start` → `const start`（prefer-const ESLint 錯誤）
+
+**排行榜**
+- SQL 函式 `get_leaderboard_whales` / `get_leaderboard_draws` 末尾補 `ORDER BY r.rnk`，修正 LEFT JOIN mock_titles 後順序不定導致亂序
+- `profiles` 表不存在 → 改用正確的 `users` 表（欄位 `name`, `avatar_url`）
+- `orders.total_price` 不存在 → 賞金榜改用 `recharge_records.amount`（status='success'）；轉蛋榜改用 `COUNT(draw_records)`
+- Mock 頭像 `09.png` / `10.png` 不存在 → 改用現有 01/02 循環
+- 日榜 / 周榜 mock 資料完全獨立（不同用戶排序、不同金額），讓兩個時間維度看起來自然不同；賞金與轉蛋類別的 mock #1 也不同（賞金日榜 GachaKing、轉蛋日榜 夜晚的貓）
+- 4–10 名稱號 badge 位置靠左、在暱稱上方（移除 `justify-center`，改直接渲染 `<p>` 避免 flex-[1_0_0] 造成 layout 重疊）
+
+**圖片遺失**
+- `frontend/public/images/mask/`（1–11.png）和 `frontend/public/images/profilecard/`（card-bg.png、header-bg.png）從未加入 git，部署後 404
+- 已補 commit 加入版控
+
+**玩家資料卡（PlayerProfileCard）**
+- 徽章牆點擊徽章顯示成就名稱泡泡：黑色半透明 `rgba(0,0,0,0.75)` 白字，位置改到徽章下方
+- 移除徽章格 `overflow-hidden`，讓泡泡可正常溢出顯示
+- 字體在設計稿座標 32px（scale ~0.54 後 ~17px）
+
+**成就任務頁**
+- 有解鎖稱號的成就（如 draw_count:500 → 轉蛋狂熱者）在灰色描述下方顯示稱號標籤（漸層色圓角 badge）
+- 新增 `ACHIEVEMENT_TITLE` 常數對照 14 組 condition_type:target_value → 稱號名稱+顏色
+- 列高 `h-[143px]` → `min-h-[143px] py-[16px]`，讓有稱號的列自然撐高
+
+### 後台（Next.js / backend）
+
+**Build 修復**
+- `settings/modules/page.tsx`：
+  - 移除 `<PageCard description="...">` 無效 prop（`PageCardProps` 無此欄位）
+  - 移除 `{ type, label, note, themes }` 解構中的 `note`（型別定義無此欄位），以及對應的 JSX 區塊
+
+**開賣時間持續未填（第二次修復）**
+- 根因二：`POST /api/admin/products`（新增商品）及 `PUT /api/admin/products/[id]`（編輯商品）未寫入 `started_at`，只有 `batch/route.ts` 有寫
+- 修正：兩個路由在 `status = 'active' && !started_at` 條件下自動補 `new Date().toISOString()`
+- SQL 補填：`UPDATE products SET started_at = created_at WHERE status = 'active' AND started_at IS NULL` — 影響 28 筆
+
+**成本欄位**
+- `visibleColumns.cost` 預設改為 `true`，成本欄在商品列表預設顯示
+
+### DB 異動
+| 操作 | 說明 |
+|---|---|
+| `UPDATE products` | 補填 28 筆上架商品 `started_at = created_at` |
+| `CREATE OR REPLACE FUNCTION get_leaderboard_whales` | 改 `users` 表、`recharge_records` 來源、日/周獨立 mock、ORDER BY |
+| `CREATE OR REPLACE FUNCTION get_leaderboard_draws` | 改 `users` 表、`draw_records` 來源、日/周獨立 mock、ORDER BY |
+
+---
+
 ## 2026-07-02
 
 ### 本次目標
