@@ -31,8 +31,7 @@ import {
   Store,
   History,
   MessageCircle,
-  Star,
-  Medal
+  Star
 } from 'lucide-react';
 import { AlertModal } from '@/components/ui/AlertModal';
 
@@ -51,7 +50,6 @@ import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 
 import DailyCheckInTab from '@/components/profile/DailyCheckInTab';
-import AchievementsTab from '@/components/profile/AchievementsTab';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -217,7 +215,6 @@ interface TopupHistoryItem {
 
 type TabType =
   | 'check-in'
-  | 'achievements'
   | 'warehouse'
   | 'market'
   | 'delivery'
@@ -916,7 +913,6 @@ function ProfileContent() {
       tab &&
       [
         'check-in',
-        'achievements',
         'warehouse',
         ...(flags.market ? (['market'] as const) : []),
         'delivery',
@@ -1096,6 +1092,41 @@ function ProfileContent() {
   const [showEditNickname, setShowEditNickname] = useState(false);
   const [showEditRecipient, setShowEditRecipient] = useState(false);
   const [showAddressBook, setShowAddressBook] = useState(false);
+  const [showTitlePicker, setShowTitlePicker] = useState(false);
+  const [userTitles, setUserTitles] = useState<{ id: string; name: string; color_key: string; is_selected: boolean }[]>([]);
+  const [selectingTitle, setSelectingTitle] = useState<string | null>(null);
+
+  const fetchUserTitles = React.useCallback(async () => {
+    if (!user) return;
+    const { data: allTitles } = await supabase.from('titles').select('id, name, color_key, sort_order').order('sort_order');
+    const { data: myTitles } = await supabase.from('user_titles').select('title_id, is_selected').eq('user_id', user.id);
+    const earnedMap = Object.fromEntries((myTitles || []).map((ut: any) => [ut.title_id, ut.is_selected]));
+    setUserTitles(
+      (allTitles || [])
+        .filter((t: any) => t.id in earnedMap)
+        .map((t: any) => ({ id: t.id, name: t.name, color_key: t.color_key, is_selected: earnedMap[t.id] === true }))
+    );
+  }, [user, supabase]);
+
+  const handleSelectTitle = async (titleId: string, alreadySelected: boolean) => {
+    if (!user || selectingTitle) return;
+    setSelectingTitle(titleId);
+    try {
+      if (alreadySelected) {
+        await supabase.from('user_titles').update({ is_selected: false }).eq('user_id', user.id).eq('title_id', titleId);
+      } else {
+        await supabase.from('user_titles').update({ is_selected: false }).eq('user_id', user.id);
+        await supabase.from('user_titles').update({ is_selected: true }).eq('user_id', user.id).eq('title_id', titleId);
+      }
+      await fetchUserTitles();
+    } finally {
+      setSelectingTitle(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'settings') fetchUserTitles();
+  }, [activeTab, fetchUserTitles]);
 
   // Fetch Data when Tab Changes
   const fetchUserData = React.useCallback(async () => {
@@ -1971,7 +2002,6 @@ function ProfileContent() {
   const loginHref = '/login?redirect=%2Fprofile';
 
   const navItems = [
-    { id: 'achievements', label: '我的成就', icon: Medal, color: 'text-purple-500' },
     { id: 'warehouse', label: '我的倉庫', icon: Box, color: 'text-primary' },
     { id: 'delivery', label: '配送管理', icon: Truck, color: 'text-accent-emerald' },
     { id: 'draw-history', label: '抽獎紀錄', icon: Trophy, color: 'text-accent-yellow' },
@@ -2013,27 +2043,6 @@ function ProfileContent() {
         return (
           <div className="p-3 lg:p-8">
             <DailyCheckInTab />
-          </div>
-        );
-      case 'achievements':
-        return (
-          <div className="pb-24 md:pb-0">
-            {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overflow-y-auto overscroll-none">
-              <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center shrink-0">
-                <button onClick={() => router.back()} className="text-neutral-900 dark:text-white -ml-2 p-2">
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <span className="text-[18px] font-black text-neutral-900 dark:text-white ml-1">我的成就</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3">
-                <AchievementsTab />
-              </div>
-            </div>
-            {/* Desktop Layout */}
-            <div className="hidden md:block p-8">
-              <AchievementsTab />
-            </div>
           </div>
         );
       case 'warehouse':
@@ -5532,7 +5541,7 @@ function ProfileContent() {
                         />
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => setShowEditNickname(true)}
                     >
@@ -5541,6 +5550,23 @@ function ProfileContent() {
                         <span className={cn("text-[14px]", user?.name ? "text-neutral-900 dark:text-white font-medium" : "text-primary")}>
                           {user?.name || '立即設定'}
                         </span>
+                        <ChevronRight className="w-4 h-4 text-neutral-300" />
+                      </div>
+                    </div>
+                    <div
+                      className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                      onClick={() => { fetchUserTitles(); setShowTitlePicker(true); }}
+                    >
+                      <label className="text-[15px] text-neutral-800 dark:text-neutral-200">稱號</label>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const sel = userTitles.find(t => t.is_selected);
+                          return sel ? (
+                            <span className="text-[14px] font-medium text-neutral-900 dark:text-white">{sel.name}</span>
+                          ) : (
+                            <span className="text-[14px] text-neutral-400">未選擇</span>
+                          );
+                        })()}
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
@@ -5686,7 +5712,7 @@ function ProfileContent() {
                       />
                     </div>
                   </div>
-                  <div 
+                  <div
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => setShowEditNickname(true)}
                   >
@@ -5695,6 +5721,23 @@ function ProfileContent() {
                       <span className={cn("text-[14px]", user?.name ? "text-neutral-900 dark:text-white font-medium" : "text-primary")}>
                         {user?.name || '立即設定'}
                       </span>
+                      <ChevronRight className="w-4 h-4 text-neutral-300" />
+                    </div>
+                  </div>
+                  <div
+                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                    onClick={() => { fetchUserTitles(); setShowTitlePicker(true); }}
+                  >
+                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">稱號</label>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const sel = userTitles.find(t => t.is_selected);
+                        return sel ? (
+                          <span className="text-[14px] font-medium text-neutral-900 dark:text-white">{sel.name}</span>
+                        ) : (
+                          <span className="text-[14px] text-neutral-400">未選擇</span>
+                        );
+                      })()}
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
@@ -6146,13 +6189,6 @@ function ProfileContent() {
             <div className="mx-2 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden divide-y divide-neutral-50 dark:divide-neutral-800">
               {[
                 {
-                  id: 'achievements',
-                  label: '我的成就',
-                  icon: Medal,
-                  color: 'text-purple-500',
-                  onClick: () => handleTabChange('achievements'),
-                },
-                {
                   id: 'warehouse',
                   label: '我的倉庫',
                   icon: Box,
@@ -6530,6 +6566,43 @@ function ProfileContent() {
           className="w-full bg-primary text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
+        </button>
+      </AlertModal>
+
+      {/* Title Picker Modal */}
+      <AlertModal
+        isOpen={showTitlePicker}
+        onClose={() => setShowTitlePicker(false)}
+        title="選擇稱號"
+        variant="default"
+      >
+        {userTitles.length === 0 ? (
+          <p className="text-sm text-neutral-400 text-center py-4">尚未獲得任何稱號，完成成就即可解鎖！</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {userTitles.map(title => (
+              <button
+                key={title.id}
+                onClick={() => handleSelectTitle(title.id, title.is_selected)}
+                disabled={!!selectingTitle}
+                className={cn(
+                  "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
+                  title.is_selected
+                    ? "border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
+                    : "border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                )}
+              >
+                <span className="font-medium">{title.name}</span>
+                {title.is_selected && <CheckCircle2 className="w-5 h-5" />}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          onClick={() => setShowTitlePicker(false)}
+          className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
+        >
+          關閉
         </button>
       </AlertModal>
 

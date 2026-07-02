@@ -37,6 +37,19 @@ const MissionIcon = ({ name }: { name: string | null }) => {
   }
 };
 
+const ACHIEVEMENT_EMOJI: Record<string, string> = {
+  'Trophy':  '🏆',
+  'Medal':   '🥇',
+  'Book':    '📚',
+  'Share':   '📢',
+  'Heart':   '❤️',
+  'Wallet':  '💳',
+  'Sparkles':'✨',
+  'Compass': '🧭',
+  'Star':    '⭐',
+  'Ticket':  '🎟️',
+};
+
 interface FloatingRewardProps {
   x: number;
   y: number;
@@ -195,9 +208,11 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
             <div key={mission.id} className="bg-white rounded-lg p-4 shadow-sm border border-neutral-100 transition-all duration-500">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-3">
-                  <div className="bg-orange-100 p-2 rounded-lg">
-                    <MissionIcon name={mission.icon_name} />
-                  </div>
+                  {type === 'achievement' && (
+                    <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-2xl flex-shrink-0">
+                      {ACHIEVEMENT_EMOJI[mission.icon_name || ''] || '🏅'}
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-bold text-neutral-800">{mission.title}</h3>
                     <p className="text-xs text-neutral-500">{mission.description}</p>
