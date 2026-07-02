@@ -159,6 +159,31 @@ export interface Mission {
   target_value?: number;
 }
 
+const TITLE_STYLES: Record<string, string> = {
+  gold:   'from-yellow-400 to-amber-500',
+  purple: 'from-purple-500 to-violet-600',
+  red:    'from-rose-500 to-pink-600',
+  blue:   'from-blue-500 to-cyan-500',
+  green:  'from-emerald-500 to-teal-500',
+};
+
+const ACHIEVEMENT_TITLE: Record<string, { name: string; color: string }> = {
+  'draw_count:500':        { name: '轉蛋狂熱者', color: 'purple' },
+  'draw_count:1000':       { name: '抽蛋之神',   color: 'gold'   },
+  'draw_count:5000':       { name: '命運支配者', color: 'red'    },
+  'login_streak:30':       { name: '全勤戰士',   color: 'green'  },
+  'login_streak:100':      { name: '吉吉比居民', color: 'blue'   },
+  'recharge_amount:20000': { name: '小課玩家',   color: 'purple' },
+  'recharge_amount:100000':{ name: '傳說課長',   color: 'gold'   },
+  'topup_streak:10':       { name: '真愛玩家',   color: 'red'    },
+  'invite_friend:20':      { name: '人氣王',     color: 'blue'   },
+  'invite_friend:100':     { name: '推廣大使',   color: 'green'  },
+  'top_prize_day3:3':      { name: '歐皇',       color: 'gold'   },
+  'top_prize_count:10':    { name: '天選之人',   color: 'purple' },
+  'top_prize_count:50':    { name: '命運代行者', color: 'red'    },
+  'single_day_draws:100':  { name: '火力全開',   color: 'red'    },
+};
+
 const ACHIEVEMENT_MASK: Record<string, number> = {
   'draw_count:1': 1, 'draw_count:30': 2, 'draw_count:100': 3, 'draw_count:500': 4,
   'draw_count:1000': 5, 'draw_count:5000': 6, 'draw_streak:10': 7, 'draw_streak:20': 8,
@@ -557,7 +582,7 @@ function MissionFrame({
                   className="w-full cursor-grab active:cursor-grabbing touch-pan-y"
                 >
                   {sortedMissions.map((mission, index) => (
-                    <div key={mission.id} className="content-stretch flex h-[143px] items-center justify-between relative shrink-0 w-full select-none">
+                    <div key={mission.id} className="content-stretch flex min-h-[143px] py-[16px] items-center justify-between relative shrink-0 w-full select-none">
                       {index !== sortedMissions.length - 1 && (
                         <div aria-hidden="true" className="absolute border-[#eee] border-b border-solid inset-0 pointer-events-none" />
                       )}
@@ -575,9 +600,19 @@ function MissionFrame({
                         ) : (
                           <Helper1 />
                         )}
-                        <div className="content-stretch flex flex-col gap-[12px] items-start leading-[normal] not-italic relative shrink-0 w-[232px]">
+                        <div className="content-stretch flex flex-col gap-[8px] items-start leading-[normal] not-italic relative shrink-0 w-[232px]">
                           <Helper text={mission.title} text1={`+${mission.reward}積分`} />
                           <p className="font-sans font-normal relative shrink-0 text-[#797979] text-[24px] whitespace-nowrap">{mission.description}</p>
+                          {(() => {
+                            const key = `${mission.condition_type}:${mission.target_value}`;
+                            const titleInfo = mission.type === 'achievement' ? ACHIEVEMENT_TITLE[key] : undefined;
+                            if (!titleInfo) return null;
+                            return (
+                              <span className={`inline-flex items-center px-[10px] py-[2px] rounded-full text-white text-[20px] font-semibold bg-gradient-to-r ${TITLE_STYLES[titleInfo.color] ?? TITLE_STYLES.gold}`}>
+                                {titleInfo.name}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div className="content-stretch flex gap-[30px] items-center relative shrink-0">

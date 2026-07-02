@@ -293,7 +293,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
 
               {/* ── Frame7：徽章格 768 × 473 ── */}
               <div
-                className="relative shrink-0 overflow-hidden flex items-start mt-[48px]"
+                className="relative shrink-0 flex items-start mt-[48px]"
                 style={{ width: 768, height: 473 }}
               >
                 {/* Frame8：只顯示已獲得的徽章 */}
@@ -317,29 +317,28 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       {activeBadgeId === badge.id && (
                         <div
                           className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20"
-                          style={{ bottom: 80 }}
+                          style={{ top: 80 }}
                         >
                           <div
-                            className="whitespace-nowrap text-white font-semibold rounded-full px-[20px]"
+                            className="absolute left-1/2 -translate-x-1/2"
                             style={{
-                              fontSize: 24,
-                              lineHeight: '44px',
-                              background: 'linear-gradient(135deg, #e876ea, #a34cd7)',
-                              boxShadow: '0 4px 16px rgba(163,76,215,0.4)',
+                              top: -10,
+                              width: 0, height: 0,
+                              borderLeft: '10px solid transparent',
+                              borderRight: '10px solid transparent',
+                              borderBottom: '10px solid rgba(0,0,0,0.75)',
+                            }}
+                          />
+                          <div
+                            className="whitespace-nowrap text-white font-semibold rounded-full px-[24px]"
+                            style={{
+                              fontSize: 32,
+                              lineHeight: '56px',
+                              background: 'rgba(0,0,0,0.75)',
                             }}
                           >
                             {badge.name}
                           </div>
-                          <div
-                            className="absolute left-1/2 -translate-x-1/2"
-                            style={{
-                              bottom: -10,
-                              width: 0, height: 0,
-                              borderLeft: '8px solid transparent',
-                              borderRight: '8px solid transparent',
-                              borderTop: '10px solid #a34cd7',
-                            }}
-                          />
                         </div>
                       )}
                     </div>
