@@ -65,7 +65,7 @@ export default function ModuleSettingsPage() {
 
   return (
     <AdminLayout>
-      <PageCard title="抽獎模組設定" description="設定各商品類別預設使用的抽獎機台模組。個別商品可在編輯頁另行指定，優先於此設定。">
+      <PageCard title="抽獎模組設定">
         {isLoading ? (
           <div className="py-12 text-center text-sm text-gray-500">載入中...</div>
         ) : (

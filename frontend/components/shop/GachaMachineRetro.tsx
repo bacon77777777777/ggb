@@ -65,7 +65,7 @@ export function GachaMachineRetro(props: GachaMachineRetroProps) {
       const ball = { color: BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)], size: 28 }
       setDroppingBall(ball)
       // animate crank
-      let start = crankRef.current
+      const start = crankRef.current
       let frame = 0
       const spin = () => {
         frame++
