@@ -115,7 +115,7 @@ interface DeliveryOrder {
   id: string;
   order_number?: string;
   itemsCount: number;
-  items: { grade: string; name: string }[];
+  items: { grade: string; name: string; productName: string }[];
   status: 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled' | string;
   date: string;
   tracking: string;
@@ -1318,7 +1318,8 @@ function ProfileContent() {
           .select(`
             *,
             draw_records (
-              product_prizes ( level, name )
+              product_prizes ( level, name ),
+              products ( name )
             )
           `)
           .eq('user_id', user.id)
@@ -1360,7 +1361,8 @@ function ProfileContent() {
              itemsCount: order.draw_records?.length || 0,
              items: (order.draw_records || []).map((dh) => ({
                grade: dh.product_prizes?.level || '?',
-               name: dh.product_prizes?.name || '未知'
+               name: dh.product_prizes?.name || '未知',
+               productName: (dh as any).products?.name || '未知商品',
              })),
              status: order.status,
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '/'),
@@ -4097,40 +4099,33 @@ function ProfileContent() {
                                     )}
                                   </div>
 
-                                  {/* Items grouped by grade */}
+                                  {/* Items grouped by product name */}
                                   {(() => {
-                                    const gradeOrder = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'LAST', 'last', 'SP', '賞'];
                                     const grouped: Record<string, typeof order.items> = {};
+                                    const productOrder: string[] = [];
                                     for (const item of order.items) {
-                                      const g = item.grade || '?';
-                                      if (!grouped[g]) grouped[g] = [];
-                                      grouped[g].push(item);
+                                      const p = item.productName || '未知商品';
+                                      if (!grouped[p]) { grouped[p] = []; productOrder.push(p); }
+                                      grouped[p].push(item);
                                     }
-                                    const grades = Object.keys(grouped).sort((a, b) => {
-                                      const ai = gradeOrder.indexOf(a);
-                                      const bi = gradeOrder.indexOf(b);
-                                      if (ai === -1 && bi === -1) return a.localeCompare(b);
-                                      if (ai === -1) return 1;
-                                      if (bi === -1) return -1;
-                                      return ai - bi;
-                                    });
                                     return (
                                       <div>
                                         <div className="text-[10px] text-neutral-400 font-black uppercase tracking-wider mb-2 px-1">
                                           配送商品 ({order.items.length})
                                         </div>
-                                        <div className="space-y-2">
-                                          {grades.map((grade) => (
-                                            <div key={grade}>
+                                        <div className="space-y-3">
+                                          {productOrder.map((productName) => (
+                                            <div key={productName}>
                                               <div className="flex items-center gap-1.5 mb-1.5 px-1">
-                                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[11px] font-black rounded-md border border-primary/10 uppercase shrink-0">
-                                                  {grade} 賞
-                                                </span>
-                                                <span className="text-[10px] text-neutral-400 font-bold">×{grouped[grade].length}</span>
+                                                <span className="text-[12px] font-black text-neutral-800 dark:text-neutral-100 truncate">{productName}</span>
+                                                <span className="text-[10px] text-neutral-400 font-bold shrink-0">×{grouped[productName].length}</span>
                                               </div>
                                               <div className="space-y-1.5 pl-1">
-                                                {grouped[grade].map((item, idx) => (
-                                                  <div key={idx} className="flex items-center gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                                                {grouped[productName].map((item, idx) => (
+                                                  <div key={idx} className="flex items-center gap-2.5 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                                                    <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase shrink-0">
+                                                      {item.grade}賞
+                                                    </span>
                                                     <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
                                                       {item.name}
                                                     </span>
