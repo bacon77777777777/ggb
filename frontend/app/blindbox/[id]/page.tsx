@@ -297,15 +297,21 @@ export default function BlindboxDetailPage() {
         showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
       }
 
-      // const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
-      const { data, error } = await supabase.rpc('play_gacha_locked', {
-        p_product_id: product.id,
-        p_count: clampedQty,
-        p_use_points: options.usePoints,
-        p_coupon_id: options.couponId || null
+      const drawRes = await fetch('/api/gacha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          count: clampedQty,
+          usePoints: options.usePoints,
+          couponId: options.couponId || null,
+        }),
       });
-
-      if (error) throw error;
+      if (!drawRes.ok) {
+        const err = await drawRes.json().catch(() => ({}));
+        throw new Error(err.error || '購買失敗，請稍後再試');
+      }
+      const data = (await drawRes.json()).prizes;
 
       const rawResults = data as unknown as {
         name: string;

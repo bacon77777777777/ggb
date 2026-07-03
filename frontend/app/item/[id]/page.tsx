@@ -659,14 +659,21 @@ export default function ProductDetailPage() {
     try {
       console.log('[GA] event: purchase_attempt', { item_id: product.id, quantity });
       
-      const { data, error } = await supabase.rpc('play_gacha_locked', {
-        p_product_id: product.id,
-        p_count: quantity,
-        p_use_points: options?.usePoints || false,
-        p_coupon_id: options?.couponId || null
+      const drawRes = await fetch('/api/gacha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          count: quantity,
+          usePoints: options?.usePoints || false,
+          couponId: options?.couponId || null,
+        }),
       });
-
-      if (error) throw error;
+      if (!drawRes.ok) {
+        const err = await drawRes.json().catch(() => ({}));
+        throw new Error(err.error || '購買失敗，請稍後再試');
+      }
+      const data = (await drawRes.json()).prizes;
 
       if (!data || !Array.isArray(data) || data.length === 0) {
         throw new Error('購買失敗，商品可能已售完或剩餘數量不足');

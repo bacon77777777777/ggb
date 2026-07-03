@@ -242,7 +242,19 @@
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT column_name FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position;\")",
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT id, name, email FROM users WHERE name LIKE 'bot%' OR email LIKE '%bot%@%' OR name IN \\('admin', 'Bot', 'System'\\) LIMIT 20;\")",
       "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT id, name, email, total_draws FROM users ORDER BY total_draws DESC NULLS LAST LIMIT 15;\")",
-      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT prosrc FROM pg_proc WHERE proname = 'get_winning_records';\")"
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT prosrc FROM pg_proc WHERE proname = 'get_winning_records';\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT column_name FROM information_schema.columns WHERE table_name='products' ORDER BY ordinal_position;\")",
+      "Bash(psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT id, name, email, tokens, total_draws, total_spent FROM users LIMIT 5;\")",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node create-bots.mjs)",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\")",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT pg_get_functiondef\\(oid\\) FROM pg_proc WHERE proname = 'get_winning_records';\")",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT id, user_id, user_name, prize_level, prize_name FROM get_winning_records\\(10\\) LIMIT 5;\")",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres -c ' *)",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT get_player_profile\\('1989560d-e31d-4157-a88c-91fded69df2e'\\);\")",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT id, user_id, user_name, prize_level, prize_name FROM get_winning_records\\(5\\);\")",
+      "Bash(PGPASSWORD=KDgySgUq4q6SNLKe psql \"postgresql://postgres.akdqleelvqvjhjnfkpfq:KDgySgUq4q6SNLKe@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres\" -c \"SELECT rank, nickname, draw_count, title_name, title_color FROM get_leaderboard_draws\\('day'\\) LIMIT 10;\")"
     ],
     "additionalDirectories": [
       "/Users/bacon/ggb/backend/app/orders/[id]"

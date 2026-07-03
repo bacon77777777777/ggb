@@ -155,18 +155,24 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
         showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
       }
 
-      const { data, error } = await supabase.rpc('play_gacha_locked', {
-        p_product_id: product.id,
-        p_count: clampedQty,
-        p_use_points: options.usePoints,
-        p_coupon_id: options.couponId || null
+      const drawRes = await fetch('/api/gacha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          count: clampedQty,
+          usePoints: options.usePoints,
+          couponId: options.couponId || null,
+        }),
       });
 
-      if (error) {
-        const err = error as unknown as { message?: string; details?: string; hint?: string; code?: string };
-        const msg = [err.message, err.details, err.hint].filter(Boolean).join(' | ');
-        throw new Error(msg || '購買失敗，請稍後再試');
+      if (!drawRes.ok) {
+        const err = await drawRes.json().catch(() => ({}));
+        throw new Error(err.error || '購買失敗，請稍後再試');
       }
+
+      const drawJson = await drawRes.json();
+      const data = drawJson.prizes;
 
       interface PlayGachaResult {
         name: string;

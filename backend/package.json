@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "archiver": "^7.0.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.4",
@@ -26,8 +28,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.39.0",
-    "@types/node": "^20.0.0",
     "@types/archiver": "^6.0.3",
+    "@types/node": "^20.0.0",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

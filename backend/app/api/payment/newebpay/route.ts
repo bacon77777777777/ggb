@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { encryptTradeInfo, generateTradeSha } from '@/lib/newebpay';
+import { paymentLimiter } from '@/lib/ratelimit';
 
 // Allow this route to be called
 export const dynamic = 'force-dynamic';
@@ -16,16 +17,23 @@ const PLANS: Record<number, number> = {
 
 export async function POST(req: Request) {
   try {
+    // Rate limit by IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const { success } = await paymentLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json({ error: '操作太頻繁，請稍候再試' }, { status: 429 })
+    }
+
     const body = await req.json();
     const kind = String(body?.kind || 'topup');
     const paymentMethod = String(body?.paymentMethod || '');
     const amountRaw = body?.amount;
     const orderIdRaw = body?.orderId;
-    
+
     // Auth check
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
