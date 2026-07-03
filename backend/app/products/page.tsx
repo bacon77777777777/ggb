@@ -1229,13 +1229,13 @@ export default function ProductsPage() {
                                                   >
                                                     {dr.userName}
                                                   </Link>
-                                                  {dr.order_id && (
+                                                  {dr.orderNumber && (
                                                     <Link
                                                       href={`/orders/${dr.order_id}`}
-                                                      className="text-neutral-500 hover:text-blue-600 hover:underline"
+                                                      className="text-neutral-500 hover:text-blue-600 hover:underline font-mono"
                                                       onClick={(e) => e.stopPropagation()}
                                                     >
-                                                      出貨單 #{dr.order_id}
+                                                      {dr.orderNumber}
                                                     </Link>
                                                   )}
                                                   <span className="text-neutral-300">{new Date(dr.created_at).toLocaleDateString('zh-TW')}</span>

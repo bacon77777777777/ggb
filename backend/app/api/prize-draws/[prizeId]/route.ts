@@ -20,7 +20,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ prizeId
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const userIds = [...new Set((draws || []).map((r: any) => r.user_id).filter(Boolean))]
+  const orderIds = [...new Set((draws || []).map((r: any) => r.order_id).filter(Boolean))]
   let userMap: Map<string, string> = new Map()
+  let orderMap: Map<number, string> = new Map()
 
   if (userIds.length > 0) {
     const { data: users } = await adminSupabase
@@ -30,9 +32,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ prizeId
     userMap = new Map((users || []).map((u: any) => [u.user_id, u.name]))
   }
 
+  if (orderIds.length > 0) {
+    const { data: orders } = await adminSupabase
+      .from('orders')
+      .select('id, order_number')
+      .in('id', orderIds)
+    orderMap = new Map((orders || []).map((o: any) => [o.id, o.order_number]))
+  }
+
   const enriched = (draws || []).map((r: any) => ({
     ...r,
     userName: userMap.get(r.user_id) || r.user_id?.slice(0, 8) || '—',
+    orderNumber: r.order_id ? (orderMap.get(r.order_id) || `#${r.order_id}`) : null,
   }))
 
   return NextResponse.json(enriched)
