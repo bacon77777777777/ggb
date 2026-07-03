@@ -12,30 +12,70 @@ interface Role {
   created_at: string
 }
 
-// Define available permissions/pages
-const AVAILABLE_PERMISSIONS = [
-    // Standard Pages
-    { id: 'dashboard', label: '儀表板' },
-    { id: 'products', label: '商品管理' },
-    { id: 'orders', label: '配送管理' },
-    { id: 'users', label: '會員管理' },
-    { id: 'draws', label: '抽獎管理' },
-    { id: 'recharges', label: '儲值管理' },
-    { id: 'banners', label: '輪播圖管理' },
-    { id: 'news', label: '文章管理' },
-    { id: 'settings', label: '殺率調整' },
-    { id: 'admins', label: '管理列表' },
-    { id: 'permissions', label: '權限管理' },
-    { id: 'logs', label: '操作記錄' },
-    
-    // Legacy / Specific Actions Mappings
-    { id: 'dashboard_view', label: '儀表板' },
-    { id: 'products_manage', label: '商品管理' },
-    { id: 'orders_manage', label: '配送管理' },
-    { id: 'users_manage', label: '會員管理' },
-    { id: 'draws_view', label: '抽獎管理' },
-    { id: 'recharges_view', label: '儲值管理' },
-  ]
+const PERMISSION_GROUPS = [
+  {
+    title: '營運總覽',
+    items: [
+      { id: 'dashboard',        label: '儀表板' },
+      { id: 'reports_overview', label: '轉換分析' },
+    ],
+  },
+  {
+    title: '金流報表',
+    items: [
+      { id: 'recharges',           label: '儲值明細' },
+      { id: 'reports_logistics',   label: '物流明細' },
+      { id: 'reports_products',    label: '消費明細' },
+      { id: 'reports_dismantled',  label: '分解明細' },
+      { id: 'reports_settlement',  label: '廠商結算' },
+    ],
+  },
+  {
+    title: '抽獎管理',
+    items: [
+      { id: 'products',    label: '商品管理' },
+      { id: 'suppliers',   label: '廠商管理' },
+      { id: 'categories',  label: '菜單管理' },
+      { id: 'draws',       label: '抽獎紀錄' },
+      { id: 'orders',      label: '配送管理' },
+      { id: 'marketplace', label: '市集管理' },
+    ],
+  },
+  {
+    title: '系統設定',
+    items: [
+      { id: 'users',            label: '會員管理' },
+      { id: 'banners',          label: '輪播圖管理' },
+      { id: 'news',             label: '文章管理' },
+      { id: 'coupons',          label: '折價券管理' },
+      { id: 'settings',         label: '殺率調整' },
+      { id: 'settings_features',label: '功能開關' },
+      { id: 'settings_shipping',label: '運費設定' },
+      { id: 'settings_modules', label: '抽獎模組設定' },
+      { id: 'admins',           label: '管理員清單' },
+      { id: 'permissions',      label: '權限管理' },
+      { id: 'logs',             label: '操作記錄' },
+      { id: 'tools',            label: '工具' },
+      { id: 'dev_logs',         label: '開發紀錄' },
+    ],
+  },
+  {
+    title: '販售',
+    items: [
+      { id: 'sell',        label: '販售管理' },
+      { id: 'sell_orders', label: '販售訂單' },
+    ],
+  },
+  {
+    title: '交換',
+    items: [
+      { id: 'exchange',        label: '交換管理' },
+      { id: 'exchange_orders', label: '交換紀錄' },
+    ],
+  },
+]
+
+const AVAILABLE_PERMISSIONS = PERMISSION_GROUPS.flatMap(g => g.items)
 
 export default function PermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -271,17 +311,24 @@ export default function PermissionsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">權限設定 (可訪問頁面)</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {AVAILABLE_PERMISSIONS.map(perm => (
-                  <label key={perm.id} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.permissions.includes(perm.id)}
-                      onChange={() => handlePermissionToggle(perm.id)}
-                      className="rounded text-primary focus:ring-primary"
-                    />
-                    <span className="text-sm text-gray-700">{perm.label}</span>
-                  </label>
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                {PERMISSION_GROUPS.map(group => (
+                  <div key={group.title}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{group.title}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {group.items.map(perm => (
+                        <label key={perm.id} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.includes(perm.id)}
+                            onChange={() => handlePermissionToggle(perm.id)}
+                            className="rounded text-primary focus:ring-primary"
+                          />
+                          <span className="text-sm text-gray-700">{perm.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
