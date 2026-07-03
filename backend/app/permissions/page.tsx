@@ -77,6 +77,21 @@ const PERMISSION_GROUPS = [
 
 const AVAILABLE_PERMISSIONS = PERMISSION_GROUPS.flatMap(g => g.items)
 
+const LEGACY_PERMISSION_LABELS: Record<string, string> = {
+  dashboard_view:    '儀表板',
+  products_manage:   '商品管理',
+  orders_manage:     '配送管理',
+  users_manage:      '會員管理',
+  draws_view:        '抽獎紀錄',
+  recharges_view:    '儲值明細',
+}
+
+function permLabel(id: string): string {
+  return AVAILABLE_PERMISSIONS.find(p => p.id === id)?.label
+    ?? LEGACY_PERMISSION_LABELS[id]
+    ?? id
+}
+
 export default function PermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -257,14 +272,11 @@ export default function PermissionsPage() {
                         </span>
                       ) : (
                         <>
-                          {role.permissions?.map(p => {
-                            const label = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label || p
-                            return (
-                              <span key={p} className="px-2.5 py-1 bg-gray-50 text-gray-700 rounded-md text-xs font-medium border border-gray-200">
-                                {label}
-                              </span>
-                            )
-                          })}
+                          {role.permissions?.map(p => (
+                            <span key={p} className="px-2.5 py-1 bg-gray-50 text-gray-700 rounded-md text-xs font-medium border border-gray-200">
+                              {permLabel(p)}
+                            </span>
+                          ))}
                           {(!role.permissions || role.permissions.length === 0) && (
                             <span className="text-sm text-gray-400 italic">無權限設定</span>
                           )}
