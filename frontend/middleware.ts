@@ -36,6 +36,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // If Supabase drops ?code= on the homepage (Site URL fallback),
+  // intercept and redirect to the auth callback handler.
+  const code = request.nextUrl.searchParams.get('code')
+  if (code && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/callback'
+    url.searchParams.set('next', '/update-password')
+    return NextResponse.redirect(url)
+  }
+
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
