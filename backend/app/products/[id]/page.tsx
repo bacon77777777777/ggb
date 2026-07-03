@@ -106,6 +106,8 @@ export default function EditProductPage() {
     total: number
     remaining: number
     probability: number
+    decompose_type: 'auto' | 'percent' | 'fixed'
+    decompose_value: number | null
   }>>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -297,6 +299,8 @@ export default function EditProductPage() {
             total: prize.total,
             remaining: prize.remaining,
             probability: prize.probability,
+            decompose_type: prize.decompose_type || 'auto',
+            decompose_value: prize.decompose_value ?? null,
           })))
         }
       } catch (e) {
@@ -393,7 +397,9 @@ export default function EditProductPage() {
           image_url: prizeImageUrl,
           total: prize.total,
           remaining: prize.remaining,
-          probability: prize.probability
+          probability: prize.probability,
+          decompose_type: prize.decompose_type || 'auto',
+          decompose_value: prize.decompose_value ?? null,
         }
 
         if (!prize.id.toString().startsWith('p')) {
@@ -1034,10 +1040,10 @@ export default function EditProductPage() {
                       {prize.imagePreview && (
                         <div className="mt-2">
                           <div className="relative inline-block">
-                            <img 
-                              src={prize.imagePreview} 
-                              alt="獎項預覽" 
-                              className="w-32 h-32 object-cover rounded-lg border-2 border-neutral-200 shadow-sm" 
+                            <img
+                              src={prize.imagePreview}
+                              alt="獎項預覽"
+                              className="w-32 h-32 object-cover rounded-lg border-2 border-neutral-200 shadow-sm"
                             />
                             <button
                               type="button"
@@ -1059,6 +1065,65 @@ export default function EditProductPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* 分解設定 */}
+                  {formData.type !== 'gacha' && formData.type !== 'blindbox' ? (
+                    <div className="mt-3 pt-3 border-t border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">分解設定</label>
+                      <div className="flex gap-2 items-start">
+                        <div className="w-36 flex-shrink-0">
+                          <select
+                            value={prize.decompose_type}
+                            onChange={(e) => {
+                              const updated = [...prizes]
+                              updated[index].decompose_type = e.target.value as 'auto' | 'percent' | 'fixed'
+                              updated[index].decompose_value = null
+                              setPrizes(updated)
+                            }}
+                            className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
+                          >
+                            <option value="auto">智能 (auto)</option>
+                            <option value="percent">百分比 (%)</option>
+                            <option value="fixed">固定代幣</option>
+                          </select>
+                        </div>
+                        {prize.decompose_type === 'auto' ? (
+                          <div className="flex-1 px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-500">
+                            庫存≤3 → 抽價20%；庫存≥4 → 10代幣
+                          </div>
+                        ) : (
+                          <div className="flex-1">
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                value={prize.decompose_value ?? ''}
+                                onChange={(e) => {
+                                  const updated = [...prizes]
+                                  updated[index].decompose_value = e.target.value === '' ? null : parseInt(e.target.value) || null
+                                  setPrizes(updated)
+                                }}
+                                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all hover:border-neutral-300 shadow-sm"
+                                placeholder={prize.decompose_type === 'percent' ? '例如 20（代表20%）' : '例如 50（代幣數）'}
+                              />
+                              {prize.decompose_type === 'percent' && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">%</span>
+                              )}
+                            </div>
+                            {prize.decompose_type === 'percent' && prize.decompose_value && (
+                              <p className="text-xs text-neutral-400 mt-0.5">
+                                預估：{Math.max(1, Math.floor(parseInt(formData.price || '0') * prize.decompose_value / 100))} 代幣
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 pt-3 border-t border-neutral-200">
+                      <p className="text-xs text-neutral-400">轉蛋／盒玩固定分解 10 代幣</p>
+                    </div>
+                  )}
                 </div>
               ))}
               
@@ -1076,7 +1141,9 @@ export default function EditProductPage() {
                       imagePreview: '',
                       total: 0,
                       remaining: 0,
-                      probability: 0,  // 會根據 total 和 totalCount 自動計算
+                      probability: 0,
+                      decompose_type: 'auto' as const,
+                      decompose_value: null as number | null,
                     }
                     setPrizes([...prizes, newPrize])
                   }}
@@ -1102,7 +1169,9 @@ export default function EditProductPage() {
                       imagePreview: '',
                       total: 0,
                       remaining: 0,
-                      probability: 0,  // 會根據 total 和 totalCount 自動計算
+                      probability: 0,
+                      decompose_type: 'auto' as const,
+                      decompose_value: null as number | null,
                     }
                     setPrizes([...prizes, newPrize])
                   }}
