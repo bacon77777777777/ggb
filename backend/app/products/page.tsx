@@ -65,6 +65,7 @@ export default function ProductsPage() {
           rarity: p.rarity,
           majorPrizes: p.major_prizes,
           prizes: p.prizes ? p.prizes.map((prize: any) => ({
+            id: prize.id,
             name: prize.name,
             level: prize.level,
             imageUrl: prize.image_url,
@@ -130,6 +131,58 @@ export default function ProductsPage() {
   }, [])
 
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
+  const [expandedPrizes, setExpandedPrizes] = useState<Set<number>>(new Set())
+  const [prizeDraws, setPrizeDraws] = useState<Map<number, any[]>>(new Map())
+  const [loadingPrizes, setLoadingPrizes] = useState<Set<number>>(new Set())
+
+  const prizeStatusLabel = (status: string) => {
+    const map: Record<string, { label: string; cls: string }> = {
+      success:          { label: '未申請', cls: 'bg-neutral-100 text-neutral-500' },
+      in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-blue-600' },
+      pending_delivery: { label: '待出貨', cls: 'bg-yellow-100 text-yellow-700' },
+      shipped:          { label: '已出貨', cls: 'bg-green-100 text-green-700' },
+      dismantled:       { label: '已拆解', cls: 'bg-red-100 text-red-500' },
+      exchanged:        { label: '已兌換', cls: 'bg-purple-100 text-purple-600' },
+      listing:          { label: '市場上架', cls: 'bg-orange-100 text-orange-600' },
+      cancelled:        { label: '已取消', cls: 'bg-neutral-100 text-neutral-400' },
+    }
+    return map[status] || { label: status, cls: 'bg-neutral-100 text-neutral-500' }
+  }
+
+  const fetchPrizeDraws = async (prizeId: number) => {
+    if (loadingPrizes.has(prizeId)) return
+    setLoadingPrizes(prev => new Set(prev).add(prizeId))
+    const { data } = await supabase
+      .from('draw_records')
+      .select('id, status, created_at, user_id, order_id')
+      .eq('product_prize_id', prizeId)
+      .order('created_at', { ascending: false })
+    const records = data || []
+    if (records.length > 0) {
+      const userIds = [...new Set(records.map((r: any) => r.user_id).filter(Boolean))]
+      const { data: users } = await supabase
+        .from('users')
+        .select('user_id, name')
+        .in('user_id', userIds)
+      const userMap = new Map((users || []).map((u: any) => [u.user_id, u.name]))
+      const enriched = records.map((r: any) => ({ ...r, userName: userMap.get(r.user_id) || r.user_id?.slice(0, 8) }))
+      setPrizeDraws(prev => new Map(prev).set(prizeId, enriched))
+    } else {
+      setPrizeDraws(prev => new Map(prev).set(prizeId, []))
+    }
+    setLoadingPrizes(prev => { const s = new Set(prev); s.delete(prizeId); return s })
+  }
+
+  const togglePrize = (prizeId: number, drawn: number) => {
+    setExpandedPrizes(prev => {
+      const next = new Set(prev)
+      if (next.has(prizeId)) { next.delete(prizeId) } else {
+        next.add(prizeId)
+        if (drawn > 0 && !prizeDraws.has(prizeId)) fetchPrizeDraws(prizeId)
+      }
+      return next
+    })
+  }
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [categories, setCategories] = useState<string[]>([])
@@ -1147,14 +1200,49 @@ export default function ProductsPage() {
                                   ? ((prize.remaining / totalRemaining) * 100).toFixed(2)
                                   : '0.00'
                                 
+                                const drawn = prize.total - prize.remaining
+                                const isExpanded = prize.id && expandedPrizes.has(prize.id)
+                                const isLoadingPrize = prize.id && loadingPrizes.has(prize.id)
+                                const draws = prize.id ? (prizeDraws.get(prize.id) || []) : []
+
                                 return (
-                                  <div key={idx} className="flex items-center gap-3 text-sm">
-                                    <span className="text-neutral-500 font-mono text-xs min-w-[80px]">{getDisplayCode(product)}{(idx + 1).toString().padStart(2, '0')}</span>
-                                    <img src={prize.imageUrl} alt={prize.name} className="w-10 h-10 object-cover rounded-lg" />
-                                    <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
-                                    <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">{prize.level}</span>
-                                    <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
-                                    <span className="text-blue-500 font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
+                                  <div key={idx}>
+                                    <div
+                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-neutral-100'}`}
+                                      onClick={() => prize.id && togglePrize(prize.id, drawn)}
+                                    >
+                                      <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>
+                                      <span className="text-neutral-500 font-mono text-xs min-w-[80px]">{getDisplayCode(product)}{(idx + 1).toString().padStart(2, '0')}</span>
+                                      <img src={prize.imageUrl} alt={prize.name} className="w-10 h-10 object-cover rounded-lg" />
+                                      <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
+                                      <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">{prize.level}</span>
+                                      <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
+                                      <span className="text-blue-500 font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
+                                      {drawn > 0 && <span className="text-xs text-neutral-400">已抽 {drawn}</span>}
+                                    </div>
+                                    {isExpanded && (
+                                      <div className="ml-12 mt-1 mb-2 pl-3 border-l-2 border-blue-100">
+                                        {isLoadingPrize ? (
+                                          <span className="text-xs text-neutral-400">載入中…</span>
+                                        ) : draws.length === 0 ? (
+                                          <span className="text-xs text-neutral-400">品項當前無走向</span>
+                                        ) : (
+                                          <div className="space-y-1">
+                                            {draws.map((dr: any, i: number) => {
+                                              const { label, cls } = prizeStatusLabel(dr.status)
+                                              return (
+                                                <div key={i} className="flex items-center gap-2 text-xs">
+                                                  <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{label}</span>
+                                                  <span className="text-neutral-700 font-medium">{dr.userName}</span>
+                                                  {dr.order_id && <span className="text-neutral-400">#{dr.order_id}</span>}
+                                                  <span className="text-neutral-300">{new Date(dr.created_at).toLocaleDateString('zh-TW')}</span>
+                                                </div>
+                                              )
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               })
