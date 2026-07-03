@@ -211,8 +211,14 @@ export default function AdminsPage() {
       })
 
       if (!res.ok) {
-        const msg = await res.text()
-        throw new Error(msg)
+        let errMsg = '儲存失敗'
+        try {
+          const json = await res.json()
+          errMsg = json.error || errMsg
+        } catch {
+          errMsg = await res.text() || errMsg
+        }
+        throw new Error(errMsg)
       }
 
       alert(editingAdmin ? '更新成功' : '新增成功')
@@ -220,9 +226,9 @@ export default function AdminsPage() {
       setIsAddModalOpen(false)
       setIsEditModalOpen(false)
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving admin:', error)
-      alert('儲存失敗')
+      alert('儲存失敗：' + (error?.message || '未知錯誤'))
     }
   }
 

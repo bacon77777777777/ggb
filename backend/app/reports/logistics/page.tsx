@@ -152,6 +152,24 @@ export default function LogisticsReportPage() {
           </button>
         </div>
 
+        {!isLoading && filtered.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">物流筆數</p>
+              <p className="text-2xl font-black text-neutral-900">{filtered.length.toLocaleString()}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">運費合計</p>
+              <p className="text-2xl font-black text-emerald-600">NT$ {filtered.reduce((s, r) => s + (r.total_amount ?? 0), 0).toLocaleString()}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">已送達</p>
+              <p className="text-2xl font-black text-blue-600">{filtered.filter(r => r.status === 'delivered').length.toLocaleString()}</p>
+              <p className="text-xs text-neutral-400 mt-0.5">筆</p>
+            </div>
+          </div>
+        )}
+
         <PageCard>
           <SearchToolbar
             searchPlaceholder="搜尋訂單編號、用戶、物流單號..."

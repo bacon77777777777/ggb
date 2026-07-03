@@ -309,6 +309,25 @@ export default function RechargesPage() {
           </button>
         </div>
 
+        {!isLoading && sortedRecords.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
+              <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">完成金額</p>
+              <p className="text-2xl font-black text-emerald-600">NT$ {sortedRecords.filter(r => r.status === 'success').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}</p>
+              <p className="text-xs text-neutral-400 mt-0.5">已成功筆數</p>
+            </div>
+            <div className="bg-white rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs text-neutral-500 mb-1">贈點合計</p>
+              <p className="text-2xl font-black text-blue-600">{sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()}</p>
+              <p className="text-xs text-neutral-400 mt-0.5">G 幣</p>
+            </div>
+          </div>
+        )}
+
         <PageCard>
           <SearchToolbar
             searchPlaceholder="搜尋用戶、訂單編號..."

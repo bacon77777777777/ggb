@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
@@ -89,55 +90,36 @@ export default function DismantledReportPage() {
     >
       <div className="space-y-4">
 
-        {/* 控制列 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* 廠商 */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
-              <select
-                value={selectedSupplierId}
-                onChange={e => setSelectedSupplierId(e.target.value)}
-                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[140px]"
-              >
-                <option value="">全部廠商</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={String(s.id)}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 日期區間 */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-500 whitespace-nowrap">區間</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <span className="text-neutral-400">—</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={handleExport}
-                disabled={!rows.length}
-                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                匯出 CSV
-              </button>
-            </div>
-          </div>
+        {/* 工具列 */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <select
+            value={selectedSupplierId}
+            onChange={e => setSelectedSupplierId(e.target.value)}
+            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="">所有廠商</option>
+            {suppliers.map(s => (
+              <option key={s.id} value={String(s.id)}>{s.name}</option>
+            ))}
+          </select>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            placeholder="選擇日期範圍"
+          />
+          {rows.length > 0 && (
+            <button
+              onClick={handleExport}
+              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              匯出 CSV
+            </button>
+          )}
         </div>
 
         {/* 摘要 KPI */}

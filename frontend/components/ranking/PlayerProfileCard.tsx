@@ -276,7 +276,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
         name: BADGE_NAME[titleBadgeId] || displayTitle!.name,
         icon: '',
         category: 'draw',
-        earned: false,
+        earned: true,   // 有稱號 = 視為已獲得對應徽章
         earned_at: null,
         sort_order: BADGE_SORT[titleBadgeId] ?? 1,
       })
@@ -427,49 +427,24 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                 <div className="flex flex-wrap gap-[20px] items-center justify-center w-full content-center">
                   {wallBadges.length === 0 ? (
                     <p className="text-[32px] text-neutral-400">尚未獲得任何徽章</p>
-                  ) : wallBadges.map((badge, idx) => {
-                    const isTitleBadge = titleBadge?.id === badge.id;
+                  ) : wallBadges.map((badge) => {
                     return (
                       <div
                         key={badge.id}
-                        className="relative shrink-0 cursor-pointer"
-                        style={{ width: 72, height: 72 }}
+                        className="relative shrink-0 cursor-pointer flex items-center justify-center"
+                        style={{ height: 72 }}
                         onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
                       >
                         <img
                           src={BADGE_IMAGE[badge.id] || '/images/mask/初心試煉.png'}
                           alt={badge.name}
-                          width={72}
-                          height={72}
-                          style={{
-                            width: 72, height: 72, objectFit: 'contain',
-                            opacity: isTitleBadge && !badge.earned ? 0.5 : 1,
-                          }}
+                          style={{ height: 72, width: 'auto', objectFit: 'contain' }}
                         />
-                        {/* 稱號徽章未解鎖時顯示鎖定遮罩 */}
-                        {isTitleBadge && !badge.earned && (
-                          <div
-                            className="absolute inset-0 flex items-center justify-center"
-                            style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '50%' }}
-                          >
-                            <span style={{ fontSize: 28 }}>🔒</span>
-                          </div>
-                        )}
                         {activeBadgeId === badge.id && (
                           <div
-                            className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20"
-                            style={{ top: 80 }}
+                            className="absolute left-1/2 -translate-x-1/2 pointer-events-none z-20 flex flex-col items-center"
+                            style={{ bottom: 80 }}
                           >
-                            <div
-                              className="absolute left-1/2 -translate-x-1/2"
-                              style={{
-                                top: -10,
-                                width: 0, height: 0,
-                                borderLeft: '10px solid transparent',
-                                borderRight: '10px solid transparent',
-                                borderBottom: '10px solid rgba(0,0,0,0.75)',
-                              }}
-                            />
                             <div
                               className="whitespace-nowrap text-white font-semibold rounded-full px-[24px]"
                               style={{
@@ -480,6 +455,14 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                             >
                               {badge.name}
                             </div>
+                            <div
+                              style={{
+                                width: 0, height: 0,
+                                borderLeft: '10px solid transparent',
+                                borderRight: '10px solid transparent',
+                                borderTop: '10px solid rgba(0,0,0,0.75)',
+                              }}
+                            />
                           </div>
                         )}
                       </div>

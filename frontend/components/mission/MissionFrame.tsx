@@ -185,16 +185,36 @@ const ACHIEVEMENT_TITLE: Record<string, { name: string; color: string }> = {
   'single_day_draws:100':  { name: '火力全開',   color: 'red'    },
 };
 
-const ACHIEVEMENT_MASK: Record<string, number> = {
-  'draw_count:1': 1, 'draw_count:30': 2, 'draw_count:100': 3, 'draw_count:500': 4,
-  'draw_count:1000': 5, 'draw_count:5000': 6, 'draw_streak:10': 7, 'draw_streak:20': 8,
-  'login_streak:7': 9, 'login_streak:30': 10, 'login_streak:100': 11,
-  'recharge:1': 1, 'recharge_amount:1000': 2, 'recharge_amount:5000': 3,
-  'recharge_amount:20000': 4, 'recharge_amount:100000': 5, 'topup_streak:5': 6,
-  'topup_streak:10': 7, 'invite_friend:1': 8, 'invite_friend:5': 9,
-  'invite_friend:20': 10, 'invite_friend:100': 11, 'top_prize_first:1': 1,
-  'top_prize_day3:3': 2, 'top_prize_count:10': 3, 'top_prize_count:50': 4,
-  'bad_luck_streak:10': 5, 'single_day_draws:100': 6, 'birthday_draw:1': 7,
+const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
+  'draw_count:1':           '/images/mask/初心試煉.png',
+  'draw_count:30':          '/images/mask/命運啟程.png',
+  'draw_count:100':         '/images/mask/停不下來.png',
+  'draw_count:500':         '/images/mask/轉蛋成癮.png',
+  'draw_count:1000':        '/images/mask/抽蛋之神.png',
+  'draw_count:5000':        '/images/mask/命運支配者.png',
+  'draw_streak:10':         '/images/mask/每日修行.png',
+  'draw_streak:20':         '/images/mask/永不缺席.png',
+  'login_streak:7':         '/images/mask/習慣養成.png',
+  'login_streak:30':        '/images/mask/全勤戰士.png',
+  'login_streak:100':       '/images/mask/常駐居民.png',
+  'recharge:1':             '/images/mask/初次獻祭.png',
+  'recharge_amount:1000':   '/images/mask/小課怡情.png',
+  'recharge_amount:5000':   '/images/mask/荷包失守.png',
+  'recharge_amount:20000':  '/images/mask/錢包蒸發.png',
+  'recharge_amount:100000': '/images/mask/課長降臨.png',
+  'topup_streak:5':         '/images/mask/每日供奉.png',
+  'topup_streak:10':        '/images/mask/信仰充值.png',
+  'invite_friend:1':        '/images/mask/初級召集人.png',
+  'invite_friend:5':        '/images/mask/揪團王.png',
+  'invite_friend:20':       '/images/mask/傳教士.png',
+  'invite_friend:100':      '/images/mask/信徒滿天下.png',
+  'top_prize_first:1':      '/images/mask/一發入魂.png',
+  'top_prize_day3:3':       '/images/mask/天命之子.png',
+  'top_prize_count:10':     '/images/mask/命運眷顧.png',
+  'top_prize_count:50':     '/images/mask/神明代抽.png',
+  'bad_luck_streak:10':     '/images/mask/非洲酋長.png',
+  'single_day_draws:100':   '/images/mask/火力全開.png',
+  'birthday_draw:1':        '/images/mask/壽星最大.png',
 };
 
 interface MissionFrameProps {
@@ -589,13 +609,11 @@ function MissionFrame({
                       )}
                       <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
                         {mission.type === 'achievement' && mission.condition_type != null && (
-                          <div className="relative shrink-0 size-[80px] flex items-center justify-center">
+                          <div className="relative shrink-0 flex items-center justify-center" style={{ height: 80, width: 'auto', minWidth: 60 }}>
                             <img
-                              src={`/images/mask/${ACHIEVEMENT_MASK[`${mission.condition_type}:${mission.target_value}`] ?? 1}.png`}
+                              src={ACHIEVEMENT_BADGE_IMAGE[`${mission.condition_type}:${mission.target_value}`] || '/images/mask/初心試煉.png'}
                               alt=""
-                              width={72}
-                              height={72}
-                              style={{ width: 72, height: 72, objectFit: 'contain' }}
+                              style={{ height: 72, width: 'auto', objectFit: 'contain' }}
                             />
                           </div>
                         )}

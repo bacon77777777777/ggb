@@ -18,7 +18,7 @@ const PRODUCT_TYPE_LABEL: Record<string, string> = {
 
 const TYPE_META: Record<ReportType, { title: string }> = {
   overview:    { title: '轉換分析' },
-  products:    { title: '商品消費' },
+  products:    { title: '消費明細' },
   recharge:    { title: '儲值明細' },
   consumption: { title: '消費明細' },
   behavior:    { title: '用戶行為' },
@@ -108,7 +108,7 @@ export default function ReportPage() {
     dailyActiveUsers: { date: string; count: number }[]
   } | null>(null)
 
-  // 商品消費篩選
+  // 消費明細篩選
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [filterSupplier, setFilterSupplier] = useState('')
   const [filterType, setFilterType] = useState('')
@@ -163,7 +163,7 @@ export default function ReportPage() {
         consumptionData.map(d => [formatDateTime(d.created_at), d.user?.name ?? '', d.user?.email ?? '', d.product?.name ?? '', String(d.product?.price ?? 0), d.prize_level ?? '', d.prize_name ?? '', STATUS_LABEL[d.status] ?? d.status])
       )
     } else if (reportType === 'products') {
-      exportCSV(`商品消費_${start}_${end}.csv`,
+      exportCSV(`消費明細_${start}_${end}.csv`,
         ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額(G)', '剩餘數量', '總數量', '完抽率(%)'],
         productsData.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue), String(p.remaining), String(p.totalCount), String(p.completionRate)])
       )
@@ -407,11 +407,18 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* ── 商品消費 ── */}
+        {/* ── 消費明細 ── */}
+        {reportType === 'products' && !loading && productsData.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <KpiCard label="商品數" value={productsData.length.toLocaleString()} />
+            <KpiCard label="總消費代幣" value={`${productsData.reduce((s, p) => s + p.revenue, 0).toLocaleString()} G`} color="text-emerald-600" />
+            <KpiCard label="總抽獎次數" value={productsData.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-blue-600" />
+          </div>
+        )}
         {reportType === 'products' && (
           <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-semibold text-neutral-900">商品消費</h3>
+              <h3 className="font-semibold text-neutral-900">消費明細</h3>
               <span className="text-sm text-neutral-500">共 {productsData.length} 項商品</span>
             </div>
             {loading ? (
@@ -467,6 +474,13 @@ export default function ReportPage() {
         )}
 
         {/* ── 儲值明細 ── */}
+        {reportType === 'recharge' && !loading && rechargeData.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <KpiCard label="儲值筆數" value={rechargeData.length.toLocaleString()} />
+            <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-emerald-600" sub="已完成筆數" />
+            <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-blue-600" />
+          </div>
+        )}
         {reportType === 'recharge' && (
           <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
@@ -518,7 +532,14 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* ── 消費明細 ── */}
+        {/* ── 消費明細（抽獎紀錄）── */}
+        {reportType === 'consumption' && !loading && consumptionData.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <KpiCard label="消費筆數" value={consumptionData.length.toLocaleString()} />
+            <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-emerald-600" />
+            <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-blue-600" />
+          </div>
+        )}
         {reportType === 'consumption' && (
           <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
