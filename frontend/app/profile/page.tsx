@@ -3978,7 +3978,7 @@ function ProfileContent() {
                             className={cn(
                               "sticky top-0 z-30 p-3 space-y-2 transition-colors cursor-pointer",
                               !isExpanded && "bg-white dark:bg-neutral-900 active:bg-neutral-50 dark:active:bg-neutral-800/50",
-                              isExpanded && "bg-primary/5 dark:bg-primary/10 border-b border-primary/10 dark:border-primary/20"
+                              isExpanded && "bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800"
                             )}
                           >
                             {/* Layer 1: ID & Date */}
@@ -4043,7 +4043,7 @@ function ProfileContent() {
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                className="bg-primary/3 dark:bg-primary/8 border-t border-primary/10 dark:border-primary/20 overflow-hidden"
+                                className="bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800 overflow-hidden"
                               >
                                 <div className="p-3 space-y-3">
                                   {/* Shipping Info */}
