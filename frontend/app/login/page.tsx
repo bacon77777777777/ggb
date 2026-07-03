@@ -123,10 +123,9 @@ function AuthContent() {
     }
 
     const supabase = createClient()
-    const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true, emailRedirectTo: redirectTo }
+      options: { shouldCreateUser: true }
     })
 
     if (error) {
@@ -195,10 +194,9 @@ function AuthContent() {
     if (countdown > 0) return
     setIsLoading(true)
     const supabase = createClient()
-    const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true, emailRedirectTo: redirectTo }
+      options: { shouldCreateUser: true }
     })
     if (error) {
       handleError(error)
@@ -212,7 +210,7 @@ function AuthContent() {
   const getTitle = () => {
     if (view === 'login') return '登入'
     if (step === 1) return '註冊'
-    if (step === 2) return '確認信箱'
+    if (step === 2) return '輸入驗證碼'
     if (step === 3) return '設定密碼'
     return '註冊'
   }
@@ -337,16 +335,30 @@ function AuthContent() {
 
   const renderRegisterStep2 = () => (
     <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="flex flex-col items-center text-center mt-4 mb-8 gap-4">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <Mail className="w-8 h-8 text-primary" />
-        </div>
-        <p className="text-base font-bold text-neutral-900 dark:text-neutral-50">驗證信已寄出</p>
-        <p className="text-sm text-neutral-500">
-          請前往 <span className="font-medium text-neutral-900 dark:text-neutral-200">{email}</span> 的信箱，點擊信件中的連結完成註冊並設定密碼。
+      <div className="mb-8 mt-4">
+        <p className="text-sm text-neutral-500 mb-8 text-center">
+          驗證碼已寄至 <br/><span className="font-medium text-neutral-900 dark:text-neutral-200">{email}</span>
         </p>
-        <p className="text-xs text-neutral-400">若未收到，請檢查垃圾郵件資料夾</p>
       </div>
+
+      <div className="mb-8">
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          className="w-full text-center text-3xl font-bold tracking-[0.5em] h-14 border-b-2 border-neutral-200 focus:border-primary focus:outline-none bg-transparent dark:text-white"
+          placeholder="000000"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+        />
+      </div>
+
+      <SolidButton
+        onClick={handleRegisterStep2}
+        isLoading={isLoading}
+      >
+        下一步
+      </SolidButton>
 
       <div className="mt-6 text-center">
         {countdown > 0 ? (
@@ -357,7 +369,7 @@ function AuthContent() {
             className="text-neutral-500 hover:text-neutral-900 text-sm font-medium"
             disabled={isLoading}
           >
-            重新傳送驗證信
+            重新傳送驗證碼
           </button>
         )}
       </div>
