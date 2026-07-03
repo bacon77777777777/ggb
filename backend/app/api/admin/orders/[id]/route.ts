@@ -89,6 +89,23 @@ export async function PUT(
 
     if (updateError) throw updateError
 
+    // Sync draw_records status based on order status change
+    if (body.status === 'cancelled') {
+      // Return items to warehouse
+      await supabaseAdmin
+        .from('draw_records')
+        .update({ status: 'in_warehouse', order_id: null })
+        .eq('order_id', orderId)
+        .eq('status', 'pending_delivery')
+    } else if (body.status === 'shipping' || body.status === 'delivered') {
+      // Mark items as shipped
+      await supabaseAdmin
+        .from('draw_records')
+        .update({ status: 'shipped' })
+        .eq('order_id', orderId)
+        .in('status', ['pending_delivery', 'in_warehouse'])
+    }
+
     const status = updated?.status as ShipmentStatus | undefined
     if (status && updated?.user_id) {
       const statusText = statusTextMap[status] || status

@@ -1150,7 +1150,7 @@ function ProfileContent() {
               products ( name, price, type )
             `)
             .eq('user_id', user.id)
-            .eq('status', 'in_warehouse')
+            .in('status', ['in_warehouse', 'pending_delivery'])
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -1701,7 +1701,9 @@ function ProfileContent() {
   }, [searchParams]);
 
   const toggleDeliverySelection = (id: string) => {
-    setSelectedForDelivery(prev => 
+    const item = warehouseItems.find(i => i.id === id);
+    if (item?.status === 'pending_delivery') return; // locked: in delivery
+    setSelectedForDelivery(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
@@ -2153,13 +2155,17 @@ function ProfileContent() {
                     <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                       {filteredWarehouseItems.map((item) => {
                         const isSelected = selectedForDelivery.includes(item.id);
+                        const isPending = item.status === 'pending_delivery';
                         return (
                           <div
                             key={item.id}
-                            onClick={() => toggleDeliverySelection(item.id)}
+                            onClick={() => !isPending && toggleDeliverySelection(item.id)}
                             className={cn(
-                              "flex items-center gap-3 pl-2 pr-4 py-1.5 active:bg-neutral-50 dark:active:bg-neutral-800/70 transition-all",
-                              isSelected && "bg-accent-emerald/5"
+                              "flex items-center gap-3 pl-2 pr-4 py-1.5 transition-all",
+                              isPending
+                                ? "opacity-50 cursor-not-allowed"
+                                : "active:bg-neutral-50 dark:active:bg-neutral-800/70",
+                              isSelected && !isPending && "bg-accent-emerald/5"
                             )}
                           >
                             <div className="flex-shrink-0 w-10 flex justify-center">
@@ -2188,19 +2194,25 @@ function ProfileContent() {
                               className="ml-1 pl-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleDeliverySelection(item.id);
+                                if (!isPending) toggleDeliverySelection(item.id);
                               }}
                             >
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all bg-white dark:bg-neutral-900",
-                                  isSelected
-                                    ? "border-accent-emerald bg-accent-emerald"
-                                    : "border-neutral-300 dark:border-neutral-700"
-                                )}
-                              >
-                                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                              </div>
+                              {isPending ? (
+                                <span className="text-[11px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap">
+                                  出貨中
+                                </span>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    "w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all bg-white dark:bg-neutral-900",
+                                    isSelected
+                                      ? "border-accent-emerald bg-accent-emerald"
+                                      : "border-neutral-300 dark:border-neutral-700"
+                                  )}
+                                >
+                                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -2264,7 +2276,7 @@ function ProfileContent() {
                 <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center px-3">
                   {selectedForDelivery.length === 0 ? (
                     <button 
-                      onClick={() => setSelectedForDelivery(filteredWarehouseItems.map(i => i.id))}
+                      onClick={() => setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id))}
                       className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 h-[44px] rounded-xl text-base font-black"
                     >
                       全選 ({filteredWarehouseItems.length})
@@ -2322,7 +2334,7 @@ function ProfileContent() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setSelectedForDelivery(filteredWarehouseItems.map(i => i.id))}
+                        onClick={() => setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id))}
                         disabled={selectedForDelivery.length >= filteredWarehouseItems.length || filteredWarehouseItems.length === 0}
                         className="h-9 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-[13px] font-black text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
