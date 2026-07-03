@@ -119,7 +119,7 @@ export default function RankingPage() {
         let amountStr = '0';
         
         if (activeCategory === 'draws') {
-          amountStr = (item.draw_count || 0).toLocaleString();
+          amountStr = (item.total_spent || item.draw_count || 0).toLocaleString();
         } else {
           amountStr = Math.floor(Number(item.total_spent || 0)).toLocaleString();
         }
