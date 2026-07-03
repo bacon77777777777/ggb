@@ -49,7 +49,7 @@ function Badge({ meta }: { meta: { label: string; color: string } }) {
 export default function DevLogsPage() {
   const [logs, setLogs] = useState<DevLog[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'changelog' | 'issues'>('changelog')
+  const [activeTab, setActiveTab] = useState<'changelog' | 'issues' | 'roadmap'>('changelog')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Partial<DevLog>>(BLANK)
   const [saving, setSaving] = useState(false)
@@ -64,7 +64,8 @@ export default function DevLogsPage() {
 
   useEffect(() => { fetch_() }, [])
 
-  const changelog = logs.filter(l => l.type !== 'issue')
+  const roadmap   = logs.filter(l => l.version === '擴展計畫')
+  const changelog = logs.filter(l => l.type !== 'issue' && l.version !== '擴展計畫')
   const issues    = logs.filter(l => l.type === 'issue')
 
   // changelog 按版本分組
@@ -113,21 +114,21 @@ export default function DevLogsPage() {
   }
 
   const openNewForm = (type?: LogType) => {
-    setForm({ ...BLANK, type: type || (activeTab === 'issues' ? 'issue' : 'feature') })
+    setForm({ ...BLANK, type: type || (activeTab === 'issues' ? 'issue' : 'feature'), version: activeTab === 'roadmap' ? '擴展計畫' : '' })
     setShowForm(true)
   }
 
   return (
     <AdminLayout
-      pageTitle="開發紀錄"
-      breadcrumbs={[{ label: '工具' }, { label: '開發紀錄', href: '/dev-logs' }]}
+      pageTitle="開發日誌"
+      breadcrumbs={[{ label: '工具' }, { label: '開發日誌', href: '/dev-logs' }]}
     >
       <div className="space-y-4">
 
         {/* Tab + 新增按鈕 */}
         <div className="flex items-center justify-between">
           <div className="flex gap-1 bg-neutral-100 p-1 rounded-lg">
-            {([['changelog', '版本紀錄'], ['issues', '問題追蹤']] as const).map(([tab, label]) => (
+            {([['changelog', '版本紀錄', changelog.length], ['issues', '問題追蹤', issues.length], ['roadmap', '擴展計畫', roadmap.length]] as const).map(([tab, label, count]) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -136,9 +137,7 @@ export default function DevLogsPage() {
                 }`}
               >
                 {label}
-                <span className="ml-1.5 text-xs opacity-60">
-                  {tab === 'changelog' ? changelog.length : issues.length}
-                </span>
+                <span className="ml-1.5 text-xs opacity-60">{count}</span>
               </button>
             ))}
           </div>
@@ -270,6 +269,41 @@ export default function DevLogsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ── 擴展計畫 Tab ── */}
+            {activeTab === 'roadmap' && (
+              <div className="space-y-3">
+                {roadmap.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">尚無計畫內容</div>
+                ) : (
+                  <div className="space-y-3">
+                    {roadmap.map((log, idx) => (
+                      <div key={log.id} className="bg-white rounded-xl border border-neutral-200 p-5 flex gap-4 hover:bg-neutral-50 group">
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-neutral-800 mb-1">{log.title}</p>
+                          {log.description && <p className="text-xs text-neutral-500 leading-relaxed">{log.description}</p>}
+                        </div>
+                        <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
