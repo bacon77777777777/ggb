@@ -350,11 +350,6 @@ export default function BlindboxDetailPage() {
 
       setWonPrizes(results);
       setIsPurchaseModalOpen(false);
-      // Track draw event for missions/achievements
-      Promise.allSettled([
-        supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: clampedQty } }),
-        supabase.rpc('check_achievements', { p_user_id: (await supabase.auth.getUser()).data.user?.id }),
-      ]).catch(() => {});
       // Refresh user profile to update points/tokens balance immediately
       if (refreshProfile) {
         refreshProfile();

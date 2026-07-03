@@ -49,6 +49,12 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
+    // Track draw event for missions + achievements (non-blocking, server-side)
+    await Promise.allSettled([
+      userSupabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count } }),
+      userSupabase.rpc('check_achievements', { p_user_id: user.id }),
+    ])
+
     return NextResponse.json({ prizes: data })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '抽獎失敗' }, { status: 500 })
