@@ -215,6 +215,7 @@ const ACHIEVEMENT_BADGE_IMAGE: Record<string, string> = {
   'bad_luck_streak:10':     '/images/mask/非洲酋長.png',
   'single_day_draws:100':   '/images/mask/火力全開.png',
   'birthday_draw:1':        '/images/mask/壽星最大.png',
+  'like_ranking:50':        '/images/mask/排行榜信徒.png',
 };
 
 interface MissionFrameProps {
@@ -609,11 +610,11 @@ function MissionFrame({
                       )}
                       <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
                         {mission.type === 'achievement' && mission.condition_type != null && (
-                          <div className="relative shrink-0 flex items-center justify-center" style={{ height: 80, width: 'auto', minWidth: 60 }}>
+                          <div className="relative shrink-0 flex items-center justify-center" style={{ height: 80, width: 80 }}>
                             <img
                               src={ACHIEVEMENT_BADGE_IMAGE[`${mission.condition_type}:${mission.target_value}`] || '/images/mask/初心試煉.png'}
                               alt=""
-                              style={{ height: 72, width: 'auto', objectFit: 'contain' }}
+                              style={{ height: 72, width: 'auto', maxWidth: 80, objectFit: 'contain' }}
                             />
                           </div>
                         )}
