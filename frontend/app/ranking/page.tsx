@@ -325,7 +325,7 @@ export default function RankingPage() {
                   <>
                     {rankingData.filter(d => d.rank > 3).map((item) => (
                       <RankingListItem
-                        key={item.user_id}
+                        key={item.user_id ?? `rank-${item.rank}`}
                         rank={item.rank}
                         avatarSrc={item.avatar_url}
                         nickname={item.nickname}
