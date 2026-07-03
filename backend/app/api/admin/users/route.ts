@@ -41,29 +41,20 @@ export async function GET() {
       }
     }
 
+    // 從 user_event_logs 撈最近一次登入 IP
     const lastLoginIpById = new Map<string, string>()
-    const userIdsForIp = (users ?? []).map((u: any) => String(u.id)).slice(0, 1000)
-    if (userIdsForIp.length > 0) {
-      const missing = userIdsForIp.filter((id) => !authLastSignInIpById.has(id))
-      if (missing.length > 0) {
-        const chunkSize = 200
-        for (let i = 0; i < missing.length; i += chunkSize) {
-          const chunk = missing.slice(i, i + chunkSize)
-          const { data, error } = await supabaseAdmin
-            .schema('auth')
-            .from('audit_log_entries')
-            .select('user_id, ip_address, created_at')
-            .in('user_id', chunk)
-            .order('created_at', { ascending: false })
-            .limit(5000)
-          if (error) break
-          for (const row of data ?? []) {
-            const userId = String((row as any).user_id || '')
-            const ip = String((row as any).ip_address || '')
-            if (!userId || !ip) continue
-            if (!lastLoginIpById.has(userId)) lastLoginIpById.set(userId, ip)
-          }
-        }
+    {
+      const { data: loginLogs } = await supabaseAdmin
+        .from('user_event_logs')
+        .select('user_id, ip, created_at')
+        .eq('event_type', 'login')
+        .order('created_at', { ascending: false })
+        .limit(5000)
+      for (const row of loginLogs ?? []) {
+        const userId = String((row as any).user_id || '')
+        const ip = String((row as any).ip || '')
+        if (!userId || !ip || ip === 'unknown') continue
+        if (!lastLoginIpById.has(userId)) lastLoginIpById.set(userId, ip)
       }
     }
 
