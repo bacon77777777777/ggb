@@ -36,3 +36,4 @@ yarn-error.log*
 
 # Local bulk import artifacts
 backend/public/images/item/
+.env*

@@ -52,6 +52,57 @@ Supabase Dashboard → Database → Connections 確認連線數
 
 ---
 
+## 2026-07-03（v1.7.0 — 成就系統、報表 UI、權限管理）
+
+### 前台（Next.js / frontend）
+
+**玩家資料卡（PlayerProfileCard）徽章牆**
+- Tooltip 改至徽章上方：黑色半透明氣泡 + 朝下三角箭頭
+- 徽章圖片改為等比例 `height:72, width:auto`（不再拉伸）
+- 移除鎖頭 overlay
+
+**成就系統同步**
+- `tasks` achievement 表清除 12 筆舊重複（42 → 30 筆）
+- `badges` 表新增排行榜信徒（29 → 30 筆，`id: ranking_50, condition_type: like_ranking, condition_value: 50`）
+- `AchievementsTab` + `PlayerProfileCard` BADGE_IMAGE 加入 `ranking_50 → 排行榜信徒.png`
+
+**成就任務清理**
+- 刪除分享大使、社群推廣者、每日常客（從 `tasks` 表移除）
+- 保留排行榜信徒，加入 `ACHIEVEMENT_BADGE_IMAGE['like_ranking:50']`
+- `MissionFrame` 徽章容器改為固定寬 80px，修正任務標題縱向對齊
+
+**33 個成就徽章圖片上線**
+- `/images/mask/` 33 張 PNG 加入版控並部署至 Vercel
+
+### 後台（Next.js / backend）
+
+**報表 UI 統一**
+- 商品消費重命名為**消費明細**（側邊欄、頁面標題、CSV 檔名）
+- 分解明細 Filter 改為 toolbar 樣式（廠商下拉 + DateRangePicker + 匯出，與消費明細一致）
+- 儲值明細、物流明細、消費明細、分解明細四頁新增 KPI 合計小卡
+- KpiCard 字體統一 `text-2xl font-black rounded-xl`
+
+**管理員新增修復**
+- 修正前端錯誤訊息只顯示「儲存失敗」問題，現在顯示真實 error message
+- `admins` API route 修正 PostgrestError 處理（直接 `return NextResponse.json` 而非 `throw error`）
+- Migration 229：`ALTER TABLE public.admins DROP COLUMN IF EXISTS email`（已直接執行於 production）
+
+**權限管理頁全面更新**
+- 移除 Legacy 重複 checkboxes（`dashboard_view`, `products_manage` 等 6 個）
+- 新增 18 個頁面的權限項目：轉換分析、廠商管理、菜單管理、市集管理、消費/物流/分解/廠商結算明細、折價券管理、功能開關、運費設定、抽獎模組設定、工具、開發紀錄、販售管理/訂單、交換管理/紀錄
+- Checkboxes 改為**按群組分區顯示**（營運總覽 / 金流報表 / 抽獎管理 / 系統設定 / 販售 / 交換），含 `max-h-96 overflow-y-auto`
+- 角色卡標籤改顯示中文（`LEGACY_PERMISSION_LABELS` 對照 legacy key）
+- 編輯 modal 開啟時自動 normalize 舊格式 key（`dashboard_view` → `dashboard`），儲存後同步更新 DB 格式
+
+### DB 異動
+| 操作 | 說明 |
+|---|---|
+| `DELETE FROM tasks WHERE type='achievement' AND ...` | 清除 12 筆舊重複成就任務（42→30） |
+| `INSERT INTO badges` | 新增排行榜信徒 badge（ranking_50） |
+| `ALTER TABLE public.admins DROP COLUMN IF EXISTS email` | 移除 admins email NOT NULL 欄位（migration 229） |
+
+---
+
 ## 2026-07-03（平台穩定性全面強化）
 
 ### 安全性修復
