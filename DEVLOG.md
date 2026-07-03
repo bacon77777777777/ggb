@@ -52,6 +52,37 @@ Supabase Dashboard → Database → Connections 確認連線數
 
 ---
 
+## 2026-07-04（v1.7.2 — 排行榜機器人 + 任務追蹤根本修復）
+
+### 前台（Next.js / frontend）
+
+**任務追蹤移至 Server API Route**
+- 根本問題：`supabase.rpc()` 是 lazy promise，不加 `await` 根本不發 HTTP 請求。原本在 `blindbox/[id]/page.tsx` 用 `Promise.allSettled([rpc1, await rpc2]).catch()` 的寫法完全無效
+- 修正：將 `track_mission_event` + `check_achievements` 移至 `/api/gacha/route.ts` server 端，用 `await Promise.allSettled([...])` 確實執行，每次轉蛋成功後必定追蹤
+
+**排行榜 draw 計數顯示修正**
+- `轉蛋魔人` 一直顯示 0：DB 返回欄位名稱是 `total_spent`，但前端讀 `draw_count`（undefined → 0）
+- 修正：前端改讀 `item.total_spent || item.draw_count`
+
+### DB 異動
+
+| Migration | 說明 |
+|---|---|
+| `235_leaderboard_status_filter.sql` | 移除 `get_leaderboard_draws` 的 `status='success'` 過濾；新的轉蛋 status 是 `in_warehouse`，舊過濾導致所有新轉蛋不被計入排行榜 |
+| `236_leaderboard_bot_data.sql` | 排行榜永遠顯示 20 筆：真實用戶優先（is_bot=0 排前），剩餘名次由 20 個預設機器人填補（龍騎士Ω、轉蛋狂魔... 等中文名）。機器人純視覺，無真實 draw/recharge 紀錄，不影響報表。賞金狂人機器人金額 100–4800 TWD；轉蛋魔人機器人次數 3–88 次 |
+
+### 根因說明（任務追蹤）
+`supabase.rpc('func', params)` 回傳的是 `PostgrestFilterBuilder`（lazy execution）。沒有 `.then()` / `.catch()` / `await` 就不發 HTTP 請求。原本的 fire-and-forget 寫法：
+```ts
+Promise.allSettled([
+  supabase.rpc('track_mission_event', ...),    // lazy，NOT sent
+  (await supabase.auth.getUser()).data.user.id, // await 評估後才建 array
+]).catch(() => {});                              // 非 await，但 allSettled 會 trigger .then()
+```
+第一個 rpc 確實會在 `Promise.allSettled` 時被觸發，但整個 `Promise.allSettled` 沒有 `await`，加上 Next.js serverless function 可能在 response 送出後立刻終止，導致 RPC 沒有完成。移至 API route 並加上 `await` 後問題解決。
+
+---
+
 ## 2026-07-04（v1.7.1 — 任務成就全鏈路修復）
 
 ### 前台（Next.js / frontend）
