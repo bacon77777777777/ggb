@@ -33,6 +33,38 @@ const TITLE_STYLES: Record<string, string> = {
   green:  'from-emerald-500 to-teal-500',
 };
 
+const BADGE_IMAGE: Record<string, string> = {
+  first_draw:       '/images/mask/初心試煉.png',
+  draw_30:          '/images/mask/命運啟程.png',
+  draw_100:         '/images/mask/停不下來.png',
+  draw_500:         '/images/mask/轉蛋成癮.png',
+  draw_1000:        '/images/mask/抽蛋之神.png',
+  draw_5000:        '/images/mask/命運支配者.png',
+  draw_streak_10:   '/images/mask/每日修行.png',
+  draw_streak_20:   '/images/mask/永不缺席.png',
+  login_streak_7:   '/images/mask/習慣養成.png',
+  login_streak_30:  '/images/mask/全勤戰士.png',
+  login_streak_100: '/images/mask/常駐居民.png',
+  first_topup:      '/images/mask/初次獻祭.png',
+  topup_1000:       '/images/mask/小課怡情.png',
+  topup_5000:       '/images/mask/荷包失守.png',
+  topup_20000:      '/images/mask/錢包蒸發.png',
+  topup_100000:     '/images/mask/課長降臨.png',
+  topup_streak_5:   '/images/mask/每日供奉.png',
+  topup_streak_10:  '/images/mask/信仰充值.png',
+  refer_1:          '/images/mask/初級召集人.png',
+  refer_5:          '/images/mask/揪團王.png',
+  refer_20:         '/images/mask/傳教士.png',
+  refer_100:        '/images/mask/信徒滿天下.png',
+  lucky_first:      '/images/mask/一發入魂.png',
+  lucky_day3:       '/images/mask/天命之子.png',
+  lucky_10:         '/images/mask/命運眷顧.png',
+  lucky_50:         '/images/mask/神明代抽.png',
+  duplicate_10:     '/images/mask/非洲酋長.png',
+  single_day_100:   '/images/mask/火力全開.png',
+  birthday_draw:    '/images/mask/壽星最大.png',
+};
+
 const CATEGORY_LABELS: Record<string, string> = {
   draw:   '🎰 抽蛋人生',
   active: '📅 活躍玩家',
@@ -212,15 +244,21 @@ export default function AchievementsTab() {
                 <div key={badge.id} className="relative group">
                   <div
                     className={`
-                      aspect-square rounded-xl flex items-center justify-center text-xl
+                      aspect-square rounded-xl relative overflow-hidden
                       transition-all duration-200
                       ${badge.earned
-                        ? 'bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 shadow-sm hover:scale-105'
-                        : 'bg-neutral-100 dark:bg-neutral-800 opacity-40'
+                        ? 'shadow-sm hover:scale-105'
+                        : 'opacity-40'
                       }
                     `}
                   >
-                    <span className={badge.earned ? '' : 'grayscale'}>{badge.icon}</span>
+                    <Image
+                      src={BADGE_IMAGE[badge.id] || '/images/mask/初心試煉.png'}
+                      alt={badge.name}
+                      fill
+                      className={`object-contain ${badge.earned ? '' : 'grayscale'}`}
+                      unoptimized
+                    />
                   </div>
                   {/* Tooltip */}
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-neutral-900 dark:bg-white dark:text-neutral-900 text-white text-[10px] font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">

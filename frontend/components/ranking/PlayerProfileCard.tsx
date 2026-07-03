@@ -24,10 +24,37 @@ interface PlayerProfile {
   badges: Badge[];
 }
 
-const MASK_COUNT = 11;
-function getMaskSrc(index: number) {
-  return `/images/mask/${(index % MASK_COUNT) + 1}.png`;
-}
+const BADGE_IMAGE: Record<string, string> = {
+  first_draw:       '/images/mask/初心試煉.png',
+  draw_30:          '/images/mask/命運啟程.png',
+  draw_100:         '/images/mask/停不下來.png',
+  draw_500:         '/images/mask/轉蛋成癮.png',
+  draw_1000:        '/images/mask/抽蛋之神.png',
+  draw_5000:        '/images/mask/命運支配者.png',
+  draw_streak_10:   '/images/mask/每日修行.png',
+  draw_streak_20:   '/images/mask/永不缺席.png',
+  login_streak_7:   '/images/mask/習慣養成.png',
+  login_streak_30:  '/images/mask/全勤戰士.png',
+  login_streak_100: '/images/mask/常駐居民.png',
+  first_topup:      '/images/mask/初次獻祭.png',
+  topup_1000:       '/images/mask/小課怡情.png',
+  topup_5000:       '/images/mask/荷包失守.png',
+  topup_20000:      '/images/mask/錢包蒸發.png',
+  topup_100000:     '/images/mask/課長降臨.png',
+  topup_streak_5:   '/images/mask/每日供奉.png',
+  topup_streak_10:  '/images/mask/信仰充值.png',
+  refer_1:          '/images/mask/初級召集人.png',
+  refer_5:          '/images/mask/揪團王.png',
+  refer_20:         '/images/mask/傳教士.png',
+  refer_100:        '/images/mask/信徒滿天下.png',
+  lucky_first:      '/images/mask/一發入魂.png',
+  lucky_day3:       '/images/mask/天命之子.png',
+  lucky_10:         '/images/mask/命運眷顧.png',
+  lucky_50:         '/images/mask/神明代抽.png',
+  duplicate_10:     '/images/mask/非洲酋長.png',
+  single_day_100:   '/images/mask/火力全開.png',
+  birthday_draw:    '/images/mask/壽星最大.png',
+};
 
 // ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
 const TITLE_TO_BADGE_ID: Record<string, string> = {
@@ -410,7 +437,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                         onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
                       >
                         <img
-                          src={getMaskSrc(badge.sort_order ?? idx)}
+                          src={BADGE_IMAGE[badge.id] || '/images/mask/初心試煉.png'}
                           alt={badge.name}
                           width={72}
                           height={72}
