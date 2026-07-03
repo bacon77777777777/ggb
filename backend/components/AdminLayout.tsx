@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAdmin } from '@/contexts/AdminContext'
@@ -34,29 +34,27 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [isSidebarInitialized, setIsSidebarInitialized] = useState(false)
   const [groupOpenMap, setGroupOpenMap] = useState<Record<string, boolean>>({})
   const [isGroupInitialized, setIsGroupInitialized] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [pendingOrders, setPendingOrders] = useState<any[]>([])
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [isShipmentOpen, setIsShipmentOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
-  // 從 localStorage 讀取初始值
+  // 從 localStorage 讀取初始值（依帳號）
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebarOpen')
-      if (saved !== null) {
-        setIsSidebarOpen(saved === 'true')
-      }
-      setIsSidebarInitialized(true)
-    }
-  }, [])
+    if (!user?.username) return
+    const saved = localStorage.getItem(`sidebarOpen_${user.username}`)
+    if (saved !== null) setIsSidebarOpen(saved === 'true')
+    setIsSidebarInitialized(true)
+  }, [user?.username])
 
-  // 保存側邊欄狀態到 localStorage
+  // 保存側邊欄展開狀態（依帳號）
   useEffect(() => {
-    if (isSidebarInitialized) {
-      localStorage.setItem('sidebarOpen', String(isSidebarOpen))
-    }
-  }, [isSidebarOpen, isSidebarInitialized])
+    if (!isSidebarInitialized || !user?.username) return
+    localStorage.setItem(`sidebarOpen_${user.username}`, String(isSidebarOpen))
+  }, [isSidebarOpen, isSidebarInitialized, user?.username])
 
   // Fetch products and pending orders
   useEffect(() => {
@@ -382,6 +380,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     </svg>
   )
 
+  const handleNavScroll = () => {
+    if (!navRef.current || !user?.username) return
+    const top = navRef.current.scrollTop
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
+    scrollTimerRef.current = setTimeout(() => {
+      localStorage.setItem(`sidebarScroll_${user.username}`, String(top))
+    }, 200)
+  }
+
   const menuGroups = useMemo(
     () => [
       {
@@ -455,13 +462,14 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
   const flatMenuItems = useMemo(() => menuGroups.flatMap((g) => g.items), [menuGroups])
 
+  // 讀取群組展開狀態（依帳號）
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (!user?.username) return
+    const next: Record<string, boolean> = {}
     try {
-      const raw = localStorage.getItem('sidebarGroupOpen')
+      const raw = localStorage.getItem(`sidebarGroupOpen_${user.username}`)
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, unknown>
-        const next: Record<string, boolean> = {}
         for (const g of menuGroups) {
           next[g.id] = g.id in parsed ? Boolean((parsed as any)[g.id]) : true
         }
@@ -472,20 +480,27 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     } catch {
       void 0
     }
-    const next: Record<string, boolean> = {}
     for (const g of menuGroups) next[g.id] = true
     setGroupOpenMap(next)
     setIsGroupInitialized(true)
-  }, [menuGroups])
+  }, [menuGroups, user?.username])
 
+  // 保存群組展開狀態（依帳號）
   useEffect(() => {
-    if (!isGroupInitialized) return
+    if (!isGroupInitialized || !user?.username) return
     try {
-      localStorage.setItem('sidebarGroupOpen', JSON.stringify(groupOpenMap))
+      localStorage.setItem(`sidebarGroupOpen_${user.username}`, JSON.stringify(groupOpenMap))
     } catch {
       void 0
     }
-  }, [groupOpenMap, isGroupInitialized])
+  }, [groupOpenMap, isGroupInitialized, user?.username])
+
+  // 恢復捲動位置（等群組狀態初始化完後）
+  useEffect(() => {
+    if (!isGroupInitialized || !user?.username || !navRef.current) return
+    const saved = localStorage.getItem(`sidebarScroll_${user.username}`)
+    if (saved) navRef.current.scrollTop = parseInt(saved) || 0
+  }, [isGroupInitialized, user?.username])
 
   if (pathname === '/login') {
     return <>{children}</>
@@ -528,7 +543,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           </div>
         </div>
 
-        <nav className={`px-2 py-2 space-y-1 transition-all duration-300 flex-1 overflow-y-auto overflow-x-hidden`}>
+        <nav ref={navRef} onScroll={handleNavScroll} className={`px-2 py-2 space-y-1 transition-all duration-300 flex-1 overflow-y-auto overflow-x-hidden`}>
           {!isSidebarOpen
             ? flatMenuItems.map((item) => {
                 const IconComponent = item.icon
