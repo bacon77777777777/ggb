@@ -152,22 +152,11 @@ export default function ProductsPage() {
   const fetchPrizeDraws = async (prizeId: number) => {
     if (loadingPrizes.has(prizeId)) return
     setLoadingPrizes(prev => new Set(prev).add(prizeId))
-    const { data } = await supabase
-      .from('draw_records')
-      .select('id, status, created_at, user_id, order_id')
-      .eq('product_prize_id', prizeId)
-      .order('created_at', { ascending: false })
-    const records = data || []
-    if (records.length > 0) {
-      const userIds = [...new Set(records.map((r: any) => r.user_id).filter(Boolean))]
-      const { data: users } = await supabase
-        .from('users')
-        .select('user_id, name')
-        .in('user_id', userIds)
-      const userMap = new Map((users || []).map((u: any) => [u.user_id, u.name]))
-      const enriched = records.map((r: any) => ({ ...r, userName: userMap.get(r.user_id) || r.user_id?.slice(0, 8) }))
-      setPrizeDraws(prev => new Map(prev).set(prizeId, enriched))
-    } else {
+    try {
+      const res = await fetch(`/api/prize-draws/${prizeId}`)
+      const data = await res.json()
+      setPrizeDraws(prev => new Map(prev).set(prizeId, Array.isArray(data) ? data : []))
+    } catch {
       setPrizeDraws(prev => new Map(prev).set(prizeId, []))
     }
     setLoadingPrizes(prev => { const s = new Set(prev); s.delete(prizeId); return s })
