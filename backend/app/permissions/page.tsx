@@ -92,6 +92,19 @@ function permLabel(id: string): string {
     ?? id
 }
 
+const LEGACY_TO_NEW: Record<string, string> = {
+  dashboard_view:  'dashboard',
+  products_manage: 'products',
+  orders_manage:   'orders',
+  users_manage:    'users',
+  draws_view:      'draws',
+  recharges_view:  'recharges',
+}
+
+function normalizePermissions(perms: string[]): string[] {
+  return [...new Set(perms.map(p => LEGACY_TO_NEW[p] ?? p))]
+}
+
 export default function PermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -131,7 +144,7 @@ export default function PermissionsPage() {
     setFormData({
       name: role.name,
       display_name: role.display_name,
-      permissions: role.permissions || []
+      permissions: normalizePermissions(role.permissions || [])
     })
     setIsModalOpen(true)
   }
