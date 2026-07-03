@@ -134,9 +134,9 @@ export default function RankingPage() {
         };
       });
 
-      // Fill with placeholders if less than 10
+      // Fill with placeholders if less than 20
       const filledData = [...formattedData];
-      for (let i = filledData.length + 1; i <= 10; i++) {
+      for (let i = filledData.length + 1; i <= 20; i++) {
         filledData.push({
           user_id: `placeholder-${i}`,
           rank: i,

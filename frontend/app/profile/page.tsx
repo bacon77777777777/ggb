@@ -345,6 +345,7 @@ interface GroupedDrawHistoryItem {
       recycle_value: number;
       total?: number;
     } | null;
+    admin_recycle_pool: { recycle_value: number }[] | null;
     products: {
       name: string;
       price?: number;
@@ -1195,6 +1196,7 @@ function ProfileContent() {
               prize_level,
               prize_name,
               product_prizes ( level, name, image_url, recycle_value ),
+              admin_recycle_pool ( recycle_value ),
               products ( name, type )
             `)
             .eq('user_id', user.id)
@@ -1216,7 +1218,7 @@ function ProfileContent() {
               image: item.product_prizes?.image_url || 'https://placehold.co/400',
               dismantled_at: new Date(item.created_at).toLocaleDateString('zh-TW'),
               raw_dismantled_at: new Date(item.created_at),
-              recycleValue: item.product_prizes?.recycle_value || 0,
+              recycleValue: item.admin_recycle_pool?.[0]?.recycle_value ?? item.product_prizes?.recycle_value ?? 0,
               type: productType
             };
           });
@@ -2088,16 +2090,13 @@ function ProfileContent() {
                   <div className={cn(
                     "max-w-7xl mx-auto space-y-2 pt-0 pb-0"
                   )}>
-                    {activeWarehouseTab === 'all' && (
-                      <Tabs 
-                        value={activeWarehouseCategory} 
+                    {activeWarehouseTab === 'all' && warehouseTabs.length > 2 && (
+                      <Tabs
+                        value={activeWarehouseCategory}
                         onValueChange={(val) => setActiveWarehouseCategory(val as ProductCategoryId)}
                         className="w-full"
                       >
-                        <TabsList className={cn(
-                          "bg-transparent dark:bg-transparent px-0 justify-start mb-0",
-                          warehouseTabs.length > 1 && "border-b border-neutral-100 dark:border-neutral-800 pb-0"
-                        )}>
+                        <TabsList className="bg-transparent dark:bg-transparent px-0 justify-start mb-0 border-b border-neutral-100 dark:border-neutral-800 pb-0">
                           {warehouseTabs.map((tab) => (
                              <TabsTrigger key={tab.id} value={tab.id}>
                                {tab.label}
@@ -2105,31 +2104,6 @@ function ProfileContent() {
                            ))}
                         </TabsList>
                       </Tabs>
-                    )}
-
-                    {/* Second Level Tabs */}
-                    {activeWarehouseTab === 'all' && (
-                      <div className="flex items-center gap-1.5 pb-2 px-2">
-                        <div ref={warehouseSubTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
-                          <div className="flex items-center gap-1.5">
-                            {warehouseSubTabs.map((tab) => (
-                              <button
-                                key={tab.id}
-                                data-tab-id={tab.id}
-                                onClick={() => setActiveWarehouseSubCategory(tab.id)}
-                                className={cn(
-                                  "px-3 py-1 rounded-full text-[12px] font-black whitespace-nowrap transition-colors",
-                                  activeWarehouseSubCategory === tab.id
-                                    ? "bg-primary text-white"
-                                    : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                                )}
-                              >
-                                {tab.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
                     )}
                     {activeWarehouseTab === 'dismantled' && (
                       <div className="flex items-center gap-1.5 pb-2 px-2 pt-2">

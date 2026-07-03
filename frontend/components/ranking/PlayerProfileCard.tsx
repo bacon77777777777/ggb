@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { X } from 'lucide-react';
 
 interface Badge {
   id: string;
@@ -272,14 +271,6 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
           className="w-full max-w-[520px] relative overflow-hidden"
           style={{ height: DESIGN_H * scale, borderRadius: '28px 28px 0 0' }}
         >
-          {/* 關閉按鈕 — 同購買確認視窗風格 */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 z-20 p-1 text-neutral-400 hover:text-neutral-600 active:scale-95 transition-transform"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
           {/* ── 縮放內容（960 × 877 設計稿） ── */}
           <div
             className="absolute top-0 left-0"
@@ -356,6 +347,12 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       >
                         {loading ? '...' : displayName}
                       </p>
+                      {/* 轉蛋次數 */}
+                      {!loading && (
+                        <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
+                          累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
+                        </p>
+                      )}
                     </div>
                   </div>
 

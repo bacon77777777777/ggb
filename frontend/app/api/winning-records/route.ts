@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 type WinningRecord = {
   id: number
+  user_id?: string | null
   user_name: string
   product_name: string
   prize_level: string

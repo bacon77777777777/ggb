@@ -130,6 +130,7 @@ export async function GET() {
       lastLoginDate: u.last_login_at || authLastSignInAtById.get(u.id) || '',
       lastLoginIp: authLastSignInIpById.get(u.id) || lastLoginIpById.get(u.id) || '',
       status: u.status === 'inactive' ? 'inactive' : 'active',
+      isBot: u.is_bot === true,
       totalOrders: orderCountMap.get(u.id) ?? 0,
       totalSpent: Number(u.total_spent ?? 0),
       totalDraws: drawCountMap.get(u.id) ?? (typeof u.total_draws === 'number' ? u.total_draws : 0),
