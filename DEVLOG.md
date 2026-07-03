@@ -52,6 +52,30 @@ Supabase Dashboard → Database → Connections 確認連線數
 
 ---
 
+## 2026-07-04（v1.7.1 — 任務成就全鏈路修復）
+
+### 前台（Next.js / frontend）
+
+**任務事件追蹤**
+- `blindbox/[id]/page.tsx`：每次轉蛋成功後自動呼叫 `track_mission_event('draw_count', { count })` + `check_achievements`，確保抽獎次數、連抽天數任務即時更新
+
+**徽章牆放大**
+- `PlayerProfileCard` 徽章牆圖片 `height: 72 → 83px`（+15%）
+
+### DB 異動
+| Migration | 說明 |
+|---|---|
+| `233_fix_mission_tracking.sql` | 全面重寫 `track_mission_event`：`login` → `login_streak` streak 計算並更新 `users.login_streak`；`draw_count` → `users.total_draws` + `draw_streak` + `single_day_draws` 任務；`recharge/recharge_amount` → `users.total_topup` + `topup_streak`；`invite_friend` → `users.total_referrals`（之前幾乎全部任務事件都沒有紀錄到 users 統計欄位，導致 `check_achievements` 永遠無法判斷達成條件） |
+| `234_fix_claim_and_sync_stats.sql` | `claim_task_reward` 發獎後自動呼叫 `check_achievements`，修復「領完任務獎勵但徽章牆不顯示」問題；一次性 backfill 所有已存在用戶的 `total_draws`（從 `draw_records`）、`total_topup`（從 `recharge_records`）、`total_referrals`（從 `referrals`） |
+
+### 根因說明
+任務成就鏈路原本斷在三個地方：
+1. `track_mission_event` 只更新 `user_task_progress` 進度列，**從未寫入 `users` 統計欄位**（`total_draws` 等永遠是 0）
+2. `check_achievements` 讀取 `users.total_draws/login_streak/...` 判斷是否達標，統計欄位全是 0 → 永遠不觸發
+3. `claim_task_reward` 只給積分，**不呼叫 `check_achievements`** → 即使手動達標也不發徽章
+
+---
+
 ## 2026-07-03（v1.7.0 — 成就系統、報表 UI、權限管理）
 
 ### 前台（Next.js / frontend）
