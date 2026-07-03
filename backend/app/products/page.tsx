@@ -132,8 +132,9 @@ export default function ProductsPage() {
 
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
   const [expandedPrizes, setExpandedPrizes] = useState<Set<number>>(new Set())
-  const [prizeDraws, setPrizeDraws] = useState<Map<number, any[]>>(new Map())
+  const [prizeDraws, setPrizeDraws] = useState<Map<number, { rows: any[]; total: number; hasMore: boolean }>>(new Map())
   const [loadingPrizes, setLoadingPrizes] = useState<Set<number>>(new Set())
+  const [loadingMorePrizes, setLoadingMorePrizes] = useState<Set<number>>(new Set())
 
   const prizeStatusLabel = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
@@ -149,17 +150,29 @@ export default function ProductsPage() {
     return map[status] || { label: status, cls: 'bg-neutral-100 text-neutral-500' }
   }
 
-  const fetchPrizeDraws = async (prizeId: number) => {
-    if (loadingPrizes.has(prizeId)) return
-    setLoadingPrizes(prev => new Set(prev).add(prizeId))
+  const fetchPrizeDraws = async (prizeId: number, offset = 0) => {
+    const isFirst = offset === 0
+    if (isFirst && loadingPrizes.has(prizeId)) return
+    if (!isFirst && loadingMorePrizes.has(prizeId)) return
+
+    if (isFirst) setLoadingPrizes(prev => new Set(prev).add(prizeId))
+    else setLoadingMorePrizes(prev => new Set(prev).add(prizeId))
+
     try {
-      const res = await fetch(`/api/prize-draws/${prizeId}`)
+      const res = await fetch(`/api/prize-draws/${prizeId}?offset=${offset}&limit=10`)
       const data = await res.json()
-      setPrizeDraws(prev => new Map(prev).set(prizeId, Array.isArray(data) ? data : []))
+      const { rows = [], total = 0 } = data
+      setPrizeDraws(prev => {
+        const existing = isFirst ? [] : (prev.get(prizeId)?.rows || [])
+        const allRows = [...existing, ...rows]
+        return new Map(prev).set(prizeId, { rows: allRows, total, hasMore: allRows.length < total })
+      })
     } catch {
-      setPrizeDraws(prev => new Map(prev).set(prizeId, []))
+      if (isFirst) setPrizeDraws(prev => new Map(prev).set(prizeId, { rows: [], total: 0, hasMore: false }))
     }
-    setLoadingPrizes(prev => { const s = new Set(prev); s.delete(prizeId); return s })
+
+    if (isFirst) setLoadingPrizes(prev => { const s = new Set(prev); s.delete(prizeId); return s })
+    else setLoadingMorePrizes(prev => { const s = new Set(prev); s.delete(prizeId); return s })
   }
 
   const togglePrize = (prizeId: number, drawn: number) => {
@@ -167,7 +180,7 @@ export default function ProductsPage() {
       const next = new Set(prev)
       if (next.has(prizeId)) { next.delete(prizeId) } else {
         next.add(prizeId)
-        if (drawn > 0 && !prizeDraws.has(prizeId)) fetchPrizeDraws(prizeId)
+        if (drawn > 0 && !prizeDraws.has(prizeId)) fetchPrizeDraws(prizeId, 0)
       }
       return next
     })
@@ -1192,7 +1205,8 @@ export default function ProductsPage() {
                                 const drawn = prize.total - prize.remaining
                                 const isExpanded = prize.id && expandedPrizes.has(prize.id)
                                 const isLoadingPrize = prize.id && loadingPrizes.has(prize.id)
-                                const draws = prize.id ? (prizeDraws.get(prize.id) || []) : []
+                                const drawData = prize.id ? (prizeDraws.get(prize.id) || { rows: [], total: 0, hasMore: false }) : { rows: [], total: 0, hasMore: false }
+                                const draws = drawData.rows
 
                                 return (
                                   <div key={idx}>
@@ -1216,7 +1230,18 @@ export default function ProductsPage() {
                                         ) : draws.length === 0 ? (
                                           <span className="text-xs text-neutral-400">品項當前無走向</span>
                                         ) : (
-                                          <div className="space-y-1">
+                                          <div
+                                            className="max-h-44 overflow-y-auto space-y-1 pr-1"
+                                            onScroll={(e) => {
+                                              if (!prize.id) return
+                                              const el = e.currentTarget
+                                              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
+                                                if (drawData.hasMore && !loadingMorePrizes.has(prize.id)) {
+                                                  fetchPrizeDraws(prize.id, draws.length)
+                                                }
+                                              }
+                                            }}
+                                          >
                                             {draws.map((dr: any, i: number) => {
                                               const { label, cls } = prizeStatusLabel(dr.status)
                                               return (
@@ -1244,6 +1269,12 @@ export default function ProductsPage() {
                                                 </div>
                                               )
                                             })}
+                                            {prize.id && loadingMorePrizes.has(prize.id) && (
+                                              <div className="text-xs text-neutral-400 py-1 text-center">載入中…</div>
+                                            )}
+                                            <div className="text-[10px] text-neutral-300 pt-0.5 select-none">
+                                              已顯示 {draws.length} / {drawData.total} 筆
+                                            </div>
                                           </div>
                                         )}
                                       </div>

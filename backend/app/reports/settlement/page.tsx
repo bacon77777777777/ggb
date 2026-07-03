@@ -16,6 +16,7 @@ interface PeriodData {
   hasActualFee: boolean
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee: number | null    // 平台手續費總額（參考）
+  dismantleTotal: number         // 分解退代幣（廠商吸收）
 }
 
 interface Period {
@@ -135,18 +136,20 @@ export default function SettlementPage() {
   // 結算基底：廠商商品消費 G（1G = NT$1）
   const totalTWD = data?.totalG ?? 0
   const sharePercent = Math.round((data?.consumptionShare ?? 1) * 100)
+  const dismantleTotal = data?.dismantleTotal ?? 0
 
   // 手續費：有實際資料時用分攤後值，否則用費率估算
   const newebpayFee = data?.hasActualFee && data.allocatedActualFee != null
     ? data.allocatedActualFee
     : Math.round(totalTWD * (newebpayRate / 100))
 
-  const netRevenue  = totalTWD - newebpayFee
-  const withholding = Math.round(netRevenue * (withholdingRate / 100))
-  const netAfterTax = netRevenue - withholding
+  const netRevenue   = totalTWD - newebpayFee
+  const withholding  = Math.round(netRevenue * (withholdingRate / 100))
+  const netAfterTax  = netRevenue - withholding
   const supplierGross = Math.round(netAfterTax * (supplierShare / 100))
   const platformShare = netAfterTax - supplierGross
-  const supplierNet = supplierGross
+  // 分解退代幣由廠商吸收 → 從廠商應付款扣除
+  const supplierNet  = Math.max(0, supplierGross - dismantleTotal)
 
   // 匯出對帳單 CSV
   const handleExport = () => {
@@ -169,6 +172,7 @@ export default function SettlementPage() {
       ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
       ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
       [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
+      ...(dismantleTotal > 0 ? [[`分解退代幣（廠商吸收）`, String(-dismantleTotal)]] : []),
       [`實際應付廠商`, String(supplierNet)],
       [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
       [],
@@ -423,12 +427,21 @@ export default function SettlementPage() {
                 <span className="text-sm text-neutral-500">平台留存（{100 - supplierShare}%）</span>
                 <span className="text-sm font-medium tabular-nums text-neutral-600">{fmt(platformShare)}</span>
               </div>
+              {dismantleTotal > 0 && (
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-sm text-red-500">分解退代幣（廠商吸收）</span>
+                  <span className="text-sm font-medium tabular-nums text-red-500">−{fmt(dismantleTotal)}</span>
+                </div>
+              )}
 
               <div className="border-t-2 border-neutral-300 mt-3 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
                   <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
+                {dismantleTotal > 0 && (
+                  <p className="text-xs text-red-400 mt-0.5">已扣除 {fmt(dismantleTotal)} G 分解退款</p>
+                )}
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>
                 )}

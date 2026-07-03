@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
     if (tab === 'settlement') {
       if (!supplierId) return NextResponse.json({ error: 'supplierId required' }, { status: 400 })
 
-      const [supplierRes, drawRes, rechargeRes] = await Promise.all([
+      const [supplierRes, drawRes, rechargeRes, recycleRes] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
         applyDateFilter(
           supabase.from('draw_records')
@@ -251,6 +251,10 @@ export async function GET(request: NextRequest) {
         ),
         applyDateFilter(
           supabase.from('recharge_records').select('amount, status, created_at, payment_fee')
+        ),
+        applyDateFilter(
+          supabase.from('admin_recycle_pool')
+            .select('recycle_value, product:products(supplier_id)')
         ),
       ])
       if (drawRes.error) throw drawRes.error
@@ -293,6 +297,11 @@ export async function GET(request: NextRequest) {
         ? Math.round(platformTotalFee * consumptionShare)
         : null
 
+      // 分解退代幣（廠商須吸收，從結算中扣除）
+      const dismantleTotal = (recycleRes.data ?? [])
+        .filter((r: any) => String(r.product?.supplier_id) === supplierId)
+        .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
+
       return NextResponse.json({
         supplierName: (supplierRes.data as any)?.name ?? '',
         products,
@@ -304,6 +313,7 @@ export async function GET(request: NextRequest) {
         hasActualFee,
         allocatedActualFee,
         platformTotalFee: hasActualFee ? platformTotalFee : null,
+        dismantleTotal,
       })
     }
 
@@ -394,6 +404,40 @@ export async function GET(request: NextRequest) {
         .map(([date, users]) => ({ date, count: users.size }))
 
       return NextResponse.json({ topSearches, topSeries, conversionRate, clickTotal, converted, dailyActiveUsers })
+    }
+
+    // ── 分解明細 ────────────────────────────────────────────────────────────
+    if (tab === 'dismantled') {
+      let query = supabase
+        .from('admin_recycle_pool')
+        .select('id, recycle_value, created_at, prize_name, prize_level, user_id, product_id, product:products(id, name, supplier_id, supplier:suppliers(id, name)), user:users(id, name)')
+        .order('created_at', { ascending: false })
+
+      if (start) query = query.gte('created_at', start)
+      if (endExclusive) query = query.lt('created_at', endExclusive)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const rows = (data ?? []).map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        prize_name: r.prize_name,
+        prize_level: r.prize_level,
+        recycle_value: r.recycle_value,
+        user_id: r.user_id,
+        userName: r.user?.name || '—',
+        product_id: r.product_id,
+        productName: r.product?.name || '—',
+        supplierId: r.product?.supplier_id ?? null,
+        supplierName: r.product?.supplier?.name ?? '—',
+      }))
+
+      // 可依廠商篩選
+      const filtered = supplierId ? rows.filter((r: any) => String(r.supplierId) === supplierId) : rows
+      const totalTokens = filtered.reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
+
+      return NextResponse.json({ data: filtered, totalTokens })
     }
 
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })

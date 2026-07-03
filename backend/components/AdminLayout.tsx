@@ -406,6 +406,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
           { name: '物流明細', path: '/reports/logistics', icon: IconReports },
           { name: '商品消費', path: '/reports/products', icon: IconReports },
+          { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
         ],
       },
