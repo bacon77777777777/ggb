@@ -30,7 +30,6 @@ interface User {
   lastLoginDate: string
   lastLoginIp: string
   status: 'active' | 'inactive'
-  isBot: boolean
   totalOrders: number
   totalSpent: number
   totalDraws: number
@@ -84,7 +83,6 @@ export default function UsersPage() {
     registerDate: true,
     lastLoginDate: true,
     lastLoginIp: true,
-    isBot: true,
     operations: true
   })
 
@@ -106,7 +104,6 @@ export default function UsersPage() {
   
   // 使用者狀態管理（用於開關切換）
   const [userStatuses, setUserStatuses] = useState<{ [key: string]: 'active' | 'inactive' }>({})
-  const [userBotFlags, setUserBotFlags] = useState<{ [key: string]: boolean }>({})
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -121,13 +118,10 @@ export default function UsersPage() {
       if (Array.isArray(data)) {
         setUsers(data)
         const statuses: { [key: string]: 'active' | 'inactive' } = {}
-        const bots: { [key: string]: boolean } = {}
         data.forEach(user => {
           statuses[user.id] = user.status
-          bots[user.id] = user.isBot
         })
         setUserStatuses(statuses)
-        setUserBotFlags(bots)
       }
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -439,43 +433,6 @@ export default function UsersPage() {
       )
     },
     {
-      key: 'isBot',
-      label: '機器人',
-      sortable: false,
-      visible: visibleColumns.isBot,
-      render: (user) => (
-        <button
-          onClick={async (e) => {
-            e.stopPropagation()
-            const newIsBot = !userBotFlags[user.id]
-            setUserBotFlags(prev => ({ ...prev, [user.id]: newIsBot }))
-            setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isBot: newIsBot } : u))
-            try {
-              const { error } = await supabase
-                .from('users')
-                .update({ is_bot: newIsBot })
-                .eq('id', user.id)
-              if (error) {
-                console.error('Error updating is_bot:', error)
-                setUserBotFlags(prev => ({ ...prev, [user.id]: !newIsBot }))
-                setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isBot: !newIsBot } : u))
-              }
-            } catch (err) {
-              console.error('Unexpected error updating is_bot:', err)
-            }
-          }}
-          title={userBotFlags[user.id] ? '已標記為機器人（點擊取消）' : '標記為機器人（排除排行榜）'}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all flex-shrink-0 ${
-            userBotFlags[user.id] ? 'bg-orange-400' : 'bg-neutral-300'
-          }`}
-        >
-          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            userBotFlags[user.id] ? 'translate-x-6' : 'translate-x-1'
-          }`} />
-        </button>
-      )
-    },
-    {
       key: 'registerDate',
       label: '註冊時間',
       sortable: true,
@@ -627,7 +584,6 @@ export default function UsersPage() {
               { key: 'totalDraws', label: '抽獎數', visible: visibleColumns.totalDraws },
               { key: 'totalSpent', label: '總消費(TWD)', visible: visibleColumns.totalSpent },
               { key: 'status', label: '狀態', visible: visibleColumns.status },
-              { key: 'isBot', label: '機器人', visible: visibleColumns.isBot },
               { key: 'registerDate', label: '註冊時間', visible: visibleColumns.registerDate },
               { key: 'lastLoginDate', label: '最後登入', visible: visibleColumns.lastLoginDate },
               { key: 'lastLoginIp', label: '最後IP', visible: visibleColumns.lastLoginIp },
