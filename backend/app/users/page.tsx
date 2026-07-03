@@ -30,6 +30,7 @@ interface User {
   lastLoginDate: string
   lastLoginIp: string
   status: 'active' | 'inactive'
+  isBot: boolean
   totalOrders: number
   totalSpent: number
   totalDraws: number
@@ -65,6 +66,7 @@ export default function UsersPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedUserType, setSelectedUserType] = useState('real')
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
@@ -175,6 +177,13 @@ export default function UsersPage() {
   const filteredUsers = useMemo(() => {
     let result = users
 
+    // 用戶類型篩選
+    if (selectedUserType === 'real') {
+      result = result.filter(u => !u.isBot)
+    } else if (selectedUserType === 'bot') {
+      result = result.filter(u => u.isBot)
+    }
+
     // 狀態篩選（使用實際的狀態）
     if (selectedStatus !== 'all') {
       result = result.filter(u => userStatuses[u.id] === selectedStatus)
@@ -207,7 +216,7 @@ export default function UsersPage() {
     }
 
     return result
-  }, [users, selectedStatus, searchQuery, filterStartDate, filterEndDate])
+  }, [users, selectedStatus, selectedUserType, searchQuery, filterStartDate, filterEndDate])
 
   // 排序處理
   const sortedUsers = useMemo(() => {
@@ -255,7 +264,7 @@ export default function UsersPage() {
   // 當篩選條件改變時，重置顯示數量
   useEffect(() => {
     setDisplayCount(20)
-  }, [sortField, sortDirection, searchQuery, selectedStatus, filterStartDate, filterEndDate])
+  }, [sortField, sortDirection, searchQuery, selectedStatus, selectedUserType, filterStartDate, filterEndDate])
 
   // 匯出CSV功能
   const handleExportCSV = () => {
@@ -478,6 +487,15 @@ export default function UsersPage() {
 
   // 篩選標籤
   const filterTags = []
+  if (selectedUserType !== 'all') {
+    filterTags.push({
+      key: 'userType',
+      label: '用戶類型',
+      value: selectedUserType === 'real' ? '真實用戶' : '機器人',
+      color: 'primary' as const,
+      onRemove: () => setSelectedUserType('all')
+    })
+  }
   if (selectedStatus !== 'all') {
     filterTags.push({
       key: 'status',
@@ -544,6 +562,18 @@ export default function UsersPage() {
             onDensityChange={setTableDensity}
             showFilter={true}
             filterOptions={[
+              {
+                key: 'userType',
+                label: '用戶類型',
+                type: 'select',
+                value: selectedUserType,
+                onChange: setSelectedUserType,
+                options: [
+                  { value: 'all', label: '全部用戶' },
+                  { value: 'real', label: '真實用戶' },
+                  { value: 'bot', label: '機器人' }
+                ]
+              },
               {
                 key: 'status',
                 label: '狀態',
@@ -677,7 +707,7 @@ export default function UsersPage() {
 
           <FilterTags
             tags={filterTags}
-            onClearAll={() => setSelectedStatus('all')}
+            onClearAll={() => { setSelectedStatus('all'); setSelectedUserType('all') }}
           />
 
           <DataTable
