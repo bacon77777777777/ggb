@@ -433,13 +433,13 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       <div
                         key={badge.id}
                         className="relative shrink-0 cursor-pointer flex items-center justify-center"
-                        style={{ height: 72 }}
+                        style={{ height: 83 }}
                         onClick={() => setActiveBadgeId(activeBadgeId === badge.id ? null : badge.id)}
                       >
                         <img
                           src={BADGE_IMAGE[badge.id] || '/images/mask/初心試煉.png'}
                           alt={badge.name}
-                          style={{ height: 72, width: 'auto', objectFit: 'contain' }}
+                          style={{ height: 83, width: 'auto', objectFit: 'contain' }}
                         />
                         {activeBadgeId === badge.id && (
                           <div
