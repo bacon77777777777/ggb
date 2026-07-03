@@ -16,12 +16,25 @@ import { getSiteUrl } from '@/lib/site';
 
 const siteUrl = getSiteUrl();
 
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: '吉吉比',
+  url: siteUrl,
+  description: '吉吉比是台灣線上轉蛋平台，提供日本一番賞、盲盒、轉蛋、卡包等多種商品。',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${siteUrl}/search?q={search_term_string}` },
+    'query-input': 'required name=search_term_string',
+  },
+}
+
 export const metadata: Metadata = {
   title: {
     template: '%s | 吉吉比',
     default: '在線轉蛋 吉吉比',
   },
-  description: '隨時隨地，享受抽獎樂趣',
+  description: '吉吉比是台灣線上轉蛋平台，提供日本一番賞、盲盒、轉蛋、卡包等多種商品，隨時隨地輕鬆抽！公正透明、即抽即看、安全出貨。',
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: '/',
@@ -32,13 +45,13 @@ export const metadata: Metadata = {
     siteName: '吉吉比',
     locale: 'zh_TW',
     title: '在線轉蛋 吉吉比',
-    description: '隨時隨地，享受抽獎樂趣',
+    description: '吉吉比是台灣線上轉蛋平台，提供日本一番賞、盲盒、轉蛋、卡包等多種商品，隨時隨地輕鬆抽！公正透明、即抽即看、安全出貨。',
     images: ['/images/20260629/favicon.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: '在線轉蛋 吉吉比',
-    description: '隨時隨地，享受抽獎樂趣',
+    description: '吉吉比是台灣線上轉蛋平台，提供日本一番賞、盲盒、轉蛋、卡包等多種商品，隨時隨地輕鬆抽！公正透明、即抽即看、安全出貨。',
     images: ['/images/20260629/favicon.png'],
   },
   verification: {
@@ -75,6 +88,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
         <AuthProvider>
           <ThemeProvider>

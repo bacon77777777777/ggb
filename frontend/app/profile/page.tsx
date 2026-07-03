@@ -3973,12 +3973,12 @@ function ProfileContent() {
                           className="bg-white dark:bg-neutral-900"
                         >
                           {/* Collapsed Header */}
-                          <div 
+                          <div
                             onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                             className={cn(
-                              "sticky top-0 z-30 p-3 space-y-2 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors cursor-pointer",
-                              !isExpanded && "bg-white dark:bg-neutral-900",
-                              isExpanded && "bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800"
+                              "sticky top-0 z-30 p-3 space-y-2 transition-colors cursor-pointer",
+                              !isExpanded && "bg-white dark:bg-neutral-900 active:bg-neutral-50 dark:active:bg-neutral-800/50",
+                              isExpanded && "bg-primary/5 dark:bg-primary/10 border-b border-primary/10 dark:border-primary/20"
                             )}
                           >
                             {/* Layer 1: ID & Date */}
@@ -4043,7 +4043,7 @@ function ProfileContent() {
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                className="bg-neutral-50/50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-800 overflow-hidden"
+                                className="bg-primary/3 dark:bg-primary/8 border-t border-primary/10 dark:border-primary/20 overflow-hidden"
                               >
                                 <div className="p-3 space-y-3">
                                   {/* Shipping Info */}
@@ -4097,23 +4097,52 @@ function ProfileContent() {
                                     )}
                                   </div>
 
-                                  <div>
-                                    <div className="text-[10px] text-neutral-400 font-black uppercase tracking-wider mb-2 px-1">
-                                      配送商品 ({order.items.length})
-                                    </div>
-                                    <div className="space-y-2">
-                                      {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
-                                          <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-md border border-accent-red/10 uppercase shrink-0">
-                                            {item.grade}
-                                          </span>
-                                          <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
-                                            {item.name}
-                                          </span>
+                                  {/* Items grouped by grade */}
+                                  {(() => {
+                                    const gradeOrder = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'LAST', 'last', 'SP', '賞'];
+                                    const grouped: Record<string, typeof order.items> = {};
+                                    for (const item of order.items) {
+                                      const g = item.grade || '?';
+                                      if (!grouped[g]) grouped[g] = [];
+                                      grouped[g].push(item);
+                                    }
+                                    const grades = Object.keys(grouped).sort((a, b) => {
+                                      const ai = gradeOrder.indexOf(a);
+                                      const bi = gradeOrder.indexOf(b);
+                                      if (ai === -1 && bi === -1) return a.localeCompare(b);
+                                      if (ai === -1) return 1;
+                                      if (bi === -1) return -1;
+                                      return ai - bi;
+                                    });
+                                    return (
+                                      <div>
+                                        <div className="text-[10px] text-neutral-400 font-black uppercase tracking-wider mb-2 px-1">
+                                          配送商品 ({order.items.length})
                                         </div>
-                                      ))}
-                                    </div>
-                                  </div>
+                                        <div className="space-y-2">
+                                          {grades.map((grade) => (
+                                            <div key={grade}>
+                                              <div className="flex items-center gap-1.5 mb-1.5 px-1">
+                                                <span className="px-2 py-0.5 bg-primary/10 text-primary text-[11px] font-black rounded-md border border-primary/10 uppercase shrink-0">
+                                                  {grade} 賞
+                                                </span>
+                                                <span className="text-[10px] text-neutral-400 font-bold">×{grouped[grade].length}</span>
+                                              </div>
+                                              <div className="space-y-1.5 pl-1">
+                                                {grouped[grade].map((item, idx) => (
+                                                  <div key={idx} className="flex items-center gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+                                                    <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
+                                                      {item.name}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </motion.div>
                             )}
