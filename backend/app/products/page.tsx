@@ -1222,8 +1222,22 @@ export default function ProductsPage() {
                                               return (
                                                 <div key={i} className="flex items-center gap-2 text-xs">
                                                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{label}</span>
-                                                  <span className="text-neutral-700 font-medium">{dr.userName}</span>
-                                                  {dr.order_id && <span className="text-neutral-400">#{dr.order_id}</span>}
+                                                  <Link
+                                                    href={`/users/${dr.user_id}`}
+                                                    className="text-blue-600 hover:underline font-medium"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    {dr.userName}
+                                                  </Link>
+                                                  {dr.order_id && (
+                                                    <Link
+                                                      href={`/orders/${dr.order_id}`}
+                                                      className="text-neutral-500 hover:text-blue-600 hover:underline"
+                                                      onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                      出貨單 #{dr.order_id}
+                                                    </Link>
+                                                  )}
                                                   <span className="text-neutral-300">{new Date(dr.created_at).toLocaleDateString('zh-TW')}</span>
                                                 </div>
                                               )
