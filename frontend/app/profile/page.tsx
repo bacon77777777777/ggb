@@ -345,7 +345,7 @@ interface GroupedDrawHistoryItem {
       recycle_value: number;
       total?: number;
     } | null;
-    admin_recycle_pool: { recycle_value: number }[] | null;
+    admin_recycle_pool: { recycle_value: number; created_at: string }[] | null;
     products: {
       name: string;
       price?: number;
@@ -1196,7 +1196,7 @@ function ProfileContent() {
               prize_level,
               prize_name,
               product_prizes ( level, name, image_url, recycle_value ),
-              admin_recycle_pool ( recycle_value ),
+              admin_recycle_pool ( recycle_value, created_at ),
               products ( name, type )
             `)
             .eq('user_id', user.id)
@@ -1216,8 +1216,8 @@ function ProfileContent() {
               series: item.products?.name || '未知系列',
               grade,
               image: item.product_prizes?.image_url || 'https://placehold.co/400',
-              dismantled_at: new Date(item.created_at).toLocaleDateString('zh-TW'),
-              raw_dismantled_at: new Date(item.created_at),
+              dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at).toLocaleDateString('zh-TW'),
+              raw_dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at),
               recycleValue: item.admin_recycle_pool?.[0]?.recycle_value ?? item.product_prizes?.recycle_value ?? 0,
               type: productType
             };
