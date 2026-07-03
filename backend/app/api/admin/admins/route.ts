@@ -80,7 +80,10 @@ export async function POST(request: Request) {
 
     if (typeof body.id === 'number' && Number.isFinite(body.id)) {
       const { error } = await supabaseAdmin.from('admins').update(payload).eq('id', body.id)
-      if (error) throw error
+      if (error) {
+        console.error('Update admin error:', error)
+        return NextResponse.json({ error: error.message || JSON.stringify(error) }, { status: 500 })
+      }
       return NextResponse.json({ ok: true })
     }
 
@@ -89,10 +92,14 @@ export async function POST(request: Request) {
     }
 
     const { error } = await supabaseAdmin.from('admins').insert([payload])
-    if (error) throw error
+    if (error) {
+      console.error('Insert admin error:', error)
+      return NextResponse.json({ error: error.message || JSON.stringify(error) }, { status: 500 })
+    }
     return NextResponse.json({ ok: true })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : '儲存管理員失敗'
+    const e = error as any
+    const message = e?.message || e?.error_description || JSON.stringify(e) || '儲存管理員失敗'
     console.error('Error saving admin:', error)
     return NextResponse.json({ error: message }, { status: 500 })
   }
