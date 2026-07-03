@@ -2,6 +2,18 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Intercept Supabase auth codes that land on the homepage (Site URL fallback)
+  // and route them to the proper auth callback handler.
+  if (request.nextUrl.pathname === '/') {
+    const code = request.nextUrl.searchParams.get('code')
+    if (code) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/callback'
+      url.searchParams.set('next', '/update-password')
+      return NextResponse.redirect(url)
+    }
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -35,16 +47,6 @@ export async function middleware(request: NextRequest) {
       },
     }
   )
-
-  // If Supabase drops ?code= on the homepage (Site URL fallback),
-  // intercept and redirect to the auth callback handler.
-  const code = request.nextUrl.searchParams.get('code')
-  if (code && request.nextUrl.pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/callback'
-    url.searchParams.set('next', '/update-password')
-    return NextResponse.redirect(url)
-  }
 
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
