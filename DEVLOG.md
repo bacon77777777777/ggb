@@ -2,6 +2,45 @@
 
 ---
 
+## 平台擴展階段計畫
+
+### 第一階段：現在（0～500 會員）
+現況已完備，不需額外投入。
+
+| 服務 | 方案 | 費用 |
+|---|---|---|
+| Supabase | Free | $0 |
+| Vercel | Free | $0 |
+| Upstash Redis | Free (500k cmd/月) | $0 |
+| Sentry | Free (5,000 errors/月) | $0 |
+| GitHub Actions 備份 | Free | $0 |
+
+### 第二階段：成長期（500～2,000 會員）
+**觸發條件**：同時在線超過 100 人，或 Sentry 出現 DB timeout 錯誤。
+
+- 升級 **Supabase Pro（$25/mo）** → 連線數提升 + PITR 備份開啟
+- 升級 **Vercel Pro（$20/mo）** → 解除每天 100 次部署限制
+
+### 第三階段：高峰活動期（單日 UV > 1,000）
+**觸發條件**：預期辦大型限時活動前。
+
+- 提前通知 Supabase 申請暫時提升連線數
+- 跑 k6 壓力測試確認瓶頸
+- 評估是否升級 Supabase Team（$599/mo）
+
+### 負載異常處理流程
+```
+Sentry 收到大量 timeout 錯誤
+  ↓
+Supabase Dashboard → Database → Connections 確認連線數
+  ↓
+連線數 > 80% → 立刻升級 Pro
+  ↓
+仍無法解決 → feature flags 一鍵關閉轉蛋功能
+```
+
+---
+
 ## 待辦事項（Backlog）
 
 ### 前台
@@ -10,6 +49,51 @@
   - 轉蛋頁面上方機台區塊獨立為可替換模組（目前硬寫單一樣式）
   - 設計多套機台主題（東洋扭蛋機、夾娃娃機風格、街機風格⋯⋯）
   - 後台可切換各商品套用的機台模組，提升玩家視覺體驗差異化
+
+---
+
+## 2026-07-03（平台穩定性全面強化）
+
+### 安全性修復
+- **draw_records UPDATE RLS 移除**：用戶原本可竄改自己的抽獎紀錄，已移除該政策，現在只有 SELECT + INSERT
+- **庫存 CHECK 約束**：`product_prizes.remaining >= 0` 和 `products.remaining >= 0`，防止 advisory lock 被繞過時庫存變負數
+
+### 後台操作審計（action_logs 全面補齊）
+新增 `backend/lib/logAdminAction.ts` helper，覆蓋所有關鍵後台操作：
+- 後台登入（成功 + 失敗，含 IP）
+- 新增 / 修改 / 刪除商品
+- 更新訂單狀態
+- 停用 / 啟用用戶、重設密碼
+- 修改功能開關
+
+### 全站操作 Log（user_event_logs）
+新增 `user_event_logs` 表，記錄前台用戶行為：
+- **登入**：AuthContext SIGNED_IN → `/api/user/log-event`（server-side 含 IP）
+- **抽獎**：`play_gacha` DB function 內部 INSERT（每次抽獎自動記錄）
+- **儲值**：payment callback 成功後寫入（含 IP）
+
+### 後台 logs 頁升級
+- 加入「前台事件」第二個 tab，顯示 login / draw / topup 明細
+- 異常偵測：同 IP 5 分鐘內抽獎 ≥10 次自動標紅 + 顯示警告 banner
+- 會員管理「最後 IP」改從 user_event_logs 撈（Supabase Free plan 的 audit_log_entries 為空）
+
+### 自動備份
+- 新增 `.github/workflows/backup.yml`
+- 每天凌晨 3:00 UTC+8 自動 pg_dump，gzip 壓縮上傳 GitHub Artifacts，保留 90 天
+
+### Rate Limiting（Upstash Redis）
+- 抽獎：同一 user_id 每 3 秒最多 3 次（`/api/gacha` 新路由統一入口）
+- 支付發起：同一 IP 每 10 分鐘最多 5 次
+- 前台三個抽獎頁面（GachaProductDetail / blindbox / item）統一改呼叫 `/api/gacha`
+
+### 即時監控（Sentry）
+- 前台 + 後台各安裝 `@sentry/nextjs`
+- `sentry.client/server/edge.config.ts` 設定完成
+- `next.config` 包裝 `withSentryConfig`
+- 只開 Error monitoring，關閉 tracing/replay 節省免費額度
+
+### 後台改名
+- 「後台開發紀錄」→「開發日誌」
 
 ---
 
