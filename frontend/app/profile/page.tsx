@@ -1222,6 +1222,7 @@ function ProfileContent() {
               type: productType
             };
           });
+          items.sort((a, b) => b.raw_dismantled_at.getTime() - a.raw_dismantled_at.getTime());
           setDismantledItems(items);
         }
       } 
