@@ -72,6 +72,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           productCode: p.product_code,
           name: p.name,
           category: p.category,
+          type: p.type,
           price: p.price,
           remaining: p.remaining,
           status: p.status,
@@ -139,27 +140,28 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         })
       }
 
-      // 檢查高配率警示（實際配率超過設定值）
-      product.prizes.forEach(prize => {
-        // 計算實際配率 = (已出數量 / 總銷售量) * 100
-        const soldCount = prize.total - prize.remaining
-        if (product.sales > 0 && soldCount > 0) {
-          const actualRate = (soldCount / product.sales) * 100
-          // 如果實際配率超過設定配率的 1.3 倍，則警示（降低閾值以產生更多警示）
-          const threshold = prize.probability * 1.3
-          if (actualRate > threshold && prize.probability > 0) {
-            alertList.push({
-              type: 'high-rate',
-              product: product.name,
-              productId: product.id,
-              level: prize.level,
-              rate: Number(actualRate.toFixed(2)),
-              threshold: Number(threshold.toFixed(2)),
-              severity: actualRate > prize.probability * 1.8 ? 'high' : 'medium'
-            })
+      // 轉蛋商品不需賞率警示（品項無賞等意義），只看庫存
+      if (product.type !== 'gacha') {
+        // 檢查高配率警示（實際配率超過設定值）
+        product.prizes.forEach(prize => {
+          const soldCount = prize.total - prize.remaining
+          if (product.sales > 0 && soldCount > 0) {
+            const actualRate = (soldCount / product.sales) * 100
+            const threshold = prize.probability * 1.3
+            if (actualRate > threshold && prize.probability > 0) {
+              alertList.push({
+                type: 'high-rate',
+                product: product.name,
+                productId: product.id,
+                level: prize.level,
+                rate: Number(actualRate.toFixed(2)),
+                threshold: Number(threshold.toFixed(2)),
+                severity: actualRate > prize.probability * 1.8 ? 'high' : 'medium'
+              })
+            }
           }
-        }
-      })
+        })
+      }
     })
 
     // 按嚴重程度排序（高優先級在前）
