@@ -1,0 +1,71 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    # 每天凌晨 3:00 UTC+8（即 UTC 19:00）
+    - cron: '0 19 * * *'
+  workflow_dispatch: # 允許手動觸發
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          FILENAME="ggb-backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+          pg_dump \
+            --host=${{ secrets.SUPABASE_DB_HOST }} \
+            --port=5432 \
+            --username=postgres \
+            --dbname=postgres \
+            --no-password \
+            --schema=public \
+            --exclude-table-data="auth.*" \
+            | gzip > "$FILENAME"
+          echo "BACKUP_FILE=$FILENAME" >> $GITHUB_ENV
+          echo "Backup size: $(du -sh $FILENAME | cut -f1)"
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 cp "$BACKUP_FILE" \
+            "s3://${{ secrets.R2_BUCKET }}/backups/$BACKUP_FILE" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+          echo "Uploaded: $BACKUP_FILE"
+
+      - name: Delete backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          CUTOFF=$(date -d "30 days ago" +%Y%m%d)
+          aws s3 ls "s3://${{ secrets.R2_BUCKET }}/backups/" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT }}" \
+            | awk '{print $4}' \
+            | grep "^ggb-backup-" \
+            | while read key; do
+                FILE_DATE=$(echo "$key" | grep -oP '\d{8}')
+                if [[ "$FILE_DATE" < "$CUTOFF" ]]; then
+                  aws s3 rm "s3://${{ secrets.R2_BUCKET }}/backups/$key" \
+                    --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+                  echo "Deleted old backup: $key"
+                fi
+              done
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Database backup failed! Check logs immediately."

@@ -72,6 +72,24 @@ export async function POST(req: Request) {
               console.error('Confirm Order Error:', error);
               return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
           }
+          // 寫入全站操作 Log（取得 user_id 後寫入）
+          const { data: recharge } = await supabaseAdmin
+            .from('recharge_records')
+            .select('user_id, amount')
+            .eq('order_number', orderNumber)
+            .single()
+          if (recharge?.user_id) {
+            await supabaseAdmin.from('user_event_logs').insert({
+              user_id: recharge.user_id,
+              event_type: 'topup',
+              detail: {
+                order_number: orderNumber,
+                amount: recharge.amount ?? amt,
+                payment_type: paymentType,
+              },
+              ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+            })
+          }
         } else if (orderNumber.startsWith('SO')) {
           const { error } = await supabaseAdmin.rpc('confirm_sell_escrow_order', {
             p_order_number: orderNumber,

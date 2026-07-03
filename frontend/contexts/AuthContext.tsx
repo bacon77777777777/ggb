@@ -213,11 +213,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.warn('[AuthContext] Profile fetch timed out/failed:', profileErr);
           });
 
-        // 登入時追蹤任務 + 檢查成就（fire-and-forget）
+        // 登入時追蹤任務 + 檢查成就 + 寫操作 log（fire-and-forget）
         if (_event === 'SIGNED_IN') {
           Promise.allSettled([
             supabase.rpc('track_mission_event', { p_event_type: 'login' }),
             supabase.rpc('check_achievements', { p_user_id: session.user.id }),
+            fetch('/api/user/log-event', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event_type: 'login' }),
+            }),
           ]).catch(() => {});
         }
       } else {
