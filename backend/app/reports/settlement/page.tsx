@@ -28,6 +28,22 @@ interface Period {
   isCurrent: boolean
 }
 
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
+        !
+      </div>
+      {show && (
+        <div className="absolute left-0 top-5 w-64 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 期別 = 每月1日~月底，結算日 = 次月5日
 function generatePeriods(today: Date, count: number): Period[] {
   const periods: Period[] = []
@@ -436,7 +452,10 @@ export default function SettlementPage() {
 
               <div className="border-t-2 border-neutral-300 mt-3 pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
+                    <InfoTooltip text="公式：（結算金額基底 − 藍新手續費）× 廠商分潤比例 − 分解退代幣 = 實際應付廠商" />
+                  </div>
                   <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
                 {dismantleTotal > 0 && (
