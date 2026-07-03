@@ -177,7 +177,7 @@ const TITLE_BG: Record<string, string> = {
 };
 
 interface Props {
-  userId: string;
+  userId: string | null;
   nickname?: string;
   avatarUrl?: string;
   titleFromRanking?: { name: string; color_key: string } | null;
@@ -211,11 +211,11 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
 
   // Fetch profile data
   useEffect(() => {
-    // isPlaceholder = 排行榜底部「虛位以待」空位
-    // mock UUID (00000000-...) = SQL 假用戶，不存在 DB 但可互動 → 也走假資料路徑
-    const isMockUUID = userId.startsWith('00000000-');
-    if (isPlaceholder || isMockUUID) {
-      setProfile(buildFakeProfile(userId, propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
+    // null userId = SQL bot (NULL::uuid)；isPlaceholder = 前端填充的「虛位以待」空位
+    // mock UUID (00000000-...) = SQL 假用戶
+    const isMockUUID = !!userId && userId.startsWith('00000000-');
+    if (isPlaceholder || !userId || isMockUUID) {
+      setProfile(buildFakeProfile(userId || 'placeholder-1', propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
       setLoading(false);
       return;
     }

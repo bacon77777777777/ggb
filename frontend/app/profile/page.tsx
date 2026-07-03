@@ -1166,9 +1166,7 @@ function ProfileContent() {
             const grade = item.product_prizes?.level || item.prize_level || '?';
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
-            if (price > 0) {
-              recycleValue = Math.floor(price * 0.2);
-            }
+            recycleValue = 10;
 
             return {
               id: item.id.toString(),
