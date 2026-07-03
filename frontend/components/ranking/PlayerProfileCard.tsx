@@ -54,6 +54,7 @@ const BADGE_IMAGE: Record<string, string> = {
   duplicate_10:     '/images/mask/非洲酋長.png',
   single_day_100:   '/images/mask/火力全開.png',
   birthday_draw:    '/images/mask/壽星最大.png',
+  ranking_50:       '/images/mask/排行榜信徒.png',
 };
 
 // ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
