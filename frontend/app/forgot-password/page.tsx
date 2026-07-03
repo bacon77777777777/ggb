@@ -3,9 +3,10 @@
 import { useState, Suspense, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mail, Lock, Eye, EyeOff, CheckCircle2, ChevronLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react'
 import { Input } from '@/components/ui'
 import SolidButton from '@/components/ui/SolidButton'
+import { translateAuthError } from '@/lib/authErrors'
 
 function ForgotPasswordContent() {
   const router = useRouter()
@@ -57,7 +58,7 @@ function ForgotPasswordContent() {
     const { error } = await supabase.auth.resetPasswordForEmail(email)
 
     if (error) {
-      setError(error.message || '發送失敗，請稍後再試')
+      setError(translateAuthError(error.message))
     } else {
       setStep(2)
       startCountdown()
@@ -82,7 +83,7 @@ function ForgotPasswordContent() {
     })
 
     if (error) {
-      setError('驗證碼無效或已過期，請重試')
+      setError(translateAuthError(error.message))
     } else {
       setStep(3)
     }
@@ -102,7 +103,7 @@ function ForgotPasswordContent() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setError(error.message || '更新失敗，請稍後再試')
+      setError(translateAuthError(error.message))
     } else {
       router.push('/?message=密碼已更新，請重新登入')
     }

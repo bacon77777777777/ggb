@@ -6,6 +6,7 @@ import { Button, Input } from '@/components/ui'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { translateAuthError } from '@/lib/authErrors'
 
 function UpdatePasswordContent() {
   const router = useRouter()
@@ -54,7 +55,7 @@ function UpdatePasswordContent() {
 
     if (error) {
       console.error(error)
-      setError(error.message)
+      setError(translateAuthError(error.message))
     } else {
       setSuccess(true)
       setTimeout(() => {

@@ -10,6 +10,7 @@ import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { translateAuthError } from '@/lib/authErrors'
 
 function AuthContent() {
   const searchParams = useSearchParams()
@@ -62,19 +63,6 @@ function AuthContent() {
       router.replace('/')
     }
   }, [user, router, view, step])
-
-  const translateAuthError = (msg?: string | null) => {
-    if (!msg) return null
-    const m = msg.toLowerCase()
-    if (m.includes('invalid login credentials')) return '帳號或密碼不正確'
-    if (m.includes('email not confirmed')) return '電子郵件尚未驗證'
-    if (m.includes('token has expired') || m.includes('invalid token')) return '驗證碼無效或已過期'
-    if (m.includes('too many requests')) return '嘗試次數過多，請稍後再試'
-    if (m.includes('user not found')) return '找不到此帳號'
-    if (m.includes('already registered')) return '此信箱已被註冊'
-    if (m.includes('password should be')) return '密碼長度需為 6 個字元以上'
-    return msg || '發生錯誤，請稍後再試'
-  }
 
   const handleError = (err: unknown) => {
     const msg =
