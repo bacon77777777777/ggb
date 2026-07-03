@@ -88,7 +88,8 @@ export default function UserDetailPage() {
   const [newPassword, setNewPassword] = useState('')
   const [resetPasswordMode, setResetPasswordMode] = useState<'manual' | 'auto'>('manual')
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse'>('orders')
+  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled'>('orders')
+  const [userDismantled, setUserDismantled] = useState<any[]>([])
 
   // Data states
   const [userOrders, setUserOrders] = useState<Order[]>([])
@@ -175,6 +176,17 @@ export default function UserDetailPage() {
             }
           })
           setUserDraws(mappedDraws)
+
+          // 分解紀錄
+          const dismantled = drawsData
+            .filter((d: any) => d.status === 'dismantled')
+            .map((d: any) => ({
+              id: d.id,
+              product: d.product?.name || '—',
+              prize: d.prize_level || '—',
+              date: formatDateTime(d.created_at),
+            }))
+          setUserDismantled(dismantled)
         }
 
         if (rechargesData) {
@@ -707,8 +719,23 @@ export default function UserDetailPage() {
                       </span>
                     )}
                   </button>
+                  <button
+                    onClick={() => setActiveTab('dismantled')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                      activeTab === 'dismantled'
+                        ? 'text-red-500 border-b-2 border-red-500'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    }`}
+                  >
+                    分解紀錄
+                    {userDismantled.length > 0 && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-xs">
+                        {userDismantled.length}
+                      </span>
+                    )}
+                  </button>
                 </div>
-                {activeTab !== 'warehouse' && (
+                {activeTab !== 'warehouse' && activeTab !== 'dismantled' && (
                   <Link 
                     href={
                       activeTab === 'orders' ? '/orders' :
@@ -864,6 +891,30 @@ export default function UserDetailPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
                       <p className="text-neutral-500">暫無儲值記錄</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 分解紀錄 */}
+              {activeTab === 'dismantled' && (
+                <>
+                  {userDismantled.length > 0 ? (
+                    <div className="space-y-2">
+                      {userDismantled.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+                          <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-neutral-800 text-sm">{item.product}</span>
+                            <span className="ml-2 px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-600">{item.prize}</span>
+                          </div>
+                          <span className="text-xs text-neutral-400 font-mono flex-shrink-0">{item.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-neutral-500">暫無分解紀錄</p>
                     </div>
                   )}
                 </>
