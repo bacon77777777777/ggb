@@ -1,3 +1,5 @@
+const { withSentryConfig } = require('@sentry/nextjs')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -23,4 +25,10 @@ const nextConfig = {
   }
 }
 
-module.exports = nextConfig
+module.exports = withSentryConfig(nextConfig, {
+  org: 'ggb-wg',
+  project: 'javascript-nextjs',
+  silent: true,
+  disableLogger: true,
+  automaticVercelMonitors: false,
+})
