@@ -1221,6 +1221,9 @@ export default function ProductsPage() {
                                               const { label, cls } = prizeStatusLabel(dr.status)
                                               return (
                                                 <div key={i} className="flex items-center gap-2 text-xs">
+                                                  <span className="text-neutral-400 font-mono tabular-nums">
+                                                    {new Date(dr.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                                  </span>
                                                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{label}</span>
                                                   <Link
                                                     href={`/users/${dr.user_id}`}
@@ -1238,7 +1241,6 @@ export default function ProductsPage() {
                                                       {dr.orderNumber}
                                                     </Link>
                                                   )}
-                                                  <span className="text-neutral-300">{new Date(dr.created_at).toLocaleDateString('zh-TW')}</span>
                                                 </div>
                                               )
                                             })}
