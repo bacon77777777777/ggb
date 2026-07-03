@@ -14,7 +14,13 @@ function ForgotPasswordContent() {
   const [email, setEmail] = useState(searchParams.get('email') || '')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    const authError = searchParams.get('auth_error')
+    if (!authError) return null
+    if (authError === 'otp_expired') return '重設連結已過期，請重新申請'
+    if (authError === 'access_denied') return '連結無效或已被使用，請重新申請'
+    return '連結無效，請重新申請'
+  })
   
   const supabase = createClient()
 

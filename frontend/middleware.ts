@@ -2,14 +2,24 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Intercept Supabase auth codes that land on the homepage (Site URL fallback)
-  // and route them to the proper auth callback handler.
+  // Intercept Supabase auth params that land on the homepage (Site URL fallback)
   if (request.nextUrl.pathname === '/') {
     const code = request.nextUrl.searchParams.get('code')
+    const error = request.nextUrl.searchParams.get('error')
+    const errorCode = request.nextUrl.searchParams.get('error_code')
+
     if (code) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/callback'
       url.searchParams.set('next', '/update-password')
+      return NextResponse.redirect(url)
+    }
+
+    if (error) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/forgot-password'
+      url.search = ''
+      url.searchParams.set('auth_error', errorCode || error)
       return NextResponse.redirect(url)
     }
   }
