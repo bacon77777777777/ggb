@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 export async function PUT(
   request: Request,
@@ -70,6 +71,15 @@ export async function PUT(
       .eq('id', productId)
       .single()
 
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '修改商品',
+      targetType: 'product',
+      targetId: String(productId),
+      detail: { name: product?.name },
+      ip: getClientIp(request),
+    })
+
     return NextResponse.json({ product: updated })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '更新失敗' }, { status: 500 })
@@ -77,7 +87,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -89,8 +99,19 @@ export async function DELETE(
     if (!Number.isFinite(productId)) return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
 
     const supabaseAdmin = getSupabaseAdmin()
+
+    const { data: product } = await supabaseAdmin.from('products').select('name').eq('id', productId).single()
     const { error } = await supabaseAdmin.from('products').delete().eq('id', productId)
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '刪除商品',
+      targetType: 'product',
+      targetId: String(productId),
+      detail: { name: product?.name },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

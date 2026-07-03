@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { getTaipeiSessionMaxAgeSeconds, signAdminSession } from '@/lib/adminSession'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 export async function POST(request: Request) {
   try {
@@ -29,6 +30,13 @@ export async function POST(request: Request) {
     }
 
     if (admin.password_hash !== password) {
+      await logAdminAction({
+        adminId: admin.id,
+        action: '登入失敗',
+        detail: { username },
+        ip: getClientIp(request),
+        status: 'fail',
+      })
       return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 })
     }
 
@@ -52,6 +60,12 @@ export async function POST(request: Request) {
       .from('admins')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', admin.id)
+
+    await logAdminAction({
+      adminId: admin.id,
+      action: '後台登入',
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({
       user: {

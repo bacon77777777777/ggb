@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { randomBytes } from 'crypto'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 export const runtime = 'nodejs'
 
@@ -162,6 +163,27 @@ export async function PUT(
         body: `您的帳號狀態已被管理員設為：${text}`,
         link: '/profile?tab=settings',
         meta: { status: body.status },
+      })
+    }
+
+    if (hasStatus) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: body.status === 'active' ? '啟用用戶' : '停用用戶',
+        targetType: 'user',
+        targetId: id,
+        detail: { status: body.status },
+        ip: getClientIp(request),
+      })
+    }
+    if (hasPassword) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: '重設用戶密碼',
+        targetType: 'user',
+        targetId: id,
+        detail: { generated: shouldGeneratePassword },
+        ip: getClientIp(request),
       })
     }
 

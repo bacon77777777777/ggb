@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import crypto from 'crypto'
 
 type CreateProductPayload = {
@@ -87,6 +88,15 @@ export async function POST(request: Request) {
     }
 
     const { data: finalProduct } = await supabaseAdmin.from('products').select('*').eq('id', newProductId).single()
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '新增商品',
+      targetType: 'product',
+      targetId: String(newProductId),
+      detail: { name: product.name, product_code: newProductCode },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ product: finalProduct || { ...created, product_code: newProductCode } })
   } catch (e: any) {

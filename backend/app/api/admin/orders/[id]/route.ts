@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 type ShipmentStatus = 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
 
@@ -129,6 +130,19 @@ export async function PUT(
         },
       })
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '更新訂單狀態',
+      targetType: 'order',
+      targetId: String(orderId),
+      detail: {
+        order_number: updated?.order_number,
+        status: body.status,
+        tracking_number: body.tracking_number,
+      },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true, order: updated })
   } catch (e: any) {

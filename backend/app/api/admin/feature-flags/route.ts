@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import fs from 'fs'
 import path from 'path'
 
@@ -125,6 +126,14 @@ export async function PUT(req: Request) {
 
   const { error } = await supabaseAdmin.from('feature_flags').upsert(upserts as any, { onConflict: 'key' })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '修改功能開關',
+    targetType: 'feature_flags',
+    detail: { updated: inputFlags },
+    ip: getClientIp(req),
+  })
 
   return NextResponse.json({ flags: nextFlags }, { status: 200 })
 }
