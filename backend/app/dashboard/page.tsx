@@ -1164,6 +1164,19 @@ export default function DashboardPage() {
         
         setTopProducts(topProductsList)
 
+        // Top Series Calculation（從 draws 計算，不依賴 user_events）
+        const seriesStats = new Map<string, number>()
+        draws?.forEach((d: any) => {
+          const s = d.products?.series
+          if (s && s.trim()) seriesStats.set(s.trim(), (seriesStats.get(s.trim()) || 0) + 1)
+        })
+        setTopSeries(
+          Array.from(seriesStats.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 15)
+            .map(([name, value]) => ({ name, value }))
+        )
+
         // Visit Count Stats
         const visitCountVal = visitStats.totalVisitsPeriod || visitStats.totalVisits || 0
         const visitsByDay = visitStats.chartData || []
@@ -1284,7 +1297,6 @@ export default function DashboardPage() {
               conversionRate: b.conversionRate || 0,
             })
             setDauData((b.dailyActiveUsers || []).map((d: any) => ({ date: d.date, value: d.count })))
-            setTopSeries((b.topSeries || []).slice(0, 15).map((s: any) => ({ name: s.series, value: s.count })))
             setTopKeywords((b.topSearches || []).slice(0, 15).map((s: any) => ({ name: s.query, value: s.count })))
           }
         } catch (e) {
