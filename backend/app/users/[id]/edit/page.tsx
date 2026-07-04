@@ -2,7 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { useRouter, useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 
 interface UserProfile {
@@ -36,8 +36,33 @@ export default function UserEditPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const PRESET_AVATARS = Array.from({ length: 8 }, (_, i) => `/images/avatar/${String(i + 1).padStart(2, '0')}.png`)
+
+  const handleUploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop() || 'png'
+    const path = `user-avatars/${userId}_${Date.now()}.${ext}`
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('bucket', 'avatars')
+    formData.append('path', path)
+    const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+    if (res.ok) {
+      const { publicUrl } = await res.json()
+      set('avatar_url', publicUrl)
+      setShowAvatarPicker(false)
+    } else {
+      const err = await res.json()
+      setMsg({ type: 'error', text: err.error || '上傳失敗' })
+    }
+    setUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -141,49 +166,58 @@ export default function UserEditPage() {
         {/* 頭像 */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
           <h3 className="font-semibold text-neutral-800 mb-4">頭像</h3>
-          <div className="flex items-start gap-4">
-            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-neutral-100 shrink-0 border-2 border-neutral-200">
-              {form.avatar_url ? (
-                <Image src={form.avatar_url} alt="avatar" fill className="object-cover" unoptimized />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-3xl text-neutral-400">
-                  {form.name?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowAvatarPicker(v => !v)}
-                className="px-3 py-1.5 border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
-              >
-                {showAvatarPicker ? '收起' : '更換頭像'}
-              </button>
-              {showAvatarPicker && (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {PRESET_AVATARS.map(url => (
-                      <button
-                        key={url}
-                        type="button"
-                        onClick={() => { set('avatar_url', url); setShowAvatarPicker(false) }}
-                        className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${
-                          form.avatar_url === url ? 'border-primary scale-110' : 'border-neutral-200 hover:border-primary/50'
-                        }`}
-                      >
-                        <Image src={url} alt="" fill className="object-cover" unoptimized />
-                      </button>
-                    ))}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden bg-neutral-100 shrink-0 border-2 border-neutral-200">
+                {form.avatar_url ? (
+                  <Image src={form.avatar_url} alt="avatar" fill className="object-cover" unoptimized />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-3xl text-neutral-400">
+                    {form.name?.charAt(0)?.toUpperCase() || '?'}
                   </div>
-                  <div>
-                    <label className="text-xs text-neutral-500 mb-1 block">或輸入自訂 URL</label>
-                    <input value={form.avatar_url || ''} onChange={e => set('avatar_url', e.target.value)}
-                      placeholder="https://..."
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarPicker(v => !v)}
+                  className="px-3 py-1.5 border border-neutral-200 rounded-lg text-sm text-neutral-600 hover:bg-neutral-50 transition-colors"
+                >
+                  {showAvatarPicker ? '收起' : '選擇預設'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {uploading ? '上傳中…' : '上傳圖片'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUploadAvatar}
+                />
+              </div>
             </div>
+            {showAvatarPicker && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {PRESET_AVATARS.map(url => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => { set('avatar_url', url); setShowAvatarPicker(false) }}
+                    className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${
+                      form.avatar_url === url ? 'border-primary scale-110' : 'border-neutral-200 hover:border-primary/50'
+                    }`}
+                  >
+                    <Image src={url} alt="" fill className="object-cover" unoptimized />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
