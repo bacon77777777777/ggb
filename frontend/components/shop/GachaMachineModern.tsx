@@ -360,20 +360,20 @@ export function GachaMachineModern(props: GachaMachineModernProps) {
         </button>
 
         <button
-          onClick={!isActive ? onTrial : undefined}
-          disabled={isActive}
+          onClick={!isActive && !isSoldOut ? onTrial : undefined}
+          disabled={isActive || isSoldOut}
           style={{
             padding: '10px 18px',
             borderRadius: 14,
             fontWeight: 900,
             fontSize: 14,
             color: '#fff',
-            background: isActive
+            background: isActive || isSoldOut
               ? '#CBD5E1'
               : 'linear-gradient(135deg, #34D399, #059669)',
-            boxShadow: isActive ? 'none' : '0 4px 14px rgba(5,150,105,0.4)',
+            boxShadow: isActive || isSoldOut ? 'none' : '0 4px 14px rgba(5,150,105,0.4)',
             border: 'none',
-            cursor: isActive ? 'not-allowed' : 'pointer',
+            cursor: isActive || isSoldOut ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s',
           }}
         >

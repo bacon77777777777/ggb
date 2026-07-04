@@ -356,15 +356,15 @@ export function GachaMachineRetro(props: GachaMachineRetroProps) {
         </button>
 
         <button
-          onClick={!isActive ? onTrial : undefined}
-          disabled={isActive}
+          onClick={!isActive && !isSoldOut ? onTrial : undefined}
+          disabled={isActive || isSoldOut}
           style={{
             padding: '10px 16px', borderRadius: 12,
             fontWeight: 900, fontSize: 13, color: '#fff',
-            background: isActive ? '#555' : 'linear-gradient(135deg, #CC1111, #880000)',
-            boxShadow: isActive ? 'none' : '0 4px 12px rgba(200,0,0,0.4)',
+            background: isActive || isSoldOut ? '#555' : 'linear-gradient(135deg, #CC1111, #880000)',
+            boxShadow: isActive || isSoldOut ? 'none' : '0 4px 12px rgba(200,0,0,0.4)',
             border: '1px solid rgba(255,255,255,0.15)',
-            cursor: isActive ? 'not-allowed' : 'pointer',
+            cursor: isActive || isSoldOut ? 'not-allowed' : 'pointer',
           }}
         >
           試試看
