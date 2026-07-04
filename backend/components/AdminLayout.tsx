@@ -30,7 +30,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const { setHighlightedProductId } = useProduct()
   const { addLog } = useLog()
   const [isMounted, setIsMounted] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const last = localStorage.getItem('sidebarOpen_last')
+    return last === null ? true : last === 'true'
+  })
   const [isSidebarInitialized, setIsSidebarInitialized] = useState(false)
   const [groupOpenMap, setGroupOpenMap] = useState<Record<string, boolean>>({})
   const [isGroupInitialized, setIsGroupInitialized] = useState(false)
@@ -50,10 +54,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     setIsSidebarInitialized(true)
   }, [user?.username])
 
-  // 保存側邊欄展開狀態（依帳號）
+  // 保存側邊欄展開狀態（依帳號 + 通用 key 供初始化用）
   useEffect(() => {
     if (!isSidebarInitialized || !user?.username) return
     localStorage.setItem(`sidebarOpen_${user.username}`, String(isSidebarOpen))
+    localStorage.setItem('sidebarOpen_last', String(isSidebarOpen))
   }, [isSidebarOpen, isSidebarInitialized, user?.username])
 
   // Fetch products and pending orders
