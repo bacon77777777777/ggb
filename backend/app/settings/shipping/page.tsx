@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 export default function ShippingSettingsPage() {
   const [feeHome, setFeeHome] = useState('60')
   const [feeCvs, setFeeCvs] = useState('60')
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState('7')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -16,6 +17,7 @@ export default function ShippingSettingsPage() {
       .then(d => {
         if (d.shipping_fee_home) setFeeHome(d.shipping_fee_home)
         if (d.shipping_fee_cvs) setFeeCvs(d.shipping_fee_cvs)
+        if (d.free_shipping_threshold) setFreeShippingThreshold(d.free_shipping_threshold)
       })
       .finally(() => setIsLoading(false))
   }, [])
@@ -30,6 +32,7 @@ export default function ShippingSettingsPage() {
         body: JSON.stringify({
           shipping_fee_home: feeHome,
           shipping_fee_cvs: feeCvs,
+          free_shipping_threshold: freeShippingThreshold,
         }),
       })
       if (!res.ok) throw new Error('儲存失敗')
@@ -87,6 +90,28 @@ export default function ShippingSettingsPage() {
                         className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-neutral-100">
+                <h2 className="text-base font-semibold text-neutral-900 mb-1">免運門檻</h2>
+                <p className="text-sm text-neutral-500 mb-4">
+                  用戶單次申請出貨件數達此數量（含）以上，免收運費。
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    免運件數門檻（件）
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={freeShippingThreshold}
+                      onChange={e => setFreeShippingThreshold(e.target.value)}
+                      className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                    />
+                    <span className="text-sm text-neutral-500">件以上免運</span>
                   </div>
                 </div>
               </div>

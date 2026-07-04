@@ -2370,7 +2370,7 @@ function ProfileContent() {
                         </div>
                         <div className="flex-1 flex gap-2 justify-end">
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
-                            {selectedForDelivery.length <= 5 && (
+                            {selectedForDelivery.length <= 10 && (
                               <>
                                 {flags.exchange && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
                                   (() => {
@@ -2438,7 +2438,7 @@ function ProfileContent() {
                             分解 ({selectedForDelivery.length})
                           </button>
                           {flags.exchange && (() => {
-                            if (selectedForDelivery.length > 5) return null;
+                            if (selectedForDelivery.length > 10) return null;
                             if (selectedForDelivery.length !== 1) return null;
                             const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
                             if (!item || !isMajorGrade(item.grade)) return null;
@@ -2453,7 +2453,7 @@ function ProfileContent() {
                               </button>
                             );
                           })()}
-                          {selectedForDelivery.length <= 5 ? (
+                          {selectedForDelivery.length <= 10 ? (
                             <button
                               type="button"
                               onClick={() => setShowDeliveryModal(true)}
