@@ -3,6 +3,7 @@
 import { AdminLayout, StatsCard, SearchToolbar, PageCard, Modal, DataTable, type Column } from '@/components'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useMemo } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 
 interface Role {
   id: number
@@ -35,16 +36,8 @@ export default function AdminsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  const [visibleColumns, setVisibleColumns] = useState<{[key: string]: boolean}>({
-    id: true,
-    username: true,
-    nickname: true,
-    role: true,
-    status: true,
-    created_at: true,
-    last_login_at: true,
-    actions: true
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('analytics', 'compact', {
+    id: true, username: true, nickname: true, role: true, status: true, created_at: true, last_login_at: true, actions: true
   })
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)

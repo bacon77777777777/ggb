@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, DateRangePicker, type Column } from '@/components'
 import { useState, useEffect, useMemo } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 
@@ -26,7 +27,9 @@ export default function RechargesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('recharges', 'compact', {
+    created_at: true, order_number: true, trade_no: false, user: true, amount: true, bonus: true, payment_method: true, status: true
+  })
 
   // 篩選與欄位顯示狀態
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -37,17 +40,6 @@ export default function RechargesPage() {
   const [filterEndDate, setFilterEndDate] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  })
-  
-  const [visibleColumns, setVisibleColumns] = useState<{[key: string]: boolean}>({
-    created_at: true,
-    order_number: true,
-    trade_no: false,
-    user: true,
-    amount: true,
-    bonus: true,
-    payment_method: true,
-    status: true
   })
 
   const fetchData = async () => {

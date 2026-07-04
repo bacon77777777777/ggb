@@ -6,6 +6,7 @@ import { useLog } from '@/contexts/LogContext'
 import { formatDateTime } from '@/utils/dateFormat'
 import Link from 'next/link'
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
 
 export default function OrdersPage() {
@@ -49,7 +50,10 @@ export default function OrdersPage() {
   })
 
   // 表格工具列狀態
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('orders', 'compact', {
+    orderId: true, submittedAt: true, status: true, userName: true, userId: true,
+    quantity: true, recipientName: true, trackingNumber: true, shippingFee: true, shippedAt: true, operations: true
+  })
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
   const [filterShipStartDate, setFilterShipStartDate] = useState('')
@@ -57,19 +61,6 @@ export default function OrdersPage() {
   const [filterUrgentOnly, setFilterUrgentOnly] = useState(false)
   const [showMergeModal, setShowMergeModal] = useState(false)
   const [selectedMergeGroups, setSelectedMergeGroups] = useState<Set<string>>(new Set())
-  const [visibleColumns, setVisibleColumns] = useState({
-    orderId: true,
-    submittedAt: true,
-    status: true,
-    userName: true,
-    userId: true,
-    quantity: true,
-    recipientName: true,
-    trackingNumber: true,
-    shippingFee: true,
-    shippedAt: true,
-    operations: true
-  })
 
   const [shipModal, setShipModal] = useState<{
     isOpen: boolean

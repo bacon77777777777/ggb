@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
 import { useState, useEffect, useMemo } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
 
 interface DrawRecord {
@@ -24,22 +25,15 @@ export default function DrawsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('draws', 'compact', {
+    created_at: true, user: true, product: true, prize_level: true, ticket_number: true, status: true
+  })
+
   // 篩選與欄位顯示狀態
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedPrizeLevel, setSelectedPrizeLevel] = useState<string>('all')
   const [filterStartDate, setFilterStartDate] = useState('')
   const [filterEndDate, setFilterEndDate] = useState('')
-  
-  const [visibleColumns, setVisibleColumns] = useState<{[key: string]: boolean}>({
-    created_at: true,
-    user: true,
-    product: true,
-    prize_level: true,
-    ticket_number: true,
-    status: true
-  })
 
   const fetchData = async () => {
     try {

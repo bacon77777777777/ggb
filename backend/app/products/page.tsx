@@ -10,6 +10,7 @@ import CsvImportWizard from '@/components/CsvImportWizard'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function ProductsPage() {
@@ -215,21 +216,10 @@ export default function ProductsPage() {
   const [dismantledCount, setDismantledCount] = useState(0)
   const observerTarget = useRef<HTMLDivElement>(null)
   
-  // 密度控制
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  const [visibleColumns, setVisibleColumns] = useState({
-    productCode: true,
-    name: true,
-    type: true,
-    price: true,
-    cost: true,
-    stockAndSales: true,
-    majorStatus: true,
-    visibility: true,
-    createdAt: true,
-    startedAt: true,
-    endedAt: true,
-    operations: true
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('products', 'compact', {
+    productCode: true, name: true, type: true, price: true, cost: true,
+    stockAndSales: true, majorStatus: true, visibility: true, createdAt: true,
+    startedAt: true, endedAt: true, operations: true
   })
   
   const [selectedMajorStatus, setSelectedMajorStatus] = useState<'all' | 'normal' | 'depleted'>('all')

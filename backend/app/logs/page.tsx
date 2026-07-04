@@ -3,6 +3,7 @@
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 
 interface LogEntry {
@@ -66,10 +67,8 @@ export default function LogsPage() {
   const [displayCount, setDisplayCount] = useState(50)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const observerTarget = useRef<HTMLDivElement>(null)
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  const [visibleColumns, setVisibleColumns] = useState({
-    timestamp: true, user: true, role: true, action: true,
-    target: true, details: true, ip: true, status: true
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('logs', 'compact', {
+    timestamp: true, user: true, role: true, action: true, target: true, details: true, ip: true, status: true
   })
 
   // --- User events state ---

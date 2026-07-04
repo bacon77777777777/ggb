@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
 import { 
   AdminLayout, 
@@ -71,24 +72,12 @@ export default function UsersPage() {
   const [selectedUserType, setSelectedUserType] = useState(() => searchParams.get('type') || 'real')
   const [filterStartDate, setFilterStartDate] = useState(() => searchParams.get('startDate') || '')
   const [filterEndDate, setFilterEndDate] = useState(() => searchParams.get('endDate') || '')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  const [selectedUsers, setSelectedUsers] = useState<Set<number | string>>(new Set())
-  const [visibleColumns, setVisibleColumns] = useState({
-    userId: true,
-    inviteCode: true,
-    name: true,
-    email: true,
-    phone: true,
-    tokens: true,
-    points: true,
-    totalDraws: true,
-    totalSpent: true,
-    status: true,
-    registerDate: true,
-    lastLoginDate: true,
-    lastLoginIp: true,
-    operations: true
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('users', 'compact', {
+    userId: true, inviteCode: true, name: true, email: true, phone: true,
+    tokens: true, points: true, totalDraws: true, totalSpent: true,
+    status: true, registerDate: true, lastLoginDate: true, lastLoginIp: true, operations: true
   })
+  const [selectedUsers, setSelectedUsers] = useState<Set<number | string>>(new Set())
 
   // 同步篩選狀態到 URL，刷新後可恢復
   useEffect(() => {
@@ -347,12 +336,14 @@ export default function UsersPage() {
     variant: 'primary'
   })
 
-  // 統計資料（使用實際的狀態）
-  const totalUsers = users.length
-  const activeUsers = users.filter(u => userStatuses[u.id] === 'active').length
-  const inactiveUsers = users.filter(u => userStatuses[u.id] === 'inactive').length
-  const totalTokens = users.reduce((sum, u) => sum + u.tokens, 0)
-  const totalSpent = users.reduce((sum, u) => sum + u.totalSpent, 0)
+  // 統計資料：只計算真實用戶（排除機器人）
+  const realUsers = users.filter(u => !u.isBot)
+  const botCount = users.filter(u => u.isBot).length
+  const totalUsers = realUsers.length
+  const activeUsers = realUsers.filter(u => userStatuses[u.id] === 'active').length
+  const inactiveUsers = realUsers.filter(u => userStatuses[u.id] === 'inactive').length
+  const totalTokens = realUsers.reduce((sum, u) => sum + u.tokens, 0)
+  const totalSpent = realUsers.reduce((sum, u) => sum + u.totalSpent, 0)
 
   // 表格欄位定義
   const columns: Column<User>[] = [
@@ -593,9 +584,9 @@ export default function UsersPage() {
                 value: selectedUserType,
                 onChange: setSelectedUserType,
                 options: [
-                  { value: 'all', label: '全部用戶' },
+                  { value: 'all', label: `全部用戶` },
                   { value: 'real', label: '真實用戶' },
-                  { value: 'bot', label: '機器人' }
+                  { value: 'bot', label: `機器人(${botCount})` }
                 ]
               },
               {

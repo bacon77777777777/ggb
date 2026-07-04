@@ -3,6 +3,7 @@
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, CopyableID } from '@/components'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
@@ -24,7 +25,7 @@ export default function DismantledPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<string>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const { tableDensity, setTableDensity } = useTablePrefs('dismantled', 'compact', {})
 
   // Fetch data from Supabase
   useEffect(() => {

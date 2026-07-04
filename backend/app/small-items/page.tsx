@@ -3,6 +3,7 @@
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard } from '@/components'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import Link from 'next/link'
 import Image from 'next/image'
 import { SmallItem } from '@/types/product'
@@ -18,7 +19,7 @@ export default function SmallItemsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortField, setSortField] = useState<string>('createdAt')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const { tableDensity, setTableDensity } = useTablePrefs('small-items', 'compact', {})
 
   // Fetch data from Supabase
   useEffect(() => {
