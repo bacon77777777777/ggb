@@ -111,6 +111,7 @@ interface WarehouseItem {
   preorderAvailableAt?: string | null;
   supplierId?: number | null;
   supplierName?: string;
+  prizeTotal?: number;
 }
 
 interface DeliveryOrder {
@@ -754,6 +755,16 @@ function ProfileContent() {
     return [...same, ...others];
   }, [filteredWarehouseItems, lockedSupplierName]);
 
+  const hasLargePackage = React.useMemo(() => {
+    return warehouseItems
+      .filter(i => selectedForDelivery.includes(i.id))
+      .some(i => (i.type === 'ichiban' || i.type === 'custom') && (i.prizeTotal ?? 999) <= 3);
+  }, [warehouseItems, selectedForDelivery]);
+
+  React.useEffect(() => {
+    if (hasLargePackage) setLogisticsType('HOME');
+  }, [hasLargePackage]);
+
 
   const filteredDismantledItems = React.useMemo(() => {
     let items = dismantledItems;
@@ -1202,6 +1213,7 @@ function ProfileContent() {
               preorderAvailableAt,
               supplierId: item.products?.supplier_id ?? null,
               supplierName: item.products?.suppliers?.name ?? '未知廠商',
+              prizeTotal: item.product_prizes?.total ?? 999,
             };
           });
           setWarehouseItems(items);
@@ -1701,7 +1713,7 @@ function ProfileContent() {
           setStoreId(sId);
           setStoreName(sName || '');
           setStoreAddress(sAddr || '');
-          setLogisticsType('CVS');
+          if (!hasLargePackage) setLogisticsType('CVS');
           if (lSubType) setLogisticsSubType(lSubType);
           setShowDeliveryModal(true);
           
@@ -2974,10 +2986,13 @@ function ProfileContent() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setLogisticsType('CVS')}
+                            onClick={() => !hasLargePackage && setLogisticsType('CVS')}
+                            disabled={hasLargePackage}
                             className={cn(
                               "flex-1 py-2.5 px-3 rounded-xl border-2 font-black text-sm transition-all",
-                              logisticsType === 'CVS'
+                              hasLargePackage
+                                ? "border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 cursor-not-allowed"
+                                : logisticsType === 'CVS'
                                 ? "border-primary bg-primary/5 text-primary"
                                 : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500"
                             )}
@@ -2985,6 +3000,11 @@ function ProfileContent() {
                             超商取貨
                           </button>
                         </div>
+                        {hasLargePackage && (
+                          <div className="flex items-center gap-1.5 text-[12px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800">
+                            ⚠ 包含大尺寸一番賞／自製賞品項，僅限宅配出貨
+                          </div>
+                        )}
 
                         {logisticsType === 'CVS' && (
                           <div className="space-y-3 pt-2">
