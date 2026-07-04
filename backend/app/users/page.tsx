@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 import { 
   AdminLayout, 
@@ -59,16 +59,18 @@ const EMPTY_CREATE_USER_FORM: CreateUserForm = {
 
 export default function UsersPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const [sortField, setSortField] = useState<string>('userId')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [sortField, setSortField] = useState<string>(() => searchParams.get('sort') || 'userId')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => (searchParams.get('dir') as 'asc' | 'desc') || 'desc')
   const [displayCount, setDisplayCount] = useState(20)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedUserType, setSelectedUserType] = useState('real')
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
+  const [selectedStatus, setSelectedStatus] = useState(() => searchParams.get('status') || 'all')
+  const [selectedUserType, setSelectedUserType] = useState(() => searchParams.get('type') || 'real')
+  const [filterStartDate, setFilterStartDate] = useState(() => searchParams.get('startDate') || '')
+  const [filterEndDate, setFilterEndDate] = useState(() => searchParams.get('endDate') || '')
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
   const [selectedUsers, setSelectedUsers] = useState<Set<number | string>>(new Set())
   const [visibleColumns, setVisibleColumns] = useState({
@@ -87,6 +89,20 @@ export default function UsersPage() {
     lastLoginIp: true,
     operations: true
   })
+
+  // 同步篩選狀態到 URL，刷新後可恢復
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('q', searchQuery)
+    if (selectedStatus !== 'all') params.set('status', selectedStatus)
+    if (selectedUserType !== 'real') params.set('type', selectedUserType)
+    if (filterStartDate) params.set('startDate', filterStartDate)
+    if (filterEndDate) params.set('endDate', filterEndDate)
+    if (sortField !== 'userId') params.set('sort', sortField)
+    if (sortDirection !== 'desc') params.set('dir', sortDirection)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchQuery, selectedStatus, selectedUserType, filterStartDate, filterEndDate, sortField, sortDirection, pathname])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
