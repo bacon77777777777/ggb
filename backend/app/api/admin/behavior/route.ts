@@ -98,7 +98,7 @@ export async function GET(request: Request) {
       for (const p of products ?? []) productMap[p.id] = p.name
     }
 
-    // --- 1. Product view counts ---
+    // --- 1. Product view counts (all products, 0 if none) ---
     const pvMap: Record<number, number> = {}
     for (const e of events ?? []) {
       if (e.event_type !== 'product_view') continue
@@ -106,10 +106,15 @@ export async function GET(request: Request) {
       if (!pid) continue
       pvMap[pid] = (pvMap[pid] ?? 0) + 1
     }
-    const productViews = Object.entries(pvMap).map(([id, count]) => ({
-      product_id: Number(id),
-      product_name: productMap[Number(id)] ?? `#${id}`,
-      count,
+    // fetch all products to show full list including 0
+    const { data: allProducts } = await supabase
+      .from('products')
+      .select('id, name')
+      .order('id', { ascending: true })
+    const productViews = (allProducts ?? []).map(p => ({
+      product_id: p.id,
+      product_name: p.name,
+      count: pvMap[p.id] ?? 0,
     })).sort((a, b) => b.count - a.count)
 
     // --- 2. Button click counts (always full list, 0 if none) ---
