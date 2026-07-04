@@ -27,25 +27,34 @@ export async function GET(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin()
 
+    // 取得機器人 user_id 列表，後續所有查詢排除
+    const { data: botRows } = await supabaseAdmin.from('users').select('id').eq('is_bot', true)
+    const botIds = (botRows ?? []).map((r: any) => r.id as string)
+    const excludeBots = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
+
     const [{ data: recharges, error: rechargeError }, { data: draws, error: drawError }, { data: users, error: userError }] =
       await Promise.all([
-        supabaseAdmin
-          .from('recharge_records')
-          .select('amount, created_at, user_id')
-          .gte('created_at', startDate.toISOString())
-          .lt('created_at', queryEndDate.toISOString()),
-        supabaseAdmin
-          .from('draw_records')
-          .select(
-            `
-              created_at,
-              prize_level,
-              products (id, name, price, type, category)
-            `
-          )
-          .gte('created_at', startDate.toISOString())
-          .lt('created_at', queryEndDate.toISOString()),
-        supabaseAdmin.from('users').select('created_at, tokens, id'),
+        excludeBots(
+          supabaseAdmin
+            .from('recharge_records')
+            .select('amount, created_at, user_id')
+            .gte('created_at', startDate.toISOString())
+            .lt('created_at', queryEndDate.toISOString())
+        ),
+        excludeBots(
+          supabaseAdmin
+            .from('draw_records')
+            .select(
+              `
+                created_at,
+                prize_level,
+                products (id, name, price, type, category)
+              `
+            )
+            .gte('created_at', startDate.toISOString())
+            .lt('created_at', queryEndDate.toISOString())
+        ),
+        supabaseAdmin.from('users').select('created_at, tokens, id').or('is_bot.eq.false,is_bot.is.null'),
       ])
 
     if (rechargeError) throw rechargeError

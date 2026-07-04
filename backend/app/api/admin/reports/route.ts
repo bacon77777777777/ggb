@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = getSupabaseAdmin()
 
+  // 取得機器人 user_id，所有財務/行為數據查詢排除機器人
+  const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
+  const botIds = (botRows ?? []).map((r: any) => r.id as string)
+  const excBot = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
+
   // end date is inclusive — add 1 day for lt comparison
   const endExclusive = end
     ? new Date(new Date(end).getTime() + 86400000).toISOString().split('T')[0]
@@ -30,7 +35,7 @@ export async function GET(request: NextRequest) {
     // ── 儲值明細 ────────────────────────────────────────────────────────────
     if (tab === 'recharge') {
       const { data, error } = await applyDateFilter(
-        supabase.from('recharge_records').select('*, user:users(id, name, email)').order('created_at', { ascending: false })
+        excBot(supabase.from('recharge_records').select('*, user:users(id, name, email)').order('created_at', { ascending: false }))
       )
       if (error) throw error
       return NextResponse.json({ data: data ?? [] })
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
     // ── 消費明細 ────────────────────────────────────────────────────────────
     if (tab === 'consumption') {
       const { data, error } = await applyDateFilter(
-        supabase.from('draw_records').select('*, user:users(id, name, email), product:products(id, name, price)').order('created_at', { ascending: false })
+        excBot(supabase.from('draw_records').select('*, user:users(id, name, email), product:products(id, name, price)').order('created_at', { ascending: false }))
       )
       if (error) throw error
       return NextResponse.json({ data: data ?? [] })
@@ -48,17 +53,17 @@ export async function GET(request: NextRequest) {
     // ── 營運總覽 ────────────────────────────────────────────────────────────
     if (tab === 'overview' || tab === 'summary') {
       const [rechargeRes, drawRes, newUserRes, totalUserRes, couponRes, historicalPayersRes] = await Promise.all([
-        applyDateFilter(supabase.from('recharge_records').select('amount, user_id, status, created_at')),
-        applyDateFilter(supabase.from('draw_records').select('id, user_id, prize_level, created_at, product:products(price)')),
-        applyDateFilter(supabase.from('users').select('id, created_at')),
-        supabase.from('users').select('id', { count: 'exact', head: true }),
+        applyDateFilter(excBot(supabase.from('recharge_records').select('amount, user_id, status, created_at'))),
+        applyDateFilter(excBot(supabase.from('draw_records').select('id, user_id, prize_level, created_at, product:products(price)'))),
+        applyDateFilter(supabase.from('users').select('id, created_at').or('is_bot.eq.false,is_bot.is.null')),
+        supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.eq.false,is_bot.is.null'),
         applyDateFilter(
           supabase.from('user_coupons').select('used_at, coupon:coupons(discount_type, discount_value)').eq('status', 'used'),
           'used_at'
         ),
         // 期間前曾付費的 user_id（用於判斷首次付費 vs 回購）
         start
-          ? supabase.from('recharge_records').select('user_id').eq('status', 'success').lt('created_at', start)
+          ? excBot(supabase.from('recharge_records').select('user_id').eq('status', 'success').lt('created_at', start))
           : Promise.resolve({ data: [] as { user_id: string }[], error: null }),
       ])
 
@@ -188,9 +193,9 @@ export async function GET(request: NextRequest) {
 
     // ── 商品表現 ────────────────────────────────────────────────────────────
     if (tab === 'products') {
-      // 1. 期間內抽獎紀錄（含商品價格）
+      // 1. 期間內抽獎紀錄（含商品價格），排除機器人
       const { data: draws, error: drawErr } = await applyDateFilter(
-        supabase.from('draw_records').select('product_id, created_at, product:products(id, name, price, type, category, total_count, remaining, supplier_id)')
+        excBot(supabase.from('draw_records').select('product_id, created_at, product:products(id, name, price, type, category, total_count, remaining, supplier_id)'))
       )
       if (drawErr) throw drawErr
 
@@ -246,11 +251,11 @@ export async function GET(request: NextRequest) {
       const [supplierRes, drawRes, rechargeRes, recycleRes] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
         applyDateFilter(
-          supabase.from('draw_records')
-            .select('product_id, created_at, product:products(id, name, price, supplier_id)')
+          excBot(supabase.from('draw_records')
+            .select('product_id, created_at, product:products(id, name, price, supplier_id)'))
         ),
         applyDateFilter(
-          supabase.from('recharge_records').select('amount, status, created_at, payment_fee')
+          excBot(supabase.from('recharge_records').select('amount, status, created_at, payment_fee'))
         ),
         applyDateFilter(
           supabase.from('admin_recycle_pool')
