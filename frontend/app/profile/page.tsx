@@ -59,6 +59,7 @@ import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { compressImage } from '@/lib/image-utils';
+import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import SolidButton from '@/components/ui/SolidButton';
 
 // --- Interfaces ---
@@ -863,6 +864,12 @@ function ProfileContent() {
   }, [deliveryHistory, activeDeliveryTab]);
 
   useEffect(() => {
+    const cleanup = trackPageView('/profile');
+    return cleanup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     setDesktopDeliveryPage(1);
   }, [activeDeliveryTab, desktopDeliverySearch]);
 
@@ -938,6 +945,7 @@ function ProfileContent() {
     setActiveTab(tab);
     setIsMobileDetailOpen(true);
     router.push(`/profile?tab=${tab}`, { scroll: false });
+    trackEvent('tab_switch', { path: '/profile', meta: { to_tab: tab } });
 
     // Reset warehouse state when entering warehouse tab
     if (tab === 'warehouse') {
@@ -1827,6 +1835,7 @@ function ProfileContent() {
       if (!data.success) throw new Error(data.message);
 
       toast.success('配送申請已提交！');
+      trackEvent('delivery_success', { path: '/profile', meta: { count: selectedForDelivery.length, logistics_type: logisticsType, fee: currentShippingFee } });
       setShowDeliveryModal(false);
       setSelectedForDelivery([]);
       sessionStorage.removeItem('pending_delivery_items');
@@ -1888,6 +1897,7 @@ function ProfileContent() {
       }
 
       toast.success(`成功分解 ${successCount} 件獎項，獲得 ${totalRefund} 代幣！`);
+      trackEvent('dismantle', { path: '/profile', meta: { count: successCount, refund_tokens: totalRefund } });
       setShowDismantleModal(false);
       setSelectedForDelivery([]);
       fetchUserData(); // Refresh list and balance
@@ -2415,7 +2425,7 @@ function ProfileContent() {
                                   })()
                                 )}
                                 <button
-                                  onClick={() => setShowDeliveryModal(true)}
+                                  onClick={() => { trackEvent('delivery_modal_open', { path: '/profile', meta: { count: selectedForDelivery.length } }); setShowDeliveryModal(true); }}
                                   disabled={Boolean(selectedForDelivery.some(id => {
                                     const itm = warehouseItems.find(i => i.id === id);
                                     return Boolean(itm?.isPreorder && itm?.preorderAvailableAt && new Date(itm.preorderAvailableAt).getTime() > Date.now());
@@ -2980,7 +2990,7 @@ function ProfileContent() {
                       isDesktop ? "p-6" : "px-4 py-3"
                     )}>
                       <h3 className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-xl" : "text-base")}>確認配送資訊</h3>
-                      <button onClick={() => setShowDeliveryModal(false)} className="w-8 h-8 rounded-full bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
+                      <button onClick={() => { trackEvent('delivery_abandon', { path: '/profile', meta: { count: selectedForDelivery.length } }); setShowDeliveryModal(false); }} className="w-8 h-8 rounded-full bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors">
                         <X className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                       </button>
                     </div>

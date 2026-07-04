@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { trackEvent } from '@/lib/trackEvent';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -87,6 +88,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
 
   const handlePush = () => {
     if (machineState !== 'idle') return;
+    trackEvent('draw_preview', { productId: product.id, series: product.name });
     setPushSoundMode('manual');
     setShakeRepeats(1);
     setMachineState('shaking');
@@ -289,6 +291,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
 
   const handleTrial = () => {
     if (machineState !== 'idle') return;
+    trackEvent('draw_trial', { productId: product.id, series: product.name });
     setForceGoldEgg(true);
     
     if (prizes.length > 0) {
