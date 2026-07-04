@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
@@ -58,7 +59,11 @@ const EMPTY_CREATE_USER_FORM: CreateUserForm = {
   address: ''
 }
 
-export default function UsersPage() {
+export default function UsersPageWrapper() {
+  return <Suspense><UsersPage /></Suspense>
+}
+
+function UsersPage() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
