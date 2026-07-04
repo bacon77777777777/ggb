@@ -109,6 +109,8 @@ interface WarehouseItem {
   type?: string;
   isPreorder?: boolean;
   preorderAvailableAt?: string | null;
+  supplierId?: number | null;
+  supplierName?: string;
 }
 
 interface DeliveryOrder {
@@ -352,6 +354,8 @@ interface GroupedDrawHistoryItem {
       type?: string;
       status?: string;
       remaining?: number;
+      supplier_id?: number | null;
+      suppliers?: { id: number; name: string } | null;
     } | null;
   }
 
@@ -548,6 +552,7 @@ function ProfileContent() {
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(10);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
+  const [lockedSupplierName, setLockedSupplierName] = useState<string | null>(null);
 
   useEffect(() => {
     if (warehouseSubTabsRef.current) {
@@ -741,6 +746,14 @@ function ProfileContent() {
 
     return items;
   }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory]);
+
+  const sortedWarehouseItems = React.useMemo(() => {
+    if (!lockedSupplierName) return filteredWarehouseItems;
+    const same = filteredWarehouseItems.filter(i => i.supplierName === lockedSupplierName);
+    const others = filteredWarehouseItems.filter(i => i.supplierName !== lockedSupplierName);
+    return [...same, ...others];
+  }, [filteredWarehouseItems, lockedSupplierName]);
+
 
   const filteredDismantledItems = React.useMemo(() => {
     let items = dismantledItems;
@@ -1153,7 +1166,7 @@ function ProfileContent() {
               prize_level,
               prize_name,
               product_prizes ( level, name, image_url, recycle_value, total ),
-              products ( name, price, type )
+              products ( name, price, type, supplier_id, suppliers ( id, name ) )
             `)
             .eq('user_id', user.id)
             .in('status', ['in_warehouse', 'pending_delivery'])
@@ -1186,7 +1199,9 @@ function ProfileContent() {
               recycleValue,
               type: productType,
               isPreorder,
-              preorderAvailableAt
+              preorderAvailableAt,
+              supplierId: item.products?.supplier_id ?? null,
+              supplierName: item.products?.suppliers?.name ?? '未知廠商',
             };
           });
           setWarehouseItems(items);
@@ -1714,7 +1729,7 @@ function ProfileContent() {
     const container = mobileWarehouseScrollRef.current;
     if (!container) return;
     const tryLoadMore = () => {
-      if (filteredWarehouseItems.length <= mobileWarehouseDisplayCount) return;
+      if (sortedWarehouseItems.length <= mobileWarehouseDisplayCount) return;
       const { scrollTop, scrollHeight, clientHeight } = container;
       if (scrollHeight - scrollTop - clientHeight < 120) {
         setMobileWarehouseDisplayCount(prev => prev + 10);
@@ -1723,14 +1738,24 @@ function ProfileContent() {
     tryLoadMore();
     container.addEventListener('scroll', tryLoadMore, { passive: true });
     return () => container.removeEventListener('scroll', tryLoadMore);
-  }, [isDesktop, mobileWarehouseDisplayCount, filteredWarehouseItems.length]);
+  }, [isDesktop, mobileWarehouseDisplayCount, sortedWarehouseItems.length]);
 
   const toggleDeliverySelection = (id: string) => {
     const item = warehouseItems.find(i => i.id === id);
-    if (item?.status === 'pending_delivery') return; // locked: in delivery
-    setSelectedForDelivery(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    if (item?.status === 'pending_delivery') return;
+    if (lockedSupplierName !== null && item?.supplierName !== lockedSupplierName) return;
+
+    const isCurrentlySelected = selectedForDelivery.includes(id);
+    if (isCurrentlySelected) {
+      const newSelected = selectedForDelivery.filter(i => i !== id);
+      setSelectedForDelivery(newSelected);
+      if (newSelected.length === 0) setLockedSupplierName(null);
+    } else {
+      if (selectedForDelivery.length === 0) {
+        setLockedSupplierName(item?.supplierName ?? null);
+      }
+      setSelectedForDelivery(prev => [...prev, id]);
+    }
   };
 
   const handleConfirmDelivery = async () => {
@@ -2166,6 +2191,16 @@ function ProfileContent() {
                 </div>
               )}
 
+              {/* 出貨說明 */}
+              {activeWarehouseTab === 'all' && (
+                <div className="bg-neutral-800 dark:bg-neutral-900 px-4 py-2.5 flex items-start gap-2 flex-shrink-0">
+                  <span className="text-neutral-400 text-[11px] mt-px flex-shrink-0">⚠</span>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    訂單以廠商為單位分批出貨，每次申請限同一廠商品項。含公仔等大尺寸品項因超商包裝規格限制，一律以宅配方式出貨。
+                  </p>
+                </div>
+              )}
+
               {/* Content List */}
               <div ref={mobileWarehouseScrollRef} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
                 {isLoadingData ? (
@@ -2178,27 +2213,23 @@ function ProfileContent() {
                     </div>
                   ) : (
                     <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
-                      {filteredWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
+                      {sortedWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
                         const isSelected = selectedForDelivery.includes(item.id);
                         const isPending = item.status === 'pending_delivery';
+                        const isDisabled = isPending || (lockedSupplierName !== null && item.supplierName !== lockedSupplierName);
                         return (
                           <div
                             key={item.id}
-                            onClick={() => !isPending && toggleDeliverySelection(item.id)}
+                            onClick={() => !isDisabled && toggleDeliverySelection(item.id)}
                             className={cn(
-                              "flex items-center gap-3 pl-2 pr-4 py-1.5 transition-all",
-                              isPending
-                                ? "opacity-50 cursor-not-allowed"
+                              "flex items-center gap-3 px-4 py-2 transition-all",
+                              isDisabled
+                                ? "opacity-35 cursor-not-allowed"
                                 : "active:bg-neutral-50 dark:active:bg-neutral-800/70",
-                              isSelected && !isPending && "bg-accent-emerald/5"
+                              isSelected && !isDisabled && "bg-accent-emerald/5"
                             )}
                           >
-                            <div className="flex-shrink-0 w-10 flex justify-center">
-                              <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 py-0.5 rounded-lg border border-primary/10 whitespace-nowrap">
-                                {item.grade}
-                              </span>
-                            </div>
-                            <div className="relative w-[60px] h-[60px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || '/images/item.png'}
                                 alt={item.name}
@@ -2207,19 +2238,27 @@ function ProfileContent() {
                                 unoptimized
                               />
                             </div>
-                            <div className="flex-1 min-w-0 py-0.5 space-y-1">
-                              <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight line-clamp-2">
-                                {item.name}
-                              </h4>
+                            <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
+                              <p className="text-[11px] text-neutral-400 font-medium truncate">
+                                {item.supplierName}
+                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                  {item.grade}
+                                </span>
+                                <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
+                                  {item.name}
+                                </h4>
+                              </div>
                               <p className="text-[11px] text-neutral-400 font-medium truncate">
                                 {item.series}
                               </p>
                             </div>
                             <div
-                              className="ml-1 pl-2"
+                              className="ml-1 pl-2 flex-shrink-0"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!isPending) toggleDeliverySelection(item.id);
+                                if (!isDisabled) toggleDeliverySelection(item.id);
                               }}
                             >
                               {isPending ? (
@@ -2242,7 +2281,7 @@ function ProfileContent() {
                           </div>
                         );
                       })}
-                      {mobileWarehouseDisplayCount < filteredWarehouseItems.length && (
+                      {mobileWarehouseDisplayCount < sortedWarehouseItems.length && (
                         <div ref={mobileWarehouseSentinelRef} className="py-4 text-center text-xs text-neutral-400">
                           載入中...
                         </div>
@@ -2305,8 +2344,8 @@ function ProfileContent() {
               {activeWarehouseTab === 'all' && (
                 <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center px-3">
                   {selectedForDelivery.length === 0 ? (
-                    <button 
-                      onClick={() => setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id))}
+                    <button
+                      onClick={() => { setSelectedForDelivery(filteredWarehouseItems.filter(i => i.status !== 'pending_delivery').map(i => i.id)); setLockedSupplierName(null); }}
                       className="w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 h-[44px] rounded-xl text-base font-black"
                     >
                       全選 ({filteredWarehouseItems.length})
@@ -2315,7 +2354,7 @@ function ProfileContent() {
                     <div className="flex items-center gap-3 w-full">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-black text-neutral-900 dark:text-white">已選 {selectedForDelivery.length}</span>
-                            <button onClick={() => setSelectedForDelivery([])} className="text-xs text-neutral-400 font-bold">取消</button>
+                            <button onClick={() => { setSelectedForDelivery([]); setLockedSupplierName(null); }} className="text-xs text-neutral-400 font-bold">取消</button>
                         </div>
                         <div className="flex-1 flex gap-2 justify-end">
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
