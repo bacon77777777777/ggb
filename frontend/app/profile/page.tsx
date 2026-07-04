@@ -545,6 +545,8 @@ function ProfileContent() {
   // Auto-scroll refs
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
   const dismantleTimeTabsRef = useRef<HTMLDivElement>(null);
+  const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(10);
+  const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (warehouseSubTabsRef.current) {
@@ -1701,6 +1703,24 @@ function ProfileContent() {
     }
   }, [searchParams]);
 
+  // Mobile warehouse lazy load
+  useEffect(() => {
+    setMobileWarehouseDisplayCount(10);
+  }, [activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab]);
+
+  useEffect(() => {
+    if (isDesktop) return;
+    const sentinel = mobileWarehouseSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setMobileWarehouseDisplayCount(prev => prev + 10);
+      }
+    }, { threshold: 0.1 });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isDesktop, mobileWarehouseDisplayCount]);
+
   const toggleDeliverySelection = (id: string) => {
     const item = warehouseItems.find(i => i.id === id);
     if (item?.status === 'pending_delivery') return; // locked: in delivery
@@ -2154,7 +2174,7 @@ function ProfileContent() {
                     </div>
                   ) : (
                     <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
-                      {filteredWarehouseItems.map((item) => {
+                      {filteredWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
                         const isSelected = selectedForDelivery.includes(item.id);
                         const isPending = item.status === 'pending_delivery';
                         return (
@@ -2218,6 +2238,11 @@ function ProfileContent() {
                           </div>
                         );
                       })}
+                      {mobileWarehouseDisplayCount < filteredWarehouseItems.length && (
+                        <div ref={mobileWarehouseSentinelRef} className="py-4 text-center text-xs text-neutral-400">
+                          載入中...
+                        </div>
+                      )}
                     </div>
                   )
                 ) : (
