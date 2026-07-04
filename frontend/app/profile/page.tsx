@@ -701,11 +701,14 @@ function ProfileContent() {
       const { error: updateError } = await supabase.auth.updateUser({
         data: { avatar_url: publicUrlWithTimestamp }
       });
-
       if (updateError) throw updateError;
 
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        await supabase.from('users').update({ avatar_url: publicUrlWithTimestamp }).eq('id', authUser.id);
+      }
+
       toast.success('頭像更新成功');
-      // Refresh profile to get the new user object
       await refreshProfile();
       // Force a hard reload if needed, but refreshProfile should update the context
     } catch (error) {
