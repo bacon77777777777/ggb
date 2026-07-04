@@ -298,7 +298,6 @@ export default function BehaviorPage() {
                             {pathLabel(r.path)}
                             {r.product_name ? `（${r.product_name}）` : ''}
                           </p>
-                          <p className="text-xs text-neutral-400 truncate mt-0.5 font-mono">{r.path}</p>
                         </div>
                         <div className="w-28 text-right text-sm font-bold text-primary">{formatSeconds(r.avg_seconds)}</div>
                         <div className="w-16 text-right text-sm font-semibold text-neutral-600">{r.sample_count}</div>
