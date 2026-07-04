@@ -2,33 +2,25 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
-function getRangeMs(range: string): number {
-  switch (range) {
-    case 'today':     return 0 // special case handled below
-    case 'yesterday': return 0 // special case
-    case '7d':        return 7  * 24 * 60 * 60 * 1000
-    case '30d':       return 30 * 24 * 60 * 60 * 1000
-    default:          return 0
-  }
-}
-
-function getSince(range: string): { since: string; until?: string } {
+function parseDateRange(searchParams: URLSearchParams): { since: string; until: string } {
+  const start = searchParams.get('start')
+  const end = searchParams.get('end')
   const now = new Date()
-  if (range === 'today') {
-    const start = new Date(now)
-    start.setHours(0, 0, 0, 0)
-    return { since: start.toISOString() }
+
+  if (start && end) {
+    const since = new Date(start)
+    since.setHours(0, 0, 0, 0)
+    const until = new Date(end)
+    until.setHours(23, 59, 59, 999)
+    return { since: since.toISOString(), until: until.toISOString() }
   }
-  if (range === 'yesterday') {
-    const start = new Date(now)
-    start.setDate(start.getDate() - 1)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(now)
-    end.setHours(0, 0, 0, 0)
-    return { since: start.toISOString(), until: end.toISOString() }
-  }
-  const ms = getRangeMs(range)
-  return { since: new Date(Date.now() - ms).toISOString() }
+
+  // fallback: today
+  const since = new Date(now)
+  since.setHours(0, 0, 0, 0)
+  const until = new Date(now)
+  until.setHours(23, 59, 59, 999)
+  return { since: since.toISOString(), until: until.toISOString() }
 }
 
 const CLICK_EVENTS = new Set([
@@ -72,8 +64,7 @@ export async function GET(request: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
-    const range = searchParams.get('range') ?? 'today'
-    const { since, until } = getSince(range)
+    const { since, until } = parseDateRange(searchParams)
 
     const supabase = getSupabaseAdmin()
 
@@ -82,9 +73,8 @@ export async function GET(request: Request) {
       .from('user_events')
       .select('event_type, product_id, path, meta, created_at')
       .gte('created_at', since)
+      .lte('created_at', until)
       .limit(100000)
-
-    if (until) query = query.lt('created_at', until)
 
     const { data: events, error } = await query
     if (error) throw error
@@ -122,16 +112,16 @@ export async function GET(request: Request) {
       count,
     })).sort((a, b) => b.count - a.count)
 
-    // --- 2. Button click counts ---
+    // --- 2. Button click counts (always full list, 0 if none) ---
     const clickMap: Record<string, number> = {}
     for (const e of events ?? []) {
       if (!CLICK_EVENTS.has(e.event_type)) continue
       clickMap[e.event_type] = (clickMap[e.event_type] ?? 0) + 1
     }
-    const buttonClicks = Object.entries(clickMap).map(([event_type, count]) => ({
+    const buttonClicks = Array.from(CLICK_EVENTS).map(event_type => ({
       event_type,
       label: EVENT_LABEL[event_type] ?? event_type,
-      count,
+      count: clickMap[event_type] ?? 0,
     })).sort((a, b) => b.count - a.count)
 
     // --- 3. Page dwell times ---
@@ -196,7 +186,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      meta: { range, since, until, total_events: events?.length ?? 0 },
+      meta: { since, until, total_events: events?.length ?? 0 },
       product_views: productViews,
       button_clicks: buttonClicks,
       page_dwells: pageDwells,
