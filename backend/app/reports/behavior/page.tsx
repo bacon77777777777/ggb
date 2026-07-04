@@ -180,13 +180,13 @@ export default function BehaviorPage() {
       {/* Summary strip */}
       <div className="flex items-center gap-6 mb-4 px-1">
         <span className="text-sm font-semibold text-neutral-700">
-          總事件 <span className="text-lg font-bold text-neutral-900">{data?.meta.total_events.toLocaleString() ?? '—'}</span>
+          總事件 <span className="text-lg font-bold text-primary">{data?.meta.total_events.toLocaleString() ?? '—'}</span>
         </span>
         <span className="text-sm font-semibold text-neutral-700">
-          商品瀏覽 <span className="text-lg font-bold text-neutral-900">{data ? data.product_views.reduce((s, r) => s + r.count, 0).toLocaleString() : '—'}</span>
+          商品瀏覽 <span className="text-lg font-bold text-primary">{data ? data.product_views.reduce((s, r) => s + r.count, 0).toLocaleString() : '—'}</span>
         </span>
         <span className="text-sm font-semibold text-neutral-700">
-          按鈕點擊 <span className="text-lg font-bold text-neutral-900">{data ? data.button_clicks.reduce((s, r) => s + r.count, 0).toLocaleString() : '—'}</span>
+          按鈕點擊 <span className="text-lg font-bold text-primary">{data ? data.button_clicks.reduce((s, r) => s + r.count, 0).toLocaleString() : '—'}</span>
         </span>
         {lastUpdated && (
           <span className="ml-auto text-xs text-neutral-400">
