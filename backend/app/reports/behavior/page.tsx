@@ -19,6 +19,19 @@ interface BehaviorData {
 
 type SortDir = 'desc' | 'asc'
 
+const PATH_LABEL: Record<string, string> = {
+  '/': '首頁',
+  '/profile': '我的倉庫',
+  '/topup': '儲值頁',
+  '/marketplace': '交易所',
+  '/leaderboard': '排行榜',
+  '/login': '登入頁',
+}
+
+function pathLabel(path: string): string {
+  return PATH_LABEL[path] ?? path
+}
+
 function formatSeconds(s: number) {
   if (s < 60) return `${s} 秒`
   return `${Math.floor(s / 60)} 分 ${s % 60} 秒`
@@ -281,8 +294,11 @@ export default function BehaviorPage() {
                     .map((r, i) => (
                       <div key={i} className="flex items-center py-2 border-b border-neutral-50 last:border-0">
                         <div className="flex-1 min-w-0 pr-3">
-                          <p className="text-sm font-medium text-neutral-800 truncate font-mono">{r.path}</p>
-                          {r.product_name && <p className="text-xs text-neutral-400 truncate mt-0.5">{r.product_name}</p>}
+                          <p className="text-sm font-medium text-neutral-800 truncate">
+                            {pathLabel(r.path)}
+                            {r.product_name ? `（${r.product_name}）` : ''}
+                          </p>
+                          <p className="text-xs text-neutral-400 truncate mt-0.5 font-mono">{r.path}</p>
                         </div>
                         <div className="w-28 text-right text-sm font-bold text-primary">{formatSeconds(r.avg_seconds)}</div>
                         <div className="w-16 text-right text-sm font-semibold text-neutral-600">{r.sample_count}</div>
