@@ -76,8 +76,8 @@ export default function PointsReportPage() {
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
-            onStartChange={setStartDate}
-            onEndChange={setEndDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
           />
           <button
             onClick={fetchData}
