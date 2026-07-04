@@ -190,7 +190,7 @@ export default function BehaviorPage() {
         </span>
         {lastUpdated && (
           <span className="ml-auto text-xs text-neutral-400">
-            更新於 {lastUpdated.toLocaleTimeString('zh-TW')}　每 10 秒自動刷新
+            更新於 {lastUpdated.toLocaleTimeString('zh-TW')} · 每 10 秒自動刷新
           </span>
         )}
       </div>
