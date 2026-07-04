@@ -1,318 +1,360 @@
 'use client'
 
-import { AdminLayout, PageCard, StatsCard } from '@/components'
-import { useState, useEffect, useCallback } from 'react'
+import { AdminLayout, PageCard } from '@/components'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
-interface EventCount { event_type: string; count: number }
-interface DauDay { date: string; dau: number }
-interface ActiveHour { hour: number; count: number }
-interface PageDwell { path: string; avg_seconds: number; sample_count: number }
-interface TopProduct { product_id: number; name: string; views: number }
-interface FunnelStep { step: string; count: number }
+type Range = 'today' | 'yesterday' | '7d' | '30d'
+
+interface ProductView { product_id: number; product_name: string; count: number }
+interface ButtonClick { event_type: string; label: string; count: number }
+interface PageDwell { path: string; product_name: string | null; avg_seconds: number; sample_count: number }
 interface Insight { level: 'warn' | 'info' | 'ok'; message: string }
 
 interface BehaviorData {
-  meta: { days: number; total_events: number }
-  event_counts: EventCount[]
-  dau_by_day: DauDay[]
-  active_hours: ActiveHour[]
+  meta: { range: string; total_events: number }
+  product_views: ProductView[]
+  button_clicks: ButtonClick[]
   page_dwells: PageDwell[]
-  top_products: TopProduct[]
-  funnel: FunnelStep[]
   insights: Insight[]
 }
 
-const EVENT_LABEL: Record<string, string> = {
-  page_view: '頁面瀏覽',
-  page_exit: '離開頁面',
-  scroll_depth: '捲動深度',
-  product_view: '商品詳情',
-  product_click: '商品點擊',
-  draw: '轉蛋',
-  draw_single: '單抽',
-  draw_multi: '多抽',
-  draw_preview: '推一下',
-  draw_trial: '試試看',
-  prize_reveal: '獎項揭曉',
-  insufficient_balance: '餘額不足',
-  topup_page_view: '進入儲值頁',
-  topup_plan_select: '選擇儲值方案',
-  topup_success: '儲值成功',
-  warehouse_view: '倉庫瀏覽',
-  tab_switch: 'Tab 切換',
-  delivery_modal_open: '開啟配送',
-  delivery_logistics_select: '選擇物流',
-  delivery_success: '配送完成',
-  delivery_abandon: '放棄配送',
-  dismantle: '分解',
-  list_to_market: '上架市集',
-  search_query: '搜尋',
-  banner_click: 'Banner 點擊',
-  leaderboard_view: '排行榜瀏覽',
-  winning_records_view: '開獎紀錄',
-  error_draw_fail: '轉蛋失敗',
-  error_delivery_fail: '配送失敗',
-}
+type SortDir = 'desc' | 'asc'
 
 function formatSeconds(s: number) {
-  if (s < 60) return `${s}秒`
-  return `${Math.floor(s / 60)}分${s % 60}秒`
+  if (s < 60) return `${s} 秒`
+  return `${Math.floor(s / 60)} 分 ${s % 60} 秒`
 }
 
-function Bar({ value, max, color = 'bg-primary' }: { value: number; max: number; color?: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+function SortBtn({ dir, onToggle }: { dir: SortDir; onToggle: () => void }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-full h-2">
-        <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs font-mono w-10 text-right text-neutral-500">{value.toLocaleString()}</span>
+    <button
+      onClick={onToggle}
+      className="flex items-center gap-0.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+      title={dir === 'desc' ? '由高到低（點擊切換）' : '由低到高（點擊切換）'}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 2L4 6h6L7 2z" fill={dir === 'asc' ? 'currentColor' : '#D1D5DB'} />
+        <path d="M7 12L4 8h6l-3 4z" fill={dir === 'desc' ? 'currentColor' : '#D1D5DB'} />
+      </svg>
+    </button>
+  )
+}
+
+function ListCard<T extends Record<string, unknown>>({
+  title,
+  rows,
+  cols,
+  sortKey,
+  sortDir,
+  onSort,
+  emptyMsg = '尚無資料',
+}: {
+  title: string
+  rows: T[]
+  cols: { key: keyof T; label: string; sortable?: boolean; render?: (v: T) => React.ReactNode }[]
+  sortKey: keyof T
+  sortDir: SortDir
+  onSort: (key: keyof T) => void
+  emptyMsg?: string
+}) {
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortKey] as number
+    const bv = b[sortKey] as number
+    return sortDir === 'desc' ? bv - av : av - bv
+  })
+
+  return (
+    <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-4">
+      <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">{title}</h3>
+      {sorted.length === 0 ? (
+        <p className="text-xs text-neutral-400 py-6 text-center">{emptyMsg}</p>
+      ) : (
+        <div>
+          {/* Header */}
+          <div className="flex items-center pb-1.5 border-b border-neutral-100 dark:border-neutral-800">
+            {cols.map(col => (
+              <div
+                key={String(col.key)}
+                className={`flex items-center gap-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wide ${
+                  col.key === cols[0].key ? 'flex-1 min-w-0' : 'w-24 justify-end'
+                }`}
+              >
+                {col.label}
+                {col.sortable && (
+                  <SortBtn dir={sortKey === col.key ? sortDir : 'desc'} onToggle={() => onSort(col.key)} />
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Rows */}
+          <div className="space-y-0">
+            {sorted.map((row, i) => (
+              <div key={i} className="flex items-center py-1.5 border-b border-neutral-50 dark:border-neutral-800/50 last:border-0">
+                {cols.map(col => (
+                  <div
+                    key={String(col.key)}
+                    className={`text-xs ${
+                      col.key === cols[0].key
+                        ? 'flex-1 min-w-0 font-medium text-neutral-800 dark:text-neutral-200 truncate pr-3'
+                        : 'w-24 text-right font-semibold text-neutral-900 dark:text-white'
+                    }`}
+                  >
+                    {col.render ? col.render(row) : String(row[col.key] ?? '-')}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
+function exportCSV(data: BehaviorData) {
+  const lines: string[] = []
+
+  lines.push('=== 商品詳情進入次數 ===')
+  lines.push('商品ID,商品名稱,進入次數')
+  for (const r of data.product_views) lines.push(`${r.product_id},"${r.product_name}",${r.count}`)
+
+  lines.push('')
+  lines.push('=== 按鈕點擊次數 ===')
+  lines.push('事件類型,按鈕名稱,點擊次數')
+  for (const r of data.button_clicks) lines.push(`${r.event_type},"${r.label}",${r.count}`)
+
+  lines.push('')
+  lines.push('=== 頁面停留時間 ===')
+  lines.push('路徑,商品名稱,平均停留(秒),樣本數')
+  for (const r of data.page_dwells) lines.push(`${r.path},"${r.product_name ?? ''}",${r.avg_seconds},${r.sample_count}`)
+
+  const bom = '﻿'
+  const blob = new Blob([bom + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `behavior_${data.meta.range}_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const RANGE_LABEL: Record<Range, string> = { today: '今日', yesterday: '昨日', '7d': '近 7 天', '30d': '近 30 天' }
+
 export default function BehaviorPage() {
-  const [days, setDays] = useState(7)
+  const [range, setRange] = useState<Range>('today')
   const [data, setData] = useState<BehaviorData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const load = useCallback(async () => {
-    setIsLoading(true)
+  // sort states
+  const [pvSort, setPvSort] = useState<SortDir>('desc')
+  const [bcSort, setBcSort] = useState<SortDir>('desc')
+  const [pdSort, setPdSort] = useState<SortDir>('desc')
+  const [pdSortKey, setPdSortKey] = useState<'avg_seconds' | 'sample_count'>('sample_count')
+
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const load = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true)
     try {
-      const res = await fetch(`/api/admin/behavior?days=${days}`)
+      const res = await fetch(`/api/admin/behavior?range=${range}`)
       const json = await res.json()
-      setData(json)
-    } catch {
-      // ignore
-    } finally {
+      if (!json.error) {
+        setData(json)
+        setLastUpdated(new Date())
+      }
+    } catch { /* ignore */ } finally {
       setIsLoading(false)
     }
-  }, [days])
+  }, [range])
 
-  useEffect(() => { load() }, [load])
-
-  const totalEvents = data?.meta.total_events ?? 0
-  const todayDau = data?.dau_by_day.at(-1)?.dau ?? 0
-  const topEvent = data?.event_counts[0]
-  const funnelTop = data?.funnel[0]?.count ?? 0
+  useEffect(() => {
+    load(true)
+    intervalRef.current = setInterval(() => load(false), 10000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [load])
 
   return (
     <AdminLayout pageTitle="點擊分析" breadcrumbs={[{ label: '點擊分析', href: '/reports/behavior' }]}>
-      {/* Header controls */}
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-neutral-500">追蹤用戶在前台的所有點擊、瀏覽與轉換行為</p>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          {[7, 14, 30].map(d => (
+          {(Object.keys(RANGE_LABEL) as Range[]).map(r => (
             <button
-              key={d}
-              onClick={() => setDays(d)}
+              key={r}
+              onClick={() => setRange(r)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                days === d
+                range === r
                   ? 'bg-primary text-white'
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                  : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-primary/50'
               }`}
             >
-              {d} 天
+              {RANGE_LABEL[r]}
             </button>
           ))}
-          <button onClick={load} className="px-3 py-1.5 rounded-lg text-sm font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 hover:bg-neutral-200 transition-colors">
-            ↺ 重整
-          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-neutral-400">
+              更新於 {lastUpdated.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              　每 10 秒自動刷新
+            </span>
+          )}
+          {data && (
+            <button
+              onClick={() => exportCSV(data)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-primary/50 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0">
+                <path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              匯出 CSV
+            </button>
+          )}
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-20 text-center text-neutral-400">載入中...</div>
+        <div className="py-20 text-center text-neutral-400 text-sm">載入中...</div>
       ) : !data ? (
-        <div className="py-20 text-center text-neutral-400">載入失敗</div>
+        <div className="py-20 text-center text-neutral-400 text-sm">載入失敗</div>
       ) : (
         <div className="space-y-6">
-          {/* Stats row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatsCard title="總事件數" value={totalEvents.toLocaleString()} subtitle={`近 ${days} 天`} />
-            <StatsCard title="昨日活躍用戶" value={todayDau.toString()} subtitle="DAU" />
-            <StatsCard title="最高頻事件" value={topEvent ? (EVENT_LABEL[topEvent.event_type] ?? topEvent.event_type) : '-'} subtitle={topEvent ? `${topEvent.count.toLocaleString()} 次` : ''} />
-            <StatsCard title="商品瀏覽" value={(data.funnel[0]?.count ?? 0).toLocaleString()} subtitle={`轉蛋 ${data.funnel[1]?.count ?? 0} 次`} />
+          {/* Summary strip */}
+          <div className="flex items-center gap-4 text-xs text-neutral-400 px-1">
+            <span>總事件 <strong className="text-neutral-700 dark:text-neutral-200">{data.meta.total_events.toLocaleString()}</strong></span>
+            <span>商品瀏覽 <strong className="text-neutral-700 dark:text-neutral-200">{data.product_views.reduce((s, r) => s + r.count, 0).toLocaleString()}</strong></span>
+            <span>按鈕點擊 <strong className="text-neutral-700 dark:text-neutral-200">{data.button_clicks.reduce((s, r) => s + r.count, 0).toLocaleString()}</strong></span>
           </div>
 
-          {/* Insights */}
-          {data.insights.length > 0 && (
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">💡 自動分析建議</h2>
-              <div className="space-y-2">
-                {data.insights.map((ins, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-start gap-2 px-3 py-2 rounded-lg text-sm ${
-                      ins.level === 'warn' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300' :
-                      ins.level === 'ok' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300' :
-                      'bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300'
-                    }`}
-                  >
-                    <span className="mt-px flex-shrink-0">
-                      {ins.level === 'warn' ? '⚠' : ins.level === 'ok' ? '✓' : 'ℹ'}
-                    </span>
-                    <span>{ins.message}</span>
-                  </div>
-                ))}
-              </div>
-            </PageCard>
-          )}
-
+          {/* Row 1: product views + button clicks */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Conversion funnel */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">🔄 轉換漏斗</h2>
-              <div className="space-y-3">
-                {data.funnel.map((step, i) => {
-                  const pct = funnelTop > 0 ? ((step.count / funnelTop) * 100).toFixed(1) : '0'
-                  const dropPct = i > 0 && data.funnel[i - 1].count > 0
-                    ? (((data.funnel[i - 1].count - step.count) / data.funnel[i - 1].count) * 100).toFixed(0)
-                    : null
-                  return (
-                    <div key={step.step}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-neutral-700 dark:text-neutral-300">{step.step}</span>
-                        <div className="flex items-center gap-2">
-                          {dropPct !== null && Number(dropPct) > 0 && (
-                            <span className="text-red-400">↓{dropPct}%</span>
-                          )}
-                          <span className="text-neutral-500">{step.count.toLocaleString()} ({pct}%)</span>
-                        </div>
-                      </div>
-                      <div className="bg-neutral-100 dark:bg-neutral-800 rounded-full h-6 overflow-hidden">
-                        <div
-                          className="h-6 rounded-full bg-gradient-to-r from-primary to-primary/70 flex items-center pl-2 transition-all"
-                          style={{ width: `${Math.max(Number(pct), 2)}%` }}
-                        >
-                          {Number(pct) > 15 && <span className="text-white text-[10px] font-bold">{pct}%</span>}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </PageCard>
-
-            {/* DAU chart */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">📈 每日活躍用戶（DAU）</h2>
-              {data.dau_by_day.length === 0 ? (
-                <p className="text-sm text-neutral-400 py-6 text-center">尚無資料</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {(() => {
-                    const maxDau = Math.max(...data.dau_by_day.map(d => d.dau), 1)
-                    return data.dau_by_day.slice(-14).map(d => (
-                      <div key={d.date} className="flex items-center gap-2 text-xs">
-                        <span className="w-20 text-neutral-400 flex-shrink-0">{d.date.slice(5)}</span>
-                        <Bar value={d.dau} max={maxDau} color="bg-emerald-500" />
-                        <span className="text-neutral-600 dark:text-neutral-400 w-8 flex-shrink-0">{d.dau}</span>
-                      </div>
-                    ))
-                  })()}
-                </div>
-              )}
-            </PageCard>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Event counts */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">🖱 各事件點擊次數</h2>
-              {data.event_counts.length === 0 ? (
-                <p className="text-sm text-neutral-400 py-6 text-center">尚無資料</p>
-              ) : (
-                <div className="space-y-2">
-                  {(() => {
-                    const maxCount = data.event_counts[0]?.count ?? 1
-                    return data.event_counts.slice(0, 20).map(e => (
-                      <div key={e.event_type} className="flex items-center gap-2 text-xs">
-                        <span className="w-28 text-neutral-600 dark:text-neutral-400 flex-shrink-0 truncate">
-                          {EVENT_LABEL[e.event_type] ?? e.event_type}
-                        </span>
-                        <Bar value={e.count} max={maxCount} />
-                      </div>
-                    ))
-                  })()}
-                </div>
-              )}
-            </PageCard>
-
-            {/* Active hours */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">🕐 活躍時段分布</h2>
-              <div className="grid grid-cols-12 gap-0.5 items-end h-24">
-                {(() => {
-                  const maxH = Math.max(...data.active_hours.map(h => h.count), 1)
-                  return data.active_hours.map(h => {
-                    const pct = Math.round((h.count / maxH) * 100)
+            <ListCard
+              title="商品詳情頁進入次數"
+              rows={data.product_views as unknown as Record<string, unknown>[]}
+              cols={[
+                {
+                  key: 'product_name' as never,
+                  label: '商品名稱',
+                  render: (r) => {
+                    const row = r as unknown as ProductView
                     return (
-                      <div key={h.hour} className="flex flex-col items-center gap-0.5" title={`${h.hour}:00 — ${h.count} 次`}>
-                        <div
-                          className="w-full rounded-sm bg-primary/80 transition-all"
-                          style={{ height: `${Math.max(pct, 2)}%` }}
-                        />
-                        {h.hour % 6 === 0 && (
-                          <span className="text-[9px] text-neutral-400">{h.hour}</span>
-                        )}
-                      </div>
+                      <span className="truncate">
+                        <span className="text-neutral-400 mr-1.5">#{row.product_id}</span>
+                        {row.product_name}
+                      </span>
                     )
-                  })
-                })()}
-              </div>
-              <p className="text-[10px] text-neutral-400 mt-2 text-center">每格代表 1 小時（0–23）</p>
-            </PageCard>
+                  },
+                },
+                { key: 'count' as never, label: '進入次數', sortable: true },
+              ]}
+              sortKey={'count' as never}
+              sortDir={pvSort}
+              onSort={() => setPvSort(d => d === 'desc' ? 'asc' : 'desc')}
+              emptyMsg="尚無商品瀏覽資料"
+            />
+
+            <ListCard
+              title="按鈕點擊次數"
+              rows={data.button_clicks as unknown as Record<string, unknown>[]}
+              cols={[
+                { key: 'label' as never, label: '按鈕名稱' },
+                { key: 'count' as never, label: '點擊次數', sortable: true },
+              ]}
+              sortKey={'count' as never}
+              sortDir={bcSort}
+              onSort={() => setBcSort(d => d === 'desc' ? 'asc' : 'desc')}
+              emptyMsg="尚無點擊資料"
+            />
           </div>
 
+          {/* Row 2: page dwell + insights */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Page dwell times */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">⏱ 各頁面平均停留時間</h2>
+            {/* Page dwell */}
+            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">頁面停留時間</h3>
+              </div>
               {data.page_dwells.length === 0 ? (
-                <p className="text-sm text-neutral-400 py-6 text-center">尚無資料（需累積 page_exit 事件）</p>
+                <p className="text-xs text-neutral-400 py-6 text-center">尚無停留時間資料</p>
               ) : (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-neutral-400 border-b border-neutral-100 dark:border-neutral-800">
-                      <th className="text-left pb-1.5 font-medium">頁面路徑</th>
-                      <th className="text-right pb-1.5 font-medium">平均停留</th>
-                      <th className="text-right pb-1.5 font-medium">樣本</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800/50">
-                    {data.page_dwells.map(p => (
-                      <tr key={p.path}>
-                        <td className="py-1.5 text-neutral-700 dark:text-neutral-300 font-mono truncate max-w-[180px]">{p.path}</td>
-                        <td className="py-1.5 text-right font-medium text-primary">{formatSeconds(p.avg_seconds)}</td>
-                        <td className="py-1.5 text-right text-neutral-400">{p.sample_count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </PageCard>
-
-            {/* Top products */}
-            <PageCard>
-              <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-4">🏆 熱門商品（依瀏覽次數）</h2>
-              {data.top_products.length === 0 ? (
-                <p className="text-sm text-neutral-400 py-6 text-center">尚無資料</p>
-              ) : (
-                <div className="space-y-2">
-                  {(() => {
-                    const maxViews = data.top_products[0]?.views ?? 1
-                    return data.top_products.map((p, i) => (
-                      <div key={p.product_id} className="flex items-center gap-2 text-xs">
-                        <span className="w-4 text-neutral-400 flex-shrink-0 text-right">{i + 1}</span>
-                        <span className="w-28 text-neutral-700 dark:text-neutral-300 flex-shrink-0 truncate">{p.name}</span>
-                        <Bar value={p.views} max={maxViews} color="bg-amber-400" />
-                      </div>
-                    ))
-                  })()}
+                <div>
+                  <div className="flex items-center pb-1.5 border-b border-neutral-100 dark:border-neutral-800">
+                    <div className="flex-1 min-w-0 text-[11px] font-medium text-neutral-400 uppercase tracking-wide">頁面路徑</div>
+                    <div
+                      className="w-24 text-right flex items-center justify-end gap-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wide cursor-pointer hover:text-neutral-600"
+                      onClick={() => {
+                        if (pdSortKey === 'avg_seconds') setPdSort(d => d === 'desc' ? 'asc' : 'desc')
+                        else { setPdSortKey('avg_seconds'); setPdSort('desc') }
+                      }}
+                    >
+                      平均停留
+                      <SortBtn dir={pdSortKey === 'avg_seconds' ? pdSort : 'desc'} onToggle={() => {
+                        if (pdSortKey === 'avg_seconds') setPdSort(d => d === 'desc' ? 'asc' : 'desc')
+                        else { setPdSortKey('avg_seconds'); setPdSort('desc') }
+                      }} />
+                    </div>
+                    <div
+                      className="w-16 text-right flex items-center justify-end gap-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wide cursor-pointer hover:text-neutral-600"
+                      onClick={() => {
+                        if (pdSortKey === 'sample_count') setPdSort(d => d === 'desc' ? 'asc' : 'desc')
+                        else { setPdSortKey('sample_count'); setPdSort('desc') }
+                      }}
+                    >
+                      樣本
+                      <SortBtn dir={pdSortKey === 'sample_count' ? pdSort : 'desc'} onToggle={() => {
+                        if (pdSortKey === 'sample_count') setPdSort(d => d === 'desc' ? 'asc' : 'desc')
+                        else { setPdSortKey('sample_count'); setPdSort('desc') }
+                      }} />
+                    </div>
+                  </div>
+                  <div className="space-y-0">
+                    {[...data.page_dwells]
+                      .sort((a, b) => pdSort === 'desc' ? b[pdSortKey] - a[pdSortKey] : a[pdSortKey] - b[pdSortKey])
+                      .map((r, i) => (
+                        <div key={i} className="flex items-center py-1.5 border-b border-neutral-50 dark:border-neutral-800/50 last:border-0">
+                          <div className="flex-1 min-w-0 pr-3">
+                            <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate font-mono">{r.path}</p>
+                            {r.product_name && (
+                              <p className="text-[11px] text-neutral-400 truncate">{r.product_name}</p>
+                            )}
+                          </div>
+                          <div className="w-24 text-right text-xs font-semibold text-primary">{formatSeconds(r.avg_seconds)}</div>
+                          <div className="w-16 text-right text-xs text-neutral-400">{r.sample_count}</div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
-            </PageCard>
+            </div>
+
+            {/* Insights */}
+            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-4">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-3">自動分析建議</h3>
+              {data.insights.length === 0 ? (
+                <p className="text-xs text-neutral-400 py-6 text-center">資料量尚不足以產生建議</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.insights.map((ins, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs ${
+                        ins.level === 'warn'
+                          ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900'
+                          : ins.level === 'ok'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-900'
+                          : 'bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 border border-blue-100 dark:border-blue-900'
+                      }`}
+                    >
+                      <span className="mt-px flex-shrink-0 font-bold">
+                        {ins.level === 'warn' ? '⚠' : ins.level === 'ok' ? '✓' : 'ℹ'}
+                      </span>
+                      <span className="leading-relaxed">{ins.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
