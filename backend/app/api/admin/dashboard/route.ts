@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const botIds = (botRows ?? []).map((r: any) => r.id as string)
     const excludeBots = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
 
-    const [{ data: recharges, error: rechargeError }, { data: draws, error: drawError }, { data: users, error: userError }] =
+    const [{ data: recharges, error: rechargeError }, { data: draws, error: drawError }, { data: users, error: userError }, { data: coupons }] =
       await Promise.all([
         excludeBots(
           supabaseAdmin
@@ -55,16 +55,30 @@ export async function GET(request: Request) {
             .lt('created_at', queryEndDate.toISOString())
         ),
         supabaseAdmin.from('users').select('created_at, tokens, id').or('is_bot.eq.false,is_bot.is.null'),
+        supabaseAdmin
+          .from('user_coupons')
+          .select('used_at, coupon:coupons(discount_type, discount_value)')
+          .eq('status', 'used')
+          .gte('used_at', startDate.toISOString())
+          .lt('used_at', queryEndDate.toISOString()),
       ])
 
     if (rechargeError) throw rechargeError
     if (drawError) throw drawError
     if (userError) throw userError
 
+    let couponDiscountFixed = 0
+    for (const uc of coupons ?? []) {
+      const c = (uc as any).coupon
+      if (!c) continue
+      if (c.discount_type === 'fixed') couponDiscountFixed += Number(c.discount_value) || 0
+    }
+
     return NextResponse.json({
       recharges: recharges ?? [],
       draws: draws ?? [],
       users: users ?? [],
+      couponDiscountFixed,
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })

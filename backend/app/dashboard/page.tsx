@@ -296,10 +296,11 @@ function InfoTooltip({ text }: { text: string }) {
 }
 
 // 統計卡片組件
-function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartData, chartType, chartColor, cardId, selectedPeriod, tooltip }: {
+function StatCard({ title, value, unit, subtext, trend, trendValue, trendPeriod, chartData, chartType, chartColor, cardId, selectedPeriod, tooltip }: {
   title: string
   value: string | number
   unit?: string
+  subtext?: string
   trend?: 'up' | 'down'
   trendValue?: number
   trendPeriod?: string
@@ -329,7 +330,8 @@ function StatCard({ title, value, unit, trend, trendValue, trendPeriod, chartDat
         </p>
         {tooltip && <InfoTooltip text={tooltip} />}
       </div>
-      <p className="text-xl font-bold text-neutral-900 whitespace-nowrap font-mono mb-3">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+      <p className="text-xl font-bold text-neutral-900 whitespace-nowrap font-mono mb-1">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+      {subtext && <p className="text-xs text-neutral-400 mb-2">{subtext}</p>}
       <div className="mb-4 h-10 flex-shrink-0">
         {chartData && chartType && chartColor && cardId && (
           <MiniChart data={chartData} type={chartType} color={chartColor} id={cardId} />
@@ -889,20 +891,21 @@ export default function DashboardPage() {
   })
 
   const [stats, setStats] = useState<any>({
-    totalRecharge: { value: 0, trend: 'up', trendValue: 0, title: '總儲值金額', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#9333EA' },
-    tokenConsumed: { value: 0, trend: 'down', trendValue: 0, title: '消耗代幣', unit: 'G', chartData: [], chartType: 'bar', chartColor: '#10b981' },
-    totalDraws: { value: 0, trend: 'up', trendValue: 0, title: '抽獎次數', unit: '次', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
-  totalTokenBalance: { value: 0, trend: 'down', trendValue: 0, title: '總代幣餘額', unit: 'G', chartData: [], chartType: 'line', chartColor: '#EF4444' },
-  abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: '付費用戶數', unit: '人', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
-  visitCount: { value: 0, trend: 'down', trendValue: 0, title: '訪問量', unit: '次', chartData: [], chartType: 'line', chartColor: '#9333EA' },
-  registeredUsers: { value: 0, trend: 'up', trendValue: 0, title: '註冊量', unit: '人', chartData: [], chartType: 'line', chartColor: '#10b981' },
-    conversionRate: { value: 0, trend: 'up', trendValue: 0, title: '平均客單價', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
+    totalRecharge: { value: 0, trend: 'up', trendValue: 0, title: '總儲值金額（GMV）', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#9333EA' },
+    tokenConsumed: { value: 0, trend: 'down', trendValue: 0, title: '消耗代幣（Burn）', unit: 'G', chartData: [], chartType: 'bar', chartColor: '#10b981' },
+    totalDraws: { value: 0, trend: 'up', trendValue: 0, title: '抽獎次數（Draws）', unit: '次', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
+    totalTokenBalance: { value: 0, trend: 'down', trendValue: 0, title: '總代幣餘額（Balance）', unit: 'G', chartData: [], chartType: 'line', chartColor: '#EF4444' },
+    abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: '付費用戶數（PU）', unit: '人', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
+    visitCount: { value: 0, trend: 'down', trendValue: 0, title: '訪問量（PV）', unit: '次', chartData: [], chartType: 'line', chartColor: '#9333EA' },
+    registeredUsers: { value: 0, trend: 'up', trendValue: 0, title: '註冊量（NU）', unit: '人', chartData: [], chartType: 'line', chartColor: '#10b981' },
+    conversionRate: { value: 0, trend: 'up', trendValue: 0, title: '平均客單價（ATV）', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
   })
   
   const [topProducts, setTopProducts] = useState<any[]>([])
   const [topKeywords, setTopKeywords] = useState<any[]>([])
   const [topSeries, setTopSeries] = useState<any[]>([])
   const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
+  const [discountStats, setDiscountStats] = useState({ netRevenue: 0, couponFixed: 0, discountRate: '0.0', dailyAvg: 0, isSingleDay: true })
   const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
   const [mainChartData, setMainChartData] = useState({
     visitTrend: [] as any[],
@@ -1042,10 +1045,11 @@ export default function DashboardPage() {
           const data = await dashboardRes.json().catch(() => null)
           throw new Error(data?.error || 'Dashboard API 載入失敗')
         }
-        const { recharges, draws, users } = (await dashboardRes.json()) as {
+        const { recharges, draws, users, couponDiscountFixed = 0 } = (await dashboardRes.json()) as {
           recharges: Array<{ amount: number; created_at: string; user_id: string }>
           draws: Array<{ created_at: string; prize_level: string; products?: { id: number; name: string; price: number; type: string | null; category: any } | null }>
           users: Array<{ created_at: string; tokens: number; id: string }>
+          couponDiscountFixed: number
         }
 
         // 3.5 Fetch Search & Visit Stats from API (to handle missing tables gracefully)
@@ -1072,7 +1076,13 @@ export default function DashboardPage() {
         
         // Total Revenue
         const totalRevenue = recharges?.reduce((sum, r) => sum + r.amount, 0) || 0
-        
+
+        // New metrics: net revenue, discount rate, daily avg
+        const netRevenue = Math.max(0, totalRevenue - couponDiscountFixed)
+        const discountRate = totalRevenue > 0 ? ((couponDiscountFixed / totalRevenue) * 100).toFixed(1) : '0.0'
+        const dailyAvg = isDailyView ? 0 : Math.round(totalRevenue / dates.length)
+        setDiscountStats({ netRevenue, couponFixed: couponDiscountFixed, discountRate, dailyAvg, isSingleDay: isDailyView })
+
         // Revenue Chart Data
         const revenueByDay = timeSlots.map(slot => {
           const slotRecharges = recharges?.filter(r => getFilterFn(slot, r.created_at))
@@ -1200,7 +1210,7 @@ export default function DashboardPage() {
             value: totalRevenue, 
             trend: 'up', 
             trendValue: 0, 
-            title: '總儲值金額', 
+            title: '總儲值金額（GMV）',
             unit: 'TWD', 
             chartData: revenueByDay, 
             chartType: 'line', 
@@ -1210,7 +1220,7 @@ export default function DashboardPage() {
             value: tokenConsumed, 
             trend: 'down', 
             trendValue: 0, 
-            title: '消耗代幣', 
+            title: '消耗代幣（Burn）',
             unit: 'G', 
             chartData: tokenConsumedByDay, 
             chartType: 'bar', 
@@ -1220,7 +1230,7 @@ export default function DashboardPage() {
             value: totalDraws, 
             trend: 'up', 
             trendValue: 0, 
-            title: '抽獎次數', 
+            title: '抽獎次數（Draws）',
             unit: '次', 
             chartData: drawsByDay, 
             chartType: 'line', 
@@ -1230,7 +1240,7 @@ export default function DashboardPage() {
             value: totalTokenBalance, 
             trend: 'down', 
             trendValue: 0, 
-            title: '總代幣餘額', 
+            title: '總代幣餘額（Balance）',
             unit: 'G', 
             chartData: balanceData, 
             chartType: 'line', 
@@ -1240,7 +1250,7 @@ export default function DashboardPage() {
             value: uniquePayersCount,
             trend: 'up',
             trendValue: 0,
-            title: '付費用戶數',
+            title: '付費用戶數（PU）',
             unit: '人',
             chartData: payersByDay,
             chartType: 'bar',
@@ -1250,7 +1260,7 @@ export default function DashboardPage() {
             value: visitCountVal, 
             trend: visitTrendVal >= 0 ? 'up' : 'down', 
             trendValue: Math.abs(visitTrendVal), 
-            title: '訪問量', 
+            title: '訪問量（PV）',
             unit: '次', 
             chartData: visitsByDay, 
             chartType: 'line', 
@@ -1260,7 +1270,7 @@ export default function DashboardPage() {
             value: registeredCount, 
             trend: 'up', 
             trendValue: 0, 
-            title: '註冊量', 
+            title: '註冊量（NU）',
             unit: '人', 
             chartData: usersByDay, 
             chartType: 'line', 
@@ -1270,7 +1280,7 @@ export default function DashboardPage() {
             value: avgSpendPerPayer,
             trend: 'up',
             trendValue: 0,
-            title: '平均客單價',
+            title: '平均客單價（ATV）',
             unit: 'TWD',
             chartData: avgSpendByDay,
             chartType: 'line',
@@ -1471,9 +1481,37 @@ export default function DashboardPage() {
             selectedPeriod={cardPeriod}
             tooltip="期間付費用戶的平均消費金額（總儲值 ÷ 付費人數），即 ARPU。越高代表用戶消費意願越強。"
           />
-          <StatCard title="點擊商品數（去重）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} tooltip="去重後的商品點擊次數，反映用戶對商品的瀏覽廣度。同一用戶多次點擊同商品只計一次。" />
-          <StatCard title="點擊後成功抽獎" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} tooltip="用戶點擊商品後實際完成抽獎的次數，反映點擊的轉化質量。" />
-          <StatCard title="點擊→抽轉化率" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} tooltip="商品點擊到實際抽獎的轉化率。越高代表商品吸引力越強，越低代表用戶有猶豫或流失。" />
+          <StatCard title="點擊商品數（UPV）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} tooltip="去重後的商品點擊次數，反映用戶對商品的瀏覽廣度。同一用戶多次點擊同商品只計一次。" />
+          <StatCard title="點擊後成功抽獎（Conv.）" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} tooltip="用戶點擊商品後實際完成抽獎的次數，反映點擊的轉化質量。" />
+          <StatCard title="點擊→抽轉化率（CVR）" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} tooltip="商品點擊到實際抽獎的轉化率。越高代表商品吸引力越強，越低代表用戶有猶豫或流失。" />
+          {/* 新增：淨營收、折扣率、日均營收 */}
+          <StatCard
+            title="淨營收（NR）"
+            value={discountStats.netRevenue}
+            unit="TWD"
+            subtext={`已扣除折價券 NT$${discountStats.couponFixed.toLocaleString()}`}
+            cardId="netRevenue"
+            selectedPeriod={cardPeriod}
+            tooltip="總儲值金額扣除折價券折抵後的實際入帳金額。"
+          />
+          <StatCard
+            title="折扣率（Discount）"
+            value={`${discountStats.discountRate}%`}
+            subtext={`折價券 NT$${discountStats.couponFixed.toLocaleString()}`}
+            cardId="discountRate"
+            selectedPeriod={cardPeriod}
+            tooltip="折價券折抵金額佔總儲值的比例。越高代表促銷活動成本越大，需注意毛利。"
+          />
+          {!discountStats.isSingleDay && (
+            <StatCard
+              title="日均營收（Avg. Daily）"
+              value={discountStats.dailyAvg}
+              unit="TWD"
+              cardId="dailyAvgRevenue"
+              selectedPeriod={cardPeriod}
+              tooltip="期間總儲值金額除以天數，反映每日平均入帳水準，便於跨期比較。"
+            />
+          )}
         </div>
 
         {/* DAU 每日活躍用戶 */}
