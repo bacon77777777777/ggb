@@ -1770,6 +1770,7 @@ function ProfileContent() {
     } else {
       if (selectedForDelivery.length === 0) {
         setLockedSupplierName(item?.supplierName ?? null);
+        mobileWarehouseScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       }
       setSelectedForDelivery(prev => [...prev, id]);
     }
