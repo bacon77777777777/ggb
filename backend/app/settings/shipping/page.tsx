@@ -5,7 +5,10 @@ import { useState, useEffect } from 'react'
 
 export default function ShippingSettingsPage() {
   const [feeHome, setFeeHome] = useState('60')
-  const [feeCvs, setFeeCvs] = useState('60')
+  const [feeCvs711, setFeeCvs711] = useState('65')
+  const [feeCvsFamily, setFeeCvsFamily] = useState('65')
+  const [feeCvsHiLife, setFeeCvsHiLife] = useState('60')
+  const [feeCvsOk, setFeeCvsOk] = useState('60')
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('7')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -16,7 +19,10 @@ export default function ShippingSettingsPage() {
       .then(r => r.json())
       .then(d => {
         if (d.shipping_fee_home) setFeeHome(d.shipping_fee_home)
-        if (d.shipping_fee_cvs) setFeeCvs(d.shipping_fee_cvs)
+        if (d.shipping_fee_cvs_711) setFeeCvs711(d.shipping_fee_cvs_711)
+        if (d.shipping_fee_cvs_family) setFeeCvsFamily(d.shipping_fee_cvs_family)
+        if (d.shipping_fee_cvs_hilife) setFeeCvsHiLife(d.shipping_fee_cvs_hilife)
+        if (d.shipping_fee_cvs_ok) setFeeCvsOk(d.shipping_fee_cvs_ok)
         if (d.free_shipping_threshold) setFreeShippingThreshold(d.free_shipping_threshold)
       })
       .finally(() => setIsLoading(false))
@@ -31,7 +37,10 @@ export default function ShippingSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shipping_fee_home: feeHome,
-          shipping_fee_cvs: feeCvs,
+          shipping_fee_cvs_711: feeCvs711,
+          shipping_fee_cvs_family: feeCvsFamily,
+          shipping_fee_cvs_hilife: feeCvsHiLife,
+          shipping_fee_cvs_ok: feeCvsOk,
           free_shipping_threshold: freeShippingThreshold,
         }),
       })
@@ -77,18 +86,28 @@ export default function ShippingSettingsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
                       超商取貨運費（TWD）
                     </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-neutral-500">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={feeCvs}
-                        onChange={e => setFeeCvs(e.target.value)}
-                        className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
-                      />
+                    <div className="space-y-2">
+                      {([
+                        ['7-ELEVEN', feeCvs711, setFeeCvs711],
+                        ['全家', feeCvsFamily, setFeeCvsFamily],
+                        ['萊爾富', feeCvsHiLife, setFeeCvsHiLife],
+                        ['OK mart', feeCvsOk, setFeeCvsOk],
+                      ] as [string, string, (v: string) => void][]).map(([name, val, setter]) => (
+                        <div key={name} className="flex items-center gap-3">
+                          <span className="text-sm text-neutral-600 w-20">{name}</span>
+                          <span className="text-neutral-500 text-sm">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={val}
+                            onChange={e => setter(e.target.value)}
+                            className="w-28 px-3 py-1.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

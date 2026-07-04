@@ -193,11 +193,23 @@ export async function GET(request: NextRequest) {
 
     // ── 商品表現 ────────────────────────────────────────────────────────────
     if (tab === 'products') {
-      // 1. 期間內抽獎紀錄（含商品價格），排除機器人
-      const { data: draws, error: drawErr } = await applyDateFilter(
-        excBot(supabase.from('draw_records').select('product_id, created_at, product:products(id, name, price, type, category, total_count, remaining, supplier_id)'))
-      )
-      if (drawErr) throw drawErr
+      // 1. 期間內抽獎紀錄（含商品價格），排除機器人；嘗試含 points_used
+      let draws: any[] = []
+      let hasPointsData = false
+      try {
+        const { data, error } = await applyDateFilter(
+          excBot(supabase.from('draw_records').select('product_id, points_used, product:products(id, name, price, type, category, total_count, remaining, supplier_id)'))
+        )
+        if (error) throw error
+        draws = data ?? []
+        hasPointsData = true
+      } catch {
+        const { data, error } = await applyDateFilter(
+          excBot(supabase.from('draw_records').select('product_id, product:products(id, name, price, type, category, total_count, remaining, supplier_id)'))
+        )
+        if (error) throw error
+        draws = data ?? []
+      }
 
       // 2. 所有商品（含廠商）— 用於顯示零抽獎商品與廠商名稱
       let productQuery = supabase
@@ -210,17 +222,18 @@ export async function GET(request: NextRequest) {
       if (prodErr) throw prodErr
 
       // 3. 在 JS 端彙整
-      const statsMap: Record<number, { drawCount: number; revenue: number }> = {}
-      for (const d of draws ?? []) {
+      const statsMap: Record<number, { drawCount: number; revenue: number; pointsUsed: number }> = {}
+      for (const d of draws) {
         const pid = (d as any).product_id
         if (!pid) continue
-        if (!statsMap[pid]) statsMap[pid] = { drawCount: 0, revenue: 0 }
+        if (!statsMap[pid]) statsMap[pid] = { drawCount: 0, revenue: 0, pointsUsed: 0 }
         statsMap[pid].drawCount += 1
         statsMap[pid].revenue += (d as any).product?.price || 0
+        if (hasPointsData) statsMap[pid].pointsUsed += (d as any).points_used || 0
       }
 
       const rows = (products ?? []).map((p: any) => {
-        const stats = statsMap[p.id] ?? { drawCount: 0, revenue: 0 }
+        const stats = statsMap[p.id] ?? { drawCount: 0, revenue: 0, pointsUsed: 0 }
         const drawn = (p.total_count || 0) - (p.remaining || 0)
         const completionRate = p.total_count > 0 ? Math.round((drawn / p.total_count) * 100) : 0
         return {
@@ -231,6 +244,7 @@ export async function GET(request: NextRequest) {
           supplierName: p.supplier?.name ?? null,
           drawCount: stats.drawCount,
           revenue: stats.revenue,
+          pointsUsed: stats.pointsUsed,
           remaining: p.remaining ?? 0,
           totalCount: p.total_count ?? 0,
           completionRate,
@@ -248,7 +262,7 @@ export async function GET(request: NextRequest) {
     if (tab === 'settlement') {
       if (!supplierId) return NextResponse.json({ error: 'supplierId required' }, { status: 400 })
 
-      const [supplierRes, drawRes, rechargeRes, recycleRes] = await Promise.all([
+      const [supplierRes, drawRes, rechargeRes, recycleRes, ordersRes] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
         applyDateFilter(
           excBot(supabase.from('draw_records')
@@ -260,6 +274,11 @@ export async function GET(request: NextRequest) {
         applyDateFilter(
           supabase.from('admin_recycle_pool')
             .select('recycle_value, product:products(supplier_id)')
+        ),
+        applyDateFilter(
+          supabase.from('orders')
+            .select('coupon_discount, total_amount')
+            .eq('supplier_id', supplierId)
         ),
       ])
       if (drawRes.error) throw drawRes.error
@@ -307,6 +326,25 @@ export async function GET(request: NextRequest) {
         .filter((r: any) => String(r.product?.supplier_id) === supplierId)
         .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
 
+      // 折價券 & 運費（雙方各吸收一半）
+      const supplierOrders: any[] = ordersRes.data ?? []
+      const couponTotal = supplierOrders.reduce((s, r) => s + (r.coupon_discount || 0), 0)
+      const shippingTotal = supplierOrders.reduce((s, r) => s + (r.total_amount || 0), 0)
+
+      // 積分支付（需 migration 238：draw_records.points_used 欄位）
+      let pointsTotal = 0
+      try {
+        const pointsQ = applyDateFilter(
+          excBot(supabase.from('draw_records').select('points_used, product:products(supplier_id)'))
+        )
+        const { data: pointsRows } = await pointsQ
+        pointsTotal = (pointsRows ?? [])
+          .filter((d: any) => String(d.product?.supplier_id) === supplierId)
+          .reduce((s: number, d: any) => s + (d.points_used || 0), 0)
+      } catch (_) {
+        // column not yet added; return 0
+      }
+
       return NextResponse.json({
         supplierName: (supplierRes.data as any)?.name ?? '',
         products,
@@ -319,6 +357,9 @@ export async function GET(request: NextRequest) {
         allocatedActualFee,
         platformTotalFee: hasActualFee ? platformTotalFee : null,
         dismantleTotal,
+        couponTotal,
+        shippingTotal,
+        pointsTotal,
       })
     }
 
@@ -443,6 +484,59 @@ export async function GET(request: NextRequest) {
       const totalTokens = filtered.reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
 
       return NextResponse.json({ data: filtered, totalTokens })
+    }
+
+    if (tab === 'points') {
+      let query = supabase
+        .from('user_task_progress')
+        .select('id, last_updated, reward_coins:task_id(reward_coins, title, type), user:user_id(name)')
+        .eq('is_claimed', true)
+        .order('last_updated', { ascending: false })
+
+      if (start) query = query.gte('last_updated', start)
+      if (endExclusive) query = query.lt('last_updated', endExclusive)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const rows = (data ?? []).map((r: any) => ({
+        id: r.id,
+        claimed_at: r.last_updated,
+        user_name: r.user?.name || '—',
+        task_title: r.reward_coins?.title || '—',
+        task_type: r.reward_coins?.type || '—',
+        reward_coins: r.reward_coins?.reward_coins ?? 0,
+      }))
+
+      return NextResponse.json({ data: rows, totalPoints: rows.reduce((s: number, r: any) => s + r.reward_coins, 0) })
+    }
+
+    if (tab === 'coupons_report') {
+      let query = supabase
+        .from('user_coupons')
+        .select('id, created_at, used_at, expiry_date, status, coupon:coupon_id(code, title, discount_type, discount_value), user:user_id(name)')
+        .order('created_at', { ascending: false })
+
+      if (start) query = query.gte('created_at', start)
+      if (endExclusive) query = query.lt('created_at', endExclusive)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const rows = (data ?? []).map((r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        used_at: r.used_at,
+        expiry_date: r.expiry_date,
+        status: r.status,
+        user_name: r.user?.name || '—',
+        coupon_code: r.coupon?.code || '—',
+        coupon_title: r.coupon?.title || '—',
+        discount_type: r.coupon?.discount_type || '—',
+        discount_value: r.coupon?.discount_value ?? 0,
+      }))
+
+      return NextResponse.json({ data: rows })
     }
 
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })

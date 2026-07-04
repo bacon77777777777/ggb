@@ -112,6 +112,7 @@ export default function ReportPage() {
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [filterSupplier, setFilterSupplier] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [filterCurrency, setFilterCurrency] = useState<'all' | 'tokens' | 'points'>('all')
 
   useEffect(() => {
     const now = new Date()
@@ -164,8 +165,8 @@ export default function ReportPage() {
       )
     } else if (reportType === 'products') {
       exportCSV(`消費明細_${start}_${end}.csv`,
-        ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額(G)', '剩餘數量', '總數量', '完抽率(%)'],
-        productsData.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue), String(p.remaining), String(p.totalCount), String(p.completionRate)])
+        ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額G幣(G)', '消費積分(G)', '剩餘數量', '總數量', '完抽率(%)'],
+        filteredProducts.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue - (p.pointsUsed ?? 0)), String(p.pointsUsed ?? 0), String(p.remaining), String(p.totalCount), String(p.completionRate)])
       )
     } else if (reportType === 'overview' && overview) {
       const rows: string[][] = [
@@ -196,6 +197,13 @@ export default function ReportPage() {
   // 種類列表（從商品資料推導）
   const productTypes = [...new Set(productsData.map(p => p.type).filter(Boolean))]
 
+  // 幣種篩選後的商品列表
+  const filteredProducts = productsData.filter(p => {
+    if (filterCurrency === 'tokens') return (p.revenue - (p.pointsUsed ?? 0)) > 0 || p.drawCount === 0
+    if (filterCurrency === 'points') return (p.pointsUsed ?? 0) > 0
+    return true
+  })
+
   return (
     <AdminLayout
       pageTitle={meta.title}
@@ -215,6 +223,12 @@ export default function ReportPage() {
                 className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="">所有種類</option>
                 {productTypes.map(t => <option key={t} value={t}>{PRODUCT_TYPE_LABEL[t] || t}</option>)}
+              </select>
+              <select value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <option value="all">全幣種</option>
+                <option value="tokens">代幣</option>
+                <option value="points">積分</option>
               </select>
             </>
           )}
@@ -407,66 +421,100 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* ── 消費明細 ── */}
-        {reportType === 'products' && !loading && productsData.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <KpiCard label="商品數" value={productsData.length.toLocaleString()} />
-            <KpiCard label="總消費代幣" value={`${productsData.reduce((s, p) => s + p.revenue, 0).toLocaleString()} G`} color="text-emerald-600" />
-            <KpiCard label="總抽獎次數" value={productsData.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-blue-600" />
+        {/* ── 消費明細 KPI ── */}
+        {reportType === 'products' && !loading && (
+          <div className={`grid gap-3 ${filterCurrency === 'all' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
+            <KpiCard label="商品數" value={filteredProducts.length.toLocaleString()} />
+            {filterCurrency !== 'points' && (
+              <KpiCard label="總消費代幣" value={`${filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G`} color="text-emerald-600" />
+            )}
+            {filterCurrency !== 'tokens' && (() => {
+              const totalPts = filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0)
+              return <KpiCard label="總消費積分" value={`${totalPts.toLocaleString()} G`} color={totalPts > 0 ? 'text-indigo-600' : 'text-orange-400'} />
+            })()}
+            <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-blue-600" />
           </div>
         )}
         {reportType === 'products' && (
           <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
               <h3 className="font-semibold text-neutral-900">消費明細</h3>
-              <span className="text-sm text-neutral-500">共 {productsData.length} 項商品</span>
+              <span className="text-sm text-neutral-500">共 {filteredProducts.length} 項商品</span>
             </div>
             {loading ? (
               <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
-            ) : productsData.length === 0 ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">此條件無商品資料</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-100">
                     <tr>
-                      {['#', '商品名稱', '廠商', '種類', '抽獎次數', '消費金額(G)', '剩餘 / 總數', '完抽率'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">#</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">商品名稱</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">廠商</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">種類</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">抽獎次數</th>
+                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
+                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">積分</th>}
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">完抽率</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {productsData.map((p, i) => (
-                      <tr key={p.id} className="hover:bg-neutral-50">
-                        <td className="px-4 py-3 text-neutral-400 text-xs w-8">{i + 1}</td>
-                        <td className="px-4 py-3 font-medium text-neutral-900 max-w-[200px]">
-                          <span className="truncate block">{p.name}</span>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-                          {p.supplierName ? (
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">{p.supplierName}</span>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
-                        <td className="px-4 py-3 text-right font-semibold">{p.drawCount.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-emerald-700">{p.revenue.toLocaleString()} G</td>
-                        <td className="px-4 py-3 text-right text-neutral-600 whitespace-nowrap">
-                          {p.remaining.toLocaleString()} / {p.totalCount.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 min-w-[100px]">
-                          <CompletionBar pct={p.completionRate} />
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredProducts.length === 0 ? (
+                      <tr><td colSpan={9} className="py-16 text-center text-sm text-neutral-400">此條件無商品資料</td></tr>
+                    ) : filteredProducts.map((p, i) => {
+                      const tokenRev = p.revenue - (p.pointsUsed ?? 0)
+                      const pts = p.pointsUsed ?? 0
+                      return (
+                        <tr key={p.id} className="hover:bg-neutral-50">
+                          <td className="px-4 py-3 text-neutral-400 text-xs w-8">{i + 1}</td>
+                          <td className="px-4 py-3 font-medium text-neutral-900 max-w-[200px]">
+                            <span className="truncate block">{p.name}</span>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
+                            {p.supplierName ? (
+                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">{p.supplierName}</span>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
+                          <td className="px-4 py-3 text-right font-semibold">{p.drawCount.toLocaleString()}</td>
+                          {filterCurrency !== 'points' && (
+                            <td className="px-4 py-3 text-right font-semibold text-emerald-700">{tokenRev.toLocaleString()} G</td>
+                          )}
+                          {filterCurrency !== 'tokens' && (
+                            <td className="px-4 py-3 text-right font-semibold text-indigo-600">
+                              {pts > 0 ? `${pts.toLocaleString()} G` : <span className="text-neutral-300">—</span>}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-right text-neutral-600 whitespace-nowrap">
+                            {p.remaining.toLocaleString()} / {p.totalCount.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 min-w-[100px]">
+                            <CompletionBar pct={p.completionRate} />
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
-                  <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                    <tr>
-                      <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
-                      <td className="px-4 py-2 text-right font-bold">{productsData.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
-                      <td className="px-4 py-2 text-right font-bold text-emerald-700">{productsData.reduce((s, p) => s + p.revenue, 0).toLocaleString()} G</td>
-                      <td colSpan={2} />
-                    </tr>
-                  </tfoot>
+                  {filteredProducts.length > 0 && (
+                    <tfoot className="bg-neutral-50 border-t border-neutral-200">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
+                        <td className="px-4 py-2 text-right font-bold">{filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
+                        {filterCurrency !== 'points' && (
+                          <td className="px-4 py-2 text-right font-bold text-emerald-700">
+                            {filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G
+                          </td>
+                        )}
+                        {filterCurrency !== 'tokens' && (
+                          <td className="px-4 py-2 text-right font-bold text-indigo-600">
+                            {filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0).toLocaleString()} G
+                          </td>
+                        )}
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             )}

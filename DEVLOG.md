@@ -52,6 +52,58 @@ Supabase Dashboard → Database → Connections 確認連線數
 
 ---
 
+## 2026-07-04（v1.7.4 — 廠商結算重設計 + 消費明細整合積分 + 運費細分4家超商）
+
+### 後台（Next.js / backend）
+
+**廠商結算（`/reports/settlement`）全面修復與重設計**
+- 修復 runtime crash：`data.products.length` 讀取 undefined，根因為 migration 238（`draw_records.points_used`）尚未套用；解法：API 改以 try/catch 降級查詢，前端 `fetchData` 加 `if (json?.error) return` 防護
+- 計算公式重組：先扣除折價券/運費/積分廠商吸收金額，再計算廠商分潤%，最後扣分解代幣
+  ```
+  distributableBase = netAfterTax - couponSupplierShare - shippingSupplierShare - pointsSupplierShare
+  supplierGross     = distributableBase × supplierShare%
+  supplierNet       = supplierGross - dismantleTotal
+  ```
+- 版面重設計：新增 `Row` 元件（label + value 左右排版，支援 bold / red / green / muted / indigo / indent props）
+- 顯示順序：廠商商品消費 → 藍新手續費 → 淨收入 → 折價券吸收 → 運費吸收 → 積分補償 → 可分潤基礎 → 平台留存 → 廠商分潤 → 分解退代幣 → 實際應付廠商
+- 「積分支付」全面改名為「積分補償」（頁面標籤、CSV、tooltip、費用設定）
+- 積分補償顯示綠色 `+NT$X`，字重與上方紅色項目一致
+- 移除：「・佔全平台 X%」、「參考 — 期間平台儲值」、「期間儲值總額參考」、「・共 NT$X」、「，不計入」等冗餘說明文字
+
+**消費明細（`/reports/[type]`）整合積分幣種篩選**
+- 新增幣種選擇器：全幣種 / 代幣 / 積分（預設全幣種）
+- 新增 KPI 卡片「總消費積分」：有積分時 indigo 色，無則橘色，選代幣時隱藏
+- 資料表新增「積分」欄位，選代幣時隱藏；「消費金額(G)」選積分時隱藏
+- 依幣種篩選顯示商品：選代幣僅顯示代幣消費商品，選積分僅顯示積分消費商品
+- 無資料時仍顯示表頭與空白列（UI 不塌陷）
+- CSV 匯出加入積分欄位，依 `filteredProducts` 輸出
+- 「G幣」選項改名為「代幣」
+
+**側邊欄**
+- 移除「積分明細」獨立入口（功能已整合至消費明細幣種篩選）
+
+**運費設定（`/settings/shipping`）**
+- 「超商取貨運費」細分為 4 家超商各自可填金額：
+  - 7-ELEVEN：預設 NT$65
+  - 全家：預設 NT$65
+  - 萊爾富：預設 NT$60
+  - OK mart：預設 NT$60
+- 新增設定 keys：`shipping_fee_cvs_711`、`shipping_fee_cvs_family`、`shipping_fee_cvs_hilife`、`shipping_fee_cvs_ok`
+
+### 新增頁面 / 路由
+| 路由 | 說明 |
+|---|---|
+| `backend/app/reports/coupons/` | 折價券明細（新建頁） |
+| `backend/app/reports/points/` | 積分領取明細（新建頁，積分消費已整合至消費明細） |
+
+### DB Migrations（待套用）
+| Migration | 說明 |
+|---|---|
+| `237` | 修正 `play_gacha`：處理折價券 NULL expiry + `is_active` 檢查 |
+| `238` | `draw_records` 加入 `points_used INTEGER DEFAULT 0` |
+
+---
+
 ## 2026-07-04（v1.7.3 — 點擊分析頁重設計 + 儀表板新卡片）
 
 ### 後台（Next.js / backend）

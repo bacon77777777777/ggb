@@ -77,6 +77,29 @@ const PERMISSION_GROUPS = [
 
 const AVAILABLE_PERMISSIONS = PERMISSION_GROUPS.flatMap(g => g.items)
 
+const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
+  {
+    label: '客服人員',
+    permissions: ['dashboard', 'draws', 'orders', 'users', 'logs'],
+  },
+  {
+    label: '財務人員',
+    permissions: ['dashboard', 'recharges', 'reports_logistics', 'reports_products', 'reports_dismantled', 'reports_settlement', 'logs'],
+  },
+  {
+    label: '商品管理員',
+    permissions: ['dashboard', 'products', 'suppliers', 'categories', 'draws', 'orders', 'settings', 'settings_modules'],
+  },
+  {
+    label: '行銷人員',
+    permissions: ['dashboard', 'reports_overview', 'banners', 'news', 'coupons'],
+  },
+  {
+    label: '一般管理員',
+    permissions: ['dashboard', 'reports_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'logs'],
+  },
+]
+
 const LEGACY_PERMISSION_LABELS: Record<string, string> = {
   dashboard_view:    '儀表板',
   products_manage:   '商品管理',
@@ -335,7 +358,22 @@ export default function PermissionsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">權限設定 (可訪問頁面)</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">權限設定 (可訪問頁面)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">套用預設：</span>
+                  {ROLE_PRESETS.map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, permissions: preset.permissions }))}
+                      className="px-2 py-1 text-xs border border-neutral-200 rounded hover:bg-neutral-50 hover:border-primary/40 transition-colors text-neutral-600"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
                 {PERMISSION_GROUPS.map(group => (
                   <div key={group.title}>

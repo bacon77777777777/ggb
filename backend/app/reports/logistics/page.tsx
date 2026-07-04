@@ -160,7 +160,7 @@ export default function LogisticsReportPage() {
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-500 mb-1">運費合計</p>
-              <p className="text-2xl font-black text-emerald-600">NT$ {filtered.reduce((s, r) => s + (r.total_amount ?? 0), 0).toLocaleString()}</p>
+              <p className="text-2xl font-black text-red-500">NT$ {filtered.reduce((s, r) => s + (r.total_amount ?? 0), 0).toLocaleString()}</p>
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-500 mb-1">已送達</p>
@@ -224,7 +224,7 @@ export default function LogisticsReportPage() {
                       </td>
                       <td className="py-2 px-3 font-mono whitespace-nowrap">{r.tracking_number || '—'}</td>
                       <td className="py-2 px-3 font-mono whitespace-nowrap font-medium">
-                        {r.total_amount > 0 ? `$${r.total_amount}` : '—'}
+                        {r.total_amount > 0 ? <span className="text-red-500">−${r.total_amount}</span> : '—'}
                       </td>
                       <td className="py-2 px-3 text-center">{r.items.length}</td>
                       <td className="py-2 px-3 whitespace-nowrap">

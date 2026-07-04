@@ -245,7 +245,7 @@ function UsersPage() {
         case 'status': aValue = userStatuses[a.id] === 'active' ? 1 : 0; bValue = userStatuses[b.id] === 'active' ? 1 : 0; break
         case 'registerDate': aValue = new Date(a.registerDate).getTime(); bValue = new Date(b.registerDate).getTime(); break
         case 'lastLoginDate': aValue = new Date(a.lastLoginDate).getTime(); bValue = new Date(b.lastLoginDate).getTime(); break
-        case 'lastLoginIp': aValue = a.lastLoginIp || ''; bValue = b.lastLoginIp || ''; break
+        case 'lastLoginIp': aValue = new Date(a.lastLoginDate).getTime(); bValue = new Date(b.lastLoginDate).getTime(); break
         default: aValue = a.userId; bValue = b.userId
       }
 

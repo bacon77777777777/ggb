@@ -14,9 +14,20 @@ interface RechargeRecord {
   amount: number
   bonus: number
   payment_method?: string | null
+  payment_fee?: number | null
   status: string
   created_at: string
   user?: { id: string; name: string; email: string }
+}
+
+const PAYMENT_METHOD_INFO: Record<string, { name: string; formula: string }> = {
+  credit_card: { name: '信用卡', formula: '2.8%' },
+  atm:         { name: 'ATM 虛擬帳號', formula: 'NT$15/筆' },
+  cvs:         { name: '超商代碼', formula: 'NT$25 + 1%' },
+  webatm:      { name: '網路 ATM', formula: '0.8%' },
+  linepay:     { name: 'LINE Pay', formula: '2.8%' },
+  jkos:        { name: '街口支付', formula: '2.8%' },
+  other:       { name: '其他', formula: '—' },
 }
 
 export default function RechargesPage() {
@@ -301,24 +312,92 @@ export default function RechargesPage() {
           </button>
         </div>
 
-        {!isLoading && sortedRecords.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-xl border border-neutral-200 p-4">
-              <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
-              <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
+        {!isLoading && sortedRecords.length > 0 && (() => {
+          const successRecs = sortedRecords.filter(r => r.status === 'success')
+          const totalAmount = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
+          const totalFee = successRecs.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
+          const totalNet = totalAmount - totalFee
+          const totalBonus = sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0)
+          const totalRecharge = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
+
+          // 各支付方式統計
+          const methodMap: Record<string, { count: number; amount: number; fee: number }> = {}
+          for (const r of successRecs) {
+            const m = r.payment_method || 'other'
+            if (!methodMap[m]) methodMap[m] = { count: 0, amount: 0, fee: 0 }
+            methodMap[m].count++
+            methodMap[m].amount += r.amount ?? 0
+            methodMap[m].fee += r.payment_fee ?? 0
+          }
+
+          return (
+            <div className="space-y-3">
+              {/* 總覽小卡 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
+                  <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">儲值金額</p>
+                  <p className="text-2xl font-black text-emerald-600">NT$ {totalAmount.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{successRecs.length} 筆成功</p>
+                </div>
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">藍新手續費</p>
+                  <p className="text-2xl font-black text-red-500">NT$ {totalFee.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">實際扣除</p>
+                </div>
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
+                  <p className="text-2xl font-black text-blue-600">NT$ {totalNet.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">扣除手續費後</p>
+                </div>
+              </div>
+              {/* G幣小卡 */}
+              <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                <p className="text-xs text-neutral-500 mb-1">G 幣發放</p>
+                <p className="text-xl font-black text-violet-600">
+                  儲值 {totalRecharge.toLocaleString()} G＋贈送 {totalBonus.toLocaleString()} G
+                </p>
+                <p className="text-xs text-neutral-400 mt-0.5">合計 {(totalRecharge + totalBonus).toLocaleString()} G</p>
+              </div>
+              {/* 各支付方式明細 */}
+              {Object.entries(methodMap).length > 0 && (
+                <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-neutral-100">
+                    <p className="text-sm font-semibold text-neutral-700">各支付方式明細</p>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-neutral-50">
+                      <tr>
+                        {['支付方式', '費率定義', '筆數', '儲值金額', '手續費', '實拿金額'].map(h => (
+                          <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {Object.entries(methodMap).map(([method, stat]) => {
+                        const info = PAYMENT_METHOD_INFO[method] ?? { name: method, formula: '—' }
+                        const net = stat.amount - stat.fee
+                        return (
+                          <tr key={method} className="hover:bg-neutral-50">
+                            <td className="py-2 px-3 font-medium whitespace-nowrap">{info.name}</td>
+                            <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
+                            <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
+                            <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
+                            <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
+                            <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            <div className="bg-white rounded-xl border border-neutral-200 p-4">
-              <p className="text-xs text-neutral-500 mb-1">完成金額</p>
-              <p className="text-2xl font-black text-emerald-600">NT$ {sortedRecords.filter(r => r.status === 'success').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}</p>
-              <p className="text-xs text-neutral-400 mt-0.5">已成功筆數</p>
-            </div>
-            <div className="bg-white rounded-xl border border-neutral-200 p-4">
-              <p className="text-xs text-neutral-500 mb-1">贈點合計</p>
-              <p className="text-2xl font-black text-blue-600">{sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()}</p>
-              <p className="text-xs text-neutral-400 mt-0.5">G 幣</p>
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         <PageCard>
           <SearchToolbar

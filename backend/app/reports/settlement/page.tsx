@@ -1,7 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -17,6 +17,9 @@ interface PeriodData {
   allocatedActualFee: number | null  // 分攤後的實際手續費
   platformTotalFee: number | null    // 平台手續費總額（參考）
   dismantleTotal: number         // 分解退代幣（廠商吸收）
+  couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
+  shippingTotal: number          // 運費總額（雙方各吸收一半）
+  pointsTotal: number            // 積分支付 G 等值（模式 A 時廠商吸收一半）
 }
 
 interface Period {
@@ -40,6 +43,20 @@ function InfoTooltip({ text }: { text: string }) {
           {text}
         </div>
       )}
+    </div>
+  )
+}
+
+function Row({ label, value, bold, red, green, muted, indigo, indent }: {
+  label: React.ReactNode; value: string
+  bold?: boolean; red?: boolean; green?: boolean; muted?: boolean; indigo?: boolean; indent?: boolean
+}) {
+  return (
+    <div className={`flex items-center justify-between py-1 ${indent ? 'pl-3' : ''}`}>
+      <div className="text-sm">{label}</div>
+      <span className={`text-sm tabular-nums ${bold ? 'font-semibold text-neutral-800' : red ? 'text-red-500' : green ? 'text-emerald-600' : muted ? 'text-neutral-400' : indigo ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
+        {value}
+      </span>
     </div>
   )
 }
@@ -69,21 +86,6 @@ function fmt(n: number) {
   return `NT$ ${Math.round(n).toLocaleString()}`
 }
 
-function KpiRow({ label, value, sub, indent = false, bold = false, negative = false }: {
-  label: string; value: string; sub?: string; indent?: boolean; bold?: boolean; negative?: boolean
-}) {
-  return (
-    <div className={`flex items-center justify-between py-2 ${indent ? 'pl-4' : ''} ${bold ? 'font-semibold' : ''}`}>
-      <span className={`text-sm ${negative ? 'text-red-600' : 'text-neutral-700'}`}>{label}</span>
-      <div className="text-right">
-        <span className={`text-sm tabular-nums ${negative ? 'text-red-600' : bold ? 'text-neutral-900' : 'text-neutral-700'}`}>
-          {negative && value !== 'NT$ 0' ? `−${value}` : value}
-        </span>
-        {sub && <div className="text-xs text-neutral-400">{sub}</div>}
-      </div>
-    </div>
-  )
-}
 
 export default function SettlementPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -96,6 +98,7 @@ export default function SettlementPage() {
   const [newebpayRate, setNewebpayRate] = useState(2)
   const [supplierShare, setSupplierShare] = useState(70)
   const [withholdingRate, setWithholdingRate] = useState(0)
+  const [pointsMode, setPointsMode] = useState<'A' | 'B'>('B') // B = 平台全吸收（預設）
   const [showSettings, setShowSettings] = useState(false)
   const settingsRef = useRef<HTMLDivElement>(null)
 
@@ -139,6 +142,7 @@ export default function SettlementPage() {
       })
       const res = await fetch(`/api/admin/reports?${params}`)
       const json = await res.json()
+      if (json?.error) { console.error('settlement API error:', json.error); return }
       setData(json)
     } catch (e) {
       console.error(e)
@@ -152,20 +156,30 @@ export default function SettlementPage() {
   // 結算基底：廠商商品消費 G（1G = NT$1）
   const totalTWD = data?.totalG ?? 0
   const sharePercent = Math.round((data?.consumptionShare ?? 1) * 100)
-  const dismantleTotal = data?.dismantleTotal ?? 0
+  const dismantleTotal = Math.round(data?.dismantleTotal ?? 0)
+  const couponTotal = Math.round(data?.couponTotal ?? 0)
+  const shippingTotal = Math.round(data?.shippingTotal ?? 0)
+  const pointsTotal = Math.round(data?.pointsTotal ?? 0)
+  const couponSupplierShare = Math.round(couponTotal * 0.5)
+  const shippingSupplierShare = Math.round(shippingTotal * 0.5)
+  const pointsSupplierShare = pointsMode === 'A' ? Math.round(pointsTotal * 0.5) : 0
 
   // 手續費：有實際資料時用分攤後值，否則用費率估算
   const newebpayFee = data?.hasActualFee && data.allocatedActualFee != null
     ? data.allocatedActualFee
     : Math.round(totalTWD * (newebpayRate / 100))
 
-  const netRevenue   = totalTWD - newebpayFee
-  const withholding  = Math.round(netRevenue * (withholdingRate / 100))
-  const netAfterTax  = netRevenue - withholding
-  const supplierGross = Math.round(netAfterTax * (supplierShare / 100))
-  const platformShare = netAfterTax - supplierGross
-  // 分解退代幣由廠商吸收 → 從廠商應付款扣除
-  const supplierNet  = Math.max(0, supplierGross - dismantleTotal)
+  const netRevenue = totalTWD - newebpayFee
+  const withholding = Math.round(netRevenue * (withholdingRate / 100))
+  const netAfterTax = netRevenue - withholding
+
+  // 先從淨收入扣除共同成本（折價券/運費/積分廠商吸收部分），再按比例分潤
+  const distributableBase = netAfterTax - couponSupplierShare - shippingSupplierShare - pointsSupplierShare
+  const supplierGross = Math.round(distributableBase * (supplierShare / 100))
+  const platformShare = distributableBase - supplierGross
+
+  // 最後扣除分解退代幣（廠商全吸收）
+  const supplierNet = Math.max(0, supplierGross - dismantleTotal)
 
   // 匯出對帳單 CSV
   const handleExport = () => {
@@ -181,16 +195,19 @@ export default function SettlementPage() {
       ...(data.products.map(p => [p.name, String(p.price), String(p.drawCount), String(p.totalG)])),
       [],
       [`項目`, `金額(TWD)`],
-      [`廠商商品消費（${data.products.reduce((s,p)=>s+p.drawCount,0)}次 × G）`, String(totalTWD)],
-      [`消費佔比`, `${sharePercent}%`],
+      [`廠商商品消費（${data.products.reduce((s,p)=>s+p.drawCount,0)}次，1G=NT$1）`, String(totalTWD)],
       [`藍新手續費${data.hasActualFee ? '（實際分攤）' : `（估算${newebpayRate}%）`}`, String(-newebpayFee)],
       [`淨收入`, String(netRevenue)],
       ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
       ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
+      [`折價券（廠商吸收50%，共${couponTotal}）`, String(-couponSupplierShare)],
+      [`運費（廠商吸收50%，共${shippingTotal}）`, String(-shippingSupplierShare)],
+      ...(pointsMode === 'A' ? [[`積分補償（廠商吸收50%，共${pointsTotal}）`, String(pointsSupplierShare)]] : [[`積分補償（平台全吸收，不計入）`, `${pointsTotal} G`]]),
+      [`可分潤基礎`, String(distributableBase)],
       [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
-      ...(dismantleTotal > 0 ? [[`分解退代幣（廠商吸收）`, String(-dismantleTotal)]] : []),
-      [`實際應付廠商`, String(supplierNet)],
       [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
+      [`分解退代幣（廠商吸收100%）`, String(-dismantleTotal)],
+      [`實際應付廠商`, String(supplierNet)],
       [],
       [`--- 參考 ---`, ``],
       [`期間平台儲值`, String(data.rechargeTotal)],
@@ -295,6 +312,28 @@ export default function SettlementPage() {
                           </div>
                         </div>
                       ))}
+                      <div className="flex items-start justify-between gap-3 pt-2 border-t border-neutral-100">
+                        <div>
+                          <label className="text-sm text-neutral-600 whitespace-nowrap">積分扣除模式</label>
+                          <p className="text-xs text-neutral-400 mt-0.5">
+                            {pointsMode === 'A' ? '廠商獲補償 50%（共 ' + pointsTotal.toLocaleString() + ' G）' : '平台全吸收，不計入結算'}
+                          </p>
+                        </div>
+                        <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-xs font-medium shrink-0">
+                          <button
+                            onClick={() => setPointsMode('A')}
+                            className={`px-3 py-1.5 transition-colors ${pointsMode === 'A' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
+                          >
+                            A 計入
+                          </button>
+                          <button
+                            onClick={() => setPointsMode('B')}
+                            className={`px-3 py-1.5 transition-colors border-l border-neutral-200 ${pointsMode === 'B' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
+                          >
+                            B 不計
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -388,98 +427,60 @@ export default function SettlementPage() {
                 <span className="text-xs text-neutral-400">結算日 {period?.settlementDate}</span>
               </div>
 
-              {/* 基底：廠商商品消費 G */}
-              <KpiRow
-                label={`廠商商品消費（${data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次）`}
-                value={`${(data?.totalG ?? 0).toLocaleString()} G`}
-                bold
-              />
-              {/* 消費佔比（多廠商時有意義） */}
-              {(data?.consumptionShare ?? 1) < 0.9999 && (
-                <div className="flex items-center justify-between py-1 pl-4">
-                  <span className="text-xs text-neutral-400">佔全平台消費</span>
-                  <span className="text-xs text-neutral-400 tabular-nums">
-                    {sharePercent}%（全平台 {(data?.totalPlatformG ?? 0).toLocaleString()} G）
-                  </span>
-                </div>
-              )}
-              <div className="border-t border-neutral-100 my-1" />
-
-              {/* 結算 NT$ 基底（1G = 1NT$） */}
-              <KpiRow label="結算金額基底（1G = NT$1）" value={fmt(totalTWD)} bold />
-              <div className="border-t border-neutral-100 my-1" />
-
-              <KpiRow
-                label={data?.hasActualFee
-                  ? `藍新手續費（實際，佔比分攤）`
-                  : `藍新手續費（估算 ${newebpayRate}%）`}
-                value={fmt(newebpayFee)}
-                negative
-                indent
-              />
-              <div className="border-t border-neutral-200 my-1" />
-              <KpiRow label="淨收入" value={fmt(netRevenue)} bold />
+              {/* ① 消費基底 */}
+              <Row label={<><span className="font-semibold text-neutral-800">廠商商品消費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次・1G = NT$1</span></>} value={fmt(totalTWD)} bold />
+              <Row label={<><span className="text-neutral-600">藍新手續費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.hasActualFee ? '實際分攤' : `估算 ${newebpayRate}%`}</span></>} value={`−${fmt(newebpayFee)}`} red indent />
+              <div className="border-t border-neutral-200 my-0.5" />
+              <Row label={<span className="font-semibold text-neutral-800">淨收入</span>} value={fmt(netRevenue)} bold />
 
               {withholdingRate > 0 && (
                 <>
-                  <KpiRow
-                    label={`代扣稅款（${withholdingRate}%）`}
-                    value={fmt(withholding)}
-                    negative
-                    indent
-                  />
-                  <div className="border-t border-neutral-200 my-1" />
-                  <KpiRow label="稅後淨收入" value={fmt(netAfterTax)} bold />
+                  <Row label={<><span className="text-neutral-600">代扣稅款</span><span className="text-xs text-neutral-400 ml-1">{withholdingRate}%</span></>} value={`−${fmt(withholding)}`} red indent />
+                  <div className="border-t border-neutral-200 my-0.5" />
+                  <Row label={<span className="font-semibold text-neutral-800">稅後淨收入</span>} value={fmt(netAfterTax)} bold />
                 </>
               )}
 
-              <div className="border-t border-neutral-100 my-2" />
+              {/* ③ 共同成本扣除 */}
+              <Row label={<><span className="text-neutral-600">折價券</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 50%</span></>} value={`−${fmt(couponSupplierShare)}`} red indent />
+              <Row label={<><span className="text-neutral-600">運費</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 50%</span></>} value={`−${fmt(shippingSupplierShare)}`} red indent />
+              {pointsMode === 'A'
+                ? <Row label={<><span className="text-neutral-600">積分補償</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 50%</span></>} value={`+${fmt(pointsSupplierShare)}`} green indent />
+                : <Row label={<><span className="text-neutral-600">積分補償</span><span className="text-xs text-neutral-400 ml-1.5">平台全吸收</span></>} value={`+${fmt(pointsTotal)}`} green indent />
+              }
 
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-neutral-500">廠商分潤（{supplierShare}%）</span>
-                <span className="text-sm font-medium tabular-nums text-indigo-600">{fmt(supplierGross)}</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-neutral-500">平台留存（{100 - supplierShare}%）</span>
-                <span className="text-sm font-medium tabular-nums text-neutral-600">{fmt(platformShare)}</span>
-              </div>
-              {dismantleTotal > 0 && (
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-red-500">分解退代幣（廠商吸收）</span>
-                  <span className="text-sm font-medium tabular-nums text-red-500">−{fmt(dismantleTotal)}</span>
-                </div>
-              )}
+              {/* ④ 可分潤基礎 → 先扣平台再得廠商分潤 */}
+              <div className="border-t border-neutral-200 my-0.5" />
+              <Row label={<span className="font-semibold text-neutral-800">可分潤基礎</span>} value={fmt(distributableBase)} bold />
+              <Row label={<><span className="text-neutral-400">平台留存</span><span className="text-xs text-neutral-400 ml-1">{100 - supplierShare}%</span></>} value={`−${fmt(platformShare)}`} red indent />
+              <div className="border-t border-neutral-200 my-0.5" />
 
-              <div className="border-t-2 border-neutral-300 mt-3 pt-3">
+              {/* ⑤ 廠商分潤 → 再扣分解 */}
+              <Row label={<><span className="font-semibold text-neutral-800">廠商分潤</span><span className="text-xs text-neutral-400 ml-1">{supplierShare}%</span></>} value={fmt(supplierGross)} indigo />
+              <Row label={<><span className="text-neutral-600">分解退代幣</span><span className="text-xs text-neutral-400 ml-1.5">廠商吸收 100%</span></>} value={`−${fmt(dismantleTotal)}`} red indent />
+
+              {/* 最終結果 */}
+              <div className="border-t-2 border-neutral-300 mt-2 pt-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
-                    <InfoTooltip text="公式：（結算金額基底 − 藍新手續費）× 廠商分潤比例 − 分解退代幣 = 實際應付廠商" />
+                    <InfoTooltip text={`① 消費 G − 藍新手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
                   </div>
                   <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
-                {dismantleTotal > 0 && (
-                  <p className="text-xs text-red-400 mt-0.5">已扣除 {fmt(dismantleTotal)} G 分解退款</p>
-                )}
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>
                 )}
               </div>
 
-              {/* 參考資訊 */}
-              <div className="mt-4 pt-3 border-t border-dashed border-neutral-200">
-                <p className="text-xs text-neutral-400 font-medium mb-2">參考 — 期間平台儲值</p>
-                <div className="flex items-center justify-between text-xs text-neutral-400">
-                  <span>儲值總額</span>
-                  <span className="tabular-nums">NT$ {(data?.rechargeTotal ?? 0).toLocaleString()}（{data?.rechargeCount ?? 0} 筆）</span>
-                </div>
-                {data?.hasActualFee && (
-                  <div className="flex items-center justify-between text-xs text-neutral-400 mt-1">
+              {data?.hasActualFee && (
+                <div className="mt-3 pt-3 border-t border-dashed border-neutral-200">
+                  <div className="flex items-center justify-between text-xs text-neutral-400">
                     <span>平台藍新手續費總額</span>
                     <span className="tabular-nums">NT$ {(data?.platformTotalFee ?? 0).toLocaleString()}</span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
           </div>

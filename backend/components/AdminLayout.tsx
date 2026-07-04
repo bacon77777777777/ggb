@@ -35,7 +35,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     const last = localStorage.getItem('sidebarOpen_last')
     return last === null ? true : last === 'true'
   })
-  const [isSidebarInitialized, setIsSidebarInitialized] = useState(false)
+  const [sidebarTransitionReady, setSidebarTransitionReady] = useState(false)
   const [groupOpenMap, setGroupOpenMap] = useState<Record<string, boolean>>({})
   const [isGroupInitialized, setIsGroupInitialized] = useState(false)
   const navRef = useRef<HTMLElement>(null)
@@ -47,19 +47,24 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
   // 從 localStorage 讀取初始值（依帳號）
+  // 先套用正確值，等兩個 rAF 再開 transition，避免刷新時出現先收起再展開的動畫
   useEffect(() => {
     if (!user?.username) return
     const saved = localStorage.getItem(`sidebarOpen_${user.username}`)
     if (saved !== null) setIsSidebarOpen(saved === 'true')
-    setIsSidebarInitialized(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setSidebarTransitionReady(true)
+      })
+    })
   }, [user?.username])
 
   // 保存側邊欄展開狀態（依帳號 + 通用 key 供初始化用）
   useEffect(() => {
-    if (!isSidebarInitialized || !user?.username) return
+    if (!sidebarTransitionReady || !user?.username) return
     localStorage.setItem(`sidebarOpen_${user.username}`, String(isSidebarOpen))
     localStorage.setItem('sidebarOpen_last', String(isSidebarOpen))
-  }, [isSidebarOpen, isSidebarInitialized, user?.username])
+  }, [isSidebarOpen, sidebarTransitionReady, user?.username])
 
   // Fetch products and pending orders
   useEffect(() => {
@@ -410,8 +415,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '對帳報表',
         items: [
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
-          { name: '消費明細', path: '/reports/products', icon: IconReports },
           { name: '物流明細', path: '/reports/logistics', icon: IconReports },
+          { name: '折價券明細', path: '/reports/coupons', icon: IconReports },
+          { name: '消費明細', path: '/reports/products', icon: IconReports },
           { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
         ],
@@ -530,7 +536,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       {/* 側邊欄 */}
       <aside
         className={`fixed left-0 top-0 h-full bg-white border-r border-neutral-200 z-40 flex flex-col ${
-          isSidebarInitialized ? 'transition-all duration-300 ease-in-out' : ''
+          sidebarTransitionReady ? 'transition-all duration-300 ease-in-out' : ''
         } ${isSidebarOpen ? 'w-52' : 'w-16'}`}
       >
         {/* 展開/收起按鈕 - 固定在側邊欄右邊線上 */}
@@ -638,7 +644,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       </aside>
 
       {/* 主內容區 */}
-      <div className={`${isSidebarInitialized ? 'transition-all duration-300 ease-in-out' : ''} ${isSidebarOpen ? 'ml-52' : 'ml-16'}`}>
+      <div className={`${sidebarTransitionReady ? 'transition-all duration-300 ease-in-out' : ''} ${isSidebarOpen ? 'ml-52' : 'ml-16'}`}>
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-30 h-[72px]">
           <div className="px-6 h-full flex items-center w-full">
             <div className="flex items-center justify-between w-full">
