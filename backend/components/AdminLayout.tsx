@@ -418,6 +418,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '菜單管理', path: '/categories', icon: IconCategories },
           { name: '抽獎紀錄', path: '/draws', icon: IconDraws },
+          { name: '機器人管理', path: '/leaderboard-bots', icon: IconUsers },
           { name: '配送管理', path: '/orders', icon: IconOrders },
           { name: '市集管理', path: '/marketplace', icon: IconMarketplace },
         ],
