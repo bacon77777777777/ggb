@@ -116,21 +116,39 @@ export async function PUT(
     const hasStatus = body.status !== undefined
     const shouldGeneratePassword = body.generatePassword === true
     const hasPassword = body.password !== undefined || shouldGeneratePassword
+    const PROFILE_FIELDS = ['name', 'email', 'avatar_url', 'gender', 'birthday', 'phone_number', 'phone',
+      'recipient_name', 'recipient_phone', 'address', 'tokens', 'points']
+    const profileUpdates: Record<string, any> = {}
+    for (const f of PROFILE_FIELDS) {
+      if (body[f] !== undefined) profileUpdates[f] = body[f] === '' ? null : body[f]
+    }
+    const hasProfile = Object.keys(profileUpdates).length > 0
 
-    if (!hasStatus && !hasPassword) return NextResponse.json({ error: '缺少更新欄位' }, { status: 400 })
+    if (!hasStatus && !hasPassword && !hasProfile) return NextResponse.json({ error: '缺少更新欄位' }, { status: 400 })
 
     let updatedUser: any = null
     let tempPassword: string | null = null
-    if (hasStatus) {
+
+    if (hasProfile || hasStatus) {
+      const fieldsToUpdate: Record<string, any> = { ...profileUpdates }
+      if (hasStatus) fieldsToUpdate.status = body.status
       const { data, error } = await supabaseAdmin
-        .from('users')
-        .update({ status: body.status })
-        .eq('id', id)
-        .select('id, status')
-        .single()
+        .from('users').update(fieldsToUpdate).eq('id', id).select('*').single()
       if (error) throw error
       updatedUser = data
     }
+
+    if (hasProfile) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: '編輯會員資料',
+        targetType: 'user',
+        targetId: id,
+        detail: profileUpdates,
+        ip: getClientIp(request),
+      })
+    }
+
 
     if (hasPassword) {
       const nextPassword = shouldGeneratePassword

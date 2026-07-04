@@ -14,6 +14,9 @@ interface Bot {
   title_color: string | null
   is_active: boolean
   sort_order: number
+  gender: string | null
+  birthday: string | null
+  bio: string | null
 }
 
 const TITLE_COLORS = ['gold', 'red', 'purple', 'blue', 'green']
@@ -31,6 +34,7 @@ const BLANK: Partial<Bot> = {
   whale_score: 500, draws_score: 10,
   title_name: '', title_color: 'gold',
   is_active: true, sort_order: 99,
+  gender: '', birthday: '', bio: '',
 }
 
 export default function LeaderboardBotsPage() {
@@ -165,6 +169,30 @@ export default function LeaderboardBotsPage() {
                   {TITLE_COLORS.map(c => <option key={c} value={c}>{COLOR_LABELS[c]}</option>)}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">性別</label>
+                <select value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <option value="">未設定</option>
+                  <option value="male">男</option>
+                  <option value="female">女</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 mb-1 block">生日</label>
+                <input type="date" value={form.birthday ?? ''} onChange={e => setForm(f => ({ ...f, birthday: e.target.value }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">備注</label>
+              <input value={form.bio ?? ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                placeholder="機器人備注（僅後台可見）"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
 
             <div className="flex items-center gap-2">

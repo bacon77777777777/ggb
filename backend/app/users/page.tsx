@@ -475,12 +475,20 @@ export default function UsersPage() {
       visible: visibleColumns.operations,
       sticky: true,
       render: (user) => (
-        <button 
-          onClick={() => router.push(`/users/${user.id}`)}
-          className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
-        >
-          查看詳情
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push(`/users/${user.id}`)}
+            className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+          >
+            查看詳情
+          </button>
+          <button
+            onClick={() => router.push(`/users/${user.id}/edit`)}
+            className="text-neutral-500 hover:text-neutral-700 text-sm font-medium whitespace-nowrap"
+          >
+            編輯
+          </button>
+        </div>
       )
     }
   ]
