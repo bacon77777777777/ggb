@@ -8,7 +8,11 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const supabaseAdmin = getSupabaseAdmin()
-    const { data, error } = await supabaseAdmin
+
+    const { data: botRows } = await supabaseAdmin.from('users').select('id').eq('is_bot', true)
+    const botIds = botRows?.map(r => r.id) ?? []
+
+    let query = supabaseAdmin
       .from('orders')
       .select(
         `
@@ -22,6 +26,10 @@ export async function GET() {
         `
       )
       .order('submitted_at', { ascending: false })
+
+    if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
+
+    const { data, error } = await query
 
     if (error) throw error
     return NextResponse.json(data ?? [])

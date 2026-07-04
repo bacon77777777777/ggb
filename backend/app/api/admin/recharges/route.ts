@@ -9,7 +9,10 @@ export async function GET() {
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    const { data, error } = await supabaseAdmin
+    const { data: botRows } = await supabaseAdmin.from('users').select('id').eq('is_bot', true)
+    const botIds = botRows?.map(r => r.id) ?? []
+
+    let query = supabaseAdmin
       .from('recharge_records')
       .select(
         `
@@ -18,6 +21,10 @@ export async function GET() {
       `
       )
       .order('created_at', { ascending: false })
+
+    if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
+
+    const { data, error } = await query
 
     if (error) {
       throw error

@@ -32,7 +32,10 @@ export default function DismantledPage() {
     const fetchDismantledItems = async () => {
       try {
         setLoading(true)
-        const { data, error } = await supabase
+        const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
+        const botIds = botRows?.map((r: any) => r.id) ?? []
+
+        let query = supabase
           .from('draw_records')
           .select(`
             id,
@@ -43,6 +46,10 @@ export default function DismantledPage() {
           `)
           .eq('status', 'dismantled')
           .order('created_at', { ascending: false })
+
+        if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
+
+        const { data, error } = await query
 
         if (error) {
           console.error('Error fetching dismantled items:', error)
