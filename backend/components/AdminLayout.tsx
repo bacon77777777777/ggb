@@ -512,9 +512,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     <div className="min-h-screen bg-neutral-50">
       {/* 側邊欄 */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-white border-r border-neutral-200 transition-all duration-300 ease-in-out z-40 flex flex-col ${
-          isSidebarOpen ? 'w-52' : 'w-16'
-        }`}
+        className={`fixed left-0 top-0 h-full bg-white border-r border-neutral-200 z-40 flex flex-col ${
+          isSidebarInitialized ? 'transition-all duration-300 ease-in-out' : ''
+        } ${isSidebarOpen ? 'w-52' : 'w-16'}`}
       >
         {/* 展開/收起按鈕 - 固定在側邊欄右邊線上 */}
         <button
@@ -621,7 +621,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       </aside>
 
       {/* 主內容區 */}
-      <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-52' : 'ml-16'}`}>
+      <div className={`${isSidebarInitialized ? 'transition-all duration-300 ease-in-out' : ''} ${isSidebarOpen ? 'ml-52' : 'ml-16'}`}>
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-30 h-[72px]">
           <div className="px-6 h-full flex items-center w-full">
             <div className="flex items-center justify-between w-full">

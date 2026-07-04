@@ -484,7 +484,7 @@ export default function UsersPage() {
           </button>
           <button
             onClick={() => router.push(`/users/${user.id}/edit`)}
-            className="text-neutral-500 hover:text-neutral-700 text-sm font-medium whitespace-nowrap"
+            className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
           >
             編輯
           </button>

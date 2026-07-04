@@ -179,9 +179,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '建立會員失敗' }, { status: 500 })
     }
 
-    // Generate unique 8-char invite code
     const invite_code = Math.random().toString(36).substring(2, 6).toUpperCase() +
                         Math.random().toString(36).substring(2, 6).toUpperCase()
+
+    const avatarIndex = (Math.floor(Math.random() * 8) + 1).toString().padStart(2, '0')
+    const avatar_url = `/images/avatar/${avatarIndex}.png`
 
     const payload = {
       id: authUserId,
@@ -192,6 +194,7 @@ export async function POST(request: Request) {
       status,
       address: address || null,
       invite_code,
+      avatar_url,
     }
 
     const { data: createdUser, error: upsertError } = await supabaseAdmin
