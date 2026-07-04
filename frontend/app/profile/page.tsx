@@ -749,10 +749,15 @@ function ProfileContent() {
   }, [warehouseItems, activeWarehouseCategory, activeWarehouseSubCategory]);
 
   const sortedWarehouseItems = React.useMemo(() => {
-    if (!lockedSupplierName) return filteredWarehouseItems;
-    const same = filteredWarehouseItems.filter(i => i.supplierName === lockedSupplierName);
-    const others = filteredWarehouseItems.filter(i => i.supplierName !== lockedSupplierName);
-    return [...same, ...others];
+    let items = filteredWarehouseItems;
+    if (lockedSupplierName) {
+      const same = items.filter(i => i.supplierName === lockedSupplierName);
+      const others = items.filter(i => i.supplierName !== lockedSupplierName);
+      items = [...same, ...others];
+    }
+    const active = items.filter(i => i.status !== 'pending_delivery');
+    const pending = items.filter(i => i.status === 'pending_delivery');
+    return [...active, ...pending];
   }, [filteredWarehouseItems, lockedSupplierName]);
 
   const hasLargePackage = React.useMemo(() => {
@@ -2558,7 +2563,7 @@ function ProfileContent() {
                         <>
                           {/* Mobile List */}
                           <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 border-t border-b border-neutral-100 dark:border-neutral-800">
-                            {filteredWarehouseItems.map((item) => {
+                            {sortedWarehouseItems.map((item) => {
                               const isSelected = selectedForDelivery.includes(item.id);
                               return (
                                 <div
