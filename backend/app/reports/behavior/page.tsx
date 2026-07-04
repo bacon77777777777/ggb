@@ -97,7 +97,7 @@ export default function BehaviorPage() {
   const funnelTop = data?.funnel[0]?.count ?? 0
 
   return (
-    <AdminLayout pageTitle="行為分析" breadcrumbs={[{ label: '行為分析', href: '/reports/behavior' }]}>
+    <AdminLayout pageTitle="點擊分析" breadcrumbs={[{ label: '點擊分析', href: '/reports/behavior' }]}>
       {/* Header controls */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-neutral-500">追蹤用戶在前台的所有點擊、瀏覽與轉換行為</p>
