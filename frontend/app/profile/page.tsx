@@ -547,6 +547,11 @@ function ProfileContent() {
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
 
+  // Shipping fee settings (from platform_settings)
+  const [shippingFeeHome, setShippingFeeHome] = useState(60);
+  const [shippingFeeCvs, setShippingFeeCvs] = useState(60);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(7);
+
   // Auto-scroll refs
   const warehouseSubTabsRef = useRef<HTMLDivElement>(null);
   const dismantleTimeTabsRef = useRef<HTMLDivElement>(null);
@@ -769,6 +774,11 @@ function ProfileContent() {
   React.useEffect(() => {
     if (hasLargePackage) setLogisticsType('HOME');
   }, [hasLargePackage]);
+
+  const currentShippingFee = React.useMemo(() => {
+    if (selectedForDelivery.length >= freeShippingThreshold) return 0;
+    return logisticsType === 'CVS' ? shippingFeeCvs : shippingFeeHome;
+  }, [selectedForDelivery.length, freeShippingThreshold, logisticsType, shippingFeeHome, shippingFeeCvs]);
 
 
   const filteredDismantledItems = React.useMemo(() => {
@@ -1163,6 +1173,18 @@ function ProfileContent() {
   useEffect(() => {
     if (activeTab === 'settings') fetchUserTitles();
   }, [activeTab, fetchUserTitles]);
+
+  useEffect(() => {
+    supabase.from('platform_settings').select('key,value').in('key', ['shipping_fee_home', 'shipping_fee_cvs', 'free_shipping_threshold'])
+      .then(({ data }) => {
+        if (!data) return;
+        const map = Object.fromEntries(data.map(r => [r.key, r.value]));
+        if (map.shipping_fee_home) setShippingFeeHome(Number(map.shipping_fee_home));
+        if (map.shipping_fee_cvs) setShippingFeeCvs(Number(map.shipping_fee_cvs));
+        if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch Data when Tab Changes
   const fetchUserData = React.useCallback(async () => {
@@ -2400,7 +2422,7 @@ function ProfileContent() {
                                   }))}
                                   className="flex-1 bg-primary text-white h-[44px] rounded-xl text-base font-black disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  配送
+                                  確認支付並配送
                                 </button>
                               </>
                             )}
@@ -2469,7 +2491,7 @@ function ProfileContent() {
                               }))}
                               className="h-9 px-3 rounded-lg bg-primary text-white text-[13px] font-black disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              申請配送 ({selectedForDelivery.length})
+                              確認支付並配送 ({selectedForDelivery.length})
                             </button>
                           ) : null}
                         </>
@@ -2970,8 +2992,17 @@ function ProfileContent() {
                         </div>
                         <div className={cn("flex justify-between", isDesktop ? "text-sm" : "text-[13px]")}>
                           <span className="text-neutral-500 dark:text-neutral-400 font-bold">運費</span>
-                          <span className="font-black text-primary">免運費</span>
+                          {currentShippingFee === 0 ? (
+                            <span className="font-black text-primary">免運費</span>
+                          ) : (
+                            <span className="font-black text-neutral-900 dark:text-white">NT$ {currentShippingFee}</span>
+                          )}
                         </div>
+                        {currentShippingFee > 0 && (
+                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 text-right">
+                            再加 {freeShippingThreshold - selectedForDelivery.length} 件可免運
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-3">
                         <p className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-sm" : "text-[13px]")}>配送方式</p>
@@ -3166,7 +3197,7 @@ function ProfileContent() {
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
                         )}
                       >
-                        {isSubmittingDelivery ? '處理中...' : '確認配送'}
+                        {isSubmittingDelivery ? '處理中...' : `確認支付並配送${currentShippingFee > 0 ? `（NT$${currentShippingFee}）` : ''}`}
                       </button>
                     </div>
                   </motion.div>
