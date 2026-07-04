@@ -17,6 +17,7 @@ import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -200,6 +201,12 @@ export default function Home() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const c1 = trackPageView();
+    const c2 = trackScrollDepth();
+    return () => { c1(); c2(); };
+  }, []);
 
   // Fetch global platform popularity (for all users, used as default sort)
   useEffect(() => {
@@ -1356,6 +1363,7 @@ export default function Home() {
                 image: b.image_url,
                 link: b.link_url || '#',
               }))}
+              onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
             />
           )}
         </section>
@@ -1579,6 +1587,7 @@ export default function Home() {
                       image: b.image_url,
                       link: b.link_url || '#',
                     }))}
+                    onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
                   />
                 )}
               </section>

@@ -17,6 +17,7 @@ import Image from 'next/image';
 
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import GachaMachine, { Prize } from '@/components/GachaMachine';
+import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
@@ -413,6 +414,13 @@ export default function ProductDetailPage() {
     }
   };
 
+  // Page view + scroll depth tracking
+  useEffect(() => {
+    const cleanupPage = trackPageView();
+    const cleanupScroll = trackScrollDepth();
+    return () => { cleanupPage(); cleanupScroll(); };
+  }, []);
+
   useEffect(() => {
     if (params.id) {
       // Use a timeout to avoid blocking or tracking accidental clicks
@@ -467,6 +475,19 @@ export default function ProductDetailPage() {
     };
   }, []);
 
+  // Fire product_view once when product data loads
+  useEffect(() => {
+    if (!product) return;
+    trackEvent('product_view', {
+      productId: product.id,
+      series: (product as any)?.series ?? undefined,
+      meta: {
+        product_type: product.type,
+        product_name: product.name,
+      },
+    });
+  }, [product?.id]);
+
   useEffect(() => {
     if (!user || !product) return;
 
@@ -517,6 +538,9 @@ export default function ProductDetailPage() {
 
   const handleShowResults = async () => {
     setShowResultModal(true);
+    if (product) {
+      trackEvent('winning_records_view', { productId: product.id });
+    }
     if (drawResults.length > 0 || !product) return;
 
     setIsLoadingResults(true);
@@ -600,6 +624,8 @@ export default function ProductDetailPage() {
 
   const handleTrialCard = () => {
     if (!product) return;
+
+    trackEvent('draw_trial', { productId: product.id });
 
     const scoreLevel = (levelRaw: string) => {
       const level = String(levelRaw || '').trim()
@@ -711,12 +737,31 @@ export default function ProductDetailPage() {
         refreshProfile();
       }
 
-      import('@/lib/trackEvent').then(({ trackEvent }) => {
-        trackEvent('draw', {
+      // Track draw_single / draw_multi
+      if (quantity === 1) {
+        trackEvent('draw_single', {
           productId: product.id,
           series: (product as any)?.series ?? undefined,
-          meta: { count: quantity },
+          meta: {
+            cost_tokens: product.price,
+            cost_type: options?.usePoints ? 'points' : 'tokens',
+          },
         });
+      } else {
+        trackEvent('draw_multi', {
+          productId: product.id,
+          series: (product as any)?.series ?? undefined,
+          meta: {
+            count: quantity,
+            cost_tokens: product.price * quantity,
+            cost_type: options?.usePoints ? 'points' : 'tokens',
+          },
+        });
+      }
+      trackEvent('draw', {
+        productId: product.id,
+        series: (product as any)?.series ?? undefined,
+        meta: { count: quantity },
       });
 
       // Fire-and-forget: 任務追蹤 + 成就檢查
@@ -752,6 +797,15 @@ export default function ProductDetailPage() {
       }
       
       console.log('[GA] event: purchase_error', { error: errorMessage });
+      if (errorMessage && /insufficient.*balance/i.test(errorMessage)) {
+        trackEvent('insufficient_balance', {
+          productId: product.id,
+          meta: {
+            required: product.price * quantity,
+            available: options?.usePoints ? (user?.points ?? 0) : (user?.tokens ?? 0),
+          },
+        });
+      }
       showToast(errorMessage || '購買失敗，請稍後再試', 'error');
     } finally {
       setIsProcessing(false);
@@ -765,6 +819,14 @@ export default function ProductDetailPage() {
   const handleBattleEffectComplete = () => {
     setIsGachaOpen(false);
     setIsPrizeModalOpen(true);
+    if (product && wonPrizes.length > 0) {
+      wonPrizes.forEach(prize => {
+        trackEvent('prize_reveal', {
+          productId: product.id,
+          meta: { prize_level: prize.grade || prize.rarity, prize_name: prize.name },
+        });
+      });
+    }
   };
 
   const handleGachaContinue = () => {
@@ -777,6 +839,14 @@ export default function ProductDetailPage() {
     setIsVideoOpen(false);
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
+      if (product) {
+        wonPrizes.forEach(prize => {
+          trackEvent('prize_reveal', {
+            productId: product.id,
+            meta: { prize_level: prize.grade || prize.rarity, prize_name: prize.name },
+          });
+        });
+      }
     }
     setIsVideoMuted(false);
   };
@@ -785,6 +855,14 @@ export default function ProductDetailPage() {
     setIsVideoOpen(false);
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
+      if (product) {
+        wonPrizes.forEach(prize => {
+          trackEvent('prize_reveal', {
+            productId: product.id,
+            meta: { prize_level: prize.grade || prize.rarity, prize_name: prize.name },
+          });
+        });
+      }
     }
     setIsVideoMuted(false);
   };

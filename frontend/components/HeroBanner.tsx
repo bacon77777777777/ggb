@@ -18,7 +18,7 @@ const DEFAULT_BANNER: Banner = {
   link: '#',
 };
 
-export default function HeroBanner({ banners }: { banners: Banner[] }) {
+export default function HeroBanner({ banners, onBannerClick }: { banners: Banner[]; onBannerClick?: (banner: Banner) => void }) {
   const items = banners.length > 0 ? banners : [DEFAULT_BANNER];
   const [current, setCurrent] = useState(0);
   const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
@@ -74,7 +74,7 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
             index === current ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <Link href={banner.link} className="block w-full h-full relative">
+          <Link href={banner.link} className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
             <Image
               src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
               alt="Banner"

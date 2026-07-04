@@ -16,6 +16,7 @@ import { imgAvatar } from './assets';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
+import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 
 interface RankingRpcItem {
   user_id: string;
@@ -159,6 +160,13 @@ export default function RankingPage() {
   useEffect(() => {
     fetchRanking();
   }, [fetchRanking]);
+
+  useEffect(() => {
+    const c1 = trackPageView();
+    const c2 = trackScrollDepth();
+    trackEvent('leaderboard_view');
+    return () => { c1(); c2(); };
+  }, []);
 
   // 點頭像 → 打開個人資料卡
   const handleAvatarClick = (item: RankingItemData) => {

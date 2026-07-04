@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -77,6 +78,13 @@ export default function TopupPage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
+  useEffect(() => {
+    const c1 = trackPageView();
+    const c2 = trackScrollDepth();
+    trackEvent('topup_page_view', { meta: { referrer: typeof document !== 'undefined' ? document.referrer : '' } });
+    return () => { c1(); c2(); };
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
@@ -119,6 +127,7 @@ export default function TopupPage() {
           ]).catch(() => {});
         }
 
+        trackEvent('topup_success', { meta: { amount: selectedPlan.amount } });
         showToast('儲值成功！', 'success');
         if (refreshProfile) await refreshProfile();
         router.push('/profile?tab=topup-history');
@@ -223,7 +232,7 @@ export default function TopupPage() {
                   {TOPUP_PLANS.map((plan) => (
                     <button
                       key={plan.id}
-                      onClick={() => setSelectedPlan(plan)}
+                      onClick={() => { setSelectedPlan(plan); trackEvent('topup_plan_select', { meta: { plan_id: plan.id, amount: plan.amount } }); }}
                       className={cn(
                         "relative p-2 md:p-5 rounded-xl md:rounded-3xl border transition-all text-center flex flex-col items-center justify-center gap-1 md:gap-1.5 group aspect-[4/3] md:aspect-auto",
                         selectedPlan.id === plan.id 

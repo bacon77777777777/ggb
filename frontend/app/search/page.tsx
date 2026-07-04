@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn, formatViewCount } from '@/lib/utils';
+import { trackPageView, trackEvent } from '@/lib/trackEvent';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 
@@ -48,6 +49,11 @@ export default function SearchPage() {
   const restoringScrollRef = useRef<number | null>(null);
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryTabId>('all');
   const [activeSecondaryTab, setActiveSecondaryTab] = useState<'all' | 'hot' | 'new'>('all');
+
+  useEffect(() => {
+    const c1 = trackPageView();
+    return () => { c1(); };
+  }, []);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('searchHistory') : null;
@@ -420,6 +426,7 @@ export default function SearchPage() {
     setQuery(raw);
     saveHistory(raw);
     setIsInputFocused(false);
+    trackEvent('search_query', { meta: { query: raw, result_count: filteredProducts.length } });
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
     if (baseUrl) {
