@@ -402,6 +402,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
           { name: '轉換分析', path: '/reports/overview', icon: IconReports },
+          { name: '行為分析', path: '/reports/behavior', icon: IconReports },
         ],
       },
       {
