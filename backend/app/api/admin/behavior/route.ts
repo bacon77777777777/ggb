@@ -184,7 +184,12 @@ export async function GET(request: Request) {
     // Longest dwell page
     if (pageDwells.length > 0) {
       const longest = [...pageDwells].sort((a, b) => b.avg_seconds - a.avg_seconds)[0]
-      const label = longest.product_name ? `${longest.path}（${longest.product_name}）` : longest.path
+      const PATH_LABEL: Record<string, string> = {
+        '/': '首頁', '/profile': '我的倉庫', '/topup': '儲值頁',
+        '/marketplace': '交易所', '/leaderboard': '排行榜', '/login': '登入頁',
+      }
+      const pathName = PATH_LABEL[longest.path] ?? longest.path
+      const label = longest.product_name ? `${pathName}（${longest.product_name}）` : pathName
       const m = Math.floor(longest.avg_seconds / 60)
       const s = longest.avg_seconds % 60
       insights.push({ level: 'info', message: `停留最久頁面：${label}，平均 ${m > 0 ? `${m}分` : ''}${s}秒` })
