@@ -192,7 +192,10 @@ export default function BehaviorPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Product views */}
             <div className={`bg-white rounded-lg shadow-sm border border-neutral-200 p-4 ${CARD_H} flex flex-col`}>
-              <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex-shrink-0">商品詳情頁進入次數</h3>
+              <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex-shrink-0">
+                商品頁面進入次數
+                <span className="ml-1.5 text-xs font-normal text-neutral-400">({data.product_views.length} 筆商品)</span>
+              </h3>
               <div className="flex items-center pb-1.5 border-b border-neutral-100 flex-shrink-0">
                 <div className="flex-1 text-[11px] font-medium text-neutral-400 uppercase tracking-wide">商品名稱</div>
                 <div
