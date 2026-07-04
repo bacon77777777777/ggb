@@ -547,6 +547,7 @@ function ProfileContent() {
   const dismantleTimeTabsRef = useRef<HTMLDivElement>(null);
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(10);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
+  const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (warehouseSubTabsRef.current) {
@@ -1710,16 +1711,19 @@ function ProfileContent() {
 
   useEffect(() => {
     if (isDesktop) return;
-    const sentinel = mobileWarehouseSentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
+    const container = mobileWarehouseScrollRef.current;
+    if (!container) return;
+    const tryLoadMore = () => {
+      if (filteredWarehouseItems.length <= mobileWarehouseDisplayCount) return;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      if (scrollHeight - scrollTop - clientHeight < 120) {
         setMobileWarehouseDisplayCount(prev => prev + 10);
       }
-    }, { threshold: 0.1 });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isDesktop, mobileWarehouseDisplayCount]);
+    };
+    tryLoadMore();
+    container.addEventListener('scroll', tryLoadMore, { passive: true });
+    return () => container.removeEventListener('scroll', tryLoadMore);
+  }, [isDesktop, mobileWarehouseDisplayCount, filteredWarehouseItems.length]);
 
   const toggleDeliverySelection = (id: string) => {
     const item = warehouseItems.find(i => i.id === id);
@@ -2163,7 +2167,7 @@ function ProfileContent() {
               )}
 
               {/* Content List */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div ref={mobileWarehouseScrollRef} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
                 {isLoadingData ? (
                   <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
                 ) : activeWarehouseTab === 'all' ? (
