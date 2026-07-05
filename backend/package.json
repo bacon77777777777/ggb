@@ -12,6 +12,7 @@
     "db:reset-and-seed": "node scripts/run_sql.js ../reset_and_seed.sql"
   },
   "dependencies": {
+    "@line/bot-sdk": "^11.0.0",
     "@sentry/nextjs": "^10.63.0",
     "@supabase/supabase-js": "^2.93.3",
     "@upstash/ratelimit": "^2.0.8",
