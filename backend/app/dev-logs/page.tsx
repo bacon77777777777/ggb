@@ -68,6 +68,7 @@ export default function DevLogsPage() {
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState<LogStatus | 'all'>('all')
   const [expandedMeetings, setExpandedMeetings] = useState<Set<number>>(new Set())
+  const [expandedRoadmap, setExpandedRoadmap] = useState<Set<number>>(new Set())
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -372,14 +373,38 @@ export default function DevLogsPage() {
                   <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">尚無計畫內容</div>
                 ) : (
                   <div className="space-y-3">
-                    {roadmap.map((log, idx) => (
+                    {roadmap.map((log, idx) => {
+                      const isExpanded = expandedRoadmap.has(log.id)
+                      const PREVIEW_LEN = 120
+                      const needsExpand = (log.description?.length ?? 0) > PREVIEW_LEN
+                      return (
                       <div key={log.id} className="bg-white rounded-xl border border-neutral-200 p-5 flex gap-4 hover:bg-neutral-50 group">
                         <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
                           {idx + 1}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-neutral-800 mb-1">{log.title}</p>
-                          {log.description && <p className="text-xs text-neutral-500 leading-relaxed">{log.description}</p>}
+                          {log.description && (
+                            <div>
+                              <p className="text-xs text-neutral-500 leading-relaxed whitespace-pre-wrap">
+                                {isExpanded || !needsExpand
+                                  ? log.description
+                                  : log.description.slice(0, PREVIEW_LEN) + '…'}
+                              </p>
+                              {needsExpand && (
+                                <button
+                                  onClick={() => setExpandedRoadmap(prev => {
+                                    const next = new Set(prev)
+                                    isExpanded ? next.delete(log.id) : next.add(log.id)
+                                    return next
+                                  })}
+                                  className="mt-1.5 text-[11px] font-semibold text-primary hover:text-primary/70 transition-colors"
+                                >
+                                  {isExpanded ? '收合 ▲' : '展開全部 ▼'}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
@@ -394,7 +419,8 @@ export default function DevLogsPage() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
