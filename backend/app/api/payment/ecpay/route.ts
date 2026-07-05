@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       if (!orderNumber) {
         const { data: ensured, error: ensureErr } = await supabase.rpc('ensure_sell_order_number', { p_order_id: orderId })
         if (ensureErr) throw ensureErr
-        if (!Boolean((ensured as any)?.success))
+        if (!(ensured as any)?.success)
           return NextResponse.json({ error: String((ensured as any)?.message || 'Failed to init order number') }, { status: 400 })
         orderNumber = String((ensured as any)?.order_number || '')
       }
