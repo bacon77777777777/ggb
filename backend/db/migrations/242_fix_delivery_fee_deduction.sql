@@ -32,9 +32,9 @@ BEGIN
     RAISE EXCEPTION 'PREORDER_NOT_AVAILABLE';
   END IF;
 
-  -- Check sufficient balance when fee > 0
+  -- Check sufficient token balance when fee > 0
   IF COALESCE(p_delivery_fee_points, 0) > 0 THEN
-    SELECT COALESCE(points, 0) INTO v_current_points
+    SELECT COALESCE(tokens, 0) INTO v_current_points
     FROM users WHERE id = p_user_id;
 
     IF v_current_points < p_delivery_fee_points THEN
@@ -43,9 +43,9 @@ BEGIN
   END IF;
 
   UPDATE users
-  SET points = COALESCE(points, 0) - COALESCE(p_delivery_fee_points, 0)
+  SET tokens = COALESCE(tokens, 0) - COALESCE(p_delivery_fee_points, 0)
   WHERE id = p_user_id
-  RETURNING points INTO v_new_balance;
+  RETURNING tokens INTO v_new_balance;
 
   v_order_number := 'OD' || to_char(now(), 'YYMMDD') || lpad(floor(random() * 10000)::text, 4, '0');
 

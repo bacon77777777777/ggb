@@ -551,6 +551,10 @@ function ProfileContent() {
   // Shipping fee settings (from platform_settings)
   const [shippingFeeHome, setShippingFeeHome] = useState(60);
   const [shippingFeeCvs, setShippingFeeCvs] = useState(60);
+  const [shippingFeeCvs711, setShippingFeeCvs711] = useState(65);
+  const [shippingFeeCvsFamily, setShippingFeeCvsFamily] = useState(65);
+  const [shippingFeeCvsHilife, setShippingFeeCvsHilife] = useState(60);
+  const [shippingFeeCvsOk, setShippingFeeCvsOk] = useState(60);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(7);
 
   // Auto-scroll refs
@@ -782,8 +786,17 @@ function ProfileContent() {
 
   const currentShippingFee = React.useMemo(() => {
     if (selectedForDelivery.length >= freeShippingThreshold) return 0;
-    return logisticsType === 'CVS' ? shippingFeeCvs : shippingFeeHome;
-  }, [selectedForDelivery.length, freeShippingThreshold, logisticsType, shippingFeeHome, shippingFeeCvs]);
+    if (logisticsType === 'CVS') {
+      switch (logisticsSubType) {
+        case 'UNIMART': return shippingFeeCvs711;
+        case 'FAMI':    return shippingFeeCvsFamily;
+        case 'HILIFE':  return shippingFeeCvsHilife;
+        case 'OKMART':  return shippingFeeCvsOk;
+        default:        return shippingFeeCvs;
+      }
+    }
+    return shippingFeeHome;
+  }, [selectedForDelivery.length, freeShippingThreshold, logisticsType, logisticsSubType, shippingFeeHome, shippingFeeCvs, shippingFeeCvs711, shippingFeeCvsFamily, shippingFeeCvsHilife, shippingFeeCvsOk]);
 
 
   const filteredDismantledItems = React.useMemo(() => {
@@ -1187,12 +1200,20 @@ function ProfileContent() {
   }, [activeTab, fetchUserTitles]);
 
   useEffect(() => {
-    supabase.from('platform_settings').select('key,value').in('key', ['shipping_fee_home', 'shipping_fee_cvs', 'free_shipping_threshold'])
+    supabase.from('platform_settings').select('key,value').in('key', [
+        'shipping_fee_home', 'shipping_fee_cvs',
+        'shipping_fee_cvs_711', 'shipping_fee_cvs_family', 'shipping_fee_cvs_hilife', 'shipping_fee_cvs_ok',
+        'free_shipping_threshold'
+      ])
       .then(({ data }) => {
         if (!data) return;
         const map = Object.fromEntries(data.map(r => [r.key, r.value]));
         if (map.shipping_fee_home) setShippingFeeHome(Number(map.shipping_fee_home));
         if (map.shipping_fee_cvs) setShippingFeeCvs(Number(map.shipping_fee_cvs));
+        if (map.shipping_fee_cvs_711) setShippingFeeCvs711(Number(map.shipping_fee_cvs_711));
+        if (map.shipping_fee_cvs_family) setShippingFeeCvsFamily(Number(map.shipping_fee_cvs_family));
+        if (map.shipping_fee_cvs_hilife) setShippingFeeCvsHilife(Number(map.shipping_fee_cvs_hilife));
+        if (map.shipping_fee_cvs_ok) setShippingFeeCvsOk(Number(map.shipping_fee_cvs_ok));
         if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
