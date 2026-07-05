@@ -49,9 +49,22 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    // Track draw event for missions + achievements (non-blocking, server-side)
+    // 取得商品單價以計算花費金額
+    const { data: productData } = await userSupabase
+      .from('products')
+      .select('price')
+      .eq('id', productId)
+      .single()
+
+    const tokenCost = (productData?.price ?? 0) * count
+    const pointsCost = tokenCost * 4
+
+    // Track draw + spend + achievements（non-blocking）
     await Promise.allSettled([
       userSupabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count } }),
+      usePoints
+        ? userSupabase.rpc('track_mission_event', { p_event_type: 'spend_points', p_data: { amount: pointsCost } })
+        : userSupabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: tokenCost } }),
       userSupabase.rpc('check_achievements', { p_user_id: user.id }),
     ])
 

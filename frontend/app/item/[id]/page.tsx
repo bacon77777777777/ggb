@@ -379,6 +379,7 @@ export default function ProductDetailPage() {
     if (navigator.share && isTouchDevice) {
       try {
         await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, text: shareText, url });
+        if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
       } catch {}
     } else {
       try {
@@ -391,6 +392,7 @@ export default function ProductDetailPage() {
         document.execCommand('copy');
         document.body.removeChild(el);
       }
+      if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     }
@@ -412,6 +414,7 @@ export default function ProductDetailPage() {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     }
+    if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
   };
 
   // Page view + scroll depth tracking
@@ -764,18 +767,7 @@ export default function ProductDetailPage() {
         meta: { count: quantity },
       });
 
-      // Fire-and-forget: 任務追蹤 + 成就檢查
-      if (user) {
-        const tokenCost = product.price * quantity;
-        const pointsCost = tokenCost * 3;
-        Promise.allSettled([
-          supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: quantity } }),
-          options?.usePoints
-            ? supabase.rpc('track_mission_event', { p_event_type: 'spend_points', p_data: { amount: pointsCost } })
-            : supabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: tokenCost } }),
-          supabase.rpc('check_achievements', { p_user_id: user.id }),
-        ]).catch(() => {});
-      }
+      // 任務追蹤由 /api/gacha route 統一處理（避免重複計算）
 
       if (product.type === 'card') {
         setIsVideoMuted(false);
