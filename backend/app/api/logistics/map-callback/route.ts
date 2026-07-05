@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const frontendUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000').replace('127.0.0.1', 'localhost')
 
     const redirectUrl = new URL(`${frontendUrl}/profile`)
-    redirectUrl.searchParams.set('tab', 'delivery')
+    redirectUrl.searchParams.set('tab', 'warehouse')
     redirectUrl.searchParams.set('store_id', storeId)
     redirectUrl.searchParams.set('store_name', storeName)
     redirectUrl.searchParams.set('store_address', storeAddress)
