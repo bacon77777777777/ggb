@@ -372,53 +372,58 @@ export default function DevLogsPage() {
                 {roadmap.length === 0 ? (
                   <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">尚無計畫內容</div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
                     {roadmap.map((log, idx) => {
-                      const isExpanded = expandedRoadmap.has(log.id)
-                      const PREVIEW_LEN = 120
-                      const needsExpand = (log.description?.length ?? 0) > PREVIEW_LEN
+                      const isOpen = expandedRoadmap.has(log.id)
                       return (
-                      <div key={log.id} className="bg-white rounded-xl border border-neutral-200 p-5 flex gap-4 hover:bg-neutral-50 group">
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-neutral-800 mb-1">{log.title}</p>
-                          {log.description && (
-                            <div>
-                              <p className="text-xs text-neutral-500 leading-relaxed whitespace-pre-wrap">
-                                {isExpanded || !needsExpand
-                                  ? log.description
-                                  : log.description.slice(0, PREVIEW_LEN) + '…'}
-                              </p>
-                              {needsExpand && (
-                                <button
-                                  onClick={() => setExpandedRoadmap(prev => {
-                                    const next = new Set(prev)
-                                    isExpanded ? next.delete(log.id) : next.add(log.id)
-                                    return next
-                                  })}
-                                  className="mt-1.5 text-[11px] font-semibold text-primary hover:text-primary/70 transition-colors"
-                                >
-                                  {isExpanded ? '收合 ▲' : '展開全部 ▼'}
-                                </button>
+                        <div key={log.id}>
+                          <div
+                            className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-neutral-50 group select-none"
+                            onClick={() => setExpandedRoadmap(prev => {
+                              const next = new Set(prev)
+                              isOpen ? next.delete(log.id) : next.add(log.id)
+                              return next
+                            })}
+                          >
+                            <svg
+                              className={`w-4 h-4 text-neutral-400 shrink-0 mt-0.5 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold mt-0.5">
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-neutral-800">{log.title}</p>
+                              {log.description && (
+                                <p className={`text-xs text-neutral-400 mt-0.5 leading-relaxed ${isOpen ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
+                                  {log.description}
+                                </p>
                               )}
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          {isOpen && (
+                            <div className="px-5 pb-5 pt-1 bg-neutral-50 border-t border-neutral-100">
+                              <div className="flex gap-2">
+                                <Badge meta={TYPE_META[log.type]} />
+                                <Badge meta={STATUS_META[log.status]} />
+                              </div>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          <button onClick={() => startEdit(log)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
                       )
                     })}
                   </div>
