@@ -41,6 +41,27 @@ Supabase Dashboard → Database → Connections 確認連線數
 
 ---
 
+## 正式環境切換清單
+
+### 綠界正式帳號啟用後（後台 Vercel 環境變數）
+
+拿到正式 MerchantID / HashKey / HashIV 後，在 Vercel → ggb-backend → Environment Variables 更新：
+
+| 變數 | 說明 |
+|---|---|
+| `ECPAY_MERCHANT_ID` | 正式商家編號（取代測試 3002607） |
+| `ECPAY_HASH_KEY` | 正式 HashKey |
+| `ECPAY_HASH_IV` | 正式 HashIV |
+| `ECPAY_API_URL` | `https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5` |
+| `ECPAY_LOGISTICS_API_URL` | `https://logistics.ecpay.com.tw/Express/Create` |
+| `ECPAY_LOGISTICS_MAP_URL` | `https://logistics.ecpay.com.tw/Express/map` |
+
+> 金流與物流共用同一組 MerchantID / HashKey / HashIV，無需另設 `ECPAY_LOGISTICS_MERCHANT_ID` 等。
+> 前台（ggb-frontend）**不需要**異動任何變數。
+> 更新後 Redeploy 後台即生效。
+
+---
+
 ## 待辦事項（Backlog）
 
 ### 前台
@@ -49,6 +70,42 @@ Supabase Dashboard → Database → Connections 確認連線數
   - 轉蛋頁面上方機台區塊獨立為可替換模組（目前硬寫單一樣式）
   - 設計多套機台主題（東洋扭蛋機、夾娃娃機風格、街機風格⋯⋯）
   - 後台可切換各商品套用的機台模組，提升玩家視覺體驗差異化
+
+---
+
+## 2026-07-05（v1.7.5 — 前台手機版 Lazy Load + 配送管理 Bug 修復）
+
+### 後台（Next.js / backend）
+
+**配送管理 Bug 修復**
+- Bug 2：`map-callback` redirect fallback 改用 `NEXT_PUBLIC_FRONTEND_URL` 環境變數，修正原來誤用 backend domain 作為前台 redirect 目標的問題
+- Bug 5：移除配送管理頁「合併生成配送單」假功能 modal（無實際邏輯，純 UI 展示），同步移除「可合併生成配送單」統計卡
+- Bug 11：生成配送單按鈕現在對 `processing` / `picked_up` 且尚未有追蹤號的訂單也顯示（原僅限 `submitted` 狀態）；訂單列表批次選取邏輯同步更新
+
+**Migration Runner 改版**
+- `backend/scripts/manual_migrate.js` 改用 `psql` CLI 執行 SQL（原使用 `pg` npm 套件會截斷 username 中的 Supabase project ref，導致認證失敗）
+- 支援 `--from`、`--to`、`--only` 參數
+
+### 前台（Next.js / frontend）
+
+**手機版 Lazy Load — 全面上線**
+- 我的倉庫（`/profile?tab=warehouse`）：修復 lazy load 卡住問題，根因為 Safari 對 `overflow-y-auto` 容器內 IntersectionObserver 的相容性缺陷；改用 React `onScroll` 合成事件直接監聽 scroll container
+- 新增 lazy load 到以下三個手機版頁面（預設顯示 10 筆，下滑到距底部 150px 自動載入 10 筆）：
+  - **我的倉庫**（已修復）
+  - **配送管理**（`delivery` tab）
+  - **抽獎紀錄**（`draw-history` tab）
+  - **首頁**（`/`）：使用 `window` scroll 事件，tab 切換時重置計數
+
+**倉庫 UI 調整**
+- 列表行動按鈕「確認支付並配送」→「配送」（精簡文字）
+- 申請配送 modal 運費顯示改為代幣（G 幣圖示 + 數字 + 「代幣」文字）
+- modal 底部按鈕：取消縮窄、確認按鈕 `flex-1` 填滿；文字改為「確認支付 X 代幣」或「確認配送」
+
+### DB Migrations
+| Migration | 說明 |
+|---|---|
+| `240` | 開發日誌：正式環境切換清單（綠界金流/物流正式環境變數說明） |
+| `241` | 開發日誌：本次前台 Lazy Load + 配送管理修復 |
 
 ---
 

@@ -559,6 +559,10 @@ function ProfileContent() {
   const [mobileWarehouseDisplayCount, setMobileWarehouseDisplayCount] = useState(10);
   const mobileWarehouseSentinelRef = useRef<HTMLDivElement>(null);
   const mobileWarehouseScrollRef = useRef<HTMLDivElement>(null);
+  const [mobileDeliveryDisplayCount, setMobileDeliveryDisplayCount] = useState(10);
+  const mobileDeliveryScrollRef = useRef<HTMLDivElement>(null);
+  const [mobileDrawDisplayCount, setMobileDrawDisplayCount] = useState(10);
+  const mobileDrawScrollRef = useRef<HTMLDivElement>(null);
   const [lockedSupplierName, setLockedSupplierName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1771,21 +1775,29 @@ function ProfileContent() {
     setMobileWarehouseDisplayCount(10);
   }, [activeWarehouseCategory, activeWarehouseSubCategory, activeWarehouseTab]);
 
+  // Mobile delivery lazy load reset
   useEffect(() => {
-    if (isDesktop) return;
-    const container = mobileWarehouseScrollRef.current;
-    if (!container) return;
-    const tryLoadMore = () => {
-      if (sortedWarehouseItems.length <= mobileWarehouseDisplayCount) return;
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      if (scrollHeight - scrollTop - clientHeight < 120) {
-        setMobileWarehouseDisplayCount(prev => prev + 10);
+    setMobileDeliveryDisplayCount(10);
+  }, [activeDeliveryTab]);
+
+  // Mobile draw-history lazy load reset
+  useEffect(() => {
+    setMobileDrawDisplayCount(10);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (sortedWarehouseItems.length === 0) return;
+    const t = setTimeout(() => {
+      const container = mobileWarehouseScrollRef.current;
+      if (!container) return;
+      if (container.scrollHeight <= container.clientHeight + 50) {
+        setMobileWarehouseDisplayCount(prev =>
+          Math.min(prev + 10, sortedWarehouseItems.length)
+        );
       }
-    };
-    tryLoadMore();
-    container.addEventListener('scroll', tryLoadMore, { passive: true });
-    return () => container.removeEventListener('scroll', tryLoadMore);
-  }, [isDesktop, mobileWarehouseDisplayCount, sortedWarehouseItems.length]);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [sortedWarehouseItems.length]);
 
   const toggleDeliverySelection = (id: string) => {
     const item = warehouseItems.find(i => i.id === id);
@@ -2252,7 +2264,18 @@ function ProfileContent() {
               )}
 
               {/* Content List */}
-              <div ref={mobileWarehouseScrollRef} className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div
+                ref={mobileWarehouseScrollRef}
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+                    setMobileWarehouseDisplayCount(prev =>
+                      prev < sortedWarehouseItems.length ? prev + 10 : prev
+                    );
+                  }
+                }}
+              >
                 {isLoadingData ? (
                   <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
                 ) : activeWarehouseTab === 'all' ? (
@@ -2262,6 +2285,7 @@ function ProfileContent() {
                       <p className="font-black text-sm uppercase tracking-widest">沒有相關獎項</p>
                     </div>
                   ) : (
+                    <>
                     <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                       {sortedWarehouseItems.slice(0, mobileWarehouseDisplayCount).map((item) => {
                         const isSelected = selectedForDelivery.includes(item.id);
@@ -2331,12 +2355,11 @@ function ProfileContent() {
                           </div>
                         );
                       })}
-                      {mobileWarehouseDisplayCount < sortedWarehouseItems.length && (
-                        <div ref={mobileWarehouseSentinelRef} className="py-4 text-center text-xs text-neutral-400">
-                          載入中...
-                        </div>
-                      )}
                     </div>
+                    <div ref={mobileWarehouseSentinelRef} className="py-4 text-center text-xs text-neutral-400">
+                      {mobileWarehouseDisplayCount < sortedWarehouseItems.length ? '載入中...' : '到底了'}
+                    </div>
+                    </>
                   )
                 ) : (
                   // Dismantled List (Mobile)
@@ -2432,7 +2455,7 @@ function ProfileContent() {
                                   }))}
                                   className="flex-1 bg-primary text-white h-[44px] rounded-xl text-base font-black disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  確認支付並配送
+                                  配送
                                 </button>
                               </>
                             )}
@@ -2501,7 +2524,7 @@ function ProfileContent() {
                               }))}
                               className="h-9 px-3 rounded-lg bg-primary text-white text-[13px] font-black disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              確認支付並配送 ({selectedForDelivery.length})
+                              配送 ({selectedForDelivery.length})
                             </button>
                           ) : null}
                         </>
@@ -3005,7 +3028,11 @@ function ProfileContent() {
                           {currentShippingFee === 0 ? (
                             <span className="font-black text-primary">免運費</span>
                           ) : (
-                            <span className="font-black text-neutral-900 dark:text-white">NT$ {currentShippingFee}</span>
+                            <div className="flex items-center gap-1">
+                              <Image src="/images/gcoin.png" alt="G" width={16} height={16} className="object-contain" />
+                              <span className="font-black text-accent-red font-amount tracking-tighter">{currentShippingFee}</span>
+                              <span className="font-bold text-accent-red text-[13px]">代幣</span>
+                            </div>
                           )}
                         </div>
                         {currentShippingFee > 0 && (
@@ -3190,16 +3217,16 @@ function ProfileContent() {
                       "border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-center gap-3 shrink-0 mt-auto",
                       isDesktop ? "h-24 px-6" : "h-16 px-4"
                     )}>
-                      <button 
-                        onClick={() => setShowDeliveryModal(false)} 
+                      <button
+                        onClick={() => setShowDeliveryModal(false)}
                         className={cn(
-                          "flex-1 rounded-xl font-black text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors bg-neutral-50 dark:bg-neutral-800",
-                          isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
+                          "rounded-xl font-black text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors bg-neutral-50 dark:bg-neutral-800",
+                          isDesktop ? "h-[52px] text-base px-6" : "h-[44px] text-sm px-5"
                         )}
                       >
                         取消
                       </button>
-                      <button 
+                      <button
                         onClick={handleConfirmDelivery}
                         disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || !settingsForm.recipientAddress}
                         className={cn(
@@ -3207,7 +3234,7 @@ function ProfileContent() {
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
                         )}
                       >
-                        {isSubmittingDelivery ? '處理中...' : `確認支付並配送${currentShippingFee > 0 ? `（NT$${currentShippingFee}）` : ''}`}
+                        {isSubmittingDelivery ? '處理中...' : currentShippingFee > 0 ? `確認支付 ${currentShippingFee} 代幣` : '確認配送'}
                       </button>
                     </div>
                   </motion.div>
@@ -4107,15 +4134,27 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div
+                ref={mobileDeliveryScrollRef}
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+                    setMobileDeliveryDisplayCount(prev =>
+                      prev < filteredDeliveryHistory.length ? prev + 10 : prev
+                    );
+                  }
+                }}
+              >
                 {filteredDeliveryHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Truck className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <p className="font-black text-sm uppercase tracking-widest">尚無配送訂單</p>
                   </div>
                 ) : (
+                  <>
                   <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900 border-t border-b border-neutral-100 dark:border-neutral-800">
-                    {filteredDeliveryHistory.map((order) => {
+                    {filteredDeliveryHistory.slice(0, mobileDeliveryDisplayCount).map((order) => {
                       const isExpanded = expandedOrderId === order.id;
                       return (
                         <div 
@@ -4294,6 +4333,10 @@ function ProfileContent() {
                       );
                     })}
                   </div>
+                  <div className="py-4 text-center text-xs text-neutral-400">
+                    {mobileDeliveryDisplayCount < filteredDeliveryHistory.length ? '載入中...' : '到底了'}
+                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -4492,15 +4535,27 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div
+                ref={mobileDrawScrollRef}
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+                    setMobileDrawDisplayCount(prev =>
+                      prev < drawHistory.length ? prev + 10 : prev
+                    );
+                  }
+                }}
+              >
                 {drawHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <p className="font-black text-sm uppercase tracking-widest">尚無抽獎紀錄</p>
                   </div>
                 ) : (
+                  <>
                   <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900 border-t border-b border-neutral-100 dark:border-neutral-800">
-                    {drawHistory.map((item) => {
+                    {drawHistory.slice(0, mobileDrawDisplayCount).map((item) => {
                       const isExpanded = expandedDrawId === item.id.toString();
                       return (
                         <div 
@@ -4603,6 +4658,10 @@ function ProfileContent() {
                       );
                     })}
                   </div>
+                  <div className="py-4 text-center text-xs text-neutral-400">
+                    {mobileDrawDisplayCount < drawHistory.length ? '載入中...' : '到底了'}
+                  </div>
+                  </>
                 )}
               </div>
             </div>

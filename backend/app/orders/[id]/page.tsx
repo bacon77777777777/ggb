@@ -382,8 +382,9 @@ export default function OrderDetailPage() {
                   />
                 </div>
                 <div className="flex items-center gap-3 pt-2">
-                  {/* 已提交狀態：生成配送單 */}
-                  {(shipment.status as string) === 'submitted' && (
+                  {/* 已提交 或 處理中/已攬收但無物流單號：生成配送單 */}
+                  {((shipment.status as string) === 'submitted' ||
+                    (!shipment.trackingNumber && ((shipment.status as string) === 'processing' || (shipment.status as string) === 'picked_up'))) && (
                     <button
                       onClick={async () => {
                         if (confirm('確定要建立物流單嗎？將會向物流服務發送請求。')) {

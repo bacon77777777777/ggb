@@ -319,6 +319,8 @@ export default function Home() {
   const secondaryTabsRef = useRef<HTMLDivElement>(null);
   const restoringSecondaryTabRef = useRef<string | null>(null);
   const restoringScrollRef = useRef<number | null>(null);
+  const [homeDisplayCount, setHomeDisplayCount] = useState(10);
+  const homeSentinelRef = useRef<HTMLDivElement>(null);
 
   const featuredSellCards = useMemo(() => {
     if (!flags.sell) return [];
@@ -617,6 +619,24 @@ export default function Home() {
     () => applySortAndFilter(allProducts),
     [allProducts, applySortAndFilter]
   );
+
+  // Home page lazy load — reset on tab change
+  useEffect(() => {
+    setHomeDisplayCount(10);
+  }, [activePrimaryTab, activeSecondaryTab]);
+
+  // Home page lazy load — window scroll
+  useEffect(() => {
+    const total = filteredProducts.length;
+    if (total === 0) return;
+    const handleScroll = () => {
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
+        setHomeDisplayCount(prev => prev < total ? prev + 10 : prev);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [filteredProducts.length]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1212,7 +1232,7 @@ export default function Home() {
                   let inserted = 0;
                   let productCount = 0;
 
-                  for (const product of filteredProducts) {
+                  for (const product of filteredProducts.slice(0, homeDisplayCount)) {
                     mixed.push({ kind: 'product', item: product });
                     productCount += 1;
 
@@ -1320,7 +1340,7 @@ export default function Home() {
                   </button>
                 </div>
               ) : (
-                filteredProducts.map((product) => (
+                filteredProducts.slice(0, homeDisplayCount).map((product) => (
                   <ProductCard
                     key={product.id}
                     id={product.id.toString()}
@@ -1336,6 +1356,11 @@ export default function Home() {
                   />
                 ))
               )}
+            </div>
+          )}
+          {activePrimaryTab !== 'sell' && (
+            <div ref={homeSentinelRef} className="py-6 text-center text-[13px] font-black text-neutral-400">
+              {homeDisplayCount < filteredProducts.length ? '載入中...' : filteredProducts.length > 0 ? '到底了' : ''}
             </div>
           )}
         </motion.div>

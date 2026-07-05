@@ -59,8 +59,6 @@ export default function OrdersPage() {
   const [filterShipStartDate, setFilterShipStartDate] = useState('')
   const [filterShipEndDate, setFilterShipEndDate] = useState('')
   const [filterUrgentOnly, setFilterUrgentOnly] = useState(false)
-  const [showMergeModal, setShowMergeModal] = useState(false)
-  const [selectedMergeGroups, setSelectedMergeGroups] = useState<Set<string>>(new Set())
 
   const [shipModal, setShipModal] = useState<{
     isOpen: boolean
@@ -526,37 +524,6 @@ export default function OrdersPage() {
   const pendingCount = localShipments.filter(s => s.status === 'submitted').length
   // 需配送（超過3天）= 超過3天的已提交訂單
   const urgentCount = localShipments.filter(s => s.status === 'submitted' && calculateDaysSinceSubmission(s.submittedAt) > 3).length
-  
-  // 計算可合併配送的組（收件資訊相同且狀態為已提交，且獎品總數不超過4個）
-  const mergeableGroups = useMemo(() => {
-    const pending = localShipments.filter(s => s.status === 'submitted')
-    const groups: { [key: string]: typeof localShipments } = {}
-    
-    pending.forEach(shipment => {
-      const key = `${shipment.recipientName}_${shipment.recipientPhone}_${shipment.address}`
-      if (!groups[key]) {
-        groups[key] = []
-      }
-      groups[key].push(shipment)
-    })
-    
-    // 只返回有多筆訂單且獎品總數不超過4個的組
-    return Object.entries(groups)
-      .filter(([_, orders]) => {
-        const totalItems = orders.reduce((sum, o) => sum + o.items.length, 0)
-        return orders.length > 1 && totalItems < 5
-      })
-      .map(([key, orders]) => ({
-        key,
-        recipientName: orders[0].recipientName,
-        recipientPhone: orders[0].recipientPhone,
-        address: orders[0].address,
-        orders: orders,
-        totalItems: orders.reduce((sum, o) => sum + o.items.length, 0)
-      }))
-  }, [localShipments])
-  
-  const groupableCount = mergeableGroups.length
 
   const generateTrackingNumber = (orderId: string) => {
     // 使用確定性的追蹤號碼生成，避免 hydration 錯誤
@@ -694,8 +661,7 @@ export default function OrdersPage() {
             const apiRes = await createLogistics(mainOrder.id)
             
             // Use tracking number from API or fallback to generated one
-            const trackingNumber = apiRes.data?.Result?.ShipCode || 
-                                   apiRes.data?.Result?.LogisticCode || 
+            const trackingNumber = apiRes.trackingNumber ||
                                    generateTrackingNumber(mainOrder.orderId)
             
             generatedTrackingNumbers = [trackingNumber]
@@ -731,8 +697,7 @@ export default function OrdersPage() {
               if (!shipment) return null
               
               const apiRes = await createLogistics(id)
-              const trackingNumber = apiRes.data?.Result?.ShipCode || 
-                                     apiRes.data?.Result?.LogisticCode || 
+              const trackingNumber = apiRes.trackingNumber ||
                                      generateTrackingNumber(shipment.orderId)
               
               return {
@@ -823,14 +788,16 @@ export default function OrdersPage() {
       return
     }
     
-    // 只處理已提交狀態的訂單
+    // 處理已提交、以及處理中/已攬收但無物流單號的訂單
     const submittedOrders = selectedOrdersList.filter(id => {
       const shipment = localShipments.find(s => s.id === id)
-      return shipment?.status === 'submitted'
+      if (!shipment) return false
+      return shipment.status === 'submitted' ||
+        (!shipment.trackingNumber && (shipment.status === 'processing' || shipment.status === 'picked_up'))
     })
-    
+
     if (submittedOrders.length === 0) {
-      alert('選中的訂單中沒有可生成配送單的訂單（僅已提交狀態可生成）')
+      alert('選中的訂單中沒有可生成配送單的訂單')
       return
     }
     
@@ -1088,141 +1055,6 @@ export default function OrdersPage() {
         {confirmModal.content}
       </Modal>
 
-      {/* 合併配送彈窗 */}
-      <Modal
-        isOpen={showMergeModal}
-        onClose={() => {
-          setShowMergeModal(false)
-          setSelectedMergeGroups(new Set())
-        }}
-        title="合併生成配送單"
-        size="lg"
-        footer={
-          <>
-            <button
-              onClick={() => {
-                setShowMergeModal(false)
-                setSelectedMergeGroups(new Set())
-              }}
-              className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
-            >
-              取消
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  const updates: { groupOrderIds: number[], trackingNumber: string }[] = []
-                  selectedMergeGroups.forEach(groupKey => {
-                    const group = mergeableGroups.find(g => g.key === groupKey)
-                    if (group) {
-                      const trackingNumber = generateTrackingNumber(group.orders[0].orderId)
-                      const groupOrderIds = group.orders.map(o => o.id)
-                      updates.push({ groupOrderIds, trackingNumber })
-                    }
-                  })
-
-                  // Perform DB updates
-                  await Promise.all(updates.map(async (u) => {
-                    const res = await fetch('/api/admin/orders/batch', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ids: u.groupOrderIds, patch: { status: 'processing', tracking_number: u.trackingNumber } }),
-                    })
-                    if (!res.ok) {
-                      const data = await res.json().catch(() => null)
-                      throw new Error(data?.error || '合併訂單失敗')
-                    }
-                  }))
-
-                  // Update UI
-                  setLocalShipments(prev => prev.map(s => {
-                    const update = updates.find(u => u.groupOrderIds.includes(s.id))
-                    if (update) {
-                       return { ...s, status: 'processing' as const, trackingNumber: update.trackingNumber }
-                    }
-                    return s
-                  }))
-
-                  setShowMergeModal(false)
-                  setSelectedMergeGroups(new Set())
-                  addLog('批量合併生成', '配送管理', `成功合併生成 ${updates.length} 組配送單`, 'success')
-                } catch (error) {
-                  console.error('Error merging orders:', error)
-                  alert('合併訂單失敗')
-                }
-              }}
-              disabled={selectedMergeGroups.size === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              合併並生成單號 ({selectedMergeGroups.size})
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          {mergeableGroups.length === 0 ? (
-            <div className="text-center py-8 text-neutral-500">
-              <p>目前沒有可合併的訂單</p>
-              <p className="text-sm mt-1">收件人資訊完全相同且獎品總數不超過4個的待配送訂單才能合併</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-neutral-600">
-                以下訂單的收件資訊相同，可以合併生成相同的物流單號：
-              </p>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {mergeableGroups.map((group) => (
-                  <div 
-                    key={group.key}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedMergeGroups.has(group.key)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-neutral-200 hover:border-blue-300 hover:bg-neutral-50'
-                    }`}
-                    onClick={() => {
-                      const newSelected = new Set(selectedMergeGroups)
-                      if (newSelected.has(group.key)) {
-                        newSelected.delete(group.key)
-                      } else {
-                        newSelected.add(group.key)
-                      }
-                      setSelectedMergeGroups(newSelected)
-                    }}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedMergeGroups.has(group.key)}
-                          onChange={() => {}}
-                          className="w-4 h-4 text-primary focus:ring-primary rounded"
-                        />
-                        <div>
-                          <p className="font-medium text-neutral-900">{group.recipientName}</p>
-                          <p className="text-sm text-neutral-500">{group.recipientPhone}</p>
-                        </div>
-                      </div>
-                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                        {group.orders.length} 筆訂單
-                      </span>
-                    </div>
-                    <p className="text-sm text-neutral-600 mb-3">{group.address}</p>
-                    <div className="bg-neutral-50 rounded-lg p-2 space-y-1">
-                      {group.orders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between text-xs">
-                          <span className="text-neutral-700 font-mono">{order.orderId}</span>
-                          <span className="text-neutral-500">{order.items.length} 個商品</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-neutral-500 mt-2">共 {group.totalItems} 個商品</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
 
       <div className="space-y-6">
         {/* 統計卡片 */}
@@ -1247,13 +1079,6 @@ export default function OrdersPage() {
               setFilterUrgentOnly(false)
             }}
             isActive={selectedStatus === 'submitted' && !filterUrgentOnly}
-            activeColor="primary"
-          />
-          <StatsCard
-            title="可合併生成配送單"
-            value={groupableCount}
-            unit="組"
-            onClick={() => setShowMergeModal(true)}
             activeColor="primary"
           />
           <StatsCard
@@ -1698,8 +1523,9 @@ export default function OrdersPage() {
                               </button>
                             )}
 
-                            {/* 已提交：生成物流單號 */}
-                            {shipment.status === 'submitted' && (
+                            {/* 已提交 或 處理中/已攬收但無物流單號：生成配送單 */}
+                            {(shipment.status === 'submitted' ||
+                              (!shipment.trackingNumber && (shipment.status === 'processing' || shipment.status === 'picked_up'))) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()

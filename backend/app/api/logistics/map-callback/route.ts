@@ -12,16 +12,7 @@ export async function POST(req: NextRequest) {
 
     console.log('ECPay Map Callback:', { storeId, storeName, storeAddress, logisticsSubType })
 
-    let frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL
-    if (!frontendUrl) {
-      try {
-        const url = new URL(req.url)
-        frontendUrl = url.origin
-      } catch {
-        frontendUrl = 'http://localhost:3000'
-      }
-    }
-    frontendUrl = frontendUrl.replace('127.0.0.1', 'localhost')
+    const frontendUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000').replace('127.0.0.1', 'localhost')
 
     const redirectUrl = new URL(`${frontendUrl}/profile`)
     redirectUrl.searchParams.set('tab', 'delivery')
