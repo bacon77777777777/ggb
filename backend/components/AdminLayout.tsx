@@ -638,7 +638,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
         <div className={`p-2 border-t border-neutral-200 bg-neutral-50 transition-all duration-300 flex-shrink-0`}>
           <div className="flex flex-col items-center justify-center">
-            <p className="text-xs text-neutral-400 whitespace-nowrap">v1.0.0</p>
+            <p className="text-xs text-neutral-400 whitespace-nowrap">v2.9</p>
           </div>
         </div>
       </aside>
