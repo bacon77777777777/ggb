@@ -1840,7 +1840,7 @@ function ProfileContent() {
         p_store_id: logisticsType === 'CVS' ? storeId : null,
               p_store_name: logisticsType === 'CVS' ? storeName : null,
               p_draw_record_ids: selectedForDelivery.map(id => Number(id)),
-              p_delivery_fee_points: 0 // Currently free shipping
+              p_delivery_fee_points: currentShippingFee
             });
 
       if (error) throw error;
@@ -1858,7 +1858,12 @@ function ProfileContent() {
       
     } catch (error) {
       console.error('Delivery Error:', error);
-      toast.error((error as Error).message || '申請失敗，請稍後再試');
+      const msg = (error as Error).message || '';
+      if (msg.includes('INSUFFICIENT_POINTS')) {
+        toast.error('代幣餘額不足，無法支付運費');
+      } else {
+        toast.error('申請失敗，請稍後再試');
+      }
     } finally {
       setIsSubmittingDelivery(false);
     }
