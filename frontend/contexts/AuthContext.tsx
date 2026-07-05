@@ -214,15 +214,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
         // 登入時追蹤任務 + 檢查成就 + 寫操作 log（fire-and-forget）
-        if (_event === 'SIGNED_IN') {
+        // SIGNED_IN = 主動登入; INITIAL_SESSION = 已有 session 重整頁面，兩者都要計算每日登入
+        if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') {
           Promise.allSettled([
             supabase.rpc('track_mission_event', { p_event_type: 'login' }),
             supabase.rpc('check_achievements', { p_user_id: session.user.id }),
-            fetch('/api/user/log-event', {
+            ...(_event === 'SIGNED_IN' ? [fetch('/api/user/log-event', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ event_type: 'login' }),
-            }),
+            })] : []),
           ]).catch(() => {});
         }
       } else {

@@ -311,13 +311,13 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
                      {claimingId === mission.id ? '領取中...' : '領取獎勵'}
                    </Button>
                  ) : (
-                   <Button 
-                     variant="outline" 
-                     size="sm" 
+                   <Button
+                     variant="outline"
+                     size="sm"
                      className="text-xs border-orange-200 text-orange-600 hover:bg-orange-50"
                      onClick={() => handleGo(mission)}
                    >
-                     去完成
+                     {(mission.condition_type as string) === 'invite_friend' ? '複製邀請碼' : '去完成'}
                    </Button>
                  )}
               </div>
