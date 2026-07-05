@@ -109,7 +109,7 @@ const FloatingReward = ({ x, y, reward, onComplete }: FloatingRewardProps) => {
 
 export default function MissionList({ type, missions, onRefresh }: MissionListProps) {
   const router = useRouter();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user } = useAuth();
   const { showToast } = useToast();
   const [claimingId, setClaimingId] = React.useState<string | null>(null);
   const [optimisticClaimedIds, setOptimisticClaimedIds] = React.useState<Set<string>>(new Set());
@@ -185,13 +185,22 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
   };
 
   const handleGo = async (mission: UserMission) => {
-    if (mission.condition_type === 'spend_amount' || mission.condition_type === 'recharge') {
-      router.push('/topup');
-    } else if (mission.condition_type === 'draw_count' || mission.condition_type === 'win_sr' || mission.condition_type === 'play_unique_machine' || mission.condition_type === 'view_product') {
-      router.push('/');
-    } else if (mission.condition_type === 'like_ranking') {
-      router.push('/ranking');
-    } else if (mission.condition_type === 'share_app') {
+    const ct = mission.condition_type as string;
+
+    if (ct === 'invite_friend') {
+      const code = (user as any)?.invite_code;
+      if (code) {
+        try {
+          await navigator.clipboard.writeText(code);
+          showToast('邀請碼已複製！快分享給好友', 'success');
+        } catch {
+          showToast(`您的邀請碼：${code}`, 'info');
+        }
+      }
+      return;
+    }
+
+    if (ct === 'share_app') {
       try {
         await navigator.clipboard.writeText(window.location.origin);
         showToast('已複製連結，快去分享吧！', 'success');
@@ -201,9 +210,22 @@ export default function MissionList({ type, missions, onRefresh }: MissionListPr
       } catch {
         router.push('/');
       }
-    } else {
-      router.push('/');
+      return;
     }
+
+    const routes: Record<string, string> = {
+      login:               '/check-in',
+      login_streak:        '/check-in',
+      recharge:            '/topup',
+      recharge_amount:     '/topup',
+      topup_streak:        '/topup',
+      like_ranking:        '/ranking',
+      view_winning_records:'/profile?tab=draw-history',
+      bind_phone:          '/profile?tab=settings',
+      sell_item:           '/profile?tab=market',
+    };
+
+    router.push(routes[ct] ?? '/');
   };
 
   const removeFloatingReward = (id: number) => {
