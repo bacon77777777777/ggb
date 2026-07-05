@@ -40,7 +40,6 @@ const PAYMENT_METHODS = [
   { id: 'vacc', name: 'ATM 轉帳', icon: <Banknote className="w-5 h-5" /> },
   { id: 'cvs', name: '超商代碼繳費', icon: <Store className="w-5 h-5" /> },
   { id: 'barcode', name: '超商條碼繳費', icon: <Barcode className="w-5 h-5" /> },
-  { id: 'line_pay', name: 'LINE Pay', icon: <Smartphone className="w-5 h-5 text-[#00C300]" /> },
   { id: 'other', name: '其他 (測試用)', icon: <Zap className="w-5 h-5 text-yellow-500" /> },
 ];
 
@@ -58,11 +57,8 @@ export default function TopupPage() {
   const isProcessingRef = useRef(false);
 
   const [paymentData, setPaymentData] = useState<{
-    MerchantID: string;
-    TradeInfo: string;
-    TradeSha: string;
-    Version: string;
-    ApiUrl: string;
+    action: string;
+    fields: Record<string, string>;
   } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -161,7 +157,7 @@ export default function TopupPage() {
         apiUrl = apiUrl.replace('localhost', '127.0.0.1');
       }
 
-      const res = await fetch(`${apiUrl}/api/payment/newebpay`, {
+      const res = await fetch(`${apiUrl}/api/payment/ecpay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -504,13 +500,12 @@ export default function TopupPage() {
       </AnimatePresence>
 
     </div>
-      {/* Hidden NewebPay Form */}
+      {/* ECPay Hidden Form */}
       {paymentData && (
-        <form ref={formRef} action={paymentData.ApiUrl} method="POST" className="hidden">
-          <input type="hidden" name="MerchantID" value={paymentData.MerchantID} />
-          <input type="hidden" name="TradeInfo" value={paymentData.TradeInfo} />
-          <input type="hidden" name="TradeSha" value={paymentData.TradeSha} />
-          <input type="hidden" name="Version" value={paymentData.Version} />
+        <form ref={formRef} action={paymentData.action} method="POST" className="hidden">
+          {Object.entries(paymentData.fields).map(([k, v]) => (
+            <input key={k} type="hidden" name={k} value={v} />
+          ))}
         </form>
       )}
     </div>

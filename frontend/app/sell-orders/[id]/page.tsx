@@ -63,14 +63,11 @@ export default function SellOrderDetailPage() {
   const [trackingNumberDraft, setTrackingNumberDraft] = useState('');
   const [proofUrls, setProofUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [escrowPayMethod, setEscrowPayMethod] = useState<'credit_card' | 'line_pay' | 'webatm' | 'vacc'>('credit_card');
+  const [escrowPayMethod, setEscrowPayMethod] = useState<'credit_card' | 'webatm' | 'vacc'>('credit_card');
   const [isPayMethodOpen, setIsPayMethodOpen] = useState(false);
   const [paymentData, setPaymentData] = useState<{
-    MerchantID: string;
-    TradeInfo: string;
-    TradeSha: string;
-    Version: string;
-    ApiUrl: string;
+    action: string;
+    fields: Record<string, string>;
   } | null>(null);
   const [isPaying, setIsPaying] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -226,7 +223,6 @@ export default function SellOrderDetailPage() {
 
   const escrowMethodLabel = useMemo(() => {
     if (escrowPayMethod === 'credit_card') return '信用卡 / 金融卡';
-    if (escrowPayMethod === 'line_pay') return 'LINE Pay';
     if (escrowPayMethod === 'webatm') return 'WebATM';
     if (escrowPayMethod === 'vacc') return 'ATM 轉帳';
     return '信用卡 / 金融卡';
@@ -302,7 +298,7 @@ export default function SellOrderDetailPage() {
       }
       if (apiUrl.includes('localhost')) apiUrl = apiUrl.replace('localhost', '127.0.0.1');
 
-      const res = await fetch(`${apiUrl}/api/payment/newebpay`, {
+      const res = await fetch(`${apiUrl}/api/payment/ecpay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -590,7 +586,6 @@ export default function SellOrderDetailPage() {
                     className="flex-1 h-10 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="credit_card">信用卡 / 金融卡</option>
-                    <option value="line_pay">LINE Pay</option>
                     <option value="webatm">WebATM</option>
                     <option value="vacc">ATM 轉帳</option>
                   </select>
@@ -785,11 +780,10 @@ export default function SellOrderDetailPage() {
       )}
 
       {paymentData && (
-        <form ref={formRef} action={paymentData.ApiUrl} method="POST" className="hidden">
-          <input type="hidden" name="MerchantID" value={paymentData.MerchantID} />
-          <input type="hidden" name="TradeInfo" value={paymentData.TradeInfo} />
-          <input type="hidden" name="TradeSha" value={paymentData.TradeSha} />
-          <input type="hidden" name="Version" value={paymentData.Version} />
+        <form ref={formRef} action={paymentData.action} method="POST" className="hidden">
+          {Object.entries(paymentData.fields).map(([k, v]) => (
+            <input key={k} type="hidden" name={k} value={v} />
+          ))}
         </form>
       )}
     </div>
