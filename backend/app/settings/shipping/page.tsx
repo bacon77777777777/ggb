@@ -71,10 +71,10 @@ export default function ShippingSettingsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      宅配運費（TWD）
+                      宅配運費（代幣）
                     </label>
                     <div className="flex items-center gap-2">
-                      <span className="text-neutral-500">$</span>
+                      <span className="text-neutral-500 text-sm font-bold">G</span>
                       <input
                         type="number"
                         min="0"
@@ -87,7 +87,7 @@ export default function ShippingSettingsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      超商取貨運費（TWD）
+                      超商取貨運費（代幣）
                     </label>
                     <div className="space-y-2">
                       {([
@@ -98,7 +98,7 @@ export default function ShippingSettingsPage() {
                       ] as [string, string, (v: string) => void][]).map(([name, val, setter]) => (
                         <div key={name} className="flex items-center gap-3">
                           <span className="text-sm text-neutral-600 w-20">{name}</span>
-                          <span className="text-neutral-500 text-sm">$</span>
+                          <span className="text-neutral-500 text-sm font-bold">G</span>
                           <input
                             type="number"
                             min="0"
