@@ -762,9 +762,9 @@ export default function OrdersPage() {
           
           // Log
           if (shouldMerge) {
-            addLog('合併生成配送單 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆相同收件人的訂單合併生成物流單號`, 'success')
+            addLog('合併生成配送單', '配送管理', `為 ${successOrderIds.length} 筆相同收件人的訂單合併生成物流單號`, 'success')
           } else {
-            addLog('批量生成配送單 (NewebPay)', '配送管理', `為 ${successOrderIds.length} 筆訂單生成物流單號`, 'success')
+            addLog('批量生成配送單', '配送管理', `為 ${successOrderIds.length} 筆訂單生成物流單號`, 'success')
           }
           
           // Show Success Modal

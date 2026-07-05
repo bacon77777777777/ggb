@@ -14,6 +14,9 @@ interface Supplier {
   contact_phone: string | null
   contact_email: string | null
   address: string | null
+  sender_name: string | null
+  sender_zip_code: string | null
+  sender_address: string | null
   notes: string | null
   is_active: boolean
   created_at: string
@@ -27,6 +30,9 @@ const EMPTY_FORM = {
   contact_phone: '',
   contact_email: '',
   address: '',
+  sender_name: '',
+  sender_zip_code: '',
+  sender_address: '',
   notes: '',
   is_active: true,
 }
@@ -70,6 +76,9 @@ export default function SuppliersPage() {
       contact_phone: s.contact_phone ?? '',
       contact_email: s.contact_email ?? '',
       address: s.address ?? '',
+      sender_name: s.sender_name ?? '',
+      sender_zip_code: s.sender_zip_code ?? '',
+      sender_address: s.sender_address ?? '',
       notes: s.notes ?? '',
       is_active: s.is_active,
     })
@@ -87,6 +96,9 @@ export default function SuppliersPage() {
         contact_phone: form.contact_phone || null,
         contact_email: form.contact_email || null,
         address: form.address || null,
+        sender_name: form.sender_name || null,
+        sender_zip_code: form.sender_zip_code || null,
+        sender_address: form.sender_address || null,
         notes: form.notes || null,
         is_active: form.is_active,
       }
@@ -249,7 +261,7 @@ export default function SuppliersPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">地址</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">公司地址</label>
             <input
               type="text"
               value={form.address}
@@ -257,6 +269,53 @@ export default function SuppliersPage() {
               className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
+
+          {/* 寄件資訊（物流用） */}
+          <div className="border-t border-neutral-100 pt-4">
+            <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">物流寄件資訊</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    寄件人姓名
+                    <span className="text-xs text-neutral-400 ml-1">2-5中文字</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.sender_name}
+                    onChange={(e) => setForm((f) => ({ ...f, sender_name: e.target.value }))}
+                    placeholder="空白則使用聯絡人"
+                    maxLength={10}
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">寄件郵遞區號</label>
+                  <input
+                    type="text"
+                    value={form.sender_zip_code}
+                    onChange={(e) => setForm((f) => ({ ...f, sender_zip_code: e.target.value }))}
+                    placeholder="例：100"
+                    maxLength={6}
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  寄件地址
+                  <span className="text-xs text-neutral-400 ml-1">空白則使用公司地址</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.sender_address}
+                  onChange={(e) => setForm((f) => ({ ...f, sender_address: e.target.value }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">備註</label>
             <textarea

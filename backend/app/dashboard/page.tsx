@@ -1566,7 +1566,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {[
               { label: '轉換分析', href: '/reports/overview', desc: '儲值→消費漏斗、每日分解', color: 'bg-violet-50 text-violet-700 border-violet-100' },
-              { label: '儲值明細', href: '/recharges', desc: '各支付方式、藍新手續費', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+              { label: '儲值明細', href: '/recharges', desc: '各支付方式、綠界手續費', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
               { label: '物流明細', href: '/reports/logistics', desc: '出貨紀錄、運費統計', color: 'bg-blue-50 text-blue-700 border-blue-100' },
               { label: '積分明細', href: '/reports/points', desc: '任務領取、積分發放紀錄', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
               { label: '折價券明細', href: '/reports/coupons', desc: '發放及使用紀錄、折抵金額', color: 'bg-amber-50 text-amber-700 border-amber-100' },

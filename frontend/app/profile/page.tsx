@@ -4814,7 +4814,7 @@ function ProfileContent() {
             <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => router.back()} className="text-neutral-900 dark:text-white -ml-2 p-2">
+                  <button onClick={() => router.push('/profile')} className="text-neutral-900 dark:text-white -ml-2 p-2">
                     <ChevronLeft className="w-6 h-6" />
                   </button>
                   <span className="text-[18px] font-black text-neutral-900 dark:text-white">

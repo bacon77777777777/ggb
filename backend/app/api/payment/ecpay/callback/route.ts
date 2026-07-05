@@ -13,11 +13,11 @@ function isImmediatePayment(paymentType: string): boolean {
 
 function calcEcpayFee(paymentType: string, amount: number): number {
   const t = paymentType.toUpperCase()
-  if (t.startsWith('ATM') || t.startsWith('WEBATM')) return Math.min(Math.round(amount * 0.01), 15)
-  if (t.startsWith('CVS'))     return 28
-  if (t.startsWith('BARCODE')) return 25
-  // 信用卡 / 其他
-  return Math.round(amount * 0.0275)
+  if (t.startsWith('WEBATM') || t.startsWith('ATM')) return Math.min(Math.round(amount * 0.01), 15)
+  if (t.startsWith('CVS'))     return 31
+  if (t.startsWith('BARCODE')) return 16
+  // 信用卡 / Apple Pay / 銀聯：2.75% + 1元處理費
+  return Math.round(amount * 0.0275) + 1
 }
 
 export async function POST(req: Request) {

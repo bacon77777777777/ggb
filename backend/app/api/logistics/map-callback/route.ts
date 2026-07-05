@@ -1,64 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { decryptTradeInfo } from '@/lib/newebpay';
+import { NextRequest, NextResponse } from 'next/server'
 
+// 綠界選店地圖 callback：明文 form POST，不需要解密
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const TradeInfo = formData.get('TradeInfo') as string;
-    
-    if (!TradeInfo) {
-      return NextResponse.redirect(new URL('/profile?error=missing_trade_info', req.url));
-    }
+    const formData = await req.formData()
 
-    const HashKey = process.env.NEWEBPAY_HASH_KEY || '';
-    const HashIV = process.env.NEWEBPAY_HASH_IV || '';
-    
-    const decrypted = decryptTradeInfo(TradeInfo, HashKey, HashIV);
-    console.log('Map Callback Decrypted:', decrypted);
-    
-    // Decrypted data format example:
-    // {
-    //   MerchantID: '...',
-    //   LogisticsSubType: 'UNIMART',
-    //   CVSStoreID: '123456',
-    //   CVSStoreName: 'Store Name',
-    //   CVSAddress: 'Address...',
-    //   CVSTelephone: '...',
-    //   ExtraData: '...'
-    // }
+    const storeId        = String(formData.get('CVSStoreID')      || '')
+    const storeName      = String(formData.get('CVSStoreName')     || '')
+    const storeAddress   = String(formData.get('CVSAddress')       || '')
+    const logisticsSubType = String(formData.get('LogisticsSubType') || 'UNIMARTC2C')
 
-    const storeId = decrypted.CVSStoreID || '';
-    const storeName = decrypted.CVSStoreName || '';
-    const storeAddress = decrypted.CVSAddress || '';
-    const logisticsSubType = decrypted.LogisticsSubType || 'UNIMART';
+    console.log('ECPay Map Callback:', { storeId, storeName, storeAddress, logisticsSubType })
 
-    // Redirect back to profile with data
-    // Must redirect to FRONTEND
-    let frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL;
-
+    let frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL
     if (!frontendUrl) {
       try {
-        const url = new URL(req.url);
-        frontendUrl = url.origin;
-      } catch (e) {
-        frontendUrl = 'http://localhost:3000';
+        const url = new URL(req.url)
+        frontendUrl = url.origin
+      } catch {
+        frontendUrl = 'http://localhost:3000'
       }
     }
+    frontendUrl = frontendUrl.replace('127.0.0.1', 'localhost')
 
-    // Ensure localhost is used instead of 127.0.0.1
-    frontendUrl = frontendUrl.replace('127.0.0.1', 'localhost');
-    
-    const redirectUrl = new URL(`${frontendUrl}/profile`);
-    redirectUrl.searchParams.set('tab', 'delivery');
-    redirectUrl.searchParams.set('store_id', storeId);
-    redirectUrl.searchParams.set('store_name', storeName);
-    redirectUrl.searchParams.set('store_address', storeAddress);
-    redirectUrl.searchParams.set('logistics_subtype', logisticsSubType);
-    redirectUrl.searchParams.set('action', 'open_delivery_modal');
+    const redirectUrl = new URL(`${frontendUrl}/profile`)
+    redirectUrl.searchParams.set('tab', 'delivery')
+    redirectUrl.searchParams.set('store_id', storeId)
+    redirectUrl.searchParams.set('store_name', storeName)
+    redirectUrl.searchParams.set('store_address', storeAddress)
+    redirectUrl.searchParams.set('logistics_subtype', logisticsSubType)
+    redirectUrl.searchParams.set('action', 'open_delivery_modal')
 
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(redirectUrl)
   } catch (error) {
-    console.error('Map callback error:', error);
-    return NextResponse.redirect(new URL('/profile?error=map_callback_failed', req.url));
+    console.error('ECPay Map callback error:', error)
+    return NextResponse.redirect(new URL('/profile?error=map_callback_failed', req.url))
   }
 }

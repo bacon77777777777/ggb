@@ -95,7 +95,7 @@ export default function SettlementPage() {
   const [loading, setLoading] = useState(false)
 
   // 費率設定
-  const [newebpayRate, setNewebpayRate] = useState(2)
+  const [ecpayRate, setEcpayRate] = useState(2.75)
   const [supplierShare, setSupplierShare] = useState(70)
   const [withholdingRate, setWithholdingRate] = useState(0)
   const [pointsMode, setPointsMode] = useState<'A' | 'B'>('B') // B = 平台全吸收（預設）
@@ -165,11 +165,11 @@ export default function SettlementPage() {
   const pointsSupplierShare = pointsMode === 'A' ? Math.round(pointsTotal * 0.5) : 0
 
   // 手續費：有實際資料時用分攤後值，否則用費率估算
-  const newebpayFee = data?.hasActualFee && data.allocatedActualFee != null
+  const ecpayFee = data?.hasActualFee && data.allocatedActualFee != null
     ? data.allocatedActualFee
-    : Math.round(totalTWD * (newebpayRate / 100))
+    : Math.round(totalTWD * (ecpayRate / 100))
 
-  const netRevenue = totalTWD - newebpayFee
+  const netRevenue = totalTWD - ecpayFee
   const withholding = Math.round(netRevenue * (withholdingRate / 100))
   const netAfterTax = netRevenue - withholding
 
@@ -196,7 +196,7 @@ export default function SettlementPage() {
       [],
       [`項目`, `金額(TWD)`],
       [`廠商商品消費（${data.products.reduce((s,p)=>s+p.drawCount,0)}次，1G=NT$1）`, String(totalTWD)],
-      [`藍新手續費${data.hasActualFee ? '（實際分攤）' : `（估算${newebpayRate}%）`}`, String(-newebpayFee)],
+      [`綠界手續費${data.hasActualFee ? '（實際分攤）' : `（估算${ecpayRate}%）`}`, String(-ecpayFee)],
       [`淨收入`, String(netRevenue)],
       ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
       ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
@@ -212,7 +212,7 @@ export default function SettlementPage() {
       [`--- 參考 ---`, ``],
       [`期間平台儲值`, String(data.rechargeTotal)],
       [`儲值筆數`, String(data.rechargeCount)],
-      ...(data.hasActualFee ? [[`平台藍新手續費總額`, String(data.platformTotalFee ?? 0)]] : []),
+      ...(data.hasActualFee ? [[`平台綠界手續費總額`, String(data.platformTotalFee ?? 0)]] : []),
     ]
     const csv = BOM + rows.map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
@@ -284,15 +284,15 @@ export default function SettlementPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
-                      {/* 藍新手續費：有實際資料時顯示分攤後實際值 */}
+                      {/* 綠界手續費：有實際資料時顯示分攤後實際值 */}
                       <div className="flex items-center justify-between gap-3">
-                        <label className="text-sm text-neutral-600 whitespace-nowrap">藍新手續費</label>
+                        <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
                         {data?.hasActualFee ? (
                           <span className="text-sm font-medium text-emerald-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <input type="number" value={newebpayRate} min={0} max={10}
-                              onChange={e => setNewebpayRate(Number(e.target.value))}
+                            <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
+                              onChange={e => setEcpayRate(Number(e.target.value))}
                               className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">% 估算</span>
                           </div>
@@ -429,7 +429,7 @@ export default function SettlementPage() {
 
               {/* ① 消費基底 */}
               <Row label={<><span className="font-semibold text-neutral-800">廠商商品消費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次・1G = NT$1</span></>} value={fmt(totalTWD)} bold />
-              <Row label={<><span className="text-neutral-600">藍新手續費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.hasActualFee ? '實際分攤' : `估算 ${newebpayRate}%`}</span></>} value={`−${fmt(newebpayFee)}`} red indent />
+              <Row label={<><span className="text-neutral-600">綠界手續費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.hasActualFee ? '實際分攤' : `估算 ${ecpayRate}%`}</span></>} value={`−${fmt(ecpayFee)}`} red indent />
               <div className="border-t border-neutral-200 my-0.5" />
               <Row label={<span className="font-semibold text-neutral-800">淨收入</span>} value={fmt(netRevenue)} bold />
 
@@ -464,7 +464,7 @@ export default function SettlementPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
-                    <InfoTooltip text={`① 消費 G − 藍新手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
+                    <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
                   </div>
                   <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
@@ -476,7 +476,7 @@ export default function SettlementPage() {
               {data?.hasActualFee && (
                 <div className="mt-3 pt-3 border-t border-dashed border-neutral-200">
                   <div className="flex items-center justify-between text-xs text-neutral-400">
-                    <span>平台藍新手續費總額</span>
+                    <span>平台綠界手續費總額</span>
                     <span className="tabular-nums">NT$ {(data?.platformTotalFee ?? 0).toLocaleString()}</span>
                   </div>
                 </div>

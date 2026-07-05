@@ -1,122 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { decryptTradeInfo } from '@/lib/newebpay';
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { verifyLogisticsCheckMacValue, ecpayLogisticsStatusToOrder } from '@/lib/ecpay_logistics'
 
-// Helper to get supabase client
 function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  // Use Service Role Key if available to bypass RLS for callbacks
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = getSupabase();
-    
-    const formData = await req.formData();
-    const TradeInfo = formData.get('TradeInfo') as string;
+    const supabase = getSupabase()
+    const formData = await req.formData()
 
-    if (!TradeInfo) {
-      return NextResponse.json({ error: 'Missing TradeInfo' }, { status: 400 });
+    const params: Record<string, string> = {}
+    formData.forEach((v, k) => { params[k] = String(v) })
+
+    console.log('ECPay Logistics Callback:', params)
+
+    // 驗證 CheckMacValue
+    const HashKey = process.env.ECPAY_LOGISTICS_HASH_KEY || process.env.ECPAY_HASH_KEY!
+    const HashIV  = process.env.ECPAY_LOGISTICS_HASH_IV  || process.env.ECPAY_HASH_IV!
+    if (!verifyLogisticsCheckMacValue(params, HashKey, HashIV)) {
+      console.error('ECPay Logistics Callback CheckMacValue 驗證失敗')
+      return new NextResponse('0|CheckMacValue Error', { status: 200 })
     }
 
-    const HashKey = process.env.NEWEBPAY_HASH_KEY!;
-    const HashIV = process.env.NEWEBPAY_HASH_IV!;
-    const decryptedInfo = decryptTradeInfo(TradeInfo, HashKey, HashIV);
+    const orderNumber    = params.MerchantTradeNo  || ''
+    const rtnCode        = params.RtnCode          || ''
+    const logisticsStatus = params.LogisticsStatus || rtnCode
+    const allPayId       = params.AllPayLogisticsID || ''
+    const cvsPaymentNo   = params.CVSPaymentNo      || ''
 
-    console.log('Logistics Callback:', decryptedInfo);
-
-    const orderNumber = decryptedInfo.MerchantOrderNo;
-    const trackingNumber = decryptedInfo.ShipCode || decryptedInfo.LogisticCode;
-    const logisticsStatus = decryptedInfo.LogisticsStatus;
-    
     if (!orderNumber) {
-      return NextResponse.json({ error: 'Missing Order Number' }, { status: 400 });
+      console.error('ECPay Logistics Callback: 缺少 MerchantTradeNo')
+      return new NextResponse('0|Missing MerchantTradeNo', { status: 200 })
     }
 
-    const statusPriority: Record<string, number> = {
-      submitted: 1,
-      processing: 2,
-      picked_up: 3,
-      shipping: 4,
-      delivered: 5,
-      cancelled: 6,
-    };
-
-    const toOurStatus = (codeLike: unknown): string | null => {
-      if (codeLike === null || codeLike === undefined) return null;
-      const code = typeof codeLike === 'number' ? codeLike : Number(String(codeLike).trim());
-      if (!Number.isFinite(code)) return null;
-
-      if (code >= 300 && code < 400) {
-        if (code === 300) return 'processing';
-        if (code === 301) return 'picked_up';
-        if (code === 302) return 'shipping';
-        if (code === 303) return 'delivered';
-        if (code >= 304) return 'cancelled';
-        return null;
-      }
-
-      if (code >= 200 && code < 300) {
-        if (code === 200) return 'processing';
-        if (code === 201 || code === 202) return 'picked_up';
-        if (code === 203 || code === 204) return 'shipping';
-        if (code === 205 || code === 206) return 'delivered';
-        if (code >= 207) return 'cancelled';
-        return null;
-      }
-
-      if (code === 0) return 'processing';
-      if (code === 1) return 'picked_up';
-      if (code === 2) return 'shipping';
-      if (code === 3) return 'delivered';
-
-      return null;
-    };
-
-    const nextStatus = toOurStatus(logisticsStatus);
-
-    const { data: existingOrder, error: existingOrderError } = await supabase
+    const { data: existingOrder, error: fetchError } = await supabase
       .from('orders')
       .select('id, status, shipped_at, tracking_number')
       .eq('order_number', orderNumber)
-      .maybeSingle();
+      .maybeSingle()
 
-    if (existingOrderError) {
-      console.error('Error fetching order:', existingOrderError);
-      return NextResponse.json({ error: 'Database read failed' }, { status: 500 });
+    if (fetchError) {
+      console.error('Error fetching order:', fetchError)
+      return new NextResponse('0|DB Error', { status: 200 })
+    }
+    if (!existingOrder) return new NextResponse('1|OK', { status: 200 })
+
+    const statusPriority: Record<string, number> = {
+      submitted: 1, processing: 2, picked_up: 3, shipping: 4, delivered: 5, cancelled: 6,
     }
 
-    if (!existingOrder) {
-      return NextResponse.json({ status: 'success', skipped: 'order_not_found' });
-    }
-
-    const currentStatus = existingOrder.status as string;
-    const currentPriority = statusPriority[currentStatus] ?? 999;
-    const nextPriority = nextStatus ? (statusPriority[nextStatus] ?? 999) : 999;
+    const nextStatus = ecpayLogisticsStatusToOrder(logisticsStatus)
+    const currentStatus = existingOrder.status as string
+    const currentPriority = statusPriority[currentStatus] ?? 999
+    const nextPriority = nextStatus ? (statusPriority[nextStatus] ?? 999) : 999
 
     const shouldAdvanceStatus = (() => {
-      if (!nextStatus) return false;
-      if (currentStatus === 'cancelled') return false;
-      if (currentStatus === 'delivered' && nextStatus !== 'delivered') return false;
-      if (nextStatus === 'cancelled') return currentStatus !== 'delivered';
-      return nextPriority > currentPriority;
-    })();
+      if (!nextStatus) return false
+      if (currentStatus === 'cancelled') return false
+      if (currentStatus === 'delivered' && nextStatus !== 'delivered') return false
+      if (nextStatus === 'cancelled') return currentStatus !== 'delivered'
+      return nextPriority > currentPriority
+    })()
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, any> = {}
 
+    const trackingNumber = allPayId || cvsPaymentNo || null
     if (trackingNumber && trackingNumber !== existingOrder.tracking_number) {
-      updateData.tracking_number = trackingNumber;
+      updateData.tracking_number = trackingNumber
     }
 
     if (shouldAdvanceStatus) {
-      updateData.status = nextStatus;
+      updateData.status = nextStatus
       if (
         (nextStatus === 'picked_up' || nextStatus === 'shipping' || nextStatus === 'delivered') &&
         !existingOrder.shipped_at
       ) {
-        updateData.shipped_at = new Date().toISOString();
+        updateData.shipped_at = new Date().toISOString()
       }
     }
 
@@ -124,31 +88,26 @@ export async function POST(req: NextRequest) {
       const { error: updateError } = await supabase
         .from('orders')
         .update(updateData)
-        .eq('id', existingOrder.id);
+        .eq('id', existingOrder.id)
 
       if (updateError) {
-        console.error('Error updating order:', updateError);
-        return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+        console.error('Error updating order:', updateError)
+        return new NextResponse('0|DB Update Error', { status: 200 })
       }
 
       if (updateData.status && statusPriority[updateData.status] >= statusPriority.picked_up) {
-        const { error: drError } = await supabase
+        await supabase
           .from('draw_records')
           .update({ status: 'shipped' })
           .eq('order_id', existingOrder.id)
-          .eq('status', 'pending_delivery');
-
-        if (drError) {
-          console.error('Error updating draw_records:', drError);
-          return NextResponse.json({ error: 'Database update failed (draw_records)' }, { status: 500 });
-        }
+          .eq('status', 'pending_delivery')
       }
     }
 
-    return NextResponse.json({ status: 'success' });
+    return new NextResponse('1|OK', { status: 200 })
 
   } catch (error: any) {
-    console.error('Callback Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('ECPay Logistics Callback Error:', error)
+    return new NextResponse('0|Internal Error', { status: 200 })
   }
 }

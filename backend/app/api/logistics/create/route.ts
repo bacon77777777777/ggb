@@ -1,150 +1,137 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { generateLogisticsForm } from '@/lib/newebpay_logistics';
+import { NextRequest, NextResponse } from 'next/server'
+import { generateLogisticsParams } from '@/lib/ecpay_logistics'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
 export async function POST(req: NextRequest) {
   const session = await requireAdminSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const supabase = getSupabaseAdmin();
+  const supabase = getSupabaseAdmin()
 
   try {
     const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
       process.env.NEXT_PUBLIC_BASE_URL ||
       (() => {
-        try {
-          return new URL(req.url).origin;
-        } catch {
-          return 'http://localhost:3001';
-        }
-      })();
+        try { return new URL(req.url).origin } catch { return 'http://localhost:3001' }
+      })()
 
-    const body = await req.json();
-    const { orderId } = body;
-
-    if (!orderId) {
-      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
-    }
+    const body = await req.json()
+    const { orderId } = body
+    if (!orderId) return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        items:draw_records(
+          products(
+            suppliers(sender_name, contact_name, contact_phone, sender_zip_code, sender_address, address)
+          )
+        )
+      `)
       .eq('id', orderId)
-      .single();
+      .single()
 
-    if (orderError || !order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
+    if (orderError || !order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-    const logisticsType = order.logistics_type || 'HOME';
-    const logisticsSubType = order.logistics_subtype || 'TCAT'; // Default to TCAT for Home
+    // 從第一筆明細品項撈廠商寄件資料
+    const supplierInfo = (order as any).items?.[0]?.products?.suppliers ?? null
+
+    const logisticsType: 'CVS' | 'HOME' = (order.logistics_type || 'HOME') as 'CVS' | 'HOME'
+    const logisticsSubType: string = order.logistics_subtype || 'TCAT'
 
     if (logisticsType === 'CVS') {
-      if (!order.store_id) {
-        return NextResponse.json({ error: '缺少門市資訊（store_id）' }, { status: 400 });
-      }
-      if (!logisticsSubType || logisticsSubType === 'TCAT') {
-        return NextResponse.json({ error: '缺少門市類型（logistics_subtype）' }, { status: 400 });
-      }
+      if (!order.store_id)
+        return NextResponse.json({ error: '缺少門市資訊（store_id）' }, { status: 400 })
+      if (!logisticsSubType || logisticsSubType === 'TCAT')
+        return NextResponse.json({ error: '缺少門市類型（logistics_subtype）' }, { status: 400 })
     }
+    if (logisticsType === 'HOME' && !order.address)
+      return NextResponse.json({ error: '缺少收件地址（address）' }, { status: 400 })
 
-    if (logisticsType === 'HOME') {
-      if (!order.address) {
-        return NextResponse.json({ error: '缺少收件地址（address）' }, { status: 400 });
-      }
-    }
+    const MerchantID = process.env.ECPAY_LOGISTICS_MERCHANT_ID || process.env.ECPAY_MERCHANT_ID!
+    const HashKey    = process.env.ECPAY_LOGISTICS_HASH_KEY    || process.env.ECPAY_HASH_KEY!
+    const HashIV     = process.env.ECPAY_LOGISTICS_HASH_IV     || process.env.ECPAY_HASH_IV!
+    const ApiUrl     = process.env.ECPAY_LOGISTICS_API_URL     || 'https://logistics-stage.ecpay.com.tw/Express/Create'
 
-    const logisticsOrder = {
-      MerchantOrderNo: order.order_number,
-      Amount: 0, // Shipping cost is usually prepaid or 0 for internal logic
-      LogisticsType: logisticsType,
-      LogisticsSubType: logisticsSubType,
-      ReceiverName: order.recipient_name,
-      ReceiverCellPhone: order.recipient_phone,
-      ReceiverAddress: order.address,
-      ReceiverEmail: '', // Optional
-      ReceiverStoreID: order.store_id,
-      ReturnURL: `${baseUrl}/api/logistics/callback`,
-      ServerReplyURL: `${baseUrl}/api/logistics/callback`
-    };
+    // 寄件人：優先用廠商的 sender_name，其次 contact_name，最後 env var
+    const senderName      = supplierInfo?.sender_name      || supplierInfo?.contact_name      || process.env.ECPAY_SENDER_NAME       || 'GachaGO'
+    const senderCellPhone = supplierInfo?.contact_phone                                        || process.env.ECPAY_SENDER_CELL_PHONE  || '0900000000'
+    const senderZipCode   = supplierInfo?.sender_zip_code                                      || process.env.ECPAY_SENDER_ZIP_CODE    || ''
+    const senderAddress   = supplierInfo?.sender_address   || supplierInfo?.address            || process.env.ECPAY_SENDER_ADDRESS     || ''
 
-    const formData = generateLogisticsForm(logisticsOrder as any);
-
-    const params = new URLSearchParams();
-    params.append('MerchantID', formData.MerchantID);
-    params.append('TradeInfo', formData.TradeInfo);
-    params.append('TradeSha', formData.TradeSha);
-    params.append('Version', formData.Version);
-
-    const response = await fetch(formData.ActionURL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+    const params = generateLogisticsParams(
+      {
+        MerchantTradeNo:   order.order_number,
+        LogisticsType:     logisticsType,
+        LogisticsSubType:  logisticsSubType,
+        GoodsAmount:       Math.max(1, order.shipping_fee || 1),
+        GoodsName:         'GachaGO商品',
+        SenderName:        senderName,
+        SenderCellPhone:   senderCellPhone,
+        SenderZipCode:     senderZipCode,
+        SenderAddress:     senderAddress,
+        ReceiverName:      order.recipient_name,
+        ReceiverCellPhone: order.recipient_phone,
+        ReceiverStoreID:   order.store_id  || undefined,
+        ReceiverZipCode:   order.zip_code  || undefined,
+        ReceiverAddress:   order.address   || undefined,
+        ServerReplyURL:    `${baseUrl}/api/logistics/callback`,
       },
-      body: params.toString()
-    });
+      MerchantID, HashKey, HashIV
+    )
+
+    const formBody = new URLSearchParams(params).toString()
+    const response = await fetch(ApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody,
+    })
+
+    const rawText = await response.text()
 
     if (!response.ok) {
-      const text = await response.text();
-      console.error('NewebPay API Error:', text);
-      return NextResponse.json({ error: 'Failed to call NewebPay API', details: text }, { status: 500 });
+      console.error('ECPay Logistics API Error:', rawText)
+      return NextResponse.json({ error: 'ECPay 物流 API 呼叫失敗', details: rawText }, { status: 500 })
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    const responseBody = contentType.includes('application/json')
-      ? await response.json()
-      : await response.text();
+    // ECPay 回傳格式：「1|key=value&key=value」或「0|錯誤訊息」
+    const pipeIdx = rawText.indexOf('|')
+    const rtnFlag = pipeIdx !== -1 ? rawText.slice(0, pipeIdx) : rawText
+    const payload = pipeIdx !== -1 ? rawText.slice(pipeIdx + 1) : ''
 
-    const responseData = typeof responseBody === 'string'
-      ? (() => {
-          try {
-            return JSON.parse(responseBody);
-          } catch {
-            return null;
-          }
-        })()
-      : responseBody;
-
-    if (!responseData || typeof responseData !== 'object') {
-      return NextResponse.json({ error: 'NewebPay 回傳格式異常', details: responseBody }, { status: 502 });
+    if (rtnFlag.trim() !== '1') {
+      return NextResponse.json({ error: `ECPay 物流錯誤: ${payload || rawText}` }, { status: 400 })
     }
 
-    const status = (responseData as any).Status;
-    if (status === 'SUCCESS') {
-      const result = (responseData as any).Result;
-      const trackingNumber =
-        result?.ShipCode ||
-        result?.LogisticCode ||
-        (responseData as any).ShipCode ||
-        (responseData as any).LogisticCode ||
-        null;
-
-      const update: Record<string, any> = { status: 'processing' };
-      if (trackingNumber) update.tracking_number = trackingNumber;
-
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update(update)
-        .eq('id', orderId);
-
-      if (updateError) {
-        return NextResponse.json({ error: '物流單建立成功，但寫入資料庫失敗', details: updateError.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ success: true, data: responseData, trackingNumber });
+    // 解析回傳 key=value 字串
+    const resultMap: Record<string, string> = {}
+    for (const pair of payload.split('&')) {
+      const [k, ...vs] = pair.split('=')
+      if (k) resultMap[decodeURIComponent(k)] = decodeURIComponent(vs.join('='))
     }
 
-    return NextResponse.json(
-      { error: 'NewebPay Error', details: (responseData as any).Message || (responseData as any).Status || responseBody },
-      { status: 400 }
-    );
+    const logisticsId    = resultMap.AllPayLogisticsID || null
+    const cvsPaymentNo   = resultMap.CVSPaymentNo      || null
+    const cvsValidation  = resultMap.CVSValidationNo   || null
+    const trackingNumber = logisticsId || cvsPaymentNo || null
+
+    const update: Record<string, any> = { status: 'processing' }
+    if (trackingNumber) update.tracking_number = trackingNumber
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update(update)
+      .eq('id', orderId)
+
+    if (updateError)
+      return NextResponse.json({ error: '物流單建立成功，但寫入資料庫失敗', details: updateError.message }, { status: 500 })
+
+    return NextResponse.json({ success: true, logisticsId, cvsPaymentNo, cvsValidation, trackingNumber })
 
   } catch (error: any) {
-    console.error('Error creating logistics order:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    console.error('Error creating logistics order:', error)
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
   }
 }

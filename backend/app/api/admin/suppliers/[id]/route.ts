@@ -8,7 +8,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params
   const body = await request.json()
-  const { name, contact_name, contact_phone, contact_email, address, notes, is_active, tax_id } = body
+  const { name, contact_name, contact_phone, contact_email, address, notes, is_active, tax_id, sender_name, sender_zip_code, sender_address } = body
 
   if (name !== undefined && !name?.trim())
     return NextResponse.json({ error: '廠商名稱不可為空' }, { status: 400 })
@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('suppliers')
-    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, updated_at: new Date().toISOString() })
+    .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()

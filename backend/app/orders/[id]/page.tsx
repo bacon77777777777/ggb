@@ -386,7 +386,7 @@ export default function OrderDetailPage() {
                   {(shipment.status as string) === 'submitted' && (
                     <button
                       onClick={async () => {
-                        if (confirm('確定要建立物流單嗎？將會向藍新物流發送請求。')) {
+                        if (confirm('確定要建立物流單嗎？將會向物流服務發送請求。')) {
                           try {
                             const response = await fetch('/api/logistics/create', {
                               method: 'POST',

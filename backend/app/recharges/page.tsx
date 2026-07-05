@@ -20,14 +20,26 @@ interface RechargeRecord {
   user?: { id: string; name: string; email: string }
 }
 
+const ALL_PAYMENT_METHODS = ['credit_card', 'webatm', 'vacc', 'cvs', 'barcode', 'twqr', 'other'] as const
+
 const PAYMENT_METHOD_INFO: Record<string, { name: string; formula: string }> = {
-  credit_card: { name: '信用卡', formula: '2.8%' },
-  atm:         { name: 'ATM 虛擬帳號', formula: 'NT$15/筆' },
-  cvs:         { name: '超商代碼', formula: 'NT$25 + 1%' },
-  webatm:      { name: '網路 ATM', formula: '0.8%' },
-  linepay:     { name: 'LINE Pay', formula: '2.8%' },
-  jkos:        { name: '街口支付', formula: '2.8%' },
-  other:       { name: '其他', formula: '—' },
+  credit_card: { name: '信用卡 / 簽帳金融卡', formula: '2.75%+NT$1' },
+  webatm:      { name: '網路 ATM',            formula: '1% max NT$15' },
+  vacc:        { name: 'ATM 虛擬帳號',         formula: '1% max NT$15' },
+  cvs:         { name: '超商代碼',             formula: 'NT$31/筆' },
+  barcode:     { name: '超商條碼',             formula: 'NT$16/筆' },
+  twqr:        { name: '台灣 Pay QR',          formula: '1%' },
+  other:       { name: '其他',                 formula: '—' },
+}
+
+function normalizePaymentMethod(method: string): string {
+  if (method.startsWith('Credit')) return 'credit_card'
+  if (method.startsWith('WebATM')) return 'webatm'
+  if (method.startsWith('ATM'))    return 'vacc'
+  if (method.startsWith('CVS'))    return 'cvs'
+  if (method.startsWith('BARCODE')) return 'barcode'
+  if (method.startsWith('TWQR'))   return 'twqr'
+  return method
 }
 
 export default function RechargesPage() {
@@ -152,23 +164,9 @@ export default function RechargesPage() {
   }, [filteredRecords, sortField, sortDirection])
 
   const getPaymentMethodLabel = (method?: string | null) => {
-    switch (method) {
-      case 'credit_card':
-        return '信用卡 / 金融卡'
-      case 'webatm':
-        return 'WebATM'
-      case 'vacc':
-      case 'bank_transfer':
-        return 'ATM 轉帳'
-      case 'cvs':
-        return '超商代碼繳費'
-      case 'barcode':
-        return '超商條碼繳費'
-      case 'line_pay':
-        return 'LINE Pay'
-      default:
-        return method || '-'
-    }
+    if (!method) return '-'
+    const normalized = normalizePaymentMethod(method)
+    return PAYMENT_METHOD_INFO[normalized]?.name ?? method
   }
 
   const handleSort = (field: string) => {
@@ -194,7 +192,7 @@ export default function RechargesPage() {
     },
     {
       key: 'trade_no',
-      label: '藍新序號',
+      label: '金流序號',
       render: (record) => (
         <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
       )
@@ -259,7 +257,7 @@ export default function RechargesPage() {
 
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['時間', '訂單編號(MerchantOrderNo)', '藍新序號(TradeNo)', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
+    const headers = ['時間', '訂單編號(MerchantOrderNo)', '金流序號(ECPay TradeNo)', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
     const rows = sortedRecords.map(r => [
       formatDateTime(r.created_at),
       r.order_number || '',
@@ -320,10 +318,10 @@ export default function RechargesPage() {
           const totalBonus = sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0)
           const totalRecharge = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
 
-          // 各支付方式統計
+          // 各支付方式統計（正規化 key）
           const methodMap: Record<string, { count: number; amount: number; fee: number }> = {}
           for (const r of successRecs) {
-            const m = r.payment_method || 'other'
+            const m = normalizePaymentMethod(r.payment_method || 'other')
             if (!methodMap[m]) methodMap[m] = { count: 0, amount: 0, fee: 0 }
             methodMap[m].count++
             methodMap[m].amount += r.amount ?? 0
@@ -337,14 +335,15 @@ export default function RechargesPage() {
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
                   <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{successRecs.length} 筆成功</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值金額</p>
                   <p className="text-2xl font-black text-emerald-600">NT$ {totalAmount.toLocaleString()}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">{successRecs.length} 筆成功</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">儲值 {totalRecharge.toLocaleString()} G＋贈送 {totalBonus.toLocaleString()} G</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
-                  <p className="text-xs text-neutral-500 mb-1">藍新手續費</p>
+                  <p className="text-xs text-neutral-500 mb-1">手續費</p>
                   <p className="text-2xl font-black text-red-500">NT$ {totalFee.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">實際扣除</p>
                 </div>
@@ -354,47 +353,39 @@ export default function RechargesPage() {
                   <p className="text-xs text-neutral-400 mt-0.5">扣除手續費後</p>
                 </div>
               </div>
-              {/* G幣小卡 */}
-              <div className="bg-white rounded-xl border border-neutral-200 p-4">
-                <p className="text-xs text-neutral-500 mb-1">G 幣發放</p>
-                <p className="text-xl font-black text-violet-600">
-                  儲值 {totalRecharge.toLocaleString()} G＋贈送 {totalBonus.toLocaleString()} G
-                </p>
-                <p className="text-xs text-neutral-400 mt-0.5">合計 {(totalRecharge + totalBonus).toLocaleString()} G</p>
-              </div>
-              {/* 各支付方式明細 */}
-              {Object.entries(methodMap).length > 0 && (
-                <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-neutral-100">
-                    <p className="text-sm font-semibold text-neutral-700">各支付方式明細</p>
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead className="bg-neutral-50">
-                      <tr>
-                        {['支付方式', '費率定義', '筆數', '儲值金額', '手續費', '實拿金額'].map(h => (
-                          <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                      {Object.entries(methodMap).map(([method, stat]) => {
-                        const info = PAYMENT_METHOD_INFO[method] ?? { name: method, formula: '—' }
-                        const net = stat.amount - stat.fee
-                        return (
-                          <tr key={method} className="hover:bg-neutral-50">
-                            <td className="py-2 px-3 font-medium whitespace-nowrap">{info.name}</td>
-                            <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
-                            <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                            <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
-                            <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
-                            <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {/* 各支付方式明細（全部方式都顯示，無資料顯示 0） */}
+              <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-neutral-100">
+                  <p className="text-sm font-semibold text-neutral-700">各支付方式明細</p>
                 </div>
-              )}
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50">
+                    <tr>
+                      {['支付方式', '費率定義', '筆數', '儲值金額', '手續費', '實拿金額'].map(h => (
+                        <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {ALL_PAYMENT_METHODS.map(method => {
+                      const info = PAYMENT_METHOD_INFO[method]
+                      const stat = methodMap[method] ?? { count: 0, amount: 0, fee: 0 }
+                      const net = stat.amount - stat.fee
+                      const isEmpty = stat.count === 0
+                      return (
+                        <tr key={method} className={`hover:bg-neutral-50 ${isEmpty ? 'opacity-40' : ''}`}>
+                          <td className="py-2 px-3 font-medium whitespace-nowrap">{info.name}</td>
+                          <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
+                          <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         })()}
@@ -427,7 +418,7 @@ export default function RechargesPage() {
             columns={[
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
               { key: 'order_number', label: '訂單編號', visible: visibleColumns.order_number },
-              { key: 'trade_no', label: '藍新序號', visible: visibleColumns.trade_no },
+              { key: 'trade_no', label: '金流序號', visible: visibleColumns.trade_no },
               { key: 'user', label: '用戶', visible: visibleColumns.user },
               { key: 'amount', label: '儲值金額(TWD)', visible: visibleColumns.amount },
               { key: 'bonus', label: '贈送代幣(G)', visible: visibleColumns.bonus },

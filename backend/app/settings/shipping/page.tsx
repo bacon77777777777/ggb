@@ -4,10 +4,10 @@ import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
 
 export default function ShippingSettingsPage() {
-  const [feeHome, setFeeHome] = useState('60')
+  const [feeHome, setFeeHome] = useState('130')
   const [feeCvs711, setFeeCvs711] = useState('65')
   const [feeCvsFamily, setFeeCvsFamily] = useState('65')
-  const [feeCvsHiLife, setFeeCvsHiLife] = useState('60')
+  const [feeCvsHiLife, setFeeCvsHiLife] = useState('55')
   const [feeCvsOk, setFeeCvsOk] = useState('60')
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('7')
   const [isLoading, setIsLoading] = useState(true)
