@@ -45,6 +45,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [isShipmentOpen, setIsShipmentOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [latestVersion, setLatestVersion] = useState<string>('v1.7.6')
 
   // 從 localStorage 讀取初始值（依帳號）
   // 先套用正確值，等兩個 rAF 再開 transition，避免刷新時出現先收起再展開的動畫
@@ -104,6 +105,17 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           majorPrizes: p.major_prizes
         }))
         setProducts(mappedProducts)
+      }
+
+      // Fetch latest version from dev-logs
+      const logsRes = await fetch('/api/admin/dev-logs')
+      if (logsRes.ok) {
+        const logs: { version: string | null }[] = await logsRes.json()
+        const versions = logs
+          .map(l => l.version)
+          .filter((v): v is string => !!v && v !== '擴展計畫')
+          .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+        if (versions[0]) setLatestVersion(versions[0])
       }
 
       // Fetch Pending Orders (submitted status)
@@ -638,7 +650,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
         <div className={`p-2 border-t border-neutral-200 bg-neutral-50 transition-all duration-300 flex-shrink-0`}>
           <div className="flex flex-col items-center justify-center">
-            <p className="text-xs text-neutral-400 whitespace-nowrap">v1.7.6</p>
+            <p className="text-xs text-neutral-400 whitespace-nowrap">{latestVersion}</p>
           </div>
         </div>
       </aside>
