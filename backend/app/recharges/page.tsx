@@ -358,20 +358,12 @@ export default function RechargesPage() {
             (s, k) => s + (methodMap[k]?.count ?? 0), 0
           )
 
-          // 行銷費用（promotion/compensation/test）— 計算贈出的 G幣 數量（amount=0，bonus=tokens）
-          const marketingBonus = (MARKETING_KEYS as readonly string[]).reduce(
-            (s, k) => s + (methodMap[k]?.bonus ?? 0), 0
-          )
-          const marketingCount = (MARKETING_KEYS as readonly string[]).reduce(
-            (s, k) => s + (methodMap[k]?.count ?? 0), 0
-          )
-
           const totalNet = totalAmount - totalFee
 
           return (
             <div className="space-y-3">
               {/* ── 總覽小卡 ── */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
                   <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
@@ -388,11 +380,6 @@ export default function RechargesPage() {
                   <p className="text-xs text-neutral-400 mt-0.5">{manualRealCount} 筆（轉帳/現金/LINE Pay）</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
-                  <p className="text-xs text-neutral-500 mb-1">行銷費用</p>
-                  <p className="text-2xl font-black text-amber-500">{marketingBonus.toLocaleString()} G</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">{marketingCount} 筆（贈點/補償/測試）</p>
-                </div>
-                <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">手續費</p>
                   <p className="text-2xl font-black text-red-500">NT$ {totalFee.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">綠界實際扣除</p>
@@ -400,7 +387,7 @@ export default function RechargesPage() {
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
                   <p className="text-2xl font-black text-blue-600">NT$ {totalNet.toLocaleString()}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">扣除手續費＋行銷費用</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">扣除手續費</p>
                 </div>
               </div>
 
@@ -470,8 +457,8 @@ export default function RechargesPage() {
                             {isMarketing ? '—' : `NT$ ${stat.amount.toLocaleString()}`}
                           </td>
                           <td className="py-2 px-3 tabular-nums text-neutral-400">—</td>
-                          <td className={`py-2 px-3 tabular-nums font-semibold ${isMarketing ? 'text-amber-600' : 'text-teal-600'}`}>
-                            {isMarketing ? `${stat.bonus.toLocaleString()} G` : `NT$ ${net.toLocaleString()}`}
+                          <td className={`py-2 px-3 tabular-nums font-semibold ${isMarketing ? 'text-neutral-400' : 'text-teal-600'}`}>
+                            {isMarketing ? 'NT$ 0' : `NT$ ${net.toLocaleString()}`}
                           </td>
                         </tr>
                       )

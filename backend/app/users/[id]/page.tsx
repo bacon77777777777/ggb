@@ -1037,7 +1037,7 @@ export default function UserDetailPage() {
                                 recharge:  { label: '儲值',     cls: 'bg-emerald-50 text-emerald-700' },
                                 draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
                                 dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
-                                manual:    { label: '手動調整', cls: 'bg-purple-50 text-purple-700' },
+                                manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                 marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                               }
                               const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
