@@ -101,7 +101,11 @@ async function gatherMetrics(supabase: any) {
          FROM refund_requests
          WHERE status='processed'
            AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
-        ) AS refund_deducted
+        ) AS refund_deducted,
+        (SELECT COALESCE(SUM(delta),0)
+         FROM token_adjustments
+         WHERE user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
+        ) AS manual_total
       FROM users u
       WHERE (u.is_bot IS NULL OR u.is_bot = false)
     `),
@@ -138,7 +142,10 @@ async function gatherUserTokenMismatches(supabase: any) {
         COALESCE((
           SELECT SUM(tokens_to_deduct) FROM refund_requests
           WHERE user_id=u.id AND status='processed'
-        ),0) AS refund_out
+        ),0) AS refund_out,
+        COALESCE((
+          SELECT SUM(delta) FROM token_adjustments WHERE user_id=u.id
+        ),0) AS manual_adj
       FROM users u
       WHERE (u.is_bot IS NULL OR u.is_bot = false)
         AND u.tokens > 0
@@ -148,8 +155,8 @@ async function gatherUserTokenMismatches(supabase: any) {
   return rows
     .map(r => ({
       ...r,
-      expected: Number(r.recharge_in) - Number(r.draw_out) - Number(r.refund_out),
-      diff:     Number(r.actual) - (Number(r.recharge_in) - Number(r.draw_out) - Number(r.refund_out)),
+      expected: Number(r.recharge_in) + Number(r.manual_adj ?? 0) - Number(r.draw_out) - Number(r.refund_out),
+      diff:     Number(r.actual) - (Number(r.recharge_in) + Number(r.manual_adj ?? 0) - Number(r.draw_out) - Number(r.refund_out)),
     }))
     .filter(r => Math.abs(r.diff) > TOKEN_DIFF_THRESHOLD)
 }
@@ -163,7 +170,7 @@ async function analyzeWithClaude(metrics: any, mismatches: any[], isMonday: bool
   const { revenueTrend, monthlyRevenue, refundStats, pendingSettlements, tokenPlatform, topupPending } = metrics
 
   const tp   = (tokenPlatform[0] ?? {}) as any
-  const expected = Number(tp.recharge_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
+  const expected = Number(tp.recharge_total ?? 0) + Number(tp.manual_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
   const actual   = Number(tp.current_total ?? 0)
   const platformDiff = expected - actual
 
@@ -228,7 +235,7 @@ export async function POST(req: NextRequest) {
   ])
 
   const tp      = (metrics.tokenPlatform[0] ?? {}) as any
-  const expected = Number(tp.recharge_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
+  const expected = Number(tp.recharge_total ?? 0) + Number(tp.manual_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
   const actual   = Number(tp.current_total ?? 0)
   const platformDiff = expected - actual
 

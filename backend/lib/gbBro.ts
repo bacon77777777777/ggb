@@ -701,6 +701,15 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
   const { error } = await supabase.from('users').update({ tokens: newTokens }).eq('id', userId)
   if (error) return { error: error.message }
 
+  // 寫入 token_adjustments（會 UNION 進 token_ledger view，供流水帳查閱）
+  // 不寫 recharge_records，避免污染綠界對帳數字
+  await supabase.from('token_adjustments').insert({
+    user_id:    userId,
+    delta:      delta,
+    reason:     reason,
+    created_by: actorId ? `admin#${actorId}` : 'GB哥',
+  })
+
   await supabase.from('user_event_logs').insert({
     user_id:    userId,
     event_type: 'token_adjustment',
