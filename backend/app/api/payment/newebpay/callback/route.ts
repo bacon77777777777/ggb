@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { decryptTradeInfo } from '@/lib/newebpay';
+import { decryptTradeInfo, generateTradeSha } from '@/lib/newebpay';
 import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency';
 
 export const dynamic = 'force-dynamic';
@@ -31,15 +31,23 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const MerchantID = formData.get('MerchantID') as string;
-    const TradeInfo = formData.get('TradeInfo') as string;
-    
-    if (!MerchantID || !TradeInfo) {
+    const TradeInfo  = formData.get('TradeInfo')  as string;
+    const TradeSha   = formData.get('TradeSha')   as string;
+
+    if (!MerchantID || !TradeInfo || !TradeSha) {
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
-    
+
     const HashKey = process.env.NEWEBPAY_HASH_KEY!;
-    const HashIV = process.env.NEWEBPAY_HASH_IV!;
-    
+    const HashIV  = process.env.NEWEBPAY_HASH_IV!;
+
+    // 驗證 TradeSha — 防止竄改
+    const expectedSha = generateTradeSha(TradeInfo, HashKey, HashIV);
+    if (expectedSha !== TradeSha) {
+      console.warn('[NewebPay] TradeSha 驗證失敗', { expected: expectedSha, received: TradeSha });
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+
     // Decrypt
     const data = decryptTradeInfo(TradeInfo, HashKey, HashIV);
     console.log('NewebPay Callback Data:', JSON.stringify(data, null, 2));

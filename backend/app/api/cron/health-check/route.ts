@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) { return POST(req) }
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret') ?? ''
-  if (CRON_SECRET && secret !== CRON_SECRET) {
+  if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

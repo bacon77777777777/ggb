@@ -655,7 +655,7 @@ const TOOLS: Anthropic.Tool[] = [
 
 // ─── Stock write tool ──────────────────────────────────────────────
 
-async function updateProductStock(productIds: number[], delta: number, reason?: string) {
+async function updateProductStock(productIds: number[], delta: number, reason?: string, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const results: Array<{ id: number; name: string; old: number; new: number }> = []
   const errors: Array<{ id: number; error: string }> = []
@@ -701,19 +701,15 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
     results.push({ id, name: product.name, old: product.remaining, new: newRemaining })
   }
 
-  return {
-    updated: results,
-    errors,
-    summary: results
-      .map(r => `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）`)
-      .join('、'),
-    reason: reason ?? null,
-  }
+  const summary = results.map(r => `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）`).join('、')
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '調整商品庫存', target_type: 'product', target_id: productIds.join(','), detail: { delta, reason, summary, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+
+  return { updated: results, errors, summary, reason: reason ?? null }
 }
 
 // ─── Product write tools ──────────────────────────────────────────
 
-async function updateProductStatus(productIds: number[], status: string) {
+async function updateProductStatus(productIds: number[], status: string, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const results: Array<{ id: number; name: string; status: string }> = []
   const errors: Array<{ id: number; error: string }> = []
@@ -726,21 +722,27 @@ async function updateProductStatus(productIds: number[], status: string) {
     results.push({ id, name: p.name, status })
   }
 
-  return { updated: results, errors, summary: results.map(r => `《${r.name}》→ ${r.status}`).join('、') }
+  const summary = results.map(r => `《${r.name}》→ ${r.status}`).join('、')
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '修改商品狀態', target_type: 'product', target_id: productIds.join(','), detail: { status, summary, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+
+  return { updated: results, errors, summary }
 }
 
-async function updateProductPrice(productId: number, price: number) {
+async function updateProductPrice(productId: number, price: number, actorId?: string) {
+  if (price <= 0 || price > 100_000) return { error: '價格必須在 1～100,000 之間' }
   const supabase = getSupabaseAdmin()
   const { data: p } = await supabase.from('products').select('id, name, price').eq('id', productId).maybeSingle()
   if (!p) return { error: '找不到商品' }
   const { error } = await supabase.from('products').update({ price, updated_at: new Date().toISOString() }).eq('id', productId)
   if (error) return { error: error.message }
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '修改商品價格', target_type: 'product', target_id: String(productId), detail: { old_price: p.price, new_price: price, via: 'GB哥' } }) } catch (_) { /* ignore */ }
   return { ok: true, name: p.name, old_price: p.price, new_price: price }
 }
 
 // ─── User write tools ──────────────────────────────────────────────
 
 async function adjustUserTokens(userId: string, delta: number, reason: string, actorId?: string) {
+  if (Math.abs(delta) > 999_999) return { error: '單次調整上限 999,999 G幣，請分次操作' }
   const supabase = getSupabaseAdmin()
   const { data: user } = await supabase.from('users').select('id, name, email, tokens').eq('id', userId).maybeSingle()
   if (!user) return { error: '找不到用戶' }
@@ -766,6 +768,8 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
     detail:     { delta, reason, before: user.tokens, after: newTokens, by: actorId ?? 'GB哥' },
   })
 
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '調整用戶代幣', target_type: 'user', target_id: userId, detail: { delta, reason, old_tokens: user.tokens, new_tokens: newTokens, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+
   return {
     ok: true,
     name:       user.name ?? user.email,
@@ -778,7 +782,7 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
 
 // ─── Order write tools ─────────────────────────────────────────────
 
-async function updateOrderTracking(identifier: string, trackingNumber: string, status?: string) {
+async function updateOrderTracking(identifier: string, trackingNumber: string, status?: string, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const isUuid = /^[0-9a-f-]{36}$/i.test(identifier)
   const query = supabase.from('orders').select('id, order_number, tracking_number, status')
@@ -793,6 +797,8 @@ async function updateOrderTracking(identifier: string, trackingNumber: string, s
 
   const { error } = await supabase.from('orders').update(update).eq('id', order.id)
   if (error) return { error: error.message }
+
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '更新物流單號', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, tracking_number: trackingNumber, status, via: 'GB哥' } }) } catch (_) { /* ignore */ }
 
   return { ok: true, order_number: order.order_number, tracking_number: trackingNumber, status: status ?? order.status }
 }
@@ -814,12 +820,14 @@ async function cancelOrder(identifier: string, reason?: string, actorId?: string
     detail:     { order_number: order.order_number, reason, by: actorId ?? 'GB哥' },
   })
 
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '取消訂單', target_type: 'order', target_id: String(order.id), detail: { order_number: order.order_number, reason, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+
   return { ok: true, order_number: order.order_number, reason }
 }
 
 // ─── Coupon write tools ────────────────────────────────────────────
 
-async function createCoupon(code: string, title: string, discountType: string, discountValue: number, minSpend = 0) {
+async function createCoupon(code: string, title: string, discountType: string, discountValue: number, minSpend = 0, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase.from('coupons').insert({
     code:           code.toUpperCase(),
@@ -830,21 +838,23 @@ async function createCoupon(code: string, title: string, discountType: string, d
     is_active:      true,
   }).select('id, code').single()
   if (error) return { error: error.message }
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '建立折扣碼', target_type: 'coupon', target_id: data.code, detail: { title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend, via: 'GB哥' } }) } catch (_) { /* ignore */ }
   return { ok: true, id: data.id, code: data.code, title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend }
 }
 
-async function toggleCoupon(code: string, isActive: boolean) {
+async function toggleCoupon(code: string, isActive: boolean, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const { data: coupon } = await supabase.from('coupons').select('id, title').eq('code', code.toUpperCase()).maybeSingle()
   if (!coupon) return { error: '找不到折扣碼' }
   const { error } = await supabase.from('coupons').update({ is_active: isActive }).eq('code', code.toUpperCase())
   if (error) return { error: error.message }
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: isActive ? '啟用折扣碼' : '停用折扣碼', target_type: 'coupon', target_id: code.toUpperCase(), detail: { title: coupon.title, is_active: isActive, via: 'GB哥' } }) } catch (_) { /* ignore */ }
   return { ok: true, code: code.toUpperCase(), title: coupon.title, is_active: isActive }
 }
 
 // ─── Content draft write tools ─────────────────────────────────────
 
-async function updateContentDraft(ids: string[], status: string) {
+async function updateContentDraft(ids: string[], status: string, actorId?: string) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('content_drafts')
@@ -852,6 +862,7 @@ async function updateContentDraft(ids: string[], status: string) {
     .in('id', ids)
     .select('id, product_name, style, status')
   if (error) return { error: error.message }
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '更新文案草稿狀態', target_type: 'content_draft', target_id: ids.join(','), detail: { status, count: data?.length, via: 'GB哥' } }) } catch (_) { /* ignore */ }
   return { ok: true, updated: data?.length ?? 0, items: data }
 }
 
@@ -904,6 +915,8 @@ async function riskAction(
     detail:     { action, reason, by: actorId ?? 'GB哥' },
   })
 
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: label, target_type: 'user', target_id: userId, detail: { reason, user_name: user.name, user_email: user.email, via: 'GB哥' } }) } catch (_) { /* ignore */ }
+
   return { ok: true, action: label, user: { name: user.name, email: user.email } }
 }
 
@@ -949,23 +962,23 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
       case 'unflag_user':
         return JSON.stringify(await riskAction(input.user_id, 'unflag', undefined, actorId))
       case 'update_product_stock':
-        return JSON.stringify(await updateProductStock(input.product_ids, input.delta, input.reason))
+        return JSON.stringify(await updateProductStock(input.product_ids, input.delta, input.reason, actorId))
       case 'update_product_status':
-        return JSON.stringify(await updateProductStatus(input.product_ids, input.status))
+        return JSON.stringify(await updateProductStatus(input.product_ids, input.status, actorId))
       case 'update_product_price':
-        return JSON.stringify(await updateProductPrice(input.product_id, input.price))
+        return JSON.stringify(await updateProductPrice(input.product_id, input.price, actorId))
       case 'adjust_user_tokens':
         return JSON.stringify(await adjustUserTokens(input.user_id, input.delta, input.reason, actorId))
       case 'update_order_tracking':
-        return JSON.stringify(await updateOrderTracking(input.identifier, input.tracking_number, input.status))
+        return JSON.stringify(await updateOrderTracking(input.identifier, input.tracking_number, input.status, actorId))
       case 'cancel_order':
         return JSON.stringify(await cancelOrder(input.identifier, input.reason, actorId))
       case 'create_coupon':
-        return JSON.stringify(await createCoupon(input.code, input.title, input.discount_type, input.discount_value, input.min_spend))
+        return JSON.stringify(await createCoupon(input.code, input.title, input.discount_type, input.discount_value, input.min_spend, actorId))
       case 'toggle_coupon':
-        return JSON.stringify(await toggleCoupon(input.code, input.is_active))
+        return JSON.stringify(await toggleCoupon(input.code, input.is_active, actorId))
       case 'update_content_draft':
-        return JSON.stringify(await updateContentDraft(input.ids, input.status))
+        return JSON.stringify(await updateContentDraft(input.ids, input.status, actorId))
       case 'fetch_webpage':
         return JSON.stringify(await fetchWebpage(input.url))
       default:

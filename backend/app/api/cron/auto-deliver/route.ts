@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
-const CRON_SECRET       = process.env.CRON_SECRET
+const CRON_SECRET       = process.env.CRON_SECRET ?? ''
 const LINE_TOKEN        = process.env.LINE_CHANNEL_ACCESS_TOKEN
 const NOTIFY_ID         = process.env.NOTIFY_TARGET_ID
 // 超過幾天 shipping 狀態自動視為已送達（HOME=7天，CVS=3天）
@@ -19,7 +19,7 @@ async function pushLine(text: string) {
 
 export async function GET(req: NextRequest) {
   const secret = req.headers.get('x-cron-secret')
-  if (CRON_SECRET && secret !== CRON_SECRET) {
+  if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
