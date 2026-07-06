@@ -893,6 +893,8 @@ export default function UserDetailPage() {
                               <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">時間</th>
                               <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">類型</th>
                               <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">說明</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">面額</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">贈送</th>
                               <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">異動 (G)</th>
                               <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
                             </tr>
@@ -900,26 +902,40 @@ export default function UserDetailPage() {
                           <tbody>
                             {ledger.map((row: any, i: number) => {
                               const isPos = row.delta > 0
+                              const isPending = row.type === 'recharge' && row.status !== 'success'
                               const typeMap: Record<string, { label: string; cls: string }> = {
                                 recharge:  { label: '儲值',   cls: 'bg-emerald-50 text-emerald-700' },
                                 draw:      { label: '抽獎',   cls: 'bg-rose-50 text-rose-700' },
                                 dismantle: { label: '拆解退', cls: 'bg-amber-50 text-amber-700' },
                               }
+                              const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
                               const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
                               return (
-                                <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
+                                <tr key={i} className={`border-b border-neutral-100 hover:bg-neutral-50 ${isPending ? 'opacity-60' : ''}`}>
                                   <td className="px-3 py-2 text-neutral-500 whitespace-nowrap font-mono text-xs">
                                     {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                   </td>
                                   <td className="px-3 py-2">
                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
+                                    {isPending && (
+                                      <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">{statusMap[row.status] ?? row.status}</span>
+                                    )}
+                                    {row.status === 'failed' && (
+                                      <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">失敗</span>
+                                    )}
                                   </td>
-                                  <td className="px-3 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
-                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {isPos ? '+' : ''}{Number(row.delta).toLocaleString()}
+                                  <td className="px-3 py-2 text-neutral-700 max-w-[180px] truncate">{row.description}</td>
+                                  <td className="px-3 py-2 text-right font-mono text-neutral-600 text-xs">
+                                    {row.recharge_amount != null ? Number(row.recharge_amount).toLocaleString() : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-neutral-600 text-xs">
+                                    {row.recharge_bonus != null && row.recharge_bonus > 0 ? `+${Number(row.recharge_bonus).toLocaleString()}` : row.recharge_bonus != null ? '—' : '—'}
+                                  </td>
+                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPending ? 'text-neutral-400' : isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {isPending ? '—' : `${isPos ? '+' : ''}${Number(row.delta).toLocaleString()}`}
                                   </td>
                                   <td className="px-3 py-2 text-right font-mono text-neutral-700">
-                                    {row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
+                                    {!isPending && row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
                                   </td>
                                 </tr>
                               )
