@@ -523,6 +523,107 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['product_ids', 'delta'],
     },
   },
+  {
+    name: 'update_product_status',
+    description: '批次修改商品上下架狀態。active=上架、archived=下架（不可見）、sold_out=售完（仍可見）。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_ids: { type: 'array', items: { type: 'number' }, description: '商品 ID 陣列' },
+        status: { type: 'string', enum: ['active', 'archived', 'sold_out'], description: '目標狀態' },
+      },
+      required: ['product_ids', 'status'],
+    },
+  },
+  {
+    name: 'update_product_price',
+    description: '修改商品每抽價格（NT$）。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: { type: 'number', description: '商品 ID' },
+        price:      { type: 'number', description: '新價格（NT$，正整數）' },
+      },
+      required: ['product_id', 'price'],
+    },
+  },
+  {
+    name: 'adjust_user_tokens',
+    description: '手動調整用戶 G幣（tokens）。delta 正數=增加、負數=扣除。操作前應先 lookup_user 確認對象。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        user_id: { type: 'string', description: '用戶 UUID' },
+        delta:   { type: 'number', description: '代幣增減量（正=增加、負=扣除）' },
+        reason:  { type: 'string', description: '調整原因（必填，會記錄在 user_event_logs）' },
+      },
+      required: ['user_id', 'delta', 'reason'],
+    },
+  },
+  {
+    name: 'update_order_tracking',
+    description: '填寫或更新訂單物流追蹤號碼，並可同步更新物流狀態。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        identifier:      { type: 'string', description: '訂單編號（order_number）或 UUID' },
+        tracking_number: { type: 'string', description: '物流追蹤號碼' },
+        status:          { type: 'string', enum: ['processing','picked_up','shipping','delivered'], description: '選填：同步更新訂單狀態' },
+      },
+      required: ['identifier', 'tracking_number'],
+    },
+  },
+  {
+    name: 'cancel_order',
+    description: '將訂單標記為已取消（status = cancelled）。用於用戶要求取消或下錯單的情況。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        identifier: { type: 'string', description: '訂單編號（order_number）或 UUID' },
+        reason:     { type: 'string', description: '取消原因' },
+      },
+      required: ['identifier'],
+    },
+  },
+  {
+    name: 'create_coupon',
+    description: '建立折扣碼。discount_type: fixed=固定金額折扣、percentage=百分比折扣。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        code:           { type: 'string', description: '折扣碼（英數大寫，如 SAVE100）' },
+        title:          { type: 'string', description: '折扣碼名稱（顯示用）' },
+        discount_type:  { type: 'string', enum: ['fixed','percentage'], description: 'fixed=固定金額、percentage=折數' },
+        discount_value: { type: 'number', description: '折扣金額（fixed: NT$、percentage: 0-100%）' },
+        min_spend:      { type: 'number', description: '最低消費門檻（選填，預設 0）' },
+      },
+      required: ['code', 'title', 'discount_type', 'discount_value'],
+    },
+  },
+  {
+    name: 'toggle_coupon',
+    description: '啟用或停用折扣碼。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        code:      { type: 'string', description: '折扣碼' },
+        is_active: { type: 'boolean', description: 'true=啟用、false=停用' },
+      },
+      required: ['code', 'is_active'],
+    },
+  },
+  {
+    name: 'update_content_draft',
+    description: '更新文案草稿狀態（approved=核准、published=已發布、archived=棄用）。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        ids:    { type: 'array', items: { type: 'string' }, description: '草稿 UUID 陣列' },
+        status: { type: 'string', enum: ['approved','published','archived','pending'], description: '目標狀態' },
+      },
+      required: ['ids', 'status'],
+    },
+  },
 ]
 
 // ─── Stock write tool ──────────────────────────────────────────────
@@ -560,6 +661,139 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
       .join('、'),
     reason: reason ?? null,
   }
+}
+
+// ─── Product write tools ──────────────────────────────────────────
+
+async function updateProductStatus(productIds: number[], status: string) {
+  const supabase = getSupabaseAdmin()
+  const results: Array<{ id: number; name: string; status: string }> = []
+  const errors: Array<{ id: number; error: string }> = []
+
+  for (const id of productIds) {
+    const { data: p } = await supabase.from('products').select('id, name').eq('id', id).maybeSingle()
+    if (!p) { errors.push({ id, error: '找不到商品' }); continue }
+    const { error } = await supabase.from('products').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
+    if (error) { errors.push({ id, error: error.message }); continue }
+    results.push({ id, name: p.name, status })
+  }
+
+  return { updated: results, errors, summary: results.map(r => `《${r.name}》→ ${r.status}`).join('、') }
+}
+
+async function updateProductPrice(productId: number, price: number) {
+  const supabase = getSupabaseAdmin()
+  const { data: p } = await supabase.from('products').select('id, name, price').eq('id', productId).maybeSingle()
+  if (!p) return { error: '找不到商品' }
+  const { error } = await supabase.from('products').update({ price, updated_at: new Date().toISOString() }).eq('id', productId)
+  if (error) return { error: error.message }
+  return { ok: true, name: p.name, old_price: p.price, new_price: price }
+}
+
+// ─── User write tools ──────────────────────────────────────────────
+
+async function adjustUserTokens(userId: string, delta: number, reason: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  const { data: user } = await supabase.from('users').select('id, name, email, tokens').eq('id', userId).maybeSingle()
+  if (!user) return { error: '找不到用戶' }
+
+  const newTokens = Math.max(0, (user.tokens ?? 0) + delta)
+  const { error } = await supabase.from('users').update({ tokens: newTokens }).eq('id', userId)
+  if (error) return { error: error.message }
+
+  await supabase.from('user_event_logs').insert({
+    user_id:    userId,
+    event_type: 'token_adjustment',
+    detail:     { delta, reason, before: user.tokens, after: newTokens, by: actorId ?? 'GB哥' },
+  })
+
+  return {
+    ok: true,
+    name:       user.name ?? user.email,
+    old_tokens: user.tokens ?? 0,
+    new_tokens: newTokens,
+    delta,
+    reason,
+  }
+}
+
+// ─── Order write tools ─────────────────────────────────────────────
+
+async function updateOrderTracking(identifier: string, trackingNumber: string, status?: string) {
+  const supabase = getSupabaseAdmin()
+  const isUuid = /^[0-9a-f-]{36}$/i.test(identifier)
+  const query = supabase.from('orders').select('id, order_number, tracking_number, status')
+  const { data: order } = await (isUuid ? query.eq('id', identifier) : query.eq('order_number', identifier)).maybeSingle()
+  if (!order) return { error: '找不到訂單' }
+
+  const update: Record<string, any> = { tracking_number: trackingNumber }
+  if (status) {
+    update.status = status
+    if (status === 'shipping' || status === 'picked_up') update.shipped_at = new Date().toISOString()
+  }
+
+  const { error } = await supabase.from('orders').update(update).eq('id', order.id)
+  if (error) return { error: error.message }
+
+  return { ok: true, order_number: order.order_number, tracking_number: trackingNumber, status: status ?? order.status }
+}
+
+async function cancelOrder(identifier: string, reason?: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  const isUuid = /^[0-9a-f-]{36}$/i.test(identifier)
+  const query = supabase.from('orders').select('id, order_number, status, user_id')
+  const { data: order } = await (isUuid ? query.eq('id', identifier) : query.eq('order_number', identifier)).maybeSingle()
+  if (!order) return { error: '找不到訂單' }
+  if (order.status === 'delivered') return { error: '訂單已送達，無法取消' }
+
+  const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id)
+  if (error) return { error: error.message }
+
+  await supabase.from('user_event_logs').insert({
+    user_id:    order.user_id,
+    event_type: 'order_cancelled',
+    detail:     { order_number: order.order_number, reason, by: actorId ?? 'GB哥' },
+  })
+
+  return { ok: true, order_number: order.order_number, reason }
+}
+
+// ─── Coupon write tools ────────────────────────────────────────────
+
+async function createCoupon(code: string, title: string, discountType: string, discountValue: number, minSpend = 0) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.from('coupons').insert({
+    code:           code.toUpperCase(),
+    title,
+    discount_type:  discountType,
+    discount_value: discountValue,
+    min_spend:      minSpend,
+    is_active:      true,
+  }).select('id, code').single()
+  if (error) return { error: error.message }
+  return { ok: true, id: data.id, code: data.code, title, discount_type: discountType, discount_value: discountValue, min_spend: minSpend }
+}
+
+async function toggleCoupon(code: string, isActive: boolean) {
+  const supabase = getSupabaseAdmin()
+  const { data: coupon } = await supabase.from('coupons').select('id, title').eq('code', code.toUpperCase()).maybeSingle()
+  if (!coupon) return { error: '找不到折扣碼' }
+  const { error } = await supabase.from('coupons').update({ is_active: isActive }).eq('code', code.toUpperCase())
+  if (error) return { error: error.message }
+  return { ok: true, code: code.toUpperCase(), title: coupon.title, is_active: isActive }
+}
+
+// ─── Content draft write tools ─────────────────────────────────────
+
+async function updateContentDraft(ids: string[], status: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('content_drafts')
+    .update({ status, updated_at: new Date().toISOString() })
+    .in('id', ids)
+    .select('id, product_name, style, status')
+  if (error) return { error: error.message }
+  return { ok: true, updated: data?.length ?? 0, items: data }
 }
 
 // ─── Risk action tools ─────────────────────────────────────────────
@@ -657,6 +891,22 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await riskAction(input.user_id, 'unflag', undefined, actorId))
       case 'update_product_stock':
         return JSON.stringify(await updateProductStock(input.product_ids, input.delta, input.reason))
+      case 'update_product_status':
+        return JSON.stringify(await updateProductStatus(input.product_ids, input.status))
+      case 'update_product_price':
+        return JSON.stringify(await updateProductPrice(input.product_id, input.price))
+      case 'adjust_user_tokens':
+        return JSON.stringify(await adjustUserTokens(input.user_id, input.delta, input.reason, actorId))
+      case 'update_order_tracking':
+        return JSON.stringify(await updateOrderTracking(input.identifier, input.tracking_number, input.status))
+      case 'cancel_order':
+        return JSON.stringify(await cancelOrder(input.identifier, input.reason, actorId))
+      case 'create_coupon':
+        return JSON.stringify(await createCoupon(input.code, input.title, input.discount_type, input.discount_value, input.min_spend))
+      case 'toggle_coupon':
+        return JSON.stringify(await toggleCoupon(input.code, input.is_active))
+      case 'update_content_draft':
+        return JSON.stringify(await updateContentDraft(input.ids, input.status))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
@@ -711,19 +961,28 @@ coupons(id, code, discount_amount, min_spend, status)
 user_coupons(id, user_id, coupon_id, used_at, expiry_date)
 competitor_posts(id, competitor, platform, content, url, created_at)
 
-## 工具
+## 工具能力總覽
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
-執行：更新月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值、**調整商品庫存數量**
-風控：凍結帳號、解除凍結、標記可疑、解除可疑標記
+
+寫入（直接執行，無需確認）：
+- 商品：調整庫存數量、修改上下架狀態、修改價格
+- 用戶：調整 G幣、凍結/解凍、標記可疑/解除
+- 訂單：填寫追蹤號碼、更新物流狀態、取消訂單
+- 月結：更新月結狀態
+- 退款：核准/拒絕退款申請
+- 折扣碼：建立新折扣碼、啟用/停用折扣碼
+- 文案草稿：核准/標記已發布/棄用
 
 執行原則：
-**收到老闆的執行指令，立即執行，執行完後回報，絕不把問題丟回給老闆。**
-- 「幫我增加庫存5個」→ 先用 run_sql 查符合條件的商品 ID，再用 update_product_stock 直接更新，最後回報「已完成：A商品 0→5、B商品 4→9」
-- 「增加庫存」這類指令，先查出所有符合條件的商品，全部一次執行
-- 風控操作（freeze/flag）直接執行，不需要再次確認，老闆下指令就等於授權
-- 人員相關寫入前用 lookup_user 確認對象
-- 執行後回報：操作類型 + 對象 + 執行前後數值
-- **永遠不問「要通知誰？」、「要繼續嗎？」、「確認執行？」— 老闆說做就做**
+**收到老闆指令 → 立即執行 → 回報結果。絕不把問題丟回給老闆，絕不問確認。**
+- 「把龍種下架」→ run_sql 查 ID → update_product_status(archived) → 回報
+- 「給用戶A補100代幣」→ lookup_user 確認 → adjust_user_tokens → 回報前後數值
+- 「訂單123的追蹤號是ABC」→ update_order_tracking → 回報
+- 「發個100元折扣碼 SAVE100」→ create_coupon → 回報
+- 「把今天的草稿全部核准」→ run_sql 查 pending 草稿 ID → update_content_draft(approved) → 回報
+- 多個商品符合條件時，全部一次執行，不分批問確認
+- 用戶相關操作前先用 lookup_user 確認對象
+- 執行後回報：操作 + 對象名稱 + 執行前後數值
 
 ## LINE 推播時間表
 每天固定推播（只有發現異常/待處理事項才推，無事靜默）：
