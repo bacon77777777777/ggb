@@ -636,19 +636,40 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
   for (const id of productIds) {
     const { data: product } = await supabase
       .from('products')
-      .select('id, name, remaining')
+      .select('id, name, remaining, total_count')
       .eq('id', id)
       .maybeSingle()
 
     if (!product) { errors.push({ id, error: '找不到商品' }); continue }
 
     const newRemaining = Math.max(0, product.remaining + delta)
-    const { error: updateErr } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from('products')
       .update({ remaining: newRemaining, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .select('id')
 
     if (updateErr) { errors.push({ id, error: updateErr.message }); continue }
+    if (!updated?.length) { errors.push({ id, error: '更新失敗（0 rows affected）' }); continue }
+
+    // 同步更新 product_prizes.remaining，依各獎品 total 比例分配 delta
+    const { data: prizes } = await supabase
+      .from('product_prizes')
+      .select('id, remaining, total')
+      .eq('product_id', id)
+
+    if (prizes?.length && product.total_count > 0) {
+      let remaining = delta
+      const sorted = [...prizes].sort((a, b) => b.total - a.total)
+      for (let i = 0; i < sorted.length; i++) {
+        const prize = sorted[i]
+        const isLast = i === sorted.length - 1
+        const share = isLast ? remaining : Math.round(delta * prize.total / product.total_count)
+        const newPrizeRemaining = Math.max(0, prize.remaining + share)
+        await supabase.from('product_prizes').update({ remaining: newPrizeRemaining }).eq('id', prize.id)
+        remaining -= share
+      }
+    }
 
     results.push({ id, name: product.name, old: product.remaining, new: newRemaining })
   }
@@ -698,8 +719,10 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
   if (!user) return { error: '找不到用戶' }
 
   const newTokens = Math.max(0, (user.tokens ?? 0) + delta)
-  const { error } = await supabase.from('users').update({ tokens: newTokens }).eq('id', userId)
+  const { data: updated, error } = await supabase
+    .from('users').update({ tokens: newTokens }).eq('id', userId).select('id')
   if (error) return { error: error.message }
+  if (!updated?.length) return { error: '更新失敗（0 rows affected），請確認 user_id 正確' }
 
   // 寫入 token_adjustments（會 UNION 進 token_ledger view，供流水帳查閱）
   // 不寫 recharge_records，避免污染綠界對帳數字
