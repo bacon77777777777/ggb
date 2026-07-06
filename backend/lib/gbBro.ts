@@ -33,12 +33,22 @@ function getPeriodStart(period: string): string {
 
 // ─── Query tools ───────────────────────────────────────────────────
 
+async function getRealUserIds(): Promise<string[]> {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .or('is_bot.is.null,is_bot.eq.false')
+  return (data ?? []).map((u: any) => u.id)
+}
+
 async function getRevenueSummary(period: string) {
   const supabase = getSupabaseAdmin()
   const gte = getPeriodStart(period)
+  const realUserIds = await getRealUserIds()
   const [rechargeRes, drawRes] = await Promise.all([
-    supabase.from('recharge_records').select('amount').eq('status', 'success').gte('created_at', gte),
-    supabase.from('draw_records').select('user_id, product:products(price)').gte('created_at', gte),
+    supabase.from('recharge_records').select('amount').eq('status', 'success').gte('created_at', gte).in('user_id', realUserIds),
+    supabase.from('draw_records').select('user_id, product:products(price)').gte('created_at', gte).in('user_id', realUserIds),
   ])
   const recharges = rechargeRes.data ?? []
   const draws = drawRes.data ?? []
@@ -54,6 +64,35 @@ async function getRevenueSummary(period: string) {
     uniqueDrawers: new Set(draws.map(d => d.user_id)).size,
     rechargeOrders: recharges.length,
   }
+}
+
+async function getPlatformStats(period?: string) {
+  const supabase = getSupabaseAdmin()
+  const gte = period ? getPeriodStart(period) : null
+
+  const [totalRes, activeRes, productRes] = await Promise.all([
+    supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.is.null,is_bot.eq.false'),
+    supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.is.null,is_bot.eq.false').eq('status', 'active'),
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+  ])
+
+  const result: Record<string, any> = {
+    totalMembers: totalRes.count ?? 0,
+    activeMembers: activeRes.count ?? 0,
+    activeProducts: productRes.count ?? 0,
+  }
+
+  if (gte) {
+    const [newRes, loginRes] = await Promise.all([
+      supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.is.null,is_bot.eq.false').gte('created_at', gte),
+      supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.is.null,is_bot.eq.false').gte('last_login_at', gte),
+    ])
+    result.newMembersInPeriod = newRes.count ?? 0
+    result.loggedInInPeriod = loginRes.count ?? 0
+    result.period = period
+  }
+
+  return result
 }
 
 async function getPendingActions() {
@@ -286,6 +325,20 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['query'],
     },
   },
+  {
+    name: 'get_platform_stats',
+    description: '查詢平台整體統計：總會員數、活躍會員數、商品數。可傳入 period 查詢特定時段新增/登入會員。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        period: {
+          type: 'string',
+          enum: ['today', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
+          description: '若傳入時段則額外回傳該期間新增會員數、登入會員數',
+        },
+      },
+    },
+  },
   // ── Write tools ──
   {
     name: 'list_settlements',
@@ -375,6 +428,8 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await getRecentOrders(input.status, input.limit))
       case 'lookup_user':
         return JSON.stringify(await lookupUser(input.query))
+      case 'get_platform_stats':
+        return JSON.stringify(await getPlatformStats(input.period))
       case 'list_settlements':
         return JSON.stringify(await listSettlements(input.supplier_name, input.period, input.status))
       case 'update_settlement':
@@ -415,7 +470,7 @@ function buildSystemPrompt(): string {
 - 一般知識問答、文案撰寫、分析建議、閒聊
 
 ## 你有哪些工具
-查詢：營收統計、待處理事項、商品庫存、配送訂單、會員資料、廠商月結清單、退款申請
+查詢：營收統計（自動排除測試 bot）、平台統計（總會員數、活躍人數、商品數）、待處理事項、商品庫存、配送訂單、會員資料、廠商月結清單、退款申請
 執行：更新廠商月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值旗標
 
 執行原則：

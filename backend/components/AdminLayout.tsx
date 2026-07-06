@@ -468,6 +468,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '管理員權限', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
           { name: '開發紀錄', path: '/dev-logs', icon: IconLogs },
+          { name: '競品情報', path: '/competitor-intel', icon: IconReports },
         ],
       },
       {
