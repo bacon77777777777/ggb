@@ -25,3 +25,14 @@ export const paymentLimiter = {
     return realLimiter.limit(_key)
   },
 }
+
+// 風控：同一用戶 1 小時內儲值次數計數（回傳累積次數，不封鎖）
+export const rechargeRiskCounter = {
+  increment: async (userId: string): Promise<number> => {
+    if (!redis) return 0
+    const key = `risk:recharge:${userId}`
+    const count = await redis.incr(key)
+    if (count === 1) await redis.expire(key, 3600)
+    return count as number
+  },
+}

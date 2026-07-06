@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyCheckMacValue } from '@/lib/ecpay'
 import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency'
+import { rechargeRiskCounter } from '@/lib/ratelimit'
+
+const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
+const NOTIFY_ID  = process.env.NOTIFY_TARGET_ID ?? ''
+const RAPID_RECHARGE_THRESHOLD = Number(process.env.RISK_RAPID_RECHARGE ?? 3)
+
+async function pushRiskAlert(text: string) {
+  if (!LINE_TOKEN || !NOTIFY_ID) return
+  await fetch('https://api.line.me/v2/bot/message/push', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
+    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
+  }).catch(() => { /* ignore */ })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -97,6 +111,15 @@ export async function POST(req: Request) {
           ip,
           event_type: 'recharge',
         })
+
+        // 風控：快速重複儲值偵測（Redis 1小時計數）
+        const rechargeCount = await rechargeRiskCounter.increment(recharge.user_id)
+        if (rechargeCount >= RAPID_RECHARGE_THRESHOLD) {
+          const { data: u } = await supabase.from('users').select('name, email').eq('id', recharge.user_id).single()
+          await pushRiskAlert(
+            `⚠️ 風控警報｜快速重複儲值\n\n用戶：${u?.name ?? u?.email ?? recharge.user_id}\n1小時內已儲值 ${rechargeCount} 次\n金額：NT$ ${Number(recharge.amount ?? amt).toLocaleString()}\n\n請至後台確認是否正常。`
+          )
+        }
       }
     } else if (tradeNo.startsWith('SO')) {
       const { error } = await supabase.rpc('confirm_sell_escrow_order', {
