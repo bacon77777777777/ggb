@@ -1,37 +1,32 @@
 -- execute_readonly_sql: GB哥 / cron 專用唯讀 SQL 執行器
+-- 此為線上 Supabase 實際部署版本，以版控作為參考文件。
 -- 雙重防護：
---   1. 正規表達式阻擋所有寫入語句（INSERT/UPDATE/DELETE/DDL/DCL）
---   2. SET LOCAL TRANSACTION READ ONLY 確保交易層唯讀
--- 此函式使用 SECURITY DEFINER，請勿賦予一般用戶 EXECUTE 權限。
+--   1. 白名單：只允許 SELECT / WITH 開頭的查詢
+--   2. 黑名單：禁止 INSERT/UPDATE/DELETE/DROP/TRUNCATE/ALTER/CREATE/GRANT/REVOKE/EXECUTE/PERFORM
 
-CREATE OR REPLACE FUNCTION execute_readonly_sql(query TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
+CREATE OR REPLACE FUNCTION public.execute_readonly_sql(query text)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
 AS $$
 DECLARE
-  result JSONB;
+  result json;
+  normalized text;
 BEGIN
-  -- 阻擋寫入語句（大小寫不分，允許前置空白）
-  IF query ~* '^\s*(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|CALL|DO)\b' THEN
-    RAISE EXCEPTION 'Write statements are not allowed in execute_readonly_sql';
+  normalized := lower(regexp_replace(trim(query), '\s+', ' ', 'g'));
+  IF NOT (normalized LIKE 'select %' OR normalized LIKE 'with %') THEN
+    RAISE EXCEPTION '只允許 SELECT / WITH 查詢';
   END IF;
-
-  -- 交易層唯讀（雙重保護）
-  SET LOCAL TRANSACTION READ ONLY;
-
-  -- 執行並將結果聚合為 JSON 陣列
-  EXECUTE format('SELECT COALESCE(json_agg(t), ''[]''::json) FROM (%s) t', query)
-    INTO result;
-
-  RETURN COALESCE(result, '[]'::JSONB);
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE EXCEPTION 'execute_readonly_sql error: %', SQLERRM;
+  -- Block any write keywords even inside CTEs
+  IF normalized ~ '\m(insert|update|delete|drop|truncate|alter|create|grant|revoke|execute|perform)\M' THEN
+    RAISE EXCEPTION '查詢包含不允許的關鍵字';
+  END IF;
+  EXECUTE format('SELECT json_agg(row_to_json(t)) FROM (%s) t', query) INTO result;
+  RETURN COALESCE(result, '[]'::json);
 END;
 $$;
 
 -- 權限：只允許 service_role 呼叫
-REVOKE ALL ON FUNCTION execute_readonly_sql(TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION execute_readonly_sql(TEXT) TO service_role;
+REVOKE ALL ON FUNCTION public.execute_readonly_sql(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.execute_readonly_sql(text) TO service_role;
