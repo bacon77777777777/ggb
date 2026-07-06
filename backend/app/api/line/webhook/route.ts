@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   const events: any[] = payload.events ?? []
 
   for (const event of events) {
-    console.log('[LINE webhook] event:', event.type, event.source?.userId)
+    console.log('[LINE webhook] event:', event.type, 'userId:', event.source?.userId, 'groupId:', event.source?.groupId, 'roomId:', event.source?.roomId)
 
     if (event.type === 'follow') {
       await handleFollow(event)
