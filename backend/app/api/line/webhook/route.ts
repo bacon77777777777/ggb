@@ -122,7 +122,7 @@ async function handleTextMessage(event: any) {
     }
 
     try {
-      const answer = await askGbBro(query)
+      const answer = await askGbBro(query, event.source?.userId)
       await replyMessage(event.replyToken, [{ type: 'text', text: answer }])
     } catch (err) {
       console.error('[GB哥] error:', err)

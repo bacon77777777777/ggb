@@ -10,22 +10,18 @@ function twNow() {
 
 function getPeriodStart(period: string): string {
   const tw = twNow()
-  // Start of today in UTC (TW midnight = UTC 16:00 previous day)
   const todayStartUTC = new Date(
     Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), tw.getUTCDate()) - TW_MS
   )
-
   switch (period) {
     case 'today':
       return todayStartUTC.toISOString()
     case 'this_week': {
-      const dow = tw.getUTCDay() // 0=Sun
+      const dow = tw.getUTCDay()
       return new Date(todayStartUTC.getTime() - dow * 86400_000).toISOString()
     }
     case 'this_month':
-      return new Date(
-        Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), 1) - TW_MS
-      ).toISOString()
+      return new Date(Date.UTC(tw.getUTCFullYear(), tw.getUTCMonth(), 1) - TW_MS).toISOString()
     case 'last_7_days':
       return new Date(Date.now() - 7 * 86400_000).toISOString()
     case 'last_30_days':
@@ -35,41 +31,28 @@ function getPeriodStart(period: string): string {
   }
 }
 
-// ─── Tool implementations ──────────────────────────────────────────
+// ─── Query tools ───────────────────────────────────────────────────
 
 async function getRevenueSummary(period: string) {
   const supabase = getSupabaseAdmin()
   const gte = getPeriodStart(period)
-
   const [rechargeRes, drawRes] = await Promise.all([
-    supabase
-      .from('recharge_records')
-      .select('amount')
-      .eq('status', 'success')
-      .gte('created_at', gte),
-    supabase
-      .from('draw_records')
-      .select('user_id')
-      .gte('created_at', gte),
+    supabase.from('recharge_records').select('amount').eq('status', 'success').gte('created_at', gte),
+    supabase.from('draw_records').select('user_id').gte('created_at', gte),
   ])
-
   const recharges = rechargeRes.data ?? []
   const draws = drawRes.data ?? []
-  const totalRecharge = recharges.reduce((s, r) => s + Number(r.amount), 0)
-  const uniqueDrawers = new Set(draws.map(d => d.user_id)).size
-
   return {
     period,
-    totalRecharge,
+    totalRecharge: recharges.reduce((s, r) => s + Number(r.amount), 0),
     drawCount: draws.length,
-    uniqueDrawers,
+    uniqueDrawers: new Set(draws.map(d => d.user_id)).size,
     rechargeOrders: recharges.length,
   }
 }
 
 async function getPendingActions() {
   const supabase = getSupabaseAdmin()
-
   const [
     { count: pendingShipments },
     { count: lowInventory },
@@ -83,12 +66,11 @@ async function getPendingActions() {
     supabase.from('settlement_snapshots').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('recharge_records').select('id', { count: 'exact', head: true }).eq('needs_review', true).eq('status', 'pending'),
   ])
-
   return {
-    pendingShipments:     pendingShipments     ?? 0,
-    lowInventory:         lowInventory         ?? 0,
-    pendingRefunds:       pendingRefunds        ?? 0,
-    pendingSettlements:   pendingSettlements    ?? 0,
+    pendingShipments: pendingShipments ?? 0,
+    lowInventory: lowInventory ?? 0,
+    pendingRefunds: pendingRefunds ?? 0,
+    pendingSettlements: pendingSettlements ?? 0,
     pendingRechargeReview: pendingRechargeReview ?? 0,
   }
 }
@@ -101,10 +83,8 @@ async function getInventoryStatus(productName?: string, maxRemaining?: number) {
     .neq('status', 'archived')
     .order('remaining', { ascending: true })
     .limit(20)
-
   if (productName) query = query.ilike('name', `%${productName}%`)
   if (maxRemaining !== undefined) query = query.lte('remaining', maxRemaining)
-
   const { data } = await query
   return data ?? []
 }
@@ -116,9 +96,7 @@ async function getRecentOrders(status?: string, limit = 10) {
     .select('id, order_id, status, total_amount, created_at, user:users(name, email)')
     .order('created_at', { ascending: false })
     .limit(Math.min(limit, 20))
-
   if (status && status !== 'all') query = query.eq('status', status)
-
   const { data } = await query
   return data ?? []
 }
@@ -133,9 +111,124 @@ async function lookupUser(searchQuery: string) {
   return data ?? []
 }
 
+// ─── Write tools ───────────────────────────────────────────────────
+
+async function listSettlements(supplierName?: string, period?: string, status?: string) {
+  const supabase = getSupabaseAdmin()
+  let query = supabase
+    .from('settlement_snapshots')
+    .select('id, supplier_name, period_start, period_end, supplier_net, total_g, status, confirmed_at, paid_at, note')
+    .order('period_start', { ascending: false })
+    .limit(20)
+  if (supplierName) query = query.ilike('supplier_name', `%${supplierName}%`)
+  if (period) query = query.eq('period_start', `${period}-01`)
+  if (status) query = query.eq('status', status)
+  const { data } = await query
+  return data ?? []
+}
+
+async function updateSettlement(id: number, status: 'confirmed' | 'paid', note?: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  const now = new Date().toISOString()
+  const update: Record<string, any> = { status, updated_at: now }
+  if (note) update.note = note
+  if (status === 'confirmed') update.confirmed_at = now
+  if (status === 'paid') update.paid_at = now
+
+  const { data, error } = await supabase
+    .from('settlement_snapshots')
+    .update(update)
+    .eq('id', id)
+    .select('id, supplier_name, period_start, status')
+    .single()
+  if (error) throw new Error(error.message)
+
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: status === 'paid' ? '廠商月結標記已付款' : '廠商月結標記已確認', target_type: 'settlement', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+
+  return data
+}
+
+async function listRefunds(status?: string) {
+  const supabase = getSupabaseAdmin()
+  let query = supabase
+    .from('refund_requests')
+    .select('id, amount_twd, tokens_to_deduct, reason, status, admin_note, created_at, user:users(name, email)')
+    .order('created_at', { ascending: false })
+    .limit(15)
+  if (status && status !== 'all') query = query.eq('status', status)
+  const { data } = await query
+  return data ?? []
+}
+
+async function manageRefund(id: number, action: 'approve' | 'reject', note?: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  const now = new Date().toISOString()
+
+  const statusMap = { approve: 'approved', reject: 'rejected' } as const
+  const update: Record<string, any> = {
+    status: statusMap[action],
+    admin_note: note ?? null,
+    reviewed_at: now,
+  }
+
+  const { data, error } = await supabase
+    .from('refund_requests')
+    .update(update)
+    .eq('id', id)
+    .select('id, status, amount_twd, user:users(name)')
+    .single()
+  if (error) throw new Error(error.message)
+
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: action === 'approve' ? '核准退款申請' : '拒絕退款申請', target_type: 'refund', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+
+  return data
+}
+
+async function markOrderDelivered(identifier: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  // identifier can be a numeric id or the order_id string
+  const isNumeric = /^\d+$/.test(identifier.trim())
+  const filter = isNumeric ? { id: Number(identifier) } : { order_id: identifier.trim() }
+
+  const { data: existing } = await supabase
+    .from('orders')
+    .select('id, order_id, status, user:users(name)')
+    .match(filter)
+    .single()
+
+  if (!existing) return { error: `找不到訂單 ${identifier}` }
+  if (existing.status === 'delivered') return { already: true, order: existing }
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: 'delivered' })
+    .eq('id', existing.id)
+  if (error) throw new Error(error.message)
+
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '確認訂單送達', target_type: 'order', target_id: String(existing.id), detail: { via: 'GB哥' } }) } catch {}
+
+  return { success: true, order: existing }
+}
+
+async function dismissRechargeReview(id: number, note?: string, actorId?: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('recharge_records')
+    .update({ needs_review: false, review_note: note ?? null })
+    .eq('id', id)
+    .select('id, order_number, amount')
+    .single()
+  if (error) throw new Error(error.message)
+
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '忽略待複核儲值', target_type: 'recharge', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+
+  return data
+}
+
 // ─── Tool definitions ──────────────────────────────────────────────
 
 const TOOLS: Anthropic.Tool[] = [
+  // ── Query tools ──
   {
     name: 'get_revenue_summary',
     description: '查詢指定時段的儲值總額、抽獎次數、參與人數。',
@@ -145,7 +238,6 @@ const TOOLS: Anthropic.Tool[] = [
         period: {
           type: 'string',
           enum: ['today', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
-          description: '時間區間',
         },
       },
       required: ['period'],
@@ -153,17 +245,17 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_pending_actions',
-    description: '查詢目前所有待處理事項數量：待配送訂單、低庫存商品、待審退款、廠商月結草稿、待複核儲值。',
+    description: '查詢所有待處理事項數量：待配送訂單、低庫存商品、待審退款、廠商月結草稿、待複核儲值。',
     input_schema: { type: 'object' as const, properties: {} },
   },
   {
     name: 'get_inventory_status',
-    description: '查詢商品庫存狀態。可依商品名稱搜尋，或設定庫存上限篩選低庫存商品。例如「庫存少於10」就傳 max_remaining: 9。',
+    description: '查詢商品庫存。可依名稱搜尋，或用 max_remaining 篩選低庫存（例如少於10就傳9）。',
     input_schema: {
       type: 'object' as const,
       properties: {
-        product_name: { type: 'string', description: '商品名稱關鍵字（選填）' },
-        max_remaining: { type: 'number', description: '庫存上限（含），只顯示 remaining ≤ 此值的商品。例如少於10就傳9。' },
+        product_name: { type: 'string', description: '商品名稱關鍵字' },
+        max_remaining: { type: 'number', description: '只顯示 remaining ≤ 此值的商品' },
       },
     },
   },
@@ -173,12 +265,8 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
-        status: {
-          type: 'string',
-          enum: ['submitted', 'processing', 'shipping', 'delivered', 'all'],
-          description: '訂單狀態（選填）',
-        },
-        limit: { type: 'number', description: '筆數（預設 10，最多 20）' },
+        status: { type: 'string', enum: ['submitted', 'processing', 'shipping', 'delivered', 'all'] },
+        limit: { type: 'number', description: '筆數（預設10，最多20）' },
       },
     },
   },
@@ -188,16 +276,88 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
-        query: { type: 'string', description: '搜尋關鍵字（姓名 / email / 電話）' },
+        query: { type: 'string', description: '搜尋關鍵字' },
       },
       required: ['query'],
+    },
+  },
+  // ── Write tools ──
+  {
+    name: 'list_settlements',
+    description: '搜尋廠商月結快照。可依廠商名稱、結算月份（YYYY-MM）、狀態篩選。執行 update_settlement 前請先呼叫此工具確認 ID。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        supplier_name: { type: 'string', description: '廠商名稱關鍵字（選填）' },
+        period:        { type: 'string', description: '結算月份 YYYY-MM（選填）' },
+        status:        { type: 'string', enum: ['draft', 'confirmed', 'paid'], description: '狀態（選填）' },
+      },
+    },
+  },
+  {
+    name: 'update_settlement',
+    description: '更新廠商月結狀態為「已確認」或「已付款」。必須先用 list_settlements 取得正確的 ID。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id:     { type: 'number', description: '結算快照的 id' },
+        status: { type: 'string', enum: ['confirmed', 'paid'], description: '新狀態' },
+        note:   { type: 'string', description: '備註（選填）' },
+      },
+      required: ['id', 'status'],
+    },
+  },
+  {
+    name: 'list_refunds',
+    description: '列出退款申請，可依狀態篩選。執行操作前請先呼叫以確認 ID。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        status: { type: 'string', enum: ['pending', 'approved', 'rejected', 'processed', 'all'] },
+      },
+    },
+  },
+  {
+    name: 'manage_refund',
+    description: '核准或拒絕退款申請。實際退款（執行代幣扣除）需至後台操作。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id:     { type: 'number', description: '退款申請的 id' },
+        action: { type: 'string', enum: ['approve', 'reject'], description: '操作' },
+        note:   { type: 'string', description: '備註（選填）' },
+      },
+      required: ['id', 'action'],
+    },
+  },
+  {
+    name: 'mark_order_delivered',
+    description: '將指定訂單標記為已送達。可傳入訂單的 order_id 字串或 id 數字。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        identifier: { type: 'string', description: '訂單的 order_id 字串或數字 id' },
+      },
+      required: ['identifier'],
+    },
+  },
+  {
+    name: 'dismiss_recharge_review',
+    description: '忽略（解除旗標）一筆待複核儲值，讓它不再出現在複核清單。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id:   { type: 'number', description: '儲值記錄的 id' },
+        note: { type: 'string', description: '忽略原因（選填）' },
+      },
+      required: ['id'],
     },
   },
 ]
 
 // ─── Tool dispatcher ───────────────────────────────────────────────
 
-async function executeTool(name: string, input: Record<string, any>): Promise<string> {
+async function executeTool(name: string, input: Record<string, any>, actorId?: string): Promise<string> {
   try {
     switch (name) {
       case 'get_revenue_summary':
@@ -210,6 +370,18 @@ async function executeTool(name: string, input: Record<string, any>): Promise<st
         return JSON.stringify(await getRecentOrders(input.status, input.limit))
       case 'lookup_user':
         return JSON.stringify(await lookupUser(input.query))
+      case 'list_settlements':
+        return JSON.stringify(await listSettlements(input.supplier_name, input.period, input.status))
+      case 'update_settlement':
+        return JSON.stringify(await updateSettlement(input.id, input.status, input.note, actorId))
+      case 'list_refunds':
+        return JSON.stringify(await listRefunds(input.status))
+      case 'manage_refund':
+        return JSON.stringify(await manageRefund(input.id, input.action, input.note, actorId))
+      case 'mark_order_delivered':
+        return JSON.stringify(await markOrderDelivered(input.identifier, actorId))
+      case 'dismiss_recharge_review':
+        return JSON.stringify(await dismissRechargeReview(input.id, input.note, actorId))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
@@ -227,22 +399,31 @@ function buildSystemPrompt(): string {
   })
   return `你是 GB哥，吉吉比轉蛋平台的 AI 管家，服務平台的四位管理員夥伴。
 
-你的職責：
-- 回答關於平台營運的問題（營收、庫存、訂單、會員等）
-- 主動使用工具查詢最新數據，不依賴猜測
-- 用繁體中文回覆，語氣輕鬆但專業，適量加 emoji
+【查詢能力】
+可查詢：營收統計、待處理事項、商品庫存、配送訂單、會員資料、廠商月結清單、退款申請清單。
 
-格式規則：
-- 金額加千分位（例：NT$ 12,345）
-- 用換行整理清單，重要數字加粗（**數字**）
-- 回覆精簡不超過 300 字，不廢話
+【執行能力】（老闆明確要求時才執行）
+- 廠商月結：標記「已確認」或「已付款」
+- 退款申請：核准或拒絕（實際代幣扣除需至後台）
+- 配送訂單：標記已送達
+- 待複核儲值：忽略旗標
+
+【執行原則】
+1. 執行寫入前，先用查詢工具確認目標正確（例如先找結算 ID，再更新狀態）
+2. 執行完畢後，明確告知做了什麼、對誰做的
+3. 不可逆操作（拒絕退款等）如對象不明確，先問清楚再執行
+
+【格式規則】
+- 金額加千分位（NT$ 12,345）
+- 清單用換行整理
+- 回覆精簡不超過 300 字
 
 今天台灣時間：${dateStr}`
 }
 
 // ─── Main entry point ──────────────────────────────────────────────
 
-export async function askGbBro(question: string): Promise<string> {
+export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
 
@@ -251,7 +432,7 @@ export async function askGbBro(question: string): Promise<string> {
     { role: 'user', content: question },
   ]
 
-  for (let round = 0; round < 4; round++) {
+  for (let round = 0; round < 5; round++) {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 800,
@@ -273,7 +454,7 @@ export async function askGbBro(question: string): Promise<string> {
         toolBlocks.map(async b => ({
           type: 'tool_result' as const,
           tool_use_id: b.id,
-          content: await executeTool(b.name, b.input as Record<string, any>),
+          content: await executeTool(b.name, b.input as Record<string, any>, lineUserId),
         }))
       )
       messages.push({ role: 'user', content: toolResults })
