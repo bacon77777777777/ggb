@@ -1540,10 +1540,7 @@ export default function DashboardPage() {
             selectedPeriod={cardPeriod}
             tooltip="期間付費用戶的平均消費金額（總儲值 ÷ 付費人數），即 ARPU。越高代表用戶消費意願越強。"
           />
-          <StatCard title="點擊商品數（UPV）" value={behaviorStats.clickTotal} unit="次" cardId="clickTotal" selectedPeriod={cardPeriod} tooltip="去重後的商品點擊次數，反映用戶對商品的瀏覽廣度。同一用戶多次點擊同商品只計一次。" />
-          <StatCard title="點擊後成功抽獎（Conv.）" value={behaviorStats.converted} unit="次" cardId="converted" selectedPeriod={cardPeriod} tooltip="用戶點擊商品後實際完成抽獎的次數，反映點擊的轉化質量。" />
-          <StatCard title="點擊→抽轉化率（CVR）" value={`${behaviorStats.conversionRate}%`} unit="" cardId="clickConversion" selectedPeriod={cardPeriod} tooltip="商品點擊到實際抽獎的轉化率。越高代表商品吸引力越強，越低代表用戶有猶豫或流失。" />
-          {/* 新增：淨營收、折扣率、日均營收 */}
+          {/* 淨營收、折扣率、日均營收 */}
           <StatCard
             title="淨營收（NR）"
             value={discountStats.netRevenue}
@@ -1571,6 +1568,28 @@ export default function DashboardPage() {
               tooltip="期間總儲值金額除以天數，反映每日平均入帳水準，便於跨期比較。"
             />
           )}
+        </div>
+
+        {/* 點擊分析摘要（詳細數據請見行為分析頁） */}
+        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">點擊分析摘要</h3>
+            <a href="/reports/behavior" className="text-xs text-primary hover:underline">查看詳細 →</a>
+          </div>
+          <div className="flex gap-8">
+            <div>
+              <div className="text-2xl font-bold text-neutral-800">{behaviorStats.clickTotal.toLocaleString()}</div>
+              <div className="text-xs text-neutral-500 mt-0.5">點擊商品數（UPV）</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-neutral-800">{behaviorStats.converted.toLocaleString()}</div>
+              <div className="text-xs text-neutral-500 mt-0.5">點擊後成功抽獎（Conv.）</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-primary">{behaviorStats.conversionRate}%</div>
+              <div className="text-xs text-neutral-500 mt-0.5">點擊→抽轉化率（CVR）</div>
+            </div>
+          </div>
         </div>
 
         {/* DAU 每日活躍用戶 */}
