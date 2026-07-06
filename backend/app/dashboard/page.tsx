@@ -1,7 +1,6 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
-import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { format } from 'date-fns'
 
@@ -880,15 +879,7 @@ export default function DashboardPage() {
   const [cardPeriod, setCardPeriod] = useState('日')
   const [dateRangeStart, setDateRangeStart] = useState('')
   const [dateRangeEnd, setDateRangeEnd] = useState('')
-  const [isCustomDateRange, setIsCustomDateRange] = useState(false)
-  const [chartPeriods, setChartPeriods] = useState<{ [key: string]: string }>({
-    visitTrend: '日',
-    rechargeTrend: '日',
-    rechargeConsume: '日',
-    dailyDraws: '日',
-    categoryDraws: '日',
-    tokenBalance: '日',
-  })
+  const [totalMembers, setTotalMembers] = useState(0)
 
   const [stats, setStats] = useState<any>({
     totalRecharge: { value: 0, trend: 'up', trendValue: 0, title: '總儲值金額（GMV）', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#9333EA' },
@@ -906,7 +897,7 @@ export default function DashboardPage() {
   const [topSeries, setTopSeries] = useState<any[]>([])
   const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
   const [discountStats, setDiscountStats] = useState({ netRevenue: 0, couponFixed: 0, discountRate: '0.0', dailyAvg: 0, isSingleDay: true })
-  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0 })
+  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0, pendingRefunds: 0, pendingSettlements: 0 })
   const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
   const [mainChartData, setMainChartData] = useState({
     visitTrend: [] as any[],
@@ -979,14 +970,12 @@ export default function DashboardPage() {
     setDateRangeEnd(dateRange.end)
   }, [])
 
-  // 當時間段改變時，自動更新日期範圍（如果沒有自訂日期）
+  // 當時間段改變時，自動更新日期範圍
   useEffect(() => {
-    if (!isCustomDateRange) {
-      const dateRange = calculateDateRangeByPeriod(cardPeriod)
-      setDateRangeStart(dateRange.start)
-      setDateRangeEnd(dateRange.end)
-    }
-  }, [cardPeriod, isCustomDateRange])
+    const dateRange = calculateDateRangeByPeriod(cardPeriod)
+    setDateRangeStart(dateRange.start)
+    setDateRangeEnd(dateRange.end)
+  }, [cardPeriod])
 
   // Fetch Dashboard Data
   useEffect(() => {
@@ -1324,48 +1313,31 @@ export default function DashboardPage() {
     fetchData()
   }, [dateRangeStart, dateRangeEnd])
 
-  // 待處理事項（不依賴日期範圍，只在 mount 時載入一次）
+  // 待處理事項 + 累積會員（不依賴日期範圍，只在 mount 時載入一次）
   useEffect(() => {
     fetch('/api/admin/dashboard/pending')
       .then(r => r.json())
-      .then(d => { if (!d.error) setPendingActions(d) })
+      .then(d => {
+        if (!d.error) {
+          setPendingActions(d)
+          if (d.totalMembers) setTotalMembers(d.totalMembers)
+        }
+      })
       .catch(() => {})
   }, [])
-
-  // 當用戶手動選擇日期時，標記為自訂日期範圍
-  const handleStartDateChange = (value: string) => {
-    setDateRangeStart(value)
-    setIsCustomDateRange(true)
-  }
-
-  const handleEndDateChange = (value: string) => {
-    setDateRangeEnd(value)
-    setIsCustomDateRange(true)
-  }
 
   // 處理時間段切換
   const handlePeriodChange = (period: string) => {
     setCardPeriod(period)
-    setIsCustomDateRange(false)
-  }
-
-  const handleChartPeriodChange = (chartKey: string, period: string) => {
-    setChartPeriods(prev => ({ ...prev, [chartKey]: period }))
   }
 
   return (
     <AdminLayout pageTitle="儀表板" breadcrumbs={[{ label: '儀表板', href: '/dashboard' }]}>
       <div className="space-y-4">
-        {/* 時間段選擇按鈕 */}
-        <div className="flex items-center justify-end gap-3 mb-2">
-          <div className="w-64">
-            <DateRangePicker
-              startDate={dateRangeStart}
-              endDate={dateRangeEnd}
-              onStartDateChange={handleStartDateChange}
-              onEndDateChange={handleEndDateChange}
-              placeholder="選擇日期範圍"
-            />
+        {/* 頂部：累積會員數 + 時間段切換 */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-neutral-500">
+            累積會員：<span className="font-semibold text-neutral-800">{totalMembers.toLocaleString()}</span> 人
           </div>
           <div className="flex items-center gap-1 bg-white rounded-lg border border-neutral-200 p-1">
             {['日', '週', '月', '年'].map((p) => (
@@ -1373,9 +1345,7 @@ export default function DashboardPage() {
                 key={p}
                 onClick={() => handlePeriodChange(p)}
                 className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                  !isCustomDateRange && cardPeriod === p
-                    ? 'bg-primary text-white'
-                    : 'text-neutral-600 hover:bg-neutral-100'
+                  cardPeriod === p ? 'bg-primary text-white' : 'text-neutral-600 hover:bg-neutral-100'
                 }`}
               >
                 {p}
@@ -1424,18 +1394,63 @@ export default function DashboardPage() {
                 {pendingActions.lowInventory}
               </span>
             </a>
+            <a
+              href="/settlement-snapshots"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                pendingActions.pendingSettlements > 0
+                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10H9m3-3H9m9-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              廠商月結
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                pendingActions.pendingSettlements > 0 ? 'bg-amber-200 text-amber-800' : 'bg-neutral-200 text-neutral-600'
+              }`}>
+                {pendingActions.pendingSettlements}
+              </span>
+            </a>
+            <a
+              href="/refund-requests"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                pendingActions.pendingRefunds > 0
+                  ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              待審退款
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                pendingActions.pendingRefunds > 0 ? 'bg-rose-200 text-rose-800' : 'bg-neutral-200 text-neutral-600'
+              }`}>
+                {pendingActions.pendingRefunds}
+              </span>
+            </a>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-400 cursor-default select-none">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              廠商請款
+              待複核儲值
               <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-neutral-200 text-neutral-500">—</span>
             </div>
           </div>
         </div>
 
-        {/* 主要統計卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 主要統計卡片（6 張）*/}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <StatCard
+            title="淨營收（NR）"
+            value={discountStats.netRevenue}
+            unit="TWD"
+            subtext={`GMV ${stats.totalRecharge.value.toLocaleString()} 扣券 ${discountStats.couponFixed.toLocaleString()}`}
+            cardId="netRevenue"
+            selectedPeriod={cardPeriod}
+            tooltip="總儲值金額扣除折價券折抵後的實際入帳金額。"
+          />
           <StatCard
             title={stats.totalRecharge.title}
             value={stats.totalRecharge.value}
@@ -1476,17 +1491,17 @@ export default function DashboardPage() {
             tooltip="期間內完成的抽獎總次數，直接反映用戶參與度與商品吸引力。"
           />
           <StatCard
-            title={stats.totalTokenBalance.title}
-            value={stats.totalTokenBalance.value}
-            unit={stats.totalTokenBalance.unit}
-            trend={stats.totalTokenBalance.trend}
-            trendValue={stats.totalTokenBalance.trendValue}
-            chartData={stats.totalTokenBalance.chartData}
-            chartType={stats.totalTokenBalance.chartType}
-            chartColor={stats.totalTokenBalance.chartColor}
-            cardId="totalTokenBalance"
+            title={stats.registeredUsers.title}
+            value={stats.registeredUsers.value}
+            unit={stats.registeredUsers.unit}
+            trend={stats.registeredUsers.trend}
+            trendValue={stats.registeredUsers.trendValue}
+            chartData={stats.registeredUsers.chartData}
+            chartType={stats.registeredUsers.chartType}
+            chartColor={stats.registeredUsers.chartColor}
+            cardId="registeredUsers"
             selectedPeriod={cardPeriod}
-            tooltip="所有用戶目前持有的代幣總量，代表平台負債（未來須履行的抽獎服務）。持續增加需注意備品備貨。"
+            tooltip="期間內新增的註冊用戶數，反映獲客效率。搭配儲值量可觀察新用戶付費轉換情況。"
           />
           <StatCard
             title={stats.abcPrizeCount.title}
@@ -1501,108 +1516,11 @@ export default function DashboardPage() {
             selectedPeriod={cardPeriod}
             tooltip="期間內完成儲值的不重複用戶數。搭配訪問量與註冊量，可觀察流量→付費的完整轉化鏈路。"
           />
-          <StatCard
-            title={stats.visitCount.title}
-            value={stats.visitCount.value}
-            unit={stats.visitCount.unit}
-            trend={stats.visitCount.trend}
-            trendValue={stats.visitCount.trendValue}
-            chartData={stats.visitCount.chartData}
-            chartType={stats.visitCount.chartType}
-            chartColor={stats.visitCount.chartColor}
-            cardId="visitCount"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內前台訪問次數（含重複），反映流量規模。搭配註冊量可計算流量獲客效率。"
-          />
-          <StatCard
-            title={stats.registeredUsers.title}
-            value={stats.registeredUsers.value}
-            unit={stats.registeredUsers.unit}
-            trend={stats.registeredUsers.trend}
-            trendValue={stats.registeredUsers.trendValue}
-            chartData={stats.registeredUsers.chartData}
-            chartType={stats.registeredUsers.chartType}
-            chartColor={stats.registeredUsers.chartColor}
-            cardId="registeredUsers"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內新增的註冊用戶數，反映獲客效率。搭配儲值量可觀察新用戶付費轉換情況。"
-          />
-          <StatCard
-            title={stats.conversionRate.title}
-            value={stats.conversionRate.value}
-            unit={stats.conversionRate.unit}
-            trend={stats.conversionRate.trend}
-            trendValue={stats.conversionRate.trendValue}
-            chartData={stats.conversionRate.chartData}
-            chartType={stats.conversionRate.chartType}
-            chartColor={stats.conversionRate.chartColor}
-            cardId="conversionRate"
-            selectedPeriod={cardPeriod}
-            tooltip="期間付費用戶的平均消費金額（總儲值 ÷ 付費人數），即 ARPU。越高代表用戶消費意願越強。"
-          />
-          {/* 淨營收、折扣率、日均營收 */}
-          <StatCard
-            title="淨營收（NR）"
-            value={discountStats.netRevenue}
-            unit="TWD"
-            subtext={`已扣除折價券 NT$${discountStats.couponFixed.toLocaleString()}`}
-            cardId="netRevenue"
-            selectedPeriod={cardPeriod}
-            tooltip="總儲值金額扣除折價券折抵後的實際入帳金額。"
-          />
-          <StatCard
-            title="折扣率（Discount）"
-            value={`${discountStats.discountRate}%`}
-            subtext={`折價券 NT$${discountStats.couponFixed.toLocaleString()}`}
-            cardId="discountRate"
-            selectedPeriod={cardPeriod}
-            tooltip="折價券折抵金額佔總儲值的比例。越高代表促銷活動成本越大，需注意毛利。"
-          />
-          {!discountStats.isSingleDay && (
-            <StatCard
-              title="日均營收（Avg. Daily）"
-              value={discountStats.dailyAvg}
-              unit="TWD"
-              cardId="dailyAvgRevenue"
-              selectedPeriod={cardPeriod}
-              tooltip="期間總儲值金額除以天數，反映每日平均入帳水準，便於跨期比較。"
-            />
-          )}
         </div>
 
-        {/* 點擊分析摘要（詳細數據請見行為分析頁） */}
-        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">點擊分析摘要</h3>
-            <a href="/reports/behavior" className="text-xs text-primary hover:underline">查看詳細 →</a>
-          </div>
-          <div className="flex gap-8">
-            <div>
-              <div className="text-2xl font-bold text-neutral-800">{behaviorStats.clickTotal.toLocaleString()}</div>
-              <div className="text-xs text-neutral-500 mt-0.5">點擊商品數（UPV）</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-neutral-800">{behaviorStats.converted.toLocaleString()}</div>
-              <div className="text-xs text-neutral-500 mt-0.5">點擊後成功抽獎（Conv.）</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-primary">{behaviorStats.conversionRate}%</div>
-              <div className="text-xs text-neutral-500 mt-0.5">點擊→抽轉化率（CVR）</div>
-            </div>
-          </div>
-        </div>
-
-        {/* DAU 每日活躍用戶 */}
-        <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} tooltip="每日有操作行為的不重複用戶數。持續上升代表用戶黏著度良好；驟降需排查是否有異常。" />
-
-        {/* 圖表區域 */}
+        {/* 圖表區域（只留核心兩張）*/}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TrendChart
-            title="儲值金額趨勢"
-            data={mainChartData.rechargeTrend}
-            colors={['#10b981']}
-            tooltip="期間內每日儲值金額變化，用於識別收入高峰與低谷，評估活動或行銷效果。"
-          />
+          <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} tooltip="每日有操作行為的不重複用戶數。持續上升代表用戶黏著度良好；驟降需排查是否有異常。" />
           <MultiLineChart
             title="儲值與消耗對比"
             data={mainChartData.rechargeConsume}
@@ -1615,27 +1533,14 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* 多線圖表 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <BarChart
-            title="抽獎次數"
-            data={mainChartData.dailyDraws}
-            colors={['#9333EA', '#A855F7', '#C084FC', '#D8B4FE']}
-            tooltip="依時間段統計的抽獎次數分布，識別抽獎高峰時段，可作為活動排程參考。"
-          />
-          <PieChart
-            title="分類抽獎次數對比"
-            data={mainChartData.categoryDraws}
-            colors={['#9333EA', '#10b981', '#F59E0B', '#EF4444']}
-            tooltip="各商品類型的抽獎次數佔比，用於評估各品類受歡迎程度，指導選品與庫存配置。"
-          />
-        </div>
-
-        {/* 排名列表 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} tooltip="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />
-          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} tooltip="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />
-          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} tooltip="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />
+        {/* 查看完整歷史數據 */}
+        <div className="text-center">
+          <a href="/reports/overview" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
+            查看完整歷史數據
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
         </div>
 
         {/* 報表快速導覽 */}
