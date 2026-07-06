@@ -9,9 +9,12 @@ const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
 const NOTIFY_TYPE = process.env.NOTIFY_TARGET_TYPE ?? 'user'
 const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID   ?? ''
 
-async function pushLineMessage(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
+async function pushLineMessage(text: string): Promise<{ status: number; body: unknown }> {
+  if (!LINE_TOKEN || !NOTIFY_ID) {
+    console.warn('[daily-report] LINE_TOKEN or NOTIFY_ID missing')
+    return { status: 0, body: 'missing config' }
+  }
+  const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -22,6 +25,9 @@ async function pushLineMessage(text: string) {
       messages: [{ type: 'text', text }],
     }),
   })
+  const body = await res.json().catch(() => res.text())
+  console.log('[daily-report] LINE push status:', res.status, JSON.stringify(body))
+  return { status: res.status, body }
 }
 
 export async function POST(req: NextRequest) {
@@ -90,9 +96,9 @@ export async function POST(req: NextRequest) {
     ]
 
     const message = lines.join('\n')
-    await pushLineMessage(message)
+    const lineResult = await pushLineMessage(message)
 
-    return NextResponse.json({ ok: true, date: dateLabel, gmv, drawCnt, nuCnt })
+    return NextResponse.json({ ok: true, date: dateLabel, gmv, drawCnt, nuCnt, line: lineResult })
   } catch (e: any) {
     console.error('[daily-report] error:', e)
     return NextResponse.json({ error: e?.message }, { status: 500 })
