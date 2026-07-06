@@ -7,6 +7,7 @@ interface RechargeRecord {
   id: number
   order_number: string | null
   amount: number
+  bonus: number | null
   status: string
   needs_review: boolean
   needs_review_at: string | null
@@ -40,9 +41,12 @@ export default function RechargeReviewPage() {
 
   useEffect(() => { load() }, [load])
 
-  const act = async (id: number, action: 'dismiss' | 'force_fail') => {
+  const act = async (id: number, action: 'dismiss' | 'force_fail' | 'force_success') => {
     if (action === 'force_fail') {
       if (!confirm('確定將此筆儲值標記為「失敗」？此操作不可逆。')) return
+    }
+    if (action === 'force_success') {
+      if (!confirm('確定手動補發代幣？請先至 ECPay 後台確認此筆訂單已實際入帳，此操作不可逆。')) return
     }
     setActing(id)
     await fetch(`/api/admin/recharge-review/${id}`, {
@@ -125,6 +129,13 @@ export default function RechargeReviewPage() {
                       className="px-3 py-1.5 text-sm bg-neutral-50 text-neutral-700 rounded-lg border border-neutral-200 hover:bg-neutral-100 disabled:opacity-50 whitespace-nowrap"
                     >
                       忽略
+                    </button>
+                    <button
+                      onClick={() => act(r.id, 'force_success')}
+                      disabled={acting === r.id}
+                      className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg border border-green-200 hover:bg-green-100 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      補發代幣 +{(Number(r.amount) + Number(r.bonus ?? 0)).toLocaleString()} G
                     </button>
                     <button
                       onClick={() => act(r.id, 'force_fail')}

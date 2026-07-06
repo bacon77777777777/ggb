@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       id,
       order_number,
       amount,
+      bonus,
       status,
       needs_review,
       needs_review_at,
