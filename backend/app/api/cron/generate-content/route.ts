@@ -152,6 +152,18 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from('content_drafts').insert(inserts)
     if (error) throw error
 
+    // 通知 LINE 有新草稿待審
+    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN
+    const notifyId  = process.env.NOTIFY_TARGET_ID
+    if (lineToken && notifyId) {
+      const msg = `📝 文案草稿已生成｜${draftDate}\n商品：${productName}\n共 ${inserts.length} 則（促銷、故事、緊迫感）\n請至後台「文案草稿」確認並標記發布。`
+      await fetch('https://api.line.me/v2/bot/message/push', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${lineToken}` },
+        body:    JSON.stringify({ to: notifyId, messages: [{ type: 'text', text: msg }] }),
+      }).catch(() => {/* ignore */})
+    }
+
     return NextResponse.json({ ok: true, date: draftDate, productName, count: inserts.length })
   } catch (e: any) {
     console.error('[generate-content] error:', e)
