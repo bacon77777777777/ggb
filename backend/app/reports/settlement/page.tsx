@@ -206,7 +206,7 @@ export default function SettlementPage() {
       [`可分潤基礎`, String(distributableBase)],
       [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
       [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
-      [`分解退代幣（廠商吸收100%）`, String(-dismantleTotal)],
+      [`分解退代幣（廠商吸收100%）`, `-${dismantleTotal}`],
       [`實際應付廠商`, String(supplierNet)],
       [],
       [`--- 參考 ---`, ``],
