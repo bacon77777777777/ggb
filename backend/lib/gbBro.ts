@@ -453,7 +453,106 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['query'],
     },
   },
+  // ── Risk action tools ──
+  {
+    name: 'freeze_user',
+    description: '凍結指定用戶帳號，阻止其登入與消費。先用 lookup_user 確認身份後執行。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        user_id: { type: 'string', description: '用戶 UUID（從 lookup_user 取得）' },
+        reason:  { type: 'string', description: '凍結原因' },
+      },
+      required: ['user_id'],
+    },
+  },
+  {
+    name: 'unfreeze_user',
+    description: '解除用戶帳號凍結，恢復正常使用。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        user_id: { type: 'string', description: '用戶 UUID' },
+      },
+      required: ['user_id'],
+    },
+  },
+  {
+    name: 'flag_user',
+    description: '將用戶標記為可疑（is_suspicious=true），不影響其正常使用，僅供內部追蹤。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        user_id: { type: 'string', description: '用戶 UUID（從 lookup_user 取得）' },
+        reason:  { type: 'string', description: '標記原因' },
+      },
+      required: ['user_id'],
+    },
+  },
+  {
+    name: 'unflag_user',
+    description: '解除用戶的可疑標記。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        user_id: { type: 'string', description: '用戶 UUID' },
+      },
+      required: ['user_id'],
+    },
+  },
 ]
+
+// ─── Risk action tools ─────────────────────────────────────────────
+
+async function riskAction(
+  userId: string,
+  action: 'freeze' | 'unfreeze' | 'flag' | 'unflag',
+  reason?: string,
+  actorId?: string
+) {
+  const supabase = getSupabaseAdmin()
+
+  const { data: user, error: findErr } = await supabase
+    .from('users')
+    .select('id, name, email, status, is_suspicious')
+    .eq('id', userId)
+    .single()
+
+  if (findErr || !user) return { error: '找不到用戶' }
+
+  let update: Record<string, any> = {}
+  let label = ''
+
+  switch (action) {
+    case 'freeze':
+      update = { status: 'frozen', frozen_at: new Date().toISOString(), frozen_by: 'GB哥', frozen_reason: reason ?? '老闆指令' }
+      label = '凍結'
+      break
+    case 'unfreeze':
+      update = { status: 'active', frozen_at: null, frozen_by: null, frozen_reason: null }
+      label = '解除凍結'
+      break
+    case 'flag':
+      update = { is_suspicious: true, suspicious_reason: reason ?? '老闆標記' }
+      label = '標記可疑'
+      break
+    case 'unflag':
+      update = { is_suspicious: false, suspicious_reason: null }
+      label = '解除可疑標記'
+      break
+  }
+
+  const { error } = await supabase.from('users').update(update).eq('id', userId)
+  if (error) return { error: error.message }
+
+  await supabase.from('user_event_logs').insert({
+    user_id:    userId,
+    event_type: action,
+    detail:     { action, reason, by: actorId ?? 'GB哥' },
+  })
+
+  return { ok: true, action: label, user: { name: user.name, email: user.email } }
+}
 
 // ─── Tool dispatcher ───────────────────────────────────────────────
 
@@ -488,6 +587,14 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await logCapabilityGap(input.question, input.context))
       case 'run_sql':
         return JSON.stringify(await runSql(input.query))
+      case 'freeze_user':
+        return JSON.stringify(await riskAction(input.user_id, 'freeze', input.reason, actorId))
+      case 'unfreeze_user':
+        return JSON.stringify(await riskAction(input.user_id, 'unfreeze', undefined, actorId))
+      case 'flag_user':
+        return JSON.stringify(await riskAction(input.user_id, 'flag', input.reason, actorId))
+      case 'unflag_user':
+        return JSON.stringify(await riskAction(input.user_id, 'unflag', undefined, actorId))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
@@ -545,8 +652,12 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 ## 工具
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
 執行：更新月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值
+風控：凍結帳號、解除凍結、標記可疑、解除可疑標記
 
-執行原則：寫入操作前先查詢確認對象正確再執行（純查詢不受此限）。
+執行原則：
+- 寫入操作前先用 lookup_user 確認對象正確再執行
+- 風控操作（freeze/flag）直接執行，不需要再次確認，老闆下指令就等於授權
+- 執行後主動回報：操作類型 + 對象姓名/email
 
 今天台灣時間：${dateStr}`
 }

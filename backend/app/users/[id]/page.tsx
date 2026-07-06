@@ -18,13 +18,16 @@ interface User {
   tokens: number
   registerDate: string
   lastLoginDate: string
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'frozen'
   totalOrders: number
   totalSpent: number
   totalDraws: number
   address?: string
   recipientName?: string
   recipientPhone?: string
+  isSuspicious?: boolean
+  suspiciousReason?: string | null
+  frozenReason?: string | null
 }
 
 interface OrderItem {
@@ -83,7 +86,7 @@ export default function UserDetailPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [copiedField, setCopiedField] = useState<string | null>(null)
-  const [userStatus, setUserStatus] = useState<'active' | 'inactive'>('active')
+  const [userStatus, setUserStatus] = useState<'active' | 'inactive' | 'frozen'>('active')
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [resetPasswordMode, setResetPasswordMode] = useState<'manual' | 'auto'>('manual')
@@ -138,7 +141,10 @@ export default function UserDetailPage() {
           totalDraws: userData.total_draws,
           address: userData.address,
           recipientName: userData.recipient_name,
-          recipientPhone: userData.recipient_phone
+          recipientPhone: userData.recipient_phone,
+          isSuspicious:   userData.is_suspicious ?? false,
+          suspiciousReason: userData.suspicious_reason ?? null,
+          frozenReason:   userData.frozen_reason ?? null,
         }
         setUser(mappedUser)
         setUserStatus(mappedUser.status)
@@ -322,13 +328,15 @@ export default function UserDetailPage() {
   }
 
   const getStatusColor = (status: string) => {
-    return status === 'active' 
-      ? 'bg-green-100 text-green-700 border border-green-200' 
-      : 'bg-gray-100 text-gray-700 border border-gray-200'
+    if (status === 'active')   return 'bg-green-100 text-green-700 border border-green-200'
+    if (status === 'frozen')   return 'bg-blue-100 text-blue-700 border border-blue-200'
+    return 'bg-gray-100 text-gray-700 border border-gray-200'
   }
 
   const getStatusText = (status: string) => {
-    return status === 'active' ? '啟用' : '停用'
+    if (status === 'active') return '啟用'
+    if (status === 'frozen') return '凍結'
+    return '停用'
   }
 
   // 更新使用者狀態
@@ -336,24 +344,40 @@ export default function UserDetailPage() {
     setUserStatus(newStatus)
     if (user) {
       setUser({ ...user, status: newStatus })
-      
       try {
         const res = await fetch(`/api/admin/users/${user.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus }),
         })
-
         if (!res.ok) {
           const err = await res.json().catch(() => null)
           console.error('Error updating status:', err?.error || res.statusText)
-          // Revert
           setUserStatus(user.status)
           setUser({ ...user, status: user.status })
         }
       } catch (err) {
         console.error('Error:', err)
       }
+    }
+  }
+
+  // 風控操作
+  const handleRiskAction = async (action: 'freeze' | 'unfreeze' | 'flag' | 'unflag', reason?: string) => {
+    if (!user) return
+    const res = await fetch(`/api/admin/users/${user.id}/risk-action`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ action, reason }),
+    })
+    if (res.ok) {
+      if (action === 'freeze')   setUser({ ...user, status: 'frozen', frozenReason: reason ?? null })
+      if (action === 'unfreeze') setUser({ ...user, status: 'active', frozenReason: null })
+      if (action === 'flag')     setUser({ ...user, isSuspicious: true, suspiciousReason: reason ?? null })
+      if (action === 'unflag')   setUser({ ...user, isSuspicious: false, suspiciousReason: null })
+      if (action === 'freeze' || action === 'unfreeze') setUserStatus(action === 'freeze' ? 'frozen' : 'active')
+    } else {
+      alert('操作失敗，請重試')
     }
   }
 
@@ -411,34 +435,75 @@ export default function UserDetailPage() {
           </button>
           
           <div className="flex items-center gap-3">
+            {/* 停用 / 啟用（排除凍結中的帳號用此按鈕操作） */}
+            {userStatus !== 'frozen' && (
+              <button
+                onClick={() => {
+                  const newStatus = userStatus === 'active' ? 'inactive' : 'active'
+                  if (confirm(`確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`)) {
+                    handleStatusUpdate(newStatus)
+                  }
+                }}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
+                  userStatus === 'active'
+                    ? 'bg-red-50 text-red-700 border-2 border-red-200 hover:bg-red-100 hover:border-red-300'
+                    : 'bg-green-50 text-green-700 border-2 border-green-200 hover:bg-green-100 hover:border-green-300'
+                }`}
+              >
+                {userStatus === 'active' ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    停用會員
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    啟用會員
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* 凍結 / 解除凍結 */}
             <button
               onClick={() => {
-                const newStatus = userStatus === 'active' ? 'inactive' : 'active'
-                if (confirm(`確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`)) {
-                  handleStatusUpdate(newStatus)
+                if (userStatus === 'frozen') {
+                  if (confirm('確定解除此帳號凍結？')) handleRiskAction('unfreeze')
+                } else {
+                  const reason = prompt('凍結原因（可選）：') ?? undefined
+                  if (reason !== null) handleRiskAction('freeze', reason || undefined)
                 }
               }}
               className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
-                userStatus === 'active'
-                  ? 'bg-red-50 text-red-700 border-2 border-red-200 hover:bg-red-100 hover:border-red-300'
-                  : 'bg-green-50 text-green-700 border-2 border-green-200 hover:bg-green-100 hover:border-green-300'
+                userStatus === 'frozen'
+                  ? 'bg-blue-50 text-blue-700 border-2 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                  : 'bg-indigo-50 text-indigo-700 border-2 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
               }`}
             >
-              {userStatus === 'active' ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                  </svg>
-                  停用會員
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  啟用會員
-                </>
-              )}
+              {userStatus === 'frozen' ? '🔓 解除凍結' : '🔒 凍結帳號'}
+            </button>
+
+            {/* 標記可疑 / 解除標記 */}
+            <button
+              onClick={() => {
+                if (user?.isSuspicious) {
+                  if (confirm('確定解除可疑標記？')) handleRiskAction('unflag')
+                } else {
+                  const reason = prompt('標記原因（可選）：') ?? undefined
+                  if (reason !== null) handleRiskAction('flag', reason || undefined)
+                }
+              }}
+              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
+                user?.isSuspicious
+                  ? 'bg-amber-50 text-amber-700 border-2 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                  : 'bg-neutral-50 text-neutral-600 border-2 border-neutral-200 hover:bg-neutral-100 hover:border-neutral-300'
+              }`}
+            >
+              {user?.isSuspicious ? '✅ 解除可疑' : '🚩 標記可疑'}
             </button>
             <button
               onClick={() => {
