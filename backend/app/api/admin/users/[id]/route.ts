@@ -163,7 +163,7 @@ export async function PUT(
       if (profileUpdates.tokens !== undefined) {
         const before = updatedUser?.tokens ?? '?'
         pushLineAlert(
-          `🔧 管理員敏感操作\n操作：手動調整代幣\n管理員：${session.username ?? session.adminId}\n用戶ID：${id}\n新餘額：${profileUpdates.tokens} G`
+          `🔧 管理員敏感操作\n操作：手動調整代幣\n管理員ID：${session.adminId}\n用戶ID：${id}\n新餘額：${profileUpdates.tokens} G`
         )
       }
     }

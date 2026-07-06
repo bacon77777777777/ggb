@@ -125,7 +125,7 @@ export async function DELETE(
     })
 
     pushLineAlert(
-      `🗑️ 管理員敏感操作\n操作：刪除商品\n管理員：${session.username ?? session.adminId}\n商品：${product?.name ?? productId}`
+      `🗑️ 管理員敏感操作\n操作：刪除商品\n管理員ID：${session.adminId}\n商品：${product?.name ?? productId}`
     )
 
     return NextResponse.json({ success: true })
