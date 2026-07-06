@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { decryptTradeInfo } from '@/lib/newebpay';
+import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +49,27 @@ export async function POST(req: Request) {
         const result = data.Result || {};
         const orderNumber = String(result.MerchantOrderNo || data.MerchantOrderNo || '');
         const paymentType = String(result.PaymentType || data.PaymentType || '');
+        const tradeNo = String(result.TradeNo || data.TradeNo || '');
+
         if (!orderNumber) return new NextResponse('OK', { status: 200 });
         if (paymentType && !isImmediatePayment(paymentType)) {
           return new NextResponse('OK', { status: 200 });
         }
-        
+
+        // 冪等性檢查：同一 TradeNo 只處理一次
+        const idempotencyKey = tradeNo || orderNumber;
+        if (await isAlreadyProcessed('newebpay_payment', idempotencyKey)) {
+          console.log(`[Newebpay] 重複回調已略過 tradeNo=${idempotencyKey}`);
+          await logWebhookEvent({
+            source: 'newebpay_payment',
+            idempotencyKey,
+            orderNumber,
+            rawPayload: data as Record<string, unknown>,
+            result: 'duplicate',
+          });
+          return new NextResponse('OK', { status: 200 });
+        }
+
         // Confirm Order
         const supabaseAdmin = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,14 +116,23 @@ export async function POST(req: Request) {
           });
           if (error) {
               console.error('Confirm Sell Escrow Error:', error);
+              await logWebhookEvent({ source: 'newebpay_payment', idempotencyKey, orderNumber, rawPayload: data as Record<string, unknown>, result: 'failed', errorMessage: error.message });
               return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
           }
         }
-        
+
+        // 成功處理，寫入冪等 log
+        await logWebhookEvent({
+          source: 'newebpay_payment',
+          idempotencyKey,
+          orderNumber,
+          rawPayload: data as Record<string, unknown>,
+          result: 'processed',
+        });
     }
-    
+
     return new NextResponse('OK', { status: 200 });
-    
+
   } catch (error) {
     console.error('Callback Error:', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });

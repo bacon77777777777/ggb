@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyLogisticsCheckMacValue, ecpayLogisticsStatusToOrder } from '@/lib/ecpay_logistics'
+import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency'
 
 function getSupabase() {
   return createClient(
@@ -36,6 +37,14 @@ export async function POST(req: NextRequest) {
     if (!orderNumber) {
       console.error('ECPay Logistics Callback: 缺少 MerchantTradeNo')
       return new NextResponse('0|Missing MerchantTradeNo', { status: 200 })
+    }
+
+    // 物流冪等 key = AllPayLogisticsID + LogisticsStatus（允許同訂單多次狀態更新）
+    const idempotencyKey = `${allPayId || orderNumber}_${logisticsStatus}`
+    if (await isAlreadyProcessed('ecpay_logistics', idempotencyKey)) {
+      console.log(`[Logistics] 重複回調已略過 key=${idempotencyKey}`)
+      await logWebhookEvent({ source: 'ecpay_logistics', idempotencyKey, orderNumber, rawPayload: params, result: 'duplicate' })
+      return new NextResponse('1|OK', { status: 200 })
     }
 
     const { data: existingOrder, error: fetchError } = await supabase
@@ -104,6 +113,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 成功處理，寫入冪等 log
+    await logWebhookEvent({ source: 'ecpay_logistics', idempotencyKey, orderNumber, rawPayload: params, result: 'processed' })
     return new NextResponse('1|OK', { status: 200 })
 
   } catch (error: any) {

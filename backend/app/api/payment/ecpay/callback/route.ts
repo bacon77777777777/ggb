@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyCheckMacValue } from '@/lib/ecpay'
+import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,15 @@ export async function POST(req: Request) {
       return new NextResponse('1|OK', { status: 200 })
     }
 
+    // 冪等性檢查：同一 ECPay TradeNo 只處理一次
+    const ecpayTradeNo = params.TradeNo || tradeNo
+    const idempotencyKey = ecpayTradeNo || tradeNo
+    if (await isAlreadyProcessed('ecpay_payment', idempotencyKey)) {
+      console.log(`[ECPay] 重複回調已略過 tradeNo=${idempotencyKey}`)
+      await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'duplicate' })
+      return new NextResponse('1|OK', { status: 200 })
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -66,6 +76,7 @@ export async function POST(req: Request) {
       })
       if (error) {
         console.error('confirm_topup_order Error:', error)
+        await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'failed', errorMessage: error.message })
         return new NextResponse('0|Internal Error', { status: 200 })
       }
 
@@ -91,10 +102,13 @@ export async function POST(req: Request) {
       })
       if (error) {
         console.error('confirm_sell_escrow_order Error:', error)
+        await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'failed', errorMessage: error.message })
         return new NextResponse('0|Internal Error', { status: 200 })
       }
     }
 
+    // 成功處理，寫入冪等 log
+    await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'processed' })
     return new NextResponse('1|OK', { status: 200 })
   } catch (error) {
     console.error('ECPay Callback Error:', error)
