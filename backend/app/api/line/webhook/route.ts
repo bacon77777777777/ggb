@@ -76,9 +76,21 @@ async function handleUnfollow(event: any) {
   console.log('[LINE webhook] unfollow userId:', event.source?.userId)
 }
 
+const WAKE_WORDS = ['吉吉比', 'ggb', 'gb哥']
+
+function isGroupSource(event: any) {
+  return event.source?.type === 'group' || event.source?.type === 'room'
+}
+
 async function handleTextMessage(event: any) {
   const text: string = (event.message?.text ?? '').trim()
   const lower = text.toLowerCase()
+
+  // 群組／聊天室：只有觸發喚醒詞才回應
+  if (isGroupSource(event)) {
+    const hasWakeWord = WAKE_WORDS.some(w => lower.startsWith(w) || lower.includes(w))
+    if (!hasWakeWord) return
+  }
 
   if (lower === '幫助' || lower === 'help' || lower === '?') {
     await replyMessage(event.replyToken, [
@@ -88,7 +100,6 @@ async function handleTextMessage(event: any) {
       },
     ])
   } else {
-    // 預設回覆，後續擴充關鍵字路由
     await replyMessage(event.replyToken, [
       {
         type: 'text',
