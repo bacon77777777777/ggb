@@ -97,6 +97,38 @@ export async function POST(req: NextRequest) {
     urgent.push(`庫存歸零仍上架 [${r.supplier_name}] ${r.product_name} — 需下架或補貨`)
   }
 
+  // 零庫存 → agent_events（dedup：24小時內不重複）
+  if ((zeroActive as any[]).length > 0) {
+    const { data: existingEvents } = await supabase
+      .from('agent_events')
+      .select('payload')
+      .eq('event_type', 'restock_needed')
+      .eq('status', 'pending')
+      .gte('created_at', new Date(Date.now() - 24 * 3600_000).toISOString())
+
+    const existingNames = new Set(
+      (existingEvents ?? []).map((e: any) => e.payload?.product_name as string)
+    )
+
+    const newEvents = (zeroActive as any[])
+      .filter(r => !existingNames.has(r.product_name))
+      .map(r => ({
+        event_type:   'restock_needed',
+        source_agent: 'supply_chain',
+        payload: {
+          product_name:  r.product_name,
+          supplier_name: r.supplier_name,
+          product_code:  r.product_code ?? null,
+          remaining:     0,
+          issue:         '零庫存但仍上架，前台仍可瀏覽',
+        },
+      }))
+
+    if (newEvents.length > 0) {
+      await supabase.from('agent_events').insert(newEvents)
+    }
+  }
+
   // ── 4. 廠商月結久未確認────────────────────────────────────────────
   const { data: staleDrafts } = await supabase.rpc('execute_readonly_sql', {
     query: `

@@ -44,6 +44,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [pendingOrders, setPendingOrders] = useState<any[]>([])
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [isShipmentOpen, setIsShipmentOpen] = useState(false)
+  const [agentEventCount, setAgentEventCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string>('v1.7.6')
 
@@ -106,6 +107,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         }))
         setProducts(mappedProducts)
       }
+
+      // Fetch agent events count
+      fetch('/api/admin/agent-events?status=pending&limit=1')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setAgentEventCount(d.pendingCount ?? 0) })
+        .catch(() => {})
 
       // Fetch latest version from dev-logs
       const logsRes = await fetch('/api/admin/dev-logs')
@@ -407,6 +414,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     </svg>
   )
 
+  const IconEvents = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+    </svg>
+  )
+
   const handleNavScroll = () => {
     if (!navRef.current || !user?.username) return
     const top = navRef.current.scrollTop
@@ -503,6 +516,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'blacktech',
         title: '其他黑科技',
         items: [
+          { name: '事件中心', path: '/agent-events', icon: IconEvents },
           { name: '競品情報', path: '/competitor-intel', icon: IconReports },
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
           { name: '工具', path: '/tools', icon: IconTools },
@@ -653,7 +667,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               <span className="flex-shrink-0 flex items-center justify-center w-5 h-5">
                                 <IconComponent />
                               </span>
-                              <span className="whitespace-nowrap text-sm">{item.name}</span>
+                              <span className="whitespace-nowrap text-sm flex-1">{item.name}</span>
+                              {item.path === '/agent-events' && agentEventCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center leading-none">
+                                  {agentEventCount > 9 ? '9+' : agentEventCount}
+                                </span>
+                              )}
                             </Link>
                           )
                         })}

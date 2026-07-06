@@ -165,17 +165,6 @@ export default function ContentDraftsPage() {
                     const st = STATUS_LABEL[draft.status]
                     return (
                       <div key={draft.id} className="flex gap-4 p-5">
-                        {/* 縮圖 */}
-                        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-neutral-100">
-                          {draft.image_url ? (
-                            <a href={draft.image_url} target="_blank" rel="noopener noreferrer">
-                              <img src={draft.image_url} alt="" className="w-full h-full object-cover hover:opacity-80 transition-opacity" />
-                            </a>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">無圖</div>
-                          )}
-                        </div>
-
                         {/* 內容 */}
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -200,19 +189,6 @@ export default function ContentDraftsPage() {
                               <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> 複製文字</>
                             )}
                           </button>
-                          {/* 下載圖片 */}
-                          {draft.image_url && (
-                            <a
-                              href={draft.image_url}
-                              download={`draft_${draft.draft_date}_${draft.style}.jpg`}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                              下載圖片
-                            </a>
-                          )}
                           {/* 狀態切換 */}
                           <select
                             value={draft.status}

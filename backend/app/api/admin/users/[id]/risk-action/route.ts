@@ -111,6 +111,20 @@ export async function POST(
     if (pendingRR && pendingRR.length > 0) {
       const totalAmt = pendingRR.reduce((sum: number, r: any) => sum + Number(r.amount ?? 0), 0)
       pendingNote = `\n⚠️ 財務注意：此帳號有 ${pendingRR.length} 筆 pending 儲值（NT$ ${totalAmt.toLocaleString()}），請至後台確認是否退款或保留。`
+
+      // 寫入 agent_events 供財務長跟進
+      await supabase.from('agent_events').insert({
+        event_type:   'freeze_pending_payment',
+        source_agent: 'risk',
+        payload: {
+          user_id:       id,
+          user_name:     user.name ?? user.email ?? id,
+          pending_count: pendingRR.length,
+          total_amount:  totalAmt,
+          frozen_reason: reason ?? '後台操作',
+          frozen_by:     `admin#${session.adminId}`,
+        },
+      })
     }
   }
 
