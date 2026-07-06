@@ -437,8 +437,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '消費明細', path: '/reports/products', icon: IconReports },
           { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
-          { name: '月結管理', path: '/settlement-snapshots', icon: IconLedger },
-          { name: '退款申請', path: '/refund-requests', icon: IconLedger },
+          { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
         ],
       },
       {
@@ -448,6 +447,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '商品管理', path: '/products', icon: IconProducts },
           { name: '消費紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
+          { name: '退款申請', path: '/refund-requests', icon: IconLedger },
           { name: '折價券管理', path: '/coupons', icon: IconCoupons },
           { name: '運費設定', path: '/settings/shipping', icon: IconSettings },
         ],
