@@ -86,6 +86,7 @@ function getMethodChannel(normalized: string): 'ecpay' | 'manual' {
 export default function RechargesPage() {
   const [records, setRecords] = useState<RechargeRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [methodDetailOpen, setMethodDetailOpen] = useState(true)
   const [displayCount, setDisplayCount] = useState(20)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -403,10 +404,19 @@ export default function RechargesPage() {
 
               {/* ── 各支付方式明細 ── */}
               <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-neutral-100">
+                <button
+                  onClick={() => setMethodDetailOpen(v => !v)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-neutral-50 transition-colors"
+                >
                   <p className="text-sm font-semibold text-neutral-700">各支付方式明細</p>
-                </div>
-                <table className="w-full text-sm">
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${methodDetailOpen ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {methodDetailOpen && <table className="w-full text-sm border-t border-neutral-100">
                   <thead className="bg-neutral-50">
                     <tr>
                       {['支付方式', '費率定義', '筆數', '儲值金額', '手續費', '實拿金額'].map(h => (
@@ -465,7 +475,7 @@ export default function RechargesPage() {
                       )
                     })}
                   </tbody>
-                </table>
+                </table>}
               </div>
             </div>
           )
