@@ -386,6 +386,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17H6l2 2m-2-2l2-2" />
     </svg>
   )
+  const IconLedger = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10H9m3-3H9m9-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
   const IconTools = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 2l-2 2m-3.5 3.5L10 13l-1 4 4-1 5.5-5.5M7 7l3 3m-5 7h6m-6 4h14" />
@@ -432,6 +437,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '消費明細', path: '/reports/products', icon: IconReports },
           { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
+          { name: '代幣帳本', path: '/token-ledger', icon: IconLedger },
         ],
       },
       {
