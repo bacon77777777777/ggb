@@ -100,8 +100,22 @@ export async function POST(
     detail:     { action, reason, by: String(session.adminId) },
   })
 
+  // 凍結帳號時，查有無 pending 儲值 → 通知財務長
+  let pendingNote = ''
+  if (action === 'freeze') {
+    const { data: pendingRR } = await supabase
+      .from('recharge_records')
+      .select('id, amount')
+      .eq('user_id', id)
+      .eq('status', 'pending')
+    if (pendingRR && pendingRR.length > 0) {
+      const totalAmt = pendingRR.reduce((sum: number, r: any) => sum + Number(r.amount ?? 0), 0)
+      pendingNote = `\n⚠️ 財務注意：此帳號有 ${pendingRR.length} 筆 pending 儲值（NT$ ${totalAmt.toLocaleString()}），請至後台確認是否退款或保留。`
+    }
+  }
+
   const emoji = action === 'freeze' ? '🔒' : action === 'unfreeze' ? '🔓' : action === 'flag' ? '🚩' : '✅'
-  const notifyText = `${emoji} 風控操作：${label}\n用戶：${user.name ?? user.email ?? id}${reason ? `\n原因：${reason}` : ''}\n操作者：admin#${session.adminId}`
+  const notifyText = `${emoji} 風控操作：${label}\n用戶：${user.name ?? user.email ?? id}${reason ? `\n原因：${reason}` : ''}\n操作者：admin#${session.adminId}${pendingNote}`
   await pushLine(notifyText)
 
   return NextResponse.json({ ok: true, action, userId: id })

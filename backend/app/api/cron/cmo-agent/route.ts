@@ -109,6 +109,45 @@ async function gatherMarketingMetrics(supabase: any) {
   return { userGrowth, hotProducts, drawFunnel, pendingDrafts, recentCompetitor, productViews }
 }
 
+// ─── Cross-unit intelligence (行銷 + 供應鏈 + 競品情報) ──────────────────────
+
+async function gatherCrossUnitIntel(supabase: any, hotProducts: any[]) {
+  if (hotProducts.length === 0) return null
+  const q = (sql: string) => supabase.rpc('execute_readonly_sql', { query: sql }).then((r: any) => r.data ?? [])
+  const top = hotProducts[0] as any
+
+  const [competitorIntel, zeroStockActive] = await Promise.all([
+    q(`
+      SELECT competitor, platform, created_at
+      FROM competitor_posts
+      WHERE created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY created_at DESC
+      LIMIT 6
+    `),
+    q(`
+      SELECT name FROM products
+      WHERE status = 'active' AND remaining = 0
+      ORDER BY name LIMIT 5
+    `),
+  ])
+
+  const drawVelocity = Number(top.draw_count ?? 0) / 7
+  const daysLeft = drawVelocity > 0
+    ? Math.round(Number(top.remaining ?? 0) / drawVelocity * 10) / 10
+    : null
+  const stockPct = Number(top.total_count ?? 0) > 0
+    ? Math.round(Number(top.remaining) / Number(top.total_count) * 100)
+    : 0
+
+  return {
+    topProduct:      top,
+    stockPct,
+    daysLeft,
+    competitorIntel: competitorIntel as any[],
+    zeroStockActive: zeroStockActive as any[],
+  }
+}
+
 // ─── Claude analysis ──────────────────────────────────────────────────────────
 
 async function analyzeWithClaude(metrics: any, isMonday: boolean): Promise<string> {
@@ -166,8 +205,9 @@ export async function POST(req: NextRequest) {
   const isMonday = twNow.getUTCDay() === 1
   const timeStr  = `${twNow.getUTCHours().toString().padStart(2,'0')}:${twNow.getUTCMinutes().toString().padStart(2,'0')}`
 
-  const metrics  = await gatherMarketingMetrics(supabase)
-  const analysis = await analyzeWithClaude(metrics, isMonday)
+  const metrics    = await gatherMarketingMetrics(supabase)
+  const crossUnit  = await gatherCrossUnitIntel(supabase, metrics.hotProducts as any[])
+  const analysis   = await analyzeWithClaude(metrics, isMonday)
 
   const funnel  = (metrics.drawFunnel[0] ?? {}) as any
   const pending = metrics.pendingDrafts as any[]
@@ -213,6 +253,42 @@ export async function POST(req: NextRequest) {
   // 週一才列競品
   if (isMonday && (metrics.recentCompetitor as any[]).length > 0) {
     lines.push(`\n🕵️ 近期競品動態：${(metrics.recentCompetitor as any[]).length} 則`)
+  }
+
+  // 跨部門行動建議（行銷 + 供應鏈 + 競品情報 三合一）
+  if (crossUnit) {
+    const { topProduct, stockPct, daysLeft, competitorIntel, zeroStockActive } = crossUnit
+    const actions: string[] = []
+
+    if (stockPct === 0) {
+      actions.push('🚨 熱門商品已售完，暫停推廣避免死連結')
+    } else if (stockPct < 20) {
+      actions.push('🚨 聯絡廠商補貨（庫存緊急）')
+    } else if (stockPct < 40) {
+      actions.push('⚠️ 預備補貨詢價（庫存偏低）')
+    }
+
+    if (competitorIntel.length > 0) {
+      actions.push('📣 加快文案出稿速度（競品本週活躍）')
+    }
+
+    if (zeroStockActive.length > 0) {
+      actions.push(`⛔ 停止推廣零庫存：${zeroStockActive.map((p: any) => p.name).join('、')}`)
+    }
+
+    const daysText = daysLeft !== null ? `，約 ${daysLeft} 天售完` : ''
+    lines.push('\n🎯 跨部門行動建議')
+    lines.push(`主力商品：${topProduct.name}（${topProduct.draw_count} 抽，庫存剩 ${stockPct}%${daysText}）`)
+
+    if (competitorIntel.length > 0) {
+      const sites = [...new Set(competitorIntel.map((c: any) => c.competitor))].slice(0, 3).join('、')
+      lines.push(`競品動態：${sites} 等本週有 ${competitorIntel.length} 則新動態`)
+    }
+
+    if (actions.length > 0) {
+      lines.push('→ 今日建議')
+      actions.forEach(a => lines.push(`  ${a}`))
+    }
   }
 
   // AI 洞察

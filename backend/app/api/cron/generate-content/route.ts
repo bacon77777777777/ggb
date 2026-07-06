@@ -16,11 +16,15 @@ const STYLE_PROMPTS: Record<Style, string> = {
   urgency:     '緊迫感型：強調數量有限、先搶先得、錯過等很久。語氣帶緊張感，推動立即下單。',
 }
 
-async function generateTextContent(productName: string, style: Style): Promise<string> {
+async function generateTextContent(productName: string, style: Style, competitorHint?: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return `[ANTHROPIC_API_KEY 未設定] ${productName} - ${style} 草稿`
 
   const client = new Anthropic({ apiKey })
+  const competitorBlock = competitorHint
+    ? `\n競品本週動態（參考趨勢，不要直接提及對手品牌）：\n${competitorHint}\n`
+    : ''
+
   const msg = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 300,
@@ -31,7 +35,7 @@ async function generateTextContent(productName: string, style: Style): Promise<s
 
 商品名稱：${productName}
 文案風格：${STYLE_PROMPTS[style]}
-
+${competitorBlock}
 要求：
 - 字數約 80-150 字
 - 附上相關 hashtag（3-5 個）
@@ -90,13 +94,29 @@ export async function POST(req: NextRequest) {
     let productImageUrl: string | null = null
     let priceLabel = ''
 
-    if (Object.keys(countMap).length > 0) {
-      const topId = Object.entries(countMap).sort((a, b) => b[1] - a[1])[0][0]
-      const { data: product } = await supabase
-        .from('products')
-        .select('id, name, price, images')
-        .eq('id', topId)
-        .maybeSingle()
+    const sortedIds = Object.entries(countMap).sort((a, b) => b[1] - a[1]).map(([id]) => id)
+
+    if (sortedIds.length > 0) {
+      // 優先選有庫存的熱門商品（供應鏈 → 行銷 信號：零庫存不出稿）
+      let product = null
+      for (const candidateId of sortedIds.slice(0, 5)) {
+        const { data: p } = await supabase
+          .from('products')
+          .select('id, name, price, images, remaining')
+          .eq('id', candidateId)
+          .gt('remaining', 0)
+          .maybeSingle()
+        if (p) { product = p; break }
+      }
+      // Fallback：所有熱門商品都零庫存，仍取第一名
+      if (!product) {
+        const { data: p } = await supabase
+          .from('products')
+          .select('id, name, price, images')
+          .eq('id', sortedIds[0])
+          .maybeSingle()
+        product = p
+      }
       if (product) {
         productId = Number(product.id)
         productName = String(product.name)
@@ -105,11 +125,12 @@ export async function POST(req: NextRequest) {
         productImageUrl = imgs?.[0] ?? null
       }
     } else {
-      // 若昨日無抽獎，取一個上架中的商品
+      // 若昨日無抽獎，取最新上架且有庫存的商品
       const { data: product } = await supabase
         .from('products')
         .select('id, name, price, images')
         .eq('status', 'active')
+        .gt('remaining', 0)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -122,11 +143,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 取競品本週動態作為文案輔助背景（市場情報官 → 文案生成）
+    const { data: competitorPosts } = await supabase
+      .from('competitor_posts')
+      .select('competitor, content')
+      .gte('created_at', new Date(Date.now() - 7 * 86400_000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    const competitorHint = competitorPosts && competitorPosts.length > 0
+      ? competitorPosts.map((p: any) => `- ${p.competitor}：${String(p.content ?? '').slice(0, 80)}`).join('\n')
+      : undefined
+
     // 為三種風格各生成一則文案 + 一張圖
     const results: Array<{ style: Style; textContent: string; imagePath: string }> = []
 
     for (const style of STYLES) {
-      const textContent = await generateTextContent(productName, style)
+      const textContent = await generateTextContent(productName, style, competitorHint)
       const imgBuf = await generateProductImage({
         productImageUrl,
         productName,
