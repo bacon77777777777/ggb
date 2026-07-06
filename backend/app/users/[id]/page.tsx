@@ -88,7 +88,7 @@ export default function UserDetailPage() {
   const [newPassword, setNewPassword] = useState('')
   const [resetPasswordMode, setResetPasswordMode] = useState<'manual' | 'auto'>('manual')
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled' | 'ledger'>('orders')
+  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled'>('orders')
   const [userDismantled, setUserDismantled] = useState<any[]>([])
 
   // Data states
@@ -308,7 +308,7 @@ export default function UserDetailPage() {
 
   const handleTabChange = (tab: typeof activeTab) => {
     setActiveTab(tab)
-    if (tab === 'ledger' && !ledgerLoaded) fetchLedger(1)
+    if (tab === 'recharges' && !ledgerLoaded) fetchLedger(1)
   }
 
   const handleCopy = async (text: string, fieldName: string) => {
@@ -760,18 +760,8 @@ export default function UserDetailPage() {
                       </span>
                     )}
                   </button>
-                  <button
-                    onClick={() => handleTabChange('ledger')}
-                    className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                      activeTab === 'ledger'
-                        ? 'text-violet-600 border-b-2 border-violet-600'
-                        : 'text-neutral-500 hover:text-neutral-700'
-                    }`}
-                  >
-                    代幣帳本
-                  </button>
                 </div>
-                {activeTab !== 'warehouse' && activeTab !== 'dismantled' && activeTab !== 'ledger' && (
+                {activeTab !== 'warehouse' && activeTab !== 'dismantled' && activeTab !== 'recharges' && (
                   <Link 
                     href={
                       activeTab === 'orders' ? '/orders' :
@@ -882,54 +872,72 @@ export default function UserDetailPage() {
                 </>
               )}
 
-              {/* 儲值記錄內容 */}
+              {/* 儲值記錄＋代幣異動明細（帳本表格） */}
               {activeTab === 'recharges' && (
-                <>
-                  {userRecharges.length > 0 ? (
-                    <div className="space-y-3">
-                      {userRecharges.slice(0, 30).map((recharge) => (
-                        <div key={recharge.id} className="p-4 bg-neutral-50 rounded-lg border border-neutral-200 hover:bg-neutral-100 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-semibold text-neutral-900 font-mono">{recharge.orderId}</p>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  recharge.status === '成功' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                  recharge.status === '處理中' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                                  'bg-red-100 text-red-700 border border-red-200'
-                                }`}>
-                                  {recharge.status}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-neutral-500">
-                                <span className="font-mono">{recharge.time}</span>
-                                <span className="text-neutral-700">{recharge.tokenDenomination} (G)</span>
-                                <span className="font-mono text-neutral-700">
-                                  贈送: {recharge.bonus.toLocaleString()} (G)
-                                </span>
-                                <span className="font-mono text-neutral-700">
-                                  總計: {recharge.totalTokens.toLocaleString()} (G)
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-end ml-4">
-                              <p className="text-lg font-bold text-neutral-900 font-mono whitespace-nowrap">
-                                {recharge.amount.toLocaleString()} (TWD)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
+                <div>
+                  {ledgerLoading ? (
+                    <p className="text-sm text-neutral-400 py-8 text-center">載入中...</p>
+                  ) : ledger.length === 0 ? (
                     <div className="text-center py-12">
                       <svg className="w-12 h-12 text-neutral-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <p className="text-neutral-500">暫無儲值記錄</p>
+                      <p className="text-neutral-500">無代幣異動紀錄</p>
                     </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-neutral-50 border-b border-neutral-200">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">時間</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">類型</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">說明</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">異動 (G)</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ledger.map((row: any, i: number) => {
+                              const isPos = row.delta > 0
+                              const typeMap: Record<string, { label: string; cls: string }> = {
+                                recharge:  { label: '儲值',   cls: 'bg-emerald-50 text-emerald-700' },
+                                draw:      { label: '抽獎',   cls: 'bg-rose-50 text-rose-700' },
+                                dismantle: { label: '拆解退', cls: 'bg-amber-50 text-amber-700' },
+                              }
+                              const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+                              return (
+                                <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
+                                  <td className="px-3 py-2 text-neutral-500 whitespace-nowrap font-mono text-xs">
+                                    {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
+                                  </td>
+                                  <td className="px-3 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
+                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {isPos ? '+' : ''}{Number(row.delta).toLocaleString()}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-neutral-700">
+                                    {row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-between pt-3 text-sm text-neutral-500">
+                        <span>共 {ledgerTotal.toLocaleString()} 筆</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => fetchLedger(ledgerPage - 1)} disabled={ledgerPage <= 1} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">上一頁</button>
+                          <span>{ledgerPage} / {ledgerPages}</span>
+                          <button onClick={() => fetchLedger(ledgerPage + 1)} disabled={ledgerPage >= ledgerPages} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">下一頁</button>
+                        </div>
+                      </div>
+                    </>
                   )}
-                </>
+                </div>
               )}
 
               {/* 分解紀錄 */}
@@ -1006,68 +1014,6 @@ export default function UserDetailPage() {
                 </>
               )}
 
-              {/* 代幣帳本 */}
-              {activeTab === 'ledger' && (
-                <div>
-                  {ledgerLoading ? (
-                    <div className="text-center py-12 text-neutral-400">載入中...</div>
-                  ) : ledger.length === 0 ? (
-                    <div className="text-center py-12 text-neutral-400">無代幣異動紀錄</div>
-                  ) : (
-                    <>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-neutral-50 border-b border-neutral-200">
-                            <tr>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">時間</th>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">類型</th>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">說明</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">異動 (G)</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ledger.map((row: any, i: number) => {
-                              const isPos = row.delta > 0
-                              const typeMap: Record<string, { label: string; cls: string }> = {
-                                recharge:  { label: '儲值',   cls: 'bg-emerald-50 text-emerald-700' },
-                                draw:      { label: '抽獎',   cls: 'bg-rose-50 text-rose-700' },
-                                dismantle: { label: '拆解退', cls: 'bg-amber-50 text-amber-700' },
-                              }
-                              const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
-                              return (
-                                <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
-                                  <td className="px-3 py-2 text-neutral-500 whitespace-nowrap font-mono text-xs">
-                                    {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
-                                  </td>
-                                  <td className="px-3 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
-                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {isPos ? '+' : ''}{Number(row.delta).toLocaleString()}
-                                  </td>
-                                  <td className="px-3 py-2 text-right font-mono text-neutral-700">
-                                    {row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="flex items-center justify-between pt-3 text-sm text-neutral-500">
-                        <span>共 {ledgerTotal.toLocaleString()} 筆</span>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => { fetchLedger(ledgerPage - 1); }} disabled={ledgerPage <= 1} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">上一頁</button>
-                          <span>{ledgerPage} / {ledgerPages}</span>
-                          <button onClick={() => { fetchLedger(ledgerPage + 1); }} disabled={ledgerPage >= ledgerPages} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">下一頁</button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
