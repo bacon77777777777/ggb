@@ -20,26 +20,67 @@ interface RechargeRecord {
   user?: { id: string; name: string; email: string }
 }
 
-const ALL_PAYMENT_METHODS = ['credit_card', 'webatm', 'vacc', 'cvs', 'barcode', 'twqr', 'other'] as const
+// ─── 綠界 ───────────────────────────────────────────────
+const ECPAY_METHOD_KEYS = ['credit_card', 'webatm', 'vacc', 'cvs', 'barcode', 'twqr', 'other'] as const
 
-const PAYMENT_METHOD_INFO: Record<string, { name: string; formula: string }> = {
-  credit_card: { name: '信用卡 / 簽帳金融卡', formula: '2.75%+NT$1' },
-  webatm:      { name: '網路 ATM',            formula: '1% max NT$15' },
-  vacc:        { name: 'ATM 虛擬帳號',         formula: '1% max NT$15' },
-  cvs:         { name: '超商代碼',             formula: 'NT$31/筆' },
-  barcode:     { name: '超商條碼',             formula: 'NT$16/筆' },
-  twqr:        { name: '台灣 Pay QR',          formula: '1%' },
-  other:       { name: '其他',                 formula: '—' },
+// ─── 手動真實收款 ────────────────────────────────────────
+const MANUAL_REAL_KEYS = ['manual_transfer', 'cash', 'line_pay'] as const
+
+// ─── 行銷費用（不計入收入）───────────────────────────────
+const MARKETING_KEYS = ['promotion', 'compensation', 'test'] as const
+
+type ChannelFilter = 'all' | 'ecpay' | 'manual'
+
+const PAYMENT_METHOD_INFO: Record<string, { name: string; formula: string; channel: 'ecpay' | 'manual' }> = {
+  // 綠界
+  credit_card:     { name: '信用卡 / 簽帳金融卡', formula: '2.75%+NT$1',    channel: 'ecpay' },
+  webatm:          { name: '網路 ATM',            formula: '1% max NT$15',   channel: 'ecpay' },
+  vacc:            { name: 'ATM 虛擬帳號',         formula: '1% max NT$15',   channel: 'ecpay' },
+  cvs:             { name: '超商代碼',             formula: 'NT$31/筆',        channel: 'ecpay' },
+  barcode:         { name: '超商條碼',             formula: 'NT$16/筆',        channel: 'ecpay' },
+  twqr:            { name: '台灣 Pay QR',          formula: '1%',             channel: 'ecpay' },
+  other:           { name: '其他（綠界）',          formula: '—',              channel: 'ecpay' },
+  // 手動
+  manual_transfer: { name: '銀行轉帳',             formula: '—',              channel: 'manual' },
+  cash:            { name: '現金',                 formula: '—',              channel: 'manual' },
+  line_pay:        { name: 'LINE Pay（手動）',      formula: '—',              channel: 'manual' },
+  promotion:       { name: '行銷贈點',             formula: '行銷費用',         channel: 'manual' },
+  compensation:    { name: '補償',                 formula: '行銷費用',         channel: 'manual' },
+  test:            { name: '測試',                 formula: '行銷費用',         channel: 'manual' },
 }
 
+// 所有可選的儲值方式選項（用於篩選下拉）
+const ALL_METHOD_OPTIONS = [
+  { value: 'all',             label: '全部方式' },
+  { value: 'credit_card',     label: '信用卡 / 簽帳金融卡' },
+  { value: 'webatm',          label: '網路 ATM' },
+  { value: 'vacc',            label: 'ATM 虛擬帳號' },
+  { value: 'cvs',             label: '超商代碼' },
+  { value: 'barcode',         label: '超商條碼' },
+  { value: 'twqr',            label: '台灣 Pay QR' },
+  { value: 'manual_transfer', label: '銀行轉帳' },
+  { value: 'cash',            label: '現金' },
+  { value: 'line_pay',        label: 'LINE Pay（手動）' },
+  { value: 'promotion',       label: '行銷贈點' },
+  { value: 'compensation',    label: '補償' },
+  { value: 'test',            label: '測試' },
+  { value: 'other',           label: '其他' },
+]
+
 function normalizePaymentMethod(method: string): string {
-  if (method.startsWith('Credit')) return 'credit_card'
-  if (method.startsWith('WebATM')) return 'webatm'
-  if (method.startsWith('ATM'))    return 'vacc'
-  if (method.startsWith('CVS'))    return 'cvs'
+  if (method.startsWith('Credit'))  return 'credit_card'
+  if (method.startsWith('WebATM'))  return 'webatm'
+  if (method.startsWith('ATM'))     return 'vacc'
+  if (method.startsWith('CVS'))     return 'cvs'
   if (method.startsWith('BARCODE')) return 'barcode'
-  if (method.startsWith('TWQR'))   return 'twqr'
-  return method
+  if (method.startsWith('TWQR'))    return 'twqr'
+  // 手動方式或 'other' 直接原值回傳
+  if (PAYMENT_METHOD_INFO[method])  return method
+  return 'other'
+}
+
+function getMethodChannel(normalized: string): 'ecpay' | 'manual' {
+  return PAYMENT_METHOD_INFO[normalized]?.channel ?? 'ecpay'
 }
 
 export default function RechargesPage() {
@@ -54,8 +95,9 @@ export default function RechargesPage() {
     created_at: true, order_number: true, trade_no: false, user: true, amount: true, bonus: true, payment_method: true, status: true
   })
 
-  // 篩選與欄位顯示狀態
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [filterChannel, setFilterChannel] = useState<ChannelFilter>('all')
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>('all')
   const [filterStartDate, setFilterStartDate] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -68,14 +110,9 @@ export default function RechargesPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true)
-
       const response = await fetch('/api/admin/recharges')
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result?.error || '載入儲值紀錄失敗')
-      }
-
+      if (!response.ok) throw new Error(result?.error || '載入儲值紀錄失敗')
       setRecords((result as RechargeRecord[]) || [])
     } catch (error) {
       console.error('Error fetching recharge records:', error)
@@ -85,77 +122,65 @@ export default function RechargesPage() {
     }
   }
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   const filteredRecords = useMemo(() => {
     let result = records
-    
-    // 搜尋過濾
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(r => 
+      result = result.filter(r =>
         r.user?.name?.toLowerCase().includes(q) ||
         r.user?.email?.toLowerCase().includes(q) ||
         r.order_number?.toLowerCase().includes(q)
       )
     }
-    
-    // 狀態過濾
+
     if (selectedStatus !== 'all') {
       result = result.filter(r => r.status === selectedStatus)
     }
-    
-    // 時間範圍過濾
+
+    // 金流篩選
+    if (filterChannel !== 'all') {
+      result = result.filter(r => {
+        const normalized = normalizePaymentMethod(r.payment_method || 'other')
+        return getMethodChannel(normalized) === filterChannel
+      })
+    }
+
+    // 儲值方式篩選
+    if (filterPaymentMethod !== 'all') {
+      result = result.filter(r => {
+        const normalized = normalizePaymentMethod(r.payment_method || 'other')
+        return normalized === filterPaymentMethod
+      })
+    }
+
     if (filterStartDate) {
       result = result.filter(r => r.created_at >= filterStartDate)
     }
     if (filterEndDate) {
-      // 結束日期包含當天
       const endDate = new Date(filterEndDate)
       endDate.setDate(endDate.getDate() + 1)
       result = result.filter(r => new Date(r.created_at) < endDate)
     }
-    
+
     return result
-  }, [records, searchQuery, selectedStatus, filterStartDate, filterEndDate])
+  }, [records, searchQuery, selectedStatus, filterChannel, filterPaymentMethod, filterStartDate, filterEndDate])
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a, b) => {
       let aValue: any
       let bValue: any
-
       switch (sortField) {
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
-        case 'user':
-          aValue = a.user?.name || ''
-          bValue = b.user?.name || ''
-          break
-        case 'amount':
-          aValue = a.amount
-          bValue = b.amount
-          break
-        case 'bonus':
-          aValue = a.bonus
-          bValue = b.bonus
-          break
-        case 'payment_method':
-          aValue = a.payment_method || ''
-          bValue = b.payment_method || ''
-          break
-        case 'status':
-          aValue = a.status
-          bValue = b.status
-          break
-        default:
-          aValue = a.id
-          bValue = b.id
+        case 'created_at':    aValue = new Date(a.created_at).getTime(); bValue = new Date(b.created_at).getTime(); break
+        case 'user':          aValue = a.user?.name || ''; bValue = b.user?.name || ''; break
+        case 'amount':        aValue = a.amount; bValue = b.amount; break
+        case 'bonus':         aValue = a.bonus; bValue = b.bonus; break
+        case 'payment_method': aValue = a.payment_method || ''; bValue = b.payment_method || ''; break
+        case 'status':        aValue = a.status; bValue = b.status; break
+        default:              aValue = a.id; bValue = b.id
       }
-
       if (typeof aValue === 'string') {
         return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
       }
@@ -178,29 +203,35 @@ export default function RechargesPage() {
     }
   }
 
+  // 金流篩選變動時重置儲值方式
+  const handleChannelChange = (val: string) => {
+    setFilterChannel(val as ChannelFilter)
+    setFilterPaymentMethod('all')
+  }
+
+  // 儲值方式選項依金流動態過濾
+  const methodOptions = useMemo(() => {
+    if (filterChannel === 'ecpay') {
+      return ALL_METHOD_OPTIONS.filter(o => o.value === 'all' || (PAYMENT_METHOD_INFO[o.value]?.channel === 'ecpay'))
+    }
+    if (filterChannel === 'manual') {
+      return ALL_METHOD_OPTIONS.filter(o => o.value === 'all' || (PAYMENT_METHOD_INFO[o.value]?.channel === 'manual'))
+    }
+    return ALL_METHOD_OPTIONS
+  }, [filterChannel])
+
   const columns: Column<RechargeRecord>[] = [
     {
-      key: 'created_at',
-      label: '時間',
-      sortable: true,
+      key: 'created_at', label: '時間', sortable: true,
       render: (record) => <span className="text-gray-500">{formatDateTime(record.created_at)}</span>
     },
+    { key: 'order_number', label: '訂單編號', className: 'font-mono text-gray-600' },
     {
-      key: 'order_number',
-      label: '訂單編號',
-      className: 'font-mono text-gray-600'
+      key: 'trade_no', label: '金流序號',
+      render: (record) => <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
     },
     {
-      key: 'trade_no',
-      label: '金流序號',
-      render: (record) => (
-        <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
-      )
-    },
-    {
-      key: 'user',
-      label: '用戶',
-      sortable: true,
+      key: 'user', label: '用戶', sortable: true,
       render: (record) => (
         <div>
           <div className="font-medium text-gray-900">{record.user?.name || '未知用戶'}</div>
@@ -209,47 +240,35 @@ export default function RechargesPage() {
       )
     },
     {
-      key: 'amount',
-      label: '儲值金額(TWD)',
-      sortable: true,
-      render: (record) => (
-        <span className="font-medium text-gray-900">
-          {record.amount.toLocaleString()}
-        </span>
-      )
+      key: 'amount', label: '儲值金額(TWD)', sortable: true,
+      render: (record) => <span className="font-medium text-gray-900">{record.amount.toLocaleString()}</span>
     },
     {
-      key: 'bonus',
-      label: '贈送代幣(G)',
-      sortable: true,
-      render: (record) => (
-        <span className="text-gray-500">
-          {record.bonus.toLocaleString()}
-        </span>
-      )
+      key: 'bonus', label: '贈送代幣(G)', sortable: true,
+      render: (record) => <span className="text-gray-500">{record.bonus.toLocaleString()}</span>
     },
     {
-      key: 'payment_method',
-      label: '付款方式',
-      sortable: true,
-      render: (record) => (
-        <span className="text-gray-600">
-          {getPaymentMethodLabel(record.payment_method)}
-        </span>
-      )
+      key: 'payment_method', label: '付款方式', sortable: true,
+      render: (record) => {
+        const normalized = normalizePaymentMethod(record.payment_method || 'other')
+        const isManual = getMethodChannel(normalized) === 'manual'
+        const isMarketing = (MARKETING_KEYS as readonly string[]).includes(normalized)
+        return (
+          <span className={`text-sm ${isMarketing ? 'text-amber-600' : isManual ? 'text-teal-700' : 'text-gray-600'}`}>
+            {getPaymentMethodLabel(record.payment_method)}
+          </span>
+        )
+      }
     },
     {
-      key: 'status',
-      label: '狀態',
-      sortable: true,
+      key: 'status', label: '狀態', sortable: true,
       render: (record) => (
         <span className={`px-2 py-1 rounded text-xs ${
-          record.status === 'success' ? 'bg-green-50 text-green-700' : 
+          record.status === 'success' ? 'bg-green-50 text-green-700' :
           record.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
           'bg-red-50 text-red-700'
         }`}>
-          {record.status === 'success' ? '成功' : 
-           record.status === 'pending' ? '處理中' : '失敗'}
+          {record.status === 'success' ? '成功' : record.status === 'pending' ? '處理中' : '失敗'}
         </span>
       )
     }
@@ -257,18 +276,23 @@ export default function RechargesPage() {
 
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['時間', '訂單編號(MerchantOrderNo)', '金流序號(ECPay TradeNo)', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '狀態']
-    const rows = sortedRecords.map(r => [
-      formatDateTime(r.created_at),
-      r.order_number || '',
-      r.trade_no || '',
-      r.user?.name || '',
-      r.user?.email || '',
-      r.amount,
-      r.bonus,
-      getPaymentMethodLabel(r.payment_method),
-      r.status === 'success' ? '成功' : r.status === 'pending' ? '處理中' : '失敗',
-    ])
+    const headers = ['時間', '訂單編號', '金流序號', '用戶姓名', '用戶Email', '儲值金額(TWD)', '贈送代幣(G)', '付款方式', '金流', '狀態']
+    const rows = sortedRecords.map(r => {
+      const normalized = normalizePaymentMethod(r.payment_method || 'other')
+      const channel = getMethodChannel(normalized)
+      return [
+        formatDateTime(r.created_at),
+        r.order_number || '',
+        r.trade_no || '',
+        r.user?.name || '',
+        r.user?.email || '',
+        r.amount,
+        r.bonus,
+        getPaymentMethodLabel(r.payment_method),
+        channel === 'manual' ? '手動' : '綠界',
+        r.status === 'success' ? '成功' : r.status === 'pending' ? '處理中' : '失敗',
+      ]
+    })
     const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -281,10 +305,7 @@ export default function RechargesPage() {
 
   const handleLoadMore = () => {
     setIsLoadingMore(true)
-    setTimeout(() => {
-      setDisplayCount(prev => prev + 20)
-      setIsLoadingMore(false)
-    }, 500)
+    setTimeout(() => { setDisplayCount(prev => prev + 20); setIsLoadingMore(false) }, 500)
   }
 
   return (
@@ -310,15 +331,10 @@ export default function RechargesPage() {
           </button>
         </div>
 
-        {!isLoading && sortedRecords.length > 0 && (() => {
+        {!isLoading && (() => {
           const successRecs = sortedRecords.filter(r => r.status === 'success')
-          const totalAmount = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
-          const totalFee = successRecs.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
-          const totalNet = totalAmount - totalFee
-          const totalBonus = sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0)
-          const totalRecharge = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
 
-          // 各支付方式統計（正規化 key）
+          // 各方式統計
           const methodMap: Record<string, { count: number; amount: number; fee: number }> = {}
           for (const r of successRecs) {
             const m = normalizePaymentMethod(r.payment_method || 'other')
@@ -328,10 +344,31 @@ export default function RechargesPage() {
             methodMap[m].fee += r.payment_fee ?? 0
           }
 
+          const totalAmount  = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
+          const totalFee     = successRecs.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
+          const totalNet     = totalAmount - totalFee
+          const totalBonus   = sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0)
+
+          // 手動真實收款（銀行轉帳/現金/LINE Pay）
+          const manualRealAmount = (MANUAL_REAL_KEYS as readonly string[]).reduce(
+            (s, k) => s + (methodMap[k]?.amount ?? 0), 0
+          )
+          const manualRealCount = (MANUAL_REAL_KEYS as readonly string[]).reduce(
+            (s, k) => s + (methodMap[k]?.count ?? 0), 0
+          )
+
+          // 行銷費用（promotion/compensation/test）
+          const marketingAmount = (MARKETING_KEYS as readonly string[]).reduce(
+            (s, k) => s + (methodMap[k]?.amount ?? 0), 0
+          )
+          const marketingCount = (MARKETING_KEYS as readonly string[]).reduce(
+            (s, k) => s + (methodMap[k]?.count ?? 0), 0
+          )
+
           return (
             <div className="space-y-3">
-              {/* 總覽小卡 */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* ── 總覽小卡 ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值筆數</p>
                   <p className="text-2xl font-black text-neutral-900">{sortedRecords.length.toLocaleString()}</p>
@@ -340,12 +377,22 @@ export default function RechargesPage() {
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值金額</p>
                   <p className="text-2xl font-black text-emerald-600">NT$ {totalAmount.toLocaleString()}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">儲值 {totalRecharge.toLocaleString()} G＋贈送 {totalBonus.toLocaleString()} G</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">含贈送 {totalBonus.toLocaleString()} G</p>
+                </div>
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">手動儲值</p>
+                  <p className="text-2xl font-black text-teal-600">NT$ {manualRealAmount.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{manualRealCount} 筆（轉帳/現金/LINE Pay）</p>
+                </div>
+                <div className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <p className="text-xs text-neutral-500 mb-1">行銷費用</p>
+                  <p className="text-2xl font-black text-amber-500">NT$ {marketingAmount.toLocaleString()}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{marketingCount} 筆（贈點/補償/測試）</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">手續費</p>
                   <p className="text-2xl font-black text-red-500">NT$ {totalFee.toLocaleString()}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">實際扣除</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">綠界實際扣除</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
@@ -353,7 +400,8 @@ export default function RechargesPage() {
                   <p className="text-xs text-neutral-400 mt-0.5">扣除手續費後</p>
                 </div>
               </div>
-              {/* 各支付方式明細（全部方式都顯示，無資料顯示 0） */}
+
+              {/* ── 各支付方式明細 ── */}
               <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
                 <div className="px-4 py-3 border-b border-neutral-100">
                   <p className="text-sm font-semibold text-neutral-700">各支付方式明細</p>
@@ -367,19 +415,52 @@ export default function RechargesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {ALL_PAYMENT_METHODS.map(method => {
+                    {/* 綠界金流 section header */}
+                    <tr className="bg-neutral-50/80">
+                      <td colSpan={6} className="py-1.5 px-3 text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                        綠界金流
+                      </td>
+                    </tr>
+                    {ECPAY_METHOD_KEYS.map(method => {
                       const info = PAYMENT_METHOD_INFO[method]
                       const stat = methodMap[method] ?? { count: 0, amount: 0, fee: 0 }
                       const net = stat.amount - stat.fee
-                      const isEmpty = stat.count === 0
                       return (
-                        <tr key={method} className={`hover:bg-neutral-50 ${isEmpty ? 'opacity-40' : ''}`}>
-                          <td className="py-2 px-3 font-medium whitespace-nowrap">{info.name}</td>
+                        <tr key={method} className={`hover:bg-neutral-50 ${stat.count === 0 ? 'opacity-40' : ''}`}>
+                          <td className="py-2 px-3 font-medium whitespace-nowrap pl-6">{info.name}</td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
+                        </tr>
+                      )
+                    })}
+                    {/* 手動儲值 section header */}
+                    <tr className="bg-neutral-50/80">
+                      <td colSpan={6} className="py-1.5 px-3 text-xs font-bold text-neutral-400 uppercase tracking-wide">
+                        手動儲值
+                      </td>
+                    </tr>
+                    {([...MANUAL_REAL_KEYS, ...MARKETING_KEYS] as string[]).map(method => {
+                      const info = PAYMENT_METHOD_INFO[method]
+                      const stat = methodMap[method] ?? { count: 0, amount: 0, fee: 0 }
+                      const net = stat.amount - stat.fee
+                      const isMarketing = (MARKETING_KEYS as readonly string[]).includes(method)
+                      return (
+                        <tr key={method} className={`hover:bg-neutral-50 ${stat.count === 0 ? 'opacity-40' : ''}`}>
+                          <td className="py-2 px-3 font-medium whitespace-nowrap pl-6">
+                            <span className={isMarketing ? 'text-amber-600' : 'text-teal-700'}>{info.name}</span>
+                          </td>
+                          <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
+                          <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
+                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            NT$ {stat.amount.toLocaleString()}
+                          </td>
+                          <td className="py-2 px-3 tabular-nums text-red-500">NT$ 0</td>
+                          <td className={`py-2 px-3 tabular-nums font-semibold ${isMarketing ? 'text-amber-600' : 'text-teal-600'}`}>
+                            NT$ {net.toLocaleString()}
+                          </td>
                         </tr>
                       )
                     })}
@@ -407,27 +488,46 @@ export default function RechargesPage() {
                 value: selectedStatus,
                 onChange: setSelectedStatus,
                 options: [
-                  { value: 'all', label: '全部狀態' },
+                  { value: 'all',     label: '全部狀態' },
                   { value: 'success', label: '成功' },
                   { value: 'pending', label: '處理中' },
-                  { value: 'failed', label: '失敗' },
+                  { value: 'failed',  label: '失敗' },
                 ]
-              }
+              },
+              {
+                key: 'channel',
+                label: '金流',
+                type: 'select',
+                value: filterChannel,
+                onChange: handleChannelChange,
+                options: [
+                  { value: 'all',    label: '全部金流' },
+                  { value: 'ecpay',  label: '綠界' },
+                  { value: 'manual', label: '手動儲值' },
+                ]
+              },
+              {
+                key: 'paymentMethod',
+                label: '儲值方式',
+                type: 'select',
+                value: filterPaymentMethod,
+                onChange: setFilterPaymentMethod,
+                options: methodOptions,
+              },
             ]}
             showColumnToggle={true}
             columns={[
-              { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
-              { key: 'order_number', label: '訂單編號', visible: visibleColumns.order_number },
-              { key: 'trade_no', label: '金流序號', visible: visibleColumns.trade_no },
-              { key: 'user', label: '用戶', visible: visibleColumns.user },
-              { key: 'amount', label: '儲值金額(TWD)', visible: visibleColumns.amount },
-              { key: 'bonus', label: '贈送代幣(G)', visible: visibleColumns.bonus },
-              { key: 'payment_method', label: '付款方式', visible: visibleColumns.payment_method },
-              { key: 'status', label: '狀態', visible: visibleColumns.status }
+              { key: 'created_at',     label: '時間',         visible: visibleColumns.created_at },
+              { key: 'order_number',   label: '訂單編號',      visible: visibleColumns.order_number },
+              { key: 'trade_no',       label: '金流序號',      visible: visibleColumns.trade_no },
+              { key: 'user',           label: '用戶',          visible: visibleColumns.user },
+              { key: 'amount',         label: '儲值金額(TWD)', visible: visibleColumns.amount },
+              { key: 'bonus',          label: '贈送代幣(G)',   visible: visibleColumns.bonus },
+              { key: 'payment_method', label: '付款方式',      visible: visibleColumns.payment_method },
+              { key: 'status',         label: '狀態',          visible: visibleColumns.status }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
           />
-
 
           <div className="mt-4">
             <DataTable
