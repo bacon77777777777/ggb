@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { id } = await params
   const body = await req.json()
   const { status, note } = body
   const allowed = ['draft', 'confirmed', 'paid']
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data, error } = await supabase
     .from('settlement_snapshots')
     .update(update)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single()
 

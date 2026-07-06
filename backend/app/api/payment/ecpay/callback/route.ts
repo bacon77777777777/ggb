@@ -85,11 +85,17 @@ export async function POST(req: Request) {
         .eq('order_number', tradeNo)
         .single()
       if (recharge?.user_id) {
+        const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
         await supabase.from('user_event_logs').insert({
           user_id: recharge.user_id,
           event_type: 'topup',
           detail: { order_number: tradeNo, amount: recharge.amount ?? amt, payment_type: paymentType },
-          ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+          ip,
+        })
+        await supabase.from('user_ip_log').insert({
+          user_id: recharge.user_id,
+          ip,
+          event_type: 'recharge',
         })
       }
     } else if (tradeNo.startsWith('SO')) {

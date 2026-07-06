@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
 const CRON_SECRET       = process.env.CRON_SECRET
 const LINE_TOKEN        = process.env.LINE_CHANNEL_ACCESS_TOKEN
-const NOTIFY_ID         = process.env.LINE_NOTIFY_GROUP_ID
+const NOTIFY_ID         = process.env.NOTIFY_TARGET_ID
 // 超過幾天 shipping 狀態自動視為已送達（HOME=7天，CVS=3天）
 const HOME_DAYS = 7
 const CVS_DAYS  = 3
