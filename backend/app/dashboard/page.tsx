@@ -906,6 +906,7 @@ export default function DashboardPage() {
   const [topSeries, setTopSeries] = useState<any[]>([])
   const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
   const [discountStats, setDiscountStats] = useState({ netRevenue: 0, couponFixed: 0, discountRate: '0.0', dailyAvg: 0, isSingleDay: true })
+  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0 })
   const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
   const [mainChartData, setMainChartData] = useState({
     visitTrend: [] as any[],
@@ -1323,6 +1324,14 @@ export default function DashboardPage() {
     fetchData()
   }, [dateRangeStart, dateRangeEnd])
 
+  // 待處理事項（不依賴日期範圍，只在 mount 時載入一次）
+  useEffect(() => {
+    fetch('/api/admin/dashboard/pending')
+      .then(r => r.json())
+      .then(d => { if (!d.error) setPendingActions(d) })
+      .catch(() => {})
+  }, [])
+
   // 當用戶手動選擇日期時，標記為自訂日期範圍
   const handleStartDateChange = (value: string) => {
     setDateRangeStart(value)
@@ -1372,6 +1381,56 @@ export default function DashboardPage() {
                 {p}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* 待處理事項 */}
+        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">待處理事項</h3>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="/orders"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                pendingActions.pendingShipments > 0
+                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              配送待處理
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                pendingActions.pendingShipments > 0 ? 'bg-amber-200 text-amber-800' : 'bg-neutral-200 text-neutral-600'
+              }`}>
+                {pendingActions.pendingShipments}
+              </span>
+            </a>
+            <a
+              href="/products"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                pendingActions.lowInventory > 0
+                  ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              庫存警示
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                pendingActions.lowInventory > 0 ? 'bg-red-200 text-red-800' : 'bg-neutral-200 text-neutral-600'
+              }`}>
+                {pendingActions.lowInventory}
+              </span>
+            </a>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-400 cursor-default select-none">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              廠商請款
+              <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-neutral-200 text-neutral-500">—</span>
+            </div>
           </div>
         </div>
 
