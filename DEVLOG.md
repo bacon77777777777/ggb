@@ -219,6 +219,19 @@ NOTIFY_TARGET_ID   = {User ID 或 Group ID}
 #### W5-4｜競品風向監控（Phase 4-7）
 - [ ] 排程每週用 Claude API 分析指定同業公開社群頁面
 - [ ] 整理摘要報告，LINE 推播
+
+**競品清單（分析對象）**
+| 網站 | URL |
+|---|---|
+| 91toy | https://www.91toy.com.tw/ |
+| Slime Toy | https://slimetoy.com.tw/ |
+| KujiFlip | https://kujiflip.tw/ |
+| Dopamine Kuji | https://dopaminekuji.com/ |
+| 混線一番 | https://h5.hunxianyifan.com/ |
+| City DAO | https://citydao.world/ |
+| EggBox Kuji | https://eggboxkuji.com/lottery |
+| Wonder Kuji | https://wonderkuji.com.tw/ |
+
 - 📦 推版節點
 
 ---
