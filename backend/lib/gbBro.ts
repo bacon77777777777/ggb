@@ -93,17 +93,17 @@ async function getPendingActions() {
   }
 }
 
-async function getInventoryStatus(productName?: string, lowStockOnly?: boolean) {
+async function getInventoryStatus(productName?: string, maxRemaining?: number) {
   const supabase = getSupabaseAdmin()
   let query = supabase
     .from('products')
     .select('name, remaining, total_count, status, product_code')
     .neq('status', 'archived')
     .order('remaining', { ascending: true })
-    .limit(15)
+    .limit(20)
 
   if (productName) query = query.ilike('name', `%${productName}%`)
-  if (lowStockOnly) query = query.lte('remaining', 3).gt('total_count', 0)
+  if (maxRemaining !== undefined) query = query.lte('remaining', maxRemaining)
 
   const { data } = await query
   return data ?? []
@@ -158,12 +158,12 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_inventory_status',
-    description: '查詢商品庫存狀態。可依商品名稱搜尋，或只顯示庫存低的商品。',
+    description: '查詢商品庫存狀態。可依商品名稱搜尋，或設定庫存上限篩選低庫存商品。例如「庫存少於10」就傳 max_remaining: 9。',
     input_schema: {
       type: 'object' as const,
       properties: {
         product_name: { type: 'string', description: '商品名稱關鍵字（選填）' },
-        low_stock_only: { type: 'boolean', description: '只顯示庫存 ≤ 3 的商品' },
+        max_remaining: { type: 'number', description: '庫存上限（含），只顯示 remaining ≤ 此值的商品。例如少於10就傳9。' },
       },
     },
   },
@@ -205,7 +205,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<st
       case 'get_pending_actions':
         return JSON.stringify(await getPendingActions())
       case 'get_inventory_status':
-        return JSON.stringify(await getInventoryStatus(input.product_name, input.low_stock_only))
+        return JSON.stringify(await getInventoryStatus(input.product_name, input.max_remaining))
       case 'get_recent_orders':
         return JSON.stringify(await getRecentOrders(input.status, input.limit))
       case 'lookup_user':
