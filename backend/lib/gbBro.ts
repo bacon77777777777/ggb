@@ -500,7 +500,67 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['user_id'],
     },
   },
+  {
+    name: 'update_product_stock',
+    description: '直接調整商品庫存數量（products.remaining）。delta 為正數表示增加，負數表示減少。可同時傳多個商品 ID。老闆下指令後立即執行，不需再次確認。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_ids: {
+          type: 'array',
+          items: { type: 'number' },
+          description: '要調整的商品 ID 陣列（從 get_inventory_status 或 run_sql 取得）',
+        },
+        delta: {
+          type: 'number',
+          description: '每個商品庫存的增減量，正數=增加，負數=減少',
+        },
+        reason: {
+          type: 'string',
+          description: '調整原因（選填，記錄用）',
+        },
+      },
+      required: ['product_ids', 'delta'],
+    },
+  },
 ]
+
+// ─── Stock write tool ──────────────────────────────────────────────
+
+async function updateProductStock(productIds: number[], delta: number, reason?: string) {
+  const supabase = getSupabaseAdmin()
+  const results: Array<{ id: number; name: string; old: number; new: number }> = []
+  const errors: Array<{ id: number; error: string }> = []
+
+  for (const id of productIds) {
+    const { data: product } = await supabase
+      .from('products')
+      .select('id, name, remaining')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!product) { errors.push({ id, error: '找不到商品' }); continue }
+
+    const newRemaining = Math.max(0, product.remaining + delta)
+    const { error: updateErr } = await supabase
+      .from('products')
+      .update({ remaining: newRemaining, updated_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (updateErr) { errors.push({ id, error: updateErr.message }); continue }
+
+    results.push({ id, name: product.name, old: product.remaining, new: newRemaining })
+  }
+
+  return {
+    updated: results,
+    errors,
+    summary: results
+      .map(r => `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）`)
+      .join('、'),
+    reason: reason ?? null,
+  }
+}
 
 // ─── Risk action tools ─────────────────────────────────────────────
 
@@ -595,6 +655,8 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await riskAction(input.user_id, 'flag', input.reason, actorId))
       case 'unflag_user':
         return JSON.stringify(await riskAction(input.user_id, 'unflag', undefined, actorId))
+      case 'update_product_stock':
+        return JSON.stringify(await updateProductStock(input.product_ids, input.delta, input.reason))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
@@ -651,13 +713,17 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 
 ## 工具
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
-執行：更新月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值
+執行：更新月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值、**調整商品庫存數量**
 風控：凍結帳號、解除凍結、標記可疑、解除可疑標記
 
 執行原則：
-- 寫入操作前先用 lookup_user 確認對象正確再執行
+**收到老闆的執行指令，立即執行，執行完後回報，絕不把問題丟回給老闆。**
+- 「幫我增加庫存5個」→ 先用 run_sql 查符合條件的商品 ID，再用 update_product_stock 直接更新，最後回報「已完成：A商品 0→5、B商品 4→9」
+- 「增加庫存」這類指令，先查出所有符合條件的商品，全部一次執行
 - 風控操作（freeze/flag）直接執行，不需要再次確認，老闆下指令就等於授權
-- 執行後主動回報：操作類型 + 對象姓名/email
+- 人員相關寫入前用 lookup_user 確認對象
+- 執行後回報：操作類型 + 對象 + 執行前後數值
+- **永遠不問「要通知誰？」、「要繼續嗎？」、「確認執行？」— 老闆說做就做**
 
 ## LINE 推播時間表
 每天固定推播（只有發現異常/待處理事項才推，無事靜默）：
