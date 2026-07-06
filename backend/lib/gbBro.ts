@@ -690,6 +690,53 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 今天台灣時間：${dateStr}`
 }
 
+// ─── Conversation history (multi-turn context per LINE user) ──────
+
+const HISTORY_TTL_MS  = 30 * 60_000  // 30 分鐘無互動視為新對話
+const HISTORY_MAX_MSG = 20            // 每人最多保留幾則（user+assistant 各算一則）
+const HISTORY_LOAD    = 12            // 每次最多載入幾則（6 輪）
+
+async function loadHistory(lineUserId: string): Promise<Anthropic.MessageParam[]> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const cutoff = new Date(Date.now() - HISTORY_TTL_MS).toISOString()
+    const { data } = await supabase
+      .from('line_conversations')
+      .select('role, content')
+      .eq('line_user_id', lineUserId)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(HISTORY_LOAD)
+    if (!data || data.length === 0) return []
+    return data.reverse().map(r => ({
+      role:    r.role as 'user' | 'assistant',
+      content: r.content,
+    }))
+  } catch {
+    return []
+  }
+}
+
+async function saveHistory(lineUserId: string, userMsg: string, assistantMsg: string) {
+  try {
+    const supabase = getSupabaseAdmin()
+    await supabase.from('line_conversations').insert([
+      { line_user_id: lineUserId, role: 'user',      content: userMsg },
+      { line_user_id: lineUserId, role: 'assistant', content: assistantMsg },
+    ])
+    // 保留最新 HISTORY_MAX_MSG 則，刪除更舊的
+    const { data: all } = await supabase
+      .from('line_conversations')
+      .select('id')
+      .eq('line_user_id', lineUserId)
+      .order('created_at', { ascending: false })
+    if (all && all.length > HISTORY_MAX_MSG) {
+      const toDelete = all.slice(HISTORY_MAX_MSG).map((r: any) => r.id)
+      await supabase.from('line_conversations').delete().in('id', toDelete)
+    }
+  } catch { /* ignore, don't break the main flow */ }
+}
+
 // ─── Main entry point ──────────────────────────────────────────────
 
 export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
@@ -697,9 +744,16 @@ export async function askGbBro(question: string, lineUserId?: string): Promise<s
   if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
 
   const client = new Anthropic({ apiKey })
+
+  // 載入對話歷史（30 分鐘內的上下文）
+  const history = lineUserId ? await loadHistory(lineUserId) : []
+
   const messages: Anthropic.MessageParam[] = [
+    ...history,
     { role: 'user', content: question },
   ]
+
+  let finalAnswer: string | null = null
 
   for (let round = 0; round < 5; round++) {
     const response = await client.messages.create({
@@ -712,7 +766,8 @@ export async function askGbBro(question: string, lineUserId?: string): Promise<s
 
     if (response.stop_reason === 'end_turn') {
       const textBlock = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
-      return textBlock?.text ?? '（GB哥沒有回應，請再試一次）'
+      finalAnswer = textBlock?.text ?? '（GB哥沒有回應，請再試一次）'
+      break
     }
 
     if (response.stop_reason === 'tool_use') {
@@ -733,5 +788,12 @@ export async function askGbBro(question: string, lineUserId?: string): Promise<s
     break
   }
 
-  return '（GB哥思考超時，請再試一次）'
+  const answer = finalAnswer ?? '（GB哥思考超時，請再試一次）'
+
+  // 儲存這輪對話（只存純文字，不存 tool 中間步驟）
+  if (lineUserId) {
+    await saveHistory(lineUserId, question, answer)
+  }
+
+  return answer
 }
