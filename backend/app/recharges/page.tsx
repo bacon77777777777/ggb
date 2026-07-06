@@ -347,7 +347,6 @@ export default function RechargesPage() {
 
           const totalAmount  = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
           const totalFee     = successRecs.reduce((s, r) => s + (r.payment_fee ?? 0), 0)
-          const totalNet     = totalAmount - totalFee
           const totalBonus   = sortedRecords.reduce((s, r) => s + (r.bonus ?? 0), 0)
 
           // 手動真實收款（銀行轉帳/現金/LINE Pay）
@@ -358,13 +357,15 @@ export default function RechargesPage() {
             (s, k) => s + (methodMap[k]?.count ?? 0), 0
           )
 
-          // 行銷費用（promotion/compensation/test）
+          // 行銷費用（promotion/compensation/test）— 屬於成本，從實拿金額扣除
           const marketingAmount = (MARKETING_KEYS as readonly string[]).reduce(
             (s, k) => s + (methodMap[k]?.amount ?? 0), 0
           )
           const marketingCount = (MARKETING_KEYS as readonly string[]).reduce(
             (s, k) => s + (methodMap[k]?.count ?? 0), 0
           )
+
+          const totalNet = totalAmount - totalFee - marketingAmount
 
           return (
             <div className="space-y-3">
@@ -398,7 +399,7 @@ export default function RechargesPage() {
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
                   <p className="text-2xl font-black text-blue-600">NT$ {totalNet.toLocaleString()}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">扣除手續費後</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">扣除手續費＋行銷費用</p>
                 </div>
               </div>
 
