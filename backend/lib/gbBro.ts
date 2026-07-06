@@ -287,6 +287,22 @@ async function dismissRechargeReview(id: number, note?: string, actorId?: string
   return data
 }
 
+async function fetchWebpage(url: string): Promise<{ content?: string; error?: string }> {
+  try {
+    const jinaUrl = `https://r.jina.ai/${url}`
+    const res = await fetch(jinaUrl, {
+      headers: { 'Accept': 'text/plain', 'X-No-Cache': 'true' },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) return { error: `HTTP ${res.status}` }
+    const text = await res.text()
+    // 截斷避免 context 爆炸（保留前 8000 字）
+    return { content: text.slice(0, 8000) }
+  } catch (e: any) {
+    return { error: e?.message ?? '無法擷取網頁' }
+  }
+}
+
 // ─── Tool definitions ──────────────────────────────────────────────
 
 const TOOLS: Anthropic.Tool[] = [
@@ -624,6 +640,17 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['ids', 'status'],
     },
   },
+  {
+    name: 'fetch_webpage',
+    description: '擷取任意網頁內容並轉為純文字（用於調研競品、查詢外部資訊）。傳入完整 URL（含 https://）。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: { type: 'string', description: '要擷取的網頁完整 URL' },
+      },
+      required: ['url'],
+    },
+  },
 ]
 
 // ─── Stock write tool ──────────────────────────────────────────────
@@ -939,6 +966,8 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await toggleCoupon(input.code, input.is_active))
       case 'update_content_draft':
         return JSON.stringify(await updateContentDraft(input.ids, input.status))
+      case 'fetch_webpage':
+        return JSON.stringify(await fetchWebpage(input.url))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
