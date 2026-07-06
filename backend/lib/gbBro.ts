@@ -41,6 +41,16 @@ async function runSql(query: string) {
   return { rows, rowCount: rows.length }
 }
 
+async function logCapabilityGap(question: string, context?: string) {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('capability_gaps')
+    .insert({ question, context: context ?? null })
+    .select('id')
+    .single()
+  return { logged: true, id: data?.id }
+}
+
 async function getRealUserIds(): Promise<string[]> {
   const supabase = getSupabaseAdmin()
   const { data } = await supabase
@@ -420,6 +430,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'log_capability_gap',
+    description: '當 run_sql 確認平台沒有追蹤某個指標（資料根本不存在，非時間範圍問題），呼叫此工具記錄缺口讓 AI 技術長自動修復，最快 6 小時內完成。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        question: { type: 'string', description: '老闆問的問題（原文）' },
+        context:  { type: 'string', description: 'GB哥嘗試了什麼查詢、為何查不到' },
+      },
+      required: ['question'],
+    },
+  },
+  {
     name: 'run_sql',
     description: '執行任意唯讀 SQL（SELECT / WITH）查詢平台資料庫。用於需要彈性分析的問題，例如排名、交叉統計、趨勢分析等。只允許 SELECT，不可 INSERT/UPDATE/DELETE。',
     input_schema: {
@@ -462,6 +484,8 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await markOrderDelivered(input.identifier, actorId))
       case 'dismiss_recharge_review':
         return JSON.stringify(await dismissRechargeReview(input.id, input.note, actorId))
+      case 'log_capability_gap':
+        return JSON.stringify(await logCapabilityGap(input.question, input.context))
       case 'run_sql':
         return JSON.stringify(await runSql(input.query))
       default:
@@ -494,6 +518,7 @@ function buildSystemPrompt(): string {
   例如問「VIP 是誰」→ 自行定義多個維度（儲值最多、消費最多、抽獎最多、G幣最多）一起查，全部列出來
   例如問「最近表現好的商品」→ 自己定義「抽獎次數最多」或「庫存消耗率最高」直接查
 - 永遠不說「需要更多資訊」或「你想查的是哪種？」，有模糊就多角度全查
+- **資料真的不存在時**：先呼叫 log_capability_gap 記錄，再告訴老闆：「這個數據目前還沒追蹤，已通知 AI 技術長，最快 6 小時內修復，修復後可重新詢問。」
 
 ## 資料庫 Schema（run_sql 使用）
 重要規則：
