@@ -5,33 +5,25 @@ export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-// 推播目標：NOTIFY_TARGET_TYPE = 'user' | 'group'，NOTIFY_TARGET_ID = userId 或 groupId
-const NOTIFY_TYPE = process.env.NOTIFY_TARGET_TYPE ?? 'user'
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID   ?? ''
+const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
+const TW_MS       = 8 * 3600_000
 
-async function pushLineMessage(text: string): Promise<{ status: number; body: unknown }> {
-  if (!LINE_TOKEN || !NOTIFY_ID) {
-    console.warn('[daily-report] LINE_TOKEN or NOTIFY_ID missing')
-    return { status: 0, body: 'missing config' }
-  }
-  const res = await fetch('https://api.line.me/v2/bot/message/push', {
+async function pushLine(text: string) {
+  if (!LINE_TOKEN || !NOTIFY_ID) return
+  await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${LINE_TOKEN}`,
-    },
-    body: JSON.stringify({
-      to: NOTIFY_ID,
-      messages: [{ type: 'text', text }],
-    }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
+    body: JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
   })
-  const body = await res.json().catch(() => res.text())
-  console.log('[daily-report] LINE push status:', res.status, JSON.stringify(body))
-  return { status: res.status, body }
 }
 
+function fmt(n: number) {
+  return n.toLocaleString('en-US')
+}
+
+export async function GET(req: NextRequest) { return POST(req) }
+
 export async function POST(req: NextRequest) {
-  // 驗證 CRON_SECRET（pg_cron / 外部 cron 服務帶此 header）
   const secret = req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret') ?? ''
   if (!CRON_SECRET || secret !== CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,72 +32,83 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseAdmin()
 
-    // 昨日台灣時間 00:00 ~ 23:59（UTC+8）
-    const now = new Date()
-    const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000)
-    const twYesterday = new Date(twNow)
-    twYesterday.setUTCDate(twYesterday.getUTCDate() - 1)
-    const yyyymmdd = twYesterday.toISOString().slice(0, 10)
-    const startUTC = new Date(`${yyyymmdd}T16:00:00.000Z`) // 昨日 00:00 CST = 前天 16:00 UTC
-    const endUTC   = new Date(`${yyyymmdd}T15:59:59.999Z`) // 昨日 23:59 CST = 今日 07:59 UTC
-    // 修正：用 UTC offset 重算
-    const dayStart = new Date(Date.UTC(
-      twYesterday.getUTCFullYear(), twYesterday.getUTCMonth(), twYesterday.getUTCDate(),
-      0, 0, 0
-    ) - 8 * 3600_000) // 昨日 00:00 CST → UTC
-    const dayEnd = new Date(dayStart.getTime() + 86400_000 - 1)
+    // Yesterday window in TW time (UTC+8)
+    const twNow = new Date(Date.now() + TW_MS)
+    const twToday = new Date(Date.UTC(twNow.getUTCFullYear(), twNow.getUTCMonth(), twNow.getUTCDate()))
+    const yestStart = new Date(twToday.getTime() - TW_MS - 86400_000)
+    const yestEnd   = new Date(twToday.getTime() - TW_MS)
+    const monthStart = new Date(Date.UTC(twNow.getUTCFullYear(), twNow.getUTCMonth(), 1) - TW_MS)
 
-    const [{ data: recharges }, { data: draws }, { data: newUsers }, { count: pendingShipments }, { count: lowInventory }] =
-      await Promise.all([
-        supabase
-          .from('recharge_records')
-          .select('amount')
-          .gte('created_at', dayStart.toISOString())
-          .lt('created_at',  dayEnd.toISOString()),
-        supabase
-          .from('draw_records')
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', dayStart.toISOString())
-          .lt('created_at',  dayEnd.toISOString()),
-        supabase
-          .from('users')
-          .select('id', { count: 'exact', head: true })
-          .or('is_bot.eq.false,is_bot.is.null')
-          .gte('created_at', dayStart.toISOString())
-          .lt('created_at',  dayEnd.toISOString()),
-        supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
-        supabase.from('products').select('id', { count: 'exact', head: true }).gt('total_count', 0).lte('remaining', 3).neq('status', 'archived'),
-      ])
+    const [
+      rechargeYest,
+      drawYest,
+      newUsersRes,
+      rechargeMonth,
+      { count: pendingShipments },
+      { count: lowInventory },
+      { count: pendingRefunds },
+      { count: pendingSettlements },
+      { count: pendingReview },
+    ] = await Promise.all([
+      supabase.from('recharge_records').select('amount').eq('status', 'success')
+        .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
+      supabase.from('draw_records').select('user_id, product:products(price)')
+        .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .or('is_bot.eq.false,is_bot.is.null')
+        .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
+      supabase.from('recharge_records').select('amount').eq('status', 'success')
+        .gte('created_at', monthStart.toISOString()),
+      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
+      supabase.from('products').select('id', { count: 'exact', head: true }).gt('total_count', 0).lte('remaining', 3).neq('status', 'archived'),
+      supabase.from('refund_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('settlement_snapshots').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+      supabase.from('recharge_records').select('id', { count: 'exact', head: true }).eq('needs_review', true).eq('status', 'pending'),
+    ])
 
-    const gmv     = (recharges ?? []).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0)
-    const drawCnt = (draws as any) ?? 0
-    const nuCnt   = (newUsers as any) ?? 0
+    const recharges     = rechargeYest.data ?? []
+    const draws         = drawYest.data ?? []
+    const totalRecharge = recharges.reduce((s, r) => s + Number(r.amount), 0)
+    const totalSpent    = draws.reduce((s, r) => s + Number((r.product as any)?.price ?? 0), 0)
+    const drawCount     = draws.length
+    const uniquePlayers = new Set(draws.map(d => d.user_id)).size
+    const newUsers      = newUsersRes.count ?? 0
+    const monthTotal    = (rechargeMonth.data ?? []).reduce((s, r) => s + Number(r.amount), 0)
 
-    const dateLabel = `${twYesterday.getUTCFullYear()}/${String(twYesterday.getUTCMonth() + 1).padStart(2, '0')}/${String(twYesterday.getUTCDate()).padStart(2, '0')}`
+    const yestLabel = new Date(yestStart.getTime() + TW_MS)
+      .toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })
+
+    const pendingLines: string[] = []
+    if ((pendingShipments  ?? 0) > 0) pendingLines.push(`📦 待配送 ${pendingShipments} 筆`)
+    if ((lowInventory      ?? 0) > 0) pendingLines.push(`⚠️ 低庫存 ${lowInventory} 件`)
+    if ((pendingRefunds    ?? 0) > 0) pendingLines.push(`↩️ 待審退款 ${pendingRefunds} 筆`)
+    if ((pendingSettlements ?? 0) > 0) pendingLines.push(`📋 廠商月結 ${pendingSettlements} 份`)
+    if ((pendingReview     ?? 0) > 0) pendingLines.push(`🔍 待複核儲值 ${pendingReview} 筆`)
 
     const lines = [
-      `📊 吉吉比 每日早報`,
-      `📅 ${dateLabel}`,
+      `☀️ 吉吉比 每日早報`,
+      yestLabel,
       ``,
-      `💰 昨日儲值（GMV）：NT$${gmv.toLocaleString()}`,
-      `🎰 抽獎次數：${drawCnt} 次`,
-      `👤 新增用戶：${nuCnt} 人`,
+      `【昨日數據】`,
+      `💰 儲值金額　NT$ ${fmt(totalRecharge)}`,
+      `🎮 消費金額　NT$ ${fmt(totalSpent)}`,
+      `🎯 抽獎次數　${fmt(drawCount)} 次`,
+      `👤 參與玩家　${fmt(uniquePlayers)} 人`,
+      `🆕 新增會員　${fmt(newUsers)} 人`,
       ``,
-      `📦 待配送訂單：${pendingShipments ?? 0} 筆${(pendingShipments ?? 0) > 0 ? ' ⚠️' : ''}`,
-      `🔴 庫存警示：${lowInventory ?? 0} 項${(lowInventory ?? 0) > 0 ? ' ⚠️' : ''}`,
+      `【本月累計儲值】`,
+      `💵 NT$ ${fmt(monthTotal)}`,
+      ``,
+      pendingLines.length > 0
+        ? `【待處理事項】\n${pendingLines.join('\n')}`
+        : `✅ 無待處理事項`,
     ]
 
-    const message = lines.join('\n')
-    const lineResult = await pushLineMessage(message)
+    await pushLine(lines.join('\n'))
 
-    return NextResponse.json({ ok: true, date: dateLabel, gmv, drawCnt, nuCnt, line: lineResult })
+    return NextResponse.json({ ok: true, date: yestLabel, totalRecharge, totalSpent, drawCount, uniquePlayers, newUsers, monthTotal })
   } catch (e: any) {
     console.error('[daily-report] error:', e)
     return NextResponse.json({ error: e?.message }, { status: 500 })
   }
-}
-
-// 方便手動觸發測試（GET + secret）
-export async function GET(req: NextRequest) {
-  return POST(req)
 }
