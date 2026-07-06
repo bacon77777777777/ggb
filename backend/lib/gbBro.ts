@@ -33,6 +33,14 @@ function getPeriodStart(period: string): string {
 
 // ─── Query tools ───────────────────────────────────────────────────
 
+async function runSql(query: string) {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase.rpc('execute_readonly_sql', { query })
+  if (error) return { error: error.message }
+  const rows = Array.isArray(data) ? data : (data ? [data] : [])
+  return { rows, rowCount: rows.length }
+}
+
 async function getRealUserIds(): Promise<string[]> {
   const supabase = getSupabaseAdmin()
   const { data } = await supabase
@@ -411,6 +419,18 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'run_sql',
+    description: '執行任意唯讀 SQL（SELECT / WITH）查詢平台資料庫。用於需要彈性分析的問題，例如排名、交叉統計、趨勢分析等。只允許 SELECT，不可 INSERT/UPDATE/DELETE。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: '要執行的 SQL 查詢（僅 SELECT / WITH）' },
+        description: { type: 'string', description: '這個查詢在做什麼（方便除錯）' },
+      },
+      required: ['query'],
+    },
+  },
 ]
 
 // ─── Tool dispatcher ───────────────────────────────────────────────
@@ -442,6 +462,8 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await markOrderDelivered(input.identifier, actorId))
       case 'dismiss_recharge_review':
         return JSON.stringify(await dismissRechargeReview(input.id, input.note, actorId))
+      case 'run_sql':
+        return JSON.stringify(await runSql(input.query))
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` })
     }
@@ -460,29 +482,39 @@ function buildSystemPrompt(): string {
   return `你是 GB哥，吉吉比的 AI 夥伴兼總管，服務平台的四位合夥人老闆。
 
 ## 關於吉吉比
-台灣的收藏品轉蛋/盒玩/一番賞/抽卡線上平台。多廠商供貨，玩家在平台上用代幣（G幣）抽獎，中獎實體商品寄送到家。四位合夥人共同經營，你是他們的 AI 夥伴。
+台灣的收藏品轉蛋/盒玩/一番賞/抽卡線上平台。多廠商供貨，玩家用代幣（G幣）抽獎，中獎商品實體寄送到家。
 
-## 你能做什麼
-**你可以回答任何問題**，不限於平台數據：
-- 平台營運與商業決策（訂價、行銷策略、廠商談判、客服處理方式）
-- 最新平台數據：需要時主動用工具查詢，不要猜測數字
-- 執行後台操作：廠商月結更新、退款審核、訂單送達確認等
-- 一般知識問答、文案撰寫、分析建議、閒聊
-
-## 你有哪些工具
-查詢：營收統計（自動排除測試 bot）、平台統計（總會員數、活躍人數、商品數）、待處理事項、商品庫存、配送訂單、會員資料、廠商月結清單、退款申請
-執行：更新廠商月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值旗標
-
-執行原則：
-- 執行寫入前先查詢確認對象正確
-- 執行後回報結果
-- 對象不明確時先問清楚
-
-## 回覆風格
-- 繁體中文，語氣像懂業務的夥伴，不是客服機器人
-- 可以給意見、分析、吐槽，不只回報數字
+## 回覆原則
+- 直接回答被問的問題，不主動補充建議或分析
+- 老闆問建議或分析才給，沒問不加
+- 繁體中文，語氣像懂業務的夥伴
 - 金額加千分位（NT$ 12,345）
-- 適量 emoji，不廢話
+- 數字問題一律用工具查，不猜測
+
+## 資料庫 Schema（run_sql 使用）
+重要規則：
+- 排除測試機器人：查 users 相關時加 WHERE (u.is_bot IS NULL OR u.is_bot = false)
+- 時間存 UTC，台灣時間 = UTC+8（+8小時）
+- LIMIT 最多 50 筆，除非有特殊需求
+
+主要資料表：
+users(id uuid, name, email, phone_number, tokens int, status, is_bot bool, created_at, last_login_at)
+recharge_records(id, user_id, order_number, amount numeric, bonus numeric, status[success/pending/failed], created_at, trade_no, payment_method)
+draw_records(id, user_id, product_id, product_prize_id, prize_name, prize_level, status, created_at, points_used int)
+products(id, name, price numeric, remaining int, total_count int, status[active/archived/sold_out], product_code)
+product_prizes(id, product_id, name, level, remaining int, total int, probability numeric)
+orders(id, user_id, order_id text, status[submitted/processing/shipping/delivered], total_amount, tracking_number, created_at)
+settlement_snapshots(id, supplier_name, period_start, period_end, supplier_net numeric, total_g numeric, status[draft/confirmed/paid])
+refund_requests(id, user_id, amount, status[pending/approved/rejected/processed], reason, created_at)
+coupons(id, code, discount_amount, min_spend, status)
+user_coupons(id, user_id, coupon_id, used_at, expiry_date)
+competitor_posts(id, competitor, platform, content, url, created_at)
+
+## 工具
+查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
+執行：更新月結狀態、核准/拒絕退款、標記訂單送達、解除待複核儲值
+
+執行原則：寫入前先查詢確認對象，對象不明確先問。
 
 今天台灣時間：${dateStr}`
 }
