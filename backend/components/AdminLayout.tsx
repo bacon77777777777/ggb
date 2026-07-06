@@ -486,6 +486,13 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
+        id: 'marketing',
+        title: '行銷工具',
+        items: [
+          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
+        ],
+      },
+      {
         id: 'blacktech',
         title: '其他黑科技',
         items: [

@@ -26,6 +26,22 @@ SELECT cron.schedule(
   $$
 );
 
+-- 每日 01:00 UTC（= 台灣 09:00）生成 AI 文案草稿
+SELECT cron.schedule(
+  'daily-content-drafts',        -- job 名稱
+  '0 1 * * *',                   -- 每日 01:00 UTC（= 台灣 09:00）
+  $$
+    SELECT net.http_post(
+      url     := current_setting('app.backend_url') || '/api/cron/generate-content',
+      headers := jsonb_build_object(
+        'Content-Type',    'application/json',
+        'x-cron-secret',   current_setting('app.cron_secret')
+      ),
+      body    := '{}'::jsonb
+    )
+  $$
+);
+
 -- 設定 GUC 參數（執行後在 Supabase Dashboard → SQL Editor 手動設定一次）
 -- ALTER DATABASE postgres SET app.backend_url  = 'https://your-backend.vercel.app';
 -- ALTER DATABASE postgres SET app.cron_secret  = 'your-cron-secret';
