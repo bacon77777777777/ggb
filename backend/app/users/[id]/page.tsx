@@ -1039,6 +1039,7 @@ export default function UserDetailPage() {
                                 dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
                                 manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                                 marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
                               }
                               const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
                               const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
