@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-export type WebhookSource = 'newebpay_payment' | 'ecpay_payment' | 'ecpay_logistics'
+export type WebhookSource = 'ecpay_payment' | 'ecpay_logistics'
 export type WebhookResult = 'processed' | 'duplicate' | 'failed' | 'ignored'
 
 function getSupabase() {
