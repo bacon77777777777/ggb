@@ -432,7 +432,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '對帳報表',
         items: [
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
-          { name: '待複核儲值', path: '/recharge-review', icon: IconRecharges },
           { name: '物流明細', path: '/reports/logistics', icon: IconReports },
           { name: '折價券明細', path: '/reports/coupons', icon: IconReports },
           { name: '消費明細', path: '/reports/products', icon: IconReports },
@@ -454,10 +453,17 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
+        id: 'members',
+        title: '會員管理',
+        items: [
+          { name: '會員管理', path: '/users', icon: IconUsers },
+          { name: '待複核儲值', path: '/recharge-review', icon: IconRecharges },
+        ],
+      },
+      {
         id: 'system',
         title: '系統設定',
         items: [
-          { name: '會員管理', path: '/users', icon: IconUsers },
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '輪播圖管理', path: '/banners', icon: IconBanners },
           { name: '文章管理', path: '/news', icon: IconNews },
