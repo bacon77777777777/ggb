@@ -31,6 +31,51 @@ export function generateCheckMacValue(
   return crypto.createHash('sha256').update(ecpayUrlEncode(raw)).digest('hex').toUpperCase()
 }
 
+// ECPay QueryTradeInfo — returns TradeStatus: '1' = paid, '0' = unpaid/failed
+export async function queryEcpayTrade(merchantTradeNo: string): Promise<{
+  tradeStatus: string   // '1' = paid
+  tradeAmt: string
+  paymentDate: string
+  raw: Record<string, string>
+} | null> {
+  const merchantId = process.env.ECPAY_MERCHANT_ID
+  const hashKey    = process.env.ECPAY_HASH_KEY
+  const hashIV     = process.env.ECPAY_HASH_IV
+  if (!merchantId || !hashKey || !hashIV) return null
+
+  const baseUrl = (process.env.ECPAY_API_URL ?? '')
+    .replace('/Cashier/AioCheckOut/V5', '')
+
+  const timestamp = Math.floor(Date.now() / 1000).toString()
+  const params: Record<string, string> = {
+    MerchantID:       merchantId,
+    MerchantTradeNo:  merchantTradeNo,
+    TimeStamp:        timestamp,
+  }
+  params.CheckMacValue = generateCheckMacValue(params, hashKey, hashIV)
+
+  const body = new URLSearchParams(params).toString()
+  const res = await fetch(`${baseUrl}/Cashier/QueryTradeInfo/V5`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  })
+
+  const text = await res.text()
+  const result: Record<string, string> = {}
+  for (const part of text.split('&')) {
+    const eq = part.indexOf('=')
+    if (eq > -1) result[part.slice(0, eq)] = decodeURIComponent(part.slice(eq + 1))
+  }
+
+  return {
+    tradeStatus: result.TradeStatus ?? '',
+    tradeAmt:    result.TradeAmt ?? '',
+    paymentDate: result.PaymentDate ?? '',
+    raw:         result,
+  }
+}
+
 export function verifyCheckMacValue(
   params: Record<string, string>,
   hashKey: string,
