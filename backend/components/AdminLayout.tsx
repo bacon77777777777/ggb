@@ -437,7 +437,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '消費明細', path: '/reports/products', icon: IconReports },
           { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
           { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
-          { name: '代幣帳本', path: '/token-ledger', icon: IconLedger },
         ],
       },
       {

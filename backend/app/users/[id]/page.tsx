@@ -88,7 +88,7 @@ export default function UserDetailPage() {
   const [newPassword, setNewPassword] = useState('')
   const [resetPasswordMode, setResetPasswordMode] = useState<'manual' | 'auto'>('manual')
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled'>('orders')
+  const [activeTab, setActiveTab] = useState<'orders' | 'draws' | 'recharges' | 'warehouse' | 'dismantled' | 'ledger'>('orders')
   const [userDismantled, setUserDismantled] = useState<any[]>([])
 
   // Data states
@@ -96,6 +96,14 @@ export default function UserDetailPage() {
   const [userDraws, setUserDraws] = useState<Draw[]>([])
   const [userRecharges, setUserRecharges] = useState<Recharge[]>([])
   const [userWarehouse, setUserWarehouse] = useState<WarehouseItem[]>([])
+
+  // 代幣帳本
+  const [ledger, setLedger] = useState<any[]>([])
+  const [ledgerTotal, setLedgerTotal] = useState(0)
+  const [ledgerPage, setLedgerPage] = useState(1)
+  const [ledgerPages, setLedgerPages] = useState(1)
+  const [ledgerLoading, setLedgerLoading] = useState(false)
+  const [ledgerLoaded, setLedgerLoaded] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -284,6 +292,24 @@ export default function UserDetailPage() {
       fetchData()
     }
   }, [userId])
+
+  const fetchLedger = async (page = 1) => {
+    if (!userId) return
+    setLedgerLoading(true)
+    const res = await fetch(`/api/admin/token-ledger?userId=${userId}&page=${page}`)
+    const data = await res.json()
+    setLedger(data.ledger ?? [])
+    setLedgerTotal(data.total ?? 0)
+    setLedgerPage(page)
+    setLedgerPages(data.pages ?? 1)
+    setLedgerLoading(false)
+    setLedgerLoaded(true)
+  }
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab)
+    if (tab === 'ledger' && !ledgerLoaded) fetchLedger(1)
+  }
 
   const handleCopy = async (text: string, fieldName: string) => {
     try {
@@ -660,7 +686,7 @@ export default function UserDetailPage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2 border-b border-neutral-200">
                   <button
-                    onClick={() => setActiveTab('orders')}
+                    onClick={() => handleTabChange('orders')}
                     className={`px-4 py-2 text-sm font-medium transition-colors relative ${
                       activeTab === 'orders'
                         ? 'text-primary border-b-2 border-primary'
@@ -675,7 +701,7 @@ export default function UserDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('draws')}
+                    onClick={() => handleTabChange('draws')}
                     className={`px-4 py-2 text-sm font-medium transition-colors relative ${
                       activeTab === 'draws'
                         ? 'text-primary border-b-2 border-primary'
@@ -690,7 +716,7 @@ export default function UserDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('recharges')}
+                    onClick={() => handleTabChange('recharges')}
                     className={`px-4 py-2 text-sm font-medium transition-colors relative ${
                       activeTab === 'recharges'
                         ? 'text-primary border-b-2 border-primary'
@@ -705,7 +731,7 @@ export default function UserDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('warehouse')}
+                    onClick={() => handleTabChange('warehouse')}
                     className={`px-4 py-2 text-sm font-medium transition-colors relative ${
                       activeTab === 'warehouse'
                         ? 'text-primary border-b-2 border-primary'
@@ -720,7 +746,7 @@ export default function UserDetailPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('dismantled')}
+                    onClick={() => handleTabChange('dismantled')}
                     className={`px-4 py-2 text-sm font-medium transition-colors relative ${
                       activeTab === 'dismantled'
                         ? 'text-red-500 border-b-2 border-red-500'
@@ -734,8 +760,18 @@ export default function UserDetailPage() {
                       </span>
                     )}
                   </button>
+                  <button
+                    onClick={() => handleTabChange('ledger')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                      activeTab === 'ledger'
+                        ? 'text-violet-600 border-b-2 border-violet-600'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    }`}
+                  >
+                    代幣帳本
+                  </button>
                 </div>
-                {activeTab !== 'warehouse' && activeTab !== 'dismantled' && (
+                {activeTab !== 'warehouse' && activeTab !== 'dismantled' && activeTab !== 'ledger' && (
                   <Link 
                     href={
                       activeTab === 'orders' ? '/orders' :
@@ -968,6 +1004,69 @@ export default function UserDetailPage() {
                     </div>
                   )}
                 </>
+              )}
+
+              {/* 代幣帳本 */}
+              {activeTab === 'ledger' && (
+                <div>
+                  {ledgerLoading ? (
+                    <div className="text-center py-12 text-neutral-400">載入中...</div>
+                  ) : ledger.length === 0 ? (
+                    <div className="text-center py-12 text-neutral-400">無代幣異動紀錄</div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-neutral-50 border-b border-neutral-200">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">時間</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">類型</th>
+                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">說明</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">異動 (G)</th>
+                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ledger.map((row: any, i: number) => {
+                              const isPos = row.delta > 0
+                              const typeMap: Record<string, { label: string; cls: string }> = {
+                                recharge:  { label: '儲值',   cls: 'bg-emerald-50 text-emerald-700' },
+                                draw:      { label: '抽獎',   cls: 'bg-rose-50 text-rose-700' },
+                                dismantle: { label: '拆解退', cls: 'bg-amber-50 text-amber-700' },
+                              }
+                              const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+                              return (
+                                <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
+                                  <td className="px-3 py-2 text-neutral-500 whitespace-nowrap font-mono text-xs">
+                                    {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
+                                  </td>
+                                  <td className="px-3 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
+                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {isPos ? '+' : ''}{Number(row.delta).toLocaleString()}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-neutral-700">
+                                    {row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-between pt-3 text-sm text-neutral-500">
+                        <span>共 {ledgerTotal.toLocaleString()} 筆</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { fetchLedger(ledgerPage - 1); }} disabled={ledgerPage <= 1} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">上一頁</button>
+                          <span>{ledgerPage} / {ledgerPages}</span>
+                          <button onClick={() => { fetchLedger(ledgerPage + 1); }} disabled={ledgerPage >= ledgerPages} className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50">下一頁</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
