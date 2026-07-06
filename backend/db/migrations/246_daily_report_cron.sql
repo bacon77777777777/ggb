@@ -42,6 +42,22 @@ SELECT cron.schedule(
   $$
 );
 
+-- 每小時執行一次風控掃描
+SELECT cron.schedule(
+  'hourly-risk-check',           -- job 名稱
+  '30 * * * *',                  -- 每小時第 30 分鐘執行（錯開整點）
+  $$
+    SELECT net.http_post(
+      url     := current_setting('app.backend_url') || '/api/cron/risk-check',
+      headers := jsonb_build_object(
+        'Content-Type',    'application/json',
+        'x-cron-secret',   current_setting('app.cron_secret')
+      ),
+      body    := '{}'::jsonb
+    )
+  $$
+);
+
 -- 設定 GUC 參數（執行後在 Supabase Dashboard → SQL Editor 手動設定一次）
 -- ALTER DATABASE postgres SET app.backend_url  = 'https://your-backend.vercel.app';
 -- ALTER DATABASE postgres SET app.cron_secret  = 'your-cron-secret';
