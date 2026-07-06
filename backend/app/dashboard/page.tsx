@@ -897,7 +897,7 @@ export default function DashboardPage() {
   const [topSeries, setTopSeries] = useState<any[]>([])
   const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
   const [discountStats, setDiscountStats] = useState({ netRevenue: 0, couponFixed: 0, discountRate: '0.0', dailyAvg: 0, isSingleDay: true })
-  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0, pendingRefunds: 0, pendingSettlements: 0 })
+  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0, pendingRefunds: 0, pendingSettlements: 0, pendingRechargeReview: 0 })
   const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
   const [mainChartData, setMainChartData] = useState({
     visitTrend: [] as any[],
@@ -1430,13 +1430,24 @@ export default function DashboardPage() {
                 {pendingActions.pendingRefunds}
               </span>
             </a>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm font-medium text-neutral-400 cursor-default select-none">
+            <a
+              href="/recharge-review"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                pendingActions.pendingRechargeReview > 0
+                  ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
+              }`}
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               待複核儲值
-              <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-neutral-200 text-neutral-500">—</span>
-            </div>
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                pendingActions.pendingRechargeReview > 0 ? 'bg-orange-200 text-orange-800' : 'bg-neutral-200 text-neutral-600'
+              }`}>
+                {pendingActions.pendingRechargeReview}
+              </span>
+            </a>
           </div>
         </div>
 

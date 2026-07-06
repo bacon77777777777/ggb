@@ -17,6 +17,7 @@ export async function GET() {
       { count: pendingRefunds },
       { count: pendingSettlements },
       { count: totalMembers },
+      { count: pendingRechargeReview },
     ] = await Promise.all([
       supabase
         .from('orders')
@@ -39,14 +40,20 @@ export async function GET() {
       supabase
         .from('users')
         .select('id', { count: 'exact', head: true }),
+      supabase
+        .from('recharge_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('needs_review', true)
+        .eq('status', 'pending'),
     ])
 
     return NextResponse.json({
-      pendingShipments:   pendingShipments   ?? 0,
-      lowInventory:       lowInventory       ?? 0,
-      pendingRefunds:     pendingRefunds     ?? 0,
-      pendingSettlements: pendingSettlements ?? 0,
-      totalMembers:       totalMembers       ?? 0,
+      pendingShipments:     pendingShipments     ?? 0,
+      lowInventory:         lowInventory         ?? 0,
+      pendingRefunds:       pendingRefunds        ?? 0,
+      pendingSettlements:   pendingSettlements    ?? 0,
+      totalMembers:         totalMembers          ?? 0,
+      pendingRechargeReview: pendingRechargeReview ?? 0,
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })
