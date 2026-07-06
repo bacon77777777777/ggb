@@ -1550,6 +1550,30 @@ export default function OrdersPage() {
                               </button>
                             )}
                             
+                            {/* 配送中：確認送達 */}
+                            {shipment.status === 'shipping' && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation()
+                                  if (!confirm(`確定將訂單 ${shipment.orderId} 標記為「已送達」？`)) return
+                                  const res = await fetch(`/api/admin/orders/${shipment.id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: 'delivered', notification_title: '訂單已送達' }),
+                                  })
+                                  if (res.ok) {
+                                    setLocalShipments(prev => prev.map(s =>
+                                      s.id === shipment.id ? { ...s, status: 'delivered' as const } : s
+                                    ))
+                                    addLog('確認送達', '配送管理', `訂單 ${shipment.orderId} 已標記為送達`, 'success')
+                                  }
+                                }}
+                                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                              >
+                                確認送達
+                              </button>
+                            )}
+
                             {/* 非已送達、非已取消：取消 */}
                             {shipment.status !== 'delivered' && shipment.status !== 'cancelled' && (
                               <button
