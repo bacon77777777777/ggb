@@ -76,7 +76,7 @@ async function handleUnfollow(event: any) {
   console.log('[LINE webhook] unfollow userId:', event.source?.userId)
 }
 
-const WAKE_WORDS = ['吉吉比', 'ggb', 'gb哥']
+const WAKE_WORDS = ['gb哥']
 
 function isGroupSource(event: any) {
   return event.source?.type === 'group' || event.source?.type === 'room'
