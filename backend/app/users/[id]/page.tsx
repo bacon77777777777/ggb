@@ -1034,9 +1034,11 @@ export default function UserDetailPage() {
                               const isPos = row.delta > 0
                               const isPending = row.type === 'recharge' && row.status !== 'success'
                               const typeMap: Record<string, { label: string; cls: string }> = {
-                                recharge:  { label: '儲值',   cls: 'bg-emerald-50 text-emerald-700' },
-                                draw:      { label: '抽獎',   cls: 'bg-rose-50 text-rose-700' },
-                                dismantle: { label: '拆解退', cls: 'bg-amber-50 text-amber-700' },
+                                recharge:  { label: '儲值',     cls: 'bg-emerald-50 text-emerald-700' },
+                                draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                manual:    { label: '手動調整', cls: 'bg-purple-50 text-purple-700' },
+                                marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
                               }
                               const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
                               const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }

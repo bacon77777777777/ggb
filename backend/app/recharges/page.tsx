@@ -336,13 +336,14 @@ export default function RechargesPage() {
           const successRecs = sortedRecords.filter(r => r.status === 'success')
 
           // 各方式統計
-          const methodMap: Record<string, { count: number; amount: number; fee: number }> = {}
+          const methodMap: Record<string, { count: number; amount: number; fee: number; bonus: number }> = {}
           for (const r of successRecs) {
             const m = normalizePaymentMethod(r.payment_method || 'other')
-            if (!methodMap[m]) methodMap[m] = { count: 0, amount: 0, fee: 0 }
+            if (!methodMap[m]) methodMap[m] = { count: 0, amount: 0, fee: 0, bonus: 0 }
             methodMap[m].count++
             methodMap[m].amount += r.amount ?? 0
             methodMap[m].fee += r.payment_fee ?? 0
+            methodMap[m].bonus += r.bonus ?? 0
           }
 
           const totalAmount  = successRecs.reduce((s, r) => s + (r.amount ?? 0), 0)
@@ -357,15 +358,15 @@ export default function RechargesPage() {
             (s, k) => s + (methodMap[k]?.count ?? 0), 0
           )
 
-          // 行銷費用（promotion/compensation/test）— 屬於成本，從實拿金額扣除
-          const marketingAmount = (MARKETING_KEYS as readonly string[]).reduce(
-            (s, k) => s + (methodMap[k]?.amount ?? 0), 0
+          // 行銷費用（promotion/compensation/test）— 計算贈出的 G幣 數量（amount=0，bonus=tokens）
+          const marketingBonus = (MARKETING_KEYS as readonly string[]).reduce(
+            (s, k) => s + (methodMap[k]?.bonus ?? 0), 0
           )
           const marketingCount = (MARKETING_KEYS as readonly string[]).reduce(
             (s, k) => s + (methodMap[k]?.count ?? 0), 0
           )
 
-          const totalNet = totalAmount - totalFee - marketingAmount
+          const totalNet = totalAmount - totalFee
 
           return (
             <div className="space-y-3">
@@ -388,7 +389,7 @@ export default function RechargesPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">行銷費用</p>
-                  <p className="text-2xl font-black text-amber-500">NT$ {marketingAmount.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-amber-500">{marketingBonus.toLocaleString()} G</p>
                   <p className="text-xs text-neutral-400 mt-0.5">{marketingCount} 筆（贈點/補償/測試）</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
@@ -455,7 +456,7 @@ export default function RechargesPage() {
                     </tr>
                     {([...MANUAL_REAL_KEYS, ...MARKETING_KEYS] as string[]).map(method => {
                       const info = PAYMENT_METHOD_INFO[method]
-                      const stat = methodMap[method] ?? { count: 0, amount: 0, fee: 0 }
+                      const stat = methodMap[method] ?? { count: 0, amount: 0, fee: 0, bonus: 0 }
                       const net = stat.amount - stat.fee
                       const isMarketing = (MARKETING_KEYS as readonly string[]).includes(method)
                       return (
@@ -465,12 +466,12 @@ export default function RechargesPage() {
                           </td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            NT$ {stat.amount.toLocaleString()}
+                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-neutral-400' : 'text-emerald-600'}`}>
+                            {isMarketing ? '—' : `NT$ ${stat.amount.toLocaleString()}`}
                           </td>
-                          <td className="py-2 px-3 tabular-nums text-red-500">NT$ 0</td>
+                          <td className="py-2 px-3 tabular-nums text-neutral-400">—</td>
                           <td className={`py-2 px-3 tabular-nums font-semibold ${isMarketing ? 'text-amber-600' : 'text-teal-600'}`}>
-                            NT$ {net.toLocaleString()}
+                            {isMarketing ? `${stat.bonus.toLocaleString()} G` : `NT$ ${net.toLocaleString()}`}
                           </td>
                         </tr>
                       )

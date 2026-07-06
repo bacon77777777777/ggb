@@ -69,11 +69,15 @@ export async function POST(request: Request) {
     const newTokens = (userData.tokens ?? 0) + amount
     const tradeNo = `MANUAL-${nanoid(10).toUpperCase()}`
 
+    const MARKETING_METHODS = ['promotion', 'compensation', 'test']
+    const isMarketing = MARKETING_METHODS.includes(payment_method ?? '')
+
     // 寫入 recharge_records
+    // 行銷類型：amount=0（無真實收款），bonus=tokens（贈出的 G幣）
     const { error: insertErr } = await supabaseAdmin.from('recharge_records').insert({
       user_id,
-      amount,
-      bonus: 0,
+      amount: isMarketing ? 0 : amount,
+      bonus:  isMarketing ? amount : 0,
       status: 'success',
       payment_method: payment_method ?? 'manual_transfer',
       order_number: tradeNo,
