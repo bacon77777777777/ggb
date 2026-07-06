@@ -38,13 +38,18 @@ async function getRevenueSummary(period: string) {
   const gte = getPeriodStart(period)
   const [rechargeRes, drawRes] = await Promise.all([
     supabase.from('recharge_records').select('amount').eq('status', 'success').gte('created_at', gte),
-    supabase.from('draw_records').select('user_id').gte('created_at', gte),
+    supabase.from('draw_records').select('user_id, product:products(price)').gte('created_at', gte),
   ])
   const recharges = rechargeRes.data ?? []
   const draws = drawRes.data ?? []
+  const totalSpent = draws.reduce((s, r) => {
+    const price = (r.product as any)?.price
+    return s + (price ? Number(price) : 0)
+  }, 0)
   return {
     period,
     totalRecharge: recharges.reduce((s, r) => s + Number(r.amount), 0),
+    totalSpent,
     drawCount: draws.length,
     uniqueDrawers: new Set(draws.map(d => d.user_id)).size,
     rechargeOrders: recharges.length,
