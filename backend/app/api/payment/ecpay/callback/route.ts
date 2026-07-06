@@ -50,8 +50,7 @@ export async function POST(req: Request) {
     }
 
     // 冪等性檢查：同一 ECPay TradeNo 只處理一次
-    const ecpayTradeNo = params.TradeNo || tradeNo
-    const idempotencyKey = ecpayTradeNo || tradeNo
+    const idempotencyKey = params.TradeNo || tradeNo
     if (await isAlreadyProcessed('ecpay_payment', idempotencyKey)) {
       console.log(`[ECPay] 重複回調已略過 tradeNo=${idempotencyKey}`)
       await logWebhookEvent({ source: 'ecpay_payment', idempotencyKey, orderNumber: tradeNo, rawPayload: params, result: 'duplicate' })
