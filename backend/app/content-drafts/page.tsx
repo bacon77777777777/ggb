@@ -76,11 +76,9 @@ export default function ContentDraftsPage() {
   }
 
   async function triggerGenerate() {
-    const secret = prompt('請輸入 CRON_SECRET：')
-    if (!secret) return
     setGenerating(true)
     setGenerateMsg('')
-    const res = await fetch(`/api/cron/generate-content?secret=${encodeURIComponent(secret)}`)
+    const res = await fetch('/api/admin/trigger/generate-content', { method: 'POST' })
     const data = await res.json()
     if (res.ok) {
       setGenerateMsg(`✓ 已生成 ${data.productName} 的 ${data.count} 則草稿`)

@@ -474,7 +474,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '管理員權限', path: '/permissions', icon: IconSettings },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
           { name: '開發紀錄', path: '/dev-logs', icon: IconLogs },
-          { name: '競品情報', path: '/competitor-intel', icon: IconReports },
         ],
       },
       {
@@ -501,16 +500,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
-        id: 'marketing',
-        title: '行銷工具',
-        items: [
-          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
-        ],
-      },
-      {
         id: 'blacktech',
         title: '其他黑科技',
         items: [
+          { name: '競品情報', path: '/competitor-intel', icon: IconReports },
+          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
           { name: '工具', path: '/tools', icon: IconTools },
           { name: '殺率調整', path: '/settings/rates', icon: IconSettings },
         ],
