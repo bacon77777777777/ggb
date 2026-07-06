@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { askGbBro } from '@/lib/gbBro'
+import { askCsAgent } from '@/lib/csAgent'
 
 export const runtime = 'nodejs'
 
@@ -133,20 +134,15 @@ async function handleTextMessage(event: any) {
     return
   }
 
-  // ── Customer mode ────────────────────────────────────────────────
-  if (lower === '幫助' || lower === 'help' || lower === '?') {
+  // ── Customer mode — AI 客服主管 ──────────────────────────────────
+  const lineUserId = event.source?.userId ?? ''
+  try {
+    const answer = await askCsAgent(text, lineUserId)
+    await replyMessage(event.replyToken, [{ type: 'text', text: answer }])
+  } catch (err) {
+    console.error('[CS Agent] error:', err)
     await replyMessage(event.replyToken, [
-      {
-        type: 'text',
-        text: '📋 可用指令：\n\n• 訂單查詢 — 查詢最近訂單\n• 儲值查詢 — 查詢儲值紀錄\n• 幫助 — 顯示此選單',
-      },
-    ])
-  } else {
-    await replyMessage(event.replyToken, [
-      {
-        type: 'text',
-        text: `你說的「${text}」我還不太懂 😅\n輸入「幫助」查看可用指令。`,
-      },
+      { type: 'text', text: '客服系統暫時繁忙，請稍後再試，或輸入「人工客服」轉接真人。😊' },
     ])
   }
 }
