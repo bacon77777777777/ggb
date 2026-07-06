@@ -143,7 +143,7 @@ async function updateSettlement(id: number, status: 'confirmed' | 'paid', note?:
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: status === 'paid' ? '廠商月結標記已付款' : '廠商月結標記已確認', target_type: 'settlement', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: status === 'paid' ? '廠商月結標記已付款' : '廠商月結標記已確認', target_type: 'settlement', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
 
   return data
 }
@@ -179,7 +179,7 @@ async function manageRefund(id: number, action: 'approve' | 'reject', note?: str
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: action === 'approve' ? '核准退款申請' : '拒絕退款申請', target_type: 'refund', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: action === 'approve' ? '核准退款申請' : '拒絕退款申請', target_type: 'refund', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
 
   return data
 }
@@ -205,7 +205,7 @@ async function markOrderDelivered(identifier: string, actorId?: string) {
     .eq('id', existing.id)
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '確認訂單送達', target_type: 'order', target_id: String(existing.id), detail: { via: 'GB哥' } }) } catch {}
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '確認訂單送達', target_type: 'order', target_id: String(existing.id), detail: { via: 'GB哥' } }) } catch (_) { /* ignore log failure */ }
 
   return { success: true, order: existing }
 }
@@ -220,7 +220,7 @@ async function dismissRechargeReview(id: number, note?: string, actorId?: string
     .single()
   if (error) throw new Error(error.message)
 
-  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '忽略待複核儲值', target_type: 'recharge', target_id: String(id), detail: { via: 'GB哥', note } }) } catch {}
+  try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '忽略待複核儲值', target_type: 'recharge', target_id: String(id), detail: { via: 'GB哥', note } }) } catch (_) { /* ignore log failure */ }
 
   return data
 }
