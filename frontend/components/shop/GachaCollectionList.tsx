@@ -25,6 +25,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   const { user } = useAuth();
   const [collectedIds, setCollectedIds] = useState<Set<number>>(new Set());
   const [recommendations, setRecommendations] = useState<ProductRow[]>([]);
+  const [supplierName, setSupplierName] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
   const [previewPrize, setPreviewPrize] = useState<Prize | null>(null);
   const [brokenPrizeIds, setBrokenPrizeIds] = useState<Set<number>>(new Set());
@@ -48,6 +49,20 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       } catch {}
     })();
   }, [user, productId, supabase, refreshKey]);
+
+  useEffect(() => {
+    if (!product.supplier_id) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('suppliers')
+          .select('name')
+          .eq('id', product.supplier_id)
+          .single();
+        setSupplierName(data?.name ?? null);
+      } catch {}
+    })();
+  }, [product.supplier_id, supabase]);
 
   // 猜你喜歡：抓同類型其他商品
   useEffect(() => {
@@ -78,8 +93,10 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   };
 
   const infoRows = [
-    { label: '類別', value: typeLabel[product.type] || product.category || null },
+    { label: '類別', value: typeLabel[product.type] || product.category || '-' },
+    { label: '廠商', value: supplierName || '-' },
     { label: '代理商', value: product.distributor || '-' },
+    { label: '產品編號', value: product.product_code || '-' },
   ];
 
   return (

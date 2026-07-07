@@ -1582,40 +1582,19 @@ export default function ProductDetailPage() {
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
               <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">上市時間</span>
-                  <span className="text-neutral-900 dark:text-neutral-50 font-black">
-                    {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
-                  </span>
-                </div>
-                {product.distributor && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{product.distributor}</span>
+                {[
+                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
+                  { label: '廠商', value: supplierName || '-' },
+                  { label: '代理商', value: product.distributor || '-' },
+                  { label: '產品編號', value: product.product_code || '-' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">{label}</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{value}</span>
                   </div>
-                )}
-                {supplierName && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
-                  </div>
-                )}
-                {(product as any).barcode && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">產品條碼</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black font-mono">{(product as any).barcode}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className="w-2 h-4 sm:w-2.5 sm:h-5 bg-accent-red rounded-sm shadow-sm shadow-accent-red/20" />
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-              
+
               <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
                 <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
                   <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
@@ -2117,40 +2096,19 @@ export default function ProductDetailPage() {
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
               <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">上市時間</span>
-                  <span className="text-neutral-900 dark:text-neutral-50 font-black">
-                    {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
-                  </span>
-                </div>
-                {product.distributor && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{product.distributor}</span>
+                {[
+                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
+                  { label: '廠商', value: supplierName || '-' },
+                  { label: '代理商', value: product.distributor || '-' },
+                  { label: '產品編號', value: product.product_code || '-' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">{label}</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{value}</span>
                   </div>
-                )}
-                {supplierName && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
-                  </div>
-                )}
-                {(product as any).barcode && (
-                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">產品條碼</span>
-                    <span className="text-neutral-900 dark:text-neutral-50 font-black font-mono">{(product as any).barcode}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map(i => (
-                      <div key={i} className="w-2 h-4 sm:w-2.5 sm:h-5 bg-accent-red rounded-sm shadow-sm shadow-accent-red/20" />
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-              
+
               <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
                 <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
                   <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
