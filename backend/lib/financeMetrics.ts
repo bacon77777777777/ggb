@@ -105,7 +105,7 @@ export async function getRevenueSummaryForWindow(
     excBot(
       supabase
         .from('draw_records')
-        .select('user_id, points_used')
+        .select('user_id, points_used, product:products(price)')
     )
       .gte('created_at', start.toISOString())
       .lt('created_at', end.toISOString()),
@@ -120,7 +120,8 @@ export async function getRevenueSummaryForWindow(
     periodEnd: end.toISOString(),
     totalRechargeTwd:  realRecharges.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0),
     rechargeOrderCount: realRecharges.length,
-    drawSpendG:        draws.reduce((s: number, r: any) => s + Number(r.points_used ?? 0), 0),
+    // G幣 draws have points_used=0; fall back to product.price for consumption
+    drawSpendG:        draws.reduce((s: number, r: any) => s + (Number(r.points_used) > 0 ? Number(r.points_used) : Number((r.product as any)?.price ?? 0)), 0),
     drawCount:         draws.length,
     uniquePlayers:     new Set(draws.map((d: any) => d.user_id)).size,
   }
