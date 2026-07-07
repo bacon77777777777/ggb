@@ -13,7 +13,7 @@ interface AdminUser {
 interface AdminContextType {
   user: AdminUser | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string; user?: AdminUser }>
   logout: () => void
 }
 
@@ -98,7 +98,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const login = async (
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; user?: AdminUser }> => {
     try {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
@@ -127,8 +127,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       
       setUser(u)
       setIsAuthenticated(true)
-        
-      return { success: true }
+
+      return { success: true, user: u }
     } catch (error) {
       console.error('Login error:', error)
       return { success: false, error: '登入失敗' }

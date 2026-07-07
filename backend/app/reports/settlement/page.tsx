@@ -232,10 +232,10 @@ export default function SettlementPage() {
       <div className="space-y-4">
 
         {/* 頂部控制列 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {/* 廠商選擇 */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
               <select
                 value={selectedSupplierId}
@@ -249,8 +249,8 @@ export default function SettlementPage() {
               </select>
             </div>
 
-            {/* 匯出 + 費率設定（靠右） */}
-            <div className="ml-auto flex items-center gap-2">
+            {/* 匯出 + 費率設定 */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleExport}
                 disabled={!data || loading}
@@ -259,7 +259,7 @@ export default function SettlementPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                匯出對帳單
+                匯出 CSV
               </button>
 
               {/* 費率設定浮動 */}
@@ -342,7 +342,7 @@ export default function SettlementPage() {
           </div>
 
           {/* 期間按鈕 */}
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap justify-end">
             {periods.map((p, i) => (
               <button
                 key={i}

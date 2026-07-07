@@ -114,7 +114,7 @@ export default function SettlementSnapshotsPage() {
       <div className="space-y-4">
 
         {/* 控制列 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <select
             value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
@@ -133,23 +133,21 @@ export default function SettlementSnapshotsPage() {
             <option value="confirmed">已確認</option>
             <option value="paid">已付款</option>
           </select>
-          <div className="ml-auto flex items-center gap-2">
-            <select
-              value={genMonth}
-              onChange={e => setGenMonth(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none"
-            >
-              <option value="">上個月</option>
-              {months.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <button
-              onClick={generate}
-              disabled={generating}
-              className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50"
-            >
-              {generating ? '生成中…' : '立即生成快照'}
-            </button>
-          </div>
+          <select
+            value={genMonth}
+            onChange={e => setGenMonth(e.target.value)}
+            className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none"
+          >
+            <option value="">上個月</option>
+            {months.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <button
+            onClick={generate}
+            disabled={generating}
+            className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            {generating ? '生成中…' : '立即生成快照'}
+          </button>
         </div>
 
         {/* 結算列表 */}

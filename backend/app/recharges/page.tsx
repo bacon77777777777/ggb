@@ -314,6 +314,33 @@ export default function RechargesPage() {
       <div className="space-y-4">
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
+          {/* 近三個月快選 */}
+          {(() => {
+            const now = new Date()
+            return [0, 1, 2].map(offset => {
+              const d = new Date(now.getFullYear(), now.getMonth() - offset, 1)
+              const y = d.getFullYear()
+              const m = d.getMonth() + 1
+              const last = new Date(y, m, 0).getDate()
+              const start = `${y}-${String(m).padStart(2, '0')}-01`
+              const end   = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`
+              const label = `${y}年${String(m).padStart(2, '0')}月`
+              const active = filterStartDate === start && filterEndDate === end
+              return (
+                <button
+                  key={label}
+                  onClick={() => { setFilterStartDate(start); setFilterEndDate(end) }}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors whitespace-nowrap ${
+                    active
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })
+          })()}
           <DateRangePicker
             startDate={filterStartDate}
             endDate={filterEndDate}

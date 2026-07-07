@@ -7,6 +7,7 @@ import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import CsvImportWizard from '@/components/CsvImportWizard'
+import XlsxImportWizard from '@/components/XlsxImportWizard'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
@@ -22,6 +23,7 @@ export default function ProductsPage() {
   
   const [products, setProducts] = useState<Product[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [isXlsxOpen, setIsXlsxOpen] = useState(false)
 
   const getDisplayCode = (product: Product): string => {
     return product.productCode || ''
@@ -725,10 +727,10 @@ export default function ProductsPage() {
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <button
-                onClick={() => setIsBulkOpen(true)}
-                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md whitespace-nowrap"
+                onClick={() => setIsXlsxOpen(true)}
+                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
               >
-                🤖 智能 CSV 匯入
+                🤖 智能批量匯入
               </button>
             }
             showDensity={true}
@@ -1300,6 +1302,12 @@ export default function ProductsPage() {
           isOpen={isBulkOpen}
           onClose={() => setIsBulkOpen(false)}
           onImported={() => { fetchProducts(); setIsBulkOpen(false) }}
+        />
+        {/* 智能 Excel 匯入 Wizard */}
+        <XlsxImportWizard
+          isOpen={isXlsxOpen}
+          onClose={() => setIsXlsxOpen(false)}
+          onImported={() => { fetchProducts(); setIsXlsxOpen(false) }}
         />
       </div>
 

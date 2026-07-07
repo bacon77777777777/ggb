@@ -97,7 +97,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     { label: '類別', value: typeLabel[product.type] || product.category || '-' },
     { label: '廠商', value: supplierName || '-' },
     { label: '代理商', value: product.distributor || '-' },
-    { label: '產品編號', value: product.product_code || '-' },
+    { label: '條碼', value: product.product_code || '-' },
   ];
 
   return (
@@ -142,15 +142,10 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                         />
                       </button>
 
-                      {/* 賞別 + 名稱 */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                        <span className="text-[11px] sm:text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 py-0.5 rounded-lg border border-primary/10 whitespace-nowrap flex-shrink-0">
-                          {prize.level}
-                        </span>
-                        <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
-                          {prize.name}
-                        </span>
-                      </div>
+                      {/* 名稱 */}
+                      <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate min-w-0">
+                        {prize.name}
+                      </span>
                     </div>
                   </td>
 

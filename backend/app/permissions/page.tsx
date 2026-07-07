@@ -18,10 +18,11 @@ const PERMISSION_GROUPS = [
     items: [
       { id: 'dashboard',        label: '儀表板' },
       { id: 'reports_overview', label: '轉換分析' },
+      { id: 'reports_behavior', label: '點擊分析' },
     ],
   },
   {
-    title: '金流報表',
+    title: '對帳報表',
     items: [
       { id: 'recharges',           label: '儲值明細' },
       { id: 'reports_logistics',   label: '物流明細' },
@@ -31,46 +32,72 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
+    title: '頂部導航',
+    items: [
+      { id: 'header_products', label: '鈴鐺告警' },
+      { id: 'header_orders',   label: '配送待辦' },
+    ],
+  },
+  {
     title: '抽獎管理',
     items: [
-      { id: 'products',    label: '商品管理' },
-      { id: 'suppliers',   label: '廠商管理' },
-      { id: 'categories',  label: '菜單管理' },
-      { id: 'draws',       label: '抽獎紀錄' },
-      { id: 'orders',      label: '配送管理' },
-      { id: 'marketplace', label: '市集管理' },
+      { id: 'products',          label: '商品管理' },
+      { id: 'draws',             label: '抽獎紀錄' },
+      { id: 'orders',            label: '配送管理' },
+      { id: 'coupons',           label: '折價券管理' },
+      { id: 'settings_shipping', label: '運費設定' },
+    ],
+  },
+  {
+    title: '會員管理',
+    items: [
+      { id: 'users',           label: '會員管理' },
+      { id: 'recharge_review', label: '待複核儲值' },
     ],
   },
   {
     title: '系統設定',
     items: [
-      { id: 'users',            label: '會員管理' },
-      { id: 'banners',          label: '輪播圖管理' },
-      { id: 'news',             label: '文章管理' },
-      { id: 'coupons',          label: '折價券管理' },
-      { id: 'settings',         label: '殺率調整' },
-      { id: 'settings_features',label: '功能開關' },
-      { id: 'settings_shipping',label: '運費設定' },
-      { id: 'settings_modules', label: '抽獎模組設定' },
-      { id: 'admins',           label: '管理員清單' },
-      { id: 'permissions',      label: '權限管理' },
-      { id: 'logs',             label: '操作記錄' },
-      { id: 'tools',            label: '工具' },
-      { id: 'dev_logs',         label: '開發紀錄' },
+      { id: 'suppliers',         label: '廠商管理' },
+      { id: 'banners',           label: '輪播圖管理' },
+      { id: 'news',              label: '文章管理' },
+      { id: 'categories',        label: '分類清單' },
+      { id: 'settings_modules',  label: '抽獎模組設定' },
+      { id: 'settings_features', label: '功能開關' },
+      { id: 'admins',            label: '管理員清單' },
+      { id: 'permissions',       label: '權限管理' },
+      { id: 'logs',              label: '操作記錄' },
+      { id: 'dev_logs',          label: '開發紀錄' },
     ],
   },
   {
-    title: '販售',
+    title: '交易所',
     items: [
-      { id: 'sell',        label: '販售管理' },
+      { id: 'marketplace', label: '交易所商品管理' },
+    ],
+  },
+  {
+    title: '商品買賣',
+    items: [
+      { id: 'sell',        label: '販售商品管理' },
       { id: 'sell_orders', label: '販售訂單' },
     ],
   },
   {
-    title: '交換',
+    title: '卡牌交換',
     items: [
-      { id: 'exchange',        label: '交換管理' },
+      { id: 'exchange',        label: '交換商品管理' },
       { id: 'exchange_orders', label: '交換紀錄' },
+    ],
+  },
+  {
+    title: '其他黑科技',
+    items: [
+      { id: 'agent_events',    label: '事件中心' },
+      { id: 'competitor_intel',label: '競品情報' },
+      { id: 'content_drafts',  label: 'AI 文案草稿' },
+      { id: 'tools',           label: '工具' },
+      { id: 'settings',        label: '殺率調整' },
     ],
   },
 ]
@@ -174,12 +201,18 @@ export default function PermissionsPage() {
 
   const handleAdd = () => {
     setEditingRole(null)
-    setFormData({
-      name: '',
-      display_name: '',
-      permissions: []
-    })
+    setFormData({ name: '', display_name: '', permissions: [] })
     setIsModalOpen(true)
+  }
+
+  function autoGenerateName(displayName: string): string {
+    const slug = displayName
+      .toLowerCase()
+      .replace(/[a-z0-9]+/g, m => m)
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+    return (slug || 'role') + '_' + Date.now().toString().slice(-6)
   }
 
   const handlePermissionToggle = (permId: string) => {
@@ -204,7 +237,7 @@ export default function PermissionsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingRole.id,
-            name: formData.name,
+            name: editingRole.name,
             display_name: formData.display_name,
             permissions: formData.permissions,
           }),
@@ -215,15 +248,16 @@ export default function PermissionsPage() {
         await addLog(
           '更新角色權限',
           '權限管理',
-          `角色「${formData.display_name || formData.name}」權限已更新`,
+          `角色「${formData.display_name}」權限已更新`,
           'success'
         )
       } else {
+        const autoName = autoGenerateName(formData.display_name)
         const res = await fetch('/api/admin/roles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: formData.name,
+            name: autoName,
             display_name: formData.display_name,
             permissions: formData.permissions,
           }),
@@ -333,28 +367,15 @@ export default function PermissionsPage() {
           size="lg"
         >
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">角色名稱 (顯示用)</label>
-                <input
-                  type="text"
-                  value={formData.display_name}
-                  onChange={e => setFormData({ ...formData, display_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="例如：營運人員"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">角色代碼 (系統用)</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="例如：operation_staff"
-                  disabled={!!editingRole} // 禁止修改代碼以免破壞系統邏輯
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">角色名稱</label>
+              <input
+                type="text"
+                value={formData.display_name}
+                onChange={e => setFormData({ ...formData, display_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="例如：營運人員"
+              />
             </div>
 
             <div>

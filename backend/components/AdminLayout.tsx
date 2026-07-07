@@ -431,36 +431,59 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
   // path → required permission (undefined = all authenticated users)
   const PATH_PERMISSION_MAP: Record<string, string> = {
+    // 營運總覽
+    '/dashboard': 'dashboard',
+    '/reports/overview': 'reports_overview',
+    '/reports/behavior': 'reports_behavior',
+    // 金流報表
     '/recharges': 'recharges',
-    '/recharge-review': 'recharges',
+    '/recharge-review': 'recharge_review',
     '/reports/logistics': 'reports_logistics',
     '/reports/coupons': 'coupons',
     '/reports/products': 'reports_products',
     '/reports/dismantled': 'reports_dismantled',
     '/reports/settlement': 'reports_settlement',
     '/settlement-snapshots': 'reports_settlement',
+    // 抽獎管理
     '/products': 'products',
     '/draws': 'draws',
     '/orders': 'orders',
     '/refund-requests': 'orders',
     '/coupons': 'coupons',
-    '/settings/shipping': 'settings',
+    '/marketplace': 'marketplace',
+    // 系統設定
     '/users': 'users',
     '/suppliers': 'suppliers',
     '/banners': 'banners',
     '/news': 'news',
     '/categories': 'categories',
     '/settings/modules': 'settings_modules',
-    '/settings/features': 'settings',
+    '/settings/features': 'settings_features',
+    '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
+    '/analytics': 'admins',
     '/permissions': 'permissions',
     '/logs': 'logs',
-    '/dev-logs': 'logs',
+    '/dev-logs': 'dev_logs',
+    '/tools': 'tools',
+    // 販售
+    '/sell': 'sell',
+    '/sell-orders': 'sell_orders',
+    // 交換
+    '/exchange': 'exchange',
+    '/exchange-orders': 'exchange_orders',
+    // Header 快捷（獨立 permission，不是頁面路徑）
+    '/header-products': 'header_products',
+    '/header-orders': 'header_orders',
+    // 其他黑科技
+    '/agent-events': 'agent_events',
+    '/competitor-intel': 'competitor_intel',
+    '/content-drafts': 'content_drafts',
   }
 
   const canAccess = (path: string) => {
     if (!user) return false
-    if (user.role === 'superadmin') return true
+    if (user.role === 'super_admin' || user.role === 'superadmin') return true
     const perm = PATH_PERMISSION_MAP[path]
     if (!perm) return true
     return (user.permissions || []).includes(perm)
@@ -679,7 +702,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                   </Link>
                 )
               })
-            : menuGroups.map((group) => {
+            : menuGroups.filter((group) => group.items.some((item) => canAccess(item.path))).map((group) => {
                 const isOpen = groupOpenMap[group.id] !== false
                 return (
                   <div key={group.id} className="pt-1">
@@ -753,10 +776,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                   })?.name || pageTitle || '後台管理'}
                   {PAGE_INFO[pathname] && (
                     <span className="relative group inline-flex items-center">
-                      <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 border border-amber-300 text-[11px] font-black flex items-center justify-center cursor-help select-none leading-none">
+                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
                         !
                       </span>
-                      <span className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 z-50 w-80 rounded-lg bg-neutral-900 text-white text-xs font-normal leading-relaxed px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-normal">
+                      <span className="pointer-events-none absolute left-0 top-full mt-2 z-50 w-80 rounded-lg bg-neutral-900 text-white text-xs font-normal leading-relaxed px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-normal">
                         {PAGE_INFO[pathname]}
                       </span>
                     </span>
@@ -788,8 +811,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 )}
               </div>
               <div className="flex items-center gap-4">
-                {/* 警示圖標 */}
-                <div className="relative">
+                {/* 警示圖標（需要 header_products 權限） */}
+                {canAccess('/header-products') && <div className="relative">
                   <button
                     onClick={() => setIsAlertOpen(!isAlertOpen)}
                     className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
@@ -913,10 +936,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                       </div>
                     </>
                   )}
-                </div>
+                </div>}
 
-                {/* 配送圖標 */}
-                <div className="relative">
+                {/* 配送圖標（需要 header_orders 權限） */}
+                {canAccess('/header-orders') && <div className="relative">
                   <button
                     onClick={() => setIsShipmentOpen(!isShipmentOpen)}
                     className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
@@ -1036,7 +1059,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                       </div>
                     </>
                   )}
-                </div>
+                </div>}
 
                 {/* 用戶帳戶資訊 */}
                 <div className="relative">

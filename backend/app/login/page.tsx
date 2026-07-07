@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useLog } from '@/contexts/LogContext'
+import { firstAccessiblePath } from '@/lib/permissionPaths'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,12 +16,12 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  // Already logged in → go to dashboard
+  // Already logged in → go to first accessible page
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/dashboard')
+    if (isAuthenticated && user) {
+      router.replace(firstAccessiblePath(user.permissions || [], user.role))
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user, router])
 
   // Log visit to login page
   useEffect(() => {
@@ -47,17 +48,15 @@ export default function LoginPage() {
     setIsLoading(true)
     
     const result = await login(account, password)
-    if (result.success) {
-      // 登入成功後記錄（等待使用者資訊設置完成）
+    if (result.success && result.user) {
       setTimeout(() => {
         try {
           addLog('登入', '系統', '管理員登入後台系統', 'success')
         } catch (error) {
-          // 靜默處理錯誤，不影響登入流程
           console.warn('Failed to log login action:', error)
         }
       }, 200)
-      router.push('/dashboard')
+      router.push(firstAccessiblePath(result.user.permissions || [], result.user.role))
     } else {
       setError(result.error || '帳號或密碼錯誤')
     }

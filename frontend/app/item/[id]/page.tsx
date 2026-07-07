@@ -1586,7 +1586,7 @@ export default function ProductDetailPage() {
                   { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
                   { label: '代理商', value: product.distributor || '-' },
-                  { label: '產品編號', value: product.product_code || '-' },
+                  { label: '條碼', value: product.product_code || '-' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                     <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">{label}</span>
@@ -2100,7 +2100,7 @@ export default function ProductDetailPage() {
                   { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
                   { label: '代理商', value: product.distributor || '-' },
-                  { label: '產品編號', value: product.product_code || '-' },
+                  { label: '條碼', value: product.product_code || '-' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                     <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">{label}</span>
