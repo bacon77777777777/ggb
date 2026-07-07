@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAdminSession } from '@/lib/adminSession'
+
+// Lightweight session parser for Edge Runtime (no Node.js crypto)
+// Full HMAC verification still happens in every API route via requireAdminSession()
+type SessionPayload = { adminId: string; exp: number; role?: string; permissions?: string[] }
+function parseSession(token: string): SessionPayload | null {
+  const [body] = token.split('.')
+  if (!body) return null
+  try {
+    const pad = body.length % 4 === 0 ? '' : '='.repeat(4 - (body.length % 4))
+    const json = atob((body + pad).replace(/-/g, '+').replace(/_/g, '/'))
+    const parsed = JSON.parse(json) as SessionPayload
+    if (!parsed?.adminId || !parsed?.exp) return null
+    if (Date.now() >= parsed.exp * 1000) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
 
 // Pages that don't require authentication
 const PUBLIC_PATHS = ['/login']
@@ -53,7 +70,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  const session = verifyAdminSession(token)
+  const session = parseSession(token)
   if (!session) {
     const res = NextResponse.redirect(new URL('/login', request.url))
     res.cookies.delete('admin_session')
