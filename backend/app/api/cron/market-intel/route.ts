@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
   const dateStr = `${twNow.getUTCFullYear()}/${(twNow.getUTCMonth()+1).toString().padStart(2,'0')}/${twNow.getUTCDate().toString().padStart(2,'0')}`
   const okCount = snapshots.filter(s => s.ok).length
   const lineMsg = [
-    `🕵️ 市場情報官週報｜${dateStr}`,
+    `市場情報官日報｜${dateStr}`,
     `（成功抓取 ${okCount}/${COMPETITORS.length} 家競品）`,
     '',
     analysis.length > 1200 ? analysis.slice(0, 1197) + '...' : analysis,

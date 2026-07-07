@@ -143,24 +143,26 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 推送 LINE ─────────────────────────────────────────────────────
+  const now = new Date(Date.now() + 8 * 3600_000)
+  const timeStr = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`
+
   if (high.length === 0 && warn.length === 0) {
+    await pushLine(`風控｜${timeStr}\n目前無問題`)
     return NextResponse.json({ ok: true, high: 0, warn: 0 })
   }
 
-  const now = new Date(Date.now() + 8 * 3600_000)
-  const timeStr = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`
-  const lines = [`⚠️ 風控長掃描報告｜${timeStr}`]
+  const lines = [`風控｜${timeStr}`]
 
   if (high.length > 0) {
-    lines.push('\n🔴 高風險（請盡快確認）')
+    lines.push('\n高風險（請盡快確認）')
     high.forEach(h => lines.push(`• ${h}`))
   }
   if (warn.length > 0) {
-    lines.push('\n🟡 留意事項')
+    lines.push('\n留意')
     warn.forEach(w => lines.push(`• ${w}`))
   }
 
-  lines.push('\n所有偵測僅供參考，處置權在老闆。')
+  lines.push('\n以上僅供參考，處置權在老闆。')
   await pushLine(lines.join('\n'))
 
   return NextResponse.json({ ok: true, high: high.length, warn: warn.length })

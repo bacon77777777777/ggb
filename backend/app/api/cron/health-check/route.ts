@@ -199,16 +199,16 @@ export async function POST(req: NextRequest) {
     const criticalLines = toAlert.filter(a => a.level === '🔴')
     const warnLines     = toAlert.filter(a => a.level === '🟡')
 
-    const lines = [`🏥 平台健康異常｜${timeStr}`]
+    const lines = [`⚠️ 平台健康異常｜${timeStr}`]
     if (criticalLines.length > 0) {
-      lines.push('\n🔴 嚴重問題（請立即確認）')
+      lines.push('\n嚴重（請立即確認）')
       criticalLines.forEach(a => lines.push(`• ${a.msg}`))
     }
     if (warnLines.length > 0) {
-      lines.push('\n🟡 警告')
+      lines.push('\n警告')
       warnLines.forEach(a => lines.push(`• ${a.msg}`))
     }
-    lines.push('\n可告訴 GB哥「查最近 callback 錯誤」或「查 pending 儲值」取得詳細資訊。')
+    lines.push('\n可告訴 GB哥「查最近 callback 錯誤」取得詳細資訊。')
 
     await pushLine(lines.join('\n'))
 

@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
   const analysis = await analyzeWithClaude(metrics, mismatches, isMonday, reportDate, platformDiff)
 
   // 組裝 LINE 訊息
-  const lines: string[] = [`💰 財務長日報｜${timeStr}`]
+  const lines: string[] = [`財務長日報｜${timeStr}`]
   lines.push(reportDate)
 
   // 近7天收入趨勢
@@ -302,12 +302,12 @@ export async function POST(req: NextRequest) {
     const latest  = trend[trend.length - 1]
     const todayRev = Number(latest?.revenue ?? 0)
     const dropPct  = avg7d > 0 ? Math.round((1 - todayRev / avg7d) * 100) : 0
-    lines.push(`\n📈 近7天儲值金額：NT$ ${total7d.toLocaleString()}（日均 NT$ ${avg7d.toLocaleString()}）`)
-    if (dropPct > 30) lines.push(`⚠️ 最近一日儲值金額較日均下滑 ${dropPct}%`)
+    lines.push(`\n近7天儲值 NT$ ${total7d.toLocaleString()}（日均 NT$ ${avg7d.toLocaleString()}）`)
+    if (dropPct > 30) lines.push(`注意：最近一日較日均下滑 ${dropPct}%`)
   }
 
   // 代幣對帳
-  lines.push(`\n🪙 代幣對帳`)
+  lines.push(`\n代幣對帳`)
   lines.push(`• 用戶實際持有：${actual.toLocaleString()} G`)
   lines.push(`• 帳務應有：${expected.toLocaleString()} G`)
   if (Math.abs(platformDiff) > 50) {
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
 
   // 個人差異（週一才列）
   if (isMonday && mismatches.length > 0) {
-    lines.push(`\n🔍 個人代幣差異（週查）`)
+    lines.push(`\n個人代幣差異（週查）`)
     mismatches.slice(0, 5).forEach(m => {
       lines.push(`• ${m.name ?? m.email}：差異 ${m.diff > 0 ? '+' : ''}${m.diff} G（實際 ${m.actual}，帳務 ${m.expected}）`)
     })
@@ -327,24 +327,24 @@ export async function POST(req: NextRequest) {
   // 待處理月結
   if (pendingDraft.length > 0) {
     const totalDraft = pendingDraft.reduce((s: number, r: any) => s + Number(r.supplier_net ?? 0), 0)
-    lines.push(`\n📋 待確認月結：${pendingDraft.length} 筆，合計 NT$ ${totalDraft.toLocaleString()}`)
+    lines.push(`\n待確認月結：${pendingDraft.length} 筆，合計 NT$ ${totalDraft.toLocaleString()}`)
     pendingDraft.slice(0, 3).forEach((r: any) => {
       lines.push(`• ${r.supplier_name} ${r.period}`)
     })
   }
   if (pendingConfirm.length > 0) {
     const totalConfirm = pendingConfirm.reduce((s: number, r: any) => s + Number(r.supplier_net ?? 0), 0)
-    lines.push(`📤 已確認待付款：${pendingConfirm.length} 筆，NT$ ${totalConfirm.toLocaleString()}`)
+    lines.push(`已確認待付款：${pendingConfirm.length} 筆，NT$ ${totalConfirm.toLocaleString()}`)
   }
 
   // Stuck 儲值
   if (stuckTopup > 0) {
     const stuckAmt = Number((metrics.topupPending[0] as any)?.total ?? 0)
-    lines.push(`\n⚠️ Pending 超時儲值：${stuckTopup} 筆，NT$ ${stuckAmt.toLocaleString()}`)
+    lines.push(`\n超時儲值：${stuckTopup} 筆，NT$ ${stuckAmt.toLocaleString()}（pending 超過 3 小時）`)
   }
 
   // Claude 分析
-  lines.push(`\n📊 AI 分析`)
+  lines.push(`\nAI 分析`)
   lines.push(analysis)
 
   await pushLine(lines.join('\n'))

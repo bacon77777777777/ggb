@@ -1451,7 +1451,54 @@ async function saveHistory(lineUserId: string, userMsg: string, assistantMsg: st
   } catch { /* don't break main flow */ }
 }
 
-// ─── LEGACY: system prompt kept for reference only (not used) ──────
+// ─── Open-question fallback: full Claude tool loop ────────────────
+
+async function handleOpenQuestion(text: string, lineUserId?: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return '目前 AI 服務暫時不可用，請稍後再試。'
+
+  const client  = new Anthropic({ apiKey })
+  const history = lineUserId ? await loadHistory(lineUserId) : []
+  const messages: Anthropic.MessageParam[] = [
+    ...history,
+    { role: 'user', content: text },
+  ]
+
+  for (let i = 0; i < 5; i++) {
+    const resp = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      system:     buildSystemPrompt(),
+      tools:      TOOLS,
+      messages,
+    })
+
+    if (resp.stop_reason === 'end_turn') {
+      const block = resp.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
+      return block?.text ?? '目前找不到相關資料，請換個方式描述。'
+    }
+
+    if (resp.stop_reason === 'tool_use') {
+      const toolBlocks = resp.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
+      messages.push({ role: 'assistant', content: resp.content })
+      const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
+        toolBlocks.map(async b => ({
+          type:        'tool_result' as const,
+          tool_use_id: b.id,
+          content:     await executeTool(b.name, b.input as Record<string, any>, lineUserId),
+        }))
+      )
+      messages.push({ role: 'user', content: results })
+      continue
+    }
+
+    break
+  }
+
+  return '目前找不到相關資料，請換個方式描述。'
+}
+
+// ─── System prompt ────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
   const twDate = new Date(Date.now() + TW_MS)
@@ -1632,7 +1679,7 @@ export async function askGbBro(question: string, lineUserId?: string): Promise<s
       }
       break
     default:
-      answer = FALLBACK_MESSAGE
+      answer = await handleOpenQuestion(text, lineUserId)
   }
 
   if (lineUserId) await saveHistory(lineUserId, question, answer)

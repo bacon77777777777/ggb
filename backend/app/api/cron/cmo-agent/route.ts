@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
   const funnel  = (metrics.drawFunnel[0] ?? {}) as any
   const pending = metrics.pendingDrafts as any[]
 
-  const lines: string[] = [isMonday ? `📣 行銷長週報｜${timeStr}` : `📣 行銷長日報｜${timeStr}`]
+  const lines: string[] = [`行銷長日報｜${timeStr}`]
 
   // 用戶成長
   const growth = metrics.userGrowth as any[]
@@ -221,9 +221,9 @@ export async function POST(req: NextRequest) {
     const prevWeek = Number(growth[growth.length - 2]?.new_users ?? 0)
     const delta = lastWeek - prevWeek
     const sign  = delta >= 0 ? '+' : ''
-    lines.push(`\n👥 本週新用戶：${lastWeek} 人（${sign}${delta} vs 上週）`)
+    lines.push(`\n本週新用戶：${lastWeek} 人（${sign}${delta} vs 上週）`)
   } else if (growth.length === 1) {
-    lines.push(`\n👥 本週新用戶：${growth[0].new_users} 人`)
+    lines.push(`\n本週新用戶：${growth[0].new_users} 人`)
   }
 
   // 轉換漏斗
@@ -231,13 +231,13 @@ export async function POST(req: NextRequest) {
   const drawers  = Number(funnel.drawers ?? 0)
   const recharged = Number(funnel.recharged ?? 0)
   if (viewers > 0 || drawers > 0) {
-    lines.push(`🎯 近7天轉換：${viewers} 瀏覽 → ${drawers} 抽獎 → ${recharged} 儲值`)
+    lines.push(`近7天：${viewers} 瀏覽 → ${drawers} 抽獎 → ${recharged} 儲值`)
   }
 
   // 熱門商品
   const hot = metrics.hotProducts as any[]
   if (hot.length > 0) {
-    lines.push(`\n🔥 近7天熱門`)
+    lines.push(`\n近7天熱門`)
     hot.slice(0, 3).forEach((p: any) => {
       const stockPct = p.total_count > 0 ? Math.round(p.remaining / p.total_count * 100) : 0
       lines.push(`• ${p.name}：${p.draw_count} 抽（${p.unique_players} 人，剩 ${stockPct}%）`)
@@ -246,53 +246,48 @@ export async function POST(req: NextRequest) {
 
   // 待審文案草稿
   if (pending.length > 0) {
-    lines.push(`\n📝 待審文案草稿：${pending.length} 則`)
-    lines.push(`請至後台「文案草稿」確認並標記已發布。`)
+    lines.push(`\n待審文案：${pending.length} 則，請至後台確認。`)
   }
 
-  // 週一才列競品
-  if (isMonday && (metrics.recentCompetitor as any[]).length > 0) {
-    lines.push(`\n🕵️ 近期競品動態：${(metrics.recentCompetitor as any[]).length} 則`)
+  // 競品動態
+  if ((metrics.recentCompetitor as any[]).length > 0) {
+    lines.push(`競品動態：${(metrics.recentCompetitor as any[]).length} 則新動態`)
   }
 
-  // 跨部門行動建議（行銷 + 供應鏈 + 競品情報 三合一）
+  // 跨部門行動建議
   if (crossUnit) {
     const { topProduct, stockPct, daysLeft, competitorIntel, zeroStockActive } = crossUnit
     const actions: string[] = []
 
     if (stockPct === 0) {
-      actions.push('🚨 熱門商品已售完，暫停推廣避免死連結')
+      actions.push('熱門商品已售完，暫停推廣')
     } else if (stockPct < 20) {
-      actions.push('🚨 聯絡廠商補貨（庫存緊急）')
+      actions.push('聯絡廠商補貨（庫存緊急）')
     } else if (stockPct < 40) {
-      actions.push('⚠️ 預備補貨詢價（庫存偏低）')
+      actions.push('預備補貨詢價（庫存偏低）')
     }
 
     if (competitorIntel.length > 0) {
-      actions.push('📣 加快文案出稿速度（競品本週活躍）')
+      actions.push('加快文案出稿（競品本週活躍）')
     }
 
     if (zeroStockActive.length > 0) {
-      actions.push(`⛔ 停止推廣零庫存：${zeroStockActive.map((p: any) => p.name).join('、')}`)
+      actions.push(`停止推廣零庫存：${zeroStockActive.map((p: any) => p.name).join('、')}`)
     }
 
     const daysText = daysLeft !== null ? `，約 ${daysLeft} 天售完` : ''
-    lines.push('\n🎯 跨部門行動建議')
-    lines.push(`主力商品：${topProduct.name}（${topProduct.draw_count} 抽，庫存剩 ${stockPct}%${daysText}）`)
-
-    if (competitorIntel.length > 0) {
-      const sites = [...new Set(competitorIntel.map((c: any) => c.competitor))].slice(0, 3).join('、')
-      lines.push(`競品動態：${sites} 等本週有 ${competitorIntel.length} 則新動態`)
-    }
+    lines.push(`\n行動建議`)
+    lines.push(`主力：${topProduct.name}（${topProduct.draw_count} 抽，庫存剩 ${stockPct}%${daysText}）`)
 
     if (actions.length > 0) {
-      lines.push('→ 今日建議')
-      actions.forEach(a => lines.push(`  ${a}`))
+      actions.forEach(a => lines.push(`• ${a}`))
+    } else {
+      lines.push('目前無問題')
     }
   }
 
   // AI 洞察
-  lines.push(`\n🧠 行銷洞察`)
+  lines.push(`\nAI 洞察`)
   lines.push(analysis)
 
   await pushLine(lines.join('\n'))

@@ -199,19 +199,17 @@ export async function POST(req: NextRequest) {
     const notifyId  = process.env.NOTIFY_TARGET_ID
     if (lineToken && notifyId) {
       const lines = [
-        `📝 文案草稿已生成｜${draftDate}`,
-        `商品：${productName}（${priceLabel}）`,
-        `共 ${inserts.length} 則（促銷、故事、緊迫感）`,
+        `文案草稿｜${draftDate}`,
+        `商品：${productName}（${priceLabel}），共 ${inserts.length} 則`,
         `請至後台「文案草稿」確認後標記發布。`,
       ]
 
       if (detectedTags.length > 0) {
         lines.push('')
-        lines.push('🏷️ 行銷長偵測到節慶/活動關鍵字')
+        lines.push('偵測到節慶/活動關鍵字')
         detectedTags.forEach(tag => {
-          lines.push(`• 「${tag.matched.join('、')}」→ 建議新增分類標籤「${tag.category}」`)
+          lines.push(`• 「${tag.matched.join('、')}」→ 建議標籤「${tag.category}」`)
         })
-        lines.push(`建議將《${productName}》加入上述分類，請至後台商品管理設定。`)
       }
 
       await fetch('https://api.line.me/v2/bot/message/push', {

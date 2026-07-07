@@ -79,29 +79,22 @@ export async function POST(req: NextRequest) {
     const yestLabel = formatTaiwanDate(yestStart, { month: 'long', day: 'numeric', weekday: 'short' })
 
     const pendingLines: string[] = []
-    if ((pendingShipments  ?? 0) > 0) pendingLines.push(`📦 待配送 ${pendingShipments} 筆`)
-    if ((lowInventory      ?? 0) > 0) pendingLines.push(`⚠️ 低庫存 ${lowInventory} 件`)
-    if ((pendingRefunds    ?? 0) > 0) pendingLines.push(`↩️ 待審退款 ${pendingRefunds} 筆`)
-    if ((pendingSettlements ?? 0) > 0) pendingLines.push(`📋 廠商月結 ${pendingSettlements} 份`)
-    if ((pendingReview     ?? 0) > 0) pendingLines.push(`🔍 待複核儲值 ${pendingReview} 筆`)
+    if ((pendingShipments  ?? 0) > 0) pendingLines.push(`• 待配送 ${pendingShipments} 筆`)
+    if ((lowInventory      ?? 0) > 0) pendingLines.push(`• 低庫存 ${lowInventory} 件`)
+    if ((pendingRefunds    ?? 0) > 0) pendingLines.push(`• 待審退款 ${pendingRefunds} 筆`)
+    if ((pendingSettlements ?? 0) > 0) pendingLines.push(`• 廠商月結 ${pendingSettlements} 份`)
+    if ((pendingReview     ?? 0) > 0) pendingLines.push(`• 待複核儲值 ${pendingReview} 筆`)
 
     const lines = [
-      `☀️ 吉吉比 每日早報`,
-      yestLabel,
+      `吉吉比 早報｜${yestLabel}`,
       ``,
-      `【昨日數據】`,
-      `💰 儲值金額：NT$ ${fmt(totalRecharge)}`,
-      `🎮 抽獎消費：${fmt(totalSpent)} G`,
-      `🎯 抽獎次數 ${fmt(drawCount)} 次`,
-      `👤 參與玩家 ${fmt(uniquePlayers)} 人`,
-      `🆕 新增會員 ${fmt(newUsers)} 人`,
-      ``,
-      `【本月累計儲值】`,
-      `💵 NT$ ${fmt(monthTotal)}`,
+      `儲值 NT$ ${fmt(totalRecharge)}，抽獎 ${fmt(totalSpent)} G，${fmt(drawCount)} 次，${fmt(uniquePlayers)} 人`,
+      `新增會員 ${fmt(newUsers)} 人`,
+      `本月累計儲值：NT$ ${fmt(monthTotal)}`,
       ``,
       pendingLines.length > 0
-        ? `【待處理事項】\n${pendingLines.join('\n')}`
-        : `✅ 無待處理事項`,
+        ? `待處理\n${pendingLines.join('\n')}`
+        : `目前無問題`,
     ]
 
     await pushLine(lines.join('\n'))

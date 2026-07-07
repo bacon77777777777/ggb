@@ -131,14 +131,14 @@ ${DB_SCHEMA}
   }
 
   if (resolved.length > 0 || needsCode.length > 0) {
-    const lines = ['🔧 AI技術長執行報告']
+    const lines = ['AI 技術長報告']
     if (resolved.length > 0) {
-      lines.push(`\n✅ 自動修復 ${resolved.length} 個資料缺口`)
+      lines.push(`\n自動修復 ${resolved.length} 個資料缺口`)
       resolved.forEach(q => lines.push(`• ${q.slice(0, 40)}`))
-      lines.push('\n可以重新詢問 GB哥了。')
+      lines.push('可以重新詢問 GB哥了。')
     }
     if (needsCode.length > 0) {
-      lines.push(`\n📋 ${needsCode.length} 個問題需要手動開發，下週版本規劃時統一處理。`)
+      lines.push(`\n${needsCode.length} 個問題需手動開發，下週版本規劃統一處理。`)
     }
     await pushLine(lines.join('\n'))
   }

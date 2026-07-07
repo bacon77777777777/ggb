@@ -173,24 +173,26 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 推送 LINE ─────────────────────────────────────────────────────
+  const now = new Date(Date.now() + 8 * 3600_000)
+  const timeStr = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`
+
   if (urgent.length === 0 && notice.length === 0 && perfLines.length === 0) {
+    await pushLine(`供應鏈｜${timeStr}\n目前無問題`)
     return NextResponse.json({ ok: true, urgent: 0, notice: 0 })
   }
 
-  const now = new Date(Date.now() + 8 * 3600_000)
-  const timeStr = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`
-  const lines = [`📦 供應鏈協調員報告｜${timeStr}`]
+  const lines = [`供應鏈｜${timeStr}`]
 
   if (urgent.length > 0) {
-    lines.push('\n🔴 需立即處理')
+    lines.push('\n需立即處理')
     urgent.forEach(u => lines.push(`• ${u}`))
   }
   if (notice.length > 0) {
-    lines.push('\n🟡 留意事項')
+    lines.push('\n留意')
     notice.forEach(n => lines.push(`• ${n}`))
   }
   if (perfLines.length > 0) {
-    lines.push('\n📊 本月廠商績效（近30天）')
+    lines.push('\n廠商績效（近30天）')
     perfLines.forEach(p => lines.push(`• ${p}`))
   }
 
