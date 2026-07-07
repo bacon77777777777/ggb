@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { askGbBro } from '@/lib/gbBro'
 import { askCsAgent, type CsResponse } from '@/lib/csAgent'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { processLineXlsxImport, downloadLineMessageContent, pushLineMessage } from '@/lib/lineXlsxImport'
+import { downloadLineMessageContent, pushLineMessage } from '@/lib/lineXlsxImport'
 
 export const runtime = 'nodejs'
 
@@ -200,15 +200,21 @@ async function handleTextMessage(event: any) {
       }
 
       if (fileMessageId) {
-        // Check if it's actually an xlsx (might be a quoted text message)
+        // Download once here to verify xlsx — pass buffer to job endpoint (avoid double-download)
         const buf = await downloadLineMessageContent(fileMessageId)
         const isXlsx = buf && buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4B
 
         if (isXlsx) {
           await replyMessage(event.replyToken, [{ type: 'text', text: '📦 收到！開始智能上架，補全圖片與品項名稱中，完成後會回報結果…' }])
-          // Fire-and-forget — processLineXlsxImport will push result when done
-          processLineXlsxImport({ fileMessageId, targetId: sourceId }).catch(err => {
-            console.error('[lineXlsxImport]', err)
+          // Fire HTTP call to dedicated import-job endpoint (has its own serverless lifecycle + maxDuration=300)
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+            ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3001')
+          fetch(`${backendUrl}/api/admin/line-import-job`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET ?? '' },
+            body: JSON.stringify({ bufferBase64: buf.toString('base64'), targetId: sourceId }),
+          }).catch(err => {
+            console.error('[line-import-job trigger]', err)
             pushLineMessage(sourceId, '😵 智能上架發生錯誤，請稍後再試。').catch(() => {})
           })
           return

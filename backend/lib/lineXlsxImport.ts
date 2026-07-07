@@ -272,17 +272,16 @@ async function insertProduct(p: EnrichedProduct, supplierId?: number | null): Pr
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function processLineXlsxImport({
-  fileMessageId,
+  buffer,
   targetId,
   supplierId,
 }: {
-  fileMessageId: string
+  buffer: Buffer         // already-downloaded xlsx bytes — caller is responsible for downloading
   targetId: string       // LINE group/user ID to push result to
   supplierId?: number | null
 }): Promise<void> {
-  // 1. Download file
-  const buffer = await downloadLineMessageContent(fileMessageId)
-  if (!buffer || !isXlsxBuffer(buffer)) {
+  // Validate
+  if (!isXlsxBuffer(buffer)) {
     await pushLineMessage(targetId, '⚠️ 無法讀取檔案，請確認是 .xlsx 格式。')
     return
   }
