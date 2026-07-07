@@ -1022,7 +1022,407 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
   }
 }
 
-// ─── System prompt ─────────────────────────────────────────────────
+// ─── Intent routing ────────────────────────────────────────────────
+
+type IntentType =
+  | 'A_revenue'
+  | 'B_pending'
+  | 'C_inventory'
+  | 'D_orders'
+  | 'E_user'
+  | 'F_settlement'
+  | 'G_refund'
+  | 'H_userTokens'
+  | 'I_tokenReconcile'
+  | 'J_execute'
+  | 'confirm'
+  | 'cancel'
+  | null
+
+function matchIntent(text: string): IntentType {
+  const t = text.trim()
+
+  // Confirm / cancel (for J two-step flow) — only when very short & clear
+  if (/^(確認|confirm|ok|好的|是的|執行吧|執行)[\s！!。,，]*$/i.test(t)) return 'confirm'
+  if (/^(取消|cancel|不要|算了|放棄|不執行)[\s！!。,，]*$/i.test(t)) return 'cancel'
+
+  // More-specific patterns first to avoid false matches
+  if (/代幣對帳|對帳結果|帳本差異|帳本對帳|token.*對帳/.test(t)) return 'I_tokenReconcile'
+
+  if (/下架|上架|補.*代幣|給.*代幣|扣.*代幣|調整.*代幣|更新.*庫存|調整.*庫存|凍結.*用戶|解凍.*用戶|標記.*可疑|解除.*可疑|取消.*訂單|物流單號|追蹤號|建立.*折扣碼|折扣碼.*(啟用|停用)|核准.*退款|拒絕.*退款|退款.*(核准|拒絕)/.test(t)) return 'J_execute'
+
+  if (/今[日天]|昨[日天]|本週|上週|本月|上月|今天|昨天|這週|近7天|近30天/.test(t) &&
+      /營收|收入|儲值|消費|抽獎次數|數字|多少/.test(t)) return 'A_revenue'
+  if (/營收|儲值.*金額|收入/.test(t)) return 'A_revenue'
+
+  if (/待處理|待出貨|待退款|待月結|需要處理|要做什麼|未處理|積壓|今天要/.test(t)) return 'B_pending'
+
+  if (/庫存|剩幾個|還有幾|缺貨|快沒了|補貨|庫存量|低庫存/.test(t)) return 'C_inventory'
+
+  if (/訂單|出貨狀態|最近.*訂單|未出貨|幾筆.*訂單/.test(t)) return 'D_orders'
+
+  if (/月結|廠商.*結算|結算狀態|廠商.*款項|廠商.*帳款/.test(t)) return 'F_settlement'
+
+  if (/退款|退費|申請退款|退款申請/.test(t)) return 'G_refund'
+
+  // H must come before E to catch "用戶代幣/G幣" pattern before generic user lookup
+  if (/代幣|G幣/.test(t) && /用戶|會員|他|她|查/.test(t)) return 'H_userTokens'
+
+  if (/找.*用戶|查.*用戶|用戶.*資料|查.*會員|找.*會員|查一下.*@|這個人.*是誰|會員.*資訊|帳號.*資料/.test(t)) return 'E_user'
+
+  return null
+}
+
+function isAdmin(lineUserId?: string): boolean {
+  if (!lineUserId) return false
+  const ids = (process.env.ADMIN_LINE_IDS ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+  return ids.includes(lineUserId)
+}
+
+const FALLBACK_MESSAGE = `這個問題我還不確定，目前我能回答：
+
+A. 營收查詢 — 今日/昨日/本週/本月 儲值金額、抽獎消費、次數
+B. 待處理事項 — 待出貨、待退款、待月結數量
+C. 庫存狀態 — 各商品剩餘數量、低庫存警示
+D. 最近訂單 — 依狀態查詢訂單列表
+E. 用戶查詢 — 查詢會員基本資料
+F. 廠商月結 — 月結清單與狀態
+G. 退款申請 — 待處理退款列表
+H. 用戶代幣餘額 — 查特定會員G幣（授權成員）
+I. 代幣對帳 — 帳本預期vs實際差異
+J. 執行操作 — 下架/補幣/訂單/折扣碼等（授權成員，需二次確認）`
+
+// ─── Intent handlers ───────────────────────────────────────────────
+
+async function handleRevenue(text: string): Promise<string> {
+  const period = detectRevenuePeriod(text) ?? 'today'
+  const result = await answerRevenueSummaryDirectly(period)
+  return result ?? '查詢失敗，請稍後再試。'
+}
+
+async function handlePending(): Promise<string> {
+  const d = await getPendingActions()
+  const items: string[] = []
+  if (d.pendingShipments > 0)      items.push(`📦 待出貨訂單：${d.pendingShipments} 筆`)
+  if (d.pendingRefunds > 0)        items.push(`💸 待處理退款：${d.pendingRefunds} 件`)
+  if (d.pendingSettlements > 0)    items.push(`🏭 待確認月結：${d.pendingSettlements} 份`)
+  if (d.lowInventory > 0)          items.push(`⚠️ 低庫存商品：${d.lowInventory} 個`)
+  if (d.pendingRechargeReview > 0) items.push(`🔍 儲值待審核：${d.pendingRechargeReview} 筆`)
+  if (items.length === 0) return '✅ 目前沒有待處理事項。'
+  return `待處理事項：\n${items.join('\n')}`
+}
+
+async function handleInventory(text: string): Promise<string> {
+  const nameMatch = text.match(/庫存[^，,。\n]*?([^\s，,。！?？]+商品|[^\s，,。！?？]{2,8})[的]?/)
+  const productName = nameMatch ? nameMatch[1].replace(/商品$/, '') : undefined
+  const items = await getInventoryStatus(productName, productName ? undefined : 5)
+  if (!items.length) return productName ? `找不到「${productName}」的庫存資料。` : '目前無低庫存商品（≤5個）。'
+  const lines = items.map((p: any) => {
+    const pct = p.total_count > 0 ? Math.round(p.remaining / p.total_count * 100) : 0
+    return `• ${p.name}：${p.remaining}/${p.total_count} 個（${pct}%）`
+  })
+  const title = productName ? `「${productName}」庫存：` : '低庫存商品（≤5個）：'
+  return `${title}\n${lines.join('\n')}`
+}
+
+async function handleOrders(text: string): Promise<string> {
+  let status: string | undefined
+  if (/待出貨|未出貨|submitted/.test(text)) status = 'submitted'
+  else if (/出貨中|運送中|shipping/.test(text)) status = 'shipping'
+  else if (/已送達|delivered/.test(text)) status = 'delivered'
+  const orders = await getRecentOrders(status, 10)
+  if (!orders.length) return `${status ? `無「${status}」狀態` : '最近'}訂單。`
+  const lines = orders.map((o: any) => {
+    const user = o.user?.name ?? o.user?.email ?? '未知用戶'
+    const tw = new Date(new Date(o.created_at).getTime() + TW_MS)
+    const date = `${tw.getUTCMonth() + 1}/${tw.getUTCDate()}`
+    return `• #${o.order_id ?? o.id?.slice(0, 8)} ${date} ${user}（${o.status}）NT$${(o.total_amount ?? 0).toLocaleString()}`
+  })
+  const label = status ? `【${status}】` : ''
+  return `最近${label}訂單（${orders.length}筆）：\n${lines.join('\n')}`
+}
+
+async function handleUserLookup(text: string): Promise<string> {
+  const emailMatch = text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)
+  const phoneMatch = text.match(/09\d{8}/)
+  const query = emailMatch?.[0] ?? phoneMatch?.[0] ?? text
+    .replace(/找|查|用戶|會員|資料|是誰|帳號|這個人/g, '')
+    .trim()
+  if (!query) return '請提供用戶名稱、Email 或手機號碼。'
+  const users = await lookupUser(query)
+  if (!users.length) return `找不到「${query}」相關的會員。`
+  const lines = users.map((u: any) =>
+    `• ${u.name ?? '—'} (${u.email}) 代幣：${u.tokens ?? 0}G 狀態：${u.status ?? 'active'}`
+  )
+  return `找到 ${users.length} 筆結果：\n${lines.join('\n')}`
+}
+
+async function handleSettlement(text: string): Promise<string> {
+  const supplierMatch = text.match(/([^\s，,。！?？]{2,10})廠商|廠商[^，,。！?？]{0,2}([^\s，,。！?？]{2,10})/)
+  const supplierName = supplierMatch?.[1] ?? supplierMatch?.[2]
+  const statusMatch = text.match(/待確認|draft|已確認|confirmed|已付款|paid/)
+  const statusMap: Record<string, string> = {
+    '待確認': 'draft', draft: 'draft',
+    '已確認': 'confirmed', confirmed: 'confirmed',
+    '已付款': 'paid', paid: 'paid',
+  }
+  const status = statusMatch ? statusMap[statusMatch[0]] : undefined
+  const items = await listSettlements(supplierName, undefined, status)
+  if (!items.length) return '沒有符合條件的月結記錄。'
+  const lines = items.slice(0, 10).map((s: any) => {
+    const start = s.period_start?.slice(0, 7) ?? '—'
+    return `• ${s.supplier_name} ${start} NT$${(s.supplier_net ?? 0).toLocaleString()} [${s.status}]`
+  })
+  return `月結清單（${items.length}筆）：\n${lines.join('\n')}`
+}
+
+async function handleRefund(): Promise<string> {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('refund_requests')
+    .select('id, amount_twd, reason, status, created_at, user:users(name, email)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+    .limit(10)
+  const items = data ?? []
+  if (!items.length) return '✅ 目前沒有待處理退款申請。'
+  const lines = items.map((r: any) => {
+    const tw = new Date(new Date(r.created_at).getTime() + TW_MS)
+    const date = `${tw.getUTCMonth() + 1}/${tw.getUTCDate()}`
+    return `• ${date} ${r.user?.name ?? r.user?.email ?? '—'} NT$${r.amount_twd} ${r.reason ?? ''}`
+  })
+  return `待處理退款（${items.length}筆）：\n${lines.join('\n')}`
+}
+
+async function handleUserTokens(text: string, lineUserId?: string): Promise<string> {
+  if (!isAdmin(lineUserId)) return '此功能僅限特定成員使用。'
+  const emailMatch = text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)
+  const phoneMatch = text.match(/09\d{8}/)
+  const query = emailMatch?.[0] ?? phoneMatch?.[0] ?? text
+    .replace(/查|用戶|會員|代幣|G幣|餘額|有幾個|有多少/g, '')
+    .trim()
+  if (!query) return '請提供用戶名稱、Email 或手機號碼。'
+  const users = await lookupUser(query)
+  if (!users.length) return `找不到「${query}」相關的會員。`
+  const lines = users.map((u: any) =>
+    `• ${u.name ?? '—'} (${u.email})：${u.tokens ?? 0} G`
+  )
+  return `代幣餘額：\n${lines.join('\n')}`
+}
+
+async function handleTokenReconcile(): Promise<string> {
+  const supabase = getSupabaseAdmin()
+
+  const [actualRes, rechargeRes, drawRes, manualRes] = await Promise.all([
+    supabase.from('users').select('tokens').or('is_bot.is.null,is_bot.eq.false'),
+    supabase.from('recharge_records')
+      .select('amount, bonus')
+      .eq('status', 'success')
+      .in('type', ['recharge']),
+    supabase.from('draw_records').select('points_used'),
+    supabase.from('token_adjustments').select('delta'),
+  ])
+
+  const actual = (actualRes.data ?? []).reduce((s: number, u: any) => s + (u.tokens ?? 0), 0)
+
+  const rechargeTotal = (rechargeRes.data ?? []).reduce((s: number, r: any) => s + (r.amount ?? 0) + (r.bonus ?? 0), 0)
+  const drawTotal     = (drawRes.data    ?? []).reduce((s: number, r: any) => s + (r.points_used ?? 0), 0)
+  const manualTotal   = (manualRes.data  ?? []).reduce((s: number, r: any) => s + (r.delta ?? 0), 0)
+
+  const expected = rechargeTotal + manualTotal - drawTotal
+  const diff = actual - expected
+  const absDiff = Math.abs(diff)
+  const status = absDiff <= 10 ? '✅ 正常' : '⚠️ 需確認'
+
+  return [
+    `代幣對帳結果：${status}`,
+    `- 帳面預期（儲值+手動-抽獎）：${expected.toLocaleString()} G`,
+    `- 實際持有（全體真人）：${actual.toLocaleString()} G`,
+    `- 差異：${diff >= 0 ? '+' : ''}${diff.toLocaleString()} G`,
+    absDiff > 10 ? `⚠️ 差異超過 ±10G，請核查 token_adjustments 或 draw_records。` : '',
+  ].filter(Boolean).join('\n')
+}
+
+// ─── Pending action helpers (for J two-step confirm) ───────────────
+
+async function getPendingAction(lineUserId: string) {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('gb_pending_actions')
+    .select('*')
+    .eq('line_user_id', lineUserId)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data as { id: string; tool_name: string; tool_input: any; description: string } | null
+}
+
+async function storePendingAction(lineUserId: string, toolName: string, toolInput: any, description: string) {
+  const supabase = getSupabaseAdmin()
+  await supabase.from('gb_pending_actions').delete().eq('line_user_id', lineUserId)
+  await supabase.from('gb_pending_actions').insert({
+    line_user_id: lineUserId,
+    tool_name:    toolName,
+    tool_input:   toolInput,
+    description,
+    expires_at:   new Date(Date.now() + 5 * 60_000).toISOString(),
+  })
+}
+
+async function clearPendingAction(lineUserId: string) {
+  const supabase = getSupabaseAdmin()
+  await supabase.from('gb_pending_actions').delete().eq('line_user_id', lineUserId)
+}
+
+function describeToolCall(toolName: string, input: any): string {
+  switch (toolName) {
+    case 'update_product_status':
+      return `${input.status === 'archived' ? '下架' : '上架'}商品 ${input.product_ids?.join('、')}`
+    case 'update_product_stock':
+      return `調整商品庫存 ${input.delta > 0 ? '+' : ''}${input.delta}（原因：${input.reason ?? '未說明'}）`
+    case 'update_product_price':
+      return `修改商品 ${input.product_id} 價格為 ${input.price}`
+    case 'adjust_user_tokens':
+      return `${input.delta > 0 ? '增加' : '扣除'}用戶 ${input.user_id} 代幣 ${Math.abs(input.delta)}G（原因：${input.reason ?? '未說明'}）`
+    case 'update_order_tracking':
+      return `更新訂單 ${input.identifier} 追蹤號為 ${input.tracking_number}`
+    case 'cancel_order':
+      return `取消訂單 ${input.identifier}（原因：${input.reason ?? '未說明'}）`
+    case 'create_coupon':
+      return `建立折扣碼 ${input.code}，面額 ${input.discount_value}${input.discount_type === 'fixed' ? ' 元' : '%'}`
+    case 'toggle_coupon':
+      return `${input.is_active ? '啟用' : '停用'}折扣碼 ${input.code}`
+    case 'freeze_user':
+      return `凍結用戶 ${input.user_id}（原因：${input.reason ?? '未說明'}）`
+    case 'unfreeze_user':
+      return `解凍用戶 ${input.user_id}`
+    case 'flag_user':
+      return `標記用戶 ${input.user_id} 為可疑`
+    case 'unflag_user':
+      return `解除用戶 ${input.user_id} 的可疑標記`
+    case 'mark_order_delivered':
+      return `標記訂單 ${input.identifier} 已送達`
+    case 'manage_refund':
+      return `${input.action === 'approve' ? '核准' : '拒絕'}退款申請 ${input.id}`
+    case 'update_settlement':
+      return `更新月結 ${input.id} 狀態為 ${input.status}`
+    case 'run_sql':
+      return `執行 SQL：${String(input.query).slice(0, 80)}`
+    default:
+      return `執行 ${toolName}`
+  }
+}
+
+async function handleExecute(text: string, lineUserId: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
+
+  const client = new Anthropic({ apiKey })
+
+  const systemPrompt = `你是操作解析器。根據使用者的中文指令，判斷要呼叫哪個工具以及哪些參數。
+只用 tool_use 回應。若需要先查 ID（如商品名稱→product_id），請先用 run_sql 查詢。
+資料庫 schema：
+products(id uuid, name, status[active/archived/sold_out], remaining int, total_count int, price numeric)
+users(id uuid, name, email, tokens int)
+orders(id uuid, order_number text, status)
+settlement_snapshots(id int, supplier_name, status[draft/confirmed/paid])
+refund_requests(id uuid, status[pending/approved/rejected/processed])
+coupons(id uuid, code, discount_type[fixed/percent], discount_value numeric)
+排除 bot：is_bot IS NULL OR is_bot = false`
+
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: text }]
+
+  // Up to 3 rounds to resolve IDs if needed (e.g. product name → UUID)
+  for (let i = 0; i < 3; i++) {
+    const resp = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      system:     systemPrompt,
+      tools:      TOOLS,
+      messages,
+    })
+
+    if (resp.stop_reason === 'end_turn') break
+
+    if (resp.stop_reason === 'tool_use') {
+      const toolBlocks = resp.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
+      messages.push({ role: 'assistant', content: resp.content })
+
+      // If final tool is a write operation (not run_sql), we have our target
+      const writeBlock = toolBlocks.find(b => b.name !== 'run_sql')
+      if (writeBlock) {
+        const desc = describeToolCall(writeBlock.name, writeBlock.input)
+        await storePendingAction(lineUserId, writeBlock.name, writeBlock.input, desc)
+        return `即將執行：${desc}\n\n請回覆「確認」執行，或「取消」放棄。（5分鐘內有效）`
+      }
+
+      // run_sql: execute to get IDs, continue loop
+      const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
+        toolBlocks.map(async b => ({
+          type:        'tool_result' as const,
+          tool_use_id: b.id,
+          content:     await executeTool(b.name, b.input as Record<string, any>, lineUserId),
+        }))
+      )
+      messages.push({ role: 'user', content: results })
+      continue
+    }
+
+    break
+  }
+
+  return `無法解析操作，請更具體說明。例如：「把龍種下架」、「給用戶 xxx@gmail.com 補 100 代幣，原因補償」`
+}
+
+// ─── Conversation history ──────────────────────────────────────────
+
+const HISTORY_TTL_MS  = 30 * 60_000
+const HISTORY_MAX_MSG = 20
+const HISTORY_LOAD    = 12
+
+async function loadHistory(lineUserId: string): Promise<Anthropic.MessageParam[]> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const cutoff = new Date(Date.now() - HISTORY_TTL_MS).toISOString()
+    const { data } = await supabase
+      .from('line_conversations')
+      .select('role, content')
+      .eq('line_user_id', lineUserId)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(HISTORY_LOAD)
+    if (!data || data.length === 0) return []
+    return data.reverse().map(r => ({
+      role:    r.role as 'user' | 'assistant',
+      content: r.content,
+    }))
+  } catch {
+    return []
+  }
+}
+
+async function saveHistory(lineUserId: string, userMsg: string, assistantMsg: string) {
+  try {
+    const supabase = getSupabaseAdmin()
+    await supabase.from('line_conversations').insert([
+      { line_user_id: lineUserId, role: 'user',      content: userMsg },
+      { line_user_id: lineUserId, role: 'assistant', content: assistantMsg },
+    ])
+    const { data: all } = await supabase
+      .from('line_conversations')
+      .select('id')
+      .eq('line_user_id', lineUserId)
+      .order('created_at', { ascending: false })
+    if (all && all.length > HISTORY_MAX_MSG) {
+      const toDelete = all.slice(HISTORY_MAX_MSG).map((r: any) => r.id)
+      await supabase.from('line_conversations').delete().in('id', toDelete)
+    }
+  } catch { /* don't break main flow */ }
+}
+
+// ─── LEGACY: system prompt kept for reference only (not used) ──────
 
 function buildSystemPrompt(): string {
   const twDate = new Date(Date.now() + TW_MS)
@@ -1132,120 +1532,80 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 今天台灣時間：${dateStr}`
 }
 
-// ─── Conversation history (multi-turn context per LINE user) ──────
-
-const HISTORY_TTL_MS  = 30 * 60_000  // 30 分鐘無互動視為新對話
-const HISTORY_MAX_MSG = 20            // 每人最多保留幾則（user+assistant 各算一則）
-const HISTORY_LOAD    = 12            // 每次最多載入幾則（6 輪）
-
-async function loadHistory(lineUserId: string): Promise<Anthropic.MessageParam[]> {
-  try {
-    const supabase = getSupabaseAdmin()
-    const cutoff = new Date(Date.now() - HISTORY_TTL_MS).toISOString()
-    const { data } = await supabase
-      .from('line_conversations')
-      .select('role, content')
-      .eq('line_user_id', lineUserId)
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
-      .limit(HISTORY_LOAD)
-    if (!data || data.length === 0) return []
-    return data.reverse().map(r => ({
-      role:    r.role as 'user' | 'assistant',
-      content: r.content,
-    }))
-  } catch {
-    return []
-  }
-}
-
-async function saveHistory(lineUserId: string, userMsg: string, assistantMsg: string) {
-  try {
-    const supabase = getSupabaseAdmin()
-    await supabase.from('line_conversations').insert([
-      { line_user_id: lineUserId, role: 'user',      content: userMsg },
-      { line_user_id: lineUserId, role: 'assistant', content: assistantMsg },
-    ])
-    // 保留最新 HISTORY_MAX_MSG 則，刪除更舊的
-    const { data: all } = await supabase
-      .from('line_conversations')
-      .select('id')
-      .eq('line_user_id', lineUserId)
-      .order('created_at', { ascending: false })
-    if (all && all.length > HISTORY_MAX_MSG) {
-      const toDelete = all.slice(HISTORY_MAX_MSG).map((r: any) => r.id)
-      await supabase.from('line_conversations').delete().in('id', toDelete)
-    }
-  } catch { /* ignore, don't break the main flow */ }
-}
-
 // ─── Main entry point ──────────────────────────────────────────────
 
 export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
-  const directRevenuePeriod = detectRevenuePeriod(question)
-  const wantsAnalysis = /分析|建議|為什麼|原因|比較|對比/.test(question)
-  if (directRevenuePeriod && !wantsAnalysis) {
-    const directAnswer = await answerRevenueSummaryDirectly(directRevenuePeriod)
-    if (directAnswer) {
-      if (lineUserId) await saveHistory(lineUserId, question, directAnswer)
-      return directAnswer
+  const text   = question.trim()
+  const intent = matchIntent(text)
+
+  // ── J two-step: handle confirmation / cancellation ──────────────
+  if (lineUserId && (intent === 'confirm' || intent === 'cancel')) {
+    const pending = await getPendingAction(lineUserId)
+    if (pending) {
+      await clearPendingAction(lineUserId)
+      if (intent === 'cancel') {
+        const answer = '操作已取消。'
+        await saveHistory(lineUserId, question, answer)
+        return answer
+      }
+      try {
+        const raw    = await executeTool(pending.tool_name, pending.tool_input, lineUserId)
+        const parsed = JSON.parse(raw)
+        const answer = parsed.error
+          ? `❌ 執行失敗：${parsed.error}`
+          : `✅ 已完成：${pending.description}`
+        await saveHistory(lineUserId, question, answer)
+        return answer
+      } catch (e: any) {
+        const answer = `❌ 執行失敗：${e?.message ?? '未知錯誤'}`
+        await saveHistory(lineUserId, question, answer)
+        return answer
+      }
     }
+    // No pending action — fall through to normal intent routing
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
+  let answer: string
 
-  const client = new Anthropic({ apiKey })
-
-  // 載入對話歷史（30 分鐘內的上下文）
-  const history = lineUserId ? await loadHistory(lineUserId) : []
-
-  const messages: Anthropic.MessageParam[] = [
-    ...history,
-    { role: 'user', content: question },
-  ]
-
-  let finalAnswer: string | null = null
-
-  for (let round = 0; round < 5; round++) {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
-      system: buildSystemPrompt(),
-      tools: TOOLS,
-      messages,
-    })
-
-    if (response.stop_reason === 'end_turn') {
-      const textBlock = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
-      finalAnswer = textBlock?.text ?? '（GB哥沒有回應，請再試一次）'
+  switch (intent) {
+    case 'A_revenue':
+      answer = await handleRevenue(text)
       break
-    }
-
-    if (response.stop_reason === 'tool_use') {
-      const toolBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
-      messages.push({ role: 'assistant', content: response.content })
-
-      const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-        toolBlocks.map(async b => ({
-          type: 'tool_result' as const,
-          tool_use_id: b.id,
-          content: await executeTool(b.name, b.input as Record<string, any>, lineUserId),
-        }))
-      )
-      messages.push({ role: 'user', content: toolResults })
-      continue
-    }
-
-    break
+    case 'B_pending':
+      answer = await handlePending()
+      break
+    case 'C_inventory':
+      answer = await handleInventory(text)
+      break
+    case 'D_orders':
+      answer = await handleOrders(text)
+      break
+    case 'E_user':
+      answer = await handleUserLookup(text)
+      break
+    case 'F_settlement':
+      answer = await handleSettlement(text)
+      break
+    case 'G_refund':
+      answer = await handleRefund()
+      break
+    case 'H_userTokens':
+      answer = await handleUserTokens(text, lineUserId)
+      break
+    case 'I_tokenReconcile':
+      answer = await handleTokenReconcile()
+      break
+    case 'J_execute':
+      if (!lineUserId || !isAdmin(lineUserId)) {
+        answer = '此功能僅限特定成員使用。'
+      } else {
+        answer = await handleExecute(text, lineUserId)
+      }
+      break
+    default:
+      answer = FALLBACK_MESSAGE
   }
 
-  const answer = finalAnswer ?? '（GB哥思考超時，請再試一次）'
-
-  // 儲存這輪對話（只存純文字，不存 tool 中間步驟）
-  if (lineUserId) {
-    await saveHistory(lineUserId, question, answer)
-  }
-
+  if (lineUserId) await saveHistory(lineUserId, question, answer)
   return answer
 }
