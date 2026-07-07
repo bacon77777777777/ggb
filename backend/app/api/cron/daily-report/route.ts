@@ -39,6 +39,11 @@ export async function POST(req: NextRequest) {
     const yestEnd   = new Date(twToday.getTime() - TW_MS)
     const monthStart = new Date(Date.UTC(twNow.getUTCFullYear(), twNow.getUTCMonth(), 1) - TW_MS)
 
+    // 先取真人 user IDs，排除機器人
+    const { data: realUsersData } = await supabase
+      .from('users').select('id').or('is_bot.is.null,is_bot.eq.false')
+    const realUserIds = (realUsersData ?? []).map((u: any) => u.id)
+
     const [
       rechargeYest,
       drawYest,
@@ -51,13 +56,16 @@ export async function POST(req: NextRequest) {
       { count: pendingReview },
     ] = await Promise.all([
       supabase.from('recharge_records').select('amount').eq('status', 'success')
+        .in('user_id', realUserIds)
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
-      supabase.from('draw_records').select('user_id, product:products(price)')
+      supabase.from('draw_records').select('user_id, points_used')
+        .in('user_id', realUserIds)
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
       supabase.from('users').select('id', { count: 'exact', head: true })
         .or('is_bot.eq.false,is_bot.is.null')
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
       supabase.from('recharge_records').select('amount').eq('status', 'success')
+        .in('user_id', realUserIds)
         .gte('created_at', monthStart.toISOString()),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
       supabase.from('products').select('id', { count: 'exact', head: true }).gt('total_count', 0).lte('remaining', 3).neq('status', 'archived'),
@@ -69,9 +77,9 @@ export async function POST(req: NextRequest) {
     const recharges     = rechargeYest.data ?? []
     const draws         = drawYest.data ?? []
     const totalRecharge = recharges.reduce((s, r) => s + Number(r.amount), 0)
-    const totalSpent    = draws.reduce((s, r) => s + Number((r.product as any)?.price ?? 0), 0)
+    const totalSpent    = draws.reduce((s, r) => s + Number((r as any).points_used ?? 0), 0)
     const drawCount     = draws.length
-    const uniquePlayers = new Set(draws.map(d => d.user_id)).size
+    const uniquePlayers = new Set(draws.map((d: any) => d.user_id)).size
     const newUsers      = newUsersRes.count ?? 0
     const monthTotal    = (rechargeMonth.data ?? []).reduce((s, r) => s + Number(r.amount), 0)
 
@@ -91,7 +99,7 @@ export async function POST(req: NextRequest) {
       ``,
       `【昨日數據】`,
       `💰 儲值金額 NT$ ${fmt(totalRecharge)}`,
-      `🎮 消費金額 NT$ ${fmt(totalSpent)}`,
+      `🎮 消費金額 G ${fmt(totalSpent)}`,
       `🎯 抽獎次數 ${fmt(drawCount)} 次`,
       `👤 參與玩家 ${fmt(uniquePlayers)} 人`,
       `🆕 新增會員 ${fmt(newUsers)} 人`,
