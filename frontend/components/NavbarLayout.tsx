@@ -28,7 +28,7 @@ export default function NavbarLayout({
       isSticky ? "sticky" : "relative",
       className
     )}>
-      <div className="px-2 h-[57px] flex items-center justify-between relative">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-[57px] flex items-center justify-between relative">
         {/* Left Slot - Always on left */}
         <div className={cn("flex items-center gap-0 md:gap-8 min-w-0 relative z-20 shrink-0", leftClassName)}>
           {left}

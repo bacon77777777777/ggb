@@ -95,7 +95,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
-      <body className="font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
+      <body className="min-h-screen flex flex-col font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
         <AuthProvider>
           <ThemeProvider>
             <AlertProvider>
@@ -104,16 +104,14 @@ export default function RootLayout({
                   <PwaInputFocusFix />
                   <PwaPullToRefresh />
                   <AnalyticsTracker />
-                  <div className="max-w-[560px] mx-auto flex flex-col min-h-screen">
-                    <Navbar />
-                    <main className="flex-grow">
-                      <PathnameKeyed>{children}</PathnameKeyed>
-                    </main>
-                    <div className="hidden md:block">
-                      <Footer />
-                    </div>
-                    <MobileTabbar />
+                  <Navbar />
+                  <main className="flex-grow">
+                    <PathnameKeyed>{children}</PathnameKeyed>
+                  </main>
+                  <div className="hidden md:block">
+                    <Footer />
                   </div>
+                  <MobileTabbar />
                 </FeatureFlagsProvider>
               </ToastProvider>
             </AlertProvider>
