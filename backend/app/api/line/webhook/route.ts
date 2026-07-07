@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { askGbBro } from '@/lib/gbBro'
-import { askCsAgent } from '@/lib/csAgent'
+import { askCsAgent, type CsResponse } from '@/lib/csAgent'
 
 export const runtime = 'nodejs'
 
@@ -137,8 +137,17 @@ async function handleTextMessage(event: any) {
   // ── Customer mode — AI 客服主管 ──────────────────────────────────
   const lineUserId = event.source?.userId ?? ''
   try {
-    const answer = await askCsAgent(text, lineUserId)
-    await replyMessage(event.replyToken, [{ type: 'text', text: answer }])
+    const { text: answer, quickReplies } = await askCsAgent(text, lineUserId)
+    const msg: Record<string, any> = { type: 'text', text: answer }
+    if (quickReplies?.length) {
+      msg.quickReply = {
+        items: quickReplies.slice(0, 4).map(label => ({
+          type: 'action',
+          action: { type: 'message', label, text: label },
+        })),
+      }
+    }
+    await replyMessage(event.replyToken, [msg])
   } catch (err) {
     console.error('[CS Agent] error:', err)
     await replyMessage(event.replyToken, [

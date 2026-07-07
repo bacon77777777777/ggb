@@ -14,6 +14,71 @@ async function pushLine(to: string, text: string) {
   })
 }
 
+// ─── Conversation history ──────────────────────────────────────────
+
+const CS_HISTORY_TTL_MS  = 30 * 60_000
+const CS_HISTORY_MAX_MSG = 16
+const CS_HISTORY_LOAD    = 8
+
+// Use 'cs:' prefix so CS histories don't collide with GB哥 histories
+// in the shared line_conversations table
+function csKey(lineUserId: string) { return `cs:${lineUserId}` }
+
+async function loadCsHistory(lineUserId: string): Promise<Anthropic.MessageParam[]> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const cutoff = new Date(Date.now() - CS_HISTORY_TTL_MS).toISOString()
+    const { data } = await supabase
+      .from('line_conversations')
+      .select('role, content')
+      .eq('line_user_id', csKey(lineUserId))
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(CS_HISTORY_LOAD)
+    if (!data || data.length === 0) return []
+    return data.reverse().map(r => ({
+      role:    r.role as 'user' | 'assistant',
+      content: r.content,
+    }))
+  } catch {
+    return []
+  }
+}
+
+async function saveCsHistory(lineUserId: string, userMsg: string, assistantMsg: string) {
+  try {
+    const supabase = getSupabaseAdmin()
+    const key = csKey(lineUserId)
+    await supabase.from('line_conversations').insert([
+      { line_user_id: key, role: 'user',      content: userMsg },
+      { line_user_id: key, role: 'assistant', content: assistantMsg },
+    ])
+    const { data: all } = await supabase
+      .from('line_conversations')
+      .select('id')
+      .eq('line_user_id', key)
+      .order('created_at', { ascending: false })
+    if (all && all.length > CS_HISTORY_MAX_MSG) {
+      const toDelete = all.slice(CS_HISTORY_MAX_MSG).map((r: any) => r.id)
+      await supabase.from('line_conversations').delete().in('id', toDelete)
+    }
+  } catch { /* don't break main flow */ }
+}
+
+// ─── Quick Reply inference ─────────────────────────────────────────
+
+export function inferQuickReplies(text: string): string[] | undefined {
+  // Asking what the user needs (initial greeting / restart)
+  if (/什麼.*可以|什麼.*幫|有什麼問|有何問|今天.*幫|請告訴我.*問題/.test(text)) {
+    return ['查詢代幣餘額', '訂單狀態', '儲值未到帳', '人工客服']
+  }
+  // After resolution or asking for more help
+  if (/還有.*問題|其他.*問題|還需要|還有.*嗎/.test(text)) {
+    return ['還有問題', '沒問題，謝謝']
+  }
+  return undefined
+}
+
 // ─── CS Tools ──────────────────────────────────────────────────────
 
 async function findRecharge(orderNumber?: string, email?: string, phone?: string) {
@@ -245,9 +310,14 @@ async function executeCsTool(name: string, input: Record<string, any>, lineUserI
 
 // ─── Main export ───────────────────────────────────────────────────
 
-export async function askCsAgent(message: string, lineUserId: string): Promise<string> {
+export interface CsResponse {
+  text: string
+  quickReplies?: string[]
+}
+
+export async function askCsAgent(message: string, lineUserId: string): Promise<CsResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return '客服系統暫時無法使用，請稍後再試。'
+  if (!apiKey) return { text: '客服系統暫時無法使用，請稍後再試。' }
 
   const client = new Anthropic({ apiKey })
 
@@ -274,11 +344,14 @@ export async function askCsAgent(message: string, lineUserId: string): Promise<s
 - 不主動透露系統內部欄位名稱或技術細節
 - 回覆簡短、親切，用繁體中文
 - 每次回覆不超過 200 字
+- 對話有上下文時，直接根據脈絡繼續處理，不重新詢問已知資訊
 
 ## 限制
 無法處理：退款申請（請至 APP 提交）、帳號申訴、商品瑕疵（請拍照 email 客服）`
 
+  const history = await loadCsHistory(lineUserId)
   const messages: Anthropic.MessageParam[] = [
+    ...history,
     { role: 'user', content: message },
   ]
 
@@ -294,8 +367,10 @@ export async function askCsAgent(message: string, lineUserId: string): Promise<s
     })
 
     if (res.stop_reason === 'end_turn') {
-      const text = res.content.find(b => b.type === 'text')
-      return (text as any)?.text ?? '感謝您的耐心，有其他問題請隨時告知。'
+      const block = res.content.find(b => b.type === 'text')
+      const text = (block as any)?.text ?? '感謝您的耐心，有其他問題請隨時告知。'
+      await saveCsHistory(lineUserId, message, text)
+      return { text, quickReplies: inferQuickReplies(text) }
     }
 
     if (res.stop_reason === 'tool_use') {
@@ -314,5 +389,5 @@ export async function askCsAgent(message: string, lineUserId: string): Promise<s
     break
   }
 
-  return '客服系統忙碌中，請稍後再試或輸入「人工客服」轉接。'
+  return { text: '客服系統忙碌中，請稍後再試或輸入「人工客服」轉接。' }
 }

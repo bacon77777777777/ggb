@@ -77,7 +77,7 @@ async function getRevenueSummary(period: string) {
     periodEnd: summary.periodEnd,
     terms: {
       totalRechargeTwd: '儲值金額，單位 NT$，只含真實付款成功訂單，不含 test/promotion/compensation',
-      drawSpendG: '抽獎消費，單位 G，直接加總 draw_records.points_used',
+      drawSpendG: '抽獎消費，單位 G。G幣抽獎（points_used=0）使用 products.price，積分抽獎使用 points_used',
     },
   }
 }
@@ -1254,14 +1254,15 @@ async function handleTokenReconcile(): Promise<string> {
       .select('amount, bonus')
       .eq('status', 'success')
       .in('type', ['recharge']),
-    supabase.from('draw_records').select('points_used'),
+    // G幣 draws have points_used=0; fall back to product.price (same logic as token_ledger VIEW)
+    supabase.from('draw_records').select('points_used, product:products(price)'),
     supabase.from('token_adjustments').select('delta'),
   ])
 
   const actual = (actualRes.data ?? []).reduce((s: number, u: any) => s + (u.tokens ?? 0), 0)
 
   const rechargeTotal = (rechargeRes.data ?? []).reduce((s: number, r: any) => s + (r.amount ?? 0) + (r.bonus ?? 0), 0)
-  const drawTotal     = (drawRes.data    ?? []).reduce((s: number, r: any) => s + (r.points_used ?? 0), 0)
+  const drawTotal     = (drawRes.data    ?? []).reduce((s: number, r: any) => s + (Number(r.points_used) > 0 ? Number(r.points_used) : Number((r.product as any)?.price ?? 0)), 0)
   const manualTotal   = (manualRes.data  ?? []).reduce((s: number, r: any) => s + (r.delta ?? 0), 0)
 
   const expected = rechargeTotal + manualTotal - drawTotal
@@ -1528,7 +1529,7 @@ function buildSystemPrompt(): string {
   - 「抽獎次數」= draw_records 筆數，單位次
   - 「參與玩家」= 有抽獎紀錄的不重複真人玩家數，單位人
   - 「儲值訂單」= 真實付款成功訂單數，單位筆
-- 回答營收統計時優先使用 get_revenue_summary；若自己寫 SQL，抽獎消費必須 SUM(draw_records.points_used)，不要用 products.price 反推
+- 回答營收統計時優先使用 get_revenue_summary；若自己寫 SQL，抽獎消費必須 SUM(CASE WHEN points_used > 0 THEN points_used ELSE COALESCE(p.price,0) END)，LEFT JOIN products p — G幣抽獎 points_used=0，要用 products.price
 - 回答營收統計固定格式與詞彙：儲值金額、抽獎消費、抽獎次數、參與玩家、儲值訂單
 - **問題不夠明確時，自己用最合理的方式詮釋後直接查給答案，不回問老闆**
   例如問「VIP 是誰」→ 自行定義多個維度（儲值最多、消費最多、抽獎最多、G幣最多）一起查，全部列出來
