@@ -1039,39 +1039,66 @@ type IntentType =
   | 'cancel'
   | null
 
-function matchIntent(text: string): IntentType {
+// ── Regex fallback (used when Claude API unavailable) ───────────────
+function matchIntentRegex(t: string): IntentType {
+  if (/代幣對帳|對帳結果|帳本差異|帳本對帳|token.*對帳/.test(t)) return 'I_tokenReconcile'
+  if (/下架|上架|補.*代幣|給.*代幣|扣.*代幣|調整.*代幣|更新.*庫存|調整.*庫存|凍結.*用戶|解凍.*用戶|標記.*可疑|解除.*可疑|取消.*訂單|物流單號|追蹤號|建立.*折扣碼|折扣碼.*(啟用|停用)|核准.*退款|拒絕.*退款|退款.*(核准|拒絕)/.test(t)) return 'J_execute'
+  if (/今[日天]|昨[日天]|本週|上週|本月|上月|今天|昨天|這週|近7天|近30天|這個月|上個月|這月/.test(t) && /營收|收入|儲值|消費|抽獎次數|數字|多少/.test(t)) return 'A_revenue'
+  if (/營收|儲值.*金額|收入/.test(t)) return 'A_revenue'
+  if (/訂單|出貨狀態|最近.*訂單|未出貨|幾筆.*訂單/.test(t)) return 'D_orders'
+  if (/待處理|待出貨|待退款|待月結|需要處理|要做什麼|未處理|積壓|今天要/.test(t)) return 'B_pending'
+  if (/庫存|剩幾個|還有幾|缺貨|快沒了|補貨|庫存量|低庫存/.test(t)) return 'C_inventory'
+  if (/月結|廠商.*結算|結算狀態|廠商.*款項|廠商.*帳款/.test(t)) return 'F_settlement'
+  if (/退款|退費|申請退款|退款申請/.test(t)) return 'G_refund'
+  if (/代幣|G幣/.test(t) && /用戶|會員|他|她|查|@/.test(t)) return 'H_userTokens'
+  if (/找.*用戶|查.*用戶|用戶.*資料|查.*會員|找.*會員|查一下.*@|這個人.*是誰|會員.*資訊|帳號.*資料/.test(t)) return 'E_user'
+  return null
+}
+
+const INTENT_CLASSIFIER_SYSTEM = `你是吉吉比後台 LINE 助理的意圖分類器。
+根據訊息內容，回傳以下其中一個代碼。只回一個字母或 "unknown"，不要任何解釋。
+
+A = 營收/收入/儲值/消費/抽獎數字查詢（含「最近業績」「這個月做了多少」等）
+B = 待處理事項（待出貨、待退款、待月結、需要關注、有什麼要做的）
+C = 庫存狀態（還夠嗎、快賣完了、缺貨、倉庫情況）
+D = 訂單查詢（最近訂單、出貨進度、哪些還沒出）
+E = 用戶/會員資料查詢（某人的帳號、找誰、這個人是誰）
+F = 廠商月結查詢（廠商帳款、結算、月結）
+G = 退款申請查詢（有人要退款、退費情況）
+H = 特定用戶的代幣/G幣餘額查詢
+I = 代幣帳本對帳（帳本、差異、預期vs實際）
+J = 執行寫入操作（下架、補幣、凍結、取消訂單、建折扣碼、填追蹤號等）
+unknown = 以上都不是`
+
+const INTENT_MAP: Record<string, IntentType> = {
+  A: 'A_revenue', B: 'B_pending', C: 'C_inventory', D: 'D_orders',
+  E: 'E_user',    F: 'F_settlement', G: 'G_refund', H: 'H_userTokens',
+  I: 'I_tokenReconcile', J: 'J_execute',
+}
+
+async function classifyIntent(text: string): Promise<IntentType> {
   const t = text.trim()
 
-  // Confirm / cancel (for J two-step flow) — only when very short & clear
+  // Short confirm/cancel patterns are unambiguous — skip Claude for these
   if (/^(確認|confirm|ok|好的|是的|執行吧|執行)[\s！!。,，]*$/i.test(t)) return 'confirm'
   if (/^(取消|cancel|不要|算了|放棄|不執行)[\s！!。,，]*$/i.test(t)) return 'cancel'
 
-  // More-specific patterns first to avoid false matches
-  if (/代幣對帳|對帳結果|帳本差異|帳本對帳|token.*對帳/.test(t)) return 'I_tokenReconcile'
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return matchIntentRegex(t)
 
-  if (/下架|上架|補.*代幣|給.*代幣|扣.*代幣|調整.*代幣|更新.*庫存|調整.*庫存|凍結.*用戶|解凍.*用戶|標記.*可疑|解除.*可疑|取消.*訂單|物流單號|追蹤號|建立.*折扣碼|折扣碼.*(啟用|停用)|核准.*退款|拒絕.*退款|退款.*(核准|拒絕)/.test(t)) return 'J_execute'
-
-  if (/今[日天]|昨[日天]|本週|上週|本月|上月|今天|昨天|這週|近7天|近30天|這個月|上個月|這月/.test(t) &&
-      /營收|收入|儲值|消費|抽獎次數|數字|多少/.test(t)) return 'A_revenue'
-  if (/營收|儲值.*金額|收入/.test(t)) return 'A_revenue'
-
-  // D before B so "幾筆訂單待出貨" routes to D, not B
-  if (/訂單|出貨狀態|最近.*訂單|未出貨|幾筆.*訂單/.test(t)) return 'D_orders'
-
-  if (/待處理|待出貨|待退款|待月結|需要處理|要做什麼|未處理|積壓|今天要/.test(t)) return 'B_pending'
-
-  if (/庫存|剩幾個|還有幾|缺貨|快沒了|補貨|庫存量|低庫存/.test(t)) return 'C_inventory'
-
-  if (/月結|廠商.*結算|結算狀態|廠商.*款項|廠商.*帳款/.test(t)) return 'F_settlement'
-
-  if (/退款|退費|申請退款|退款申請/.test(t)) return 'G_refund'
-
-  // H must come before E to catch "用戶代幣/G幣" pattern before generic user lookup
-  if (/代幣|G幣/.test(t) && /用戶|會員|他|她|查|@/.test(t)) return 'H_userTokens'
-
-  if (/找.*用戶|查.*用戶|用戶.*資料|查.*會員|找.*會員|查一下.*@|這個人.*是誰|會員.*資訊|帳號.*資料/.test(t)) return 'E_user'
-
-  return null
+  try {
+    const client = new Anthropic({ apiKey })
+    const resp = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 5,
+      system:     INTENT_CLASSIFIER_SYSTEM,
+      messages:   [{ role: 'user', content: t }],
+    })
+    const raw = ((resp.content[0] as Anthropic.TextBlock)?.text ?? '').trim().toUpperCase()
+    return INTENT_MAP[raw] ?? null
+  } catch {
+    return matchIntentRegex(t)
+  }
 }
 
 function isAdmin(lineUserId?: string): boolean {
@@ -1537,7 +1564,7 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 
 export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
   const text   = question.trim()
-  const intent = matchIntent(text)
+  const intent = await classifyIntent(text)
 
   // ── J two-step: handle confirmation / cancellation ──────────────
   if (lineUserId && (intent === 'confirm' || intent === 'cancel')) {
