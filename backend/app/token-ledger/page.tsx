@@ -16,7 +16,7 @@ interface UserResult {
 }
 
 interface LedgerRow {
-  type: 'recharge' | 'draw' | 'dismantle' | 'manual'
+  type: 'recharge' | 'draw' | 'dismantle' | 'manual' | 'marketing' | 'test'
   user_id: string
   delta: number
   description: string
@@ -26,10 +26,12 @@ interface LedgerRow {
 }
 
 const TYPE_LABEL: Record<string, { label: string; color: string }> = {
-  recharge:  { label: '儲值',   color: 'text-emerald-600 bg-emerald-50' },
-  draw:      { label: '抽獎',   color: 'text-rose-600 bg-rose-50' },
-  dismantle: { label: '拆解退', color: 'text-amber-600 bg-amber-50' },
+  recharge:  { label: '儲值',    color: 'text-emerald-600 bg-emerald-50' },
+  draw:      { label: '抽獎',    color: 'text-rose-600 bg-rose-50' },
+  dismantle: { label: '拆解退',  color: 'text-amber-600 bg-amber-50' },
   manual:    { label: '手動調整', color: 'text-purple-600 bg-purple-50' },
+  marketing: { label: '行銷贈點', color: 'text-blue-600 bg-blue-50' },
+  test:      { label: '測試',    color: 'text-gray-500 bg-gray-100' },
 }
 
 export default function TokenLedgerPage() {
