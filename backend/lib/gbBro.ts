@@ -704,13 +704,9 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
     if (!product) { errors.push({ id, error: '找不到商品' }); continue }
 
     const newRemaining = Math.max(0, product.remaining + delta)
-    // 加庫存時若商品是 'ended' 狀態，一併恢復為 'active'
-    const statusPatch = (delta > 0 && newRemaining > 0 && (product as any).status === 'ended')
-      ? { remaining: newRemaining, status: 'active', updated_at: new Date().toISOString() }
-      : { remaining: newRemaining, updated_at: new Date().toISOString() }
     const { data: updated, error: updateErr } = await supabase
       .from('products')
-      .update(statusPatch)
+      .update({ remaining: newRemaining, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select('id')
 
@@ -744,10 +740,13 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
       }
     }
 
-    results.push({ id, name: product.name, old: product.remaining, new: newRemaining })
+    results.push({ id, name: product.name, old: product.remaining, new: newRemaining, status: (product as any).status })
   }
 
-  const summary = results.map(r => `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）`).join('、')
+  const summary = results.map(r => {
+    const statusNote = r.status !== 'active' ? `（商品目前${r.status === 'ended' ? '下架' : r.status}中）` : ''
+    return `《${r.name}》${r.old} → ${r.new}（${delta > 0 ? '+' : ''}${delta}）${statusNote}`
+  }).join('、')
   try { await supabase.from('admin_action_logs').insert({ admin_id: actorId ?? 'GB哥-LINE', action: '調整商品庫存', target_type: 'product', target_id: productIds.join(','), detail: { delta, reason, summary, via: 'GB哥' } }) } catch (_) { /* ignore */ }
 
   return { updated: results, errors, summary, reason: reason ?? null }
@@ -1593,6 +1592,8 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 - 多個商品符合條件時，全部一次執行，不分批問確認
 - 用戶相關操作前先用 lookup_user 確認對象
 - 執行後回報：操作 + 對象名稱 + 執行前後數值
+- 執行完就結束，不追問「需要我繼續做什麼嗎？」「要順便上架嗎？」等後續問題
+- 若商品處於非 active 狀態（如下架），在回報結果後直接帶一句事實說明（例：「商品目前下架中」），不詢問是否要上架
 
 ## LINE 推播時間表（台灣時間）
 每天固定推播（只有發現異常/待處理事項才推，無事靜默）：
