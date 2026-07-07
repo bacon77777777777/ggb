@@ -1554,26 +1554,68 @@ function buildSystemPrompt(): string {
 - 時間存 UTC，台灣時間 = UTC+8（+8小時）
 - LIMIT 最多 50 筆，除非有特殊需求
 
-主要資料表：
+── 使用者 ──
 users(id uuid, name, email, phone_number, tokens int, status, is_bot bool, created_at, last_login_at)
+user_event_logs(id, user_id, event_type, detail jsonb, ip, created_at) -- 玩家行為事件（登入/抽獎/儲值等）
+user_badges(user_id, badge_id text, earned_at)
+user_titles(user_id, title_id text, earned_at, is_selected bool)
+daily_check_ins(id, user_id, check_in_date date, reward_amount int, created_at)
+referrals(id, referrer_id uuid, referee_id uuid, status, created_at)
+notifications(id, user_id, type, title, body, link, is_read bool, read_at, meta jsonb, created_at)
+
+── 交易 / 金流 ──
 recharge_records(id, user_id, order_number, amount numeric, bonus numeric, status[success/pending/failed], created_at, trade_no, payment_method)
 draw_records(id, user_id, product_id, product_prize_id, prize_name, prize_level, status, created_at, points_used int)
-products(id, name, price numeric, remaining int, total_count int, status[active/archived/sold_out], product_code)
-product_prizes(id, product_id, name, level, remaining int, total int, probability numeric)
-orders(id, order_number text, user_id, supplier_id, recipient_name, recipient_phone, address, status[submitted/processing/shipping/delivered], total_amount, tracking_number, submitted_at, shipped_at, created_at, logistics_type)
+token_ledger(type[recharge/draw/manual], user_id, delta bigint, recharge_amount, recharge_bonus, description, status, created_at) -- VIEW
+orders(id, order_number, user_id, supplier_id, recipient_name, recipient_phone, address, status[submitted/processing/shipping/delivered], total_amount, tracking_number, submitted_at, shipped_at, created_at, logistics_type)
 order_items(id, order_id, product_name, prize_name, prize_level, product_id, product_prize_id, quantity, price, created_at)
+refund_requests(id, user_id, recharge_id, amount_twd numeric, tokens_to_deduct int, status[pending/approved/rejected/processed], reason, created_at, processed_at)
+
+── 商品 / 庫存 ──
+products(id, name, price numeric, remaining int, total_count int, status[active/inactive/ended], product_code, supplier_id, created_at)
+product_prizes(id, product_id, name, level, remaining int, total int, probability numeric)
+categories(id uuid, name, sort_order int, is_active bool, created_at)
+tags(id uuid, name, is_pinned bool, pinned_order int, is_hidden bool, created_at)
+tag_daily_stats(stat_date date, tag_id uuid, views int, draws int)
+banners(id, name, image_url, link_url, sort_order int, is_active bool, created_at)
+
+── 流量 / 分析 ──
+product_view_events(event_date date, user_id uuid, product_id bigint, created_at) -- 商品頁瀏覽，每次進入 insert 一筆
+visit_logs(id, page_path, user_id uuid, user_agent, ip_address, referrer, metadata jsonb, created_at) -- 全站頁面瀏覽
+search_logs(id, keyword, result_count int, created_at) -- 玩家搜尋關鍵字（無 user_id）
+
+── 廠商 / 結算 ──
 suppliers(id, name, contact_name, contact_phone, contact_email, address, is_active bool, tax_id, created_at)
 settlement_snapshots(id, supplier_name, period_start, period_end, supplier_net numeric, total_g numeric, status[draft/confirmed/paid])
-refund_requests(id, user_id, recharge_id, amount_twd numeric, tokens_to_deduct int, status[pending/approved/rejected/processed], reason, created_at, processed_at)
-token_ledger(type[recharge], user_id, delta bigint, recharge_amount bigint, recharge_bonus bigint, description, status, created_at)
+
+── 二手市場 ──
+sell_listings(id, seller_id uuid, title, status, price int, items jsonb, view_count, created_at)
+sell_orders(id, listing_id, seller_id uuid, buyer_id uuid, unit_price int, payment_status, step int, order_number, cancelled bool, created_at)
+marketplace_listings(id, seller_id uuid, draw_record_id, price int, status, title, item_type, created_at)
+marketplace_orders(id, listing_id, seller_id uuid, buyer_id uuid, unit_price int, step int, cancelled bool, created_at)
+
+── 行銷 / 優惠 ──
 coupons(id, code, discount_amount, min_spend, status)
 user_coupons(id, user_id, coupon_id, used_at, expiry_date)
 competitor_posts(id, competitor, platform, content, url, created_at)
-product_view_events(event_date date, user_id uuid, product_id bigint, created_at) -- 商品瀏覽/流量紀錄，每次進商品頁 insert 一筆
 
-詞彙對應：
-- 「流量」「瀏覽量」「人氣」→ COUNT(*) FROM product_view_events GROUP BY product_id，JOIN products 取名稱
-- 「目前/近期」流量預設查最近 7 天（event_date >= CURRENT_DATE - 7）
+── AI / 系統 ──
+action_logs(id, admin_id, action, target_type, target_id, detail jsonb, ip, created_at) -- 管理員操作稽核
+agent_events(id uuid, event_type, source_agent, payload jsonb, status[pending/processed], created_at, processed_at, processed_by)
+content_drafts(id uuid, draft_date date, product_id, product_name, style, text_content, image_path, status[pending/approved/published/archived], created_at)
+gb_pending_actions(id uuid, line_user_id, tool_name, tool_input jsonb, description, created_at, expires_at)
+feature_flags(key, enabled bool, updated_at) -- 功能開關，key 為功能名稱
+platform_settings(key, value text, updated_at) -- 系統參數設定
+risk_alert_settings(key, value text, description, updated_at)
+
+詞彙對應（問題模糊時自行套用）：
+- 「流量」「瀏覽量」「人氣」→ product_view_events（商品）或 visit_logs（全站）
+- 「目前/近期」流量 → 預設最近 7 天（event_date >= CURRENT_DATE - 7）
+- 「搜尋熱詞」「玩家搜什麼」→ search_logs GROUP BY keyword ORDER BY COUNT DESC
+- 「管理員做了什麼」→ action_logs
+- 「AI 待處理事項」→ agent_events WHERE status = 'pending'
+- 「功能是否開啟」→ feature_flags WHERE key = '...'
+- 「二手市場」→ sell_listings / sell_orders（平台內）或 marketplace_listings（外部連結）
 
 ## 工具能力總覽
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
