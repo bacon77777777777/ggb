@@ -294,7 +294,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
   };
 
   const handleTrial = () => {
-    if (machineState !== 'idle') return;
+    if (machineState !== 'idle' || isSoldOut) return;
     trackEvent('draw_trial', { productId: product.id, series: product.name });
     setForceGoldEgg(true);
     

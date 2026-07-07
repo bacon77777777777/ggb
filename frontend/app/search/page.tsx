@@ -73,6 +73,7 @@ export default function SearchPage() {
         const { data, error } = await supabase
           .from('products')
           .select('*')
+          .eq('type', 'gacha')
           .neq('status', 'pending')
           .order('is_hot', { ascending: false })
           .order('created_at', { ascending: false })

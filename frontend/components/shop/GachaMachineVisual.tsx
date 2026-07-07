@@ -570,7 +570,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="試試看"
         text="試試看"
-        className="absolute"
+        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '69.6%',
@@ -580,7 +580,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (onTrial) onTrial();
+          if (!isSoldOut && onTrial) onTrial();
         }}
       />
 

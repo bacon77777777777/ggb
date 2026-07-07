@@ -51,18 +51,19 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   }, [user, productId, supabase, refreshKey]);
 
   useEffect(() => {
-    if (!product.supplier_id) return;
+    const supplierId = (product as any).supplier_id;
+    if (!supplierId) return;
     (async () => {
       try {
         const { data } = await supabase
           .from('suppliers')
           .select('name')
-          .eq('id', product.supplier_id)
+          .eq('id', supplierId)
           .single();
         setSupplierName(data?.name ?? null);
       } catch {}
     })();
-  }, [product.supplier_id, supabase]);
+  }, [(product as any).supplier_id, supabase]);
 
   // 猜你喜歡：抓同類型其他商品
   useEffect(() => {

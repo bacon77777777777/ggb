@@ -11,7 +11,7 @@ const PRODUCT_ID = 9901;
 const soldOutProduct = {
   id: PRODUCT_ID,
   name: '測試已完抽商品',
-  type: 'ichiban',
+  type: 'gacha',
   status: 'ended',
   remaining: 0,
   total_count: 20,
@@ -20,7 +20,7 @@ const soldOutProduct = {
   supplier_id: null,
   distributor: '測試代理商',
   product_code: 'TEST-001',
-  category: '一番賞',
+  category: '轉蛋',
   is_hot: false,
   barcode: null,
   release_date: null,
@@ -36,7 +36,6 @@ const prizes = [
 
 test.describe('Sold-out product page (TC-F-C03)', () => {
   test.beforeEach(async ({ page }) => {
-    // 攔截所有 Supabase API 呼叫
     await page.route('**/*supabase.co/rest/v1/**', async (route) => {
       const url = route.request().url();
 
@@ -48,7 +47,6 @@ test.describe('Sold-out product page (TC-F-C03)', () => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(prizes) });
         return;
       }
-      // 其他 Supabase 呼叫（推薦商品、收藏等）→ 空陣列
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
     });
 
@@ -57,29 +55,27 @@ test.describe('Sold-out product page (TC-F-C03)', () => {
   });
 
   test('shows sold-out status indicator', async ({ page }) => {
-    // 頁面上應出現「已完抽」或「完售」或 sold-out 相關文字/圖示
+    // GachaMachineVisual 在 isSoldOut 時顯示「該商品已完抽」
     const soldOutIndicator = page.locator('text=已完抽').or(page.locator('text=完售')).or(page.locator('[data-testid="sold-out"]'));
     await expect(soldOutIndicator.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('draw button is disabled or hidden', async ({ page }) => {
-    // 抽獎按鈕（立即抽、立即轉蛋 等）應不可點擊
+    // gacha sold-out：GachaMachineVisual 將按鈕設為 opacity-40 + pointer-events-none
+    // 一般抽獎文字按鈕不存在；若存在則應為 disabled
     const drawBtn = page.locator('button').filter({ hasText: /立即抽|立即轉蛋|立即購買/ });
     const count = await drawBtn.count();
     if (count > 0) {
-      // 如果按鈕存在，應該是 disabled 狀態
       await expect(drawBtn.first()).toBeDisabled();
     }
   });
 
   test('page renders without crashing', async ({ page }) => {
-    // 基本健康確認：頁面不拋錯、商品名稱可見
-    await expect(page.locator('text=測試已完抽商品')).toBeVisible({ timeout: 10_000 });
+    // 頁面不拋錯、商品名稱可見（可能在導覽列與內容各出現一次，用 first()）
+    await expect(page.locator('text=測試已完抽商品').first()).toBeVisible({ timeout: 10_000 });
 
-    // Console error check
     const errors: string[] = [];
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
-    // 不應有 JS crash errors（忽略 Supabase auth / 網路相關的 expected errors）
     const jsErrors = errors.filter(e => !e.includes('supabase') && !e.includes('net::') && !e.includes('auth'));
     expect(jsErrors).toHaveLength(0);
   });
