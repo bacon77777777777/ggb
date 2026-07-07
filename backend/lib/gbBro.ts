@@ -84,7 +84,7 @@ async function getRevenueSummary(period: string) {
 
 function detectRevenuePeriod(question: string): 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_7_days' | 'last_30_days' | null {
   const q = question.toLowerCase()
-  const isRevenueQuestion = /營收|收入|儲值|消費|抽獎/.test(question)
+  const isRevenueQuestion = /營收|收入|儲值|消費|抽獎|業績|銷售|成績/.test(question)
   if (!isRevenueQuestion) return null
   if (/昨日|昨天|前一天|昨營收/.test(question)) return 'yesterday'
   if (/今日|今天/.test(question)) return 'today'
@@ -92,6 +92,7 @@ function detectRevenuePeriod(question: string): 'today' | 'yesterday' | 'this_we
   if (/本月|這個月|這月/.test(question)) return 'this_month'
   if (/近\s*30\s*天|最近\s*30\s*天|last\s*30/.test(q)) return 'last_30_days'
   if (/近\s*7\s*天|最近\s*7\s*天|last\s*7/.test(q)) return 'last_7_days'
+  if (/最近|近期|這幾天|近況/.test(question)) return 'last_7_days'  // 無具體時間 → 預設近7天
   return null
 }
 
