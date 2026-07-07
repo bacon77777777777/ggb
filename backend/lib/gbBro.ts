@@ -480,6 +480,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'save_knowledge',
+    description: '把新學到的知識或糾正後的正確答案存入知識庫，下次對話自動載入。當老闆糾正你的錯誤、或你發現自己對某個平台功能/詞彙的理解有誤時，立即呼叫。',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        topic:   { type: 'string', description: '知識主題，例如：試試看觸擊查詢、G幣換算規則、某商品特殊設定' },
+        content: { type: 'string', description: '正確的知識內容（繁體中文，簡潔），未來回答類似問題時的參考' },
+      },
+      required: ['topic', 'content'],
+    },
+  },
+  {
     name: 'log_capability_gap',
     description: '當 run_sql 確認平台沒有追蹤某個指標（資料根本不存在，非時間範圍問題），呼叫此工具記錄缺口讓 AI 技術長自動修復，最快 6 小時內完成。',
     input_schema: {
@@ -999,6 +1011,15 @@ async function executeTool(name: string, input: Record<string, any>, actorId?: s
         return JSON.stringify(await markOrderDelivered(input.identifier, actorId))
       case 'dismiss_recharge_review':
         return JSON.stringify(await dismissRechargeReview(input.id, input.note, actorId))
+      case 'save_knowledge': {
+        const supabase = getSupabaseAdmin()
+        const { error } = await supabase.from('gb_knowledge').insert({
+          topic:   input.topic,
+          content: input.content,
+          source:  'auto',
+        })
+        return JSON.stringify(error ? { error: error.message } : { ok: true, message: '已存入知識庫' })
+      }
       case 'log_capability_gap':
         return JSON.stringify(await logCapabilityGap(input.question, input.context))
       case 'run_sql':
@@ -1474,8 +1495,9 @@ async function handleOpenQuestion(text: string, lineUserId?: string): Promise<st
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '目前 AI 服務暫時不可用，請稍後再試。'
 
-  const client  = new Anthropic({ apiKey })
-  const history = lineUserId ? await loadHistory(lineUserId) : []
+  const client     = new Anthropic({ apiKey })
+  const history    = lineUserId ? await loadHistory(lineUserId) : []
+  const systemPromptText = await buildSystemPrompt()
   const messages: Anthropic.MessageParam[] = [
     ...history,
     { role: 'user', content: text },
@@ -1485,7 +1507,7 @@ async function handleOpenQuestion(text: string, lineUserId?: string): Promise<st
     const resp = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1000,
-      system:     buildSystemPrompt(),
+      system:     systemPromptText,
       tools:      TOOLS,
       messages,
     })
@@ -1515,13 +1537,32 @@ async function handleOpenQuestion(text: string, lineUserId?: string): Promise<st
   return '目前找不到相關資料，請換個方式描述。'
 }
 
+// ─── Dynamic knowledge loader ─────────────────────────────────────
+
+async function loadDynamicKnowledge(): Promise<string> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const { data } = await supabase
+      .from('gb_knowledge')
+      .select('topic, content')
+      .order('updated_at', { ascending: false })
+      .limit(40)
+    if (!data || data.length === 0) return ''
+    const entries = data.map((k: { topic: string; content: string }) => `【${k.topic}】${k.content}`).join('\n')
+    return `\n## 動態知識庫（已學習，優先參考）\n${entries}\n`
+  } catch {
+    return ''
+  }
+}
+
 // ─── System prompt ────────────────────────────────────────────────
 
-function buildSystemPrompt(): string {
+async function buildSystemPrompt(): Promise<string> {
   const twDate = new Date(Date.now() + TW_MS)
   const dateStr = twDate.toLocaleDateString('zh-TW', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   })
+  const dynamicKnowledge = await loadDynamicKnowledge()
   return `你是 GB哥，吉吉比的 AI 夥伴兼總管，服務平台的四位合夥人老闆。
 
 ## 關於吉吉比
@@ -1617,6 +1658,21 @@ risk_alert_settings(key, value text, description, updated_at)
 - 「AI 待處理事項」→ agent_events WHERE status = 'pending'
 - 「功能是否開啟」→ feature_flags WHERE key = '...'
 - 「二手市場」→ sell_listings / sell_orders（平台內）或 marketplace_listings（外部連結）
+- 「試試看觸擊/點擊/互動/表現/轉換」→ user_event_logs WHERE event_type = 'draw_trial'
+  - 轉換率 = 試試看後有真實 draw 事件的用戶比（JOIN event_type IN ('draw','draw_single','draw_multi')）
+  - 常用維度：product_id（哪個商品最多試玩）、user_id distinct（多少人試玩）
+- 「充值/儲值觸發點」「topup 行為」→ user_event_logs WHERE event_type IN ('topup_page_view','topup_plan_select','topup_success')
+- 「G幣不足」「餘額不足」→ user_event_logs WHERE event_type = 'insufficient_balance'
+- 「banner 點擊」→ user_event_logs WHERE event_type = 'banner_click'
+- 「倉庫出貨行為」→ user_event_logs WHERE event_type IN ('delivery_modal_open','delivery_success','delivery_abandon')
+
+user_event_logs 完整 event_type 清單：
+page_view, page_exit, scroll_depth, product_view, product_click, series_click, winning_records_view,
+draw, draw_single, draw_multi, draw_preview, draw_trial, draw_result_view, prize_reveal,
+insufficient_balance, topup_page_view, topup_plan_select, topup_success,
+warehouse_view, tab_switch, delivery_modal_open, delivery_logistics_select, delivery_success, delivery_abandon, dismantle,
+list_to_market, marketplace_view, marketplace_item_view, search, search_query, banner_click, leaderboard_view,
+error_draw_fail, error_delivery_fail
 
 ## 前台功能說明（問功能/UI/操作體驗 → 從這裡回答，不查資料庫）
 
@@ -1645,7 +1701,7 @@ risk_alert_settings(key, value text, description, updated_at)
 - 每件商品抽完後公開隨機 Seed，玩家可自行用 Seed + 籤號重算結果
 - 確保抽獎流程不可事後竄改
 
-**規則：問 UI 行為、按鈕功能、前台操作體驗 → 直接從本節知識回答，絕對不要去查資料庫**
+**規則：「功能是什麼 / 怎麼運作」→ 從本節說明回答；「觸擊多少次 / 點擊表現 / 數字分析」→ 去 user_event_logs 查**
 
 ## 工具能力總覽
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
@@ -1701,6 +1757,11 @@ risk_alert_settings(key, value text, description, updated_at)
 - 尖峰時段 2 小時零抽獎（前台可能故障）
 - pending 儲值積壓 > 5 筆超過 3 小時
 
+## 自我學習規則
+- 老闆說「你答錯了」「不對」「應該是」等糾正詞 → **立即呼叫 save_knowledge** 把正確答案存入知識庫
+- 下次遇到類似問題時，先查「動態知識庫」區塊，命中則直接用，不要再犯同樣錯誤
+- 自己發現答案有疑問也可主動存入知識庫備用
+${dynamicKnowledge}
 今天台灣時間：${dateStr}`
 }
 
