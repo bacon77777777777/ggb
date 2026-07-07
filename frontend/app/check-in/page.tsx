@@ -191,14 +191,13 @@ export default function CheckInPage() {
               {checkingIn ? <Loader2 className="w-6 h-6 animate-spin" /> : '立即簽到'}
             </Button>
           ) : (
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="w-full h-14 rounded-2xl bg-accent-emerald/10 text-accent-emerald flex items-center justify-center gap-2 font-black border border-accent-emerald/20"
+            <Button
+              disabled
+              className="w-full h-14 rounded-2xl bg-neutral-200 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 text-lg font-black cursor-not-allowed opacity-70 flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-6 h-6" />
               今日已簽到
-            </motion.div>
+            </Button>
           )}
         </div>
 

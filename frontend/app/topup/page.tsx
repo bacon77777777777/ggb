@@ -40,7 +40,6 @@ const PAYMENT_METHODS = [
   { id: 'vacc', name: 'ATM 轉帳', icon: <Banknote className="w-5 h-5" /> },
   { id: 'cvs', name: '超商代碼繳費', icon: <Store className="w-5 h-5" /> },
   { id: 'barcode', name: '超商條碼繳費', icon: <Barcode className="w-5 h-5" /> },
-  { id: 'other', name: '其他 (測試用)', icon: <Zap className="w-5 h-5 text-yellow-500" /> },
 ];
 
 export default function TopupPage() {

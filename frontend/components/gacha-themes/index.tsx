@@ -14,6 +14,7 @@ export interface GachaThemeProps {
   prizes: Prize[];
   onGoToWarehouse: () => void;
   onContinue: () => void;
+  isLoading?: boolean;
 }
 
 // 各主題 lazy load

@@ -328,10 +328,12 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
+  const [supplierName, setSupplierName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
 
   const [isFollowed, setIsFollowed] = useState(false);
+  const [isGachaLoading, setIsGachaLoading] = useState(false);
   const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number } | null>(null);
   const [recommendations, setRecommendations] = useState<Database['public']['Tables']['products']['Row'][]>([]);
   
@@ -685,9 +687,19 @@ export default function ProductDetailPage() {
     }
 
     setIsProcessing(true);
+
+    // For non-card types, open GachaMachine immediately so user sees animation right away
+    const isCardType = product.type === 'card';
+    if (!isCardType) {
+      setIsPurchaseModalOpen(false);
+      setWonPrizes([]);
+      setIsGachaLoading(true);
+      setIsGachaOpen(true);
+    }
+
     try {
       console.log('[GA] event: purchase_attempt', { item_id: product.id, quantity });
-      
+
       const drawRes = await fetch('/api/gacha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -735,7 +747,10 @@ export default function ProductDetailPage() {
       });
 
       setWonPrizes(results);
-      setIsPurchaseModalOpen(false);
+      if (isCardType) {
+        setIsPurchaseModalOpen(false);
+      }
+      setIsGachaLoading(false);
       if (refreshProfile) {
         refreshProfile();
       }
@@ -769,12 +784,11 @@ export default function ProductDetailPage() {
 
       // 任務追蹤由 /api/gacha route 統一處理（避免重複計算）
 
-      if (product.type === 'card') {
+      if (isCardType) {
         setIsVideoMuted(false);
         setIsVideoOpen(true);
-      } else {
-        setIsGachaOpen(true);
       }
+      // For non-card: GachaMachine already opened above; auto-spin fires via useEffect in GachaMachine
       
     } catch (error: unknown) {
       console.error('Purchase error:', error);
@@ -797,6 +811,11 @@ export default function ProductDetailPage() {
             available: options?.usePoints ? (user?.points ?? 0) : (user?.tokens ?? 0),
           },
         });
+      }
+      // If machine was opened in advance, close it on error
+      if (!isCardType) {
+        setIsGachaOpen(false);
+        setIsGachaLoading(false);
       }
       showToast(errorMessage || '購買失敗，請稍後再試', 'error');
     } finally {
@@ -906,6 +925,17 @@ export default function ProductDetailPage() {
       }
 
       setProduct(productData);
+
+      if (productData?.supplier_id) {
+        const { data: supData } = await supabase
+          .from('suppliers')
+          .select('name')
+          .eq('id', productData.supplier_id)
+          .single();
+        setSupplierName(supData?.name ?? null);
+      } else {
+        setSupplierName(null);
+      }
 
       const { data: prizesData, error: prizesError } = await supabase
         .from('product_prizes')
@@ -1562,6 +1592,12 @@ export default function ProductDetailPage() {
                   <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
                   <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
                 </div>
+                {supplierName && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                   <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
                   <div className="flex gap-1">
@@ -2083,6 +2119,12 @@ export default function ProductDetailPage() {
                   <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
                   <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
                 </div>
+                {supplierName && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                   <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">稀有度</span>
                   <div className="flex gap-1">
@@ -2257,6 +2299,7 @@ export default function ProductDetailPage() {
                 theme={effectiveTheme || 'classic_capsule'}
                 isOpen={isGachaOpen}
                 prizes={wonPrizes}
+                isLoading={isGachaLoading}
                 onGoToWarehouse={handleGachaComplete}
                 onContinue={handleGachaContinue}
               />

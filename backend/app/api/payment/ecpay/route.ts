@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       if (orderError) throw orderError
       orderNumber = String((orderData as any)?.order_number || '')
       amt = amount
-      itemName = `GachaGO代幣 ${amount}點`
+      itemName = `吉吉比代幣 ${amount}點`
       clientBackUrl = `${FrontendUrl}/topup`
     } else if (kind === 'sell_escrow') {
       const orderId = Math.max(0, Math.floor(Number(orderIdRaw) || 0))
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       amt = Math.max(0, qty * unitPrice)
       if (!amt) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
 
-      itemName = `GachaGO販售訂單 ${orderNumber}`
+      itemName = `吉吉比販售訂單 ${orderNumber}`
       clientBackUrl = `${FrontendUrl}/sell-orders/${orderId}`
     } else {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
       MerchantTradeDate: getTaiwanDateString(),
       PaymentType: 'aio',
       TotalAmount: String(amt),
-      TradeDesc: 'GachaGO',
+      TradeDesc: 'GGB',
       ItemName: itemName.slice(0, 200),
       ReturnURL: isLocalDev ? 'https://localhost/api/payment/ecpay/callback' : `${BaseUrl}/api/payment/ecpay/callback`,
       ChoosePayment: choosePayment,

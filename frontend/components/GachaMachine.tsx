@@ -19,6 +19,7 @@ interface GachaMachineProps {
   isOpen: boolean;
   onGoToWarehouse: () => void;
   onContinue: () => void;
+  isLoading?: boolean;
 }
 
 type MachineState = 'IDLE' | 'SPINNING' | 'DROPPING' | 'WARNING' | 'LAST_ONE_SPLASH' | 'RESULT';
@@ -96,13 +97,14 @@ const GachaCapsule = React.memo(({
 
 GachaCapsule.displayName = 'GachaCapsule';
 
-export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContinue }: GachaMachineProps) {
+export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContinue, isLoading = false }: GachaMachineProps) {
   const [state, setState] = useState<MachineState>('IDLE');
   const [droppedCapsule, setDroppedCapsule] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
-  
+
   const knobControls = useAnimation();
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const handleSpinRef = useRef<() => void>(() => {});
 
   // Cleanup timeouts
   const clearTimeouts = () => {
@@ -113,7 +115,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
   useEffect(() => {
     return () => clearTimeouts();
   }, []);
-  
+
   // Reset state when opened
   useEffect(() => {
     if (isOpen) {
@@ -123,6 +125,17 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
       clearTimeouts();
     }
   }, [isOpen]);
+
+  // Auto-spin when loading completes and prizes are ready
+  useEffect(() => {
+    handleSpinRef.current = handleSpin;
+  });
+  useEffect(() => {
+    if (isOpen && !isLoading && prizes.length > 0 && state === 'IDLE') {
+      handleSpinRef.current();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, prizes.length, isOpen]);
 
   const handleSpin = async () => {
     if (state !== 'IDLE') return;
@@ -349,22 +362,29 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
             
             {/* Knob Area */}
             <div className="absolute bottom-4 left-8 w-[80px] h-[80px] rounded-full bg-neutral-200/20 flex items-center justify-center">
-              {/* Knob */}
-              <motion.div
-                animate={knobControls}
-                onClick={(e) => { e.stopPropagation(); handleSpin(); }}
-                className={cn(
-                  "w-[80px] h-[80px] rounded-full bg-neutral-900 relative shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center",
-                  state === 'IDLE' ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : "cursor-default"
-                )}
-                style={{
-                  background: 'conic-gradient(from 0deg, #333, #111, #333)'
-                }}
-              >
-                <div className="w-full h-[10px] bg-neutral-600 rounded-full shadow-lg" />
-                <div className="absolute w-[10px] h-full bg-neutral-600 rounded-full shadow-lg" />
-                <div className="absolute w-4 h-4 rounded-full bg-neutral-400 shadow-inner" />
-              </motion.div>
+              {isLoading && state === 'IDLE' ? (
+                /* Loading state */
+                <div className="w-[80px] h-[80px] rounded-full bg-neutral-900 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
+                  <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
+              ) : (
+                /* Regular knob */
+                <motion.div
+                  animate={knobControls}
+                  onClick={(e) => { e.stopPropagation(); handleSpin(); }}
+                  className={cn(
+                    "w-[80px] h-[80px] rounded-full bg-neutral-900 relative shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center",
+                    state === 'IDLE' ? "cursor-pointer hover:scale-105 active:scale-95 transition-transform" : "cursor-default"
+                  )}
+                  style={{
+                    background: 'conic-gradient(from 0deg, #333, #111, #333)'
+                  }}
+                >
+                  <div className="w-full h-[10px] bg-neutral-600 rounded-full shadow-lg" />
+                  <div className="absolute w-[10px] h-full bg-neutral-600 rounded-full shadow-lg" />
+                  <div className="absolute w-4 h-4 rounded-full bg-neutral-400 shadow-inner" />
+                </motion.div>
+              )}
             </div>
           </div>
         </div>
