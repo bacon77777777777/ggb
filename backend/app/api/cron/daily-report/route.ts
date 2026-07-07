@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import {
   formatTaiwanDate,
   getFinancePeriodWindow,
-  getRealUserIds,
   getRevenueSummaryForWindow,
   getTaiwanYesterdayWindow,
   isRealRevenueRecharge,
@@ -41,7 +40,11 @@ export async function POST(req: NextRequest) {
 
     const { start: yestStart, end: yestEnd } = getTaiwanYesterdayWindow()
     const { start: monthStart } = getFinancePeriodWindow('this_month')
-    const realUserIds = await getRealUserIds(supabase)
+
+    // 用 bot exclusion（.not）取代 real-user inclusion（.in）— 避免用戶數超過 1000 時截斷
+    const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
+    const botIds = (botRows ?? []).map((r: any) => r.id as string)
+    const excBot = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
 
     const [
       revenueYest,
@@ -57,8 +60,7 @@ export async function POST(req: NextRequest) {
       supabase.from('users').select('id', { count: 'exact', head: true })
         .or('is_bot.eq.false,is_bot.is.null')
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
-      supabase.from('recharge_records').select('amount, payment_method').eq('status', 'success')
-        .in('user_id', realUserIds)
+      excBot(supabase.from('recharge_records').select('amount, payment_method').eq('status', 'success'))
         .gte('created_at', monthStart.toISOString()),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
       supabase.from('products').select('id', { count: 'exact', head: true }).gt('total_count', 0).lte('remaining', 3).neq('status', 'archived'),
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
     const drawCount     = revenueYest.drawCount
     const uniquePlayers = revenueYest.uniquePlayers
     const newUsers      = newUsersRes.count ?? 0
-    const monthTotal    = (rechargeMonth.data ?? []).filter(isRealRevenueRecharge).reduce((s, r) => s + Number(r.amount), 0)
+    const monthTotal    = (rechargeMonth.data ?? []).filter(isRealRevenueRecharge).reduce((s: number, r: any) => s + Number(r.amount), 0)
 
     const yestLabel = formatTaiwanDate(yestStart, { month: 'long', day: 'numeric', weekday: 'short' })
 

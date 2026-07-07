@@ -20,14 +20,19 @@ export async function GET(request: NextRequest) {
   const botIds = (botRows ?? []).map((r: any) => r.id as string)
   const excBot = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
 
-  // end date is inclusive — add 1 day for lt comparison
-  const endExclusive = end
-    ? new Date(new Date(end).getTime() + 86400000).toISOString().split('T')[0]
+  // UI 傳來的日期字串是台灣日期（e.g. "2026-07-07"），
+  // JS 會解析成 UTC 午夜，但台灣午夜 = UTC-8h。修正時區偏移。
+  const TW_OFFSET_MS = 8 * 3600_000
+  const startUtc = start
+    ? new Date(new Date(start).getTime() - TW_OFFSET_MS).toISOString()
+    : null
+  const endExclusiveUtc = end
+    ? new Date(new Date(end).getTime() + 86400_000 - TW_OFFSET_MS).toISOString()
     : null
 
   const applyDateFilter = <T extends ReturnType<typeof supabase.from>>(q: any, field = 'created_at') => {
-    if (start) q = q.gte(field, start)
-    if (endExclusive) q = q.lt(field, endExclusive)
+    if (startUtc) q = q.gte(field, startUtc)
+    if (endExclusiveUtc) q = q.lt(field, endExclusiveUtc)
     return q
   }
 
@@ -54,7 +59,7 @@ export async function GET(request: NextRequest) {
     if (tab === 'overview' || tab === 'summary') {
       const [rechargeRes, drawRes, newUserRes, totalUserRes, couponRes, historicalPayersRes] = await Promise.all([
         applyDateFilter(excBot(supabase.from('recharge_records').select('amount, user_id, status, created_at'))),
-        applyDateFilter(excBot(supabase.from('draw_records').select('id, user_id, prize_level, created_at, product:products(price)'))),
+        applyDateFilter(excBot(supabase.from('draw_records').select('id, user_id, prize_level, created_at, points_used, product:products(price)'))),
         applyDateFilter(supabase.from('users').select('id, created_at').or('is_bot.eq.false,is_bot.is.null')),
         supabase.from('users').select('id', { count: 'exact', head: true }).or('is_bot.eq.false,is_bot.is.null'),
         applyDateFilter(
@@ -79,10 +84,13 @@ export async function GET(request: NextRequest) {
       const completed = recharges.filter((r) => r.status === 'success')
       const totalRecharge = completed.reduce((s, r) => s + (r.amount || 0), 0)
       const totalRechargeCount = completed.length
-      const totalTokenConsumed = draws.reduce((s, d: any) => s + (d.product?.price || 0), 0)
+      // 使用 points_used（實際消費G），fallback 到 product.price 相容舊資料
+      const totalTokenConsumed = draws.reduce((s, d: any) => s + (d.points_used || d.product?.price || 0), 0)
       const totalDraws = draws.length
       const uniquePayerSet = new Set(completed.map((r) => r.user_id))
       const uniquePayers = uniquePayerSet.size
+      // 參與玩家 = 有抽獎紀錄的不重複真人玩家數（CLAUDE.md 定義）
+      const uniqueDrawers = new Set(draws.map((d: any) => d.user_id)).size
       const avgPerPayer = uniquePayers > 0 ? Math.round(totalRecharge / uniquePayers) : 0
       const avgTokenPerDraw = totalDraws > 0 ? Math.round(totalTokenConsumed / totalDraws) : 0
 
@@ -172,6 +180,7 @@ export async function GET(request: NextRequest) {
           newUserCount: newUsers.length,
           totalMembers,
           uniquePayers,
+          uniqueDrawers,
           couponDiscountFixed,
           couponDiscountPercentageCount,
         },
@@ -367,7 +376,7 @@ export async function GET(request: NextRequest) {
     if (tab === 'behavior') {
       const applyBehaviorDate = (q: any) => {
         if (start) q = q.gte('created_at', start)
-        if (endExclusive) q = q.lt('created_at', endExclusive)
+        if (endExclusiveUtc) q = q.lt('created_at', endExclusiveUtc)
         return q
       }
 
@@ -460,7 +469,7 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
 
       if (start) query = query.gte('created_at', start)
-      if (endExclusive) query = query.lt('created_at', endExclusive)
+      if (endExclusiveUtc) query = query.lt('created_at', endExclusiveUtc)
 
       const { data, error } = await query
       if (error) throw error
@@ -494,7 +503,7 @@ export async function GET(request: NextRequest) {
         .order('last_updated', { ascending: false })
 
       if (start) query = query.gte('last_updated', start)
-      if (endExclusive) query = query.lt('last_updated', endExclusive)
+      if (endExclusiveUtc) query = query.lt('last_updated', endExclusiveUtc)
 
       const { data, error } = await query
       if (error) throw error
@@ -518,7 +527,7 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
 
       if (start) query = query.gte('created_at', start)
-      if (endExclusive) query = query.lt('created_at', endExclusive)
+      if (endExclusiveUtc) query = query.lt('created_at', endExclusiveUtc)
 
       const { data, error } = await query
       if (error) throw error

@@ -62,6 +62,13 @@ export function isRealRevenueRecharge(record: { payment_method?: string | null }
   return !NON_REVENUE_PAYMENT_METHODS.has(method)
 }
 
+// Fetch bot IDs — smaller set than real users, scales correctly with .not()
+async function getBotIds(supabase: any): Promise<string[]> {
+  const { data } = await supabase.from('users').select('id').eq('is_bot', true)
+  return (data ?? []).map((u: any) => u.id as string)
+}
+
+// Kept for callers that still need it (daily-report, etc.)
 export async function getRealUserIds(supabase: any): Promise<string[]> {
   const { data } = await supabase
     .from('users')
@@ -81,32 +88,25 @@ export async function getRevenueSummaryForWindow(
   start: Date,
   end: Date,
 ) {
-  const realUserIds = await getRealUserIds(supabase)
-  if (realUserIds.length === 0) {
-    return {
-      period,
-      periodStart: start.toISOString(),
-      periodEnd: end.toISOString(),
-      totalRechargeTwd: 0,
-      rechargeOrderCount: 0,
-      drawSpendG: 0,
-      drawCount: 0,
-      uniquePlayers: 0,
-    }
-  }
+  // Use bot exclusion (.not) instead of real-user inclusion (.in) — scales past 1000 users
+  const botIds = await getBotIds(supabase)
+  const excBot = (q: any) =>
+    botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
 
   const [rechargeRes, drawRes] = await Promise.all([
-    supabase
-      .from('recharge_records')
-      .select('amount, payment_method')
-      .eq('status', 'success')
-      .in('user_id', realUserIds)
+    excBot(
+      supabase
+        .from('recharge_records')
+        .select('amount, payment_method')
+        .eq('status', 'success')
+    )
       .gte('created_at', start.toISOString())
       .lt('created_at', end.toISOString()),
-    supabase
-      .from('draw_records')
-      .select('user_id, points_used')
-      .in('user_id', realUserIds)
+    excBot(
+      supabase
+        .from('draw_records')
+        .select('user_id, points_used')
+    )
       .gte('created_at', start.toISOString())
       .lt('created_at', end.toISOString()),
   ])
@@ -118,10 +118,10 @@ export async function getRevenueSummaryForWindow(
     period,
     periodStart: start.toISOString(),
     periodEnd: end.toISOString(),
-    totalRechargeTwd: realRecharges.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0),
+    totalRechargeTwd:  realRecharges.reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0),
     rechargeOrderCount: realRecharges.length,
-    drawSpendG: draws.reduce((s: number, r: any) => s + Number(r.points_used ?? 0), 0),
-    drawCount: draws.length,
-    uniquePlayers: new Set(draws.map((d: any) => d.user_id)).size,
+    drawSpendG:        draws.reduce((s: number, r: any) => s + Number(r.points_used ?? 0), 0),
+    drawCount:         draws.length,
+    uniquePlayers:     new Set(draws.map((d: any) => d.user_id)).size,
   }
 }
