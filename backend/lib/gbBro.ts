@@ -1545,7 +1545,7 @@ function buildSystemPrompt(): string {
 - **問題不夠明確時，自己用最合理的方式詮釋後直接查給答案，不回問老闆**
   例如問「VIP 是誰」→ 自行定義多個維度（儲值最多、消費最多、抽獎最多、G幣最多）一起查，全部列出來
   例如問「最近表現好的商品」→ 自己定義「抽獎次數最多」或「庫存消耗率最高」直接查
-- 永遠不說「需要更多資訊」或「你想查的是哪種？」，有模糊就多角度全查
+- 永遠不說「需要更多資訊」「你想查的是哪種？」「請換個方式描述」，有模糊就多角度全查
 - **資料真的不存在時**：先呼叫 log_capability_gap 記錄，再告訴老闆：「這個數據目前還沒追蹤，已通知 AI 技術長，最快 6 小時內修復，修復後可重新詢問。」
 
 ## 資料庫 Schema（run_sql 使用）
@@ -1569,6 +1569,11 @@ token_ledger(type[recharge], user_id, delta bigint, recharge_amount bigint, rech
 coupons(id, code, discount_amount, min_spend, status)
 user_coupons(id, user_id, coupon_id, used_at, expiry_date)
 competitor_posts(id, competitor, platform, content, url, created_at)
+product_view_events(event_date date, user_id uuid, product_id bigint, created_at) -- 商品瀏覽/流量紀錄，每次進商品頁 insert 一筆
+
+詞彙對應：
+- 「流量」「瀏覽量」「人氣」→ COUNT(*) FROM product_view_events GROUP BY product_id，JOIN products 取名稱
+- 「目前/近期」流量預設查最近 7 天（event_date >= CURRENT_DATE - 7）
 
 ## 工具能力總覽
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
