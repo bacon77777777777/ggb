@@ -113,7 +113,7 @@ export async function POST(req: Request) {
   const { barcode, product_name, variants_count } = await req.json()
   if (!product_name) return NextResponse.json({ error: 'product_name required' }, { status: 400 })
 
-  const variantCount = Math.max(Number(variants_count) || 0, 0)
+  const hintCount = Math.max(Number(variants_count) || 0, 0)
 
   try {
     // Step 1+2: 免費爬蟲並行
@@ -123,7 +123,16 @@ export async function POST(req: Request) {
       ddgImages((barcode ?? '') + ' ' + product_name + ' カプセルトイ'),
     ])
 
-    // Step 3: Claude 生成繁中品項名（最後順位，但一定要回傳完整數量）
+    // 品項數：Excel 若給 0（未知），從 Bandai 圖片數或 Suruga-ya 推算
+    const variantCount = hintCount > 0
+      ? hintCount
+      : bandai
+        ? Math.max(bandai.images.length - 1, 0)  // images[0]=主圖，其餘=品項
+        : jaHints.length > 0
+          ? jaHints.length
+          : 0
+
+    // Step 3: Claude 生成繁中品項名（最後順位）
     const zhNames = variantCount > 0
       ? await generateChineseNames(product_name, variantCount, jaHints)
       : []
@@ -168,7 +177,7 @@ export async function POST(req: Request) {
       ok: true,
       source,
       aiStatus,
-      data: { jp_price_yen, image_url: mainImage, variants, distributor },
+      data: { jp_price_yen, image_url: mainImage, variants, distributor, variant_count: variantCount },
     })
   } catch (err: any) {
     console.error('[ai-enrich]', err)

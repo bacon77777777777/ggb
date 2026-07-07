@@ -33,16 +33,18 @@ function parseMoWeiFormat(rows: any[][]): ParsedProduct[] {
 
     if (!sku || !fullName || sku === '品名') continue
 
-    // Parse: BAN/鬼滅之刃等待中公仔 @20x6 050
+    // Parse: BAN/鬼滅之刃等待中公仔 @30x5 050
+    // @30x5 = 一袋30個 × 有5袋（包裝規格，非品項種類數）
+    // 品項種類數（variant_count）從網路抓，這裡設為 0
     const mfxMatch    = fullName.match(/^([A-Z]+)\//)
     const mfxCode     = mfxMatch?.[1] ?? ''
     const nameRaw     = fullName.replace(/^[A-Z]+\//, '').replace(/\s*@[\d\s x]+\d+\s*$/, '').trim()
     const formatMatch = fullName.match(/@(\d+)x(\d+)\s+(\d+)/)
-    const qtyPerVariant = formatMatch ? parseInt(formatMatch[1]) : 0
-    const variantCount  = formatMatch ? parseInt(formatMatch[2]) : 0
-    const jpPriceCode   = formatMatch ? parseInt(formatMatch[3]) : 0  // 050 → ¥500
+    const pcsPerBag    = formatMatch ? parseInt(formatMatch[1]) : 0  // @30 = 每袋30個
+    const bagsPerCase  = formatMatch ? parseInt(formatMatch[2]) : 0  // x5 = 5袋
+    const jpPriceCode  = formatMatch ? parseInt(formatMatch[3]) : 0  // 050 → ¥500
 
-    const totalCount = totalRaw || (perCase * cases) || (qtyPerVariant * variantCount * cases)
+    const totalCount = totalRaw || (perCase * cases) || (pcsPerBag * bagsPerCase * cases)
 
     result.push({
       sku,
@@ -51,9 +53,9 @@ function parseMoWeiFormat(rows: any[][]): ParsedProduct[] {
       manufacturer_code: mfxCode,
       per_case: perCase,
       cases,
-      total_count: totalCount > 0 ? totalCount : (qtyPerVariant * variantCount),
-      variant_count: variantCount,
-      qty_per_variant: qtyPerVariant * cases,
+      total_count: totalCount > 0 ? totalCount : (pcsPerBag * bagsPerCase),
+      variant_count: 0,        // 品項數未知，由 AI 補全從網路抓
+      qty_per_variant: 0,
       jp_price_yen: jpPriceCode > 0 ? jpPriceCode * 10 : null,  // 050 → 500¥
       full_spec: fullName,
     })

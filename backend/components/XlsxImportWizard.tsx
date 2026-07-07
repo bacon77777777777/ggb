@@ -181,6 +181,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         image_url: ai.image_url || null,
         distributor: ai.distributor || x.distributor || null,
         variants: ai.variants?.length ? ai.variants : x.variants,
+        variant_count: ai.variant_count || x.variant_count,
         jp_price_yen: ai.jp_price_yen || x.jp_price_yen,
         aiStatus,
       } : x))
@@ -210,17 +211,23 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const p = toImport[i]
       const variantNames = p.variants?.length
         ? p.variants
-        : Array.from({ length: p.variant_count || 1 }, (_, k) => ({ name: `款式${k + 1}`, image_url: null }))
+        : Array.from({ length: p.variant_count || 1 }, () => ({ name: '', image_url: null }))
 
-      const qtyEach = p.qty_per_variant || Math.floor((p.total_count || 1) / (p.variant_count || 1))
-      const prizes = variantNames.map(v => ({
-        level: v.name,
-        name: v.name,
-        total: qtyEach,
-        remaining: qtyEach,
-        probability: 100 / variantNames.length,
-        image_url: v.image_url || null,
-      }))
+      const vCount = variantNames.length || 1
+      const total  = p.total_count || 0
+      const base   = Math.floor(total / vCount)
+      const rem    = total % vCount  // 餘數加到品項 1
+      const prizes = variantNames.map((v, vi) => {
+        const qty = base + (vi === 0 ? rem : 0)
+        return {
+          level: v.name,
+          name: v.name,
+          total: qty,
+          remaining: qty,
+          probability: 100 / vCount,
+          image_url: v.image_url || null,
+        }
+      })
 
       const seed = generateSeed()
       const txidHash = await calculateSeedHash(seed)
@@ -440,6 +447,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                         <div className="flex items-center justify-center gap-1 text-xs text-neutral-600">
                           {variantList.length > 0 ? (
                             <><span>{variantList.length}</span><span className="text-neutral-400">{expanded ? '▲' : '▼'}</span></>
+                          ) : p.aiStatus === 'idle' || p.aiStatus === undefined ? (
+                            <span className="text-neutral-300">?</span>
                           ) : '—'}
                         </div>
 
