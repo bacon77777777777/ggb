@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-08｜GB哥 Intent 分類器修正
+
+### 問題
+用戶詢問「流量最高前三名商品」，GB哥 卻回傳「目前無低庫存商品（≤5個）」。
+
+### 根因
+`INTENT_CLASSIFIER_SYSTEM` 的 C 類定義過於寬泛（「庫存狀態」），Haiku 看到「前三名商品」就歸類為 C，觸發 `handleInventory`，而非進入 `handleOpenQuestion` 讓 Claude 正確查 `product_view_events`。
+
+### 修正（`lib/gbBro.ts`）
+- `INTENT_CLASSIFIER_SYSTEM`：C 類描述改為「庫存**數量**查詢」，並明確標注流量/瀏覽/熱門/人氣等分析類問題不屬於 C，`unknown` 定義補充說明這些分析類查詢屬於 unknown
+- `matchIntentRegex`：C_inventory regex 加 `&& !/流量|瀏覽|人氣|熱門|點擊|排行/.test(t)` 排除條件，防止 API 不可用時 fallback 誤判
+
+---
+
 ## 2026-07-07｜智能批量匯入全面升級 + AI 圖片補全
 
 ### 智能批量匯入（XlsxImportWizard）重設計
