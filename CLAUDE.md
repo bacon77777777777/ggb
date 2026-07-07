@@ -1,0 +1,137 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+GGB（吉吉比）是台灣線上轉蛋平台。廠商供貨、平台出貨。兩個獨立 Next.js 15 App Router 應用共用同一個 Supabase 資料庫：
+
+- **`frontend/`** — 前台玩家介面（轉蛋機、倉庫、儲值、排行榜）
+- **`backend/`** — 後台管理系統（商品/訂單/廠商/財務/AI 組織）
+
+資料庫：Supabase（PostgreSQL）。直連字串：`postgresql://postgres.akdqleelvqvjhjnfkpfq:...@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`
+
+## Commands
+
+```bash
+# Backend（後台）
+cd backend
+npm run dev        # 啟動開發伺服器（port 3000，-H 0.0.0.0）
+npm run build      # 建置
+npm run lint       # ESLint
+
+# Frontend（前台）
+cd frontend
+npm run dev        # 啟動開發伺服器
+npm run build
+npm run lint
+npm run test:e2e          # Playwright E2E
+npm run test:e2e:ui       # Playwright UI 模式
+
+# 資料庫 migration（直接在 psql 執行，不需手動跑）
+psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
+```
+
+## Architecture
+
+### 兩個獨立 Next.js 應用
+
+**Frontend** (`frontend/`) 是玩家端 PWA，以 Supabase Auth 做身份驗證（`@supabase/ssr`）。玩家登入後 cookie 由 middleware 管理。
+
+**Backend** (`backend/`) 是管理後台，**不使用** Supabase Auth，改用自製 JWT-like token（`backend/lib/adminSession.ts`）：HMAC-SHA256 簽章存在 `admin_session` cookie，每日午夜台灣時間到期。所有後台 API route 都呼叫 `requireAdminSession()` 驗證。
+
+### Backend 關鍵 lib
+
+| 檔案 | 用途 |
+|------|------|
+| `lib/supabaseAdmin.ts` | `getSupabaseAdmin()` — service role client，繞過 RLS，後台所有寫入都用這個 |
+| `lib/adminSession.ts` | 管理員 session 簽章與驗證 |
+| `lib/requireAdmin.ts` | API route 驗證 helper |
+| `lib/logAdminAction.ts` | 寫 `action_logs` 稽核軌跡 + 取 client IP |
+| `lib/gbBro.ts` | GB哥 LINE AI 助手（Claude Haiku + tool loop，27 個工具） |
+| `lib/ecpay.ts` | 綠界 AIO 金流 CheckMacValue 計算 |
+| `lib/ecpay_logistics.ts` | 綠界物流（CVS/宅配） |
+| `lib/webhookIdempotency.ts` | ECPay callback 冪等性防護（`webhook_events` 表） |
+| `lib/csAgent.ts` | 客服 AI agent（LINE 前台玩家訊息） |
+
+### 資料庫重要設計
+
+**token_ledger** 是 VIEW，不是實體表，UNION ALL 以下四個來源：
+- `recharge_records` → type `recharge`（ECPay 真實付款）/ `marketing`（promotion/compensation）/ `test`
+- `draw_records` → type `draw`（抽獎消耗）、`dismantle`（拆解退還）
+- `token_adjustments` → type `manual`（GB哥或管理員手動調整）
+
+**重要**：手動補幣必須寫 `token_adjustments`，不可寫 `recharge_records`（後者是 ECPay 對帳基礎）。
+
+**機器人排除**：所有財務/分析 query 必須加 `WHERE (is_bot IS NULL OR is_bot = false)` 或使用 `getRealUserIds()`。
+
+**execute_readonly_sql RPC**：GB哥和 cron agent 查詢用此函數，僅允許 SELECT/WITH，由 service_role 呼叫。
+
+### Migrations
+
+編號遞增：`backend/db/migrations/<n>_name.sql`。每次 DB 變更都建新 migration 檔，直接用 psql 執行，**不需請使用者手動跑**。
+
+### AI 組織架構（Cron Agents）
+
+所有 AI 單位為 `backend/app/api/cron/` 下的 API routes，由 pg_cron（`app.backend_url` + `app.cron_secret` GUC 參數）定時呼叫：
+
+| Agent | 排程（台灣時間） | 職責 |
+|-------|----------------|------|
+| `daily-report` | 08:00 | 每日早報（待處理事項） |
+| `cfo-agent` | 08:30 | 代幣對帳、收入趨勢、廠商月結 |
+| `cmo-agent` | 09:00 | 行銷日報 + 跨部門行動建議 |
+| `supply-chain` | 10:30、22:30 | 超時出貨、零庫存警示 |
+| `health-check` | 每 10 分鐘 | DB 連線、ECPay 錯誤率、尖峰零交易 |
+| `market-intel` | 週一 11:00 | 競品爬取分析（8 家） |
+| `generate-content` | 09:00 | AI 文案草稿生成 |
+| `risk-scan` | 定時 | 風控掃描 |
+
+所有 cron route 驗證 `x-cron-secret` header（對應 `CRON_SECRET` env）。
+
+**agent_events 事件匯流排**：任何 AI 單位偵測到跨部門信號 → INSERT `agent_events` + 推 LINE → 後台「事件中心」（`/agent-events`）顯示待處理。
+
+### GB哥（LINE AI 助手）
+
+- 入口：`backend/app/api/line/webhook/route.ts`
+- 核心：`backend/lib/gbBro.ts`，`askGbBro(question, lineUserId)` 函數
+- 群組訊息需含「gb哥」觸發；個人訊息由 `ADMIN_LINE_IDS` 管控
+- 對話記憶：`line_conversations` 表，30 分鐘 TTL，12 則上下文
+- Tool loop：最多 5 輪，`stop_reason === 'end_turn'` 才回覆
+- **執行原則**：收到指令立即執行回報，絕不把問題丟回給老闆
+
+### 金流（ECPay）
+
+- 付款：`backend/app/api/payment/ecpay/` — 建立訂單 → callback 驗簽 → 補 tokens
+- 物流：`backend/app/api/logistics/` — CVS 地圖選取 → 物流單建立 → callback 更新追蹤號
+- Callback 冪等性：`webhookIdempotency.ts` 在 `webhook_events` 表檢查重複，防止重複入帳
+
+### Frontend Auth
+
+- `frontend/lib/supabase/` — `createClient()` 使用 `@supabase/ssr` browser client
+- `frontend/middleware.ts` — 攔截 auth code → 轉 `/auth/callback`
+- `AuthContext` 封裝 session 狀態，`FeatureFlagsContext` 控制功能開關
+
+## Environment Variables
+
+後台（`backend/.env.local`）關鍵變數：
+
+```
+NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY    # 後台所有寫入操作
+ADMIN_SESSION_SECRET         # 管理員 session HMAC key
+ECPAY_MERCHANT_ID / HASH_KEY / HASH_IV
+ECPAY_LOGISTICS_MERCHANT_ID / HASH_KEY / HASH_IV
+LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN
+NOTIFY_TARGET_ID / NOTIFY_TARGET_TYPE   # LINE 推播目標
+CRON_SECRET                  # pg_cron 呼叫 API 的驗證密碼
+ANTHROPIC_API_KEY            # GB哥 + Cron Agent Claude 呼叫
+ADMIN_LINE_IDS               # 允許私訊 GB哥 的 LINE user IDs（逗號分隔）
+```
+
+## 重要慣例
+
+- 所有 migration 執行後 commit 並 push（不需詢問）
+- 後台 API 統一用 `getSupabaseAdmin()`，前台用 `createClient()`（anon key）
+- 財務對帳公式：`expected = recharge_total + manual_total - draw_total - refund_deducted`
+- 稽核軌跡：所有管理員操作都呼叫 `logAdminAction()`
+- `is_bot` 排除：所有統計/報表都過濾機器人帳號
