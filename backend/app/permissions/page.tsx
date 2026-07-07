@@ -14,6 +14,13 @@ interface Role {
 
 const PERMISSION_GROUPS = [
   {
+    title: '頂部導航',
+    items: [
+      { id: 'header_products', label: '鈴鐺告警' },
+      { id: 'header_orders',   label: '配送待辦' },
+    ],
+  },
+  {
     title: '營運總覽',
     items: [
       { id: 'dashboard',        label: '儀表板' },
@@ -29,13 +36,6 @@ const PERMISSION_GROUPS = [
       { id: 'reports_products',    label: '消費明細' },
       { id: 'reports_dismantled',  label: '分解明細' },
       { id: 'reports_settlement',  label: '廠商結算' },
-    ],
-  },
-  {
-    title: '頂部導航',
-    items: [
-      { id: 'header_products', label: '鈴鐺告警' },
-      { id: 'header_orders',   label: '配送待辦' },
     ],
   },
   {

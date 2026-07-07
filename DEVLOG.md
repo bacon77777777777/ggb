@@ -23,6 +23,9 @@
 ### 前台品項清單
 - 移除品項左側彩色 level 標籤（GachaCollectionList）
 
+### 權限管理 UI
+- 編輯角色彈窗：「頂部導航」分組移至最上方（第一個），方便設定鈴鐺告警 / 配送待辦
+
 ### Claude Vision 品項命名（第二輪升級）
 - **根本問題**：Claude 看不到圖片只能靠商品名猜，導致名稱全錯（蠟筆小新全猜「新之助」）
 - **解法**：`nameVariantsByVision()`，把 Bandai 品項圖 URL 陣列直接傳給 `claude-haiku-4-5-20251001` Vision API
