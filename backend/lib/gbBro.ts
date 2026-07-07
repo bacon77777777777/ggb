@@ -691,7 +691,7 @@ const TOOLS: Anthropic.Tool[] = [
 
 async function updateProductStock(productIds: number[], delta: number, reason?: string, actorId?: string) {
   const supabase = getSupabaseAdmin()
-  const results: Array<{ id: number; name: string; old: number; new: number }> = []
+  const results: Array<{ id: number; name: string; old: number; new: number; status: string }> = []
   const errors: Array<{ id: number; error: string }> = []
 
   for (const id of productIds) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { askGbBro } from '@/lib/gbBro'
 import { askCsAgent, type CsResponse } from '@/lib/csAgent'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
 export const runtime = 'nodejs'
 
@@ -22,8 +23,9 @@ function verifySignature(body: string, signature: string): boolean {
   return hash === signature
 }
 
-async function replyMessage(replyToken: string, messages: object[]) {
-  await fetch('https://api.line.me/v2/bot/message/reply', {
+// Returns sent message IDs from LINE's response
+async function replyMessage(replyToken: string, messages: object[]): Promise<string[]> {
+  const res = await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -31,6 +33,41 @@ async function replyMessage(replyToken: string, messages: object[]) {
     },
     body: JSON.stringify({ replyToken, messages }),
   })
+  try {
+    const json = await res.json()
+    return (json.sentMessages ?? []).map((m: any) => String(m.id))
+  } catch {
+    return []
+  }
+}
+
+// Store GB哥's sent message IDs so users can reply without wake word
+async function storeGbSentMessages(messageIds: string[], lineUserId: string) {
+  if (!messageIds.length) return
+  try {
+    const supabase = getSupabaseAdmin()
+    await supabase.from('gb_sent_messages').insert(
+      messageIds.map(message_id => ({ message_id, line_user_id: lineUserId }))
+    )
+  } catch { /* non-critical */ }
+}
+
+// Check if quotedMessageId is from a GB哥 message (within 30 min)
+async function getGbQuoteSource(quotedMessageId: string | undefined): Promise<string | null> {
+  if (!quotedMessageId) return null
+  try {
+    const supabase = getSupabaseAdmin()
+    const cutoff = new Date(Date.now() - 30 * 60_000).toISOString()
+    const { data } = await supabase
+      .from('gb_sent_messages')
+      .select('line_user_id')
+      .eq('message_id', quotedMessageId)
+      .gte('created_at', cutoff)
+      .single()
+    return data?.line_user_id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function GET() {
@@ -104,12 +141,17 @@ async function handleFollow(event: any) {
 async function handleTextMessage(event: any) {
   const text: string = (event.message?.text ?? '').trim()
   const lower = text.toLowerCase()
+  const lineUserId = event.source?.userId ?? ''
 
   const fromGroup = isGroupSource(event)
   const hasWakeWord = WAKE_WORDS.some(w => lower.startsWith(w) || lower.includes(w))
 
-  // Group messages: only respond when wake word is present
-  if (fromGroup && !hasWakeWord) return
+  // Check if this message is a reply to a GB哥 message (admin only)
+  const quotedMessageId: string | undefined = event.message?.quotedMessageId
+  const isGbReply = isAdminSource(event) && !!(await getGbQuoteSource(quotedMessageId))
+
+  // Group messages: must have wake word OR be a direct reply to GB哥
+  if (fromGroup && !hasWakeWord && !isGbReply) return
 
   // ── GB哥 mode (admin channel or admin user) ──────────────────────
   if (isAdminSource(event)) {
@@ -123,8 +165,9 @@ async function handleTextMessage(event: any) {
     }
 
     try {
-      const answer = await askGbBro(query, event.source?.userId)
-      await replyMessage(event.replyToken, [{ type: 'text', text: answer }])
+      const answer = await askGbBro(query, lineUserId)
+      const sentIds = await replyMessage(event.replyToken, [{ type: 'text', text: answer }])
+      await storeGbSentMessages(sentIds, lineUserId)
     } catch (err) {
       console.error('[GB哥] error:', err)
       await replyMessage(event.replyToken, [
@@ -135,7 +178,6 @@ async function handleTextMessage(event: any) {
   }
 
   // ── Customer mode — AI 客服主管 ──────────────────────────────────
-  const lineUserId = event.source?.userId ?? ''
   try {
     const { text: answer, quickReplies } = await askCsAgent(text, lineUserId)
     const msg: Record<string, any> = { type: 'text', text: answer }
