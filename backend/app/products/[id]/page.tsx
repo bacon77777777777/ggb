@@ -33,6 +33,7 @@ export default function EditProductPage() {
     releaseYear: '',
     releaseMonth: '',
     distributor: '',
+    barcode: '',
     series: '',
     supplierId: '' as string,
     machineTheme: '' as string,
@@ -272,6 +273,7 @@ export default function EditProductPage() {
             releaseYear: defaultYear,
             releaseMonth: defaultMonth,
             distributor: product.distributor || '',
+            barcode: product.barcode || '',
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
             machineTheme: product.machine_theme || '',
@@ -369,6 +371,7 @@ export default function EditProductPage() {
         is_hot: formData.isHot,
         total_count: calculatedTotalCount,
         distributor: formData.distributor,
+        barcode: formData.barcode || null,
         series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
         machine_theme: formData.machineTheme || null,
@@ -726,6 +729,20 @@ export default function EditProductPage() {
                 onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 placeholder="例如：萬代南夢宮娛樂"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                產品條碼
+              </label>
+              <input
+                type="text"
+                value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm font-mono"
+                placeholder="例如：4549660718956"
+                maxLength={50}
               />
             </div>
 

@@ -1588,14 +1588,22 @@ export default function ProductDetailPage() {
                     {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
-                  <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
-                </div>
+                {product.distributor && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{product.distributor}</span>
+                  </div>
+                )}
                 {supplierName && (
                   <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                     <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
                     <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
+                  </div>
+                )}
+                {(product as any).barcode && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">產品條碼</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black font-mono">{(product as any).barcode}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
@@ -2115,14 +2123,22 @@ export default function ProductDetailPage() {
                     {product.release_date ? new Date(product.release_date).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' }) : '未定'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-                  <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
-                  <span className="text-neutral-900 dark:text-neutral-50 font-black">萬代南夢宮娛樂</span>
-                </div>
+                {product.distributor && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">代理商</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black">{product.distributor}</span>
+                  </div>
+                )}
                 {supplierName && (
                   <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
                     <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">店家</span>
                     <span className="text-neutral-900 dark:text-neutral-50 font-black">{supplierName}</span>
+                  </div>
+                )}
+                {(product as any).barcode && (
+                  <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px] sm:text-[13px]">產品條碼</span>
+                    <span className="text-neutral-900 dark:text-neutral-50 font-black font-mono">{(product as any).barcode}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">

@@ -34,6 +34,7 @@ const CSV_HEADERS = [
   '稀有度',
   '上市時間',
   '代理商',
+  '產品條碼',
   '熱賣',
   '獎項1名稱', '獎項1等級', '獎項1數量', '獎項1圖片名稱',
   '獎項2名稱', '獎項2等級', '獎項2數量', '獎項2圖片名稱',
@@ -162,7 +163,8 @@ const buildImportRow = (data: ScrapeResult) => {
   row.push('')
   row.push('')
   row.push('')
-  row.push('')
+  row.push('')  // 代理商
+  row.push('')  // 產品條碼
   row.push('否')
 
   const prizes = (data.prizes || []).slice(0, 20)

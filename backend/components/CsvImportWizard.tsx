@@ -261,6 +261,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
           release_month: get(fieldMap.release_date)(row).split(/[-/]/)[1]?.trim() || null,
           started_at: parseStartedAt(get(fieldMap.started_at)(row)),
           distributor: get(fieldMap.distributor)(row).trim() || null,
+          barcode: get(fieldMap.barcode)(row).trim() || null,
           series: get(fieldMap.series)(row).trim() || null,
           supplier_id: selectedSupplierId ? parseInt(selectedSupplierId) : null,
           rarity: toNumber(get(fieldMap.rarity)(row)),
