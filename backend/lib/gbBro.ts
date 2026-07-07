@@ -722,13 +722,21 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
     if (prizes?.length && product.total_count > 0) {
       let remaining = delta
       const sorted = [...prizes].sort((a, b) => b.total - a.total)
+      const prizeErrors: string[] = []
       for (let i = 0; i < sorted.length; i++) {
         const prize = sorted[i]
         const isLast = i === sorted.length - 1
         const share = isLast ? remaining : Math.round(delta * prize.total / product.total_count)
         const newPrizeRemaining = Math.max(0, prize.remaining + share)
-        await supabase.from('product_prizes').update({ remaining: newPrizeRemaining }).eq('id', prize.id)
+        const { error: prizeErr } = await supabase.from('product_prizes').update({ remaining: newPrizeRemaining }).eq('id', prize.id)
+        if (prizeErr) prizeErrors.push(`獎品 ${prize.id}: ${prizeErr.message}`)
         remaining -= share
+      }
+      if (prizeErrors.length > 0) {
+        // Rollback products.remaining to original value
+        await supabase.from('products').update({ remaining: product.remaining }).eq('id', id)
+        errors.push({ id, error: `Prize 更新失敗，已回滾：${prizeErrors.join('; ')}` })
+        continue
       }
     }
 

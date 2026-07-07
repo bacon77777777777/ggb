@@ -51,6 +51,7 @@ const useDropSound = () => {
   const play = () => {
     const audio = audioRef.current;
     if (!audio) return;
+    audio.pause();
     audio.currentTime = 0;
     void audio.play().catch(() => {});
   };
@@ -213,6 +214,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       if (pushSoundMode === 'auto') {
         const audio = autoPushSoundRef.current;
         if (audio) {
+          audio.pause();
           audio.currentTime = 0;
           void audio.play().catch(() => {});
         }

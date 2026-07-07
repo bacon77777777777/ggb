@@ -84,7 +84,9 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
   const [collectionRefreshKey, setCollectionRefreshKey] = useState(0);
   const [pushSoundMode, setPushSoundMode] = useState<'manual' | 'auto'>('auto');
 
-  const isSoldOut = product.status === 'ended' || product.remaining === 0;
+  const isSoldOut = product.status === 'ended'
+    || product.remaining === 0
+    || (prizes.length > 0 && prizes.every(p => (p.remaining ?? 0) <= 0));
 
   const handlePush = () => {
     if (machineState !== 'idle') return;
@@ -133,6 +135,8 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
     
     setIsProcessing(true);
     setIsPurchaseModalOpen(false);
+    // Start animation immediately (API call runs in parallel)
+    runGachaAnimation();
     try {
       let latestRemaining = product.remaining ?? 0;
       try {
@@ -144,6 +148,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
         if (latest) {
           latestRemaining = latest.remaining ?? latestRemaining;
           if (latest.status === 'ended' || latestRemaining <= 0) {
+            setMachineState('idle');
             showToast('商品已完抽', 'info');
             setIsProcessing(false);
             return;
@@ -214,9 +219,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
       }
 
       setWonPrizes(results);
-      // We do NOT refresh profile here immediately to avoid revealing results via balance/collection updates.
-      // Profile and collection will be refreshed when the result modal opens or closes.
-      runGachaAnimation();
+      // Animation already started above; results will be available when user clicks the egg hole.
 
     } catch (error: unknown) {
       let errorMessage = '購買失敗，請稍後再試';
@@ -253,6 +256,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
           ? msgCandidate.trim()
           : (error instanceof Error ? error.message : '');
       console.error(`Purchase error: ${errorMessage}${rawSummary ? ` | raw=${rawSummary}` : ''}`);
+      setMachineState('idle');
       showToast(errorMessage, 'error');
     } finally {
       setIsProcessing(false);
