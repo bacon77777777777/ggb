@@ -54,6 +54,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const [failCount, setFailCount] = useState(0)
   const [errors, setErrors] = useState<string[]>([])
   const [enrichingAll, setEnrichingAll] = useState(false)
+  const [enrichSummary, setEnrichSummary] = useState<{ done: number; partial: number; error: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
   const toggleExpand = (i: number) => setExpandedRows(prev => {
@@ -75,6 +76,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
     setFailCount(0)
     setErrors([])
     setEnrichingAll(false)
+    setEnrichSummary(null)
     setIsDragging(false)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -191,8 +193,17 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
   const enrichAll = async () => {
     setEnrichingAll(true)
+    setEnrichSummary(null)
     const idxList = products.map((_, i) => i).filter(i => products[i].selected && products[i].aiStatus !== 'done')
     for (const idx of idxList) await enrichOne(idx)
+    // Read latest products state to compute summary
+    setProducts(prev => {
+      const done    = prev.filter(p => p.aiStatus === 'done').length
+      const partial = prev.filter(p => p.aiStatus === 'partial').length
+      const error   = prev.filter(p => p.aiStatus === 'error').length
+      setTimeout(() => setEnrichSummary({ done, partial, error }), 0)
+      return prev
+    })
     setEnrichingAll(false)
   }
 
@@ -369,7 +380,27 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
           {/* ── Preview ── */}
           {step === 'preview' && (
-            <div className="space-y-0">
+            <div className="space-y-3">
+
+              {/* AI 補全結果摘要 */}
+              {enrichSummary && !enrichingAll && (
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-xl text-sm">
+                  <span className="text-violet-700 font-semibold shrink-0">🤖 AI 補全完成</span>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    <span className="text-emerald-700 font-medium">✅ 有圖：{enrichSummary.done} 件</span>
+                    {enrichSummary.partial > 0 && (
+                      <span className="text-amber-600 font-medium">⚠️ 缺圖：{enrichSummary.partial} 件</span>
+                    )}
+                    {enrichSummary.error > 0 && (
+                      <span className="text-red-600 font-medium">❌ 失敗：{enrichSummary.error} 件</span>
+                    )}
+                  </div>
+                  {enrichSummary.partial > 0 && (
+                    <span className="ml-auto text-xs text-neutral-400 shrink-0">缺圖商品仍可匯入</span>
+                  )}
+                </div>
+              )}
+
               {/* Table */}
               <div className="rounded-xl border border-neutral-200 overflow-hidden">
                 {/* Header — 全選 lives here */}

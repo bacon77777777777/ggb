@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { askGbBro } from '@/lib/gbBro'
 import { askCsAgent, type CsResponse } from '@/lib/csAgent'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { processLineXlsxImport, downloadLineMessageContent, pushLineMessage } from '@/lib/lineXlsxImport'
 
 export const runtime = 'nodejs'
 
@@ -96,6 +97,8 @@ export async function POST(request: NextRequest) {
       await handleFollow(event)
     } else if (event.type === 'message' && event.message?.type === 'text') {
       await handleTextMessage(event)
+    } else if (event.type === 'message' && event.message?.type === 'file') {
+      await handleFileMessage(event)
     }
   }
 
@@ -129,6 +132,22 @@ function stripWakeWord(text: string): string {
   return text
 }
 
+// Store last xlsx file message per source (group/user), so user can just say "gb哥上架" after sending the file
+async function handleFileMessage(event: any) {
+  if (!isAdminSource(event)) return
+  const messageId = event.message?.id
+  const fileName  = (event.message?.fileName ?? '') as string
+  if (!messageId || !fileName.toLowerCase().endsWith('.xlsx')) return
+  try {
+    const supabase = getSupabaseAdmin()
+    const sourceId = event.source?.groupId ?? event.source?.userId ?? ''
+    await supabase.from('line_pending_files').upsert(
+      { source_id: sourceId, message_id: messageId, file_name: fileName },
+      { onConflict: 'source_id' }
+    )
+  } catch { /* non-critical */ }
+}
+
 async function handleFollow(event: any) {
   await replyMessage(event.replyToken, [
     {
@@ -156,6 +175,48 @@ async function handleTextMessage(event: any) {
   // ── GB哥 mode (admin channel or admin user) ──────────────────────
   if (isAdminSource(event)) {
     const query = hasWakeWord ? stripWakeWord(text) : text
+
+    // ── 智能上架：有 wake word + 上架意圖 → 找 xlsx 文件 ──
+    const isUploadIntent = hasWakeWord && /上架|匯入|import/i.test(lower)
+    if (isUploadIntent) {
+      const sourceId = event.source?.groupId ?? event.source?.userId ?? ''
+
+      // Priority 1: quoted message
+      let fileMessageId: string | null = quotedMessageId ?? null
+
+      // Priority 2: latest pending file from same source (within 30 min)
+      if (!fileMessageId) {
+        try {
+          const supabase = getSupabaseAdmin()
+          const cutoff = new Date(Date.now() - 30 * 60_000).toISOString()
+          const { data } = await supabase
+            .from('line_pending_files')
+            .select('message_id')
+            .eq('source_id', sourceId)
+            .gte('updated_at', cutoff)
+            .single()
+          fileMessageId = data?.message_id ?? null
+        } catch { /* no pending file */ }
+      }
+
+      if (fileMessageId) {
+        // Check if it's actually an xlsx (might be a quoted text message)
+        const buf = await downloadLineMessageContent(fileMessageId)
+        const isXlsx = buf && buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4B
+
+        if (isXlsx) {
+          await replyMessage(event.replyToken, [{ type: 'text', text: '📦 收到！開始智能上架，補全圖片與品項名稱中，完成後會回報結果…' }])
+          // Fire-and-forget — processLineXlsxImport will push result when done
+          processLineXlsxImport({ fileMessageId, targetId: sourceId }).catch(err => {
+            console.error('[lineXlsxImport]', err)
+            pushLineMessage(sourceId, '😵 智能上架發生錯誤，請稍後再試。').catch(() => {})
+          })
+          return
+        }
+      }
+
+      // No xlsx found — fall through to normal GB哥
+    }
 
     if (!query) {
       await replyMessage(event.replyToken, [
