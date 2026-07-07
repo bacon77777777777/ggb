@@ -174,8 +174,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       if (!res.ok || !data.ok) throw new Error(data.error || '補全失敗')
       const ai = data.data
       const hasImage = !!ai.image_url
-      const hasNames = ai.variants?.some((v: any) => v.name?.trim().length > 0)
-      const aiStatus: EnrichedProduct['aiStatus'] = (hasImage && hasNames) ? 'done' : 'partial'
+      const aiStatus: EnrichedProduct['aiStatus'] = hasImage ? 'done' : 'partial'
       setProducts(prev => prev.map((x, i) => i === idx ? {
         ...x,
         image_url: ai.image_url || null,
@@ -284,7 +283,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
   return createPortal(
     <div className="fixed inset-0 bg-black/60 z-[200] flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-5xl my-8 shadow-2xl flex flex-col">
+      <div className="bg-white rounded-2xl w-full max-w-7xl my-8 shadow-2xl flex flex-col">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-3 border-b border-neutral-100">
@@ -374,7 +373,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               {/* Table */}
               <div className="rounded-xl border border-neutral-200 overflow-hidden">
                 {/* Header — 全選 lives here */}
-                <div className="grid grid-cols-[2rem_3.5rem_1fr_7rem_5rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
+                <div className="grid grid-cols-[2rem_3.5rem_1fr_7rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
                   <label className="cursor-pointer flex items-center" title={`全選 (${selectedCount}/${products.length})`}>
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
                   </label>
@@ -401,7 +400,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                     <div key={i} className={`border-b border-neutral-100 last:border-0 ${!p.selected ? 'opacity-40' : ''}`}>
                       {/* Main row — click anywhere (except checkbox/status) to toggle expand */}
                       <div
-                        className={`grid grid-cols-[2rem_3.5rem_1fr_7rem_5rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 transition-colors ${variantList.length > 0 ? 'cursor-pointer hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-neutral-50/60'}`}
+                        className={`grid grid-cols-[2rem_3.5rem_1fr_7rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 transition-colors ${variantList.length > 0 ? 'cursor-pointer hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-neutral-50/60'}`}
                         onClick={() => variantList.length > 0 && toggleExpand(i)}
                       >
                         {/* Checkbox — stop propagation so row click doesn't fire */}
@@ -431,7 +430,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                         <span className="font-mono text-xs text-neutral-400 truncate">{p.barcode || '—'}</span>
 
                         {/* Distributor */}
-                        <span className="text-xs text-neutral-500 truncate">{p.distributor || '—'}</span>
+                        <span className="text-xs text-neutral-500 truncate" title={p.distributor || undefined}>{p.distributor || '—'}</span>
 
                         {/* Price */}
                         <span className="text-xs text-neutral-600">
@@ -485,7 +484,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
 
               <p className="text-xs text-neutral-400 pt-2">
-                ※ 圖片：Bandai 官方目錄（主）/ 圖片搜尋（備）。品項名稱：免費爬蟲優先，Claude AI 兜底翻譯為繁中。
+                ※ 圖片從 Bandai 官方目錄抓取（順序可信）。品項名稱請匯入後進編輯頁面看圖填寫。
               </p>
             </div>
           )}

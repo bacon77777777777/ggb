@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
-import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 
@@ -23,23 +22,7 @@ async function scrapeBandaiCatalog(barcode: string) {
   } catch { return null }
 }
 
-// ── Suruga-ya: Japanese name hints ───────────────────────────────────────────
-async function scrapeJapaneseNameHints(barcode: string): Promise<string[]> {
-  try {
-    const res = await fetch(
-      `https://www.suruga-ya.jp/search?category=0&search_word=${barcode}`,
-      { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'ja' }, signal: AbortSignal.timeout(8000) }
-    )
-    if (!res.ok) return []
-    const html = await res.text()
-    const names = [...html.matchAll(/item_name:\s*common\.htmlDecode\('([^']+)'\)/g)]
-      .map(m => m[1].split('「')[0].trim())
-      .filter(n => n.length > 0 && !/全\d+種|セット|まとめ|BOX|\d+個セット/.test(n))
-    return [...new Set(names)]
-  } catch { return [] }
-}
-
-// ── DuckDuckGo image search ───────────────────────────────────────────────────
+// ── DuckDuckGo image search (fallback when no barcode / Bandai fails) ─────────
 async function ddgImages(query: string): Promise<{ image: string }[]> {
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -65,44 +48,24 @@ async function ddgImages(query: string): Promise<{ image: string }[]> {
 }
 
 const SKIP = ['google', 'gstatic', 'facebook', 'twitter', 'instagram', 'youtube', 'blogspot', 'pinterest', 'wikimedia']
-function scoreImage(url: string, barcode: string | null): number {
-  if (!url?.startsWith('http')) return -1
-  const lower = url.toLowerCase()
-  if (SKIP.some(d => lower.includes(d))) return -1
-  let score = 0
-  if (barcode && url.includes(barcode)) score += 100
-  if (lower.includes('item-shopping.c.yimg.jp')) score += 70
-  if (lower.includes('bandai-a.akamaihd.net')) score += 60
-  if (lower.includes('suruga-ya.jp')) score += 40
-  if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) score += 5
-  return score
-}
-
 function bestImage(results: { image: string }[], barcode: string | null): string | null {
   const scored = results
-    .map(r => ({ url: r.image, score: scoreImage(r.image, barcode) }))
+    .map(r => {
+      const url = r.image
+      if (!url?.startsWith('http')) return { url, score: -1 }
+      const lower = url.toLowerCase()
+      if (SKIP.some(d => lower.includes(d))) return { url, score: -1 }
+      let score = 0
+      if (barcode && url.includes(barcode)) score += 100
+      if (lower.includes('item-shopping.c.yimg.jp')) score += 70
+      if (lower.includes('bandai-a.akamaihd.net')) score += 60
+      if (lower.includes('suruga-ya.jp')) score += 40
+      if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) score += 5
+      return { url, score }
+    })
     .filter(r => r.score >= 0)
     .sort((a, b) => b.score - a.score)
   return scored[0]?.url ?? null
-}
-
-// ── Claude Haiku: always generate complete Chinese variant names ───────────────
-async function generateChineseNames(productName: string, count: number, jaHints: string[]): Promise<string[]> {
-  if (count === 0) return []
-  try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-    const hints = jaHints.length > 0 ? `參考日文名：${jaHints.join('、')}\n` : ''
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
-      system: '你是轉蛋商品命名助手，專為台灣玩家命名轉蛋品項。必須輸出剛好指定數量的繁體中文品項名稱，每行一個。不解釋、不道歉、不加編號。若日文名稱不足，根據商品類型合理推測補全。絕對不可輸出空行。',
-      messages: [{ role: 'user', content: `${hints}轉蛋商品「${productName}」，輸出${count}行繁體中文品項名稱（每款3-8字）：` }],
-    })
-    const lines = ((msg.content[0] as any).text as string).split('\n')
-    const names = lines.map(l => l.replace(/^[\d\.\-\*、。\s]+/, '').trim()).filter(l => l.length > 0 && l.length <= 20)
-    // 如果 Claude 還是給少了，用商品名衍生補齊
-    return Array.from({ length: count }, (_, k) => names[k] || `${productName.slice(0, 4)} ${k + 1}`)
-  } catch { return [] }
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -116,68 +79,50 @@ export async function POST(req: Request) {
   const hintCount = Math.max(Number(variants_count) || 0, 0)
 
   try {
-    // Step 1+2: 免費爬蟲並行
-    const [bandai, jaHints, ddgMain] = await Promise.all([
+    // 免費爬蟲：Bandai 官方目錄（主圖 + 品項圖）
+    const [bandai, ddgMain] = await Promise.all([
       barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
-      barcode ? scrapeJapaneseNameHints(barcode) : Promise.resolve([]),
       ddgImages((barcode ?? '') + ' ' + product_name + ' カプセルトイ'),
     ])
 
-    // 品項數：Excel 若給 0（未知），從 Bandai 圖片數或 Suruga-ya 推算
+    // 品項數：從 Bandai 圖片數推算（images[0]=主圖，其餘=品項）
     const variantCount = hintCount > 0
       ? hintCount
       : bandai
-        ? Math.max(bandai.images.length - 1, 0)  // images[0]=主圖，其餘=品項
-        : jaHints.length > 0
-          ? jaHints.length
-          : 0
-
-    // Step 3: Claude 生成繁中品項名（最後順位）
-    const zhNames = variantCount > 0
-      ? await generateChineseNames(product_name, variantCount, jaHints)
-      : []
+        ? Math.max(bandai.images.length - 1, 0)
+        : 0
 
     // 主圖：Bandai 優先，fallback DDG
     const mainImage = bandai?.images[0] ?? bestImage(ddgMain, barcode ?? null)
 
-    // 品項圖：Bandai 有就用，缺的並行補搜 DDG
+    // 品項圖：Bandai 官方目錄圖（順序可信），缺的才補 DDG
     const variantImageSources = Array.from({ length: variantCount }, (_, k) => bandai?.images[k + 1] ?? null)
     const missingIndexes = variantImageSources.map((img, k) => img ? null : k).filter(k => k !== null) as number[]
 
-    // 缺圖的品項：用品項名稱搜 DDG 補圖
     const fillImages: (string | null)[] = [...variantImageSources]
     if (missingIndexes.length > 0) {
-      await Promise.all(
-        missingIndexes.map(async k => {
-          const variantName = zhNames[k] || product_name
-          const results = await ddgImages(`${product_name} ${variantName} カプセルトイ`)
-          fillImages[k] = bestImage(results, barcode ?? null) ?? bestImage(ddgMain.slice(k + 1), barcode ?? null) ?? null
-        })
-      )
+      const ddgPool = ddgMain.slice(1)
+      missingIndexes.forEach((k, i) => {
+        fillImages[k] = ddgPool[i]?.image ?? null
+      })
     }
 
-    // 如果還是有缺，從 DDG 主搜依序分配
-    const ddgPool = ddgMain.slice(1)
-    let ddgIdx = 0
+    // 品項名稱一律空白，讓用戶進編輯頁面看圖填名稱（AI 猜測的名稱不可靠）
     const variants = Array.from({ length: variantCount }, (_, k) => ({
-      name: zhNames[k] ?? '',
-      image_url: fillImages[k] ?? ddgPool[ddgIdx++]?.image ?? null,
+      name: '',
+      image_url: fillImages[k] ?? null,
     }))
 
     const jp_price_yen = bandai?.jp_price_yen ?? null
-    const source = bandai ? 'bandai_catalog' : 'duckduckgo'
-
-    const hasImage = !!mainImage
-    const hasNames = zhNames.some(n => n.trim().length > 0)
-    const aiStatus = (hasImage && hasNames) ? 'done' : 'partial'
-
     const distributor = bandai ? '萬代股份有限公司（BANDAI）' : null
+    const hasImage = !!mainImage
+    const aiStatus = hasImage ? 'done' : 'partial'
 
     return NextResponse.json({
       ok: true,
-      source,
-      aiStatus,
+      source: bandai ? 'bandai_catalog' : 'duckduckgo',
       data: { jp_price_yen, image_url: mainImage, variants, distributor, variant_count: variantCount },
+      aiStatus,
     })
   } catch (err: any) {
     console.error('[ai-enrich]', err)
