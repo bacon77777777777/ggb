@@ -81,7 +81,7 @@ function isAdminSource(event: any): boolean {
   return false
 }
 
-const WAKE_WORDS = ['gb哥', 'gb 哥']
+const WAKE_WORDS = ['gb哥', 'gb 哥', '@吉吉比 線上轉蛋', '@吉吉比線上轉蛋']
 
 function stripWakeWord(text: string): string {
   for (const w of WAKE_WORDS) {
