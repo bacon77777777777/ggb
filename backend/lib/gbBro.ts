@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseAdmin } from './supabaseAdmin'
+import { formatTaiwanDate, getRevenueSummaryForPeriod } from './financeMetrics'
 
 // ─── Taiwan timezone helpers ───────────────────────────────────────
 const TW_MS = 8 * 3600_000
@@ -16,6 +17,8 @@ function getPeriodStart(period: string): string {
   switch (period) {
     case 'today':
       return todayStartUTC.toISOString()
+    case 'yesterday':
+      return new Date(todayStartUTC.getTime() - 86400_000).toISOString()
     case 'this_week': {
       const dow = tw.getUTCDay()
       return new Date(todayStartUTC.getTime() - dow * 86400_000).toISOString()
@@ -62,26 +65,56 @@ async function getRealUserIds(): Promise<string[]> {
 
 async function getRevenueSummary(period: string) {
   const supabase = getSupabaseAdmin()
-  const gte = getPeriodStart(period)
-  const realUserIds = await getRealUserIds()
-  const [rechargeRes, drawRes] = await Promise.all([
-    supabase.from('recharge_records').select('amount').eq('status', 'success').gte('created_at', gte).in('user_id', realUserIds),
-    supabase.from('draw_records').select('user_id, product:products(price)').gte('created_at', gte).in('user_id', realUserIds),
-  ])
-  const recharges = rechargeRes.data ?? []
-  const draws = drawRes.data ?? []
-  const totalSpent = draws.reduce((s, r) => {
-    const price = (r.product as any)?.price
-    return s + (price ? Number(price) : 0)
-  }, 0)
+  const summary = await getRevenueSummaryForPeriod(supabase, period as any)
   return {
     period,
-    totalRecharge: recharges.reduce((s, r) => s + Number(r.amount), 0),
-    totalSpent,
-    drawCount: draws.length,
-    uniqueDrawers: new Set(draws.map(d => d.user_id)).size,
-    rechargeOrders: recharges.length,
+    totalRechargeTwd: summary.totalRechargeTwd,
+    drawSpendG: summary.drawSpendG,
+    drawCount: summary.drawCount,
+    uniquePlayers: summary.uniquePlayers,
+    rechargeOrders: summary.rechargeOrderCount,
+    periodStart: summary.periodStart,
+    periodEnd: summary.periodEnd,
+    terms: {
+      totalRechargeTwd: '儲值金額，單位 NT$，只含真實付款成功訂單，不含 test/promotion/compensation',
+      drawSpendG: '抽獎消費，單位 G，直接加總 draw_records.points_used',
+    },
   }
+}
+
+function detectRevenuePeriod(question: string): 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_7_days' | 'last_30_days' | null {
+  const q = question.toLowerCase()
+  const isRevenueQuestion = /營收|收入|儲值|消費|抽獎/.test(question)
+  if (!isRevenueQuestion) return null
+  if (/昨日|昨天|前一天|昨營收/.test(question)) return 'yesterday'
+  if (/今日|今天/.test(question)) return 'today'
+  if (/本週|這週|這禮拜|本周/.test(question)) return 'this_week'
+  if (/本月|這個月|這月/.test(question)) return 'this_month'
+  if (/近\s*30\s*天|最近\s*30\s*天|last\s*30/.test(q)) return 'last_30_days'
+  if (/近\s*7\s*天|最近\s*7\s*天|last\s*7/.test(q)) return 'last_7_days'
+  return null
+}
+
+async function answerRevenueSummaryDirectly(period: ReturnType<typeof detectRevenuePeriod>) {
+  if (!period) return null
+  const summary = await getRevenueSummary(period)
+  const start = formatTaiwanDate(new Date(summary.periodStart), { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const endDate = new Date(new Date(summary.periodEnd).getTime() - 1)
+  const end = formatTaiwanDate(endDate, { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const title = period === 'yesterday'
+    ? `昨日營收統計（${start}）`
+    : start === end
+      ? `營收統計（${start}）`
+      : `營收統計（${start}～${end}）`
+
+  return [
+    title,
+    `- 儲值金額：NT$ ${summary.totalRechargeTwd.toLocaleString()}`,
+    `- 抽獎消費：${summary.drawSpendG.toLocaleString()} G`,
+    `- 抽獎次數：${summary.drawCount.toLocaleString()} 次`,
+    `- 參與玩家：${summary.uniquePlayers.toLocaleString()} 人`,
+    `- 儲值訂單：${summary.rechargeOrders.toLocaleString()} 筆`,
+  ].join('\n')
 }
 
 async function getPlatformStats(period?: string) {
@@ -309,13 +342,13 @@ const TOOLS: Anthropic.Tool[] = [
   // ── Query tools ──
   {
     name: 'get_revenue_summary',
-    description: '查詢指定時段的儲值總額、抽獎次數、參與人數。',
+    description: '查詢指定時段的營收統計：儲值金額（NT$）、抽獎消費（G）、抽獎次數、參與玩家、儲值訂單。',
     input_schema: {
       type: 'object' as const,
       properties: {
         period: {
           type: 'string',
-          enum: ['today', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
+          enum: ['today', 'yesterday', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
         },
       },
       required: ['period'],
@@ -367,7 +400,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         period: {
           type: 'string',
-          enum: ['today', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
+          enum: ['today', 'yesterday', 'this_week', 'this_month', 'last_7_days', 'last_30_days'],
           description: '若傳入時段則額外回傳該期間新增會員數、登入會員數',
         },
       },
@@ -553,12 +586,12 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_product_price',
-    description: '修改商品每抽價格（NT$）。',
+    description: '修改商品每抽價格（G）。',
     input_schema: {
       type: 'object' as const,
       properties: {
         product_id: { type: 'number', description: '商品 ID' },
-        price:      { type: 'number', description: '新價格（NT$，正整數）' },
+        price:      { type: 'number', description: '新價格（G，正整數）' },
       },
       required: ['product_id', 'price'],
     },
@@ -1003,10 +1036,19 @@ function buildSystemPrompt(): string {
 
 ## 回覆原則
 - 直接回答被問的問題，不主動補充建議或分析
+- 問「昨日/昨天」只查昨天台灣時間 00:00～24:00，不要改查今天，也不要主動追加近7天比較
 - 老闆問建議或分析才給，沒問不加
 - 繁體中文，語氣像懂業務的夥伴
 - 金額加千分位（NT$ 12,345）
 - 數字問題一律用工具查，不猜測
+- 詞彙與單位固定：
+  - 「儲值金額」= 真實付款成功金額，單位 NT$
+  - 「抽獎消費」或「消費金額」= 玩家抽獎消耗的 G，單位 G，不可寫 NT$
+  - 「抽獎次數」= draw_records 筆數，單位次
+  - 「參與玩家」= 有抽獎紀錄的不重複真人玩家數，單位人
+  - 「儲值訂單」= 真實付款成功訂單數，單位筆
+- 回答營收統計時優先使用 get_revenue_summary；若自己寫 SQL，抽獎消費必須 SUM(draw_records.points_used)，不要用 products.price 反推
+- 回答營收統計固定格式與詞彙：儲值金額、抽獎消費、抽獎次數、參與玩家、儲值訂單
 - **問題不夠明確時，自己用最合理的方式詮釋後直接查給答案，不回問老闆**
   例如問「VIP 是誰」→ 自行定義多個維度（儲值最多、消費最多、抽獎最多、G幣最多）一起查，全部列出來
   例如問「最近表現好的商品」→ 自己定義「抽獎次數最多」或「庫存消耗率最高」直接查
@@ -1060,7 +1102,7 @@ competitor_posts(id, competitor, platform, content, url, created_at)
 
 ## LINE 推播時間表
 每天固定推播（只有發現異常/待處理事項才推，無事靜默）：
-- 00:30 財務長 — 收入趨勢、代幣對帳、待付款月結
+- 00:30 財務長 — 儲值金額趨勢、代幣對帳、待付款月結
 - 01:00 風控長（第一次）— 大量抽獎、大額儲值、測卡行為
 - 01:00 行銷長 — 用戶成長、轉換漏斗、熱門商品
 - 01:00 AI 文案 — 今日草稿已生成提醒（去後台審核）
@@ -1139,6 +1181,16 @@ async function saveHistory(lineUserId: string, userMsg: string, assistantMsg: st
 // ─── Main entry point ──────────────────────────────────────────────
 
 export async function askGbBro(question: string, lineUserId?: string): Promise<string> {
+  const directRevenuePeriod = detectRevenuePeriod(question)
+  const wantsAnalysis = /分析|建議|為什麼|原因|比較|對比/.test(question)
+  if (directRevenuePeriod && !wantsAnalysis) {
+    const directAnswer = await answerRevenueSummaryDirectly(directRevenuePeriod)
+    if (directAnswer) {
+      if (lineUserId) await saveHistory(lineUserId, question, directAnswer)
+      return directAnswer
+    }
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
 

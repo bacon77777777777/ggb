@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
+import { formatTaiwanDate, formatTaiwanTime } from '@/lib/financeMetrics'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +43,7 @@ async function gatherMetrics(supabase: any) {
         SUM(amount) AS revenue
       FROM recharge_records
       WHERE status = 'success'
+        AND COALESCE(payment_method, '') NOT IN ('test', 'promotion', 'compensation')
         AND created_at >= NOW() - INTERVAL '7 days'
         AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
       GROUP BY 1 ORDER BY 1
@@ -55,7 +57,8 @@ async function gatherMetrics(supabase: any) {
         COUNT(*) AS orders
       FROM recharge_records
       WHERE status = 'success'
-        AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 month'
+        AND COALESCE(payment_method, '') NOT IN ('test', 'promotion', 'compensation')
+        AND (created_at AT TIME ZONE 'Asia/Taipei') >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Taipei') - INTERVAL '1 month'
         AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
       GROUP BY 1 ORDER BY 1
     `),
@@ -68,7 +71,7 @@ async function gatherMetrics(supabase: any) {
         SUM(amount_twd) AS total_twd,
         SUM(tokens_to_deduct) AS tokens
       FROM refund_requests
-      WHERE created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Taipei')
+      WHERE (created_at AT TIME ZONE 'Asia/Taipei') >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Taipei')
       GROUP BY status
     `),
 
@@ -87,16 +90,28 @@ async function gatherMetrics(supabase: any) {
     // 全平台代幣對帳
     q(`
       SELECT
-        SUM(u.tokens) AS current_total,
+        COALESCE(SUM(u.tokens),0) AS current_total,
         (SELECT COALESCE(SUM(amount + COALESCE(bonus,0)),0)
          FROM recharge_records
          WHERE status='success'
+           AND COALESCE(payment_method, '') NOT IN ('test', 'promotion', 'compensation')
            AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
-        ) AS recharge_total,
-        (SELECT COALESCE(SUM(points_used),0)
-         FROM draw_records
-         WHERE user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
-        ) AS draw_total,
+        ) AS real_recharge_total,
+        (SELECT COALESCE(SUM(delta),0)
+         FROM token_ledger
+         WHERE type IN ('recharge','marketing','test','manual','draw','dismantle')
+           AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
+        ) AS ledger_total,
+        (SELECT COALESCE(SUM(-delta),0)
+         FROM token_ledger
+         WHERE type='draw'
+           AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
+        ) AS draw_spend_g,
+        (SELECT COALESCE(SUM(delta),0)
+         FROM token_ledger
+         WHERE type='dismantle'
+           AND user_id IN (SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = false))
+        ) AS dismantle_return_g,
         (SELECT COALESCE(SUM(tokens_to_deduct),0)
          FROM refund_requests
          WHERE status='processed'
@@ -132,20 +147,15 @@ async function gatherUserTokenMismatches(supabase: any) {
         u.email,
         u.tokens AS actual,
         COALESCE((
-          SELECT SUM(amount + COALESCE(bonus,0))
-          FROM recharge_records
-          WHERE user_id=u.id AND status='success'
-        ),0) AS recharge_in,
-        COALESCE((
-          SELECT SUM(points_used) FROM draw_records WHERE user_id=u.id
-        ),0) AS draw_out,
+          SELECT SUM(delta)
+          FROM token_ledger
+          WHERE user_id=u.id
+        ),0) AS ledger_total,
         COALESCE((
           SELECT SUM(tokens_to_deduct) FROM refund_requests
           WHERE user_id=u.id AND status='processed'
         ),0) AS refund_out,
-        COALESCE((
-          SELECT SUM(delta) FROM token_adjustments WHERE user_id=u.id
-        ),0) AS manual_adj
+        0 AS manual_adj
       FROM users u
       WHERE (u.is_bot IS NULL OR u.is_bot = false)
         AND u.tokens > 0
@@ -155,28 +165,55 @@ async function gatherUserTokenMismatches(supabase: any) {
   return rows
     .map(r => ({
       ...r,
-      expected: Number(r.recharge_in) + Number(r.manual_adj ?? 0) - Number(r.draw_out) - Number(r.refund_out),
-      diff:     Number(r.actual) - (Number(r.recharge_in) + Number(r.manual_adj ?? 0) - Number(r.draw_out) - Number(r.refund_out)),
+      expected: Number(r.ledger_total ?? 0) - Number(r.refund_out ?? 0),
+      diff:     Number(r.actual) - (Number(r.ledger_total ?? 0) - Number(r.refund_out ?? 0)),
     }))
     .filter(r => Math.abs(r.diff) > TOKEN_DIFF_THRESHOLD)
 }
 
 // ─── Claude analysis ──────────────────────────────────────────────────────────
 
-async function analyzeWithClaude(metrics: any, mismatches: any[], isMonday: boolean): Promise<string> {
+function buildDeterministicAnalysis(metrics: any, mismatches: any[], platformDiff: number) {
+  const trend = metrics.revenueTrend as any[]
+  const total7d = trend.reduce((s: number, r: any) => s + Number(r.revenue ?? 0), 0)
+  const latest = trend[trend.length - 1]
+  const latestRevenue = Number(latest?.revenue ?? 0)
+  const stuckTopup = Number((metrics.topupPending[0] as any)?.cnt ?? 0)
+  const pendingSettlements = (metrics.pendingSettlements as any[]).length
+
+  const alerts: string[] = []
+  if (Math.abs(platformDiff) > 50) alerts.push(`代幣對帳差異 ${platformDiff > 0 ? '+' : ''}${platformDiff} G`)
+  if (mismatches.length > 0) alerts.push(`${mismatches.length} 位會員代幣需複核`)
+  if (stuckTopup > 0) alerts.push(`${stuckTopup} 筆 pending 儲值超時`)
+  if (pendingSettlements > 0) alerts.push(`${pendingSettlements} 筆廠商月結待處理`)
+
+  if (alerts.length === 0) {
+    return `近7天儲值金額 NT$ ${total7d.toLocaleString()}，最近一日 NT$ ${latestRevenue.toLocaleString()}。代幣對帳正常，暫無超時儲值或重大財務異常。`
+  }
+  return `近7天儲值金額 NT$ ${total7d.toLocaleString()}，最近一日 NT$ ${latestRevenue.toLocaleString()}。需注意：${alerts.join('、')}。`
+}
+
+async function analyzeWithClaude(metrics: any, mismatches: any[], isMonday: boolean, reportDate: string, platformDiff: number): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return '（AI 分析不可用）'
+  const fallback = buildDeterministicAnalysis(metrics, mismatches, platformDiff)
+  if (!apiKey) return fallback
 
   const { revenueTrend, monthlyRevenue, refundStats, pendingSettlements, tokenPlatform, topupPending } = metrics
 
   const tp   = (tokenPlatform[0] ?? {}) as any
-  const expected = Number(tp.recharge_total ?? 0) + Number(tp.manual_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
+  const expected = Number(tp.ledger_total ?? 0) - Number(tp.refund_deducted ?? 0)
   const actual   = Number(tp.current_total ?? 0)
-  const platformDiff = expected - actual
+  const actualMinusExpected = actual - expected
 
   const context = `
-你是 GGB（吉吉比）轉蛋平台的 AI 財務長，請根據以下財務數據，用繁體中文寫出每日財務健康摘要，100字以內，結尾不需要提建議除非發現重大異常。
+你是 GGB（吉吉比）轉蛋平台的 AI 財務長，請根據以下財務數據，用繁體中文寫出每日財務健康摘要。
+限制：
+- 80字以內，只能輸出一段純文字
+- 不要 Markdown、不要標題、不要條列、不要「日期：[待補充]」
+- 不可自行發明數字；只能使用下方資料
+- 詞彙固定：「儲值金額」單位 NT$；「抽獎消費」單位 G
 
+報表日期：${reportDate}
 ## 近7天每日儲值
 ${JSON.stringify(revenueTrend)}
 
@@ -192,7 +229,7 @@ ${JSON.stringify(pendingSettlements)}
 ## 平台代幣對帳
 - 用戶實際持有總代幣：${actual}
 - 按交易記錄計算應有：${expected}
-- 差異：${platformDiff > 0 ? '+' : ''}${platformDiff}（差異 > 50 需關注）
+- 差異（實際-帳務）：${actualMinusExpected > 0 ? '+' : ''}${actualMinusExpected}（絕對值 > 50 需關注）
 
 ${isMonday ? `## 個人代幣差異用戶（週一深查）\n${JSON.stringify(mismatches.slice(0,5))}` : ''}
 
@@ -207,7 +244,9 @@ ${JSON.stringify(topupPending)}
     messages:   [{ role: 'user', content: context }],
   })
 
-  return (res.content[0] as any)?.text ?? '（分析失敗）'
+  const text = ((res.content[0] as any)?.text ?? '').trim()
+  if (!text || text.includes('待補充') || text.includes('#') || text.length > 180) return fallback
+  return text
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -227,7 +266,8 @@ export async function POST(req: NextRequest) {
 
   const twNow    = new Date(Date.now() + 8 * 3600_000)
   const isMonday = twNow.getUTCDay() === 1
-  const timeStr  = `${twNow.getUTCHours().toString().padStart(2,'0')}:${twNow.getUTCMinutes().toString().padStart(2,'0')}`
+  const timeStr  = formatTaiwanTime()
+  const reportDate = formatTaiwanDate(new Date(), { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' })
 
   const [metrics, mismatches] = await Promise.all([
     gatherMetrics(supabase),
@@ -235,9 +275,9 @@ export async function POST(req: NextRequest) {
   ])
 
   const tp      = (metrics.tokenPlatform[0] ?? {}) as any
-  const expected = Number(tp.recharge_total ?? 0) + Number(tp.manual_total ?? 0) - Number(tp.draw_total ?? 0) - Number(tp.refund_deducted ?? 0)
+  const expected = Number(tp.ledger_total ?? 0) - Number(tp.refund_deducted ?? 0)
   const actual   = Number(tp.current_total ?? 0)
-  const platformDiff = expected - actual
+  const platformDiff = actual - expected
 
   const pendingDraft   = (metrics.pendingSettlements as any[]).filter(r => r.status === 'draft')
   const pendingConfirm = (metrics.pendingSettlements as any[]).filter(r => r.status === 'confirmed')
@@ -248,10 +288,11 @@ export async function POST(req: NextRequest) {
     || stuckTopup > 0
     || mismatches.length > 0
 
-  const analysis = await analyzeWithClaude(metrics, mismatches, isMonday)
+  const analysis = await analyzeWithClaude(metrics, mismatches, isMonday, reportDate, platformDiff)
 
   // 組裝 LINE 訊息
   const lines: string[] = [`💰 財務長日報｜${timeStr}`]
+  lines.push(reportDate)
 
   // 近7天收入趨勢
   const trend = metrics.revenueTrend as any[]
@@ -261,8 +302,8 @@ export async function POST(req: NextRequest) {
     const latest  = trend[trend.length - 1]
     const todayRev = Number(latest?.revenue ?? 0)
     const dropPct  = avg7d > 0 ? Math.round((1 - todayRev / avg7d) * 100) : 0
-    lines.push(`\n📈 近7天收入 NT$ ${total7d.toLocaleString()}（日均 NT$ ${avg7d.toLocaleString()}）`)
-    if (dropPct > 30) lines.push(`⚠️ 昨日收入較日均下滑 ${dropPct}%`)
+    lines.push(`\n📈 近7天儲值金額：NT$ ${total7d.toLocaleString()}（日均 NT$ ${avg7d.toLocaleString()}）`)
+    if (dropPct > 30) lines.push(`⚠️ 最近一日儲值金額較日均下滑 ${dropPct}%`)
   }
 
   // 代幣對帳

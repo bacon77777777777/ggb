@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import {
+  formatTaiwanDate,
+  getFinancePeriodWindow,
+  getRealUserIds,
+  getRevenueSummaryForWindow,
+  getTaiwanYesterdayWindow,
+  isRealRevenueRecharge,
+} from '@/lib/financeMetrics'
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
 const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
-const TW_MS       = 8 * 3600_000
 
 async function pushLine(text: string) {
   if (!LINE_TOKEN || !NOTIFY_ID) return
@@ -32,21 +39,12 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseAdmin()
 
-    // Yesterday window in TW time (UTC+8)
-    const twNow = new Date(Date.now() + TW_MS)
-    const twToday = new Date(Date.UTC(twNow.getUTCFullYear(), twNow.getUTCMonth(), twNow.getUTCDate()))
-    const yestStart = new Date(twToday.getTime() - TW_MS - 86400_000)
-    const yestEnd   = new Date(twToday.getTime() - TW_MS)
-    const monthStart = new Date(Date.UTC(twNow.getUTCFullYear(), twNow.getUTCMonth(), 1) - TW_MS)
-
-    // 先取真人 user IDs，排除機器人
-    const { data: realUsersData } = await supabase
-      .from('users').select('id').or('is_bot.is.null,is_bot.eq.false')
-    const realUserIds = (realUsersData ?? []).map((u: any) => u.id)
+    const { start: yestStart, end: yestEnd } = getTaiwanYesterdayWindow()
+    const { start: monthStart } = getFinancePeriodWindow('this_month')
+    const realUserIds = await getRealUserIds(supabase)
 
     const [
-      rechargeYest,
-      drawYest,
+      revenueYest,
       newUsersRes,
       rechargeMonth,
       { count: pendingShipments },
@@ -55,16 +53,11 @@ export async function POST(req: NextRequest) {
       { count: pendingSettlements },
       { count: pendingReview },
     ] = await Promise.all([
-      supabase.from('recharge_records').select('amount').eq('status', 'success')
-        .in('user_id', realUserIds)
-        .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
-      supabase.from('draw_records').select('user_id, points_used')
-        .in('user_id', realUserIds)
-        .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
+      getRevenueSummaryForWindow(supabase, 'yesterday', yestStart, yestEnd),
       supabase.from('users').select('id', { count: 'exact', head: true })
         .or('is_bot.eq.false,is_bot.is.null')
         .gte('created_at', yestStart.toISOString()).lt('created_at', yestEnd.toISOString()),
-      supabase.from('recharge_records').select('amount').eq('status', 'success')
+      supabase.from('recharge_records').select('amount, payment_method').eq('status', 'success')
         .in('user_id', realUserIds)
         .gte('created_at', monthStart.toISOString()),
       supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),
@@ -74,17 +67,14 @@ export async function POST(req: NextRequest) {
       supabase.from('recharge_records').select('id', { count: 'exact', head: true }).eq('needs_review', true).eq('status', 'pending'),
     ])
 
-    const recharges     = rechargeYest.data ?? []
-    const draws         = drawYest.data ?? []
-    const totalRecharge = recharges.reduce((s, r) => s + Number(r.amount), 0)
-    const totalSpent    = draws.reduce((s, r) => s + Number((r as any).points_used ?? 0), 0)
-    const drawCount     = draws.length
-    const uniquePlayers = new Set(draws.map((d: any) => d.user_id)).size
+    const totalRecharge = revenueYest.totalRechargeTwd
+    const totalSpent    = revenueYest.drawSpendG
+    const drawCount     = revenueYest.drawCount
+    const uniquePlayers = revenueYest.uniquePlayers
     const newUsers      = newUsersRes.count ?? 0
-    const monthTotal    = (rechargeMonth.data ?? []).reduce((s, r) => s + Number(r.amount), 0)
+    const monthTotal    = (rechargeMonth.data ?? []).filter(isRealRevenueRecharge).reduce((s, r) => s + Number(r.amount), 0)
 
-    const yestLabel = new Date(yestStart.getTime() + TW_MS)
-      .toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })
+    const yestLabel = formatTaiwanDate(yestStart, { month: 'long', day: 'numeric', weekday: 'short' })
 
     const pendingLines: string[] = []
     if ((pendingShipments  ?? 0) > 0) pendingLines.push(`📦 待配送 ${pendingShipments} 筆`)
@@ -98,8 +88,8 @@ export async function POST(req: NextRequest) {
       yestLabel,
       ``,
       `【昨日數據】`,
-      `💰 儲值金額 NT$ ${fmt(totalRecharge)}`,
-      `🎮 消費金額 G ${fmt(totalSpent)}`,
+      `💰 儲值金額：NT$ ${fmt(totalRecharge)}`,
+      `🎮 抽獎消費：${fmt(totalSpent)} G`,
       `🎯 抽獎次數 ${fmt(drawCount)} 次`,
       `👤 參與玩家 ${fmt(uniquePlayers)} 人`,
       `🆕 新增會員 ${fmt(newUsers)} 人`,

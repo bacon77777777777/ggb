@@ -301,6 +301,41 @@ NOTIFY_TARGET_ID   = {User ID 或 Group ID}
 
 ---
 
+## 2026-07-07（LINE 推播財務口徑統一 + GB哥營收查詢修正）
+
+### 後台（Next.js / backend）
+
+**GB哥昨日營收追修**
+- `FinancePeriod` 新增 `yesterday`，固定為台灣時間昨天 00:00～24:00
+- GB哥工具 `get_revenue_summary` enum 新增 `yesterday`
+- GB哥收到「昨日 / 昨天 / 今日 / 本週 / 本月 / 近7天 / 近30天」營收統計類問題時，若不是要求分析或比較，直接走 deterministic 回覆，不再交給 Claude 自行選期間或追加比較
+- 「昨日營收」回覆標題固定顯示實際日期，例如 `昨日營收統計（2026/07/06）`
+- 系統提示補強：問昨日只查昨日，不主動追加近 7 天比較
+
+**LINE 群推播詞彙統一**
+- 新增 `backend/lib/financeMetrics.ts`，統一台灣時間區間、真人用戶過濾、真實儲值金額與抽獎消費統計口徑
+- 每日早報「消費金額」改為「抽獎消費」，單位固定為 **G**；儲值金額固定為 **NT$**
+- 本月累計儲值排除 `test` / `promotion` / `compensation` 等非真實付款紀錄
+
+**GB哥營收統計修正**
+- `get_revenue_summary` 改用共用財務 helper
+- 抽獎消費改為直接加總 `draw_records.points_used`，不再用 `products.price` 反推，避免商品改價或歷史資料導致錯誤
+- 系統提示補上固定詞彙：儲值金額 NT$、抽獎消費 G、抽獎次數、參與玩家、儲值訂單
+- 商品每抽價格工具描述由 NT$ 修正為 G
+
+**財務長日報修正**
+- 近 7 天 / 月比較儲值金額排除測試、行銷贈點、補償紀錄
+- 代幣對帳改以 `token_ledger` 為帳務基準，納入拆解退還與手動調整，降低誤報差額
+- 差異定義改為「實際持有 - 帳務應有」
+- AI 分析加入防呆：禁止 Markdown 標題、禁止日期待補充、不可自行發明數字；若輸出異常則改用 deterministic fallback 摘要
+
+### 驗證
+- `cd backend && npx tsc --noEmit` ✅
+- `cd backend && npm run build` ✅
+- `cd backend && npm run lint` 仍有既有 lint 問題：`hooks/useTablePrefs.ts`、`scripts/manual_migrate.js` 空 block，`utils/csvColumnDetect.ts` regex escape
+
+---
+
 ## 2026-07-05（v1.7.5 — 前台手機版 Lazy Load + 配送管理 Bug 修復）
 
 ### 後台（Next.js / backend）
