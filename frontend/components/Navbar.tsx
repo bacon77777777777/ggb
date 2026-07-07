@@ -533,7 +533,7 @@ function NavbarInner() {
     <>
       <NavbarLayout
         className={cn(
-          isProductDetailPage && "fixed left-0 right-0 md:sticky top-0",
+          isProductDetailPage && "fixed left-1/2 -translate-x-1/2 w-full max-w-[560px] md:sticky top-0",
           (
             (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market', 'check-in'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
