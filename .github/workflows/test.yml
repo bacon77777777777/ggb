@@ -1,0 +1,79 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── 後台 unit + API 測試（vitest，不需 DB / 外部服務）────────────────────
+  backend-unit:
+    name: Backend Unit & API Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run vitest
+        run: npm test
+        env:
+          ADMIN_SESSION_SECRET: ${{ secrets.ADMIN_SESSION_SECRET || 'ci-test-secret-must-be-32chars!!' }}
+          ECPAY_MERCHANT_ID: '2000132'
+          ECPAY_HASH_KEY: '5294y06JbISpM5x9'
+          ECPAY_HASH_IV: 'v77hoKGq4kWxNNIS'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co'
+          SUPABASE_SERVICE_ROLE_KEY: 'ci-test-service-role-key'
+          LINE_CHANNEL_SECRET: 'ci-test-line-secret-32chars!!!!!'
+          LINE_CHANNEL_ACCESS_TOKEN: 'ci-test-line-token'
+          NOTIFY_TARGET_ID: 'U0000000000000000000000000000001'
+          ADMIN_LINE_IDS: 'Uadmin000000000000000000000000001'
+
+  # ── 前台 Playwright E2E（不需真實登入，全用 route mock）─────────────────
+  frontend-e2e:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-test-anon-key'
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
