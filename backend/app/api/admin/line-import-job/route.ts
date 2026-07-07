@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { processLineXlsxImport, pushLineMessage } from '@/lib/lineXlsxImport'
+import { processLineXlsxImport, downloadLineMessageContent, pushLineMessage } from '@/lib/lineXlsxImport'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300  // 5 min — requires Vercel Pro; Hobby caps at 10s
+export const maxDuration = 300  // 5 min — requires Vercel Pro; Hobby hard-caps at 10s
 
 export async function POST(req: Request) {
   const secret = req.headers.get('x-cron-secret')
@@ -10,14 +10,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { bufferBase64, targetId, supplierId } = await req.json()
-  if (!bufferBase64 || !targetId) {
-    return NextResponse.json({ error: 'Missing bufferBase64 or targetId' }, { status: 400 })
+  const { fileMessageId, targetId, supplierId } = await req.json()
+  if (!fileMessageId || !targetId) {
+    return NextResponse.json({ error: 'Missing fileMessageId or targetId' }, { status: 400 })
   }
 
-  const buffer = Buffer.from(bufferBase64, 'base64')
+  // Small delay so LINE doesn't rate-limit the re-download from the same messageId
+  await new Promise(r => setTimeout(r, 2000))
 
-  // Await — this invocation has its own maxDuration, independent of the webhook
+  const buffer = await downloadLineMessageContent(fileMessageId)
+  if (!buffer) {
+    await pushLineMessage(targetId, '⚠️ 無法下載檔案，請重試一次。')
+    return NextResponse.json({ ok: false })
+  }
+
   try {
     await processLineXlsxImport({ buffer, targetId, supplierId: supplierId ?? null })
   } catch (err) {
