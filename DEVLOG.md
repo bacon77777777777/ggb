@@ -23,6 +23,45 @@
 ### 前台品項清單
 - 移除品項左側彩色 level 標籤（GachaCollectionList）
 
+### Claude Vision 品項命名（第二輪升級）
+- **根本問題**：Claude 看不到圖片只能靠商品名猜，導致名稱全錯（蠟筆小新全猜「新之助」）
+- **解法**：`nameVariantsByVision()`，把 Bandai 品項圖 URL 陣列直接傳給 `claude-haiku-4-5-20251001` Vision API
+- Claude 看圖識別角色並讀圖上日文文字，輸出繁體中文名稱
+- 圖片與名稱天然同 index，不會錯位；找不到名稱留空，不造假
+- 移除 Suruga-ya 爬蟲與 Claude 純文字猜測，改為 Vision 看圖命名
+
+### @30x5 格式正確解析
+- **修正**：`@30x5` = 一袋 30 個 × 有 5 袋（包裝規格），非品項種類數
+- `variant_count` 設為 0（未知），由 AI 補全從 Bandai 目錄推算品項數
+- `pcsPerBag × bagsPerCase` 作為 total_count 計算基礎
+
+### XlsxImportWizard 細節修正
+- **代理商欄位**：加入 `title` tooltip 顯示全名，Dialog 拓寬至 `max-w-7xl`，防止截斷
+- **數量分配**：`base + (vi === 0 ? rem : 0)` — 餘數加到第 1 品項
+- **BOM 字元修正**：Excel 欄位 header BOM 字元改用 `﻿` regex 取代
+
+### AI 補全結果摘要橫幅
+- 全部 AI 補全完成後，預覽列表上方顯示摘要橫幅
+- ✅ 有圖 N 件　⚠️ 缺圖 N 件　❌ 失敗 N 件；缺圖商品仍可匯入
+
+### GB哥 LINE 智能上架
+- 新增 `lib/lineXlsxImport.ts`：xlsx 解析 → AI 補全 → 批量寫入 DB → LINE push 結果摘要
+- 操作流程：丟 xlsx 到管理員群組 → 回覆「gb哥幫我上架」→ 自動處理
+  - 有 `quotedMessageId`（長按回覆）→ 直接下載該訊息的 xlsx
+  - 無引用 → 查 30 分鐘內 `line_pending_files` 暫存的最新 xlsx
+- 無圖商品直接跳過不上架（嚴重失敗），有圖商品全自動上架至 active
+- LINE push 結果：✅ 已上架 N 件 ｜ 缺圖跳過 N 件 ｜ 總計 N 顆 ｜ 預估總額 ¥xxx
+- webhook 新增 `file` 事件處理（存入 `line_pending_files`）
+
+### DB Migrations
+| Migration | 說明 |
+|---|---|
+| 293 | `line_pending_files` 表：GB哥智能上架暫存每個 LINE 群組最後一個 xlsx 訊息 |
+
+### ESLint 修正（Vercel 部署）
+- `ai-enrich/route.ts`：regex 不必要 escape `\.` `\*` → 改為 `.*`
+- `XlsxImportWizard.tsx`：literal BOM 字元在 regex 裡 → 改為 `﻿`
+
 ---
 
 ## 平台擴展階段計畫
