@@ -697,16 +697,20 @@ async function updateProductStock(productIds: number[], delta: number, reason?: 
   for (const id of productIds) {
     const { data: product } = await supabase
       .from('products')
-      .select('id, name, remaining, total_count')
+      .select('id, name, remaining, total_count, status')
       .eq('id', id)
       .maybeSingle()
 
     if (!product) { errors.push({ id, error: '找不到商品' }); continue }
 
     const newRemaining = Math.max(0, product.remaining + delta)
+    // 加庫存時若商品是 'ended' 狀態，一併恢復為 'active'
+    const statusPatch = (delta > 0 && newRemaining > 0 && (product as any).status === 'ended')
+      ? { remaining: newRemaining, status: 'active', updated_at: new Date().toISOString() }
+      : { remaining: newRemaining, updated_at: new Date().toISOString() }
     const { data: updated, error: updateErr } = await supabase
       .from('products')
-      .update({ remaining: newRemaining, updated_at: new Date().toISOString() })
+      .update(statusPatch)
       .eq('id', id)
       .select('id')
 
