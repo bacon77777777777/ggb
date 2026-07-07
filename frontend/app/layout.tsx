@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { FeatureFlagsProvider } from '@/contexts/FeatureFlagsContext';
 import PathnameKeyed from '@/components/PathnameKeyed';
 import PwaInputFocusFix from '@/components/PwaInputFocusFix';
+import PwaPullToRefresh from '@/components/PwaPullToRefresh';
 import AnalyticsTracker from '@/components/AnalyticsTracker';
 import { getSiteUrl } from '@/lib/site';
 
@@ -101,6 +102,7 @@ export default function RootLayout({
               <ToastProvider>
                 <FeatureFlagsProvider>
                   <PwaInputFocusFix />
+                  <PwaPullToRefresh />
                   <AnalyticsTracker />
                   <Navbar />
                   <main className="flex-grow">
