@@ -787,14 +787,19 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
   if (error) return { error: error.message }
   if (!updated?.length) return { error: '更新失敗（0 rows affected），請確認 user_id 正確' }
 
-  // 寫入 token_adjustments（會 UNION 進 token_ledger view，供流水帳查閱）
+  // 寫入 token_adjustments（UNION 進 token_ledger view，不可失敗）
   // 不寫 recharge_records，避免污染綠界對帳數字
-  await supabase.from('token_adjustments').insert({
+  const { error: ledgerErr } = await supabase.from('token_adjustments').insert({
     user_id:    userId,
     delta:      delta,
     reason:     reason,
     created_by: actorId ? `admin#${actorId}` : 'GB哥',
   })
+  if (ledgerErr) {
+    // Rollback: revert users.tokens since the ledger write failed
+    await supabase.from('users').update({ tokens: user.tokens ?? 0 }).eq('id', userId)
+    return { error: `代幣已調整但帳本寫入失敗，已回滾：${ledgerErr.message}` }
+  }
 
   await supabase.from('user_event_logs').insert({
     user_id:    userId,
