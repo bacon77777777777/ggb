@@ -7,6 +7,7 @@ interface AdminUser {
   username: string
   nickname: string
   role: string
+  permissions: string[]
 }
 
 interface AdminContextType {
@@ -114,6 +115,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const payload = (await res.json()) as { user?: AdminUser }
       const u = payload.user
       if (!u) return { success: false, error: '登入失敗' }
+      if (!u.permissions) u.permissions = []
 
       const token = 'admin-token-' + Date.now()
       const today = new Date()

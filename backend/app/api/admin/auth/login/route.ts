@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin()
     const { data: admin, error } = await supabaseAdmin
       .from('admins')
-      .select('id, username, nickname, status, password_hash, role:roles(name)')
+      .select('id, username, nickname, status, password_hash, role:roles(name, permissions)')
       .eq('username', username)
       .single()
 
@@ -42,7 +42,9 @@ export async function POST(request: Request) {
 
     const maxAge = getTaipeiSessionMaxAgeSeconds()
     const exp = Math.floor(Date.now() / 1000) + maxAge
-    const token = signAdminSession({ adminId: String(admin.id), exp })
+    const roleName: string = (admin as any).role?.name || 'admin'
+    const rolePerms: string[] = (admin as any).role?.permissions || []
+    const token = signAdminSession({ adminId: String(admin.id), exp, role: roleName, permissions: rolePerms })
 
     const proto = request.headers.get('x-forwarded-proto') || new URL(request.url).protocol.replace(':', '')
     const secure = proto === 'https'
@@ -72,7 +74,8 @@ export async function POST(request: Request) {
         id: String(admin.id),
         username: admin.username,
         nickname: admin.nickname || '',
-        role: (admin as any).role?.name || 'admin',
+        role: roleName,
+        permissions: rolePerms,
       },
     })
   } catch (e: any) {

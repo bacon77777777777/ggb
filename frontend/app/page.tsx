@@ -1205,7 +1205,7 @@ export default function Home() {
               )}
             </>
           ) : activePrimaryTab === 'all' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {isLoading ? (
                 Array.from({ length: 10 }).map((_, index) => (
                   <div key={index} className="h-[280px]">
@@ -1321,7 +1321,7 @@ export default function Home() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {isLoading ? (
                 Array.from({ length: 10 }).map((_, index) => (
                   <div key={index} className="h-[280px]">

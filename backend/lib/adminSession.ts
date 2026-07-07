@@ -1,8 +1,10 @@
 import crypto from 'crypto'
 
-type AdminSessionPayload = {
+export type AdminSessionPayload = {
   adminId: string
   exp: number
+  role?: string
+  permissions?: string[]
 }
 
 const base64UrlEncode = (buf: Buffer) =>

@@ -429,6 +429,43 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     }, 200)
   }
 
+  // path → required permission (undefined = all authenticated users)
+  const PATH_PERMISSION_MAP: Record<string, string> = {
+    '/recharges': 'recharges',
+    '/recharge-review': 'recharges',
+    '/reports/logistics': 'reports_logistics',
+    '/reports/coupons': 'coupons',
+    '/reports/products': 'reports_products',
+    '/reports/dismantled': 'reports_dismantled',
+    '/reports/settlement': 'reports_settlement',
+    '/settlement-snapshots': 'reports_settlement',
+    '/products': 'products',
+    '/draws': 'draws',
+    '/orders': 'orders',
+    '/refund-requests': 'orders',
+    '/coupons': 'coupons',
+    '/settings/shipping': 'settings',
+    '/users': 'users',
+    '/suppliers': 'suppliers',
+    '/banners': 'banners',
+    '/news': 'news',
+    '/categories': 'categories',
+    '/settings/modules': 'settings_modules',
+    '/settings/features': 'settings',
+    '/settings/rates': 'settings',
+    '/permissions': 'permissions',
+    '/logs': 'logs',
+    '/dev-logs': 'logs',
+  }
+
+  const canAccess = (path: string) => {
+    if (!user) return false
+    if (user.role === 'superadmin') return true
+    const perm = PATH_PERMISSION_MAP[path]
+    if (!perm) return true
+    return (user.permissions || []).includes(perm)
+  }
+
   const menuGroups = useMemo(
     () => [
       {
@@ -527,6 +564,17 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     []
   )
 
+  // 對帳報表各頁面說明
+  const PAGE_INFO: Record<string, string> = {
+    '/recharges': '紀錄所有儲值交易（綠界 ECPay、手動轉帳、行銷贈點），包含支付方式金額、手續費與實拿明細。為 ECPay 對帳基礎數據，請勿將手動補幣寫入此表。',
+    '/reports/logistics': '出貨訂單的物流費用統計，按物流商別與配送方式分類，可查看各期間費用趨勢。',
+    '/reports/coupons': '折價券使用統計，包含各券別兌換張數與總折抵金額。',
+    '/reports/products': '玩家抽獎消費統計，以商品／系列維度分析銷售數字與代幣消耗量。',
+    '/reports/dismantled': '玩家倉庫拆解紀錄，統計退還代幣總量，用於核對代幣帳本平衡。',
+    '/reports/settlement': '依廠商統計銷售金額，計算應付款項與平台毛利，作為廠商請款依據。',
+    '/settlement-snapshots': '廠商月結快照管理，可鎖定當期數據並匯出正式對帳報表給廠商。',
+  }
+
   const flatMenuItems = useMemo(() => menuGroups.flatMap((g) => g.items), [menuGroups])
 
   // 讀取群組展開狀態（依帳號）
@@ -612,7 +660,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
         <nav ref={navRef} onScroll={handleNavScroll} className={`px-2 py-2 space-y-1 transition-all duration-300 flex-1 overflow-y-auto overflow-x-hidden`}>
           {!isSidebarOpen
-            ? flatMenuItems.map((item) => {
+            ? flatMenuItems.filter((item) => canAccess(item.path)).map((item) => {
                 const IconComponent = item.icon
                 return (
                   <Link
@@ -652,7 +700,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                     </button>
                     {isOpen && (
                       <div className="space-y-1">
-                        {group.items.map((item) => {
+                        {group.items.filter((item) => canAccess(item.path)).map((item) => {
                           const IconComponent = item.icon
                           return (
                             <Link
@@ -697,14 +745,22 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
             <div className="flex items-center justify-between w-full">
               <div>
                 {/* 優先使用側邊欄菜單中的名稱，確保與側邊欄同步 */}
-                <h1 className="text-xl font-bold text-neutral-900">
+                <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
                   {flatMenuItems.find((item) => {
-                    // 精確匹配路徑
                     if (item.path === pathname) return true
-                    // 處理動態路由，例如 /users/[id] 應該匹配 /users
                     if (pathname.startsWith(item.path + '/')) return true
                     return false
                   })?.name || pageTitle || '後台管理'}
+                  {PAGE_INFO[pathname] && (
+                    <span className="relative group inline-flex items-center">
+                      <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 border border-amber-300 text-[11px] font-black flex items-center justify-center cursor-help select-none leading-none">
+                        !
+                      </span>
+                      <span className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 z-50 w-80 rounded-lg bg-neutral-900 text-white text-xs font-normal leading-relaxed px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-normal">
+                        {PAGE_INFO[pathname]}
+                      </span>
+                    </span>
+                  )}
                 </h1>
                 {pageSubtitle && (
                   <p className="text-xs text-neutral-600 mt-0.5">{pageSubtitle}</p>

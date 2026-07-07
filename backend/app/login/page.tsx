@@ -147,9 +147,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-neutral-500">
-          <p>超級管理員: superadmin / superadmin123</p>
-        </div>
       </div>
     </div>
   )

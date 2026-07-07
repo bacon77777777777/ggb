@@ -17,7 +17,7 @@ export default function Footer() {
             <Link href="/return-policy" className="hover:text-primary dark:hover:text-primary-light">退換貨資訊</Link>
           </div>
           <div className="text-sm">
-            客服信箱：<a href="mailto:support@gachago.shop" className="hover:text-primary dark:hover:text-primary-light">support@gachago.shop</a>
+            客服信箱：<a href="mailto:support@ggb.com.tw" className="hover:text-primary dark:hover:text-primary-light">support@ggb.com.tw</a>
           </div>
         </div>
         <div className="mt-2 text-center text-xs text-neutral-500 dark:text-neutral-600">

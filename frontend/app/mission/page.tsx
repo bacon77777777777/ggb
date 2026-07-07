@@ -27,6 +27,10 @@ export default function MissionPage() {
   
   const userId = user?.id;
 
+  useLayoutEffect(() => {
+    if (window.innerWidth >= 768) router.replace('/');
+  }, []);
+
   // Initialize Audio
   useEffect(() => {
     audioRef.current = new Audio('/audio/23424.mp3');

@@ -596,20 +596,6 @@ function NavbarInner() {
                 )}
               </Link>
               <Link
-                href="/exchange"
-                className={cn(
-                  "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
-                  pathname === '/exchange' || pathname.startsWith('/exchange/') || pathname.startsWith('/exchange-orders/') || pathname === '/exchange/manage'
-                    ? "text-primary"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
-                )}
-              >
-                <span>交換</span>
-                {(pathname === '/exchange' || pathname.startsWith('/exchange/') || pathname.startsWith('/exchange-orders/') || pathname === '/exchange/manage') && (
-                  <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
-                )}
-              </Link>
-              <Link
                 href="/ranking"
                 className={cn(
                   "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors md:hidden",

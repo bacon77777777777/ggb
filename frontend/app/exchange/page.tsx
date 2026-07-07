@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, RefreshCw, Search, X } from 'lucide-react';
@@ -58,6 +58,10 @@ export default function ExchangeListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+
+  useLayoutEffect(() => {
+    if (window.innerWidth >= 768) router.replace('/');
+  }, []);
 
   const cacheKey = 'exchange:listCache:v1';
   const searchQueryParam = searchParams.get('search') || '';

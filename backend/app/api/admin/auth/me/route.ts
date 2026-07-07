@@ -29,6 +29,7 @@ export async function GET() {
         username: admin.username,
         nickname: admin.nickname || '',
         role: (admin as any).role?.name || 'admin',
+        permissions: payload.permissions || [],
       },
     })
   } catch (e: any) {

@@ -17,6 +17,7 @@ import { useAlert } from '@/components/ui/AlertDialog';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
+import { useRouter } from 'next/navigation';
 
 interface RankingRpcItem {
   user_id: string;
@@ -30,7 +31,12 @@ interface RankingRpcItem {
 }
 
 export default function RankingPage() {
+  const router = useRouter();
   const { user } = useAuth();
+
+  useLayoutEffect(() => {
+    if (window.innerWidth >= 768) router.replace('/');
+  }, []);
   const [scale, setScale] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
