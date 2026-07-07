@@ -54,7 +54,7 @@ async function nameVariantsByVision(
 
     const text = ((msg.content[0] as any).text as string).trim()
     const names = text.split('\n')
-      .map(l => l.replace(/^[\d\.\-\*、。\s]+/, '').trim())
+      .map(l => l.replace(/^[\d.\-*、。\s]+/, '').trim())
       .filter(l => l.length > 0 && l.length <= 20)
 
     return names
