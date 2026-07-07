@@ -1051,22 +1051,23 @@ function matchIntent(text: string): IntentType {
 
   if (/下架|上架|補.*代幣|給.*代幣|扣.*代幣|調整.*代幣|更新.*庫存|調整.*庫存|凍結.*用戶|解凍.*用戶|標記.*可疑|解除.*可疑|取消.*訂單|物流單號|追蹤號|建立.*折扣碼|折扣碼.*(啟用|停用)|核准.*退款|拒絕.*退款|退款.*(核准|拒絕)/.test(t)) return 'J_execute'
 
-  if (/今[日天]|昨[日天]|本週|上週|本月|上月|今天|昨天|這週|近7天|近30天/.test(t) &&
+  if (/今[日天]|昨[日天]|本週|上週|本月|上月|今天|昨天|這週|近7天|近30天|這個月|上個月|這月/.test(t) &&
       /營收|收入|儲值|消費|抽獎次數|數字|多少/.test(t)) return 'A_revenue'
   if (/營收|儲值.*金額|收入/.test(t)) return 'A_revenue'
+
+  // D before B so "幾筆訂單待出貨" routes to D, not B
+  if (/訂單|出貨狀態|最近.*訂單|未出貨|幾筆.*訂單/.test(t)) return 'D_orders'
 
   if (/待處理|待出貨|待退款|待月結|需要處理|要做什麼|未處理|積壓|今天要/.test(t)) return 'B_pending'
 
   if (/庫存|剩幾個|還有幾|缺貨|快沒了|補貨|庫存量|低庫存/.test(t)) return 'C_inventory'
-
-  if (/訂單|出貨狀態|最近.*訂單|未出貨|幾筆.*訂單/.test(t)) return 'D_orders'
 
   if (/月結|廠商.*結算|結算狀態|廠商.*款項|廠商.*帳款/.test(t)) return 'F_settlement'
 
   if (/退款|退費|申請退款|退款申請/.test(t)) return 'G_refund'
 
   // H must come before E to catch "用戶代幣/G幣" pattern before generic user lookup
-  if (/代幣|G幣/.test(t) && /用戶|會員|他|她|查/.test(t)) return 'H_userTokens'
+  if (/代幣|G幣/.test(t) && /用戶|會員|他|她|查|@/.test(t)) return 'H_userTokens'
 
   if (/找.*用戶|查.*用戶|用戶.*資料|查.*會員|找.*會員|查一下.*@|這個人.*是誰|會員.*資訊|帳號.*資料/.test(t)) return 'E_user'
 
