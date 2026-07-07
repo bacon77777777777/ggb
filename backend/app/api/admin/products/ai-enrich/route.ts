@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +23,45 @@ async function scrapeBandaiCatalog(barcode: string) {
   } catch { return null }
 }
 
-// ── DuckDuckGo image search (fallback when no barcode / Bandai fails) ─────────
+// ── Claude Vision: 看圖命名，名稱與圖片天然配對 ───────────────────────────────
+async function nameVariantsByVision(
+  productName: string,
+  imageUrls: string[]  // variant images only (no main image)
+): Promise<string[]> {
+  if (imageUrls.length === 0) return []
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+    const imageContent = imageUrls.map(url => ({
+      type: 'image' as const,
+      source: { type: 'url' as const, url },
+    }))
+
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          ...imageContent,
+          {
+            type: 'text',
+            text: `這是轉蛋商品「${productName}」的 ${imageUrls.length} 款品項圖片（依序排列）。請看圖，用台灣繁體中文為每款命名（3-8字，要能識別是哪個角色或款式）。只輸出 ${imageUrls.length} 行名稱，每行一個，不加編號，不加其他文字。`,
+          },
+        ],
+      }],
+    })
+
+    const text = ((msg.content[0] as any).text as string).trim()
+    const names = text.split('\n')
+      .map(l => l.replace(/^[\d\.\-\*、。\s]+/, '').trim())
+      .filter(l => l.length > 0 && l.length <= 20)
+
+    return names
+  } catch { return [] }
+}
+
+// ── DuckDuckGo image search (fallback) ───────────────────────────────────────
 async function ddgImages(query: string): Promise<{ image: string }[]> {
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -79,49 +118,55 @@ export async function POST(req: Request) {
   const hintCount = Math.max(Number(variants_count) || 0, 0)
 
   try {
-    // 免費爬蟲：Bandai 官方目錄（主圖 + 品項圖）
+    // Step 1: Bandai 官方目錄（圖片來源最可信）
     const [bandai, ddgMain] = await Promise.all([
       barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
       ddgImages((barcode ?? '') + ' ' + product_name + ' カプセルトイ'),
     ])
 
-    // 品項數：從 Bandai 圖片數推算（images[0]=主圖，其餘=品項）
+    // 品項數推算
     const variantCount = hintCount > 0
       ? hintCount
-      : bandai
-        ? Math.max(bandai.images.length - 1, 0)
-        : 0
+      : bandai ? Math.max(bandai.images.length - 1, 0) : 0
 
-    // 主圖：Bandai 優先，fallback DDG
+    // 主圖
     const mainImage = bandai?.images[0] ?? bestImage(ddgMain, barcode ?? null)
 
-    // 品項圖：Bandai 官方目錄圖（順序可信），缺的才補 DDG
-    const variantImageSources = Array.from({ length: variantCount }, (_, k) => bandai?.images[k + 1] ?? null)
-    const missingIndexes = variantImageSources.map((img, k) => img ? null : k).filter(k => k !== null) as number[]
+    // 品項圖：Bandai 官方（index 1..N），缺的補 DDG
+    const variantImages: (string | null)[] = Array.from({ length: variantCount }, (_, k) => {
+      return bandai?.images[k + 1] ?? null
+    })
+    const ddgPool = ddgMain.slice(1)
+    let ddgIdx = 0
+    const filledImages = variantImages.map(img => img ?? ddgPool[ddgIdx++]?.image ?? null)
 
-    const fillImages: (string | null)[] = [...variantImageSources]
-    if (missingIndexes.length > 0) {
-      const ddgPool = ddgMain.slice(1)
-      missingIndexes.forEach((k, i) => {
-        fillImages[k] = ddgPool[i]?.image ?? null
-      })
-    }
+    // Step 2: Claude Vision 看圖命名（只傳有圖的品項）
+    // 名稱與圖片同 index，天然配對，不會錯位
+    const validImageUrls = filledImages.filter(url => url !== null) as string[]
+    const visionNames = validImageUrls.length > 0
+      ? await nameVariantsByVision(product_name, validImageUrls)
+      : []
 
-    // 品項名稱一律空白，讓用戶進編輯頁面看圖填名稱（AI 猜測的名稱不可靠）
-    const variants = Array.from({ length: variantCount }, (_, k) => ({
-      name: '',
-      image_url: fillImages[k] ?? null,
+    // 組合 variants：有圖的才有名稱
+    let nameIdx = 0
+    const variants = filledImages.map(imgUrl => ({
+      name: imgUrl ? (visionNames[nameIdx++] ?? '') : '',
+      image_url: imgUrl,
     }))
 
-    const jp_price_yen = bandai?.jp_price_yen ?? null
     const distributor = bandai ? '萬代股份有限公司（BANDAI）' : null
-    const hasImage = !!mainImage
-    const aiStatus = hasImage ? 'done' : 'partial'
+    const aiStatus = mainImage ? 'done' : 'partial'
 
     return NextResponse.json({
       ok: true,
       source: bandai ? 'bandai_catalog' : 'duckduckgo',
-      data: { jp_price_yen, image_url: mainImage, variants, distributor, variant_count: variantCount },
+      data: {
+        jp_price_yen: bandai?.jp_price_yen ?? null,
+        image_url: mainImage,
+        variants,
+        distributor,
+        variant_count: variantCount,
+      },
       aiStatus,
     })
   } catch (err: any) {
