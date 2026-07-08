@@ -117,7 +117,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const handleClose = () => { reset(); onClose() }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  const missingImageList  = products.filter(p => p.selected && !p.image_url)
+  // 缺主圖 = 沒有 URL 且沒有待配對檔名（raw_image_name）
+  const missingImageList  = products.filter(p => p.selected && !p.image_url && !p.raw_image_name)
   const missingPrizesList = products.filter(p => p.selected && !p.variants?.length)
   const missingPriceList  = products.filter(p => p.selected && !p.jp_price_yen && !p.price_twd)
 
@@ -321,21 +322,24 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           variants_count: p.variant_count,
           manufacturer_code: p.manufacturer_code,
           product_type: p.type || 'gacha',
+          raw_image_name: p.raw_image_name ?? null,
+          existing_variant_names: p.variants?.map(v => v.name) ?? [],
         }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || '補全失敗')
       const ai = data.data
-      const hasImage = !!ai.image_url
-      const aiStatus: EnrichedProduct['aiStatus'] = hasImage ? (data.aiStatus ?? 'done') : 'partial'
+      // aiStatus 不依賴圖片，由後端決定（找到資訊即 done）
+      const aiStatus: EnrichedProduct['aiStatus'] = data.aiStatus ?? 'done'
       setProducts(prev => prev.map((x, i) => i === idx ? {
         ...x,
-        image_url: ai.image_url || null,
+        // 只在 AI 回傳有值時才覆蓋，保留 xlsx 既有的 image_url
+        image_url: ai.image_url || x.image_url || null,
         distributor: ai.distributor || x.distributor || null,
         variants: (() => {
-          const hasNamed = x.variants?.some(v => v.name)
-          if (hasNamed) return x.variants!.map((v, vi) => ({ ...v, image_url: ai.variants?.[vi]?.image_url ?? v.image_url }))
-          return ai.variants?.length ? ai.variants : x.variants
+          // 如果 AI 回傳的品項有名稱就用 AI 的，否則保留原有
+          if (ai.variants?.length && ai.variants.some((v: any) => v.name)) return ai.variants
+          return x.variants?.length ? x.variants : ai.variants
         })(),
         variant_count: ai.variant_count || x.variant_count,
         jp_price_yen: ai.jp_price_yen || x.jp_price_yen,
