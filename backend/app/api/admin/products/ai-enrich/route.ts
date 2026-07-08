@@ -217,7 +217,7 @@ export async function POST(req: Request) {
         image_url: mainImage,
         variants,
         distributor,
-        variant_count: variantCount,
+        variant_count: variants.length,
       },
       aiStatus,
     })
