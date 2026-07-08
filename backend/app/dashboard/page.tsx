@@ -1334,11 +1334,8 @@ export default function DashboardPage() {
   return (
     <AdminLayout pageTitle="儀表板" breadcrumbs={[{ label: '儀表板', href: '/dashboard' }]}>
       <div className="space-y-4">
-        {/* 頂部：累積會員數 + 時間段切換 */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-neutral-500">
-            累積會員：<span className="font-semibold text-neutral-800">{totalMembers.toLocaleString()}</span> 人
-          </div>
+        {/* 時間段切換 */}
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-1 bg-white rounded-lg border border-neutral-200 p-1">
             {['日', '週', '月', '年'].map((p) => (
               <button
@@ -1354,103 +1351,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 待處理事項 */}
-        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">待處理事項</h3>
-          <div className="flex flex-wrap gap-3">
-            <a
-              href="/orders"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                pendingActions.pendingShipments > 0
-                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-              配送待處理
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                pendingActions.pendingShipments > 0 ? 'bg-amber-200 text-amber-800' : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {pendingActions.pendingShipments}
-              </span>
-            </a>
-            <a
-              href="/products"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                pendingActions.lowInventory > 0
-                  ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              庫存警示
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                pendingActions.lowInventory > 0 ? 'bg-red-200 text-red-800' : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {pendingActions.lowInventory}
-              </span>
-            </a>
-            <a
-              href="/settlement-snapshots"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                pendingActions.pendingSettlements > 0
-                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10H9m3-3H9m9-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              廠商月結
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                pendingActions.pendingSettlements > 0 ? 'bg-amber-200 text-amber-800' : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {pendingActions.pendingSettlements}
-              </span>
-            </a>
-            <a
-              href="/refund-requests"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                pendingActions.pendingRefunds > 0
-                  ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              待審退款
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                pendingActions.pendingRefunds > 0 ? 'bg-rose-200 text-rose-800' : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {pendingActions.pendingRefunds}
-              </span>
-            </a>
-            <a
-              href="/recharge-review"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                pendingActions.pendingRechargeReview > 0
-                  ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
-                  : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              待複核儲值
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
-                pendingActions.pendingRechargeReview > 0 ? 'bg-orange-200 text-orange-800' : 'bg-neutral-200 text-neutral-600'
-              }`}>
-                {pendingActions.pendingRechargeReview}
-              </span>
-            </a>
-          </div>
-        </div>
-
+        {/* 待處理事項（已移至頂部導航列圖標） */}
         {/* 主要統計卡片（6 張）*/}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
@@ -1551,15 +1452,6 @@ export default function DashboardPage() {
           <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} tooltip="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />
         </div>
 
-        {/* 查看完整歷史數據 */}
-        <div className="text-center">
-          <a href="/reports/overview" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
-            查看完整歷史數據
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </a>
-        </div>
       </div>
     </AdminLayout>
   )

@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-07-08｜待處理事項移至頂部導航 + 儀表板清理
+
+### 修改（`components/AdminLayout.tsx`）
+新增三個導航圖標（廠商月結/待審退款/待複核儲值）+ 會員人數顯示：
+- 會員人數（hidden lg:block，桌機才顯示）放在圖標群左邊
+- 廠商月結圖標 → `/settlement-snapshots`，badge 顯示 draft 筆數
+- 待審退款圖標 → `/refund-requests`，badge 顯示 pending 筆數
+- 待複核儲值圖標 → `/recharge-review`，badge 顯示待複核筆數
+- 以上均受各自 permission 控制（canAccess 現有路徑對應）
+- 資料來自 `/api/admin/dashboard/pending`（AdminLayout 統一呼叫）
+
+### 修改（`app/dashboard/page.tsx`）
+- 移除「待處理事項」區塊（已移至頂部導航）
+- 移除頂部「累積會員：N人」文字（已移至頂部導航）
+- 時間段切換器改為靠右對齊
+
+---
+
 ## 2026-07-08｜儀表板排名 TOP 15 復原 + 報表快速導覽移除
 
 ### 修正（`app/dashboard/page.tsx`）

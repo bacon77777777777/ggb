@@ -47,6 +47,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [agentEventCount, setAgentEventCount] = useState(0)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string>('v1.7.6')
+  const [memberCount, setMemberCount] = useState(0)
+  const [pendingSettlements, setPendingSettlements] = useState(0)
+  const [pendingRefunds, setPendingRefunds] = useState(0)
+  const [pendingRechargeReview, setPendingRechargeReview] = useState(0)
 
   // 從 localStorage 讀取初始值（依帳號）
   // 先套用正確值，等兩個 rAF 再開 transition，避免刷新時出現先收起再展開的動畫
@@ -107,6 +111,19 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         }))
         setProducts(mappedProducts)
       }
+
+      // Fetch pending counts + member count for header icons
+      fetch('/api/admin/dashboard/pending')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d && !d.error) {
+            setPendingSettlements(d.pendingSettlements ?? 0)
+            setPendingRefunds(d.pendingRefunds ?? 0)
+            setPendingRechargeReview(d.pendingRechargeReview ?? 0)
+            setMemberCount(d.totalMembers ?? 0)
+          }
+        })
+        .catch(() => {})
 
       // Fetch agent events count
       fetch('/api/admin/agent-events?status=pending&limit=1')
@@ -810,7 +827,56 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                   </nav>
                 )}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {/* 會員人數 */}
+                {memberCount > 0 && (
+                  <span className="hidden lg:block text-sm text-neutral-500 pr-1 border-r border-neutral-200">
+                    會員 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span> 人
+                  </span>
+                )}
+
+                {/* 廠商月結 */}
+                {canAccess('/settlement-snapshots') && (
+                  <a href="/settlement-snapshots" title="廠商月結" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                    <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    {pendingSettlements > 0 && (
+                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-amber-500 rounded-full">
+                        {pendingSettlements > 9 ? '9+' : pendingSettlements}
+                      </span>
+                    )}
+                  </a>
+                )}
+
+                {/* 待審退款 */}
+                {canAccess('/refund-requests') && (
+                  <a href="/refund-requests" title="待審退款" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                    <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    {pendingRefunds > 0 && (
+                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-rose-500 rounded-full">
+                        {pendingRefunds > 9 ? '9+' : pendingRefunds}
+                      </span>
+                    )}
+                  </a>
+                )}
+
+                {/* 待複核儲值 */}
+                {canAccess('/recharge-review') && (
+                  <a href="/recharge-review" title="待複核儲值" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                    <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {pendingRechargeReview > 0 && (
+                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full">
+                        {pendingRechargeReview > 9 ? '9+' : pendingRechargeReview}
+                      </span>
+                    )}
+                  </a>
+                )}
+
                 {/* 警示圖標（需要 header_products 權限） */}
                 {canAccess('/header-products') && <div className="relative">
                   <button
