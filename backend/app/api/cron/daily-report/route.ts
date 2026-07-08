@@ -88,13 +88,17 @@ export async function POST(req: NextRequest) {
     const lines = [
       `吉吉比 早報｜${yestLabel}`,
       ``,
-      `儲值 NT$ ${fmt(totalRecharge)}，抽獎 ${fmt(totalSpent)} G，${fmt(drawCount)} 次，${fmt(uniquePlayers)} 人`,
-      `新增會員 ${fmt(newUsers)} 人`,
-      `本月累計儲值：NT$ ${fmt(monthTotal)}`,
+      `昨日數據`,
+      `• 儲值：NT$ ${fmt(totalRecharge)}`,
+      `• 抽獎消費：${fmt(totalSpent)} G`,
+      `• 抽獎次數：${fmt(drawCount)} 次`,
+      `• 參與玩家：${fmt(uniquePlayers)} 人`,
+      `• 新增會員：${fmt(newUsers)} 人`,
+      `• 本月累計儲值：NT$ ${fmt(monthTotal)}`,
       ``,
       pendingLines.length > 0
         ? `待處理\n${pendingLines.join('\n')}`
-        : `目前無問題`,
+        : `✓ 目前無待處理事項`,
     ]
 
     await pushLine(lines.join('\n'))

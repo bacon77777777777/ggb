@@ -2,17 +2,36 @@
 
 ---
 
-## 2026-07-08｜GB哥 Intent 分類器修正
+## 2026-07-08｜GB哥 Intent 分類器架構重構 + 早報格式修正
 
-### 問題
-用戶詢問「流量最高前三名商品」，GB哥 卻回傳「目前無低庫存商品（≤5個）」。
+### GB哥 Intent 分類器架構重構（`lib/gbBro.ts`）
 
-### 根因
-`INTENT_CLASSIFIER_SYSTEM` 的 C 類定義過於寬泛（「庫存狀態」），Haiku 看到「前三名商品」就歸類為 C，觸發 `handleInventory`，而非進入 `handleOpenQuestion` 讓 Claude 正確查 `product_view_events`。
+**問題根源**：Intent classifier 是「路由開關」，B/C/D/E/F/G/H/I 各 bucket 都有硬寫的查詢邏輯，任何新問法或模糊語意都可能落入錯誤 bucket（例如「流量最高前三商品」→ 誤判 C 庫存，回傳「目前無低庫存商品」）。
 
-### 修正（`lib/gbBro.ts`）
-- `INTENT_CLASSIFIER_SYSTEM`：C 類描述改為「庫存**數量**查詢」，並明確標注流量/瀏覽/熱門/人氣等分析類問題不屬於 C，`unknown` 定義補充說明這些分析類查詢屬於 unknown
-- `matchIntentRegex`：C_inventory regex 加 `&& !/流量|瀏覽|人氣|熱門|點擊|排行/.test(t)` 排除條件，防止 API 不可用時 fallback 誤判
+**解法**：將 fast path 縮減為只剩兩個明確且不會誤判的情境：
+- `A_revenue`：明確時間詞 + 財務數字查詢 → deterministic 計算，速度快（~400ms）
+- `J_execute`：寫入操作 → 需要二次確認流程
+- `confirm` / `cancel`：單字確認，無需 API
+- **其他所有查詢**（庫存、訂單、退款、月結、用戶、流量分析...）→ `handleOpenQuestion`（Claude tool loop + run_sql），正確率接近 100%
+
+代價：B/C/D/E/F/G/H/I 原本 ~400ms 的回覆改為 ~1.5s，但不再出現答非所問。
+
+移除 `IntentType` 的 B/C/D/E/F/G/H/I，`INTENT_CLASSIFIER_SYSTEM` 精簡為只識別 A 與 J，`matchIntentRegex` 同步精簡。
+
+### 早報格式修正（`app/api/cron/daily-report/route.ts`）
+
+舊格式將儲值、抽獎、次數、玩家擠在同一行，LINE 手機端約 20 字斷行，導致數字被截斷（例如「52\n次，1人」）。
+
+改為每個數據獨立一行（bullet 格式），與「待處理」section 視覺一致：
+```
+昨日數據
+• 儲值：NT$ 0
+• 抽獎消費：6,930 G
+• 抽獎次數：52 次
+• 參與玩家：1 人
+• 新增會員：0 人
+• 本月累計儲值：NT$ 6,000
+```
 
 ---
 
