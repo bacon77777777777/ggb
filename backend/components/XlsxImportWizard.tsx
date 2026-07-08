@@ -297,7 +297,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         }
         return updated
       }))
-      alert(`✅ 已上傳 ${data.uploaded} 張圖片，對應至商品清單中${data.failed > 0 ? `（${data.failed} 張失敗）` : ''}`)
+      alert(`已上傳 ${data.uploaded} 張圖片，對應至商品清單中${data.failed > 0 ? `（${data.failed} 張失敗）` : ''}`)
     } catch (err: any) {
       alert('上傳失敗：' + String(err?.message || err))
     } finally {
@@ -461,7 +461,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-3 border-b border-neutral-100">
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-neutral-900 text-base">🤖 智能批量匯入</h2>
+            <h2 className="font-bold text-neutral-900 text-base">智能批量匯入</h2>
             <p className="text-xs text-neutral-400">
               {step === 'upload'    && '支援 .xlsx / .xls / .csv，可直接拖曳'}
               {step === 'preview'   && `已解析 ${products.length} 個商品${doneCount > 0 ? `，${doneCount} 個已補全` : ''}`}
@@ -482,7 +482,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                       : 'bg-neutral-50 text-neutral-400 border-neutral-200'
                 }`}
               >
-                🖼 缺主圖 <span className="font-bold">{missingImageList.length}</span>
+                缺主圖 <span className="font-bold">{missingImageList.length}</span>
               </button>
               <button
                 onClick={() => cycleHighlight('prizes')}
@@ -494,7 +494,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                       : 'bg-neutral-50 text-neutral-400 border-neutral-200'
                 }`}
               >
-                📦 缺品項 <span className="font-bold">{missingPrizesList.length}</span>
+                缺品項 <span className="font-bold">{missingPrizesList.length}</span>
               </button>
               <button
                 onClick={() => cycleHighlight('price')}
@@ -506,7 +506,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                       : 'bg-neutral-50 text-neutral-400 border-neutral-200'
                 }`}
               >
-                💰 缺定價 <span className="font-bold">{missingPriceList.length}</span>
+                缺定價 <span className="font-bold">{missingPriceList.length}</span>
               </button>
               <div className="h-4 w-px bg-neutral-200 mx-0.5" />
               {/* Zip upload */}
@@ -515,7 +515,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 disabled={zipUploading}
                 className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-600 flex items-center gap-1.5 disabled:opacity-50"
               >
-                {zipUploading ? <><span className="animate-spin inline-block">⚙️</span>上傳中…</> : '📦 圖片壓縮檔'}
+                {zipUploading ? '上傳中…' : '圖片壓縮檔'}
               </button>
               <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
               {/* Enrich all */}
@@ -524,7 +524,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 disabled={enrichingAll}
                 className="px-3 py-1.5 bg-violet-600 text-white text-xs font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
               >
-                {enrichingAll ? <><span className="animate-spin inline-block">⚙️</span>補全中…</> : '🤖 全部AI補全'}
+                {enrichingAll ? '補全中…' : '全部AI補全'}
               </button>
             </div>
           )}
@@ -562,7 +562,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 onDrop={e => { if (selectedSupplierId) handleDrop(e); else e.preventDefault() }}
               >
                 {uploading ? (
-                  <div className="space-y-3"><div className="text-4xl animate-spin inline-block">⚙️</div><p className="font-semibold text-neutral-700">解析中…</p></div>
+                  <div className="space-y-3"><div className="w-8 h-8 border-4 border-violet-300 border-t-violet-600 rounded-full animate-spin mx-auto" /><p className="font-semibold text-neutral-700">解析中…</p></div>
                 ) : (
                   <>
                     <div className="text-5xl mb-4">{isDragging ? '📂' : '📊'}</div>
@@ -590,11 +590,11 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               {/* AI 補全結果摘要 */}
               {enrichSummary && !enrichingAll && (
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-xl text-sm">
-                  <span className="text-violet-700 font-semibold shrink-0">🤖 AI 補全完成</span>
+                  <span className="text-violet-700 font-semibold shrink-0">AI 補全完成</span>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                    <span className="text-emerald-700 font-medium">✅ 有圖：{enrichSummary.done} 件</span>
-                    {enrichSummary.partial > 0 && <span className="text-amber-600 font-medium">⚠️ 缺圖：{enrichSummary.partial} 件</span>}
-                    {enrichSummary.error > 0 && <span className="text-red-600 font-medium">❌ 失敗：{enrichSummary.error} 件</span>}
+                    <span className="text-emerald-700 font-medium">完成：{enrichSummary.done} 件</span>
+                    {enrichSummary.partial > 0 && <span className="text-amber-600 font-medium">未完整：{enrichSummary.partial} 件</span>}
+                    {enrichSummary.error > 0 && <span className="text-red-600 font-medium">失敗：{enrichSummary.error} 件</span>}
                   </div>
                   {enrichSummary.partial > 0 && <span className="ml-auto text-xs text-neutral-400 shrink-0">缺圖商品仍可匯入</span>}
                 </div>
@@ -774,7 +774,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           {/* ── Importing ── */}
           {step === 'importing' && (
             <div className="py-8 text-center space-y-4">
-              <div className="text-4xl animate-bounce">⏳</div>
+              <div className="w-8 h-8 border-4 border-violet-300 border-t-violet-600 rounded-full animate-spin mx-auto" />
               <p className="text-sm font-semibold text-neutral-700">匯入中，請稍候…</p>
               <div className="w-full bg-neutral-100 rounded-full h-3 overflow-hidden">
                 <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
@@ -787,7 +787,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           {step === 'done' && (
             <div className="py-6 space-y-4">
               <div className="text-center">
-                <div className="text-5xl mb-3">{failCount === 0 ? '🎉' : '⚠️'}</div>
+                <div className="text-5xl mb-3">{failCount === 0 ? '✓' : '!'}</div>
                 <p className="text-lg font-bold text-neutral-900">成功 {successCount} 筆 / 失敗 {failCount} 筆</p>
                 <p className="text-sm text-neutral-500 mt-1">商品已設為「上架」狀態，可至商品管理頁確認。</p>
               </div>
