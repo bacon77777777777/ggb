@@ -68,6 +68,17 @@ function isHttpUrl(s?: string | null): boolean {
   return !!s && /^https?:\/\//i.test(s)
 }
 
+const SUPABASE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+// 只有自己 Storage 的 URL 才算有效圖片（外部 URL 不信任）
+function isValidImg(url?: string | null): boolean {
+  return !!(url && SUPABASE_BASE && url.startsWith(SUPABASE_BASE))
+}
+// 清掉代理商佔位文字
+const DIST_PLACEHOLDERS = new Set(['代理商', '製造商', '品牌', 'distributor', '代理商名稱', '廠牌'])
+function cleanDist(v?: string | null): string | null {
+  return v && !DIST_PLACEHOLDERS.has(v) ? v : null
+}
+
 export default function SmartImportWizard({ isOpen, onClose, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const zipRef  = useRef<HTMLInputElement>(null)
@@ -117,8 +128,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const handleClose = () => { reset(); onClose() }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  // 缺主圖 = 沒有可顯示的圖片 URL（raw_image_name 是待上傳檔名，不算有圖）
-  const missingImageList  = products.filter(p => p.selected && !p.image_url)
+  // 缺主圖 = 沒有自己 Storage 的可顯示圖片（外部 URL 或無圖都算缺）
+  const missingImageList  = products.filter(p => p.selected && !isValidImg(p.image_url))
   const missingPrizesList = products.filter(p => p.selected && !p.variants?.length)
   const missingPriceList  = products.filter(p => p.selected && !p.jp_price_yen && !p.price_twd)
 
@@ -334,27 +345,27 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || '補全失敗')
       const ai = data.data
-      // 只有從外部來源（品牌網站/DB/萬代目錄）找到實際資料才算 done
-      // 光靠 Claude 生成品項名不算，標為 partial
-      const hasRealData = !!(ai.distributor || ai.jp_price_yen || ai.image_url)
-      const aiStatus: EnrichedProduct['aiStatus'] = hasRealData
-        ? (data.aiStatus ?? 'done')
-        : 'partial'
-      setProducts(prev => prev.map((x, i) => i === idx ? {
-        ...x,
-        // 只在 AI 回傳有值時才覆蓋，保留 xlsx 既有的 image_url
-        image_url: ai.image_url || x.image_url || null,
-        // 不用 xlsx 裡的 '代理商' 文字，那是欄位名稱不是實際值
-        distributor: ai.distributor || (x.distributor && x.distributor !== '代理商' ? x.distributor : null) || null,
-        variants: (() => {
-          // 如果 AI 回傳的品項有名稱就用 AI 的，否則保留原有
-          if (ai.variants?.length && ai.variants.some((v: any) => v.name)) return ai.variants
-          return x.variants?.length ? x.variants : ai.variants
-        })(),
-        variant_count: ai.variant_count || x.variant_count,
-        jp_price_yen: ai.jp_price_yen || x.jp_price_yen,
-        aiStatus,
-      } : x))
+      setProducts(prev => prev.map((x, i) => {
+        if (i !== idx) return x
+        const resolvedDist = cleanDist(ai.distributor) || cleanDist(x.distributor) || null
+        const resolvedImg  = isValidImg(ai.image_url) ? ai.image_url : isValidImg(x.image_url) ? x.image_url : null
+        const hasRealData  = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
+        const aiStatus: EnrichedProduct['aiStatus'] = hasRealData
+          ? (data.aiStatus ?? 'done')
+          : 'partial'
+        return {
+          ...x,
+          image_url:   resolvedImg,
+          distributor: resolvedDist,
+          variants: (() => {
+            if (ai.variants?.length && ai.variants.some((v: any) => v.name)) return ai.variants
+            return x.variants?.length ? x.variants : ai.variants
+          })(),
+          variant_count: ai.variant_count || x.variant_count,
+          jp_price_yen: ai.jp_price_yen || x.jp_price_yen,
+          aiStatus,
+        }
+      }))
     } catch (err: any) {
       setProducts(prev => prev.map((x, i) => i === idx ? { ...x, aiStatus: 'error', aiError: String(err.message) } : x))
     }
@@ -653,25 +664,18 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
                         {/* Main image */}
                         <div className="w-12 h-12 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0 relative">
-                          {p.image_url && (
+                          {isValidImg(p.image_url) && (
                             <img
-                              src={p.image_url}
+                              src={p.image_url!}
                               alt=""
                               className="absolute inset-0 w-full h-full object-cover"
-                              onError={e => {
-                                const img = e.currentTarget
-                                img.style.display = 'none'
-                                const fb = img.nextElementSibling as HTMLElement | null
-                                if (fb) fb.style.display = 'flex'
-                              }}
                             />
                           )}
-                          <div
-                            className="absolute inset-0 flex items-center justify-center text-neutral-300 text-lg"
-                            style={{ display: p.image_url ? 'none' : 'flex' }}
-                          >
-                            {p.raw_image_name ? '📄' : '?'}
-                          </div>
+                          {!isValidImg(p.image_url) && (
+                            <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-lg">
+                              {p.raw_image_name ? '📄' : '?'}
+                            </div>
+                          )}
                         </div>
 
                         {/* Name */}

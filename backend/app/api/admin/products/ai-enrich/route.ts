@@ -503,6 +503,60 @@ async function fetchImageFromDBByName(name: string): Promise<string | null> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ════ Claude 識別 IP + 轉換日文搜尋詞 ════
+// ─────────────────────────────────────────────────────────────────────────────
+interface ClaudeIdent {
+  distributor: string | null
+  jp_search_query: string | null   // 用於日本官方網站搜尋框的關鍵字
+  jp_price_yen: number | null
+  variant_names: string[]          // Claude 依訓練資料推測的品項名
+}
+async function claudeIdentify(name: string, type: string, count: number): Promise<ClaudeIdent> {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  const typeZh: Record<string, string> = {
+    ichiban: '一番賞', gacha: '轉蛋扭蛋', blindbox: '盒玩', card: '集換式卡牌', custom: '自製賞',
+  }
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{
+        role: 'user',
+        content: `你是日本玩具/一番賞/轉蛋/卡牌商品的資深採購。
+
+商品名稱：${name}
+商品類型：${typeZh[type] ?? type}
+品項數量：${count > 0 ? count : '不確定'}
+
+請用你的專業知識回答以下問題（JSON 格式，不要其他文字）：
+1. distributor: 原廠商/代理商名稱（例如 "BANDAI SPIRITS"、"FuRyu"、"SEGA"、"Kitan Club" 等；不確定就 null）
+2. jp_search_query: 最適合在日本官方網站搜尋框輸入的關鍵字（日文，去掉 vol. 等細節，保留 IP 名稱）
+3. jp_price_yen: 日本建議售價（日幣，整數；例如一番賞通常 800-1000，轉蛋通常 300-500；不確定就 null）
+4. variant_names: 你所知道的這個商品的品項名稱陣列（繁體中文，最多 ${Math.max(count, 6)} 個；若不清楚就空陣列）
+
+說明：
+- "一番賞" 通常是 BANDAI SPIRITS 的「一番くじ」系列
+- "みんなのくじ" 是 FuRyu
+- "Lucky賞/ラッキーくじ" 是 SEGA
+- 轉蛋/扭蛋：萬代 Gashapon、TOMY ARTS、奇譚クラブ(Kitan)、海洋堂 等
+
+{"distributor":null,"jp_search_query":null,"jp_price_yen":null,"variant_names":[]}`,
+      }],
+    })
+    const text = ((msg.content[0] as any).text ?? '{}').trim()
+    const p = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
+    return {
+      distributor:     typeof p.distributor === 'string' ? p.distributor : null,
+      jp_search_query: typeof p.jp_search_query === 'string' ? p.jp_search_query : null,
+      jp_price_yen:    typeof p.jp_price_yen === 'number' ? p.jp_price_yen : null,
+      variant_names:   Array.isArray(p.variant_names) ? p.variant_names.slice(0, 20) : [],
+    }
+  } catch {
+    return { distributor: null, jp_search_query: null, jp_price_yen: null, variant_names: [] }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ════ Claude 品項名稱生成 ════
 // ─────────────────────────────────────────────────────────────────────────────
 const TYPE_ZH: Record<string, string> = {
@@ -602,54 +656,58 @@ export async function POST(req: Request) {
     // ── Step 2.5: DB 商品名稱復用圖片 ────────────────────────────────────────
     const dbImageByName = storageImageUrl ? null : await fetchImageFromDBByName(product_name)
 
-    // ── Step 3: 品牌網站搜尋（按類型路由，並行）───────────────────────────
+    // ── Step 3: Claude 識別 IP + 取得日文搜尋詞（並行執行，不等待網路）────
+    const identified = await claudeIdentify(product_name, pType, hintCount)
+    // 優先用 Claude 提供的日文搜尋詞；若無則用清理過的商品名
+    const jpQuery  = identified.jp_search_query ? cleanName(identified.jp_search_query) : clean
+
+    // ── Step 4: 品牌網站搜尋（按類型路由，並行）───────────────────────────
     type SearchFn = () => Promise<SiteResult | null>
 
     const SOURCES: Record<string, SearchFn[]> = {
       ichiban: [
-        () => search1kuji(clean),
-        () => searchCharahiroba(clean),
-        () => searchSegaPlaza(clean),
-        () => searchHikokuji(clean),
-        () => searchKujibikido(clean),
-        () => searchTaitokuji(clean),
-        () => searchSanrioKuji(clean),
-        () => searchSquareEnix(clean),
+        () => search1kuji(jpQuery),
+        () => searchCharahiroba(jpQuery),
+        () => searchSegaPlaza(jpQuery),
+        () => searchHikokuji(jpQuery),
+        () => searchKujibikido(jpQuery),
+        () => searchTaitokuji(jpQuery),
+        () => searchSanrioKuji(jpQuery),
+        () => searchSquareEnix(jpQuery),
       ],
       gacha: [
-        () => searchGashapon(clean, barcode),
-        () => searchTarts(clean),
-        () => searchKitan(clean),
-        () => searchKenelephant(clean),
-        () => searchEpoch(clean),
-        () => searchQualia(clean),
-        () => searchBushiroad(clean),
+        () => searchGashapon(jpQuery, barcode),
+        () => searchTarts(jpQuery),
+        () => searchKitan(jpQuery),
+        () => searchKenelephant(jpQuery),
+        () => searchEpoch(jpQuery),
+        () => searchQualia(jpQuery),
+        () => searchBushiroad(jpQuery),
       ],
       blindbox: [
-        () => searchRement(clean),
-        () => searchMegahouse(clean),
-        () => searchGoodSmile(clean),
-        () => searchKotobukiya(clean),
-        () => searchPopMart(clean),
+        () => searchRement(jpQuery),
+        () => searchMegahouse(jpQuery),
+        () => searchGoodSmile(jpQuery),
+        () => searchKotobukiya(jpQuery),
+        () => searchPopMart(jpQuery),
       ],
       card: [
-        () => searchWeissSchwarz(clean),
-        () => searchVanguard(clean),
-        () => searchUnionArena(clean),
-        () => searchRebirth(clean),
-        () => searchOsica(clean),
-        () => searchShadowverse(clean),
-        () => searchBattleSpirits(clean),
+        () => searchWeissSchwarz(jpQuery),
+        () => searchVanguard(jpQuery),
+        () => searchUnionArena(jpQuery),
+        () => searchRebirth(jpQuery),
+        () => searchOsica(jpQuery),
+        () => searchShadowverse(jpQuery),
+        () => searchBattleSpirits(jpQuery),
       ],
-      // 自製賞性質接近一番賞，同樣去一番賞系列 + 盒玩系列找
       custom: [
-        () => search1kuji(clean),
-        () => searchCharahiroba(clean),
-        () => searchSegaPlaza(clean),
-        () => searchHikokuji(clean),
-        () => searchKujibikido(clean),
-        () => searchMegahouse(clean),
-        () => searchGoodSmile(clean),
+        () => search1kuji(jpQuery),
+        () => searchCharahiroba(jpQuery),
+        () => searchSegaPlaza(jpQuery),
+        () => searchHikokuji(jpQuery),
+        () => searchKujibikido(jpQuery),
+        () => searchMegahouse(jpQuery),
+        () => searchGoodSmile(jpQuery),
       ],
     }
 
@@ -658,31 +716,36 @@ export async function POST(req: Request) {
 
     if (fns.length > 0) {
       const results = await Promise.all(fns.map(f => f().catch(() => null)))
-      // 選第一個有品項的結果
       siteResult = results.find(r => r && r.prizes.length > 0) ?? null
     }
 
-    // ── Step 4: 萬代目錄（文字備援）+ Yahoo 定價並行 ─────────────────────
+    // ── Step 5: 萬代目錄（文字備援）+ Yahoo 定價並行 ─────────────────────
     const [bandai, yahooPrice] = await Promise.all([
       barcode ? scrapeBandaiText(barcode) : null,
-      !siteResult?.jp_price_yen ? scrapePriceFromYahoo(product_name, barcode) : null,
+      !siteResult?.jp_price_yen ? scrapePriceFromYahoo(jpQuery, barcode) : null,
     ])
 
-    const jp_price_yen = siteResult?.jp_price_yen ?? bandai?.jp_price_yen ?? yahooPrice ?? null
-    const distributor  = siteResult?.distributor ?? (bandai ? '萬代股份有限公司（BANDAI）' : null)
+    // 合併：網站結果 > Claude 識別 > 萬代備援
+    const jp_price_yen = siteResult?.jp_price_yen ?? bandai?.jp_price_yen ?? yahooPrice ?? identified.jp_price_yen ?? null
+    const distributor  = siteResult?.distributor ?? identified.distributor ?? (bandai ? 'BANDAI' : null)
     const variantCount = hintCount
       || siteResult?.prizes.length
       || bandai?.variant_count
       || 0
 
-    // ── Step 5: Claude 生成品項名稱 ──────────────────────────────────────
+    // ── Step 6: 品項名稱（網站 > Claude 已知 > 生成）────────────────────
+    // 如果 Claude 的識別已拿到足夠品項名稱，直接用
+    const claudePrizes = identified.variant_names.length >= (variantCount || 1)
+      ? identified.variant_names.map((n, i) => ({ grade: '', name: n }))
+      : undefined
+
     const named = await generateVariantNames(
       product_name, variantCount, pType,
-      siteResult?.prizes, existing_variant_names ?? [],
+      siteResult?.prizes ?? claudePrizes, existing_variant_names ?? [],
     )
 
     const source = siteResult?.source_site
-      ?? (bandai ? 'bandai_catalog_text' : 'yahoo_text')
+      ?? (identified.jp_search_query ? 'claude_identified' : bandai ? 'bandai_catalog_text' : 'claude_generated')
 
     return NextResponse.json({
       ok: true,
