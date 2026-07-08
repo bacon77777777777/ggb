@@ -17,6 +17,7 @@ interface ParsedProduct {
   qty_per_variant: number
   jp_price_yen: number | null
   full_spec: string
+  type: string  // ichiban | gacha | blindbox | card | custom
 }
 
 interface EnrichedProduct extends ParsedProduct {
@@ -28,6 +29,22 @@ interface EnrichedProduct extends ParsedProduct {
   aiStatus?: 'idle' | 'loading' | 'done' | 'partial' | 'error'
   aiError?: string
   selected?: boolean
+}
+
+const TYPE_OPTIONS = [
+  { value: 'gacha',    label: '轉蛋' },
+  { value: 'ichiban',  label: '一番賞' },
+  { value: 'blindbox', label: '盒玩' },
+  { value: 'card',     label: '抽卡' },
+  { value: 'custom',   label: '自製賞' },
+]
+
+const TYPE_CATEGORY: Record<string, string> = {
+  gacha:    '轉蛋',
+  ichiban:  '一番賞',
+  blindbox: '盒玩',
+  card:     '抽卡',
+  custom:   '自製賞',
 }
 
 type WizardStep = 'upload' | 'preview' | 'importing' | 'done'
@@ -110,6 +127,10 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           complete: result => {
             // Convert CSV rows to ParsedProduct shape using best-guess columns
             const rows = result.data ?? []
+            const CSV_TYPE_MAP: Record<string, string> = {
+              '一番賞': 'ichiban', '盒玩': 'blindbox', '盲盒': 'blindbox',
+              '轉蛋': 'gacha', '抽卡': 'card', '卡牌': 'card', '自製賞': 'custom',
+            }
             const all: EnrichedProduct[] = rows.map((row: any, i) => ({
               sku: row['品名'] || row['SKU'] || row['product_code'] || `ROW${i}`,
               barcode: row['國際條碼'] || row['barcode'] || null,
@@ -122,6 +143,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               qty_per_variant: 0,
               jp_price_yen: null,
               full_spec: '',
+              type: CSV_TYPE_MAP[String(row['類型'] || '').trim()] ?? 'gacha',
               aiStatus: 'idle' as const,
               selected: true,
             })).filter(p => p.name)
@@ -169,6 +191,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           product_name: p.name,
           variants_count: p.variant_count,
           manufacturer_code: p.manufacturer_code,
+          product_type: p.type || 'gacha',
         }),
       })
       const data = await res.json()
@@ -250,8 +273,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           product: {
             product_code: p.sku,
             name: p.name_zh || p.name,
-            category: '轉蛋',
-            type: 'gacha',
+            category: TYPE_CATEGORY[p.type] ?? '轉蛋',
+            type: p.type || 'gacha',
             price: p.jp_price_yen ? Math.round(p.jp_price_yen / 2) : 50,
             cost: null,
             total_count: p.total_count,
@@ -404,13 +427,14 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               {/* Table */}
               <div className="rounded-xl border border-neutral-200 overflow-hidden">
                 {/* Header — 全選 lives here */}
-                <div className="grid grid-cols-[2rem_3.5rem_1fr_7rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
+                <div className="grid grid-cols-[2rem_3.5rem_1fr_7rem_5.5rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
                   <label className="cursor-pointer flex items-center" title={`全選 (${selectedCount}/${products.length})`}>
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
                   </label>
                   <span>圖片</span>
                   <span>商品名稱</span>
                   <span>條碼</span>
+                  <span>類型</span>
                   <span>代理商</span>
                   <span>日幣 / 定價</span>
                   <span className="text-center">件數</span>
@@ -431,7 +455,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                     <div key={i} className={`border-b border-neutral-100 last:border-0 ${!p.selected ? 'opacity-40' : ''}`}>
                       {/* Main row — click anywhere (except checkbox/status) to toggle expand */}
                       <div
-                        className={`grid grid-cols-[2rem_3.5rem_1fr_7rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 transition-colors ${variantList.length > 0 ? 'cursor-pointer hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-neutral-50/60'}`}
+                        className={`grid grid-cols-[2rem_3.5rem_1fr_7rem_5.5rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 transition-colors ${variantList.length > 0 ? 'cursor-pointer hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-neutral-50/60'}`}
                         onClick={() => variantList.length > 0 && toggleExpand(i)}
                       >
                         {/* Checkbox — stop propagation so row click doesn't fire */}
@@ -459,6 +483,19 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
                         {/* Barcode */}
                         <span className="font-mono text-xs text-neutral-400 truncate">{p.barcode || '—'}</span>
+
+                        {/* Type select */}
+                        <select
+                          value={p.type || 'gacha'}
+                          onChange={e => {
+                            const v = e.target.value
+                            setProducts(prev => prev.map((x, j) => j === i ? { ...x, type: v } : x))
+                          }}
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs border border-neutral-200 rounded px-1 py-1 bg-white text-neutral-700 w-full"
+                        >
+                          {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
 
                         {/* Distributor */}
                         <span className="text-xs text-neutral-500 truncate" title={p.distributor || undefined}>{p.distributor || '—'}</span>

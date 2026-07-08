@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-07-08｜智能上架支援混合類型 xlsx
+
+### 問題
+智能上架（XlsxImportWizard）原本所有商品全部上架為 `type: 'gacha'`（轉蛋），不論實際類型。ai-enrich 搜圖也全部用「カプセルトイ」關鍵字，Claude Vision prompt 也硬寫「轉蛋商品」。
+
+### 修改
+
+**`app/api/admin/products/parse-xlsx/route.ts`**
+- `ParsedProduct` 介面新增 `type` 欄位
+- 讀取 xlsx `類型` 欄（如有），對應中文→DB enum（一番賞→ichiban、盒玩→blindbox、轉蛋→gacha、抽卡→card、自製賞→custom）
+- 無此欄則預設 `gacha`
+
+**`app/api/admin/products/ai-enrich/route.ts`**
+- 接受 `product_type` 參數
+- DuckDuckGo 搜圖關鍵字依類型切換（ichiban→一番くじ、blindbox→ブラインドボックス、card→トレーディングカード 等）
+- Claude Vision prompt 改為「這是{類型名稱}商品」
+
+**`components/XlsxImportWizard.tsx`**
+- 預覽表格新增「類型」欄（可手動修改的 select dropdown）
+- 上架時改用每筆商品實際的 `type`，同步推導 `category` 欄
+- 呼叫 ai-enrich 時帶入 `product_type`
+- CSV 格式也支援讀取 `類型` 欄
+
+---
+
 ## 2026-07-08｜權限管理補全 + 事件中心紅點修正
 
 ### 修改（`app/permissions/page.tsx`）

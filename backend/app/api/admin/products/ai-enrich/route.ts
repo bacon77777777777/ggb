@@ -26,7 +26,8 @@ async function scrapeBandaiCatalog(barcode: string) {
 // ── Claude Vision: 看圖命名，名稱與圖片天然配對 ───────────────────────────────
 async function nameVariantsByVision(
   productName: string,
-  imageUrls: string[]  // variant images only (no main image)
+  imageUrls: string[],  // variant images only (no main image)
+  zhLabel = '轉蛋'
 ): Promise<string[]> {
   if (imageUrls.length === 0) return []
   try {
@@ -46,7 +47,7 @@ async function nameVariantsByVision(
           ...imageContent,
           {
             type: 'text',
-            text: `這是轉蛋商品「${productName}」的 ${imageUrls.length} 款品項圖片（依序排列）。請看圖，用台灣繁體中文為每款命名（3-8字，要能識別是哪個角色或款式）。只輸出 ${imageUrls.length} 行名稱，每行一個，不加編號，不加其他文字。`,
+            text: `這是${zhLabel}商品「${productName}」的 ${imageUrls.length} 款品項圖片（依序排列）。請看圖，用台灣繁體中文為每款命名（3-8字，要能識別是哪個角色或款式）。只輸出 ${imageUrls.length} 行名稱，每行一個，不加編號，不加其他文字。`,
           },
         ],
       }],
@@ -107,21 +108,42 @@ function bestImage(results: { image: string }[], barcode: string | null): string
   return scored[0]?.url ?? null
 }
 
+// Type-specific Japanese search keywords for DuckDuckGo
+const TYPE_JP_KEYWORD: Record<string, string> = {
+  ichiban:  '一番くじ',
+  blindbox: 'ブラインドボックス',
+  gacha:    'カプセルトイ',
+  card:     'トレーディングカード',
+  custom:   '一番くじ',
+}
+
+// Type-specific Chinese label for Claude Vision prompt
+const TYPE_ZH_LABEL: Record<string, string> = {
+  ichiban:  '一番賞',
+  blindbox: '盒玩',
+  gacha:    '轉蛋',
+  card:     '集換式卡牌',
+  custom:   '自製賞',
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { barcode, product_name, variants_count } = await req.json()
+  const { barcode, product_name, variants_count, product_type } = await req.json()
   if (!product_name) return NextResponse.json({ error: 'product_name required' }, { status: 400 })
 
   const hintCount = Math.max(Number(variants_count) || 0, 0)
+  const pType = product_type && TYPE_JP_KEYWORD[product_type] ? product_type : 'gacha'
+  const jpKeyword = TYPE_JP_KEYWORD[pType]
+  const zhLabel   = TYPE_ZH_LABEL[pType]
 
   try {
     // Step 1: Bandai 官方目錄（圖片來源最可信）
     const [bandai, ddgMain] = await Promise.all([
       barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
-      ddgImages((barcode ?? '') + ' ' + product_name + ' カプセルトイ'),
+      ddgImages((barcode ?? '') + ' ' + product_name + ' ' + jpKeyword),
     ])
 
     // 品項數推算
@@ -144,7 +166,7 @@ export async function POST(req: Request) {
     // 名稱與圖片同 index，天然配對，不會錯位
     const validImageUrls = filledImages.filter(url => url !== null) as string[]
     const visionNames = validImageUrls.length > 0
-      ? await nameVariantsByVision(product_name, validImageUrls)
+      ? await nameVariantsByVision(product_name, validImageUrls, zhLabel)
       : []
 
     // 組合 variants：有圖的才有名稱

@@ -16,11 +16,23 @@ export interface ParsedProduct {
   qty_per_variant: number
   jp_price_yen: number | null
   full_spec: string
+  type: string  // ichiban | gacha | blindbox | card | custom
+}
+
+// Map Chinese type labels from xlsx to DB enum values
+const TYPE_MAP: Record<string, string> = {
+  '一番賞': 'ichiban',
+  '盒玩':   'blindbox',
+  '盲盒':   'blindbox',
+  '轉蛋':   'gacha',
+  '抽卡':   'card',
+  '卡牌':   'card',
+  '自製賞': 'custom',
 }
 
 // Parse 模威 format: cols 0=SKU, 1=barcode, 2=箱數, 3=備貨數量, 4=total, 5=full_name
 // Note: header row has an empty cell at col2, so header[2]="" but data[2]=箱數 value
-function parseMoWeiFormat(rows: any[][]): ParsedProduct[] {
+function parseMoWeiFormat(rows: any[][], typeColIdx: number | null): ParsedProduct[] {
   const result: ParsedProduct[] = []
 
   for (const row of rows) {
@@ -46,6 +58,9 @@ function parseMoWeiFormat(rows: any[][]): ParsedProduct[] {
 
     const totalCount = totalRaw || (perCase * cases) || (pcsPerBag * bagsPerCase * cases)
 
+    const typeRaw = typeColIdx !== null ? String(row[typeColIdx] ?? '').trim() : ''
+    const type = TYPE_MAP[typeRaw] ?? 'gacha'
+
     result.push({
       sku,
       barcode: barcode || null,
@@ -58,6 +73,7 @@ function parseMoWeiFormat(rows: any[][]): ParsedProduct[] {
       qty_per_variant: 0,
       jp_price_yen: jpPriceCode > 0 ? jpPriceCode * 10 : null,  // 050 → 500¥
       full_spec: fullName,
+      type,
     })
   }
 
@@ -92,7 +108,8 @@ export async function POST(req: Request) {
     const isMoWei = header[0] === '品名' && header[1] === '國際條碼'
 
     if (isMoWei) {
-      const products = parseMoWeiFormat(rows.slice(1))
+      const typeColIdx = header.indexOf('類型') !== -1 ? header.indexOf('類型') : null
+      const products = parseMoWeiFormat(rows.slice(1), typeColIdx)
       if (products.length > 0) allSheets.push({ name: sheetName, products })
     }
   }
