@@ -24,6 +24,9 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [isXlsxOpen, setIsXlsxOpen] = useState(false)
+  const [zipUploading, setZipUploading] = useState(false)
+  const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
+  const zipRef = useRef<HTMLInputElement>(null)
 
   const getDisplayCode = (product: Product): string => {
     return product.productCode || ''
@@ -323,6 +326,26 @@ export default function ProductsPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  // 圖片壓縮檔批量上傳
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setZipUploading(true)
+    setZipResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('zip', file)
+      const res = await fetch('/api/admin/products/upload-images', { method: 'POST', body: fd })
+      const json = await res.json()
+      setZipResult({ uploaded: json.uploaded ?? 0, failed: json.failed ?? 0 })
+    } catch {
+      setZipResult({ uploaded: 0, failed: 1 })
+    } finally {
+      setZipUploading(false)
+    }
   }
 
   // 確認 Modal 狀態
@@ -726,12 +749,28 @@ export default function ProductsPage() {
             addButtonText="+ 新增商品"
             onAddClick={() => window.location.href = '/products/new'}
             children={
-              <button
-                onClick={() => setIsXlsxOpen(true)}
-                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
-              >
-                🤖 智能批量匯入
-              </button>
+              <>
+                <button
+                  onClick={() => setIsXlsxOpen(true)}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  🤖 智能批量匯入
+                </button>
+                <button
+                  onClick={() => zipRef.current?.click()}
+                  disabled={zipUploading}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
+                >
+                  {zipUploading ? '⏳ 上傳中...' : '📦 上傳圖片'}
+                </button>
+                <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
+                {zipResult && (
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${zipResult.failed > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    ✓ 已上傳 {zipResult.uploaded} 張{zipResult.failed > 0 ? `，失敗 ${zipResult.failed}` : ''}
+                  </span>
+                )}
+              </>
             }
             showDensity={true}
             density={tableDensity}
