@@ -188,7 +188,6 @@ export async function POST(req: NextRequest) {
     urgent.forEach(u => lines.push(`• ${u}`))
   }
   if (notice.length > 0) {
-    lines.push('\n留意')
     notice.forEach(n => lines.push(`• ${n}`))
   }
   if (perfLines.length > 0) {

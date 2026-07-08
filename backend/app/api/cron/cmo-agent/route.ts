@@ -221,7 +221,8 @@ export async function POST(req: NextRequest) {
     const prevWeek = Number(growth[growth.length - 2]?.new_users ?? 0)
     const delta = lastWeek - prevWeek
     const sign  = delta >= 0 ? '+' : ''
-    lines.push(`\n本週新用戶：${lastWeek} 人（${sign}${delta} vs 上週）`)
+    lines.push(`\n本週新用戶：${lastWeek} 人`)
+    lines.push(`較上週 ${sign}${delta} 人`)
   } else if (growth.length === 1) {
     lines.push(`\n本週新用戶：${growth[0].new_users} 人`)
   }
@@ -231,7 +232,10 @@ export async function POST(req: NextRequest) {
   const drawers  = Number(funnel.drawers ?? 0)
   const recharged = Number(funnel.recharged ?? 0)
   if (viewers > 0 || drawers > 0) {
-    lines.push(`近7天：${viewers} 瀏覽 → ${drawers} 抽獎 → ${recharged} 儲值`)
+    lines.push(`近7天`)
+    lines.push(`• 瀏覽：${viewers} 人`)
+    lines.push(`• 抽獎：${drawers} 人`)
+    lines.push(`• 儲值：${recharged} 人`)
   }
 
   // 熱門商品

@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
     const failed = Number(s.failed ?? 0)
     const total  = Number(s.total  ?? 0)
     if (total >= 3 && failed / total >= 0.5) {
-      critical.push({ key: 'ecpay_callback', msg: `ECPay callback 近 1 小時失敗率 ${Math.round(failed/total*100)}%（${failed}/${total} 筆）` })
+      critical.push({ key: 'ecpay_callback', msg: `ECPay 近1小時失敗率 ${Math.round(failed/total*100)}%（${failed}/${total} 筆）` })
     } else if (total >= 2 && failed / total >= 0.3) {
-      warnings.push({ key: 'ecpay_callback_warn', msg: `ECPay callback 失敗率偏高 ${Math.round(failed/total*100)}%（${failed}/${total} 筆）` })
+      warnings.push({ key: 'ecpay_callback_warn', msg: `ECPay 失敗率偏高 ${Math.round(failed/total*100)}%（${failed}/${total} 筆）` })
     }
   } catch { /* ignore */ }
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       })
       const cnt = Number(rechargeCheck?.[0]?.cnt ?? 0)
       if (cnt === 0) {
-        critical.push({ key: 'zero_recharge', msg: `尖峰時段 2 小時內 0 筆成功儲值，付款流程可能故障` })
+        critical.push({ key: 'zero_recharge', msg: `尖峰2小時 0 筆儲值，付款流程可能故障` })
       }
     } catch { /* ignore */ }
 

@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     `,
   })
   for (const r of (bigRecharges as any[] ?? [])) {
-    warn.push(`大額儲值：${r.name ?? r.email} 單筆 NT$ ${Number(r.amount).toLocaleString()}（${r.order_number}）`)
+    warn.push(`大額儲值：${r.name ?? r.email} NT$ ${Number(r.amount).toLocaleString()}\n  訂單 ${r.order_number}`)
   }
 
   // ── 3. 單日累計大額儲值 ───────────────────────────────────────────
@@ -158,7 +158,6 @@ export async function POST(req: NextRequest) {
     high.forEach(h => lines.push(`• ${h}`))
   }
   if (warn.length > 0) {
-    lines.push('\n留意')
     warn.forEach(w => lines.push(`• ${w}`))
   }
 
