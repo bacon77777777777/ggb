@@ -16,8 +16,12 @@ const PERMISSION_GROUPS = [
   {
     title: '頂部導航',
     items: [
-      { id: 'header_products', label: '鈴鐺告警' },
-      { id: 'header_orders',   label: '配送待辦' },
+      { id: 'header_members',         label: '會員數顯示' },
+      { id: 'header_settlements',     label: '廠商月結' },
+      { id: 'header_refunds',         label: '待審退款' },
+      { id: 'header_recharge_review', label: '待複核儲值' },
+      { id: 'header_products',        label: '鈴鐺告警' },
+      { id: 'header_orders',          label: '配送待辦' },
     ],
   },
   {
@@ -34,8 +38,10 @@ const PERMISSION_GROUPS = [
       { id: 'recharges',           label: '儲值明細' },
       { id: 'reports_logistics',   label: '物流明細' },
       { id: 'reports_products',    label: '消費明細' },
-      { id: 'reports_dismantled',  label: '分解明細' },
-      { id: 'reports_settlement',  label: '廠商結算' },
+      { id: 'reports_dismantled',   label: '分解明細' },
+      { id: 'coupons_report',       label: '折價券明細' },
+      { id: 'reports_settlement',   label: '廠商結算' },
+      { id: 'settlement_snapshots', label: '廠商月結管理' },
     ],
   },
   {

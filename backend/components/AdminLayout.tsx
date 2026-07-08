@@ -157,6 +157,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     fetchData()
   }, [])
 
+  // Re-fetch agent event count on every page navigation so dismissed events
+  // no longer show in the badge after the user acts on them.
+  useEffect(() => {
+    fetch('/api/admin/agent-events?status=pending&limit=1')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setAgentEventCount(d.pendingCount ?? 0) })
+      .catch(() => {})
+  }, [pathname])
+
   // 從實際商品數據計算系統警示
   const alerts = useMemo(() => {
     const alertList: Array<{
@@ -460,12 +469,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/reports/products': 'reports_products',
     '/reports/dismantled': 'reports_dismantled',
     '/reports/settlement': 'reports_settlement',
-    '/settlement-snapshots': 'reports_settlement',
+    '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',
     '/draws': 'draws',
     '/orders': 'orders',
-    '/refund-requests': 'orders',
+    '/refund-requests': 'header_refunds',
     '/coupons': 'coupons',
     '/marketplace': 'marketplace',
     // 系統設定
@@ -490,8 +499,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/exchange': 'exchange',
     '/exchange-orders': 'exchange_orders',
     // Header 快捷（獨立 permission，不是頁面路徑）
-    '/header-products': 'header_products',
-    '/header-orders': 'header_orders',
+    '/header-members':         'header_members',
+    '/header-settlements':     'header_settlements',
+    '/header-refunds':         'header_refunds',
+    '/header-recharge-review': 'header_recharge_review',
+    '/header-products':        'header_products',
+    '/header-orders':          'header_orders',
     // 其他黑科技
     '/agent-events': 'agent_events',
     '/competitor-intel': 'competitor_intel',
@@ -829,14 +842,14 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
               </div>
               <div className="flex items-center gap-3">
                 {/* 會員人數 */}
-                {memberCount > 0 && (
+                {canAccess('/header-members') && memberCount > 0 && (
                   <span className="hidden lg:flex items-center gap-1 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
                     會員 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span> 人
                   </span>
                 )}
 
                 {/* 廠商月結 */}
-                {canAccess('/settlement-snapshots') && (
+                {canAccess('/header-settlements') && (
                   <a href="/settlement-snapshots" title="廠商月結" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -850,7 +863,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 )}
 
                 {/* 待審退款 */}
-                {canAccess('/refund-requests') && (
+                {canAccess('/header-refunds') && (
                   <a href="/refund-requests" title="待審退款" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -864,7 +877,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 )}
 
                 {/* 待複核儲值 */}
-                {canAccess('/recharge-review') && (
+                {canAccess('/header-recharge-review') && (
                   <a href="/recharge-review" title="待複核儲值" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

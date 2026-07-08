@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-07-08｜權限管理補全 + 事件中心紅點修正
+
+### 修改（`app/permissions/page.tsx`）
+**頂部導航** 區塊補齊缺少的 3 個圖標 + 會員數顯示：
+- `header_members`（會員數顯示）
+- `header_settlements`（廠商月結）
+- `header_refunds`（待審退款）
+- `header_recharge_review`（待複核儲值）
+- `header_products`（鈴鐺告警）
+- `header_orders`（配送待辦）
+
+**對帳報表** 區塊補充：
+- `coupons_report`（折價券明細）
+- `settlement_snapshots`（廠商月結管理）
+
+### 修改（`components/AdminLayout.tsx`）
+- `PATH_PERMISSION_MAP` 補齊新 `header_*` permission ID 對應
+- 頂部圖標 canAccess 統一換用 `header_*` permission ID
+- **事件中心紅點修正**：新增 `useEffect([pathname])` 在每次頁面導航後重新取 `pendingCount`，解決在事件中心略過事件後返回側邊欄仍顯示舊數字的問題
+
+---
+
 ## 2026-07-08｜廢棄 GB哥 LINE xlsx 智能上架
 
 ### 背景
