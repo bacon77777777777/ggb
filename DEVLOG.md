@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-07-08｜AI 補全修正：萬代目錄還原 + 品項圖精準化
+
+### 問題（上一版的缺陷）
+1. **萬代商品主圖錯誤**：移除了 `bandai.co.jp/catalog` 爬蟲，改用通用多平台搜尋，抓到的是亂圖
+2. **代理商欄位空白卻顯示「已補全」**：通用搜尋無法判斷代理商，`distributor` 永遠 null
+3. **品項圖抓到網站 icon**：AmiAmi/Yahoo 搜尋結果頁裡的 UI 圖示（河、人、購物車⋯⋯）被誤抓為品項圖
+4. **品項數量亂來**：通用搜尋隨機抓到幾張就顯示幾個品項
+
+### 修正（`ai-enrich/route.ts`）
+**Layer 0：萬代官方目錄（最高優先）**
+- 有 JAN 條碼時，優先打 `bandai.co.jp/catalog/item.php?jan_cd={barcode}000`
+- 命中後：`images[0]` = 主圖、`images[1..]` = 品項圖（官方順序）、`jp_price_yen` 自動填入、`distributor = '萬代股份有限公司（BANDAI）'`
+- `hintCount > 0` 時按品項數截取（防止圖多於品項款式的情況）
+- 命中即回傳，**完全跳過其他平台搜尋**，`aiStatus: 'done'`
+
+**Layer 1-5：非萬代多平台（Bandai 找不到才走）**
+- Yahoo Japan、AmiAmi、Rakuten、Suruga-ya、DuckDuckGo 並行
+- 品項圖來源嚴格限制：只從 **product detail 頁**抓（Yahoo detail + AmiAmi detail），不從搜尋結果頁抓
+- 增加圖片過濾：含 `icon/logo/banner/cart/bell/badge/nav/menu` 等字樣的 URL 一律跳過
+
+---
+
 ## 2026-07-08｜智能批量匯入全面重設計
 
 ### 欄位擴充（`parse-xlsx/route.ts`、`XlsxImportWizard.tsx`）
