@@ -1602,7 +1602,7 @@ tag_daily_stats(stat_date date, tag_id uuid, views int, draws int)
 banners(id, name, image_url, link_url, sort_order int, is_active bool, created_at)
 
 ── 流量 / 分析 ──
-product_view_events(event_date date, user_id uuid, product_id bigint, created_at) -- 商品頁瀏覽，每次進入 insert 一筆
+product_view_events(event_date date, user_id uuid, product_id bigint, created_at) -- 【尚未實作，目前 0 筆，請勿查詢此表】
 visit_logs(id, page_path, user_id uuid, user_agent, ip_address, referrer, metadata jsonb, created_at) -- 全站頁面瀏覽
 search_logs(id, keyword, result_count int, created_at) -- 玩家搜尋關鍵字（無 user_id）
 
@@ -1631,8 +1631,18 @@ platform_settings(key, value text, updated_at) -- 系統參數設定
 risk_alert_settings(key, value text, description, updated_at)
 
 詞彙對應（問題模糊時自行套用）：
-- 「流量」「瀏覽量」「人氣」→ product_view_events（商品）或 visit_logs（全站）
-- 「目前/近期」流量 → 預設最近 7 天（event_date >= CURRENT_DATE - 7）
+- 「流量」「瀏覽量」「人氣」「熱門商品」「哪個商品最受歡迎」→ product_view_events 尚未實作（0 筆），必須改用 draw_records 抽獎次數作為 proxy。範例 SQL：
+  SELECT p.name, COUNT(dr.id) AS draws
+  FROM draw_records dr
+  JOIN products p ON p.id = dr.product_id
+  JOIN users u ON u.id = dr.user_id
+  WHERE (u.is_bot IS NULL OR u.is_bot = false)
+    AND dr.type = 'draw'
+    AND dr.created_at >= NOW() - INTERVAL '7 days'
+  GROUP BY p.id, p.name
+  ORDER BY draws DESC
+  LIMIT 3
+  回覆時說明「以抽獎次數代表熱門度（瀏覽量統計尚未上線）」。
 - 「搜尋熱詞」「玩家搜什麼」→ search_logs GROUP BY keyword ORDER BY COUNT DESC
 - 「管理員做了什麼」→ action_logs
 - 「AI 待處理事項」→ agent_events WHERE status = 'pending'

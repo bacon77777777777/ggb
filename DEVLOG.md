@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-07-08｜GB哥 流量查詢修正（product_view_events 未實作）
+
+### 問題
+`product_view_events` 前台尚未埋點，表中 0 筆資料。GB哥 system prompt 指引 Claude 查此表，結果：
+1. Claude 呼叫 `execute_readonly_sql` 查到空資料
+2. 回傳「目前找不到相關資料，請換個方式描述。」
+3. 但 Anthropic API 費用已扣（每次 tool loop 都呼叫 Haiku）
+
+### 修正（`lib/gbBro.ts`）
+1. `product_view_events` schema 備註改為「尚未實作，目前 0 筆，請勿查詢此表」
+2. 詞彙對應中「流量/人氣/熱門商品」改為查 `draw_records` 抽獎次數作為 proxy，並在回覆中說明「以抽獎次數代表熱門度（瀏覽量統計尚未上線）」
+
+### 後續待辦
+前台商品頁面補寫入 `product_view_events`（待規劃）
+
+---
+
 ## 2026-07-08｜全 Agent LINE 推播訊息格式修正
 
 ### 修正範圍（5 個 cron agent）
