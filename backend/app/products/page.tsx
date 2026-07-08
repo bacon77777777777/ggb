@@ -1103,7 +1103,7 @@ export default function ProductsPage() {
                       )}
                       {visibleColumns.majorStatus && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                          {['gacha', 'blindbox', 'card'].includes(product.type) ? (
+                          {['gacha', 'blindbox', 'card'].includes(product.type ?? '') ? (
                             <span className="text-neutral-400">—</span>
                           ) : isMajorDepleted(product) ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 border border-red-200 font-semibold whitespace-nowrap">
