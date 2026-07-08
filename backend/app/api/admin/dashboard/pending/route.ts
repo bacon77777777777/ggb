@@ -39,7 +39,8 @@ export async function GET() {
         .eq('status', 'draft'),
       supabase
         .from('users')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .or('is_bot.is.null,is_bot.eq.false'),
       supabase
         .from('recharge_records')
         .select('id', { count: 'exact', head: true })
