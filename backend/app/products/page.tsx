@@ -990,8 +990,11 @@ export default function ProductsPage() {
               <tbody>
                 {sortedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-neutral-500">
-                      沒有找到符合條件的商品
+                    <td colSpan={20} className="text-center">
+                      <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
+                        <span className="text-3xl">📭</span>
+                        <span>{isLoading ? '載入中...' : '沒有找到符合條件的商品'}</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
