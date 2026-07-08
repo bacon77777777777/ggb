@@ -97,7 +97,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     { label: '類別', value: typeLabel[product.type] || product.category || '-' },
     { label: '廠商', value: supplierName || '-' },
     { label: '代理商', value: product.distributor || '-' },
-    { label: '條碼', value: product.product_code || '-' },
+    { label: '條碼', value: (product as any).barcode || '-' },
   ];
 
   return (

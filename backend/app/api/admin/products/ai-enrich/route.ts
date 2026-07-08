@@ -25,6 +25,42 @@ function cleanName(name: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DuckDuckGo 圖片搜尋（不需 API key，可用中日文關鍵字）
+// ─────────────────────────────────────────────────────────────────────────────
+async function ddgImages(query: string): Promise<{ image: string }[]> {
+  try {
+    const html = await fetchPage(
+      'https://duckduckgo.com/?q=' + encodeURIComponent(query) + '&iax=images&ia=images'
+    )
+    if (!html) return []
+    const vqd = html.match(/vqd=['"]([^'"]+)['"]/)?.[1]
+    if (!vqd) return []
+    const res = await fetch(
+      `https://duckduckgo.com/i.js?q=${encodeURIComponent(query)}&o=json&p=1&s=0&u=bing&f=,,,,,&l=us-en&vqd=${vqd}`,
+      { headers: { 'User-Agent': UA, Referer: 'https://duckduckgo.com/' }, signal: AbortSignal.timeout(8000) }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.results ?? []
+  } catch { return [] }
+}
+const SKIP_DOMAINS = ['google', 'gstatic', 'facebook', 'twitter', 'instagram', 'youtube', 'blogspot', 'pinterest', 'wikimedia']
+function bestDdgImage(results: { image: string }[], barcode?: string | null): string | null {
+  const scored = results
+    .filter(r => r.image?.startsWith('http') && !SKIP_DOMAINS.some(d => r.image.toLowerCase().includes(d)))
+    .map(r => {
+      let s = 0
+      if (barcode && r.image.includes(barcode)) s += 100
+      if (/item-shopping\.c\.yimg\.jp/.test(r.image)) s += 70
+      if (/bandai-a\.akamaihd\.net/.test(r.image)) s += 60
+      if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(r.image)) s += 5
+      return { url: r.image, s }
+    })
+    .sort((a, b) => b.s - a.s)
+  return scored[0]?.url ?? null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 共用：從 HTML 提取品項 & 定價
 // ─────────────────────────────────────────────────────────────────────────────
 interface PrizeInfo { grade: string; name: string }
@@ -73,6 +109,39 @@ interface SiteResult {
   jp_price_yen: number | null
   prizes: PrizeInfo[]
   source_site: string
+  image_url?: string | null      // og:image 主圖
+  variant_images?: string[]      // 品項縮圖（可給 Vision 命名）
+}
+
+// 從 HTML 取 og:image 和品項圖陣列
+function extractOgImage(html: string): string | null {
+  return html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)?.[1]?.trim()
+    ?? html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i)?.[1]?.trim()
+    ?? null
+}
+function extractSiteVariantImages(html: string, limit = 12): string[] {
+  const skip = /logo|icon|arrow|header|footer|bg_|banner|button|sprite|\.svg|\.gif|loading|placeholder/i
+  // 同時抓 src、data-src、data-lazy-src、data-original（日本站常用 lazy loading）
+  const imgUrlRe = /https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"']*)?/gi
+  const attrRe   = /(?:src|data-src|data-lazy(?:-src)?|data-original|data-img)="([^"]+)"/gi
+  const urls: string[] = []
+  for (const m of html.matchAll(attrRe)) {
+    const inner = m[1]
+    const matched = inner.match(imgUrlRe)
+    if (matched) urls.push(...matched)
+  }
+  return urls
+    .filter(u => !skip.test(u))
+    .reduce((acc: string[], u) => (acc.includes(u) ? acc : [...acc, u]), [])
+    .slice(0, limit)
+}
+
+// 一行附加圖片資訊（所有爬蟲共用）
+function withImages(r: Omit<SiteResult, 'image_url' | 'variant_images'>, html: string): SiteResult {
+  const ogImg = extractOgImage(html)
+  // 過濾掉主圖避免它出現在品項圖陣列第一位造成位移
+  const imgs = extractSiteVariantImages(html).filter(u => u !== ogImg)
+  return { ...r, image_url: ogImg, variant_images: imgs.length >= 2 ? imgs : undefined }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +158,7 @@ async function search1kuji(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'BANDAI SPIRITS', jp_price_yen: extractPrice(detail), prizes, source_site: '1kuji.com' }
+  return withImages({ distributor: 'BANDAI SPIRITS', jp_price_yen: extractPrice(detail), prizes, source_site: '1kuji.com' }, detail)
 }
 
 // FuRyu みんなのくじ
@@ -102,7 +171,7 @@ async function searchCharahiroba(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'FuRyu（富留由）', jp_price_yen: extractPrice(detail), prizes, source_site: 'charahiroba.com' }
+  return withImages({ distributor: 'FuRyu（富留由）', jp_price_yen: extractPrice(detail), prizes, source_site: 'charahiroba.com' }, detail)
 }
 
 // SEGA Lucky賞
@@ -115,7 +184,7 @@ async function searchSegaPlaza(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'SEGA（世嘉）', jp_price_yen: extractPrice(detail), prizes, source_site: 'segaplaza.jp' }
+  return withImages({ distributor: 'SEGA（世嘉）', jp_price_yen: extractPrice(detail), prizes, source_site: 'segaplaza.jp' }, detail)
 }
 
 // KEN MEDIA ひこくじ
@@ -128,7 +197,7 @@ async function searchHikokuji(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'KEN MEDIA', jp_price_yen: extractPrice(detail), prizes, source_site: 'hikokuji.com' }
+  return withImages({ distributor: 'KEN MEDIA', jp_price_yen: extractPrice(detail), prizes, source_site: 'hikokuji.com' }, detail)
 }
 
 // KADOKAWA くじ引き堂
@@ -141,7 +210,7 @@ async function searchKujibikido(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'KADOKAWA（角川）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kujibikido.com' }
+  return withImages({ distributor: 'KADOKAWA（角川）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kujibikido.com' }, detail)
 }
 
 // TAITO くじ
@@ -154,7 +223,7 @@ async function searchTaitokuji(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'TAITO（太東）', jp_price_yen: extractPrice(detail), prizes, source_site: 'taito.co.jp' }
+  return withImages({ distributor: 'TAITO（太東）', jp_price_yen: extractPrice(detail), prizes, source_site: 'taito.co.jp' }, detail)
 }
 
 // Sanrio 当りくじ
@@ -166,7 +235,7 @@ async function searchSanrioKuji(name: string): Promise<SiteResult | null> {
   const detail = url ? await fetchPage(url) : null
   const finalPrizes = detail ? extractPrizes(detail) : prizes
   if (!finalPrizes.length) return null
-  return { distributor: 'Sanrio（三麗鷗）', jp_price_yen: extractPrice(detail ?? html), prizes: finalPrizes, source_site: 'sanrio.co.jp' }
+  return withImages({ distributor: 'Sanrio（三麗鷗）', jp_price_yen: extractPrice(detail ?? html), prizes: finalPrizes, source_site: 'sanrio.co.jp' }, detail ?? html)
 }
 
 // SQUARE ENIX 福引賞
@@ -179,7 +248,7 @@ async function searchSquareEnix(name: string): Promise<SiteResult | null> {
   if (!detail) return null
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
-  return { distributor: 'SQUARE ENIX', jp_price_yen: extractPrice(detail), prizes, source_site: 'square-enix.com' }
+  return withImages({ distributor: 'SQUARE ENIX', jp_price_yen: extractPrice(detail), prizes, source_site: 'square-enix.com' }, detail)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -198,7 +267,7 @@ async function searchGashapon(name: string, barcode?: string | null): Promise<Si
   const prizes = extractPrizes(detail)
   const price = extractPrice(detail)
   // 萬代轉蛋 → 確認代理商
-  return { distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: price, prizes, source_site: 'gashapon.jp' }
+  return withImages({ distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: price, prizes, source_site: 'gashapon.jp' }, detail)
 }
 
 // T-ARTS (TAKARA TOMY A.R.T.S)
@@ -210,7 +279,7 @@ async function searchTarts(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'T-ARTS（TAKARA TOMY A.R.T.S）', jp_price_yen: extractPrice(detail), prizes, source_site: 'takaratomy-arts.co.jp' }
+  return withImages({ distributor: 'T-ARTS（TAKARA TOMY A.R.T.S）', jp_price_yen: extractPrice(detail), prizes, source_site: 'takaratomy-arts.co.jp' }, detail)
 }
 
 // KITAN CLUB
@@ -222,7 +291,7 @@ async function searchKitan(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'KITAN CLUB（奇譚俱樂部）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kitan.jp' }
+  return withImages({ distributor: 'KITAN CLUB（奇譚俱樂部）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kitan.jp' }, detail)
 }
 
 // KENELEPHANT
@@ -234,7 +303,7 @@ async function searchKenelephant(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'KENELEPHANT', jp_price_yen: extractPrice(detail), prizes, source_site: 'kenelephant.co.jp' }
+  return withImages({ distributor: 'KENELEPHANT', jp_price_yen: extractPrice(detail), prizes, source_site: 'kenelephant.co.jp' }, detail)
 }
 
 // EPOCH
@@ -246,7 +315,7 @@ async function searchEpoch(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'EPOCH（艾波）', jp_price_yen: extractPrice(detail), prizes, source_site: 'epoch.jp' }
+  return withImages({ distributor: 'EPOCH（艾波）', jp_price_yen: extractPrice(detail), prizes, source_site: 'epoch.jp' }, detail)
 }
 
 // Qualia
@@ -258,7 +327,7 @@ async function searchQualia(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'Qualia', jp_price_yen: extractPrice(detail), prizes, source_site: 'qualia-45.jp' }
+  return withImages({ distributor: 'Qualia', jp_price_yen: extractPrice(detail), prizes, source_site: 'qualia-45.jp' }, detail)
 }
 
 // Bushiroad Creative（転蛋/景品）
@@ -270,7 +339,7 @@ async function searchBushiroad(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'Bushiroad Creative（武士道）', jp_price_yen: extractPrice(detail), prizes, source_site: 'bushiroad-creative.com' }
+  return withImages({ distributor: 'Bushiroad Creative（武士道）', jp_price_yen: extractPrice(detail), prizes, source_site: 'bushiroad-creative.com' }, detail)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -290,7 +359,7 @@ async function searchRement(name: string): Promise<SiteResult | null> {
   for (const m of (detail).matchAll(/No\.\s*(\d+)\s*[「『]?([^「『\n<]{3,30})[」』]?/g))
     prizes.push({ grade: `No.${m[1]}`, name: m[2].trim() })
   if (!prizes.length) prizes.push(...extractPrizes(detail))
-  return { distributor: 'RE-MENT', jp_price_yen: extractPrice(detail), prizes, source_site: 're-ment.co.jp' }
+  return withImages({ distributor: 'RE-MENT', jp_price_yen: extractPrice(detail), prizes, source_site: 're-ment.co.jp' }, detail)
 }
 
 // Megahouse
@@ -302,7 +371,7 @@ async function searchMegahouse(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'Megahouse（メガハウス）', jp_price_yen: extractPrice(detail), prizes, source_site: 'megahobby.jp' }
+  return withImages({ distributor: 'Megahouse（メガハウス）', jp_price_yen: extractPrice(detail), prizes, source_site: 'megahobby.jp' }, detail)
 }
 
 // Good Smile Company
@@ -314,7 +383,7 @@ async function searchGoodSmile(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: 'Good Smile Company（好微笑）', jp_price_yen: extractPrice(detail), prizes, source_site: 'goodsmile.com' }
+  return withImages({ distributor: 'Good Smile Company（好微笑）', jp_price_yen: extractPrice(detail), prizes, source_site: 'goodsmile.com' }, detail)
 }
 
 // Kotobukiya
@@ -326,7 +395,7 @@ async function searchKotobukiya(name: string): Promise<SiteResult | null> {
   const detail = await fetchPage(url)
   if (!detail) return null
   const prizes = extractPrizes(detail)
-  return { distributor: '壽屋（Kotobukiya）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kotobukiya.co.jp' }
+  return withImages({ distributor: '壽屋（Kotobukiya）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kotobukiya.co.jp' }, detail)
 }
 
 // POP MART
@@ -342,7 +411,7 @@ async function searchPopMart(name: string): Promise<SiteResult | null> {
   for (const m of (detail).matchAll(/["']name["']\s*:\s*["']([^"']{3,30})["']/g))
     prizes.push({ grade: '', name: m[1] })
   if (!prizes.length) prizes.push(...extractPrizes(detail))
-  return { distributor: 'POP MART（泡泡瑪特）', jp_price_yen: extractPrice(detail), prizes, source_site: 'popmart.com' }
+  return withImages({ distributor: 'POP MART（泡泡瑪特）', jp_price_yen: extractPrice(detail), prizes, source_site: 'popmart.com' }, detail)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -434,16 +503,51 @@ async function searchBattleSpirits(name: string): Promise<SiteResult | null> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ════ 萬代目錄（文字）+ Yahoo 定價備援 ════
+// ════ 萬代官網目錄（圖片 + 定價）════
 // ─────────────────────────────────────────────────────────────────────────────
-async function scrapeBandaiText(barcode: string): Promise<{ jp_price_yen: number | null; variant_count: number | null } | null> {
+async function scrapeBandaiCatalog(barcode: string): Promise<{
+  jp_price_yen: number | null
+  variant_count: number | null
+  images: string[]  // index 0 = 主圖, 1..N = 品項圖
+} | null> {
   const html = await fetchPage(`https://www.bandai.co.jp/catalog/item.php?jan_cd=${barcode}000`)
   if (!html) return null
-  const nameEl = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]?.trim()
-  if (!nameEl) return null
-  const jp_price_yen = html.match(/<span>(\d+)<\/span>円/)?.[1] ? parseInt(html.match(/<span>(\d+)<\/span>円/)![1]) : null
-  const thumbCount = (html.match(/bandai-a\.akamaihd\.net\/bc\/img\/model\//g) ?? []).length
-  return { jp_price_yen, variant_count: thumbCount > 1 ? thumbCount - 1 : null }
+  const name = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]?.trim() ?? null
+  if (!name) return null
+  const jp_price_yen = html.match(/<span>(\d+)<\/span>円/)?.[1]
+    ? parseInt(html.match(/<span>(\d+)<\/span>円/)![1]) : null
+  const thumbSection = html.match(/thumbnails[\s\S]*?(?=pg-productFlex|$)/)?.[0] ?? ''
+  const images = [...thumbSection.matchAll(/src="(https:\/\/bandai-a\.akamaihd\.net\/bc\/img\/model\/[^"]+\.jpg)"/g)]
+    .map(m => m[1])
+  return { jp_price_yen, variant_count: images.length > 1 ? images.length - 1 : null, images }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ Claude Vision 看圖命名（圖文天然配對）════
+// ─────────────────────────────────────────────────────────────────────────────
+async function nameVariantsByVision(productName: string, imageUrls: string[]): Promise<string[]> {
+  if (imageUrls.length === 0) return []
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: [
+          ...imageUrls.map(url => ({ type: 'image' as const, source: { type: 'url' as const, url } })),
+          {
+            type: 'text',
+            text: `這是商品「${productName}」的 ${imageUrls.length} 款品項圖片（依序排列）。請看圖，用台灣繁體中文為每款命名（3-10字，能識別角色或款式）。只輸出 ${imageUrls.length} 行名稱，每行一個，不加編號。`,
+          },
+        ],
+      }],
+    })
+    return ((msg.content[0] as any).text as string).trim()
+      .split('\n')
+      .map((l: string) => l.replace(/^[\d.\-*、。\s]+/, '').trim())
+      .filter((l: string) => l.length >= 2 && l.length <= 25)
+  } catch { return [] }
 }
 
 async function scrapePriceFromYahoo(name: string, barcode?: string | null): Promise<number | null> {
@@ -499,7 +603,13 @@ async function fetchImageFromDBByName(name: string): Promise<string | null> {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  return data?.image_url ?? null
+  const url = data?.image_url
+  if (!url) return null
+  // HEAD 驗證：Storage 檔案可能已清除，死連結直接排除
+  try {
+    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(4000) })
+    return r.ok ? url : null
+  } catch { return null }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -529,16 +639,20 @@ async function claudeIdentify(name: string, type: string, count: number): Promis
 品項數量：${count > 0 ? count : '不確定'}
 
 請用你的專業知識回答以下問題（JSON 格式，不要其他文字）：
-1. distributor: 原廠商/代理商名稱（例如 "BANDAI SPIRITS"、"FuRyu"、"SEGA"、"Kitan Club" 等；不確定就 null）
-2. jp_search_query: 最適合在日本官方網站搜尋框輸入的關鍵字（日文，去掉 vol. 等細節，保留 IP 名稱）
-3. jp_price_yen: 日本建議售價（日幣，整數；例如一番賞通常 800-1000，轉蛋通常 300-500；不確定就 null）
+1. distributor: **製作這個抽獎盒/転蛋商品的原廠商**名稱（注意：是製作「抽獎產品本身」的公司，不是盒內獎品的品牌。例如一番賞盒的製作者是 "BANDAI SPIRITS"，不是盒內 iPhone 的品牌 Apple）
+2. jp_search_query: 最適合在日本官方網站搜尋框輸入的關鍵字（日文，保留 IP 名稱和版本號如 P6/vol.3 等）
+3. jp_price_yen: 日本建議售價（日幣，整數；一番賞通常 800-1000，轉蛋通常 300-500；不確定就 null）
 4. variant_names: 你所知道的這個商品的品項名稱陣列（繁體中文，最多 ${Math.max(count, 6)} 個；若不清楚就空陣列）
 
-說明：
-- "一番賞" 通常是 BANDAI SPIRITS 的「一番くじ」系列
-- "みんなのくじ" 是 FuRyu
-- "Lucky賞/ラッキーくじ" 是 SEGA
-- 轉蛋/扭蛋：萬代 Gashapon、TOMY ARTS、奇譚クラブ(Kitan)、海洋堂 等
+廠商識別說明：
+- "一番賞"/"一番くじ" → BANDAI SPIRITS（包含含 Apple/電子產品獎的版本）
+- "潮玩賞" 是台灣競品平台的自定義名稱，忽略它，看獎品內容判斷真正廠商
+- "みんなのくじ" → FuRyu（富留由）
+- "Lucky賞/ラッキーくじ" → SEGA（世嘉）
+- "ひこくじ" → KEN MEDIA
+- "くじ引き堂" → KADOKAWA（角川）
+- 轉蛋/扭蛋：萬代 Gashapon → BANDAI、TOMY ARTS → T-ARTS、奇譚クラブ → Kitan Club
+- 盒玩：RE-MENT、Megahouse、Good Smile Company 等
 
 {"distributor":null,"jp_search_query":null,"jp_price_yen":null,"variant_names":[]}`,
       }],
@@ -719,45 +833,100 @@ export async function POST(req: Request) {
       siteResult = results.find(r => r && r.prizes.length > 0) ?? null
     }
 
-    // ── Step 5: 萬代目錄（文字備援）+ Yahoo 定價並行 ─────────────────────
-    const [bandai, yahooPrice] = await Promise.all([
-      barcode ? scrapeBandaiText(barcode) : null,
+    // ── Step 5: 萬代官網（含圖）+ Yahoo 定價 + DDG × 2 並行 ──────────────
+    const needImg    = !storageImageUrl && !dbImageByName
+    const typeSuffix = pType === 'ichiban' ? ' 一番くじ' : pType === 'gacha' ? ' ガチャ' : pType === 'blindbox' ? ' フィギュア' : ''
+    // 同時用日文查詢 + 原始中文商品名查詢，取最佳圖
+    const ddgQueryJp = jpQuery + typeSuffix
+    const ddgQueryZh = clean + typeSuffix
+    const [bandai, yahooPrice, ddgResJp, ddgResZh] = await Promise.all([
+      barcode ? scrapeBandaiCatalog(barcode) : null,
       !siteResult?.jp_price_yen ? scrapePriceFromYahoo(jpQuery, barcode) : null,
+      needImg ? ddgImages(ddgQueryJp) : Promise.resolve([]),
+      needImg && ddgQueryJp !== ddgQueryZh ? ddgImages(ddgQueryZh) : Promise.resolve([]),
     ])
+    const bandaiMainImg     = bandai?.images?.[0] ?? null
+    const bandaiVariantImgs = bandai?.images?.slice(1) ?? []
+    // 合併兩組 DDG 結果，優先日文（更精準），中文補位
+    const ddgResults = [...ddgResJp, ...ddgResZh.filter(r => !ddgResJp.some(j => j.image === r.image))]
+    const ddgImage   = needImg && !bandaiMainImg ? bestDdgImage(ddgResults, barcode) : null
 
     // 合併：網站結果 > Claude 識別 > 萬代備援
     const jp_price_yen = siteResult?.jp_price_yen ?? bandai?.jp_price_yen ?? yahooPrice ?? identified.jp_price_yen ?? null
-    const distributor  = siteResult?.distributor ?? identified.distributor ?? (bandai ? 'BANDAI' : null)
-    const variantCount = hintCount
-      || siteResult?.prizes.length
-      || bandai?.variant_count
-      || 0
+    const distributor  = siteResult?.distributor ?? identified.distributor ?? (bandaiMainImg ? 'BANDAI' : null)
+    const variantCount = hintCount || siteResult?.prizes.length || bandai?.variant_count || 0
 
-    // ── Step 6: 品項名稱（網站 > Claude 已知 > 生成）────────────────────
-    // 如果 Claude 的識別已拿到足夠品項名稱，直接用
-    const claudePrizes = identified.variant_names.length >= (variantCount || 1)
-      ? identified.variant_names.map((n, i) => ({ grade: '', name: n }))
-      : undefined
+    // ── Step 6: 命名（有品項圖 → 配對；無圖 → 文字）──────────────────────
+    // 圖片來源優先順序：Bandai 官方目錄 > 品牌網站爬蟲
+    const siteVariantImgs = siteResult?.variant_images ?? []
+    const visionImgs = bandaiVariantImgs.length > 0 ? bandaiVariantImgs : siteVariantImgs
+    let namedVariants: { grade: string; name: string; image_url: string | null }[]
 
-    const named = await generateVariantNames(
-      product_name, variantCount, pType,
-      siteResult?.prizes ?? claudePrizes, existing_variant_names ?? [],
-    )
+    if (siteResult && siteResult.prizes.length >= 2 && siteVariantImgs.length >= 2) {
+      // 快速配對路線：站點已有品項名 + 站點有圖 → 直接對應，不需 Vision
+      const count = Math.max(variantCount || 1, siteResult.prizes.length)
+      namedVariants = Array.from({ length: count }, (_, k) => ({
+        grade:     siteResult!.prizes[k]?.grade ?? '',
+        name:      (existing_variant_names?.[k]?.trim()) || siteResult!.prizes[k]?.name || '',
+        image_url: siteVariantImgs[k] ?? null,
+      }))
+    } else if (bandaiVariantImgs.length >= 2) {
+      // Bandai catalog Vision 路線：Bandai CDN 圖片看圖命名
+      const count = Math.max(variantCount || 1, bandaiVariantImgs.length)
+      const imgSlice = bandaiVariantImgs.slice(0, Math.min(count, 12))
+      const visionNames = await nameVariantsByVision(product_name, imgSlice)
+      namedVariants = Array.from({ length: count }, (_, k) => ({
+        grade:     siteResult?.prizes[k]?.grade ?? '',
+        name:      (existing_variant_names?.[k]?.trim()) || visionNames[k] || siteResult?.prizes[k]?.name || '',
+        image_url: bandaiVariantImgs[k] ?? null,
+      }))
+    } else if (visionImgs.length >= 2) {
+      // 其他有圖路線（站點圖但無品項名）
+      const count = Math.max(variantCount || 1, visionImgs.length)
+      const imgSlice = visionImgs.slice(0, Math.min(count, 12))
+      const visionNames = await nameVariantsByVision(product_name, imgSlice)
+      namedVariants = Array.from({ length: count }, (_, k) => ({
+        grade:     siteResult?.prizes[k]?.grade ?? '',
+        name:      (existing_variant_names?.[k]?.trim()) || visionNames[k] || siteResult?.prizes[k]?.name || '',
+        image_url: visionImgs[k] ?? null,
+      }))
+    } else {
+      // 文字路線：網站品項 > Claude 已知 > 生成；CSV 名稱完整則保留
+      const csvComplete = (existing_variant_names?.length ?? 0) >= variantCount
+        && existing_variant_names!.every((n: string) => n?.trim())
+      if (csvComplete) {
+        namedVariants = existing_variant_names!.map((n: string, k: number) => ({
+          grade:     siteResult?.prizes[k]?.grade ?? '',
+          name:      n,
+          image_url: null,
+        }))
+      } else {
+        const claudePrizes = identified.variant_names.length >= (variantCount || 1)
+          ? identified.variant_names.map(n => ({ grade: '', name: n }))
+          : undefined
+        const textNamed = await generateVariantNames(
+          product_name, variantCount, pType,
+          siteResult?.prizes ?? claudePrizes, existing_variant_names ?? [],
+        )
+        namedVariants = textNamed.map(v => ({ ...v, image_url: null as string | null }))
+      }
+    }
 
+    const finalImage = storageImageUrl ?? dbImageByName ?? bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? null
     const source = siteResult?.source_site
-      ?? (identified.jp_search_query ? 'claude_identified' : bandai ? 'bandai_catalog_text' : 'claude_generated')
+      ?? (bandaiMainImg ? 'bandai_catalog' : identified.jp_search_query ? 'claude_identified' : 'claude_generated')
 
     return NextResponse.json({
       ok: true,
       source,
       data: {
-        image_url:     storageImageUrl ?? dbImageByName,
-        variants:      named.map(v => ({ ...v, image_url: null as string | null })),
-        variant_count: named.length,
+        image_url:     finalImage,
+        variants:      namedVariants,
+        variant_count: namedVariants.length,
         jp_price_yen,
         distributor,
       },
-      aiStatus: (jp_price_yen || distributor || named.length > 0 || storageImageUrl || dbImageByName) ? 'done' : 'partial',
+      aiStatus: (jp_price_yen || distributor || namedVariants.length > 0 || finalImage) ? 'done' : 'partial',
     })
 
   } catch (err: any) {
