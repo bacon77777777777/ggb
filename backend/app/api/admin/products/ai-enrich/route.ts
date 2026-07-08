@@ -468,7 +468,7 @@ async function resolveStorageImage(raw_image_name: string | null): Promise<strin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ════ DB 條碼比對 ════
+// ════ DB 比對（條碼 / 商品名稱）════
 // ─────────────────────────────────────────────────────────────────────────────
 async function fetchFromDB(barcode: string | null) {
   if (!barcode) return null
@@ -487,6 +487,19 @@ async function fetchFromDB(barcode: string | null) {
     jp_price_yen: data.jp_price_yen ?? null,
     prizes: (data.product_prizes ?? []).map((p: any) => ({ name: p.name ?? '', image_url: p.image_url ?? null })),
   }
+}
+
+async function fetchImageFromDBByName(name: string): Promise<string | null> {
+  const supabase = getSupabaseAdmin()
+  const { data } = await supabase
+    .from('products')
+    .select('image_url')
+    .eq('name', name)
+    .not('image_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data?.image_url ?? null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -586,6 +599,9 @@ export async function POST(req: Request) {
       })
     }
 
+    // ── Step 2.5: DB 商品名稱復用圖片 ────────────────────────────────────────
+    const dbImageByName = storageImageUrl ? null : await fetchImageFromDBByName(product_name)
+
     // ── Step 3: 品牌網站搜尋（按類型路由，並行）───────────────────────────
     type SearchFn = () => Promise<SiteResult | null>
 
@@ -672,13 +688,13 @@ export async function POST(req: Request) {
       ok: true,
       source,
       data: {
-        image_url:     storageImageUrl,
+        image_url:     storageImageUrl ?? dbImageByName,
         variants:      named.map(v => ({ ...v, image_url: null as string | null })),
         variant_count: named.length,
         jp_price_yen,
         distributor,
       },
-      aiStatus: (jp_price_yen || distributor || named.length > 0) ? 'done' : 'partial',
+      aiStatus: (jp_price_yen || distributor || named.length > 0 || storageImageUrl || dbImageByName) ? 'done' : 'partial',
     })
 
   } catch (err: any) {

@@ -139,16 +139,21 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         const res  = await fetch('/api/admin/products/parse-xlsx', { method: 'POST', body: fd, credentials: 'include' })
         const data = await res.json()
         if (!res.ok) { alert(data.error || '解析失敗'); return }
+        const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+        const isOurStorageUrl = (url?: string | null) =>
+          !!url && !!supabaseBase && url.startsWith(supabaseBase)
+
         const all: EnrichedProduct[] = data.sheets.flatMap((s: any) =>
           s.products.map((p: ParsedProduct) => {
             const missing = p.missingFields ?? ['image', 'prizes']
-            const hasImg  = isHttpUrl(p.image_url)
-            const hasRaw  = !!p.raw_image_name
+            // 只接受自己 Supabase Storage URL；外部 URL 完全忽略
+            const hasImg  = isOurStorageUrl(p.image_url)
+            const hasRaw  = !!p.raw_image_name && !isHttpUrl(p.raw_image_name)
             const needsAi = (!hasImg && !hasRaw) || missing.includes('prizes')
             return {
               ...p,
-              image_url:      hasImg  ? p.image_url  : null,
-              raw_image_name: !hasImg ? p.raw_image_name : null,
+              image_url:      hasImg ? p.image_url : null,
+              raw_image_name: hasRaw ? p.raw_image_name : null,
               variants: p.prizes?.length
                 ? p.prizes.map(pr => ({ name: pr.name, image_url: isHttpUrl(pr.image_url) ? pr.image_url! : null }))
                 : undefined,

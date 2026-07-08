@@ -55,10 +55,6 @@ function isOurStorageUrl(s: string): boolean {
   return !!SUPABASE_URL && s.startsWith(SUPABASE_URL)
 }
 
-// 從外部 URL 萃取檔名（例如 .../products/abc.webp → abc.webp）
-function extractFilename(url: string): string | null {
-  try { return new URL(url).pathname.split('/').pop() || null } catch { return null }
-}
 
 // ── 模威 fast path ────────────────────────────────────────────────────────────
 
@@ -240,42 +236,22 @@ function parseWithFieldMap(rows: any[][], headers: string[], fieldMap: FieldMap)
       const distRaw = distIdx >= 0 ? str(row, distIdx) : ''
       const distributor = distRaw && !DIST_PLACEHOLDERS.has(distRaw) ? distRaw : null
 
-      // Image：外部 URL → 萃取檔名存 raw_image_name；自己 Storage URL → image_url；純檔名 → raw_image_name
+      // Image：外部 URL 完全忽略；自己 Storage URL → image_url；純檔名 → raw_image_name
       const imgRaw = imgIdx >= 0 ? str(row, imgIdx) || null : null
-      let image_url: string | null = null
-      let raw_image_name: string | null = null
-      if (imgRaw) {
-        if (isHttpUrl(imgRaw) && isOurStorageUrl(imgRaw)) {
-          image_url = imgRaw
-        } else if (isHttpUrl(imgRaw)) {
-          raw_image_name = extractFilename(imgRaw)
-        } else {
-          raw_image_name = imgRaw
-        }
-      }
+      const image_url      = (isHttpUrl(imgRaw) && isOurStorageUrl(imgRaw!)) ? imgRaw : null
+      const raw_image_name = (!isHttpUrl(imgRaw) && imgRaw) ? imgRaw : null
 
       // Prizes
       const prizes = prizeIdxs.map((pidx, vi) => {
         const prizeName = str(row, pidx)
         if (!prizeName) return null
-        const qty = prizeQtyIdxs[vi] !== undefined ? Number(row[prizeQtyIdxs[vi]]) || 0 : 0
+        const qty      = prizeQtyIdxs[vi] !== undefined ? Number(row[prizeQtyIdxs[vi]]) || 0 : 0
         const imgRawP  = prizeImgIdxs[vi] !== undefined ? str(row, prizeImgIdxs[vi]) || null : null
-        let prizeImgUrl: string | null = null
-        let prizeRawName: string | null = null
-        if (imgRawP) {
-          if (isHttpUrl(imgRawP) && isOurStorageUrl(imgRawP)) {
-            prizeImgUrl = imgRawP
-          } else if (isHttpUrl(imgRawP)) {
-            prizeRawName = extractFilename(imgRawP)
-          } else {
-            prizeRawName = imgRawP
-          }
-        }
         return {
           name: prizeName,
           qty: qty || undefined,
-          image_url:      prizeImgUrl,
-          raw_image_name: prizeRawName,
+          image_url:      (isHttpUrl(imgRawP) && isOurStorageUrl(imgRawP!)) ? imgRawP : null,
+          raw_image_name: (!isHttpUrl(imgRawP) && imgRawP) ? imgRawP : null,
         }
       }).filter(Boolean) as ParsedProduct['prizes']
 
