@@ -252,9 +252,6 @@ export default function CategoriesPage() {
   return (
     <AdminLayout
       pageTitle="菜單管理"
-      breadcrumbs={[
-        { label: '菜單管理', href: undefined }
-      ]}
     >
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">

@@ -97,7 +97,7 @@ export default function ContentDraftsPage() {
   }, {})
 
   return (
-    <AdminLayout pageTitle="AI 文案草稿" breadcrumbs={[{ label: 'AI 文案草稿', href: '/content-drafts' }]}>
+    <AdminLayout pageTitle="AI 文案草稿">
       <div className="space-y-4">
         {/* 操作列 */}
         <div className="flex flex-wrap items-center justify-between gap-3">

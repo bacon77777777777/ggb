@@ -96,7 +96,6 @@ export default function LeaderboardBotsPage() {
   return (
     <AdminLayout
       pageTitle="機器人管理"
-      breadcrumbs={[{ label: '抽獎管理' }, { label: '機器人管理', href: '/leaderboard-bots' }]}
     >
       <div className="space-y-4">
         {/* 頂部操作列 */}

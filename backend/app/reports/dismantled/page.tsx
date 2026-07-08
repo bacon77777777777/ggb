@@ -86,7 +86,6 @@ export default function DismantledReportPage() {
   return (
     <AdminLayout
       pageTitle="分解明細"
-      breadcrumbs={[{ label: '金流報表' }, { label: '分解明細', href: '/reports/dismantled' }]}
     >
       <div className="space-y-4">
 

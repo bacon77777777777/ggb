@@ -215,7 +215,7 @@ export default function ExchangeOffersAdminPage() {
   }, [offers])
 
   return (
-    <AdminLayout pageTitle="交換管理" breadcrumbs={[{ label: '交換管理', href: '/exchange' }]}>
+    <AdminLayout pageTitle="交換管理">
       <div className="space-y-6 p-6">
         <div className="flex flex-wrap gap-2">
           <button

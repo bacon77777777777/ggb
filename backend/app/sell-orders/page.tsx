@@ -179,7 +179,7 @@ export default function SellOrdersAdminPage() {
   }, [orders])
 
   return (
-    <AdminLayout pageTitle="販售訂單" breadcrumbs={[{ label: '販售訂單', href: '/sell-orders' }]}>
+    <AdminLayout pageTitle="販售訂單">
       <div className="space-y-6 p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard title="全部" value={counts.total} />

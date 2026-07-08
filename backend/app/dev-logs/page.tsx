@@ -177,7 +177,6 @@ export default function DevLogsPage() {
   return (
     <AdminLayout
       pageTitle="開發日誌"
-      breadcrumbs={[{ label: '工具' }, { label: '開發日誌', href: '/dev-logs' }]}
     >
       <div className="space-y-4">
 

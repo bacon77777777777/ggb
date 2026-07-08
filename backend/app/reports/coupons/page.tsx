@@ -77,7 +77,6 @@ export default function CouponsReportPage() {
   return (
     <AdminLayout
       pageTitle="折價券明細"
-      breadcrumbs={[{ label: '對帳報表' }, { label: '折價券明細', href: '/reports/coupons' }]}
     >
       <div className="space-y-4">
         {/* 篩選列 */}

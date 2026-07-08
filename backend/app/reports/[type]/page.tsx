@@ -207,7 +207,6 @@ export default function ReportPage() {
   return (
     <AdminLayout
       pageTitle={meta.title}
-      breadcrumbs={[{ label: '報表' }, { label: meta.title, href: `/reports/${reportType}` }]}
     >
       <div className="space-y-4">
         {/* 工具列 — 靠右對齊，同儀表板風格 */}
