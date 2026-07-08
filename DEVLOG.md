@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-07-08｜品項圖補全 lazy loading 修正 + 商品頁條碼顯示修正
+
+### AI 補全品項圖改善（`ai-enrich/route.ts`）
+- `extractSiteVariantImages` 新增抓取 `data-src`、`data-lazy-src`、`data-original` 屬性，解決日本品牌官網（1kuji.com 等）使用 lazy loading 導致品項圖抓不到的問題
+- `withImages` 過濾掉 og:image 主圖，避免主圖混入品項圖陣列造成索引位移
+- 新增「直接配對路線」：站點已有品項名 + 站點有圖時，直接對應不呼叫 Claude Vision（更快更省 token）
+- `claudeIdentify` 修正「潮玩賞」說明：台灣競品平台自定義名稱，直接忽略
+
+### 前台商品頁條碼修正（`GachaCollectionList.tsx`、`item/[id]/page.tsx`）
+- 條碼欄位改為顯示 `barcode`（JAN 國際條碼，如 `4582769995743`），不再顯示 `product_code`（系統內部碼，如 `10000033`）
+
+---
+
 ## 2026-07-08｜AI 補全大升級：全品牌官網品項爬取
 
 ### 新增 20+ 品牌官方網址爬蟲（`ai-enrich/route.ts`）
