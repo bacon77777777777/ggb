@@ -87,14 +87,9 @@ TRUNCATE TABLE
   leaderboard_bot_daily_stats
 RESTART IDENTITY CASCADE;
 
--- ── 5. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
+-- ── 5. 使用者帳號：只保留機器人，其餘全刪 ────────────────────
 DELETE FROM users
-WHERE email IN ('test001@gmail.com', 'test002@gmail.com');
-
--- 保留的真人帳號重置代幣為 0
-UPDATE users
-SET tokens = 0
-WHERE email IN ('bacon731@gmail.com', 'bacon731jp@gmail.com');
+WHERE is_bot IS NULL OR is_bot = false;
 
 -- ── 6. 寫入 dev_logs 記錄此次清除操作 ─────────────────────────
 INSERT INTO dev_logs (version, title, description, type, status, priority)
