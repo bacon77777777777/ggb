@@ -329,13 +329,18 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || '補全失敗')
       const ai = data.data
-      // aiStatus 不依賴圖片，由後端決定（找到資訊即 done）
-      const aiStatus: EnrichedProduct['aiStatus'] = data.aiStatus ?? 'done'
+      // 只有從外部來源（品牌網站/DB/萬代目錄）找到實際資料才算 done
+      // 光靠 Claude 生成品項名不算，標為 partial
+      const hasRealData = !!(ai.distributor || ai.jp_price_yen || ai.image_url)
+      const aiStatus: EnrichedProduct['aiStatus'] = hasRealData
+        ? (data.aiStatus ?? 'done')
+        : 'partial'
       setProducts(prev => prev.map((x, i) => i === idx ? {
         ...x,
         // 只在 AI 回傳有值時才覆蓋，保留 xlsx 既有的 image_url
         image_url: ai.image_url || x.image_url || null,
-        distributor: ai.distributor || x.distributor || null,
+        // 不用 xlsx 裡的 '代理商' 文字，那是欄位名稱不是實際值
+        distributor: ai.distributor || (x.distributor && x.distributor !== '代理商' ? x.distributor : null) || null,
         variants: (() => {
           // 如果 AI 回傳的品項有名稱就用 AI 的，否則保留原有
           if (ai.variants?.length && ai.variants.some((v: any) => v.name)) return ai.variants
@@ -509,15 +514,6 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 缺定價 <span className="font-bold">{missingPriceList.length}</span>
               </button>
               <div className="h-4 w-px bg-neutral-200 mx-0.5" />
-              {/* Zip upload */}
-              <button
-                onClick={() => zipRef.current?.click()}
-                disabled={zipUploading}
-                className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-600 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {zipUploading ? '上傳中…' : '圖片壓縮檔'}
-              </button>
-              <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
               {/* Enrich all */}
               <button
                 onClick={enrichAll}
@@ -578,7 +574,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 <p className="font-semibold text-blue-800">智能欄位識別</p>
                 <p>• 支援任意廠商格式，欄位名稱不同也能自動對應</p>
                 <p>• 可識別：名稱、條碼、類型、系列、代理商、日幣/售價/成本/特價、發售時間、品項清單+圖片</p>
-                <p>• 檔案含圖片檔名（如 abc.jpg）→ 可用「圖片壓縮檔」一鍵批量上傳配對</p>
+                <p>• 檔案含圖片檔名（如 abc.jpg）→ 可在商品管理頁用「上傳圖片」批量配對</p>
               </div>
             </div>
           )}
@@ -766,7 +762,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
 
               <p className="text-xs text-neutral-400 pt-2">
-                ※ 點擊任意列可展開品項詳情。圖片 📄 表示有檔名但尚未上傳至 Storage（請用「圖片壓縮檔」批量上傳）。
+                ※ 點擊任意列可展開品項詳情。圖片 📄 表示有檔名但尚未上傳至 Storage（請至商品管理頁用「上傳圖片」批量上傳）。
               </p>
             </div>
           )}

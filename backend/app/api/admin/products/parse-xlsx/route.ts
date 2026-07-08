@@ -224,7 +224,10 @@ function parseWithFieldMap(rows: any[][], headers: string[], fieldMap: FieldMap)
       const relMonth   = str(row, relMonthIdx) || null
       const nameJp     = str(row, nameJpIdx) || null
       const series     = str(row, seriesIdx) || null
-      const distributor = distIdx >= 0 ? str(row, distIdx) || null : null
+      // 過濾掉欄位名本身被當成資料值的情況（如「代理商」「製造商」）
+      const DIST_PLACEHOLDERS = new Set(['代理商', '製造商', '品牌', 'distributor', '代理商名稱', '廠牌'])
+      const distRaw = distIdx >= 0 ? str(row, distIdx) : ''
+      const distributor = distRaw && !DIST_PLACEHOLDERS.has(distRaw) ? distRaw : null
 
       // Image: distinguish URL vs filename
       const imgRaw = imgIdx >= 0 ? str(row, imgIdx) || null : null
