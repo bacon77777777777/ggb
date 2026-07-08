@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-08｜智能批量匯入：補全邏輯修正 + 並行加速
+
+### 問題
+1. **「✓ 已補全」卻沒圖**：xlsx 若有任意字串欄位被 Claude Haiku 誤判為 `image_url`（如 SKU 碼），`missingFields` 不含 'image'，導致系統標為 'done' 但圖片欄顯示空白。
+2. **圖片 fallback 不顯示**：`onError` 隱藏 img 元素，但「?」佔位 div 屬於不同條件分支，並不跟著出現，圖片框完全空白。
+3. **484 筆序列補全需 2 小時**：`enrichAll` 原本逐筆呼叫 `enrichOne`，484 筆 × 15s = 2 小時，完全不可用。
+
+### 修正（`components/XlsxImportWizard.tsx`）
+- `image_url` 驗證：只有 `http://` 或 `https://` 開頭才算有效圖片，否則清為 null 並重設 `aiStatus: 'idle'`
+- 圖片欄改用 `position: relative` + `position: absolute` 層疊架構，onError 時隱藏 img 並顯示 fallback div
+- `enrichAll` 改為每批 **4 筆並行**處理（`Promise.all` + for 迴圈分批），速度提升約 4 倍
+
+---
+
 ## 2026-07-08｜智能批量匯入：任意廠商格式自動欄位識別
 
 ### 功能說明

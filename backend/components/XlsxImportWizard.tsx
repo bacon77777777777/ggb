@@ -124,9 +124,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         const all: EnrichedProduct[] = data.sheets.flatMap((s: any) =>
           s.products.map((p: ParsedProduct) => {
             const missing = p.missingFields ?? ['image', 'prizes']
-            const needsAi = missing.includes('image') || missing.includes('prizes')
+            // Only count image as "present" if it's a real http URL
+            const hasValidImage = !!p.image_url && /^https?:\/\//i.test(p.image_url)
+            const needsAi = !hasValidImage || missing.includes('prizes')
             return {
               ...p,
+              // Clear non-URL image values — they can't be displayed
+              image_url: hasValidImage ? p.image_url : null,
               // Map prizes from server to local variants format
               variants: p.prizes?.length
                 ? p.prizes.map(pr => ({ name: pr.name, image_url: pr.image_url ?? null }))
@@ -303,8 +307,10 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
     setEnrichingAll(true)
     setEnrichSummary(null)
     const idxList = products.map((_, i) => i).filter(i => products[i].selected && products[i].aiStatus !== 'done')
-    for (const idx of idxList) await enrichOne(idx)
-    // Read latest products state to compute summary
+    const BATCH = 4
+    for (let i = 0; i < idxList.length; i += BATCH) {
+      await Promise.all(idxList.slice(i, i + BATCH).map(idx => enrichOne(idx)))
+    }
     setProducts(prev => {
       const done    = prev.filter(p => p.aiStatus === 'done').length
       const partial = prev.filter(p => p.aiStatus === 'partial').length
@@ -559,12 +565,24 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                         />
 
                         {/* Main image */}
-                        <div className="w-12 h-12 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0">
-                          {p.image_url ? (
-                            <img src={p.image_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none' }} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-neutral-300 text-lg">?</div>
+                        <div className="w-12 h-12 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0 relative">
+                          {p.image_url && (
+                            <img
+                              src={p.image_url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              onError={e => {
+                                const img = e.currentTarget
+                                img.style.display = 'none'
+                                const fallback = img.nextElementSibling as HTMLElement | null
+                                if (fallback) fallback.style.display = 'flex'
+                              }}
+                            />
                           )}
+                          <div
+                            className="absolute inset-0 flex items-center justify-center text-neutral-300 text-lg"
+                            style={{ display: p.image_url ? 'none' : 'flex' }}
+                          >?</div>
                         </div>
 
                         {/* Name */}
@@ -626,11 +644,25 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                             {variantList.map((v, vi) => (
                               <div key={vi} className="flex items-center gap-2 bg-white border border-neutral-100 rounded-lg p-2 shadow-sm">
-                                {v.image_url ? (
-                                  <img src={v.image_url} alt="" className="w-10 h-10 object-cover rounded-md flex-shrink-0" onError={e => { (e.target as HTMLImageElement).style.display='none' }} />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-md bg-neutral-100 flex items-center justify-center text-neutral-300 text-xs flex-shrink-0">?</div>
-                                )}
+                                <div className="w-10 h-10 rounded-md bg-neutral-100 flex-shrink-0 relative overflow-hidden">
+                                  {v.image_url && (
+                                    <img
+                                      src={v.image_url}
+                                      alt=""
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                      onError={e => {
+                                        const img = e.currentTarget
+                                        img.style.display = 'none'
+                                        const fallback = img.nextElementSibling as HTMLElement | null
+                                        if (fallback) fallback.style.display = 'flex'
+                                      }}
+                                    />
+                                  )}
+                                  <div
+                                    className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs"
+                                    style={{ display: v.image_url ? 'none' : 'flex' }}
+                                  >?</div>
+                                </div>
                                 <span className="text-xs text-neutral-700 leading-tight line-clamp-2 min-w-0">{v.name}</span>
                               </div>
                             ))}
