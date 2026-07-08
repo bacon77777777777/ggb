@@ -164,7 +164,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         Papa.parse<Record<string, string>>(file, {
           header: true,
           skipEmptyLines: true,
-          transformHeader: h => h.replace(/^﻿/, '').trim(),
+          transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
           complete: result => {
             const headers = result.meta.fields ?? []
             const rows    = result.data ?? []

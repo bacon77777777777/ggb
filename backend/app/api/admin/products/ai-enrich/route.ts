@@ -44,7 +44,7 @@ function extractPrizes(html: string): PrizeInfo[] {
     add(m[1], m[2])
   if (prizes.length >= 2) return prizes
   // Inline: "A賞：description"
-  for (const m of html.matchAll(/([A-ZＡ-Ｚ一ラＷW][^<\n\s]{0,10}?賞)[：:\s　]+([^<\n]{2,40})/g))
+  for (const m of html.matchAll(/([A-ZＡ-Ｚ一ラＷW][^<\n\s]{0,10}?賞)[：:\s\u3000]+([^<\n]{2,40})/g))
     add(m[1], m[2])
   if (prizes.length >= 2) return prizes
   // Heading: <hN>A賞 name</hN>
@@ -530,8 +530,8 @@ ${knownParts.length ? `已知品項（可能不完整）：\n${knownParts.map((p
     })
     const lines = ((msg.content[0] as any).text as string).trim().split('\n')
       .map((l: string) => {
-        const grade = l.match(/^([A-ZＡ-Ｚ一ラＷW][^　\s]{0,6}?賞)/)?.[1] ?? ''
-        const name  = l.replace(/^[A-ZＡ-Ｚ一ラＷW][^　\s]{0,6}?賞\s*/, '').replace(/^[\d.\-*、。\s]+/, '').trim()
+        const grade = l.match(/^([A-ZＡ-Ｚ一ラＷW][^\u3000\s]{0,6}?賞)/)?.[1] ?? ''
+        const name  = l.replace(/^[A-ZＡ-Ｚ一ラＷW][^\u3000\s]{0,6}?賞\s*/, '').replace(/^[\d.\-*、。\s]+/, '').trim()
         return { grade, name: name || l.trim() }
       })
       .filter(r => r.name.length > 0 && r.name.length <= 30)
