@@ -53,7 +53,7 @@ export default function CompetitorIntelPage() {
   }
 
   return (
-    <AdminLayout pageTitle="競品情報" breadcrumbs={[{ label: '系統設定' }, { label: '競品情報' }]}>
+    <AdminLayout pageTitle="競品情報">
       <div className="space-y-4">
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-3 text-sm text-blue-800">

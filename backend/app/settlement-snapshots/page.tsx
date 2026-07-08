@@ -110,7 +110,7 @@ export default function SettlementSnapshotsPage() {
   const months = periodMonths(12)
 
   return (
-    <AdminLayout pageTitle="月結管理" breadcrumbs={[{ label: '對帳報表' }, { label: '月結管理' }]}>
+    <AdminLayout pageTitle="月結管理">
       <div className="space-y-4">
 
         {/* 控制列 */}

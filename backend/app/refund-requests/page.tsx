@@ -77,7 +77,7 @@ export default function RefundRequestsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="退款申請" breadcrumbs={[{ label: '抽獎管理' }, { label: '退款申請' }]}>
+    <AdminLayout pageTitle="退款申請">
       <div className="space-y-4">
 
         {/* 控制列 */}

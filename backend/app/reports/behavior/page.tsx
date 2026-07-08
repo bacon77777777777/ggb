@@ -137,7 +137,7 @@ export default function BehaviorPage() {
   const LIST_H = 'h-[360px]'
 
   return (
-    <AdminLayout pageTitle="點擊分析" breadcrumbs={[{ label: '點擊分析', href: '/reports/behavior' }]}>
+    <AdminLayout pageTitle="點擊分析">
       {/* Toolbar */}
       <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
         <div className="w-64">

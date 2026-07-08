@@ -292,7 +292,7 @@ export default function BannersPage() {
   ]
 
   return (
-    <AdminLayout pageTitle="輪播圖管理" breadcrumbs={[{ label: '輪播圖管理', href: '/banners' }]}>
+    <AdminLayout pageTitle="輪播圖管理">
       <div className="space-y-6">
         <div className="flex justify-end">
           <button

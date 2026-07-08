@@ -59,7 +59,7 @@ export default function RechargeReviewPage() {
   }
 
   return (
-    <AdminLayout pageTitle="待複核儲值" breadcrumbs={[{ label: '對帳報表' }, { label: '待複核儲值' }]}>
+    <AdminLayout pageTitle="待複核儲值">
       <div className="space-y-4">
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800">

@@ -333,7 +333,7 @@ export default function AdminsPage() {
   ]
 
   return (
-    <AdminLayout pageTitle="管理員清單" breadcrumbs={[{ label: '管理員清單', href: '/analytics' }]}>
+    <AdminLayout pageTitle="管理員清單">
       <div className="space-y-6">
         {/* 統計卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

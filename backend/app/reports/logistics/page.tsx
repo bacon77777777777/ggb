@@ -130,7 +130,7 @@ export default function LogisticsReportPage() {
   }
 
   return (
-    <AdminLayout pageTitle="物流明細" breadcrumbs={[{ label: '物流明細', href: '/reports/logistics' }]}>
+    <AdminLayout pageTitle="物流明細">
       <div className="space-y-4">
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">

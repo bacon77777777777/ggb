@@ -123,7 +123,7 @@ export default function AgentEventsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="事件中心" breadcrumbs={[{ label: '事件中心', href: '/agent-events' }]}>
+    <AdminLayout pageTitle="事件中心">
       <div className="space-y-4">
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between flex-wrap gap-3">

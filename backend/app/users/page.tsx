@@ -527,7 +527,7 @@ function UsersPage() {
   }
 
   return (
-    <AdminLayout pageTitle="會員管理" breadcrumbs={[{ label: '會員管理', href: '/users' }]}>
+    <AdminLayout pageTitle="會員管理">
       <div className="space-y-6">
         {/* 統計卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">

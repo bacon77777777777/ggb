@@ -1332,7 +1332,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <AdminLayout pageTitle="儀表板" breadcrumbs={[{ label: '儀表板', href: '/dashboard' }]}>
+    <AdminLayout pageTitle="儀表板">
       <div className="space-y-4">
         {/* 時間段切換 */}
         <div className="flex items-center justify-end">

@@ -232,7 +232,7 @@ export default function LogsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="操作記錄" breadcrumbs={[{ label: '操作記錄', href: '/logs' }]}>
+    <AdminLayout pageTitle="操作記錄">
       <div className="space-y-6">
         {/* Tab 切換 */}
         <div className="flex gap-1 border-b border-neutral-200">

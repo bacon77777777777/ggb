@@ -186,7 +186,7 @@ export default function ExchangeOrdersAdminPage() {
   }, [orders])
 
   return (
-    <AdminLayout pageTitle="交換紀錄" breadcrumbs={[{ label: '交換紀錄', href: '/exchange-orders' }]}>
+    <AdminLayout pageTitle="交換紀錄">
       <div className="space-y-6 p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatsCard title="全部" value={counts.total} />
