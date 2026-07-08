@@ -5,136 +5,123 @@ import Anthropic from '@anthropic-ai/sdk'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-const JA = 'ja,en;q=0.8'
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+const JA = 'ja,zh-TW;q=0.9,en;q=0.7'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 工具：清理商品名（去掉《》【】等干擾 DDG/Yahoo 搜尋的括號）
-// ─────────────────────────────────────────────────────────────────────────────
 function cleanName(name: string) {
-  return name.replace(/[《》【】〔〕「」『』〈〉★☆]/g, ' ').replace(/\s+/g, ' ').trim()
+  return name.replace(/[《》【】〔〕「」『』〈〉★☆♪]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 1：Bandai catalog（需要 JAN 條碼，最精確）
+// 通用：從 HTML 頁面擷取商品圖片
 // ─────────────────────────────────────────────────────────────────────────────
-async function scrapeBandaiCatalog(barcode: string) {
-  try {
-    const res = await fetch(
-      `https://www.bandai.co.jp/catalog/item.php?jan_cd=${barcode}000`,
-      { headers: { 'User-Agent': UA, 'Accept-Language': JA }, signal: AbortSignal.timeout(8000) }
-    )
-    if (!res.ok) return null
-    const html = await res.text()
-    const name = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]?.trim() ?? null
-    if (!name) return null
-    const jp_price_yen = html.match(/<span>(\d+)<\/span>円/)?.[1] ? parseInt(html.match(/<span>(\d+)<\/span>円/)![1]) : null
-    const thumbSection = html.match(/thumbnails[\s\S]*?(?=pg-productFlex|$)/)?.[0] ?? ''
-    const images = [...thumbSection.matchAll(/src="(https:\/\/bandai-a\.akamaihd\.net\/bc\/img\/model\/[^"]+\.jpg)"/g)].map(m => m[1])
-    if (!images.length) return null
-    return { name, jp_price_yen, images, source: 'bandai_catalog' as const }
-  } catch { return null }
+function extractImages(html: string): string[] {
+  const seen = new Set<string>()
+  const imgs: string[] = []
+  const add = (url: string) => {
+    if (!url || !url.startsWith('http') || seen.has(url)) return
+    const lower = url.toLowerCase()
+    if (['icon', 'logo', 'banner', 'avatar', 'sprite', 'button', 'blank', 'pixel'].some(k => lower.includes(k))) return
+    seen.add(url); imgs.push(url)
+  }
+  // og:image first (most reliable main image)
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/)?.[1]
+    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/)?.[1]
+  if (og) add(og)
+  // All img src
+  for (const m of html.matchAll(/src=["'](https?:\/\/[^"'?\s]+\.(?:jpg|jpeg|png|webp|gif))["'?]/gi)) add(m[1])
+  for (const m of html.matchAll(/data-src=["'](https?:\/\/[^"'?\s]+\.(?:jpg|jpeg|png|webp))["'?]/gi)) add(m[1])
+  return imgs.slice(0, 25)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 層 2a：一番くじ 官方（kuji.co.jp）
-// ─────────────────────────────────────────────────────────────────────────────
-async function scrapeKujiCoJp(name: string) {
+async function fetchPage(url: string): Promise<string | null> {
   try {
-    const q = encodeURIComponent(cleanName(name))
-    const searchRes = await fetch(
-      `https://kuji.co.jp/search/?keyword=${q}`,
-      { headers: { 'User-Agent': UA, 'Accept-Language': JA }, signal: AbortSignal.timeout(7000) }
-    )
-    if (!searchRes.ok) return null
-    const html = await searchRes.text()
-
-    // 從搜尋結果找第一個商品連結
-    const productUrl = html.match(/href="(https:\/\/kuji\.co\.jp\/[^"]*kuji[^"]+)"/)?.[1]
-    if (!productUrl) return null
-
-    const detailRes = await fetch(productUrl, {
-      headers: { 'User-Agent': UA, 'Accept-Language': JA }, signal: AbortSignal.timeout(7000)
+    const r = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept-Language': JA, 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(8000),
     })
-    if (!detailRes.ok) return null
-    const detail = await detailRes.text()
-
-    // 主圖
-    const mainImage = detail.match(/<meta property="og:image" content="([^"]+)"/)?.[1] ?? null
-
-    // 賞項圖片（尋找所有 kuji CDN 圖）
-    const prizeImages = [...detail.matchAll(/src="(https?:\/\/[^"]*kuji[^"]*\.(jpg|jpeg|png|webp))"/gi)]
-      .map(m => m[1]).filter(u => !u.includes('logo') && !u.includes('icon')).slice(0, 20)
-
-    // 定價
-    const priceMatch = detail.match(/(\d{1,3}(?:,\d{3})*)\s*円/)
-    const jp_price_yen = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null
-
-    return { mainImage, prizeImages, jp_price_yen, source: 'kuji_co_jp' as const }
+    if (!r.ok) return null
+    return await r.text()
   } catch { return null }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 2b：Gashapon 官方（gashapon.jp）
+// 層 1：Yahoo Japan Shopping（最廣覆蓋，任何廠牌）
 // ─────────────────────────────────────────────────────────────────────────────
-async function scrapeGashapon(name: string) {
-  try {
-    const q = encodeURIComponent(cleanName(name))
-    const res = await fetch(
-      `https://gashapon.jp/products/search.html?keyword=${q}`,
-      { headers: { 'User-Agent': UA, 'Accept-Language': JA }, signal: AbortSignal.timeout(7000) }
-    )
-    if (!res.ok) return null
-    const html = await res.text()
+async function searchYahoo(name: string, typeKeyword: string, barcode?: string | null): Promise<{ images: string[]; detailUrl: string | null }> {
+  const q = barcode ? encodeURIComponent(barcode) : encodeURIComponent(`${cleanName(name)} ${typeKeyword}`)
+  const html = await fetchPage(`https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce`)
+  if (!html) return { images: [], detailUrl: null }
+  const images = [...html.matchAll(/src=["'](https?:\/\/item-shopping\.c\.yimg\.jp\/[^"']+)["']/g)].map(m => m[1])
+  // Try to get first product detail URL
+  const detailUrl = html.match(/href=["'](https?:\/\/shopping\.yahoo\.co\.jp\/product\/[^"']+)["']/)?.[1] ?? null
+  return { images: images.slice(0, 8), detailUrl }
+}
 
-    const mainImage = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1]
-      ?? html.match(/<img[^>]+class="[^"]*product[^"]*"[^>]+src="([^"]+)"/)?.[1]
-      ?? null
-
-    const prizeImages = [...html.matchAll(/src="(https?:\/\/gashapon\.jp[^"]*\.(jpg|jpeg|png|webp))"/gi)]
-      .map(m => m[1]).filter(u => !u.includes('logo')).slice(0, 15)
-
-    const priceMatch = html.match(/(\d{1,3}(?:,\d{3})*)\s*円/)
-    const jp_price_yen = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null
-
-    return { mainImage, prizeImages, jp_price_yen, source: 'gashapon_jp' as const }
-  } catch { return null }
+async function fetchYahooDetail(url: string): Promise<string[]> {
+  const html = await fetchPage(url)
+  if (!html) return []
+  return extractImages(html).filter(u => u.includes('yimg.jp') || u.includes('yahoo'))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 3a：Yahoo Japan Shopping（涵蓋所有廠牌）
-// 支援：用商品名搜、或直接用 JAN 條碼搜（任何廠牌都能找到）
+// 層 2：AmiAmi（アニメ・フィギュア専門）
 // ─────────────────────────────────────────────────────────────────────────────
-async function searchYahooJapan(name: string, typeKeyword: string, barcode?: string | null) {
-  try {
-    // 有條碼優先用條碼搜（精確），否則用名稱
-    const q = barcode
-      ? encodeURIComponent(barcode)
-      : encodeURIComponent(`${cleanName(name)} ${typeKeyword}`)
-    const res = await fetch(
-      `https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce`,
-      { headers: { 'User-Agent': UA, 'Accept-Language': JA, 'Accept': 'text/html' }, signal: AbortSignal.timeout(8000) }
-    )
-    if (!res.ok) return []
-    const html = await res.text()
-    const images = [...html.matchAll(/src="(https?:\/\/item-shopping\.c\.yimg\.jp\/i\/[^"]+)"/g)]
-      .map(m => m[1]).slice(0, 10)
-    return images
-  } catch { return [] }
+async function searchAmiAmi(name: string, barcode?: string | null): Promise<string[]> {
+  const q = encodeURIComponent(barcode ?? cleanName(name))
+  const html = await fetchPage(`https://search.amiami.com/top/search/list?s_keywords=${q}`)
+  if (!html) return []
+  const imgs: string[] = []
+  for (const m of html.matchAll(/src=["'](https?:\/\/img\.amiami\.com\/[^"']+\.(?:jpg|jpeg|png|webp))["']/gi)) imgs.push(m[1])
+  // Try first product detail
+  const detailPath = html.match(/href=["']([^"']*\/detail\/[^"']+)["']/)?.[1]
+  if (detailPath) {
+    const base = detailPath.startsWith('http') ? detailPath : `https://www.amiami.com${detailPath}`
+    const detail = await fetchPage(base)
+    if (detail) {
+      for (const m of detail.matchAll(/src=["'](https?:\/\/img\.amiami\.com\/[^"']+\.(?:jpg|jpeg|png|webp))["']/gi)) imgs.push(m[1])
+    }
+  }
+  return [...new Set(imgs)].slice(0, 10)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 3b：DuckDuckGo image search（廣泛備援）
+// 層 3：Rakuten（樂天市場，廣泛品牌）
 // ─────────────────────────────────────────────────────────────────────────────
-async function ddgImages(query: string): Promise<{ image: string }[]> {
+async function searchRakuten(name: string, typeKeyword: string, barcode?: string | null): Promise<string[]> {
+  const q = encodeURIComponent(barcode ?? `${cleanName(name)} ${typeKeyword}`)
+  const html = await fetchPage(`https://search.rakuten.co.jp/search/mall/${q}/`)
+  if (!html) return []
+  const imgs: string[] = []
+  for (const m of html.matchAll(/src=["'](https?:\/\/thumbnail\.image\.rakuten\.co\.jp\/[^"']+)["']/g)) imgs.push(m[1])
+  for (const m of html.matchAll(/src=["'](https?:\/\/shop\.r10s\.jp\/[^"']+\.(?:jpg|png|webp))["']/gi)) imgs.push(m[1])
+  return [...new Set(imgs)].slice(0, 8)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 層 4：Suruga-ya（駿河屋，日本最大二手，覆蓋率高）
+// ─────────────────────────────────────────────────────────────────────────────
+async function searchSurugaya(name: string, barcode?: string | null): Promise<string[]> {
+  const q = encodeURIComponent(barcode ?? cleanName(name))
+  const html = await fetchPage(`https://www.suruga-ya.jp/search?search_word=${q}&kind=5`)
+  if (!html) return []
+  const imgs: string[] = []
+  for (const m of html.matchAll(/src=["'](https?:\/\/[^"']*suruga-ya[^"']*\.(?:jpg|jpeg|png|webp))["']/gi)) imgs.push(m[1])
+  for (const m of html.matchAll(/<img[^>]+src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp))["'][^>]*class=["'][^"']*product/gi)) imgs.push(m[1])
+  return [...new Set(imgs)].slice(0, 8)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 層 5：DuckDuckGo image search（廣泛備援）
+// ─────────────────────────────────────────────────────────────────────────────
+async function ddgImages(query: string): Promise<string[]> {
   try {
     const htmlRes = await fetch(
       'https://duckduckgo.com/?q=' + encodeURIComponent(query) + '&iax=images&ia=images',
       { headers: { 'User-Agent': UA, 'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8' }, signal: AbortSignal.timeout(7000) }
     )
     if (!htmlRes.ok) return []
-    const html = await htmlRes.text()
-    const vqd = html.match(/vqd=['"]([^'"]+)['"]/)?.[1]
+    const vqd = (await htmlRes.text()).match(/vqd=['"]([^'"]+)['"]/)?.[1]
     if (!vqd) return []
     const imgRes = await fetch(
       `https://duckduckgo.com/i.js?q=${encodeURIComponent(query)}&o=json&p=1&s=0&u=bing&f=,,,,,&l=us-en&vqd=${vqd}`,
@@ -142,74 +129,72 @@ async function ddgImages(query: string): Promise<{ image: string }[]> {
     )
     if (!imgRes.ok) return []
     const data = await imgRes.json()
-    return data.results ?? []
+    return (data.results ?? []).map((r: any) => r.image).filter(Boolean)
   } catch { return [] }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 圖片評分（從 DDG/Yahoo 結果選最可信的主圖）
+// 圖片評分（域名可信度）
 // ─────────────────────────────────────────────────────────────────────────────
 const SKIP_DOMAINS = ['google', 'gstatic', 'facebook', 'twitter', 'instagram', 'youtube', 'blogspot', 'pinterest', 'wikimedia']
 const TRUSTED: { d: string; s: number }[] = [
-  { d: 'bandai-a.akamaihd.net',   s: 90 },
-  { d: 'kuji.co.jp',              s: 85 },
-  { d: '1kuji.com',               s: 85 },
-  { d: 'gashapon.jp',             s: 80 },
-  { d: 'item-shopping.c.yimg.jp', s: 75 },
-  { d: 'ec.amiami.com',           s: 65 },
-  { d: 'img.hobbyco.net',         s: 65 },
-  { d: 'www.amiami.com',          s: 60 },
-  { d: 'suruga-ya.jp',            s: 55 },
-  { d: 'rakuten.co.jp',           s: 50 },
-  { d: 'amazon.co.jp',            s: 50 },
-  { d: 'shopping.c.yimg.jp',      s: 45 },
+  { d: 'img.amiami.com',             s: 90 },
+  { d: 'bandai-a.akamaihd.net',      s: 90 },
+  { d: 'item-shopping.c.yimg.jp',    s: 80 },
+  { d: 'thumbnail.image.rakuten',    s: 75 },
+  { d: 'shop.r10s.jp',               s: 70 },
+  { d: 'suruga-ya.jp',               s: 60 },
+  { d: 'ec.amiami.com',              s: 65 },
+  { d: 'amazon.co.jp',               s: 55 },
+  { d: 'shopping.c.yimg.jp',         s: 50 },
 ]
 
-function bestImage(candidates: string[], barcode: string | null): string | null {
-  const scored = candidates.map(url => {
-    if (!url?.startsWith('http')) return { url, score: -1 }
-    const lower = url.toLowerCase()
-    if (SKIP_DOMAINS.some(d => lower.includes(d))) return { url, score: -1 }
-    let score = 0
-    if (barcode && url.includes(barcode)) score += 100
-    for (const t of TRUSTED) { if (lower.includes(t.d)) { score += t.s; break } }
-    if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) score += 5
-    return { url, score }
-  }).filter(r => r.score >= 0).sort((a, b) => b.score - a.score)
-  return scored[0]?.url ?? null
+function scoreImage(url: string, barcode: string | null): number {
+  if (!url?.startsWith('http')) return -1
+  const lower = url.toLowerCase()
+  if (SKIP_DOMAINS.some(d => lower.includes(d))) return -1
+  let s = 0
+  if (barcode && url.includes(barcode)) s += 100
+  for (const t of TRUSTED) { if (lower.includes(t.d)) { s += t.s; break } }
+  if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) s += 5
+  return s
+}
+
+function topN(candidates: string[], barcode: string | null, n: number): string[] {
+  return candidates
+    .map(url => ({ url, score: scoreImage(url, barcode) }))
+    .filter(r => r.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map(r => r.url)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 4a：Claude Vision 選最佳主圖（從多個候選圖中選最符合商品名的）
+// Claude Vision：從候選圖選最佳主圖
 // ─────────────────────────────────────────────────────────────────────────────
 async function claudePickBestImage(candidates: string[], productName: string): Promise<string | null> {
   if (!candidates.length) return null
   if (candidates.length === 1) return candidates[0]
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-    const imageContent = candidates.slice(0, 5).map(url => ({
-      type: 'image' as const,
-      source: { type: 'url' as const, url },
-    }))
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 10,
       messages: [{
         role: 'user',
         content: [
-          ...imageContent,
-          { type: 'text', text: `這些是第 1~${candidates.length} 張圖。商品名稱是「${productName}」。哪張圖最像這個商品？只回答數字（1~${candidates.length}），不要其他文字。` },
+          ...candidates.slice(0, 5).map(url => ({ type: 'image' as const, source: { type: 'url' as const, url } })),
+          { type: 'text', text: `商品名稱「${productName}」。哪張圖最符合此商品？只回答數字 1~${Math.min(candidates.length, 5)}，不要其他文字。` },
         ],
       }],
     })
     const picked = parseInt(((msg.content[0] as any).text ?? '').trim())
-    if (picked >= 1 && picked <= candidates.length) return candidates[picked - 1]
-    return candidates[0]
+    return (picked >= 1 && picked <= candidates.length) ? candidates[picked - 1] : candidates[0]
   } catch { return candidates[0] }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 層 4b：Claude Vision 看圖命名品項
+// Claude Vision：從圖片陣列識別品項名稱
 // ─────────────────────────────────────────────────────────────────────────────
 async function nameVariantsByVision(productName: string, imageUrls: string[], zhLabel: string): Promise<string[]> {
   if (!imageUrls.length) return []
@@ -217,18 +202,18 @@ async function nameVariantsByVision(productName: string, imageUrls: string[], zh
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
+      max_tokens: 400,
       messages: [{
         role: 'user',
         content: [
-          ...imageUrls.map(url => ({ type: 'image' as const, source: { type: 'url' as const, url } })),
-          { type: 'text', text: `這是${zhLabel}商品「${productName}」的 ${imageUrls.length} 款品項圖片（依序排列）。請看圖，用台灣繁體中文為每款命名（3-8字，要能識別是哪個角色或款式）。只輸出 ${imageUrls.length} 行名稱，每行一個，不加編號，不加其他文字。` },
+          ...imageUrls.slice(0, 10).map(url => ({ type: 'image' as const, source: { type: 'url' as const, url } })),
+          { type: 'text', text: `這是${zhLabel}商品「${productName}」的 ${Math.min(imageUrls.length, 10)} 款品項圖（依序排列）。用繁體中文為每款命名（3-8字，識別角色或款式）。只輸出 ${Math.min(imageUrls.length, 10)} 行，每行一個名稱，不加編號。真的看不出來就留空行。` },
         ],
       }],
     })
     return ((msg.content[0] as any).text as string).trim()
       .split('\n').map((l: string) => l.replace(/^[\d.\-*、。\s]+/, '').trim())
-      .filter((l: string) => l.length > 0 && l.length <= 20)
+      .filter((l: string) => l.length <= 20)  // 允許空行（代表未識別）
   } catch { return [] }
 }
 
@@ -256,106 +241,84 @@ export async function POST(req: Request) {
   const { barcode, product_name, variants_count, product_type } = await req.json()
   if (!product_name) return NextResponse.json({ error: 'product_name required' }, { status: 400 })
 
-  const hintCount  = Math.max(Number(variants_count) || 0, 0)
   const pType      = TYPE_JP_KEYWORD[product_type] ? product_type : 'gacha'
   const jpKeyword  = TYPE_JP_KEYWORD[pType]
   const zhLabel    = TYPE_ZH_LABEL[pType]
-  const name       = product_name
-  const clean      = cleanName(name)
+  const hintCount  = Math.max(Number(variants_count) || 0, 0)
+  const clean      = cleanName(product_name)
+
+  // 抽卡/自製賞：主圖通常難以自動找，不浪費 Claude API，直接用搜到的第一張
+  const isHardType = pType === 'card' || pType === 'custom'
 
   try {
-    // ── 層 1+2+3 全部並行跑 ───────────────────────────────────────────────
-    const [
-      bandai,
-      kuji,
-      gashapon,
-      yahooImages,
-      ddg1,
-      ddg2,
-    ] = await Promise.all([
-      barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
-      pType === 'ichiban' ? scrapeKujiCoJp(name) : Promise.resolve(null),
-      pType === 'gacha'   ? scrapeGashapon(name) : Promise.resolve(null),
-      searchYahooJapan(name, jpKeyword, barcode),  // 有條碼就用條碼搜（任何廠牌）
+    // ── 層 1-5 全部並行 ───────────────────────────────────────────────────────
+    const [yahoo, amiami, rakuten, surugaya, ddg1, ddg2] = await Promise.all([
+      searchYahoo(product_name, jpKeyword, barcode),
+      searchAmiAmi(product_name, barcode),
+      searchRakuten(product_name, jpKeyword, barcode),
+      searchSurugaya(product_name, barcode),
       ddgImages(`${clean} ${jpKeyword}`),
       ddgImages(`${clean} フィギュア 商品`),
     ])
 
-    // ── 收集所有主圖候選（優先順序：Bandai > 官方站 > Yahoo > DDG）──────
-    const mainCandidates: string[] = [
-      bandai?.images[0],
-      kuji?.mainImage,
-      gashapon?.mainImage,
-      ...yahooImages,
-      ...ddg1.map(r => r.image),
-      ...ddg2.map(r => r.image),
-    ].filter(Boolean) as string[]
+    // Yahoo 商品詳情頁（有更多品項圖）
+    const yahooDetailImgs = yahoo.detailUrl ? await fetchYahooDetail(yahoo.detailUrl) : []
 
-    // ── 用評分先篩一輪，再讓 Claude 從前幾名選最準的 ─────────────────────
-    const topCandidates = mainCandidates
-      .map(url => ({ url, score: (() => {
-        const lower = url.toLowerCase()
-        if (SKIP_DOMAINS.some(d => lower.includes(d))) return -1
-        let s = 0
-        if (barcode && url.includes(barcode)) s += 100
-        for (const t of TRUSTED) { if (lower.includes(t.d)) { s += t.s; break } }
-        if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) s += 5
-        return s
-      })() }))
-      .filter(r => r.score >= 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
-      .map(r => r.url)
+    // ── 收集所有候選圖 ────────────────────────────────────────────────────────
+    const allCandidates: string[] = [
+      ...yahoo.images,
+      ...yahooDetailImgs,
+      ...amiami,
+      ...rakuten,
+      ...surugaya,
+      ...ddg1,
+      ...ddg2,
+    ].filter(Boolean)
 
-    // 層 4a：Claude Vision 選主圖（如果有多個候選）
-    const mainImage = topCandidates.length > 1
-      ? await claudePickBestImage(topCandidates, name)
-      : topCandidates[0] ?? null
+    // 評分 → 取前 8 名供 Claude Vision 選主圖
+    const top = topN(allCandidates, barcode ?? null, 8)
 
-    // ── 品項圖（只用可信來源，不亂用 DDG）────────────────────────────────
+    // 主圖：抽卡/自製賞直接取第一名，其他讓 Claude Vision 選
+    const mainImage = top.length === 0
+      ? null
+      : isHardType
+        ? top[0]
+        : await claudePickBestImage(top, product_name)
+
+    // ── 品項圖：從詳情頁 + 高可信域名圖中取 ─────────────────────────────────
+    const variantCandidates = [
+      ...yahooDetailImgs,
+      ...amiami,
+      ...surugaya,
+    ].filter(u => u !== mainImage).slice(0, hintCount > 0 ? hintCount + 3 : 15)
+
     let variants: { name: string; image_url: string | null }[] = []
-    const officialPrizeImages: (string | null)[] =
-      bandai  ? Array.from({ length: hintCount || Math.max(bandai.images.length - 1, 0) }, (_, k) => bandai.images[k + 1] ?? null)
-      : kuji?.prizeImages?.length ? kuji.prizeImages.map(img => img)
-      : gashapon?.prizeImages?.length ? gashapon.prizeImages.map(img => img)
-      : []
-
-    if (officialPrizeImages.length) {
-      const validUrls = officialPrizeImages.filter(Boolean) as string[]
-      // 層 4b：Claude Vision 看圖命名
-      const visionNames = await nameVariantsByVision(name, validUrls, zhLabel)
-      let ni = 0
-      variants = officialPrizeImages.map(imgUrl => ({
-        name: imgUrl ? (visionNames[ni++] ?? '') : '',
+    if (variantCandidates.length > 0) {
+      const visionNames = await nameVariantsByVision(product_name, variantCandidates, zhLabel)
+      variants = variantCandidates.map((imgUrl, i) => ({
+        name: visionNames[i] ?? '',
         image_url: imgUrl,
       }))
     }
 
-    // distributor 只在確認是萬代官方來源時標記，否則不推測
-    const distributor = bandai ? '萬代股份有限公司（BANDAI）'
-      : kuji ? '一番くじ（BANDAI）'
-      : gashapon ? 'BANDAI Gashapon'
-      : null  // 非萬代廠牌不自動填，讓使用者或廠商資料填
-
-    const jp_price_yen = bandai?.jp_price_yen ?? kuji?.jp_price_yen ?? gashapon?.jp_price_yen ?? null
-
-    const source = bandai ? 'bandai_catalog'
-      : kuji ? 'kuji_co_jp'
-      : gashapon ? 'gashapon_jp'
-      : yahooImages.length ? 'yahoo_japan'
+    // 來源標記
+    const source = amiami.length      ? 'amiami'
+      : yahoo.images.length           ? 'yahoo_japan'
+      : rakuten.length                ? 'rakuten'
+      : surugaya.length               ? 'surugaya'
       : 'duckduckgo'
 
     return NextResponse.json({
       ok: true,
       source,
       data: {
-        jp_price_yen,
         image_url: mainImage,
         variants,
-        distributor,
         variant_count: variants.length,
+        // jp_price_yen 不在此填（由 xlsx 帶入）
+        distributor: null,  // 多平台無法確定代理商，讓 xlsx 帶或人工填
       },
-      aiStatus: mainImage ? 'done' : 'partial',
+      aiStatus: mainImage ? (isHardType ? 'partial' : 'done') : 'partial',
     })
 
   } catch (err: any) {

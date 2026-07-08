@@ -9,6 +9,8 @@ interface ParsedProduct {
   sku: string
   barcode: string | null
   name: string
+  name_jp?: string | null
+  series?: string | null
   manufacturer_code: string
   per_case: number
   cases: number
@@ -16,26 +18,26 @@ interface ParsedProduct {
   variant_count: number
   qty_per_variant: number
   jp_price_yen: number | null
-  full_spec: string
-  type: string  // ichiban | gacha | blindbox | card | custom
-  // Smart detection fields (populated when xlsx has the data)
-  image_url?: string | null
-  distributor?: string | null
-  prizes?: { name: string; grade?: string; qty?: number; image_url?: string | null }[]
   price_twd?: number | null
-  missingFields?: string[]  // 'image' | 'prizes' | 'price'
+  cost?: number | null
+  special_price?: number | null
+  release_year?: string | null
+  release_month?: string | null
+  full_spec: string
+  type: string
+  image_url?: string | null
+  raw_image_name?: string | null
+  distributor?: string | null
+  prizes?: { name: string; grade?: string; qty?: number; image_url?: string | null; raw_image_name?: string | null }[]
+  missingFields?: string[]
 }
 
 interface EnrichedProduct extends ParsedProduct {
   name_zh?: string
-  description?: string
-  image_url?: string | null
-  distributor?: string | null
   variants?: { name: string; image_url: string | null }[]
   aiStatus?: 'idle' | 'loading' | 'done' | 'partial' | 'error'
   aiError?: string
   selected?: boolean
-  price_twd?: number | null  // 直接以 G 幣計價（完整格式 CSV）
 }
 
 const TYPE_OPTIONS = [
@@ -45,16 +47,12 @@ const TYPE_OPTIONS = [
   { value: 'card',     label: '抽卡' },
   { value: 'custom',   label: '自製賞' },
 ]
-
 const TYPE_CATEGORY: Record<string, string> = {
-  gacha:    '轉蛋',
-  ichiban:  '一番賞',
-  blindbox: '盒玩',
-  card:     '抽卡',
-  custom:   '自製賞',
+  gacha: '轉蛋', ichiban: '一番賞', blindbox: '盒玩', card: '抽卡', custom: '自製賞',
 }
 
 type WizardStep = 'upload' | 'preview' | 'importing' | 'done'
+type HighlightFilter = 'image' | 'prizes' | 'price' | null
 
 interface Props {
   isOpen: boolean
@@ -66,21 +64,29 @@ const generateSeed = () =>
   Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
     .map(b => b.toString(16).padStart(2, '0')).join('')
 
+function isHttpUrl(s?: string | null): boolean {
+  return !!s && /^https?:\/\//i.test(s)
+}
+
 export default function SmartImportWizard({ isOpen, onClose, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const zipRef  = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState<WizardStep>('upload')
   const [products, setProducts] = useState<EnrichedProduct[]>([])
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [uploading, setUploading]     = useState(false)
+  const [zipUploading, setZipUploading] = useState(false)
+  const [progress, setProgress]       = useState(0)
   const [successCount, setSuccessCount] = useState(0)
-  const [failCount, setFailCount] = useState(0)
-  const [errors, setErrors] = useState<string[]>([])
+  const [failCount, setFailCount]     = useState(0)
+  const [errors, setErrors]           = useState<string[]>([])
   const [enrichingAll, setEnrichingAll] = useState(false)
   const [enrichSummary, setEnrichSummary] = useState<{ done: number; partial: number; error: number } | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
+  const [isDragging, setIsDragging]   = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
+  const [highlight, setHighlight]     = useState<HighlightFilter>(null)
+
   const toggleExpand = (i: number) => setExpandedRows(prev => {
     const next = new Set(prev)
     next.has(i) ? next.delete(i) : next.add(i)
@@ -102,10 +108,21 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
     setEnrichingAll(false)
     setEnrichSummary(null)
     setIsDragging(false)
+    setExpandedRows(new Set())
+    setHighlight(null)
     if (fileRef.current) fileRef.current.value = ''
+    if (zipRef.current) zipRef.current.value = ''
   }
 
   const handleClose = () => { reset(); onClose() }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const missingImageList  = products.filter(p => p.selected && !p.image_url)
+  const missingPrizesList = products.filter(p => p.selected && !p.variants?.length)
+  const missingPriceList  = products.filter(p => p.selected && !p.jp_price_yen && !p.price_twd)
+
+  const cycleHighlight = (type: HighlightFilter) =>
+    setHighlight(prev => prev === type ? null : type)
 
   // ── File processing ────────────────────────────────────────────────────────
 
@@ -118,22 +135,21 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       if (isXlsx) {
         const fd = new FormData()
         fd.append('file', file)
-        const res = await fetch('/api/admin/products/parse-xlsx', { method: 'POST', body: fd, credentials: 'include' })
+        const res  = await fetch('/api/admin/products/parse-xlsx', { method: 'POST', body: fd, credentials: 'include' })
         const data = await res.json()
         if (!res.ok) { alert(data.error || '解析失敗'); return }
         const all: EnrichedProduct[] = data.sheets.flatMap((s: any) =>
           s.products.map((p: ParsedProduct) => {
             const missing = p.missingFields ?? ['image', 'prizes']
-            // Only count image as "present" if it's a real http URL
-            const hasValidImage = !!p.image_url && /^https?:\/\//i.test(p.image_url)
-            const needsAi = !hasValidImage || missing.includes('prizes')
+            const hasImg  = isHttpUrl(p.image_url)
+            const hasRaw  = !!p.raw_image_name
+            const needsAi = (!hasImg && !hasRaw) || missing.includes('prizes')
             return {
               ...p,
-              // Clear non-URL image values — they can't be displayed
-              image_url: hasValidImage ? p.image_url : null,
-              // Map prizes from server to local variants format
+              image_url:      hasImg  ? p.image_url  : null,
+              raw_image_name: !hasImg ? p.raw_image_name : null,
               variants: p.prizes?.length
-                ? p.prizes.map(pr => ({ name: pr.name, image_url: pr.image_url ?? null }))
+                ? p.prizes.map(pr => ({ name: pr.name, image_url: isHttpUrl(pr.image_url) ? pr.image_url! : null }))
                 : undefined,
               variant_count: p.prizes?.length ?? p.variant_count,
               aiStatus: needsAi ? 'idle' as const : 'done' as const,
@@ -147,24 +163,19 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         Papa.parse<Record<string, string>>(file, {
           header: true,
           skipEmptyLines: true,
-          transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
+          transformHeader: h => h.replace(/^﻿/, '').trim(),
           complete: result => {
             const headers = result.meta.fields ?? []
-            const rows = result.data ?? []
-
+            const rows    = result.data ?? []
             const CSV_TYPE_MAP: Record<string, string> = {
               '一番賞': 'ichiban', '盒玩': 'blindbox', '盲盒': 'blindbox',
               '轉蛋': 'gacha', '抽卡': 'card', '卡牌': 'card', '自製賞': 'custom',
             }
-
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-
-            // ── 完整格式（含商品類型 + 獎項欄位）──────────────────────────────
             const isFullFormat = headers.includes('商品名稱') && headers.includes('商品類型')
 
             if (isFullFormat) {
               const all: EnrichedProduct[] = rows.map((row: any, i) => {
-                // Parse prize columns: 獎項1名稱, 獎項1等級, 獎項1數量, 獎項1圖片名稱 ...
                 const variants: { name: string; image_url: string | null }[] = []
                 for (let n = 1; n <= 30; n++) {
                   const prizeName = String(row[`獎項${n}名稱`] ?? '').trim()
@@ -175,30 +186,31 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                     image_url: imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null,
                   })
                 }
-                const imgFile = String(row['商品圖片'] ?? '').trim()
+                const imgFile  = String(row['商品圖片'] ?? '').trim()
                 const image_url = imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null
-                const typeRaw = String(row['商品類型'] ?? '').trim()
-                const totalCount = variants.reduce((sum, _, idx) => {
-                  return sum + (Number(row[`獎項${idx + 1}數量`]) || 0)
-                }, 0)
+                const typeRaw  = String(row['商品類型'] ?? '').trim()
+                const totalCount = variants.reduce((sum, _, idx) => sum + (Number(row[`獎項${idx + 1}數量`]) || 0), 0)
                 return {
-                  sku: row['商品編號'] || row['SKU'] || `ROW${i}`,
-                  barcode: row['條碼'] || row['barcode'] || null,
+                  sku: row['商品編號'] || `ROW${i}`,
+                  barcode: row['條碼'] || null,
                   name: String(row['商品名稱'] ?? '').trim(),
                   manufacturer_code: '',
-                  per_case: 0,
-                  cases: 0,
+                  per_case: 0, cases: 0,
                   total_count: totalCount || Number(row['總數量']) || 0,
                   variant_count: variants.length,
                   qty_per_variant: 0,
-                  jp_price_yen: Number(row['日幣價格']) || null,
+                  jp_price_yen: Number(row['日幣定價']) || null,
+                  price_twd: Number(row['價格']) || null,
+                  cost: Number(row['成本']) || null,
+                  special_price: Number(row['特價']) || null,
                   full_spec: '',
                   type: CSV_TYPE_MAP[typeRaw] ?? 'gacha',
                   image_url,
-                  variants: variants.length ? variants : undefined,
                   distributor: String(row['代理商'] ?? '').trim() || null,
-                  price_twd: Number(row['價格']) || null,
-                  // 品項由檔案提供，但圖片可能只是檔名不代表實際存在，一律 idle 讓使用者確認
+                  series: String(row['系列'] ?? '').trim() || null,
+                  release_year: String(row['發售年'] ?? '').trim() || null,
+                  release_month: String(row['發售月'] ?? '').trim() || null,
+                  variants: variants.length ? variants : undefined,
                   aiStatus: 'idle' as const,
                   selected: true,
                 } as EnrichedProduct
@@ -208,27 +220,26 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               return
             }
 
-            // ── 供應商條碼格式（模威等，需 AI 補全）─────────────────────────
             const all: EnrichedProduct[] = rows.map((row: any, i) => ({
-              sku: row['品名'] || row['SKU'] || row['product_code'] || `ROW${i}`,
-              barcode: row['國際條碼'] || row['barcode'] || null,
-              name: row['name'] || row['商品名稱'] || Object.values(row)[5] as string || '',
+              sku: row['品名'] || row['SKU'] || `ROW${i}`,
+              barcode: row['國際條碼'] || null,
+              name: row['name'] || row['商品名稱'] || '',
               manufacturer_code: '',
               per_case: Number(row['箱數']) || 0,
               cases: Number(row['備貨數量']) || 0,
-              total_count: Number(row['品名規格']) || Number(row['total_count']) || 0,
+              total_count: Number(row['品名規格']) || 0,
               variant_count: 0,
               qty_per_variant: 0,
               jp_price_yen: null,
               full_spec: '',
-              type: CSV_TYPE_MAP[String(row['類型'] || row['商品類型'] || '').trim()] ?? 'gacha',
+              type: CSV_TYPE_MAP[String(row['類型'] || '').trim()] ?? 'gacha',
               aiStatus: 'idle' as const,
               selected: true,
             })).filter(p => p.name)
             setProducts(all)
             setStep('preview')
           },
-          error: () => alert('CSV 解析失敗，請確認檔案格式'),
+          error: () => alert('CSV 解析失敗'),
         })
       } else {
         alert('請上傳 .xlsx、.xls 或 .csv 檔案')
@@ -244,14 +255,54 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   }
 
   // ── Drag & Drop ────────────────────────────────────────────────────────────
-
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true) }
+  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true) }
   const handleDragLeave = () => setIsDragging(false)
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
+  const handleDrop      = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false)
     const file = e.dataTransfer.files?.[0]
     if (file) processFile(file)
+  }
+
+  // ── Zip 圖片上傳 ───────────────────────────────────────────────────────────
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setZipUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('zip', file)
+      const res  = await fetch('/api/admin/products/upload-images', { method: 'POST', body: fd, credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error || '上傳失敗'); return }
+      const urlMap = new Map<string, string>(data.files.map((f: { name: string; url: string }) => [f.name, f.url]))
+      // Match filenames to products and variants
+      setProducts(prev => prev.map(p => {
+        const imgUrl = p.raw_image_name ? urlMap.get(p.raw_image_name) : undefined
+        const newVariants = p.variants?.map(v => {
+          // variants don't have raw_image_name in interface yet, skip for now
+          return v
+        })
+        if (!imgUrl && !newVariants) return p
+        const updated: EnrichedProduct = {
+          ...p,
+          image_url: imgUrl ?? p.image_url,
+          raw_image_name: imgUrl ? null : p.raw_image_name,  // clear if matched
+          variants: newVariants ?? p.variants,
+        }
+        // Re-evaluate aiStatus
+        if (imgUrl && (p.aiStatus === 'idle' || p.aiStatus === 'partial')) {
+          const hasVariants = !!updated.variants?.length
+          updated.aiStatus = hasVariants ? 'done' : 'partial'
+        }
+        return updated
+      }))
+      alert(`✅ 已上傳 ${data.uploaded} 張圖片，對應至商品清單中${data.failed > 0 ? `（${data.failed} 張失敗）` : ''}`)
+    } catch (err: any) {
+      alert('上傳失敗：' + String(err?.message || err))
+    } finally {
+      setZipUploading(false)
+      if (zipRef.current) zipRef.current.value = ''
+    }
   }
 
   // ── AI Enrich ──────────────────────────────────────────────────────────────
@@ -273,25 +324,17 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         }),
       })
       const data = await res.json()
-
       if (!res.ok || !data.ok) throw new Error(data.error || '補全失敗')
       const ai = data.data
       const hasImage = !!ai.image_url
-      const aiStatus: EnrichedProduct['aiStatus'] = hasImage ? 'done' : 'partial'
+      const aiStatus: EnrichedProduct['aiStatus'] = hasImage ? (data.aiStatus ?? 'done') : 'partial'
       setProducts(prev => prev.map((x, i) => i === idx ? {
         ...x,
         image_url: ai.image_url || null,
         distributor: ai.distributor || x.distributor || null,
-        // 若 CSV 已有品項名稱，保留原名，只補 AI 找到的圖片
         variants: (() => {
-          const hasNamedVariants = x.variants?.some(v => v.name)
-          if (hasNamedVariants) {
-            // 保留 CSV 品項名，只把 AI 品項圖貼上去（按順序對應）
-            return x.variants!.map((v, vi) => ({
-              ...v,
-              image_url: ai.variants?.[vi]?.image_url ?? v.image_url,
-            }))
-          }
+          const hasNamed = x.variants?.some(v => v.name)
+          if (hasNamed) return x.variants!.map((v, vi) => ({ ...v, image_url: ai.variants?.[vi]?.image_url ?? v.image_url }))
           return ai.variants?.length ? ai.variants : x.variants
         })(),
         variant_count: ai.variant_count || x.variant_count,
@@ -336,24 +379,16 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const variantNames = p.variants?.length
         ? p.variants
         : Array.from({ length: p.variant_count || 1 }, () => ({ name: '', image_url: null }))
-
       const vCount = variantNames.length || 1
       const total  = p.total_count || 0
       const base   = Math.floor(total / vCount)
-      const rem    = total % vCount  // 餘數加到品項 1
+      const rem    = total % vCount
       const prizes = variantNames.map((v, vi) => {
         const qty = base + (vi === 0 ? rem : 0)
-        return {
-          level: v.name,
-          name: v.name,
-          total: qty,
-          remaining: qty,
-          probability: 100 / vCount,
-          image_url: v.image_url || null,
-        }
+        return { level: v.name, name: v.name, total: qty, remaining: qty, probability: 100 / vCount, image_url: v.image_url || null }
       })
 
-      const seed = generateSeed()
+      const seed     = generateSeed()
       const txidHash = await calculateSeedHash(seed)
 
       const res = await fetch('/api/admin/products', {
@@ -367,7 +402,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             category: TYPE_CATEGORY[p.type] ?? '轉蛋',
             type: p.type || 'gacha',
             price: p.price_twd ?? (p.jp_price_yen ? Math.round(p.jp_price_yen / 2) : 50),
-            cost: null,
+            jp_price_yen: p.jp_price_yen || null,
+            cost: p.cost || null,
+            special_price: p.special_price || null,
             total_count: p.total_count,
             remaining: p.total_count,
             status: 'active',
@@ -375,6 +412,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             image_url: p.image_url || null,
             barcode: p.barcode || null,
             distributor: p.distributor || null,
+            series: p.series || null,
+            release_year: p.release_year || null,
+            release_month: p.release_month || null,
             supplier_id: selectedSupplierId ? parseInt(selectedSupplierId) : null,
             seed,
             txid_hash: txidHash,
@@ -397,15 +437,14 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
     setErrors(errs.slice(0, 10))
     setStep('done')
 
-    // Auto-seed bot draws if this is the first batch of products
     if (ok > 0) {
       fetch('/api/admin/seed-bot-draws', { method: 'POST', credentials: 'include' }).catch(() => {})
     }
   }
 
-  const allSelected = products.length > 0 && products.every(p => p.selected)
-  const toggleAll   = () => setProducts(prev => prev.map(p => ({ ...p, selected: !allSelected })))
-  const toggleOne   = (i: number) => setProducts(prev => prev.map((p, idx) => idx === i ? { ...p, selected: !p.selected } : p))
+  const allSelected  = products.length > 0 && products.every(p => p.selected)
+  const toggleAll    = () => setProducts(prev => prev.map(p => ({ ...p, selected: !allSelected })))
+  const toggleOne    = (i: number) => setProducts(prev => prev.map((p, idx) => idx === i ? { ...p, selected: !p.selected } : p))
   const selectedCount = products.filter(p => p.selected).length
   const doneCount     = products.filter(p => p.aiStatus === 'done').length
 
@@ -427,15 +466,65 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             </p>
           </div>
           {step === 'preview' && (
-            <button
-              onClick={enrichAll}
-              disabled={enrichingAll}
-              className="flex-shrink-0 px-3 py-1.5 bg-violet-600 text-white text-xs font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {enrichingAll ? <><span className="animate-spin inline-block">⚙️</span>補全中…</> : '🤖 全部 AI 補全'}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+              {/* 缺資訊統計 chips */}
+              <button
+                onClick={() => cycleHighlight('image')}
+                className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 border transition-colors ${
+                  highlight === 'image'
+                    ? 'bg-amber-100 text-amber-700 border-amber-300 ring-1 ring-amber-300'
+                    : missingImageList.length > 0
+                      ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                      : 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                }`}
+              >
+                🖼 缺主圖 <span className="font-bold">{missingImageList.length}</span>
+              </button>
+              <button
+                onClick={() => cycleHighlight('prizes')}
+                className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 border transition-colors ${
+                  highlight === 'prizes'
+                    ? 'bg-orange-100 text-orange-700 border-orange-300 ring-1 ring-orange-300'
+                    : missingPrizesList.length > 0
+                      ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100'
+                      : 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                }`}
+              >
+                📦 缺品項 <span className="font-bold">{missingPrizesList.length}</span>
+              </button>
+              <button
+                onClick={() => cycleHighlight('price')}
+                className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 border transition-colors ${
+                  highlight === 'price'
+                    ? 'bg-rose-100 text-rose-700 border-rose-300 ring-1 ring-rose-300'
+                    : missingPriceList.length > 0
+                      ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                      : 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                }`}
+              >
+                💰 缺定價 <span className="font-bold">{missingPriceList.length}</span>
+              </button>
+              <div className="h-4 w-px bg-neutral-200 mx-0.5" />
+              {/* Zip upload */}
+              <button
+                onClick={() => zipRef.current?.click()}
+                disabled={zipUploading}
+                className="px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 text-neutral-600 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {zipUploading ? <><span className="animate-spin inline-block">⚙️</span>上傳中…</> : '📦 圖片壓縮檔'}
+              </button>
+              <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
+              {/* Enrich all */}
+              <button
+                onClick={enrichAll}
+                disabled={enrichingAll}
+                className="px-3 py-1.5 bg-violet-600 text-white text-xs font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {enrichingAll ? <><span className="animate-spin inline-block">⚙️</span>補全中…</> : '🤖 全部AI補全'}
+              </button>
+            </div>
           )}
-          <button onClick={handleClose} className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 text-lg leading-none">✕</button>
+          <button onClick={handleClose} className="flex-shrink-0 text-neutral-400 hover:text-neutral-600 text-lg leading-none ml-1">✕</button>
         </div>
 
         {/* Body */}
@@ -449,14 +538,12 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 <select
                   value={selectedSupplierId}
                   onChange={e => setSelectedSupplierId(e.target.value)}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white"
                 >
                   <option value="">— 未指定廠商 —</option>
                   {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
                 </select>
               </div>
-
-              {/* Drop zone */}
               <div
                 className={`border-2 border-dashed rounded-xl p-14 text-center transition-all
                   ${!selectedSupplierId
@@ -466,34 +553,28 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                       : 'border-neutral-200 hover:border-violet-300 hover:bg-violet-50/40 cursor-pointer'
                   }`}
                 onClick={() => selectedSupplierId && fileRef.current?.click()}
-                onDragOver={e => { if (selectedSupplierId) { handleDragOver(e) } else { e.preventDefault() } }}
+                onDragOver={e => { if (selectedSupplierId) handleDragOver(e); else e.preventDefault() }}
                 onDragLeave={handleDragLeave}
-                onDrop={e => { if (selectedSupplierId) { handleDrop(e) } else { e.preventDefault() } }}
+                onDrop={e => { if (selectedSupplierId) handleDrop(e); else e.preventDefault() }}
               >
                 {uploading ? (
-                  <div className="space-y-3">
-                    <div className="text-4xl animate-spin inline-block">⚙️</div>
-                    <p className="font-semibold text-neutral-700">解析中…</p>
-                  </div>
+                  <div className="space-y-3"><div className="text-4xl animate-spin inline-block">⚙️</div><p className="font-semibold text-neutral-700">解析中…</p></div>
                 ) : (
                   <>
                     <div className="text-5xl mb-4">{isDragging ? '📂' : '📊'}</div>
                     <p className="font-semibold text-neutral-800 text-base">
                       {isDragging ? '放開以上傳' : '拖曳或點擊上傳廠商報表'}
                     </p>
-                    <p className="text-sm text-neutral-400 mt-1">
-                      {selectedSupplierId ? '支援 .xlsx、.xls、.csv' : '請先選擇供應廠商'}
-                    </p>
+                    <p className="text-sm text-neutral-400 mt-1">{selectedSupplierId ? '支援 .xlsx、.xls、.csv' : '請先選擇供應廠商'}</p>
                   </>
                 )}
                 <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
               </div>
-
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 space-y-1">
                 <p className="font-semibold text-blue-800">智能欄位識別</p>
-                <p>• 系統會列出所有商品所需欄位（名稱/類型/條碼/日幣/圖片/品項…）</p>
-                <p>• 上傳任意廠商 Excel/CSV → 自動比對檔案內有哪些欄位</p>
-                <p>• 檔案有的欄位直接使用，缺少的欄位自動 AI 補全</p>
+                <p>• 支援任意廠商格式，欄位名稱不同也能自動對應</p>
+                <p>• 可識別：名稱、條碼、類型、系列、代理商、日幣/售價/成本/特價、發售時間、品項清單+圖片</p>
+                <p>• 檔案含圖片檔名（如 abc.jpg）→ 可用「圖片壓縮檔」一鍵批量上傳配對</p>
               </div>
             </div>
           )}
@@ -508,22 +589,16 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                   <span className="text-violet-700 font-semibold shrink-0">🤖 AI 補全完成</span>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     <span className="text-emerald-700 font-medium">✅ 有圖：{enrichSummary.done} 件</span>
-                    {enrichSummary.partial > 0 && (
-                      <span className="text-amber-600 font-medium">⚠️ 缺圖：{enrichSummary.partial} 件</span>
-                    )}
-                    {enrichSummary.error > 0 && (
-                      <span className="text-red-600 font-medium">❌ 失敗：{enrichSummary.error} 件</span>
-                    )}
+                    {enrichSummary.partial > 0 && <span className="text-amber-600 font-medium">⚠️ 缺圖：{enrichSummary.partial} 件</span>}
+                    {enrichSummary.error > 0 && <span className="text-red-600 font-medium">❌ 失敗：{enrichSummary.error} 件</span>}
                   </div>
-                  {enrichSummary.partial > 0 && (
-                    <span className="ml-auto text-xs text-neutral-400 shrink-0">缺圖商品仍可匯入</span>
-                  )}
+                  {enrichSummary.partial > 0 && <span className="ml-auto text-xs text-neutral-400 shrink-0">缺圖商品仍可匯入</span>}
                 </div>
               )}
 
               {/* Table */}
               <div className="rounded-xl border border-neutral-200 overflow-hidden">
-                {/* Header — 全選 lives here */}
+                {/* Header */}
                 <div className="grid grid-cols-[2rem_3.5rem_1fr_7rem_5.5rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
                   <label className="cursor-pointer flex items-center" title={`全選 (${selectedCount}/${products.length})`}>
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
@@ -541,21 +616,28 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
                 {/* Rows */}
                 {products.map((p, i) => {
-                  const expanded = expandedRows.has(i)
+                  const expanded   = expandedRows.has(i)
                   const variantList = p.variants?.length
                     ? p.variants
                     : p.variant_count > 0
                       ? Array.from({ length: p.variant_count }, () => ({ name: '', image_url: null }))
                       : []
 
+                  const isHighlighted =
+                    (highlight === 'image'  && !p.image_url) ||
+                    (highlight === 'prizes' && !p.variants?.length) ||
+                    (highlight === 'price'  && !p.jp_price_yen && !p.price_twd)
+
                   return (
-                    <div key={i} className={`border-b border-neutral-100 last:border-0 ${!p.selected ? 'opacity-40' : ''}`}>
-                      {/* Main row — click anywhere (except checkbox/status) to toggle expand */}
+                    <div
+                      key={i}
+                      className={`border-b border-neutral-100 last:border-0 transition-colors ${!p.selected ? 'opacity-40' : ''} ${isHighlighted ? 'bg-amber-50/60 ring-1 ring-inset ring-amber-300' : ''}`}
+                    >
+                      {/* Main row */}
                       <div
-                        className={`grid grid-cols-[2rem_3.5rem_1fr_7rem_5.5rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 transition-colors ${variantList.length > 0 ? 'cursor-pointer hover:bg-neutral-50 active:bg-neutral-100' : 'hover:bg-neutral-50/60'}`}
-                        onClick={() => variantList.length > 0 && toggleExpand(i)}
+                        className="grid grid-cols-[2rem_3.5rem_1fr_7rem_5.5rem_9rem_6rem_4rem_4rem_5.5rem] items-center gap-x-3 px-3 py-2.5 cursor-pointer hover:bg-neutral-50/80 active:bg-neutral-100 transition-colors"
+                        onClick={() => toggleExpand(i)}
                       >
-                        {/* Checkbox — stop propagation so row click doesn't fire */}
                         <input
                           type="checkbox"
                           checked={p.selected ?? true}
@@ -570,103 +652,108 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                             <img
                               src={p.image_url}
                               alt=""
-                              className="w-full h-full object-cover"
+                              className="absolute inset-0 w-full h-full object-cover"
                               onError={e => {
                                 const img = e.currentTarget
                                 img.style.display = 'none'
-                                const fallback = img.nextElementSibling as HTMLElement | null
-                                if (fallback) fallback.style.display = 'flex'
+                                const fb = img.nextElementSibling as HTMLElement | null
+                                if (fb) fb.style.display = 'flex'
                               }}
                             />
                           )}
                           <div
                             className="absolute inset-0 flex items-center justify-center text-neutral-300 text-lg"
                             style={{ display: p.image_url ? 'none' : 'flex' }}
-                          >?</div>
+                          >
+                            {p.raw_image_name ? '📄' : '?'}
+                          </div>
                         </div>
 
                         {/* Name */}
                         <div className="min-w-0">
                           <p className="font-semibold text-neutral-900 text-sm leading-snug line-clamp-2">{p.name_zh || p.name}</p>
+                          {p.series && <p className="text-xs text-neutral-400 truncate">{p.series}</p>}
                         </div>
 
-                        {/* Barcode */}
                         <span className="font-mono text-xs text-neutral-400 truncate">{p.barcode || '—'}</span>
 
-                        {/* Type select */}
                         <select
                           value={p.type || 'gacha'}
-                          onChange={e => {
-                            const v = e.target.value
-                            setProducts(prev => prev.map((x, j) => j === i ? { ...x, type: v } : x))
-                          }}
+                          onChange={e => { const v = e.target.value; setProducts(prev => prev.map((x, j) => j === i ? { ...x, type: v } : x)) }}
                           onClick={e => e.stopPropagation()}
                           className="text-xs border border-neutral-200 rounded px-1 py-1 bg-white text-neutral-700 w-full"
                         >
                           {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
 
-                        {/* Distributor */}
                         <span className="text-xs text-neutral-500 truncate" title={p.distributor || undefined}>{p.distributor || '—'}</span>
 
-                        {/* Price */}
                         <span className="text-xs text-neutral-600">
                           {p.jp_price_yen
                             ? <><span className="text-neutral-400">¥{p.jp_price_yen}</span> <strong className="text-primary">{Math.round(p.jp_price_yen / 2)}G</strong></>
-                            : <span className="text-neutral-300">—</span>}
+                            : p.price_twd
+                              ? <strong className="text-primary">{p.price_twd}G</strong>
+                              : <span className="text-neutral-300">—</span>}
                         </span>
 
-                        {/* Total */}
                         <span className="text-xs text-neutral-600 text-center">{p.total_count > 0 ? p.total_count.toLocaleString() : '—'}</span>
 
-                        {/* Variant count indicator */}
                         <div className="flex items-center justify-center gap-1 text-xs text-neutral-600">
-                          {variantList.length > 0 ? (
-                            <><span>{variantList.length}</span><span className="text-neutral-400">{expanded ? '▲' : '▼'}</span></>
-                          ) : p.aiStatus === 'idle' || p.aiStatus === undefined ? (
-                            <span className="text-neutral-300">?</span>
-                          ) : '—'}
+                          <span>{variantList.length > 0 ? variantList.length : '—'}</span>
+                          <span className="text-neutral-400 text-[10px]">{expanded ? '▲' : '▼'}</span>
                         </div>
 
-                        {/* Status — stop propagation so clicks on buttons don't toggle expand */}
                         <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                           {p.aiStatus === 'loading' && <span className="text-xs text-violet-500 animate-pulse">搜尋中…</span>}
                           {p.aiStatus === 'done'    && <span className="text-xs text-emerald-600 font-medium">✓ 已補全</span>}
-                          {p.aiStatus === 'partial' && <button onClick={() => enrichOne(i)} className="text-xs text-amber-600 hover:underline" title="圖片與名稱未完整抓到，可重試">⚠ 未完整</button>}
+                          {p.aiStatus === 'partial' && <button onClick={() => enrichOne(i)} className="text-xs text-amber-600 hover:underline" title="可重試">⚠ 未完整</button>}
                           {p.aiStatus === 'error'   && <button onClick={() => enrichOne(i)} className="text-xs text-red-500 hover:underline" title={p.aiError}>重試</button>}
                           {p.aiStatus === 'idle'    && <button onClick={() => enrichOne(i)} className="text-xs px-2 py-1 bg-violet-100 text-violet-700 rounded hover:bg-violet-200">補全</button>}
                         </div>
                       </div>
 
-                      {/* Expandable variants */}
-                      {expanded && variantList.length > 0 && (
-                        <div className="bg-neutral-50/80 border-t border-neutral-100 px-4 py-3">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                            {variantList.map((v, vi) => (
-                              <div key={vi} className="flex items-center gap-2 bg-white border border-neutral-100 rounded-lg p-2 shadow-sm">
-                                <div className="w-10 h-10 rounded-md bg-neutral-100 flex-shrink-0 relative overflow-hidden">
-                                  {v.image_url && (
-                                    <img
-                                      src={v.image_url}
-                                      alt=""
-                                      className="absolute inset-0 w-full h-full object-cover"
-                                      onError={e => {
-                                        const img = e.currentTarget
-                                        img.style.display = 'none'
-                                        const fallback = img.nextElementSibling as HTMLElement | null
-                                        if (fallback) fallback.style.display = 'flex'
-                                      }}
-                                    />
-                                  )}
-                                  <div
-                                    className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs"
-                                    style={{ display: v.image_url ? 'none' : 'flex' }}
-                                  >?</div>
-                                </div>
-                                <span className="text-xs text-neutral-700 leading-tight line-clamp-2 min-w-0">{v.name}</span>
-                              </div>
-                            ))}
+                      {/* Expandable detail */}
+                      {expanded && (
+                        <div className="bg-neutral-50/80 border-t border-neutral-100 px-4 py-3 space-y-3">
+                          {/* Extra info row */}
+                          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500">
+                            {p.name_jp && <span>🇯🇵 {p.name_jp}</span>}
+                            {(p.release_year || p.release_month) && <span>📅 發售 {p.release_year ?? '?'}年{p.release_month ? `${p.release_month}月` : ''}</span>}
+                            {p.cost && <span>💴 成本 {p.cost}G</span>}
+                            {p.special_price && <span>🏷 特價 {p.special_price}G</span>}
+                            {p.raw_image_name && <span className="text-amber-600">📄 待配對圖片：{p.raw_image_name}</span>}
                           </div>
+                          {/* Variants */}
+                          {variantList.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                              {variantList.map((v, vi) => (
+                                <div key={vi} className="flex items-center gap-2 bg-white border border-neutral-100 rounded-lg p-2 shadow-sm">
+                                  <div className="w-10 h-10 rounded-md bg-neutral-100 flex-shrink-0 relative overflow-hidden">
+                                    {v.image_url && (
+                                      <img
+                                        src={v.image_url}
+                                        alt=""
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={e => {
+                                          const img = e.currentTarget
+                                          img.style.display = 'none'
+                                          const fb = img.nextElementSibling as HTMLElement | null
+                                          if (fb) fb.style.display = 'flex'
+                                        }}
+                                      />
+                                    )}
+                                    <div
+                                      className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs"
+                                      style={{ display: v.image_url ? 'none' : 'flex' }}
+                                    >?</div>
+                                  </div>
+                                  <span className="text-xs text-neutral-700 leading-tight line-clamp-2 min-w-0">{v.name || <span className="text-neutral-300 italic">未命名</span>}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-neutral-400 italic">無任何品項資訊</p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -675,7 +762,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
 
               <p className="text-xs text-neutral-400 pt-2">
-                ※ 圖片從 Bandai 官方目錄抓取（順序可信）。品項名稱請匯入後進編輯頁面看圖填寫。
+                ※ 點擊任意列可展開品項詳情。圖片 📄 表示有檔名但尚未上傳至 Storage（請用「圖片壓縮檔」批量上傳）。
               </p>
             </div>
           )}
@@ -718,7 +805,6 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           >
             {step === 'done' ? '再次匯入' : '取消'}
           </button>
-
           {step === 'preview' && (
             <button
               onClick={handleImport}

@@ -2,6 +2,46 @@
 
 ---
 
+## 2026-07-08｜智能批量匯入全面重設計
+
+### 欄位擴充（`parse-xlsx/route.ts`、`XlsxImportWizard.tsx`）
+新增可識別欄位：`name_jp`（日文名）、`series`（系列）、`release_year/month`（發售時間）、`cost`（成本）、`special_price`（特價）。品項欄新增 `prize_image_columns` 對應品項圖片。
+
+### Migration 294
+`products` 表新增 `jp_price_yen INTEGER`（日幣定價）與 `special_price INTEGER`（特價），供批量匯入時寫入。
+
+### 圖片邏輯（`XlsxImportWizard.tsx`）
+- `image_url` 只存 http/https URL，非 URL 的檔名改存 `raw_image_name`
+- 圖片格子顯示 📄 代表「有檔名但待上傳 Storage」
+- 新增「📦 圖片壓縮檔」按鈕：上傳 zip → 解壓 → 批量寫入 Supabase Storage → 自動配對商品清單中的 `raw_image_name`
+
+### 圖片壓縮檔 API（`upload-images/route.ts`）
+接收 .zip → `adm-zip` 解壓 → 每張圖片 upsert 至 `products` bucket → 回傳 `{name, url}` 列表。
+
+### 搜圖策略重構（`ai-enrich/route.ts`）
+移除品牌特定爬蟲（Bandai/kuji.co.jp/gashapon.jp），改為通用多平台策略：
+- Yahoo Japan Shopping（任何廠牌條碼/名稱搜）
+- AmiAmi（アニメ/フィギュア專門）
+- Rakuten（樂天市場）
+- Suruga-ya（駿河屋，覆蓋率極高）
+- DuckDuckGo × 2（廣域備援）
+- 全部並行跑，Claude Vision 從評分前 8 名選最佳主圖
+- 抽卡/自製賞（`card/custom`）：主圖直接取第一名（ai 選圖成本高且效果差），標為 `partial` 而非 `done`
+
+### 缺資訊統計面板 + 點擊高閃
+Preview 標題列新增三個 chip（點擊切換高閃模式）：
+- 🖼 缺主圖 N：image_url 為空的商品列高閃橘色
+- 📦 缺品項 N：無 variants 的商品列高閃
+- 💰 缺定價 N：jp_price_yen 和 price_twd 都缺的高閃
+
+### 全列可展開
+每列都可點擊展開，不限於有品項的商品。展開內容：
+- 日文名稱、發售時間、成本、特價、待配對圖片檔名
+- 品項列表（含圖片 + 名稱）
+- 若無任何品項 → 顯示「無任何品項資訊」
+
+---
+
 ## 2026-07-08｜智能批量匯入：補全邏輯修正 + 並行加速
 
 ### 問題
