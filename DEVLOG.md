@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-07-08｜廢棄 GB哥 LINE xlsx 智能上架
+
+### 背景
+另一台電腦開發了「LINE 群組丟 xlsx → GB哥智能批量上架」功能，但實測後發現根本無法在 Vercel Free 執行。
+
+### 問題根源
+- Vercel Free 函數上限：**10 秒**
+- 單筆商品處理時間：**15-25 秒**（Bandai 爬蟲 + DuckDuckGo 搜圖 + Claude Vision 命名）
+- 100 筆 xlsx 需要 25-40 分鐘，完全不可行
+- 症狀：GB哥 回「📦 收到！開始智能上架…」後無聲無息，function 被 Vercel 強制 kill，無任何錯誤推回 LINE
+
+### 修改（`app/api/line/webhook/route.ts`）
+移除三段邏輯：
+1. `file` 類型 message 的 event 處理
+2. `handleFileMessage`（存 xlsx messageId 到 `line_pending_files`）
+3. 上架意圖偵測 + `line-import-job` 觸發整段
+
+### 保留備查
+- `backend/lib/lineXlsxImport.ts`（解析 + 爬蟲 + Vision + 寫 DB 邏輯）
+- `backend/app/api/admin/line-import-job/route.ts`
+
+### 未來若要支援
+需改為排隊機制：GB哥 解析 xlsx 存入 `line_import_queue` 表（< 2s）→ pg_cron 每分鐘處理 1-2 筆 → 完成後推 LINE 彙報。100 筆約需等 1 小時。
+
+### 批量上架替代方案
+後台 UI 的 `XlsxImportWizard`，本機執行無時間限制，100 筆沒問題。
+
+---
+
 ## 2026-07-08｜清全站資料腳本修正：商品廠商納入清除範圍
 
 ### 修正（`db/migrations/288_cleanup_before_launch.sql`、`CLAUDE.md`）
