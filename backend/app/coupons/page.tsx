@@ -260,7 +260,7 @@ export default function CouponsPage() {
   ]
 
   return (
-    <AdminLayout pageTitle="折價券管理" breadcrumbs={[{ label: '折價券管理' }]}>
+    <AdminLayout pageTitle="折價券管理">
       <div className="space-y-6 p-6">
         <div className="flex justify-between items-center">
           <div>

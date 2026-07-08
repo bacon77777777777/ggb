@@ -24,6 +24,9 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [isXlsxOpen, setIsXlsxOpen] = useState(false)
+  const [zipUploading, setZipUploading] = useState(false)
+  const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
+  const zipRef = useRef<HTMLInputElement>(null)
 
   const getDisplayCode = (product: Product): string => {
     return product.productCode || ''
@@ -323,6 +326,26 @@ export default function ProductsPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  // 圖片壓縮檔批量上傳
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setZipUploading(true)
+    setZipResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('zip', file)
+      const res = await fetch('/api/admin/products/upload-images', { method: 'POST', body: fd })
+      const json = await res.json()
+      setZipResult({ uploaded: json.uploaded ?? 0, failed: json.failed ?? 0 })
+    } catch {
+      setZipResult({ uploaded: 0, failed: 1 })
+    } finally {
+      setZipUploading(false)
+    }
   }
 
   // 確認 Modal 狀態
@@ -643,7 +666,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="商品管理" breadcrumbs={[{ label: '商品管理', href: '/products' }]}>
+    <AdminLayout pageTitle="商品管理">
       <div className="space-y-6">
         {/* 統計卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
@@ -726,12 +749,28 @@ export default function ProductsPage() {
             addButtonText="+ 新增商品"
             onAddClick={() => window.location.href = '/products/new'}
             children={
-              <button
-                onClick={() => setIsXlsxOpen(true)}
-                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
-              >
-                🤖 智能批量匯入
-              </button>
+              <>
+                <button
+                  onClick={() => setIsXlsxOpen(true)}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  智能批量匯入
+                </button>
+                <button
+                  onClick={() => zipRef.current?.click()}
+                  disabled={zipUploading}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
+                >
+                  {zipUploading ? '上傳中...' : '上傳圖片'}
+                </button>
+                <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
+                {zipResult && (
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${zipResult.failed > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    ✓ 已上傳 {zipResult.uploaded} 張{zipResult.failed > 0 ? `，失敗 ${zipResult.failed}` : ''}
+                  </span>
+                )}
+              </>
             }
             showDensity={true}
             density={tableDensity}
@@ -951,8 +990,10 @@ export default function ProductsPage() {
               <tbody>
                 {sortedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-neutral-500">
-                      沒有找到符合條件的商品
+                    <td colSpan={20} className="text-center">
+                      <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
+                        <span>{isLoading ? '載入中...' : '沒有找到符合條件的商品'}</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -1062,7 +1103,9 @@ export default function ProductsPage() {
                       )}
                       {visibleColumns.majorStatus && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                          {isMajorDepleted(product) ? (
+                          {['gacha', 'blindbox', 'card'].includes(product.type ?? '') ? (
+                            <span className="text-neutral-400">—</span>
+                          ) : isMajorDepleted(product) ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 border border-red-200 font-semibold whitespace-nowrap">
                               廢套
                             </span>

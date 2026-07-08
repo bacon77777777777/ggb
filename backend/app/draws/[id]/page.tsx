@@ -231,7 +231,7 @@ export default function DrawDetailPage() {
       <AdminLayout 
         pageTitle="抽獎紀錄詳情"
         breadcrumbs={[
-          { label: '抽獎紀錄', href: '/draws' },
+          { label: '消費紀錄', href: '/draws' },
           { label: '詳情', href: undefined }
         ]}
       >
@@ -247,7 +247,7 @@ export default function DrawDetailPage() {
       <AdminLayout 
         pageTitle="抽獎紀錄詳情"
         breadcrumbs={[
-          { label: '抽獎紀錄', href: '/draws' },
+          { label: '消費紀錄', href: '/draws' },
           { label: '詳情', href: undefined }
         ]}
       >
@@ -291,7 +291,7 @@ export default function DrawDetailPage() {
     <AdminLayout 
       pageTitle="抽獎紀錄詳情"
       breadcrumbs={[
-        { label: '抽獎紀錄', href: '/draws' },
+        { label: '消費紀錄', href: '/draws' },
         { label: draw.drawId, href: undefined }
       ]}
     >

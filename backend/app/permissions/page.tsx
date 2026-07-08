@@ -295,7 +295,7 @@ export default function PermissionsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="權限管理" breadcrumbs={[{ label: '權限管理', href: '/permissions' }]}>
+    <AdminLayout pageTitle="權限管理">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-gray-900">角色與權限設定</h2>

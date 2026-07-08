@@ -951,7 +951,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <AdminLayout pageTitle="配送管理" breadcrumbs={[{ label: '配送管理', href: '/orders' }]}>
+    <AdminLayout pageTitle="配送管理">
       {/* 出貨彈窗 */}
       <Modal
         isOpen={shipModal.isOpen}

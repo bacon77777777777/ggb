@@ -52,6 +52,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [pendingSettlements, setPendingSettlements] = useState(0)
   const [pendingRefunds, setPendingRefunds] = useState(0)
   const [pendingRechargeReview, setPendingRechargeReview] = useState(0)
+  const [isSettlementOpen, setIsSettlementOpen] = useState(false)
+  const [isRefundOpen, setIsRefundOpen] = useState(false)
+  const [isRechargeOpen, setIsRechargeOpen] = useState(false)
+  const [settlementItems, setSettlementItems] = useState<any[]>([])
+  const [refundItems, setRefundItems] = useState<any[]>([])
+  const [rechargeItems, setRechargeItems] = useState<any[]>([])
 
   // 從 localStorage 讀取初始值（依帳號）
   // 先套用正確值，等兩個 rAF 再開 transition，避免刷新時出現先收起再展開的動畫
@@ -150,10 +156,30 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         .select('*, items:order_items(*), user:users(name, email)')
         .eq('status', 'submitted')
         .order('submitted_at', { ascending: true })
+      if (ordersData) setPendingOrders(ordersData)
 
-      if (ordersData) {
-        setPendingOrders(ordersData)
-      }
+      // Fetch settlement / refund / recharge items for header popups
+      const [{ data: settData }, { data: refData }, { data: rcData }] = await Promise.all([
+        supabase.from('settlement_snapshots')
+          .select('id, period_month, total_revenue, supplier:suppliers(name)')
+          .eq('status', 'draft')
+          .order('period_month', { ascending: false })
+          .limit(10),
+        supabase.from('refund_requests')
+          .select('id, amount, reason, created_at, user:users(name)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase.from('recharge_records')
+          .select('id, amount, payment_method, created_at, user:users(name)')
+          .eq('needs_review', true)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(10),
+      ])
+      if (settData) setSettlementItems(settData)
+      if (refData)  setRefundItems(refData)
+      if (rcData)   setRechargeItems(rcData)
     }
 
     fetchData()
@@ -820,27 +846,35 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {pageSubtitle && (
                   <p className="text-xs text-neutral-600 mt-0.5">{pageSubtitle}</p>
                 )}
-                {/* 麵包屑導航 */}
-                {breadcrumbs && breadcrumbs.length > 0 && (
-                  <nav className="flex items-center gap-2 text-xs text-neutral-600 mt-1">
-                    {breadcrumbs.map((crumb, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        {index > 0 && (
-                          <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        )}
-                        {crumb.href ? (
-                          <Link href={crumb.href} className="hover:text-primary transition-colors">
-                            {crumb.label}
-                          </Link>
-                        ) : (
-                          <span className="text-neutral-900 font-medium">{crumb.label}</span>
-                        )}
-                      </div>
-                    ))}
-                  </nav>
-                )}
+                {/* 麵包屑導航 — 自動從 sidebar menuGroups 推算，永遠和左側欄對齊 */}
+                {(() => {
+                  const crumbs: Breadcrumb[] = breadcrumbs ?? (() => {
+                    for (const group of menuGroups) {
+                      const item = group.items.find(i => i.path === pathname || pathname.startsWith(i.path + '/'))
+                      if (item) return [{ label: group.title }, { label: item.name }]
+                    }
+                    return []
+                  })()
+                  if (!crumbs.length) return null
+                  return (
+                    <nav className="flex items-center gap-2 text-xs text-neutral-600 mt-1">
+                      {crumbs.map((crumb, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          {index > 0 && (
+                            <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
+                          {crumb.href ? (
+                            <Link href={crumb.href} className="hover:text-primary transition-colors">{crumb.label}</Link>
+                          ) : (
+                            <span className={index === crumbs.length - 1 ? 'text-neutral-900 font-medium' : ''}>{crumb.label}</span>
+                          )}
+                        </div>
+                      ))}
+                    </nav>
+                  )
+                })()}
               </div>
               <div className="flex items-center gap-3">
                 {/* 會員人數 + 在線人數 */}
@@ -851,173 +885,115 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                   </div>
                 )}
 
-                {/* 廠商月結 */}
-                {canAccess('/header-settlements') && (
-                  <a href="/settlement-snapshots" title="廠商月結" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                {/* 廠商月結彈窗 */}
+                {canAccess('/header-settlements') && <div className="relative">
+                  <button onClick={() => setIsSettlementOpen(!isSettlementOpen)} title="廠商月結" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
-                    {pendingSettlements > 0 && (
-                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-amber-500 rounded-full">
-                        {pendingSettlements > 9 ? '9+' : pendingSettlements}
-                      </span>
-                    )}
-                  </a>
-                )}
+                    {pendingSettlements > 0 && <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-amber-500 rounded-full">{pendingSettlements > 9 ? '9+' : pendingSettlements}</span>}
+                  </button>
+                  {isSettlementOpen && (<>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsSettlementOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
+                      <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
+                        <h3 className="font-bold text-neutral-900 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                          待確認月結
+                          {pendingSettlements > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">{pendingSettlements}</span>}
+                        </h3>
+                        <button onClick={() => setIsSettlementOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      </div>
+                      <div className="overflow-y-auto flex-1">
+                        {settlementItems.length > 0 ? settlementItems.map((s: any) => (
+                          <button key={s.id} onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-neutral-900">{(s.supplier as any)?.name ?? '—'}</p>
+                              <p className="text-xs text-neutral-500">{s.period_month}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-amber-600">NT${(s.total_revenue ?? 0).toLocaleString()}</span>
+                          </button>
+                        )) : (
+                          <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待確認月結</p></div>
+                        )}
+                      </div>
+                      {settlementItems.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部月結</button></div>}
+                    </div>
+                  </>)}
+                </div>}
 
-                {/* 待審退款 */}
-                {canAccess('/header-refunds') && (
-                  <a href="/refund-requests" title="待審退款" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                {/* 待審退款彈窗 */}
+                {canAccess('/header-refunds') && <div className="relative">
+                  <button onClick={() => setIsRefundOpen(!isRefundOpen)} title="待審退款" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                     </svg>
-                    {pendingRefunds > 0 && (
-                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-rose-500 rounded-full">
-                        {pendingRefunds > 9 ? '9+' : pendingRefunds}
-                      </span>
-                    )}
-                  </a>
-                )}
+                    {pendingRefunds > 0 && <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-rose-500 rounded-full">{pendingRefunds > 9 ? '9+' : pendingRefunds}</span>}
+                  </button>
+                  {isRefundOpen && (<>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsRefundOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
+                      <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
+                        <h3 className="font-bold text-neutral-900 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                          待審退款
+                          {pendingRefunds > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-rose-100 text-rose-700 rounded-full">{pendingRefunds}</span>}
+                        </h3>
+                        <button onClick={() => setIsRefundOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      </div>
+                      <div className="overflow-y-auto flex-1">
+                        {refundItems.length > 0 ? refundItems.map((r: any) => (
+                          <button key={r.id} onClick={() => { router.push('/refund-requests'); setIsRefundOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-neutral-900">{(r.user as any)?.name ?? '—'}</p>
+                              <p className="text-xs text-neutral-500 truncate max-w-[160px]">{r.reason ?? '無備註'}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-rose-600">NT${(r.amount ?? 0).toLocaleString()}</span>
+                          </button>
+                        )) : (
+                          <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待審退款</p></div>
+                        )}
+                      </div>
+                      {refundItems.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/refund-requests'); setIsRefundOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部退款申請</button></div>}
+                    </div>
+                  </>)}
+                </div>}
 
-                {/* 待複核儲值 */}
-                {canAccess('/header-recharge-review') && (
-                  <a href="/recharge-review" title="待複核儲值" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                {/* 待複核儲值彈窗 */}
+                {canAccess('/header-recharge-review') && <div className="relative">
+                  <button onClick={() => setIsRechargeOpen(!isRechargeOpen)} title="待複核儲值" className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
                     <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {pendingRechargeReview > 0 && (
-                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full">
-                        {pendingRechargeReview > 9 ? '9+' : pendingRechargeReview}
-                      </span>
-                    )}
-                  </a>
-                )}
-
-                {/* 警示圖標（需要 header_products 權限） */}
-                {canAccess('/header-products') && <div className="relative">
-                  <button
-                    onClick={() => setIsAlertOpen(!isAlertOpen)}
-                    className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                  >
-                    <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    {alertCount > 0 && (
-                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
-                        {alertCount > 9 ? '9+' : alertCount}
-                      </span>
-                    )}
+                    {pendingRechargeReview > 0 && <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-orange-500 rounded-full">{pendingRechargeReview > 9 ? '9+' : pendingRechargeReview}</span>}
                   </button>
-
-                  {/* 警示下拉面板 */}
-                  {isAlertOpen && (
-                    <>
-                      {/* 背景遮罩，點擊關閉 */}
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsAlertOpen(false)}
-                      ></div>
-                      <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[600px] overflow-hidden flex flex-col">
-                        {/* 標題 */}
-                        <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
-                          <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            系統警示
-                            {alertCount > 0 && (
-                              <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
-                                {alertCount}
-                              </span>
-                            )}
-                          </h3>
-                          <button
-                            onClick={() => setIsAlertOpen(false)}
-                            className="p-1 hover:bg-neutral-200 rounded transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                  {isRechargeOpen && (<>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsRechargeOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
+                      <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
+                        <h3 className="font-bold text-neutral-900 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          待複核儲值
+                          {pendingRechargeReview > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">{pendingRechargeReview}</span>}
+                        </h3>
+                        <button onClick={() => setIsRechargeOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      </div>
+                      <div className="overflow-y-auto flex-1">
+                        {rechargeItems.length > 0 ? rechargeItems.map((r: any) => (
+                          <button key={r.id} onClick={() => { router.push('/recharge-review'); setIsRechargeOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-neutral-900">{(r.user as any)?.name ?? '—'}</p>
+                              <p className="text-xs text-neutral-500">{r.payment_method ?? '—'}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-orange-600">NT${(r.amount ?? 0).toLocaleString()}</span>
                           </button>
-                        </div>
-
-                        {/* 警示列表 */}
-                        <div className="overflow-y-auto flex-1">
-                          {alerts.length > 0 ? (
-                            <div className="p-4 space-y-3">
-                              {alerts.map((alert, index) => (
-                                <button
-                                  key={index}
-                                  onClick={() => {
-                                    setHighlightedProductId(alert.productId)
-                                    router.push('/products')
-                                    setIsAlertOpen(false)
-                                  }}
-                                  className={`w-full text-left p-3 rounded-lg border-l-4 transition-all hover:shadow-md ${
-                                    alert.severity === 'high'
-                                      ? 'bg-red-50 border-red-500 hover:bg-red-100'
-                                      : 'bg-yellow-50 border-yellow-500 hover:bg-yellow-100'
-                                  }`}
-                                >
-                                  {alert.type === 'high-rate' ? (
-                                    <div>
-                                      <div className="flex items-start justify-between mb-1">
-                                        <span className="font-semibold text-neutral-900 text-sm">{alert.product}</span>
-                                        <span className={`px-2 py-0.5 text-xs rounded-full flex-shrink-0 ml-2 ${
-                                          alert.severity === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                          {alert.severity === 'high' ? '高' : '中'}
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-neutral-600">
-                                        {alert.level}賞率 <span className="font-semibold text-red-600">{alert.rate}%</span> 超過設定值 <span className="font-semibold">{alert.threshold}%</span>
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <div className="flex items-start justify-between mb-1">
-                                        <span className="font-semibold text-neutral-900 text-sm">{alert.product}</span>
-                                        <span className={`px-2 py-0.5 text-xs rounded-full flex-shrink-0 ml-2 ${
-                                          alert.severity === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                          {alert.severity === 'high' ? '高' : '中'}
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-neutral-600">
-                                        剩餘數量 <span className="font-semibold text-red-600">{alert.remaining}</span> 件，低於警示值 <span className="font-semibold">{alert.threshold}</span> 件
-                                      </p>
-                                    </div>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="p-8 text-center text-neutral-500">
-                              <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <p className="text-sm">目前沒有警示</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 底部操作 */}
-                        {alerts.length > 0 && (
-                          <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-                            <button
-                              onClick={() => {
-                                // 處理全部已讀或跳轉到相關頁面
-                                setIsAlertOpen(false)
-                              }}
-                              className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                            >
-                              查看全部
-                            </button>
-                          </div>
+                        )) : (
+                          <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待複核儲值</p></div>
                         )}
                       </div>
-                    </>
-                  )}
+                      {rechargeItems.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => { router.push('/recharge-review'); setIsRechargeOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部儲值複核</button></div>}
+                    </div>
+                  </>)}
                 </div>}
 
                 {/* 配送圖標（需要 header_orders 權限） */}
@@ -1035,109 +1011,110 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                       </span>
                     )}
                   </button>
-
-                  {/* 配送下拉面板 */}
                   {isShipmentOpen && (
                     <>
-                      {/* 背景遮罩，點擊關閉 */}
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsShipmentOpen(false)}
-                      ></div>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsShipmentOpen(false)}></div>
                       <div className="absolute right-0 mt-2 w-[500px] bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[700px] overflow-hidden flex flex-col">
-                        {/* 標題 */}
                         <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
                           <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
                             <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
                             待配送訂單
-                            {totalPendingCount > 0 && (
-                              <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                                {totalPendingCount}
-                              </span>
-                            )}
+                            {totalPendingCount > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">{totalPendingCount}</span>}
                           </h3>
-                          <button
-                            onClick={() => setIsShipmentOpen(false)}
-                            className="p-1 hover:bg-neutral-200 rounded transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                          <button onClick={() => setIsShipmentOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         </div>
-
-                        {/* 訂單列表 */}
                         <div className="overflow-y-auto flex-1">
                           {pendingShipments.length > 0 ? (
                             <div className="p-4 space-y-3">
                               {pendingShipments.map((order, index) => (
-                                <button
-                                  key={order.id || index}
-                                  onClick={() => handleShipmentClick(order.orderId)}
-                                  className="w-full text-left p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 hover:shadow-md transition-all duration-200 border border-neutral-200 hover:border-primary/50 active:scale-[0.98]"
-                                >
-                                  {/* 訂單編號和天數 */}
+                                <button key={order.id || index} onClick={() => handleShipmentClick(order.orderId)} className="w-full text-left p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 hover:shadow-md transition-all duration-200 border border-neutral-200 hover:border-primary/50 active:scale-[0.98]">
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-semibold text-neutral-900 font-mono">{order.orderId}</span>
-                                    <span className={`px-2 py-1 text-xs rounded-full flex-shrink-0 ml-2 ${
-                                      order.days > 3 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                                    }`}>
-                                      {order.days} 天
-                                    </span>
+                                    <span className={`px-2 py-1 text-xs rounded-full flex-shrink-0 ml-2 ${order.days > 3 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{order.days} 天</span>
                                   </div>
-                                  
-                                  {/* 商品列表 */}
                                   <div className="mb-2">
                                     <p className="text-xs text-neutral-600 mb-1">商品 ({order.quantity} 件)：</p>
                                     <div className="space-y-0.5">
                                       {order.items.slice(0, 2).map((item: any, idx: number) => (
-                                        <p key={idx} className="text-xs text-neutral-700">
-                                          • {item.product} - {item.prize}
-                                        </p>
+                                        <p key={idx} className="text-xs text-neutral-700">• {item.product} - {item.prize}</p>
                                       ))}
-                                      {order.items.length > 2 && (
-                                        <p className="text-xs text-neutral-500">... 還有 {order.items.length - 2} 件商品</p>
-                                      )}
+                                      {order.items.length > 2 && <p className="text-xs text-neutral-500">... 還有 {order.items.length - 2} 件商品</p>}
                                     </div>
                                   </div>
-                                  
-                                  {/* 提交時間 */}
                                   <div className="flex items-center justify-between text-xs text-neutral-500 mt-2 pt-2 border-t border-neutral-200">
                                     <span>提交時間：{order.submittedAt?.split(' ')[0] || order.date}</span>
-                                    {order.submittedAt?.includes(' ') && (
-                                      <span>{order.submittedAt.split(' ')[1]?.substring(0, 5)}</span>
-                                    )}
+                                    {order.submittedAt?.includes(' ') && <span>{order.submittedAt.split(' ')[1]?.substring(0, 5)}</span>}
                                   </div>
                                 </button>
                               ))}
                             </div>
                           ) : (
                             <div className="p-8 text-center text-neutral-500">
-                              <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                              </svg>
+                              <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                               <p className="text-sm">目前沒有待配送訂單</p>
                             </div>
                           )}
                         </div>
-
-                        {/* 底部操作 */}
                         {pendingShipments.length > 0 && (
                           <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50">
-                            <button
-                              onClick={() => {
-                                // 跳轉到訂單管理頁面
-                                router.push('/orders')
-                                setIsShipmentOpen(false)
-                              }}
-                              className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                            >
-                              查看全部訂單
-                            </button>
+                            <button onClick={() => { router.push('/orders'); setIsShipmentOpen(false) }} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部訂單</button>
                           </div>
                         )}
+                      </div>
+                    </>
+                  )}
+                </div>}
+
+                {/* 系統警示（需要 header_products 權限）— 最右邊 */}
+                {canAccess('/header-products') && <div className="relative">
+                  <button onClick={() => setIsAlertOpen(!isAlertOpen)} className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+                    <svg className="w-6 h-6 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {alertCount > 0 && <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">{alertCount > 9 ? '9+' : alertCount}</span>}
+                  </button>
+                  {isAlertOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsAlertOpen(false)}></div>
+                      <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-neutral-200 z-50 max-h-[600px] overflow-hidden flex flex-col">
+                        <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
+                          <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            系統警示
+                            {alertCount > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">{alertCount}</span>}
+                          </h3>
+                          <button onClick={() => setIsAlertOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        </div>
+                        <div className="overflow-y-auto flex-1">
+                          {alerts.length > 0 ? (
+                            <div className="p-4 space-y-3">
+                              {alerts.map((alert, index) => (
+                                <button key={index} onClick={() => { setHighlightedProductId(alert.productId); router.push('/products'); setIsAlertOpen(false) }}
+                                  className={`w-full text-left p-3 rounded-lg border-l-4 transition-all hover:shadow-md ${alert.severity === 'high' ? 'bg-red-50 border-red-500 hover:bg-red-100' : 'bg-yellow-50 border-yellow-500 hover:bg-yellow-100'}`}>
+                                  <div className="flex items-start justify-between mb-1">
+                                    <span className="font-semibold text-neutral-900 text-sm">{alert.product}</span>
+                                    <span className={`px-2 py-0.5 text-xs rounded-full flex-shrink-0 ml-2 ${alert.severity === 'high' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{alert.severity === 'high' ? '高' : '中'}</span>
+                                  </div>
+                                  {alert.type === 'high-rate' ? (
+                                    <p className="text-xs text-neutral-600">{alert.level}賞率 <span className="font-semibold text-red-600">{alert.rate}%</span> 超過設定值 <span className="font-semibold">{alert.threshold}%</span></p>
+                                  ) : (
+                                    <p className="text-xs text-neutral-600">剩餘數量 <span className="font-semibold text-red-600">{alert.remaining}</span> 件，低於警示值 <span className="font-semibold">{alert.threshold}</span> 件</p>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center text-neutral-500">
+                              <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              <p className="text-sm">目前沒有警示</p>
+                            </div>
+                          )}
+                        </div>
+                        {alerts.length > 0 && <div className="px-4 py-3 border-t border-neutral-200 bg-neutral-50"><button onClick={() => setIsAlertOpen(false)} className="w-full px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors">查看全部</button></div>}
                       </div>
                     </>
                   )}

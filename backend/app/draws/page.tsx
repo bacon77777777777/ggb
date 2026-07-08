@@ -254,7 +254,7 @@ export default function DrawsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="抽獎紀錄" breadcrumbs={[{ label: '抽獎紀錄', href: '/draws' }]}>
+    <AdminLayout pageTitle="抽獎紀錄">
       <div className="space-y-6">
         <PageCard>
           <SearchToolbar

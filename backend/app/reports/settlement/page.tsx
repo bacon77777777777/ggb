@@ -227,7 +227,6 @@ export default function SettlementPage() {
   return (
     <AdminLayout
       pageTitle="廠商結算"
-      breadcrumbs={[{ label: '金流報表' }, { label: '廠商結算', href: '/reports/settlement' }]}
     >
       <div className="space-y-4">
 

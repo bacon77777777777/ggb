@@ -2,23 +2,184 @@
 
 ---
 
-## 2026-07-08｜AI 補全「已補全」卻無圖修正
+## 2026-07-09｜Supabase egress 爆量 → 圖片策略調整（待完成）
 
 ### 問題
-AI 補全後顯示「已補全」（green badge），但主圖欄位是空白——兩個症狀：
-1. 前端：`onError` 只隱藏 `<img>` 元素，沒有更新 React state，所以 aiStatus 停在 `done`
-2. 後端：`claudePickBestImage` 選出 URL 後直接回傳，沒驗證該 URL 能否正常存取（403/hotlink protection）
+Supabase 免費方案 cached egress 爆量（56.28 GB / 5.5 GB），服務停擺到 7/29。
+根本原因：AI 補全每次對 Supabase Storage CDN 發 HEAD request，且 DB 中圖片 URL 指向 Supabase Storage，每次前後台載入都燒流量。
 
-### 修正
+### 已修正
+- `ai-enrich/route.ts`：移除 `resolveStorageImage` 的 HEAD ping（直接回傳 publicUrl）
+- `ai-enrich/route.ts`：`finalImage` 優先順序改為外部 URL 優先（萬代 > 品牌官網 > DDG > DB舊圖 > Storage），下次對商品重跑補全時 DB 中的 Storage URL 會被外部 URL 取代
+- `XlsxImportWizard.tsx`：圖片有效性判斷改為接受任何 http URL（不限 Supabase Storage）
 
-**`backend/app/api/admin/products/ai-enrich/route.ts`**
-- Claude Vision 選出主圖後，依序對所有候選 URL 發 HEAD 請求（timeout 4s）
-- 第一個回 HTTP 200 的才設為 `mainImage`；其餘跳過
-- 找不到可存取圖 → `mainImage = null` → 回傳 `aiStatus: 'partial'`
+### 待決定：圖片儲存方案
+- **選項 A：Cloudflare R2**（egress 免費，$0.015/GB 儲存），需開 Cloudflare 帳號
+- **選項 B：Vercel Blob**（已在用 Vercel，視方案是否含額度）
+- 確認 Vercel 方案後決定，換掉 upload API 的 Storage 目標
 
-**`backend/components/XlsxImportWizard.tsx`**
-- 主圖 `<img>` 的 `onError`：除原有隱藏 img 外，額外呼叫 `setProducts` 把該商品 `aiStatus: 'done'` → `'partial'`
-- 顯示「⚠ 未完整」重試按鈕，讓使用者可以再試一次
+### 服務恢復
+Supabase 服務停擺中（超出 cached egress 配額），配額重置日：2026-07-29。
+升級 Pro ($25/月) 可立即恢復，圖片策略改完後再評估是否維持 Pro。
+
+---
+
+## 2026-07-08｜麵包屑全面修正 + 移除開發自動登入
+
+### 麵包屑全面修正
+- 所有上層頁面（商品管理、配送管理、消費紀錄、儲值明細、報表等）移除自訂 breadcrumbs prop，改由 AdminLayout 自動推算，確保和左側欄完全對齊
+- 修正多個錯誤標籤：`抽獎紀錄` → `消費紀錄`、`儲值紀錄` → `儲值明細`、`菜單管理` → `分類清單`
+- 詳情子頁（`/[id]`）保留自訂 breadcrumbs，標籤已對齊 sidebar group 名稱
+
+### 移除開發模式自動登入
+- 移除 AdminContext.tsx 中 dev 模式自動以 superadmin 帳密登入的功能，正式/開發環境一律要求手動輸入帳號密碼
+
+---
+
+## 2026-07-08｜後台 Header 快捷彈窗 + 麵包屑自動化
+
+### Header 新增三個快捷彈窗
+- 廠商月結（clipboard）、待審退款（arrow）、待複核儲值（dollar）三個圖標從連結改為彈窗，點擊顯示最新 10 筆清單，可直接跳轉對應頁面
+- 系統警示（bell）移到最右邊（配送圖標之後）
+
+### 麵包屑自動化
+- 麵包屑不再由各頁面手動傳入，改為 AdminLayout 根據 `menuGroups` 自動推算「群組 > 頁面」，永遠和左側欄對齊
+- 各頁面若有特殊需求仍可傳入自訂 `breadcrumbs` prop 覆蓋
+
+---
+
+## 2026-07-08｜後台商品管理大獎狀態修正
+
+- 盒玩、轉蛋、卡牌類別無大獎概念，大獎狀態欄改顯示 `—`，只有一番賞/自製賞顯示廢套/正常
+
+---
+
+## 2026-07-08｜前台轉蛋商品注意事項更新
+
+- 注意事項改為適合 GGB 線上平台的用語（抽到什麼出什麼、廠商出貨、缺貨退 G幣、最終解釋權）
+- 共 6 條，移除舊有實體門市相關文字
+
+### 智能批量匯入（待觀察）
+目前測試資料較少且多數無 JAN 條碼，品項圖與代理商補全仰賴爬蟲，效果待更多真實資料驗證。
+
+---
+
+## 2026-07-08｜品項圖補全 lazy loading 修正 + 商品頁條碼顯示修正
+
+### AI 補全品項圖改善（`ai-enrich/route.ts`）
+- `extractSiteVariantImages` 新增抓取 `data-src`、`data-lazy-src`、`data-original` 屬性，解決日本品牌官網（1kuji.com 等）使用 lazy loading 導致品項圖抓不到的問題
+- `withImages` 過濾掉 og:image 主圖，避免主圖混入品項圖陣列造成索引位移
+- 新增「直接配對路線」：站點已有品項名 + 站點有圖時，直接對應不呼叫 Claude Vision（更快更省 token）
+- `claudeIdentify` 修正「潮玩賞」說明：台灣競品平台自定義名稱，直接忽略
+
+### 前台商品頁條碼修正（`GachaCollectionList.tsx`、`item/[id]/page.tsx`）
+- 條碼欄位改為顯示 `barcode`（JAN 國際條碼，如 `4582769995743`），不再顯示 `product_code`（系統內部碼，如 `10000033`）
+
+---
+
+## 2026-07-08｜AI 補全大升級：全品牌官網品項爬取
+
+### 新增 20+ 品牌官方網址爬蟲（`ai-enrich/route.ts`）
+
+按 `product_type` 路由到對應品牌群組，並行搜尋，第一個命中有品項資料的結果勝出：
+
+**一番賞（ichiban）**：1kuji.com、charahiroba.com、segaplaza.jp、hikokuji.com、kujibikido.com、taito.co.jp/taitokuji、sanrio.co.jp、square-enix.com
+
+**轉蛋（gacha）**：gashapon.jp、takaratomy-arts.co.jp、kitan.jp、kenelephant.co.jp、epoch.jp、qualia-45.jp、bushiroad-creative.com
+
+**盒玩（blindbox）**：re-ment.co.jp、megahobby.jp、goodsmile.com、kotobukiya.co.jp、popmart.com
+
+**卡牌（card）**：ws-tcg.com、cf-vanguard.com、unionarena-tcg.com、rebirth-fy.com、osicatcg.com、shadowverse-evolve.com、battlespirits.com
+
+**自製賞（custom）**：同一番賞系列 + 盒玩系列（1kuji/charahiroba/sega/hikokuji/kujibikido/megahouse/goodsmile）
+
+### 整體流程
+1. Storage 比對 raw_image_name → image_url（已上傳 zip 就直接用）
+2. DB 條碼比對 → 復用既有商品資料
+3. 品牌官網並行搜尋 → 拿品項名稱/等級/定價/代理商（不抓圖）
+4. 萬代目錄文字備援 + Yahoo 定價備援
+5. Claude Haiku 補全剩餘品項名稱
+
+### 修正 stats bug
+- `缺主圖` 改為 `!image_url && !raw_image_name`（有 raw_image_name = 有圖來源，只是等 zip 上傳）
+- `aiStatus` 不再依賴是否有圖，改由「是否找到有用資訊」決定
+
+---
+
+## 2026-07-08｜AI 補全修正：萬代目錄還原 + 品項圖精準化
+
+### 問題（上一版的缺陷）
+1. **萬代商品主圖錯誤**：移除了 `bandai.co.jp/catalog` 爬蟲，改用通用多平台搜尋，抓到的是亂圖
+2. **代理商欄位空白卻顯示「已補全」**：通用搜尋無法判斷代理商，`distributor` 永遠 null
+3. **品項圖抓到網站 icon**：AmiAmi/Yahoo 搜尋結果頁裡的 UI 圖示（河、人、購物車⋯⋯）被誤抓為品項圖
+4. **品項數量亂來**：通用搜尋隨機抓到幾張就顯示幾個品項
+
+### 修正（`ai-enrich/route.ts`）
+**Layer 0：萬代官方目錄（最高優先）**
+- 有 JAN 條碼時，優先打 `bandai.co.jp/catalog/item.php?jan_cd={barcode}000`
+- 命中後：`images[0]` = 主圖、`images[1..]` = 品項圖（官方順序）、`jp_price_yen` 自動填入、`distributor = '萬代股份有限公司（BANDAI）'`
+- `hintCount > 0` 時按品項數截取（防止圖多於品項款式的情況）
+- 命中即回傳，**完全跳過其他平台搜尋**，`aiStatus: 'done'`
+
+**Layer 1-5：非萬代多平台（Bandai 找不到才走）**
+- Yahoo Japan、AmiAmi、Rakuten、Suruga-ya、DuckDuckGo 並行
+- 品項圖來源嚴格限制：只從 **product detail 頁**抓（Yahoo detail + AmiAmi detail），不從搜尋結果頁抓
+- 增加圖片過濾：含 `icon/logo/banner/cart/bell/badge/nav/menu` 等字樣的 URL 一律跳過
+
+---
+
+## 2026-07-08｜智能批量匯入全面重設計
+
+### 欄位擴充（`parse-xlsx/route.ts`、`XlsxImportWizard.tsx`）
+新增可識別欄位：`name_jp`（日文名）、`series`（系列）、`release_year/month`（發售時間）、`cost`（成本）、`special_price`（特價）。品項欄新增 `prize_image_columns` 對應品項圖片。
+
+### Migration 294
+`products` 表新增 `jp_price_yen INTEGER`（日幣定價）與 `special_price INTEGER`（特價），供批量匯入時寫入。
+
+### 圖片邏輯（`XlsxImportWizard.tsx`）
+- `image_url` 只存 http/https URL，非 URL 的檔名改存 `raw_image_name`
+- 圖片格子顯示 📄 代表「有檔名但待上傳 Storage」
+- 新增「📦 圖片壓縮檔」按鈕：上傳 zip → 解壓 → 批量寫入 Supabase Storage → 自動配對商品清單中的 `raw_image_name`
+
+### 圖片壓縮檔 API（`upload-images/route.ts`）
+接收 .zip → `adm-zip` 解壓 → 每張圖片 upsert 至 `products` bucket → 回傳 `{name, url}` 列表。
+
+### 搜圖策略重構（`ai-enrich/route.ts`）
+移除品牌特定爬蟲（Bandai/kuji.co.jp/gashapon.jp），改為通用多平台策略：
+- Yahoo Japan Shopping（任何廠牌條碼/名稱搜）
+- AmiAmi（アニメ/フィギュア專門）
+- Rakuten（樂天市場）
+- Suruga-ya（駿河屋，覆蓋率極高）
+- DuckDuckGo × 2（廣域備援）
+- 全部並行跑，Claude Vision 從評分前 8 名選最佳主圖
+- 抽卡/自製賞（`card/custom`）：主圖直接取第一名（ai 選圖成本高且效果差），標為 `partial` 而非 `done`
+
+### 缺資訊統計面板 + 點擊高閃
+Preview 標題列新增三個 chip（點擊切換高閃模式）：
+- 🖼 缺主圖 N：image_url 為空的商品列高閃橘色
+- 📦 缺品項 N：無 variants 的商品列高閃
+- 💰 缺定價 N：jp_price_yen 和 price_twd 都缺的高閃
+
+### 全列可展開
+每列都可點擊展開，不限於有品項的商品。展開內容：
+- 日文名稱、發售時間、成本、特價、待配對圖片檔名
+- 品項列表（含圖片 + 名稱）
+- 若無任何品項 → 顯示「無任何品項資訊」
+
+---
+
+## 2026-07-08｜智能批量匯入：補全邏輯修正 + 並行加速
+
+### 問題
+1. **「✓ 已補全」卻沒圖**：xlsx 若有任意字串欄位被 Claude Haiku 誤判為 `image_url`（如 SKU 碼），`missingFields` 不含 'image'，導致系統標為 'done' 但圖片欄顯示空白。
+2. **圖片 fallback 不顯示**：`onError` 隱藏 img 元素，但「?」佔位 div 屬於不同條件分支，並不跟著出現，圖片框完全空白。
+3. **484 筆序列補全需 2 小時**：`enrichAll` 原本逐筆呼叫 `enrichOne`，484 筆 × 15s = 2 小時，完全不可用。
+
+### 修正（`components/XlsxImportWizard.tsx`）
+- `image_url` 驗證：只有 `http://` 或 `https://` 開頭才算有效圖片，否則清為 null 並重設 `aiStatus: 'idle'`
+- 圖片欄改用 `position: relative` + `position: absolute` 層疊架構，onError 時隱藏 img 並顯示 fallback div
+- `enrichAll` 改為每批 **4 筆並行**處理（`Promise.all` + for 迴圈分批），速度提升約 4 倍
+- `onError` 升級：圖片載入失敗時同步呼叫 `setProducts` 把 `aiStatus: 'done'` → `'partial'`，顯示重試按鈕
 
 ---
 

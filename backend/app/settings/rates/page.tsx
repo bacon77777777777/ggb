@@ -560,8 +560,7 @@ export default function RatesPage() {
 
   return (
     <AdminLayout 
-      pageTitle="殺率調整" 
-      breadcrumbs={[{ label: '殺率調整', href: '/settings/rates' }]}
+      pageTitle="殺率調整"
     >
       <div className="space-y-6">
         {/* 簡化說明 + 殺率演示入口 */}

@@ -97,7 +97,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     { label: '類別', value: typeLabel[product.type] || product.category || '-' },
     { label: '廠商', value: supplierName || '-' },
     { label: '代理商', value: product.distributor || '-' },
-    { label: '條碼', value: product.product_code || '-' },
+    { label: '條碼', value: (product as any).barcode || '-' },
   ];
 
   return (
@@ -189,11 +189,12 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           </p>
           <ol className="space-y-1 list-decimal list-inside">
             {[
-              '扭蛋&盒玩商品均隨機商品，不可挑款。',
-              '盒玩商品均隨機出貨不拆盒。',
-              '若購買商品為「隨機出貨」即收到商品才會知道款式，出貨時間約3-7個工作日。',
-              '若有商品需自實體門市調貨，到貨時間將會有所延遲，敬請見諒。',
-              '如遇缺款或商品數量不足，將採退費處理且無法指定購買款式，敬請見諒。',
+              '轉蛋商品均為隨機出獎，抽到什麼出什麼。',
+              '轉出後即確認結果，不可退款或更換款式。',
+              '實體獎品由廠商備貨出貨，出貨時間約 3-7 個工作日。',
+              '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+              '商品圖片僅供參考，實物以實際出貨為準。',
+              '本平台保留對所有活動及商品之最終解釋權。',
             ].map((item, i) => (
               <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
                 {item}

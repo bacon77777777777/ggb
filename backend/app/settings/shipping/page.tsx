@@ -55,7 +55,7 @@ export default function ShippingSettingsPage() {
   }
 
   return (
-    <AdminLayout pageTitle="運費設定" breadcrumbs={[{ label: '運費設定', href: '/settings/shipping' }]}>
+    <AdminLayout pageTitle="運費設定">
       <div className="max-w-lg">
         <PageCard>
           {isLoading ? (

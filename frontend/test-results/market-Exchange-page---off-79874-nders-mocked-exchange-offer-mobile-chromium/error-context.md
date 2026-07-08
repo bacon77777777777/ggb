@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - generic: ↻
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: 交換
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - img [ref=e11]
+            - textbox "搜尋交換" [ref=e14]
+            - button:
+              - img
+          - button "搜尋" [ref=e15] [cursor=pointer]
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - button "全部" [ref=e20] [cursor=pointer]
+          - button "M5" [ref=e21] [cursor=pointer]
+          - button "M4" [ref=e22] [cursor=pointer]
+          - button "M3" [ref=e23] [cursor=pointer]
+          - button "MC" [ref=e24] [cursor=pointer]
+          - button "MP1" [ref=e25] [cursor=pointer]
+          - button "M2a" [ref=e26] [cursor=pointer]
+          - button "M2" [ref=e27] [cursor=pointer]
+          - button "MBD" [ref=e28] [cursor=pointer]
+          - button "MBG" [ref=e29] [cursor=pointer]
+        - button [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+      - generic [ref=e33]:
+        - button "alice @alice 2026-07-07 你拿到 想要卡A 約價值 NT$100 你給出 拿出卡B 約價值 NT$120" [ref=e35] [cursor=pointer]:
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - generic [ref=e38]:
+                - img "alice" [ref=e40]
+                - generic [ref=e42]: "@alice"
+              - generic [ref=e43]: 2026-07-07
+            - generic [ref=e44]:
+              - generic:
+                - img
+              - generic [ref=e45]:
+                - generic [ref=e46]: 你拿到
+                - img "想要卡A" [ref=e49]
+                - generic [ref=e53]: 約價值 NT$100
+              - generic [ref=e54]:
+                - generic [ref=e55]: 你給出
+                - img "拿出卡B" [ref=e58]
+                - generic [ref=e62]: 約價值 NT$120
+        - generic [ref=e64]: 到底了
+      - button "上架交換小卡" [ref=e65] [cursor=pointer]:
+        - img [ref=e66]
+  - generic [ref=e70]:
+    - link "首頁" [ref=e71] [cursor=pointer]:
+      - /url: /
+      - img [ref=e74]
+      - generic [ref=e77]: 首頁
+    - link "排行榜" [ref=e78] [cursor=pointer]:
+      - /url: /ranking
+      - img [ref=e81]
+      - generic [ref=e87]: 排行榜
+    - link "簽到" [ref=e88] [cursor=pointer]:
+      - /url: /mission
+      - img [ref=e91]
+      - generic [ref=e95]: 簽到
+    - link "會員" [ref=e96] [cursor=pointer]:
+      - /url: /profile
+      - img [ref=e99]
+      - generic [ref=e102]: 會員
+  - button "Open Next.js Dev Tools" [ref=e108] [cursor=pointer]:
+    - img [ref=e109]
+  - alert [ref=e112]
+```

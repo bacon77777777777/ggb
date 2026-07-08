@@ -68,7 +68,6 @@ export default function PointsReportPage() {
   return (
     <AdminLayout
       pageTitle="積分明細"
-      breadcrumbs={[{ label: '對帳報表' }, { label: '積分明細', href: '/reports/points' }]}
     >
       <div className="space-y-4">
         {/* 篩選列 */}

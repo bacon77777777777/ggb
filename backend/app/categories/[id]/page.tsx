@@ -124,7 +124,7 @@ export default function MenuProductsPage() {
     <AdminLayout
       pageTitle="綁定商品"
       breadcrumbs={[
-        { label: '菜單管理', href: '/categories' },
+        { label: '分類清單', href: '/categories' },
         { label: menuName || '綁定商品', href: undefined },
       ]}
     >

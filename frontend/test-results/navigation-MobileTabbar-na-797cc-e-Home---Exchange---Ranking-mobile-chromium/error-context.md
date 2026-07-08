@@ -1,0 +1,241 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - generic: ↻
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "GACHA ONLINE" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "GACHA ONLINE" [ref=e7]
+      - link "登入" [ref=e9] [cursor=pointer]:
+        - /url: /login
+  - main [ref=e10]:
+    - generic [ref=e13]:
+      - generic [ref=e16]:
+        - img [ref=e18]
+        - generic [ref=e25]:
+          - text: 太神啦！test001111111抽到
+          - generic [ref=e26]: 獎項1賞 小熊維尼三明治
+      - generic [ref=e28]:
+        - generic:
+          - link "Banner":
+            - /url: "#"
+            - img "Banner"
+        - generic:
+          - link "Banner":
+            - /url: "#"
+            - img "Banner"
+        - link "Banner" [ref=e30] [cursor=pointer]:
+          - /url: "#"
+          - img "Banner" [ref=e31]
+        - generic:
+          - link "Banner":
+            - /url: "#"
+            - img "Banner"
+        - generic [ref=e32]:
+          - button [ref=e33] [cursor=pointer]
+          - button [ref=e34] [cursor=pointer]
+          - button [ref=e35] [cursor=pointer]
+          - button [ref=e36] [cursor=pointer]
+      - generic [ref=e39]:
+        - generic [ref=e41]:
+          - button "精選" [ref=e42] [cursor=pointer]
+          - button "迪士尼" [ref=e43] [cursor=pointer]
+          - button "Sandman" [ref=e44] [cursor=pointer]
+          - button "小小兵" [ref=e45] [cursor=pointer]
+          - button "神椿市" [ref=e46] [cursor=pointer]
+          - button "米飛兔" [ref=e47] [cursor=pointer]
+          - button "街頭潮玩" [ref=e48] [cursor=pointer]
+          - button "Re:Zero" [ref=e49] [cursor=pointer]
+          - button "防風少年" [ref=e50] [cursor=pointer]
+          - button "初音未來" [ref=e51] [cursor=pointer]
+          - button "夜光怪獸" [ref=e52] [cursor=pointer]
+          - button "進擊的巨人" [ref=e53] [cursor=pointer]
+          - button "搖曳露營" [ref=e54] [cursor=pointer]
+          - button "轉生史萊姆" [ref=e55] [cursor=pointer]
+          - button "柴犬" [ref=e56] [cursor=pointer]
+        - button [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - link "迪士尼麵包吊飾 轉蛋 迪士尼麵包吊飾 G 120 /抽 10/80" [ref=e63] [cursor=pointer]:
+            - /url: /gacha/497
+            - generic [ref=e64]:
+              - img "迪士尼麵包吊飾" [ref=e67]
+              - generic [ref=e68]:
+                - heading "轉蛋 迪士尼麵包吊飾" [level=3] [ref=e70]:
+                  - generic [ref=e71]: 轉蛋
+                  - text: 迪士尼麵包吊飾
+                - generic [ref=e73]:
+                  - generic [ref=e75]:
+                    - img "G" [ref=e77]
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: "120"
+                      - generic [ref=e80]: /抽
+                  - generic [ref=e81]: 10/80
+          - link "Sandman人物公仔-歸來 轉蛋 Sandman人物公仔-歸來 G 150 /抽 8/30" [ref=e82] [cursor=pointer]:
+            - /url: /gacha/519
+            - generic [ref=e83]:
+              - img "Sandman人物公仔-歸來" [ref=e86]
+              - generic [ref=e87]:
+                - heading "轉蛋 Sandman人物公仔-歸來" [level=3] [ref=e89]:
+                  - generic [ref=e90]: 轉蛋
+                  - text: Sandman人物公仔-歸來
+                - generic [ref=e92]:
+                  - generic [ref=e94]:
+                    - img "G" [ref=e96]
+                    - generic [ref=e97]:
+                      - generic [ref=e98]: "150"
+                      - generic [ref=e99]: /抽
+                  - generic [ref=e100]: 8/30
+          - link "小小兵BelloWorld環遊世界 轉蛋 小小兵BelloWorld環遊世界 G 120 /抽 38/60" [ref=e101] [cursor=pointer]:
+            - /url: /gacha/495
+            - generic [ref=e102]:
+              - img "小小兵BelloWorld環遊世界" [ref=e105]
+              - generic [ref=e106]:
+                - heading "轉蛋 小小兵BelloWorld環遊世界" [level=3] [ref=e108]:
+                  - generic [ref=e109]: 轉蛋
+                  - text: 小小兵BelloWorld環遊世界
+                - generic [ref=e111]:
+                  - generic [ref=e113]:
+                    - img "G" [ref=e115]
+                    - generic [ref=e116]:
+                      - generic [ref=e117]: "120"
+                      - generic [ref=e118]: /抽
+                  - generic [ref=e119]: 38/60
+          - link "神椿市建設中睡眠公仔 轉蛋 神椿市建設中睡眠公仔 G 150 /抽 39/60" [ref=e120] [cursor=pointer]:
+            - /url: /gacha/517
+            - generic [ref=e121]:
+              - img "神椿市建設中睡眠公仔" [ref=e124]
+              - generic [ref=e125]:
+                - heading "轉蛋 神椿市建設中睡眠公仔" [level=3] [ref=e127]:
+                  - generic [ref=e128]: 轉蛋
+                  - text: 神椿市建設中睡眠公仔
+                - generic [ref=e130]:
+                  - generic [ref=e132]:
+                    - img "G" [ref=e134]
+                    - generic [ref=e135]:
+                      - generic [ref=e136]: "150"
+                      - generic [ref=e137]: /抽
+                  - generic [ref=e138]: 39/60
+          - link "米飛兔POINT AT公仔 轉蛋 米飛兔POINT AT公仔 G 150 /抽 24/40" [ref=e139] [cursor=pointer]:
+            - /url: /gacha/509
+            - generic [ref=e140]:
+              - img "米飛兔POINT AT公仔" [ref=e143]
+              - generic [ref=e144]:
+                - heading "轉蛋 米飛兔POINT AT公仔" [level=3] [ref=e146]:
+                  - generic [ref=e147]: 轉蛋
+                  - text: 米飛兔POINT AT公仔
+                - generic [ref=e149]:
+                  - generic [ref=e151]:
+                    - img "G" [ref=e153]
+                    - generic [ref=e154]:
+                      - generic [ref=e155]: "150"
+                      - generic [ref=e156]: /抽
+                  - generic [ref=e157]: 24/40
+          - link "街頭潮玩系列 Vol.1 轉蛋 街頭潮玩系列 Vol.1 G 150 /抽 49/60" [ref=e158] [cursor=pointer]:
+            - /url: /gacha/521
+            - generic [ref=e159]:
+              - img "街頭潮玩系列 Vol.1" [ref=e162]
+              - generic [ref=e163]:
+                - heading "轉蛋 街頭潮玩系列 Vol.1" [level=3] [ref=e165]:
+                  - generic [ref=e166]: 轉蛋
+                  - text: 街頭潮玩系列 Vol.1
+                - generic [ref=e168]:
+                  - generic [ref=e170]:
+                    - img "G" [ref=e172]
+                    - generic [ref=e173]:
+                      - generic [ref=e174]: "150"
+                      - generic [ref=e175]: /抽
+                  - generic [ref=e176]: 49/60
+          - link "從零開始的異世界生活發條玩偶公仔 轉蛋 從零開始的異世界生活發條玩偶公仔 G 200 /抽 9/20" [ref=e177] [cursor=pointer]:
+            - /url: /gacha/513
+            - generic [ref=e178]:
+              - img "從零開始的異世界生活發條玩偶公仔" [ref=e181]
+              - generic [ref=e182]:
+                - heading "轉蛋 從零開始的異世界生活發條玩偶公仔" [level=3] [ref=e184]:
+                  - generic [ref=e185]: 轉蛋
+                  - text: 從零開始的異世界生活發條玩偶公仔
+                - generic [ref=e187]:
+                  - generic [ref=e189]:
+                    - img "G" [ref=e191]
+                    - generic [ref=e192]:
+                      - generic [ref=e193]: "200"
+                      - generic [ref=e194]: /抽
+                  - generic [ref=e195]: 9/20
+          - link "Chokorin Collection 防風少年 Vol.2 轉蛋 Chokorin Collection 防風少年 Vol.2 G 260 /抽 35/36" [ref=e196] [cursor=pointer]:
+            - /url: /gacha/518
+            - generic [ref=e197]:
+              - img "Chokorin Collection 防風少年 Vol.2" [ref=e200]
+              - generic [ref=e201]:
+                - heading "轉蛋 Chokorin Collection 防風少年 Vol.2" [level=3] [ref=e203]:
+                  - generic [ref=e204]: 轉蛋
+                  - text: Chokorin Collection 防風少年 Vol.2
+                - generic [ref=e206]:
+                  - generic [ref=e208]:
+                    - img "G" [ref=e210]
+                    - generic [ref=e211]:
+                      - generic [ref=e212]: "260"
+                      - generic [ref=e213]: /抽
+                  - generic [ref=e214]: 35/36
+          - link "初音未來回頭公仔 轉蛋 初音未來回頭公仔 G 150 /抽 27/28" [ref=e215] [cursor=pointer]:
+            - /url: /gacha/504
+            - generic [ref=e216]:
+              - img "初音未來回頭公仔" [ref=e219]
+              - generic [ref=e220]:
+                - heading "轉蛋 初音未來回頭公仔" [level=3] [ref=e222]:
+                  - generic [ref=e223]: 轉蛋
+                  - text: 初音未來回頭公仔
+                - generic [ref=e225]:
+                  - generic [ref=e227]:
+                    - img "G" [ref=e229]
+                    - generic [ref=e230]:
+                      - generic [ref=e231]: "150"
+                      - generic [ref=e232]: /抽
+                  - generic [ref=e233]: 27/28
+          - link "夜光怪獸 Neon Beasts 轉蛋 夜光怪獸 Neon Beasts G 180 /抽 48/48" [ref=e234] [cursor=pointer]:
+            - /url: /gacha/522
+            - generic [ref=e235]:
+              - img "夜光怪獸 Neon Beasts" [ref=e238]
+              - generic [ref=e239]:
+                - heading "轉蛋 夜光怪獸 Neon Beasts" [level=3] [ref=e241]:
+                  - generic [ref=e242]: 轉蛋
+                  - text: 夜光怪獸 Neon Beasts
+                - generic [ref=e244]:
+                  - generic [ref=e246]:
+                    - img "G" [ref=e248]
+                    - generic [ref=e249]:
+                      - generic [ref=e250]: "180"
+                      - generic [ref=e251]: /抽
+                  - generic [ref=e252]: 48/48
+        - generic [ref=e253]: 載入中...
+  - generic [ref=e257]:
+    - link "首頁" [ref=e258] [cursor=pointer]:
+      - /url: /
+      - img [ref=e261]
+      - generic [ref=e264]: 首頁
+    - link "排行榜" [ref=e265] [cursor=pointer]:
+      - /url: /ranking
+      - img [ref=e268]
+      - generic [ref=e274]: 排行榜
+    - link "簽到" [ref=e275] [cursor=pointer]:
+      - /url: /mission
+      - img [ref=e278]
+      - generic [ref=e282]: 簽到
+    - link "會員" [ref=e283] [cursor=pointer]:
+      - /url: /profile
+      - img [ref=e286]
+      - generic [ref=e289]: 會員
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - button "Open Next.js Dev Tools":
+                - img
+  - alert [ref=e290]
+```

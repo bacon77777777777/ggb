@@ -240,7 +240,6 @@ export default function MarketplaceAdminPage() {
   return (
     <AdminLayout
       pageTitle="市集管理"
-      breadcrumbs={[{ label: '市集管理', href: '/marketplace' }]}
     >
       <div className="space-y-6 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

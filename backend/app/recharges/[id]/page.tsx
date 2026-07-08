@@ -125,7 +125,7 @@ export default function RechargeDetailPage() {
       <AdminLayout 
         pageTitle="儲值紀錄詳情"
         breadcrumbs={[
-          { label: '儲值紀錄', href: '/recharges' },
+          { label: '儲值明細', href: '/recharges' },
           { label: '詳情', href: undefined }
         ]}
       >
@@ -141,7 +141,7 @@ export default function RechargeDetailPage() {
       <AdminLayout 
         pageTitle="儲值紀錄詳情"
         breadcrumbs={[
-          { label: '儲值紀錄', href: '/recharges' },
+          { label: '儲值明細', href: '/recharges' },
           { label: '詳情', href: undefined }
         ]}
       >
@@ -169,7 +169,7 @@ export default function RechargeDetailPage() {
     <AdminLayout 
       pageTitle="儲值紀錄詳情"
       breadcrumbs={[
-        { label: '儲值紀錄', href: '/recharges' },
+        { label: '儲值明細', href: '/recharges' },
         { label: '詳情', href: undefined }
       ]}
     >

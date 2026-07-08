@@ -49,8 +49,9 @@ export async function GET() {
         .eq('status', 'pending'),
       supabase
         .from('visit_logs')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', new Date(Date.now() - 15 * 60_000).toISOString()),
+        .select('id, users!inner(is_bot)', { count: 'exact', head: true })
+        .gte('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
+        .or('is_bot.is.null,is_bot.eq.false', { referencedTable: 'users' }),
     ])
 
     return NextResponse.json({

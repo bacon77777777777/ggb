@@ -129,7 +129,7 @@ export default function SuppliersPage() {
   }
 
   return (
-    <AdminLayout pageTitle="廠商管理" breadcrumbs={[{ label: '廠商管理', href: '/suppliers' }]}>
+    <AdminLayout pageTitle="廠商管理">
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
