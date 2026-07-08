@@ -76,14 +76,16 @@ WHERE user_id IN (
 -- gb_pending_actions（GB哥 待確認動作）
 -- capability_gaps（GB哥 能力缺口記錄）
 -- settlement_snapshots（廠商月結快照）
--- leaderboard_bot_daily_stats（機器人排行榜分數）
 -- market_intel_analysis（競品分析報告）
 -- competitor_posts / competitor_reports / competitor_watchlist
 -- tag_daily_stats、meeting_logs、tasks
 -- dev_logs（永不清除）
 
--- 只清 webhook_events（ECPay 冪等記錄，舊付款不再需要）
-TRUNCATE TABLE webhook_events RESTART IDENTITY CASCADE;
+-- 清除：webhook_events + leaderboard_bot_daily_stats（重新上線後由 ensure_bot_daily_stats 補回）
+TRUNCATE TABLE
+  webhook_events,
+  leaderboard_bot_daily_stats
+RESTART IDENTITY CASCADE;
 
 -- ── 5. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
 DELETE FROM users
