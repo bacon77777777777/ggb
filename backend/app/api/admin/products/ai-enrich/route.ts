@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/requireAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
+export const maxDuration = 60
 
 // ── Bandai catalog scraper ────────────────────────────────────────────────────
 async function scrapeBandaiCatalog(barcode: string) {
@@ -139,11 +140,16 @@ export async function POST(req: Request) {
   const jpKeyword = TYPE_JP_KEYWORD[pType]
   const zhLabel   = TYPE_ZH_LABEL[pType]
 
+  // 清除 《》【】〔〕等括號（保留內容）以提升 DDG 搜尋命中率
+  const cleanName = product_name
+    .replace(/[《》【】〔〕「」『』〈〉]/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+
   try {
     // Step 1: Bandai 官方目錄（圖片來源最可信）
     const [bandai, ddgMain] = await Promise.all([
       barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
-      ddgImages((barcode ?? '') + ' ' + product_name + ' ' + jpKeyword),
+      ddgImages((barcode ?? '') + ' ' + cleanName + ' ' + jpKeyword),
     ])
 
     // 品項數推算
