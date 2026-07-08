@@ -125,6 +125,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           skipEmptyLines: true,
           transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
           complete: result => {
+            const headers = result.meta.fields ?? []
+            // Detect internal full-format CSV (商品名稱 + 商品類型 + 獎項 columns)
+            if (headers.includes('商品名稱') && headers.includes('商品類型')) {
+              alert('偵測到完整商品資料格式（含獎項/圖片）\n\n請關閉此視窗，改用「📋 CSV 批量匯入」按鈕，這樣獎項和圖片資料才能完整匯入，不需要 AI 補全。')
+              return
+            }
+
             // Convert CSV rows to ParsedProduct shape using best-guess columns
             const rows = result.data ?? []
             const CSV_TYPE_MAP: Record<string, string> = {

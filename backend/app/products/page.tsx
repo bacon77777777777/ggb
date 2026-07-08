@@ -726,12 +726,20 @@ export default function ProductsPage() {
             addButtonText="+ 新增商品"
             onAddClick={() => window.location.href = '/products/new'}
             children={
-              <button
-                onClick={() => setIsXlsxOpen(true)}
-                className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
-              >
-                🤖 智能批量匯入
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsBulkOpen(true)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  📋 CSV 批量匯入
+                </button>
+                <button
+                  onClick={() => setIsXlsxOpen(true)}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  🤖 智能批量匯入
+                </button>
+              </div>
             }
             showDensity={true}
             density={tableDensity}
