@@ -18,6 +18,12 @@ interface ParsedProduct {
   jp_price_yen: number | null
   full_spec: string
   type: string  // ichiban | gacha | blindbox | card | custom
+  // Smart detection fields (populated when xlsx has the data)
+  image_url?: string | null
+  distributor?: string | null
+  prizes?: { name: string; grade?: string; qty?: number; image_url?: string | null }[]
+  price_twd?: number | null
+  missingFields?: string[]  // 'image' | 'prizes' | 'price'
 }
 
 interface EnrichedProduct extends ParsedProduct {
@@ -116,7 +122,20 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         const data = await res.json()
         if (!res.ok) { alert(data.error || '解析失敗'); return }
         const all: EnrichedProduct[] = data.sheets.flatMap((s: any) =>
-          s.products.map((p: ParsedProduct) => ({ ...p, aiStatus: 'idle' as const, selected: true }))
+          s.products.map((p: ParsedProduct) => {
+            const missing = p.missingFields ?? ['image', 'prizes']
+            const needsAi = missing.includes('image') || missing.includes('prizes')
+            return {
+              ...p,
+              // Map prizes from server to local variants format
+              variants: p.prizes?.length
+                ? p.prizes.map(pr => ({ name: pr.name, image_url: pr.image_url ?? null }))
+                : undefined,
+              variant_count: p.prizes?.length ?? p.variant_count,
+              aiStatus: needsAi ? 'idle' as const : 'done' as const,
+              selected: true,
+            }
+          })
         )
         setProducts(all)
         setStep('preview')
@@ -454,9 +473,10 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
 
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 space-y-1">
-                <p className="font-semibold text-blue-800">自動識別格式</p>
-                <p>• <strong>模威 Excel</strong>：品名 / 國際條碼 / 箱數 / 備貨數量 / 品名規格 / 商品名稱規格（含 @NNxM PPP）</p>
-                <p>• 通用 CSV：自動對應常見欄位名稱</p>
+                <p className="font-semibold text-blue-800">智能欄位識別</p>
+                <p>• 系統會列出所有商品所需欄位（名稱/類型/條碼/日幣/圖片/品項…）</p>
+                <p>• 上傳任意廠商 Excel/CSV → 自動比對檔案內有哪些欄位</p>
+                <p>• 檔案有的欄位直接使用，缺少的欄位自動 AI 補全</p>
               </div>
             </div>
           )}

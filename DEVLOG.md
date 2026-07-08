@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-07-08｜智能批量匯入：任意廠商格式自動欄位識別
+
+### 功能說明
+過去 xlsx 解析只支援模威格式（硬寫欄位位置），其他廠商格式一律失敗。現在任意廠商的 xlsx 都能自動解析。
+
+### 運作邏輯
+1. 定義商品完整欄位清單（名稱/類型/條碼/日幣/台幣/圖片/品項/代理商）
+2. 上傳 xlsx → 系統讀取欄位標題 + 前 3 筆範例資料
+3. Claude Haiku 分析欄位語意，輸出 fieldMap（每個欄位對應到哪個標題）
+4. 用 fieldMap 解析所有資料列，記錄 `missingFields`（哪些欄位檔案沒有）
+5. 前台根據 `missingFields` 自動判斷 `aiStatus`：缺 image 或 prizes → `idle`（排 AI 補全）；都有 → `done`
+
+### 修改
+**`app/api/admin/products/parse-xlsx/route.ts`**
+- `ParsedProduct` 新增可選欄位：`image_url`、`distributor`、`prizes`、`price_twd`、`missingFields`
+- 保留模威 fast path（不消耗 Claude API）
+- 未知格式 → `detectColumns()` 呼叫 Claude Haiku → `parseWithFieldMap()` 彈性解析
+- 型別字典新增日文對應（一番くじ/ガチャ/ブラインドボックス 等）
+
+**`components/XlsxImportWizard.tsx`**
+- `ParsedProduct` 本地介面同步新增可選欄位
+- xlsx 解析後：`prizes` 自動映射為 `variants`；`missingFields` 決定 `aiStatus`
+- 上傳說明文字改為說明「智能欄位識別」流程
+
+---
+
 ## 2026-07-08｜機器人假數據自動補回 + 頂部導航會員/在線統計
 
 ### 機器人假數據自動化（不再需要手動跑腳本）
