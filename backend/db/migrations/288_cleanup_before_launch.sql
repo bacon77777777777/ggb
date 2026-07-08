@@ -62,26 +62,23 @@ WHERE user_id IN (
   WHERE is_bot IS NULL OR is_bot = false
 );
 
--- ── 3. AI / 系統生成資料（全清） ───────────────────────────────
-TRUNCATE TABLE
-  line_conversations,
-  agent_events,
-  webhook_events,
-  action_logs,
-  content_drafts,
-  gb_pending_actions,
-  capability_gaps,
-  settlement_snapshots,
-  leaderboard_bot_daily_stats,
-  market_intel_analysis,
-  competitor_posts,
-  competitor_reports,
-  competitor_watchlist,
-  tag_daily_stats,
-  meeting_logs,
-  tasks
-RESTART IDENTITY CASCADE;
--- dev_logs 永不清除（歷史記錄）
+-- ── 3. AI / 系統資料（永久保留，不清除） ───────────────────────
+-- 以下表為 AI 長期積累的記憶與經驗，不可清除：
+-- line_conversations（GB哥對話記憶）
+-- agent_events（事件匯流排歷史）
+-- action_logs（管理員稽核軌跡）
+-- content_drafts（AI 文案草稿）
+-- gb_pending_actions（GB哥 待確認動作）
+-- capability_gaps（GB哥 能力缺口記錄）
+-- settlement_snapshots（廠商月結快照）
+-- leaderboard_bot_daily_stats（機器人排行榜分數）
+-- market_intel_analysis（競品分析報告）
+-- competitor_posts / competitor_reports / competitor_watchlist
+-- tag_daily_stats、meeting_logs、tasks
+-- dev_logs（永不清除）
+
+-- 只清 webhook_events（ECPay 冪等記錄，舊付款不再需要）
+TRUNCATE TABLE webhook_events RESTART IDENTITY CASCADE;
 
 -- ── 4. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
 DELETE FROM users

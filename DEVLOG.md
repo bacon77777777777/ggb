@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-08｜清全站資料腳本修正：AI 記憶永久保留
+
+### 修正（`db/migrations/288_cleanup_before_launch.sql`）
+AI/系統資料不應隨清全站資料一起刪除——這是 GB哥和 cron agent 積累的記憶與經驗，清掉等於白養。
+
+- 移除 AI/系統資料的 TRUNCATE 區塊（全部保留）
+- 保留：`line_conversations`、`agent_events`、`action_logs`、`content_drafts`、`gb_pending_actions`、`capability_gaps`、`settlement_snapshots`、`leaderboard_bot_daily_stats`、`market_intel_analysis`、`competitor_*`、`tag_daily_stats`、`meeting_logs`、`tasks`
+- 唯一例外：`webhook_events`（ECPay 冪等記錄）仍清除，舊付款的防重複記錄無保留必要
+
+### 修正（`CLAUDE.md`）
+「永不清除」清單補上所有 AI 記憶表，並從「清除」清單移除。
+
+---
+
 ## 2026-07-08｜待處理事項移至頂部導航 + 儀表板清理
 
 ### 修改（`components/AdminLayout.tsx`）
