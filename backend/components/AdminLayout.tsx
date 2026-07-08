@@ -146,7 +146,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       const { data: ordersData } = await supabase
         .from('orders')
         .select('*, items:order_items(*), user:users(name, email)')
-        .eq('shipping_status', 'submitted')
+        .eq('status', 'submitted')
         .order('submitted_at', { ascending: true })
 
       if (ordersData) {
@@ -830,7 +830,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
               <div className="flex items-center gap-3">
                 {/* 會員人數 */}
                 {memberCount > 0 && (
-                  <span className="hidden lg:block text-sm text-neutral-500 pr-1 border-r border-neutral-200">
+                  <span className="hidden lg:flex items-center gap-1 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
                     會員 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span> 人
                   </span>
                 )}
