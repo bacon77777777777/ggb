@@ -7,20 +7,22 @@
 -- 保留：products, product_prizes, suppliers, admins,
 --        feature_flags, platform_settings, categories,
 --        banners, risk_alert_settings, series_keywords,
---        roles, titles, badges（系統定義），tags
+--        roles, titles, badges（系統定義），tags，
+--        dev_logs（永不清除），
+--        users WHERE is_bot = true（機器人帳號），
+--        draw_records WHERE is_bot = true（機器人抽獎記錄，維持排行榜）
 -- ============================================================
 
 BEGIN;
 
--- ── 1. 使用者交易/行為資料（全清） ────────────────────────────
--- 使用 CASCADE 確保 FK 依賴表也一起清除
+-- ── 1. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
 TRUNCATE TABLE
   order_items,
-  draw_records,
-  recharge_records,
   orders,
+  recharge_records,
   token_adjustments,
   user_event_logs,
+  user_events,
   notifications,
   refund_requests,
   user_badges,
@@ -52,7 +54,15 @@ TRUNCATE TABLE
   marketplace_transactions
 RESTART IDENTITY CASCADE;
 
--- ── 2. AI / 系統生成資料（全清） ───────────────────────────────
+-- ── 2. draw_records：只清真實用戶，保留機器人記錄（維持排行榜） ──
+-- 注意：不用 TRUNCATE，改用 DELETE 才能加 WHERE
+DELETE FROM draw_records
+WHERE user_id IN (
+  SELECT id FROM users
+  WHERE is_bot IS NULL OR is_bot = false
+);
+
+-- ── 3. AI / 系統生成資料（全清） ───────────────────────────────
 TRUNCATE TABLE
   line_conversations,
   agent_events,
@@ -67,37 +77,51 @@ TRUNCATE TABLE
   competitor_posts,
   competitor_reports,
   competitor_watchlist,
-  dev_logs,
   tag_daily_stats,
   meeting_logs,
   tasks
 RESTART IDENTITY CASCADE;
+-- dev_logs 永不清除（歷史記錄）
 
--- ── 3. 使用者帳號（刪 bot + 測試帳號，保留真人） ─────────────
+-- ── 4. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
 DELETE FROM users
-WHERE is_bot = true
-   OR email IN ('test001@gmail.com', 'test002@gmail.com');
+WHERE email IN ('test001@gmail.com', 'test002@gmail.com');
 
--- 保留的真人帳號（老闆本人）重置代幣為 0
+-- 保留的真人帳號重置代幣為 0
 UPDATE users
 SET tokens = 0
 WHERE email IN ('bacon731@gmail.com', 'bacon731jp@gmail.com');
 
--- ── 4. 確認結果（清除後的各表筆數） ───────────────────────────
-SELECT 'users'              AS tbl, COUNT(*) AS remaining FROM users
-UNION ALL SELECT 'recharge_records', COUNT(*) FROM recharge_records
-UNION ALL SELECT 'draw_records',     COUNT(*) FROM draw_records
-UNION ALL SELECT 'orders',           COUNT(*) FROM orders
-UNION ALL SELECT 'token_adjustments',COUNT(*) FROM token_adjustments
-UNION ALL SELECT 'action_logs',      COUNT(*) FROM action_logs
+-- ── 5. 寫入 dev_logs 記錄此次清除操作 ─────────────────────────
+INSERT INTO dev_logs (version, title, description, type, status, priority)
+VALUES (
+  'DB-RESET',
+  '全站資料清除',
+  '執行 migration 288 清除全站測試資料。保留：管理員、商品、廠商、機器人帳號及其抽獎記錄、dev_logs。清除：所有真實用戶交易/行為資料、AI 系統生成資料。',
+  'improvement',
+  'released',
+  'high'
+);
+
+-- ── 6. 確認結果（清除後的各表筆數） ───────────────────────────
+SELECT 'users（全部）'        AS tbl, COUNT(*) AS remaining FROM users
+UNION ALL SELECT 'users（真人）',     COUNT(*) FROM users WHERE is_bot IS NULL OR is_bot = false
+UNION ALL SELECT 'users（機器人）',   COUNT(*) FROM users WHERE is_bot = true
+UNION ALL SELECT 'draw_records',      COUNT(*) FROM draw_records
+UNION ALL SELECT 'draw_records（bot）',COUNT(*) FROM draw_records dr JOIN users u ON u.id = dr.user_id WHERE u.is_bot = true
+UNION ALL SELECT 'recharge_records',  COUNT(*) FROM recharge_records
+UNION ALL SELECT 'orders',            COUNT(*) FROM orders
+UNION ALL SELECT 'token_adjustments', COUNT(*) FROM token_adjustments
+UNION ALL SELECT 'action_logs',       COUNT(*) FROM action_logs
 UNION ALL SELECT 'line_conversations',COUNT(*) FROM line_conversations
-UNION ALL SELECT 'agent_events',     COUNT(*) FROM agent_events
-UNION ALL SELECT '--- KEPT ---',     0
-UNION ALL SELECT 'products',         COUNT(*) FROM products
-UNION ALL SELECT 'product_prizes',   COUNT(*) FROM product_prizes
-UNION ALL SELECT 'suppliers',        COUNT(*) FROM suppliers
-UNION ALL SELECT 'admins',           COUNT(*) FROM admins
-UNION ALL SELECT 'feature_flags',    COUNT(*) FROM feature_flags
-UNION ALL SELECT 'platform_settings',COUNT(*) FROM platform_settings;
+UNION ALL SELECT 'agent_events',      COUNT(*) FROM agent_events
+UNION ALL SELECT '--- KEPT ---',      0
+UNION ALL SELECT 'products',          COUNT(*) FROM products
+UNION ALL SELECT 'product_prizes',    COUNT(*) FROM product_prizes
+UNION ALL SELECT 'suppliers',         COUNT(*) FROM suppliers
+UNION ALL SELECT 'admins',            COUNT(*) FROM admins
+UNION ALL SELECT 'dev_logs',          COUNT(*) FROM dev_logs
+UNION ALL SELECT 'feature_flags',     COUNT(*) FROM feature_flags
+UNION ALL SELECT 'platform_settings', COUNT(*) FROM platform_settings;
 
 COMMIT;

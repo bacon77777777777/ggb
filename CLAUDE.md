@@ -128,6 +128,34 @@ ANTHROPIC_API_KEY            # GB哥 + Cron Agent Claude 呼叫
 ADMIN_LINE_IDS               # 允許私訊 GB哥 的 LINE user IDs（逗號分隔）
 ```
 
+## 清全站資料（重置腳本）
+
+腳本位置：`backend/db/migrations/288_cleanup_before_launch.sql`
+
+**觸發條件**：老闆明確說「清全站資料」才執行，不可主動執行。執行前必須列出清單讓老闆確認。
+
+### 清除（TRUNCATE / DELETE）
+- 所有真實用戶的交易記錄：`draw_records`、`recharge_records`、`orders`、`order_items`、`token_adjustments`
+- 用戶行為：`user_event_logs`、`user_events`、`visit_logs`、`search_logs`、`notifications` 等
+- 用戶進度：`user_badges`、`user_coupons`、`user_titles`、`referrals`、`daily_check_ins` 等
+- 市場：`sell_*`、`exchange_*`、`marketplace_*`
+- AI/系統：`line_conversations`、`agent_events`、`action_logs`、`content_drafts`、`settlement_snapshots`、`competitor_*` 等
+- 測試帳號：`test001@gmail.com`、`test002@gmail.com`
+- 老闆帳號代幣重置為 0
+
+### 永不清除（保留）
+- `admins`（管理員清單與權限）
+- `dev_logs`（開發日誌，永久保存）
+- `products`、`product_prizes`、`suppliers`（商品/廠商資料）
+- `feature_flags`、`platform_settings`（設定）
+- `users WHERE is_bot = true`（機器人帳號，排行榜用）
+- `draw_records WHERE user_id IN bot accounts`（機器人抽獎記錄，維持排行榜分數）
+
+### 執行後
+腳本自動寫入一筆 `dev_logs`（type=improvement, title=全站資料清除）記錄此次操作。
+
+---
+
 ## 重要慣例
 
 - 所有 migration 執行後 commit 並 push（不需詢問）
