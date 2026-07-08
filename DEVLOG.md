@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-07-08｜AI 補全「已補全」卻無圖修正
+
+### 問題
+AI 補全後顯示「已補全」（green badge），但主圖欄位是空白——兩個症狀：
+1. 前端：`onError` 只隱藏 `<img>` 元素，沒有更新 React state，所以 aiStatus 停在 `done`
+2. 後端：`claudePickBestImage` 選出 URL 後直接回傳，沒驗證該 URL 能否正常存取（403/hotlink protection）
+
+### 修正
+
+**`backend/app/api/admin/products/ai-enrich/route.ts`**
+- Claude Vision 選出主圖後，依序對所有候選 URL 發 HEAD 請求（timeout 4s）
+- 第一個回 HTTP 200 的才設為 `mainImage`；其餘跳過
+- 找不到可存取圖 → `mainImage = null` → 回傳 `aiStatus: 'partial'`
+
+**`backend/components/XlsxImportWizard.tsx`**
+- 主圖 `<img>` 的 `onError`：除原有隱藏 img 外，額外呼叫 `setProducts` 把該商品 `aiStatus: 'done'` → `'partial'`
+- 顯示「⚠ 未完整」重試按鈕，讓使用者可以再試一次
+
+---
+
 ## 2026-07-08｜智能批量匯入：任意廠商格式自動欄位識別
 
 ### 功能說明

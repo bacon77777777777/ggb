@@ -561,7 +561,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                         {/* Main image */}
                         <div className="w-12 h-12 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0">
                           {p.image_url ? (
-                            <img src={p.image_url} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none' }} />
+                            <img src={p.image_url} alt="" className="w-full h-full object-cover" onError={e => {
+                              (e.target as HTMLImageElement).style.display = 'none'
+                              // 圖片載入失敗 → 降回 partial，讓使用者可以重試
+                              setProducts(prev => prev.map((x, j) =>
+                                j === i && x.aiStatus === 'done' ? { ...x, aiStatus: 'partial' } : x
+                              ))
+                            }} />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-neutral-300 text-lg">?</div>
                           )}

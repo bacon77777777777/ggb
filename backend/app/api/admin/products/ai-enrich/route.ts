@@ -308,9 +308,25 @@ export async function POST(req: Request) {
       .map(r => r.url)
 
     // 層 4a：Claude Vision 選主圖（如果有多個候選）
-    const mainImage = topCandidates.length > 1
+    const pickedImage = topCandidates.length > 1
       ? await claudePickBestImage(topCandidates, name)
       : topCandidates[0] ?? null
+
+    // 驗證圖片可存取（HEAD check），失敗則嘗試下一個候選
+    let mainImage: string | null = null
+    const tryUrls = pickedImage
+      ? [pickedImage, ...topCandidates.filter(u => u !== pickedImage)]
+      : topCandidates
+    for (const url of tryUrls) {
+      try {
+        const headRes = await fetch(url, {
+          method: 'HEAD',
+          headers: { 'User-Agent': UA },
+          signal: AbortSignal.timeout(4000),
+        })
+        if (headRes.ok) { mainImage = url; break }
+      } catch { /* 繼續嘗試下一個 */ }
+    }
 
     // ── 品項圖（只用可信來源，不亂用 DDG）────────────────────────────────
     let variants: { name: string; image_url: string | null }[] = []
