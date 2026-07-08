@@ -89,6 +89,21 @@ async function ddgImages(query: string): Promise<{ image: string }[]> {
 }
 
 const SKIP = ['google', 'gstatic', 'facebook', 'twitter', 'instagram', 'youtube', 'blogspot', 'pinterest', 'wikimedia']
+
+// 各類型信任圖片來源（分數越高越可信）
+const TRUSTED_DOMAINS: { domain: string; score: number }[] = [
+  { domain: 'bandai-a.akamaihd.net',    score: 80 }, // Bandai 官方 CDN
+  { domain: 'kuji.co.jp',               score: 75 }, // 一番くじ 官方
+  { domain: '1kuji.com',                score: 75 }, // 一番くじ 另站
+  { domain: 'item-shopping.c.yimg.jp',  score: 70 }, // Yahoo Japan 商品圖
+  { domain: 'gashapon.jp',              score: 65 }, // Bandai 官方轉蛋站
+  { domain: 'ec.amiami.com',            score: 60 }, // AmiAmi（模型大站）
+  { domain: 'img.hobbyco.net',          score: 60 }, // HobbySearch
+  { domain: 'suruga-ya.jp',             score: 50 }, // 駿河屋
+  { domain: 'amazon.co.jp',             score: 45 }, // Amazon JP
+  { domain: 'shopping.c.yimg.jp',       score: 40 }, // Yahoo Japan 一般
+]
+
 function bestImage(results: { image: string }[], barcode: string | null): string | null {
   const scored = results
     .map(r => {
@@ -98,15 +113,33 @@ function bestImage(results: { image: string }[], barcode: string | null): string
       if (SKIP.some(d => lower.includes(d))) return { url, score: -1 }
       let score = 0
       if (barcode && url.includes(barcode)) score += 100
-      if (lower.includes('item-shopping.c.yimg.jp')) score += 70
-      if (lower.includes('bandai-a.akamaihd.net')) score += 60
-      if (lower.includes('suruga-ya.jp')) score += 40
+      for (const t of TRUSTED_DOMAINS) {
+        if (lower.includes(t.domain)) { score += t.score; break }
+      }
       if (/\.(jpg|jpeg|png|webp)(\?|$)/i.test(url)) score += 5
       return { url, score }
     })
     .filter(r => r.score >= 0)
     .sort((a, b) => b.score - a.score)
   return scored[0]?.url ?? null
+}
+
+// 一番くじ 官方站搜尋（不需要條碼）
+async function scrapeIchibanKuji(productName: string): Promise<{ image: string | null }> {
+  try {
+    const query = encodeURIComponent(productName.replace(/[《》【】]/g, ' ').trim())
+    const res = await fetch(
+      `https://kuji.co.jp/search/?keyword=${query}`,
+      { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'ja' }, signal: AbortSignal.timeout(6000) }
+    )
+    if (!res.ok) return { image: null }
+    const html = await res.text()
+    // 抓第一個商品圖
+    const img = html.match(/class="[^"]*product[^"]*"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/)?.[1]
+      ?? html.match(/<img[^>]+src="(https:\/\/kuji\.co\.jp[^"]+\.(jpg|png|webp))"/)?.[1]
+      ?? null
+    return { image: img }
+  } catch { return { image: null } }
 }
 
 // Type-specific Japanese search keywords for DuckDuckGo
@@ -146,41 +179,32 @@ export async function POST(req: Request) {
     .replace(/\s+/g, ' ').trim()
 
   try {
-    // Step 1: Bandai 官方目錄（圖片來源最可信）
-    const [bandai, ddgMain] = await Promise.all([
+    // Step 1: 並行抓各來源
+    const [bandai, ichibanResult, ddgMain] = await Promise.all([
       barcode ? scrapeBandaiCatalog(barcode) : Promise.resolve(null),
+      pType === 'ichiban' ? scrapeIchibanKuji(cleanName) : Promise.resolve({ image: null }),
       ddgImages((barcode ?? '') + ' ' + cleanName + ' ' + jpKeyword),
     ])
 
-    // 品項數推算
-    const variantCount = hintCount > 0
-      ? hintCount
-      : bandai ? Math.max(bandai.images.length - 1, 0) : 0
+    // 主圖：Bandai 官方 > 一番くじ官方 > DDG 最佳
+    const mainImage = bandai?.images[0] ?? ichibanResult.image ?? bestImage(ddgMain, barcode ?? null)
 
-    // 主圖
-    const mainImage = bandai?.images[0] ?? bestImage(ddgMain, barcode ?? null)
-
-    // 品項圖：Bandai 官方（index 1..N），缺的補 DDG
-    const variantImages: (string | null)[] = Array.from({ length: variantCount }, (_, k) => {
-      return bandai?.images[k + 1] ?? null
-    })
-    const ddgPool = ddgMain.slice(1)
-    let ddgIdx = 0
-    const filledImages = variantImages.map(img => img ?? ddgPool[ddgIdx++]?.image ?? null)
-
-    // Step 2: Claude Vision 看圖命名（只傳有圖的品項）
-    // 名稱與圖片同 index，天然配對，不會錯位
-    const validImageUrls = filledImages.filter(url => url !== null) as string[]
-    const visionNames = validImageUrls.length > 0
-      ? await nameVariantsByVision(product_name, validImageUrls, zhLabel)
-      : []
-
-    // 組合 variants：有圖的才有名稱
-    let nameIdx = 0
-    const variants = filledImages.map(imgUrl => ({
-      name: imgUrl ? (visionNames[nameIdx++] ?? '') : '',
-      image_url: imgUrl,
-    }))
+    // 品項圖：只用 Bandai 官方圖（有條碼才可信）
+    // 沒有 Bandai 來源時不亂填 DDG 圖，避免填入不相關圖片
+    let variants: { name: string; image_url: string | null }[] = []
+    if (bandai && bandai.images.length > 1) {
+      const variantCount = hintCount > 0 ? hintCount : Math.max(bandai.images.length - 1, 0)
+      const variantImages = Array.from({ length: variantCount }, (_, k) => bandai.images[k + 1] ?? null)
+      const validImageUrls = variantImages.filter(url => url !== null) as string[]
+      const visionNames = validImageUrls.length > 0
+        ? await nameVariantsByVision(product_name, validImageUrls, zhLabel)
+        : []
+      let nameIdx = 0
+      variants = variantImages.map(imgUrl => ({
+        name: imgUrl ? (visionNames[nameIdx++] ?? '') : '',
+        image_url: imgUrl,
+      }))
+    }
 
     const distributor = bandai ? '萬代股份有限公司（BANDAI）' : null
     const aiStatus = mainImage ? 'done' : 'partial'

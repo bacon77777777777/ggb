@@ -278,7 +278,18 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         ...x,
         image_url: ai.image_url || null,
         distributor: ai.distributor || x.distributor || null,
-        variants: ai.variants?.length ? ai.variants : x.variants,
+        // 若 CSV 已有品項名稱，保留原名，只補 AI 找到的圖片
+        variants: (() => {
+          const hasNamedVariants = x.variants?.some(v => v.name)
+          if (hasNamedVariants) {
+            // 保留 CSV 品項名，只把 AI 品項圖貼上去（按順序對應）
+            return x.variants!.map((v, vi) => ({
+              ...v,
+              image_url: ai.variants?.[vi]?.image_url ?? v.image_url,
+            }))
+          }
+          return ai.variants?.length ? ai.variants : x.variants
+        })(),
         variant_count: ai.variant_count || x.variant_count,
         jp_price_yen: ai.jp_price_yen || x.jp_price_yen,
         aiStatus,
