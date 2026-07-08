@@ -29,6 +29,7 @@ interface EnrichedProduct extends ParsedProduct {
   aiStatus?: 'idle' | 'loading' | 'done' | 'partial' | 'error'
   aiError?: string
   selected?: boolean
+  price_twd?: number | null  // 直接以 G 幣計價（完整格式 CSV）
 }
 
 const TYPE_OPTIONS = [
@@ -126,18 +127,65 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
           complete: result => {
             const headers = result.meta.fields ?? []
-            // Detect internal full-format CSV (商品名稱 + 商品類型 + 獎項 columns)
-            if (headers.includes('商品名稱') && headers.includes('商品類型')) {
-              alert('偵測到完整商品資料格式（含獎項/圖片）\n\n請關閉此視窗，改用「📋 CSV 批量匯入」按鈕，這樣獎項和圖片資料才能完整匯入，不需要 AI 補全。')
-              return
-            }
-
-            // Convert CSV rows to ParsedProduct shape using best-guess columns
             const rows = result.data ?? []
+
             const CSV_TYPE_MAP: Record<string, string> = {
               '一番賞': 'ichiban', '盒玩': 'blindbox', '盲盒': 'blindbox',
               '轉蛋': 'gacha', '抽卡': 'card', '卡牌': 'card', '自製賞': 'custom',
             }
+
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+
+            // ── 完整格式（含商品類型 + 獎項欄位）──────────────────────────────
+            const isFullFormat = headers.includes('商品名稱') && headers.includes('商品類型')
+
+            if (isFullFormat) {
+              const all: EnrichedProduct[] = rows.map((row: any, i) => {
+                // Parse prize columns: 獎項1名稱, 獎項1等級, 獎項1數量, 獎項1圖片名稱 ...
+                const variants: { name: string; image_url: string | null }[] = []
+                for (let n = 1; n <= 30; n++) {
+                  const prizeName = String(row[`獎項${n}名稱`] ?? '').trim()
+                  if (!prizeName) break
+                  const imgFile = String(row[`獎項${n}圖片名稱`] ?? '').trim()
+                  variants.push({
+                    name: prizeName,
+                    image_url: imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null,
+                  })
+                }
+                const imgFile = String(row['商品圖片'] ?? '').trim()
+                const image_url = imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null
+                const typeRaw = String(row['商品類型'] ?? '').trim()
+                const totalCount = variants.reduce((sum, _, idx) => {
+                  return sum + (Number(row[`獎項${idx + 1}數量`]) || 0)
+                }, 0)
+                return {
+                  sku: row['商品編號'] || row['SKU'] || `ROW${i}`,
+                  barcode: row['條碼'] || row['barcode'] || null,
+                  name: String(row['商品名稱'] ?? '').trim(),
+                  manufacturer_code: '',
+                  per_case: 0,
+                  cases: 0,
+                  total_count: totalCount || Number(row['總數量']) || 0,
+                  variant_count: variants.length,
+                  qty_per_variant: 0,
+                  jp_price_yen: Number(row['日幣價格']) || null,
+                  full_spec: '',
+                  type: CSV_TYPE_MAP[typeRaw] ?? 'gacha',
+                  image_url,
+                  variants: variants.length ? variants : undefined,
+                  distributor: String(row['代理商'] ?? '').trim() || null,
+                  price_twd: Number(row['價格']) || null,
+                  // 有圖片就算補全，沒圖片標 partial 可重試 AI
+                  aiStatus: image_url ? 'done' as const : 'partial' as const,
+                  selected: true,
+                } as EnrichedProduct
+              }).filter(p => p.name)
+              setProducts(all)
+              setStep('preview')
+              return
+            }
+
+            // ── 供應商條碼格式（模威等，需 AI 補全）─────────────────────────
             const all: EnrichedProduct[] = rows.map((row: any, i) => ({
               sku: row['品名'] || row['SKU'] || row['product_code'] || `ROW${i}`,
               barcode: row['國際條碼'] || row['barcode'] || null,
@@ -150,7 +198,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               qty_per_variant: 0,
               jp_price_yen: null,
               full_spec: '',
-              type: CSV_TYPE_MAP[String(row['類型'] || '').trim()] ?? 'gacha',
+              type: CSV_TYPE_MAP[String(row['類型'] || row['商品類型'] || '').trim()] ?? 'gacha',
               aiStatus: 'idle' as const,
               selected: true,
             })).filter(p => p.name)
@@ -282,7 +330,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             name: p.name_zh || p.name,
             category: TYPE_CATEGORY[p.type] ?? '轉蛋',
             type: p.type || 'gacha',
-            price: p.jp_price_yen ? Math.round(p.jp_price_yen / 2) : 50,
+            price: p.price_twd ?? (p.jp_price_yen ? Math.round(p.jp_price_yen / 2) : 50),
             cost: null,
             total_count: p.total_count,
             remaining: p.total_count,
