@@ -842,7 +842,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
               </div>
               <div className="flex items-center gap-3">
                 {/* 會員人數 */}
-                {canAccess('/header-members') && memberCount > 0 && (
+                {canAccess('/header-members') && (
                   <span className="hidden lg:flex items-center gap-1 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
                     會員 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span> 人
                   </span>
