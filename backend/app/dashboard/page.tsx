@@ -1544,6 +1544,13 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* 排名列表 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} tooltip="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />
+          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} tooltip="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />
+          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} tooltip="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />
+        </div>
+
         {/* 查看完整歷史數據 */}
         <div className="text-center">
           <a href="/reports/overview" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
@@ -1552,32 +1559,6 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </a>
-        </div>
-
-        {/* 報表快速導覽 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <h3 className="text-sm font-bold text-neutral-700 mb-4">報表快速導覽</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {[
-              { label: '轉換分析', href: '/reports/overview', desc: '儲值→消費漏斗、每日分解', color: 'bg-violet-50 text-violet-700 border-violet-100' },
-              { label: '儲值明細', href: '/recharges', desc: '各支付方式、綠界手續費', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-              { label: '物流明細', href: '/reports/logistics', desc: '出貨紀錄、運費統計', color: 'bg-blue-50 text-blue-700 border-blue-100' },
-              { label: '積分明細', href: '/reports/points', desc: '任務領取、積分發放紀錄', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-              { label: '折價券明細', href: '/reports/coupons', desc: '發放及使用紀錄、折抵金額', color: 'bg-amber-50 text-amber-700 border-amber-100' },
-              { label: '消費明細', href: '/reports/products', desc: '各商品抽獎消費彙整', color: 'bg-orange-50 text-orange-700 border-orange-100' },
-              { label: '分解明細', href: '/reports/dismantled', desc: '分解退代幣紀錄', color: 'bg-red-50 text-red-700 border-red-100' },
-              { label: '廠商結算', href: '/reports/settlement', desc: '按月計算廠商應付金額', color: 'bg-neutral-50 text-neutral-700 border-neutral-200' },
-            ].map(item => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col gap-1 p-3 rounded-lg border ${item.color} hover:opacity-80 transition-opacity`}
-              >
-                <span className="text-sm font-semibold">{item.label}</span>
-                <span className="text-xs opacity-70">{item.desc}</span>
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </AdminLayout>
