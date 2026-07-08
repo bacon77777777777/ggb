@@ -7,11 +7,12 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36'
+const JA = 'ja,zh-TW;q=0.9,en;q=0.7'
 
 async function fetchPage(url: string, timeout = 8000): Promise<string | null> {
   try {
     const r = await fetch(url, {
-      headers: { 'User-Agent': UA, 'Accept-Language': 'ja,zh-TW;q=0.9', 'Accept': 'text/html' },
+      headers: { 'User-Agent': UA, 'Accept-Language': JA, Accept: 'text/html,application/xhtml+xml' },
       signal: AbortSignal.timeout(timeout),
     })
     if (!r.ok) return null
@@ -20,12 +21,441 @@ async function fetchPage(url: string, timeout = 8000): Promise<string | null> {
 }
 
 function cleanName(name: string) {
-  return name.replace(/[《》【】〔〕「」『』〈〉★☆♪～~]/g, ' ').replace(/\s+/g, ' ').trim()
+  return name.replace(/[《》【】〔〕「」『』〈〉★☆♪～~！!？?]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 1: Supabase Storage 檔名比對
-// raw_image_name 已在 Storage（用戶先上傳 zip）→ 直接用 Storage URL
+// 共用：從 HTML 提取品項 & 定價
+// ─────────────────────────────────────────────────────────────────────────────
+interface PrizeInfo { grade: string; name: string }
+
+function extractPrizes(html: string): PrizeInfo[] {
+  const prizes: PrizeInfo[] = []
+  const seen = new Set<string>()
+  const add = (grade: string, name: string) => {
+    const key = grade.trim()
+    if (key && name.trim() && !seen.has(key) && name.trim().length >= 2) {
+      prizes.push({ grade: key, name: name.trim().slice(0, 40) })
+      seen.add(key)
+    }
+  }
+  // Table: <td>A賞</td><td>description</td>
+  for (const m of html.matchAll(/<td[^>]*>\s*([A-ZＡ-Ｚ一ラＷW][^<]{0,12}?賞)\s*<\/td>\s*(?:<td[^>]*>)?\s*([^<]{2,40})\s*<\/td>/g))
+    add(m[1], m[2])
+  if (prizes.length >= 2) return prizes
+  // Inline: "A賞：description"
+  for (const m of html.matchAll(/([A-ZＡ-Ｚ一ラＷW][^<\n\s]{0,10}?賞)[：:\s　]+([^<\n]{2,40})/g))
+    add(m[1], m[2])
+  if (prizes.length >= 2) return prizes
+  // Heading: <hN>A賞 name</hN>
+  for (const m of html.matchAll(/<h[1-6][^>]*>\s*([A-ZＡ-Ｚ一ラＷW][^<]{0,12}?賞)[^<]*([^<]{2,30})\s*<\/h[1-6]>/g))
+    add(m[1], m[2])
+  return prizes
+}
+
+function extractPrice(html: string): number | null {
+  for (const m of html.matchAll(/(\d[\d,，]+)円/g)) {
+    const val = parseInt(m[1].replace(/[,，]/g, ''))
+    if (val >= 300 && val <= 30000) return val
+  }
+  return null
+}
+
+async function getFirstProductLink(html: string, base: string, pattern: RegExp): Promise<string | null> {
+  const m = html.match(pattern)
+  if (!m) return null
+  const p = m[1]
+  return p.startsWith('http') ? p : `${base}${p.startsWith('/') ? '' : '/'}${p}`
+}
+
+interface SiteResult {
+  distributor: string
+  jp_price_yen: number | null
+  prizes: PrizeInfo[]
+  source_site: string
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ 一番賞 系列 ════
+// ─────────────────────────────────────────────────────────────────────────────
+
+// BANDAI SPIRITS 一番くじ
+async function search1kuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://1kuji.com/products/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://1kuji.com', /href="(\/products\/\d+\/)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'BANDAI SPIRITS', jp_price_yen: extractPrice(detail), prizes, source_site: '1kuji.com' }
+}
+
+// FuRyu みんなのくじ
+async function searchCharahiroba(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://charahiroba.com/kuji/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://charahiroba.com', /href="(https:\/\/charahiroba\.com\/kuji\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'FuRyu（富留由）', jp_price_yen: extractPrice(detail), prizes, source_site: 'charahiroba.com' }
+}
+
+// SEGA Lucky賞
+async function searchSegaPlaza(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://segaplaza.jp/prize/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://segaplaza.jp', /href="(\/prize\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'SEGA（世嘉）', jp_price_yen: extractPrice(detail), prizes, source_site: 'segaplaza.jp' }
+}
+
+// KEN MEDIA ひこくじ
+async function searchHikokuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://hikokuji.com/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://hikokuji.com', /href="(https:\/\/hikokuji\.com\/[^"#?]+\/)"/)
+  if (!url || url === 'https://hikokuji.com/') return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'KEN MEDIA', jp_price_yen: extractPrice(detail), prizes, source_site: 'hikokuji.com' }
+}
+
+// KADOKAWA くじ引き堂
+async function searchKujibikido(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://kujibikido.com/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://kujibikido.com', /href="(https:\/\/kujibikido\.com\/[^"#?]+\/)"/)
+  if (!url || url === 'https://kujibikido.com/') return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'KADOKAWA（角川）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kujibikido.com' }
+}
+
+// TAITO くじ
+async function searchTaitokuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.taito.co.jp/taitokuji/search?q=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.taito.co.jp', /href="(\/taitokuji\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'TAITO（太東）', jp_price_yen: extractPrice(detail), prizes, source_site: 'taito.co.jp' }
+}
+
+// Sanrio 当りくじ
+async function searchSanrioKuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.sanrio.co.jp/atarikuji/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const prizes = extractPrizes(html)
+  const url = await getFirstProductLink(html, 'https://www.sanrio.co.jp', /href="(\/atarikuji\/[^"]+)"/)
+  const detail = url ? await fetchPage(url) : null
+  const finalPrizes = detail ? extractPrizes(detail) : prizes
+  if (!finalPrizes.length) return null
+  return { distributor: 'Sanrio（三麗鷗）', jp_price_yen: extractPrice(detail ?? html), prizes: finalPrizes, source_site: 'sanrio.co.jp' }
+}
+
+// SQUARE ENIX 福引賞
+async function searchSquareEnix(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.jp.square-enix.com/goods/search/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.jp.square-enix.com', /href="(\/goods\/detail\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return { distributor: 'SQUARE ENIX', jp_price_yen: extractPrice(detail), prizes, source_site: 'square-enix.com' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ 轉蛋 系列 ════
+// ─────────────────────────────────────────────────────────────────────────────
+
+// BANDAI Gashapon 官網
+async function searchGashapon(name: string, barcode?: string | null): Promise<SiteResult | null> {
+  const q = encodeURIComponent(barcode ?? name)
+  const html = await fetchPage(`https://gashapon.jp/products/?keyword=${q}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://gashapon.jp', /href="(\/products\/detail\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  const price = extractPrice(detail)
+  // 萬代轉蛋 → 確認代理商
+  return { distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: price, prizes, source_site: 'gashapon.jp' }
+}
+
+// T-ARTS (TAKARA TOMY A.R.T.S)
+async function searchTarts(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.takaratomy-arts.co.jp/items/gacha/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.takaratomy-arts.co.jp', /href="(\/items\/gacha\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'T-ARTS（TAKARA TOMY A.R.T.S）', jp_price_yen: extractPrice(detail), prizes, source_site: 'takaratomy-arts.co.jp' }
+}
+
+// KITAN CLUB
+async function searchKitan(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://kitan.jp/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://kitan.jp', /href="(https:\/\/kitan\.jp\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'KITAN CLUB（奇譚俱樂部）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kitan.jp' }
+}
+
+// KENELEPHANT
+async function searchKenelephant(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://kenelephant.co.jp/gacha/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://kenelephant.co.jp', /href="(https:\/\/kenelephant\.co\.jp\/gacha\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'KENELEPHANT', jp_price_yen: extractPrice(detail), prizes, source_site: 'kenelephant.co.jp' }
+}
+
+// EPOCH
+async function searchEpoch(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://epoch.jp/rc/capsule/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://epoch.jp', /href="(https:\/\/epoch\.jp\/rc\/capsule\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'EPOCH（艾波）', jp_price_yen: extractPrice(detail), prizes, source_site: 'epoch.jp' }
+}
+
+// Qualia
+async function searchQualia(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://qualia-45.jp/products_category/gacha/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://qualia-45.jp', /href="(https:\/\/qualia-45\.jp\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Qualia', jp_price_yen: extractPrice(detail), prizes, source_site: 'qualia-45.jp' }
+}
+
+// Bushiroad Creative（転蛋/景品）
+async function searchBushiroad(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://bushiroad-creative.com/items?types=capsule&keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://bushiroad-creative.com', /href="(https:\/\/bushiroad-creative\.com\/items\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Bushiroad Creative（武士道）', jp_price_yen: extractPrice(detail), prizes, source_site: 'bushiroad-creative.com' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ 盒玩 系列 ════
+// ─────────────────────────────────────────────────────────────────────────────
+
+// RE-MENT
+async function searchRement(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.re-ment.co.jp/product/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.re-ment.co.jp', /href="(\/product\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  // RE-MENT 品項通常用 No. 列舉
+  const prizes: PrizeInfo[] = []
+  for (const m of (detail).matchAll(/No\.\s*(\d+)\s*[「『]?([^「『\n<]{3,30})[」』]?/g))
+    prizes.push({ grade: `No.${m[1]}`, name: m[2].trim() })
+  if (!prizes.length) prizes.push(...extractPrizes(detail))
+  return { distributor: 'RE-MENT', jp_price_yen: extractPrice(detail), prizes, source_site: 're-ment.co.jp' }
+}
+
+// Megahouse
+async function searchMegahouse(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.megahobby.jp/search/?q=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.megahobby.jp', /href="(\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Megahouse（メガハウス）', jp_price_yen: extractPrice(detail), prizes, source_site: 'megahobby.jp' }
+}
+
+// Good Smile Company
+async function searchGoodSmile(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.goodsmile.com/ja/products/category/scale/?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.goodsmile.com', /href="(https:\/\/www\.goodsmile\.com\/ja\/product\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Good Smile Company（好微笑）', jp_price_yen: extractPrice(detail), prizes, source_site: 'goodsmile.com' }
+}
+
+// Kotobukiya
+async function searchKotobukiya(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.kotobukiya.co.jp/search/?q=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.kotobukiya.co.jp', /href="(\/product\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: '壽屋（Kotobukiya）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kotobukiya.co.jp' }
+}
+
+// POP MART
+async function searchPopMart(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.popmart.com/tw/search?keywords=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.popmart.com', /href="(https:\/\/www\.popmart\.com\/tw\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  // POP MART 品項從 variant listing 取
+  const prizes: PrizeInfo[] = []
+  for (const m of (detail).matchAll(/["']name["']\s*:\s*["']([^"']{3,30})["']/g))
+    prizes.push({ grade: '', name: m[1] })
+  if (!prizes.length) prizes.push(...extractPrizes(detail))
+  return { distributor: 'POP MART（泡泡瑪特）', jp_price_yen: extractPrice(detail), prizes, source_site: 'popmart.com' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ 卡牌 系列 ════
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Weiss Schwarz
+async function searchWeissSchwarz(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://ws-tcg.com/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://ws-tcg.com', /href="(https:\/\/ws-tcg\.com\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Bushiroad（Weiβ Schwarz）', jp_price_yen: extractPrice(detail), prizes, source_site: 'ws-tcg.com' }
+}
+
+// Cardfight!! Vanguard
+async function searchVanguard(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://cf-vanguard.com/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://cf-vanguard.com', /href="(https:\/\/cf-vanguard\.com\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Bushiroad（Cardfight!! Vanguard）', jp_price_yen: extractPrice(detail), prizes, source_site: 'cf-vanguard.com' }
+}
+
+// UNION ARENA
+async function searchUnionArena(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.unionarena-tcg.com/tc/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.unionarena-tcg.com', /href="(https:\/\/www\.unionarena-tcg\.com\/tc\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: extractPrice(detail), prizes, source_site: 'unionarena-tcg.com' }
+}
+
+// Reバース
+async function searchRebirth(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://rebirth-fy.com/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://rebirth-fy.com', /href="(https:\/\/rebirth-fy\.com\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Bushiroad（Reバース）', jp_price_yen: extractPrice(detail), prizes, source_site: 'rebirth-fy.com' }
+}
+
+// OSICA
+async function searchOsica(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://osicatcg.com/product/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://osicatcg.com', /href="(https:\/\/osicatcg\.com\/product\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Movic（OSICA）', jp_price_yen: extractPrice(detail), prizes, source_site: 'osicatcg.com' }
+}
+
+// Shadowverse EVOLVE
+async function searchShadowverse(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://shadowverse-evolve.com/products/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://shadowverse-evolve.com', /href="(https:\/\/shadowverse-evolve\.com\/products\/[^"]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: 'Bushiroad（Shadowverse EVOLVE）', jp_price_yen: extractPrice(detail), prizes, source_site: 'shadowverse-evolve.com' }
+}
+
+// Battle Spirits
+async function searchBattleSpirits(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.battlespirits.com/product/search.php?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.battlespirits.com', /href="(\/product\/[^"]+\.php)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return { distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: extractPrice(detail), prizes, source_site: 'battlespirits.com' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ 萬代目錄（文字）+ Yahoo 定價備援 ════
+// ─────────────────────────────────────────────────────────────────────────────
+async function scrapeBandaiText(barcode: string): Promise<{ jp_price_yen: number | null; variant_count: number | null } | null> {
+  const html = await fetchPage(`https://www.bandai.co.jp/catalog/item.php?jan_cd=${barcode}000`)
+  if (!html) return null
+  const nameEl = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]?.trim()
+  if (!nameEl) return null
+  const jp_price_yen = html.match(/<span>(\d+)<\/span>円/)?.[1] ? parseInt(html.match(/<span>(\d+)<\/span>円/)![1]) : null
+  const thumbCount = (html.match(/bandai-a\.akamaihd\.net\/bc\/img\/model\//g) ?? []).length
+  return { jp_price_yen, variant_count: thumbCount > 1 ? thumbCount - 1 : null }
+}
+
+async function scrapePriceFromYahoo(name: string, barcode?: string | null): Promise<number | null> {
+  const q = encodeURIComponent(barcode ?? cleanName(name))
+  const html = await fetchPage(`https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce`)
+  if (!html) return null
+  const m = html.match(/(\d{3,6})\s*円/)
+  return m ? parseInt(m[1]) : null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ════ Storage 圖片比對 ════
 // ─────────────────────────────────────────────────────────────────────────────
 async function resolveStorageImage(raw_image_name: string | null): Promise<string | null> {
   if (!raw_image_name) return null
@@ -38,14 +468,9 @@ async function resolveStorageImage(raw_image_name: string | null): Promise<strin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 2: DB 條碼比對（已匯入過的同款商品直接復用）
+// ════ DB 條碼比對 ════
 // ─────────────────────────────────────────────────────────────────────────────
-async function fetchFromDB(barcode: string | null): Promise<{
-  image_url: string | null
-  distributor: string | null
-  jp_price_yen: number | null
-  prizes: { name: string; image_url: string | null }[]
-} | null> {
+async function fetchFromDB(barcode: string | null) {
   if (!barcode) return null
   const supabase = getSupabaseAdmin()
   const { data } = await supabase
@@ -57,46 +482,15 @@ async function fetchFromDB(barcode: string | null): Promise<{
     .maybeSingle()
   if (!data) return null
   return {
-    image_url:    data.image_url ?? null,
-    distributor:  data.distributor ?? null,
+    image_url: data.image_url ?? null,
+    distributor: data.distributor ?? null,
     jp_price_yen: data.jp_price_yen ?? null,
     prizes: (data.product_prizes ?? []).map((p: any) => ({ name: p.name ?? '', image_url: p.image_url ?? null })),
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 3: 萬代目錄（文字：jp_price_yen + distributor + 品項數）
-// ─────────────────────────────────────────────────────────────────────────────
-async function scrapeBandaiText(barcode: string): Promise<{
-  jp_price_yen: number | null
-  variant_count: number | null
-} | null> {
-  const html = await fetchPage(`https://www.bandai.co.jp/catalog/item.php?jan_cd=${barcode}000`)
-  if (!html) return null
-  const nameEl = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]?.trim()
-  if (!nameEl) return null
-  const jp_price_yen = html.match(/<span>(\d+)<\/span>円/)?.[1]
-    ? parseInt(html.match(/<span>(\d+)<\/span>円/)![1]) : null
-  const thumbCount = (html.match(/bandai-a\.akamaihd\.net\/bc\/img\/model\//g) ?? []).length
-  return {
-    jp_price_yen,
-    variant_count: thumbCount > 1 ? thumbCount - 1 : null,
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Step 4: Yahoo Japan 文字搜尋（jp_price_yen fallback）
-// ─────────────────────────────────────────────────────────────────────────────
-async function scrapePriceFromYahoo(name: string, barcode?: string | null): Promise<number | null> {
-  const q = encodeURIComponent(barcode ?? cleanName(name))
-  const html = await fetchPage(`https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce`)
-  if (!html) return null
-  const m = html.match(/(\d{3,6})\s*円/)
-  return m ? parseInt(m[1]) : null
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Step 5: Claude 生成品項名稱（純文字）
+// ════ Claude 品項名稱生成 ════
 // ─────────────────────────────────────────────────────────────────────────────
 const TYPE_ZH: Record<string, string> = {
   ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '自製賞',
@@ -106,13 +500,18 @@ async function generateVariantNames(
   productName: string,
   count: number,
   type: string,
+  sitePrizes?: PrizeInfo[],
   existingNames?: string[],
-): Promise<string[]> {
+): Promise<{ grade: string; name: string }[]> {
   if (count <= 0) return []
   const zhType = TYPE_ZH[type] ?? '扭蛋'
-  if (existingNames?.length === count && existingNames.every(n => n?.trim())) {
-    return existingNames
-  }
+  // 如果品牌網站已拿到足夠品項，直接用
+  if (sitePrizes && sitePrizes.length >= count) return sitePrizes.slice(0, count)
+  // 若品項名已齊全
+  if (existingNames?.length === count && existingNames.every(n => n?.trim()))
+    return existingNames.map((n, i) => ({ grade: sitePrizes?.[i]?.grade ?? '', name: n }))
+
+  const knownParts = (sitePrizes?.length ? sitePrizes : existingNames?.map(n => ({ grade: '', name: n })) ?? [])
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
     const msg = await client.messages.create({
@@ -121,24 +520,29 @@ async function generateVariantNames(
       messages: [{
         role: 'user',
         content: `這是${zhType}商品「${productName}」，共有 ${count} 款品項。
-
-${existingNames?.filter(Boolean).length ? `已知品項名稱（可能不完整）：\n${existingNames.map((n, i) => `${i + 1}. ${n || '（待填）'}`).join('\n')}\n\n` : ''}請用繁體中文補全或生成所有 ${count} 款品項名稱。
+${knownParts.length ? `已知品項（可能不完整）：\n${knownParts.map((p, i) => `${i + 1}. ${p.grade ? p.grade + ' ' : ''}${p.name}`).join('\n')}\n\n` : ''}請用繁體中文補全或生成所有 ${count} 款品項名稱。
 - 一番賞通常是 A賞、B賞、C賞... 搭配角色/物品描述
 - 盒玩/轉蛋按角色、配色或型態命名
-- 每款名稱 3-12 字，能識別款式即可
+- 每款 3-15 字，能識別款式即可
 
-直接輸出 ${count} 行，每行一個名稱，不加編號或標點。`,
+輸出 ${count} 行，每行格式：A賞 角色名稱（若有等級），無等級就直接名稱，不加編號。`,
       }],
     })
     const lines = ((msg.content[0] as any).text as string).trim().split('\n')
-      .map((l: string) => l.replace(/^[\d.\-*、。\s]+/, '').trim())
-      .filter((l: string) => l.length > 0 && l.length <= 30)
+      .map((l: string) => {
+        const grade = l.match(/^([A-ZＡ-Ｚ一ラＷW][^　\s]{0,6}?賞)/)?.[1] ?? ''
+        const name  = l.replace(/^[A-ZＡ-Ｚ一ラＷW][^　\s]{0,6}?賞\s*/, '').replace(/^[\d.\-*、。\s]+/, '').trim()
+        return { grade, name: name || l.trim() }
+      })
+      .filter(r => r.name.length > 0 && r.name.length <= 30)
     return lines.slice(0, count)
-  } catch { return existingNames?.slice(0, count) ?? [] }
+  } catch {
+    return (sitePrizes ?? existingNames?.map(n => ({ grade: '', name: n })) ?? []).slice(0, count)
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 主 Handler
+// ════ 主 Handler ════
 // ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   const session = await requireAdminSession()
@@ -157,33 +561,24 @@ export async function POST(req: Request) {
 
   const pType     = product_type ?? 'gacha'
   const hintCount = Math.max(Number(variants_count) || 0, 0)
+  const clean     = cleanName(product_name)
 
   try {
-    // ══════════════════════════════════════════════════════════════════════════
-    // Step 1: Storage 檔名比對（毫秒級，最優先）
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Step 1: Storage 圖片配對 ─────────────────────────────────────────────
     const storageImageUrl = await resolveStorageImage(raw_image_name ?? null)
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Step 2: DB 條碼比對（曾匯入過同款 → 復用）
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Step 2: DB 條碼復用 ──────────────────────────────────────────────────
     const dbResult = await fetchFromDB(barcode ?? null)
     if (dbResult && (dbResult.image_url || dbResult.prizes.length || dbResult.distributor)) {
-      const variantCount = hintCount || dbResult.prizes.length
-      const names = await generateVariantNames(
-        product_name, variantCount, pType,
-        dbResult.prizes.map(p => p.name),
-      )
-      const variants = Array.from({ length: variantCount }, (_, i) => ({
-        name:      names[i] ?? dbResult.prizes[i]?.name ?? '',
-        image_url: dbResult.prizes[i]?.image_url ?? null,
-      }))
+      const cnt = hintCount || dbResult.prizes.length
+      const named = await generateVariantNames(product_name, cnt, pType,
+        dbResult.prizes.map(p => ({ grade: '', name: p.name })), existing_variant_names)
       return NextResponse.json({
         ok: true, source: 'db_existing',
         data: {
           image_url:     storageImageUrl ?? dbResult.image_url,
-          variants,
-          variant_count: variants.length,
+          variants:      named.map((v, i) => ({ ...v, image_url: dbResult.prizes[i]?.image_url ?? null })),
+          variant_count: named.length,
           jp_price_yen:  dbResult.jp_price_yen,
           distributor:   dbResult.distributor,
         },
@@ -191,45 +586,99 @@ export async function POST(req: Request) {
       })
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Step 3: 萬代目錄（文字）+ Yahoo 價格（並行，不抓圖）
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── Step 3: 品牌網站搜尋（按類型路由，並行）───────────────────────────
+    type SearchFn = () => Promise<SiteResult | null>
+
+    const SOURCES: Record<string, SearchFn[]> = {
+      ichiban: [
+        () => search1kuji(clean),
+        () => searchCharahiroba(clean),
+        () => searchSegaPlaza(clean),
+        () => searchHikokuji(clean),
+        () => searchKujibikido(clean),
+        () => searchTaitokuji(clean),
+        () => searchSanrioKuji(clean),
+        () => searchSquareEnix(clean),
+      ],
+      gacha: [
+        () => searchGashapon(clean, barcode),
+        () => searchTarts(clean),
+        () => searchKitan(clean),
+        () => searchKenelephant(clean),
+        () => searchEpoch(clean),
+        () => searchQualia(clean),
+        () => searchBushiroad(clean),
+      ],
+      blindbox: [
+        () => searchRement(clean),
+        () => searchMegahouse(clean),
+        () => searchGoodSmile(clean),
+        () => searchKotobukiya(clean),
+        () => searchPopMart(clean),
+      ],
+      card: [
+        () => searchWeissSchwarz(clean),
+        () => searchVanguard(clean),
+        () => searchUnionArena(clean),
+        () => searchRebirth(clean),
+        () => searchOsica(clean),
+        () => searchShadowverse(clean),
+        () => searchBattleSpirits(clean),
+      ],
+      // 自製賞性質接近一番賞，同樣去一番賞系列 + 盒玩系列找
+      custom: [
+        () => search1kuji(clean),
+        () => searchCharahiroba(clean),
+        () => searchSegaPlaza(clean),
+        () => searchHikokuji(clean),
+        () => searchKujibikido(clean),
+        () => searchMegahouse(clean),
+        () => searchGoodSmile(clean),
+      ],
+    }
+
+    const fns = SOURCES[pType] ?? SOURCES.gacha
+    let siteResult: SiteResult | null = null
+
+    if (fns.length > 0) {
+      const results = await Promise.all(fns.map(f => f().catch(() => null)))
+      // 選第一個有品項的結果
+      siteResult = results.find(r => r && r.prizes.length > 0) ?? null
+    }
+
+    // ── Step 4: 萬代目錄（文字備援）+ Yahoo 定價並行 ─────────────────────
     const [bandai, yahooPrice] = await Promise.all([
-      barcode ? scrapeBandaiText(barcode) : Promise.resolve(null),
-      scrapePriceFromYahoo(product_name, barcode),
+      barcode ? scrapeBandaiText(barcode) : null,
+      !siteResult?.jp_price_yen ? scrapePriceFromYahoo(product_name, barcode) : null,
     ])
 
-    const jp_price_yen = bandai?.jp_price_yen ?? yahooPrice ?? null
-    const distributor  = bandai ? '萬代股份有限公司（BANDAI）' : null
-    const variantCount = (bandai?.variant_count && bandai.variant_count > 0)
-      ? bandai.variant_count
-      : hintCount
+    const jp_price_yen = siteResult?.jp_price_yen ?? bandai?.jp_price_yen ?? yahooPrice ?? null
+    const distributor  = siteResult?.distributor ?? (bandai ? '萬代股份有限公司（BANDAI）' : null)
+    const variantCount = hintCount
+      || siteResult?.prizes.length
+      || bandai?.variant_count
+      || 0
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Step 4: Claude 生成品項名稱
-    // ══════════════════════════════════════════════════════════════════════════
-    const names = await generateVariantNames(
+    // ── Step 5: Claude 生成品項名稱 ──────────────────────────────────────
+    const named = await generateVariantNames(
       product_name, variantCount, pType,
-      existing_variant_names ?? [],
+      siteResult?.prizes, existing_variant_names ?? [],
     )
-    const variants = Array.from({ length: variantCount }, (_, i) => ({
-      name:      names[i] ?? '',
-      image_url: null as string | null,
-    }))
 
-    const hasInfo = !!(jp_price_yen || distributor || variantCount > 0)
+    const source = siteResult?.source_site
+      ?? (bandai ? 'bandai_catalog_text' : 'yahoo_text')
 
     return NextResponse.json({
       ok: true,
-      source: bandai ? 'bandai_catalog_text' : 'yahoo_text',
+      source,
       data: {
-        image_url:     storageImageUrl,   // 只從 Storage，不從外部抓
-        variants,
-        variant_count: variants.length,
+        image_url:     storageImageUrl,
+        variants:      named.map(v => ({ ...v, image_url: null as string | null })),
+        variant_count: named.length,
         jp_price_yen,
         distributor,
       },
-      aiStatus: hasInfo ? 'done' : 'partial',
+      aiStatus: (jp_price_yen || distributor || named.length > 0) ? 'done' : 'partial',
     })
 
   } catch (err: any) {

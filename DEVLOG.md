@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-07-08｜AI 補全大升級：全品牌官網品項爬取
+
+### 新增 20+ 品牌官方網址爬蟲（`ai-enrich/route.ts`）
+
+按 `product_type` 路由到對應品牌群組，並行搜尋，第一個命中有品項資料的結果勝出：
+
+**一番賞（ichiban）**：1kuji.com、charahiroba.com、segaplaza.jp、hikokuji.com、kujibikido.com、taito.co.jp/taitokuji、sanrio.co.jp、square-enix.com
+
+**轉蛋（gacha）**：gashapon.jp、takaratomy-arts.co.jp、kitan.jp、kenelephant.co.jp、epoch.jp、qualia-45.jp、bushiroad-creative.com
+
+**盒玩（blindbox）**：re-ment.co.jp、megahobby.jp、goodsmile.com、kotobukiya.co.jp、popmart.com
+
+**卡牌（card）**：ws-tcg.com、cf-vanguard.com、unionarena-tcg.com、rebirth-fy.com、osicatcg.com、shadowverse-evolve.com、battlespirits.com
+
+**自製賞（custom）**：同一番賞系列 + 盒玩系列（1kuji/charahiroba/sega/hikokuji/kujibikido/megahouse/goodsmile）
+
+### 整體流程
+1. Storage 比對 raw_image_name → image_url（已上傳 zip 就直接用）
+2. DB 條碼比對 → 復用既有商品資料
+3. 品牌官網並行搜尋 → 拿品項名稱/等級/定價/代理商（不抓圖）
+4. 萬代目錄文字備援 + Yahoo 定價備援
+5. Claude Haiku 補全剩餘品項名稱
+
+### 修正 stats bug
+- `缺主圖` 改為 `!image_url && !raw_image_name`（有 raw_image_name = 有圖來源，只是等 zip 上傳）
+- `aiStatus` 不再依賴是否有圖，改由「是否找到有用資訊」決定
+
+---
+
 ## 2026-07-08｜AI 補全修正：萬代目錄還原 + 品項圖精準化
 
 ### 問題（上一版的缺陷）
