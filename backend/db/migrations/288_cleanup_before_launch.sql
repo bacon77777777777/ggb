@@ -12,11 +12,12 @@
 
 BEGIN;
 
--- ── 1. 商品/廠商資料（全清） ────────────────────────────────────
+-- ── 1. 商品/廠商/輪播圖資料（全清） ────────────────────────────
 TRUNCATE TABLE
   product_prizes,
   products,
-  suppliers
+  suppliers,
+  banners
 RESTART IDENTITY CASCADE;
 
 -- ── 2. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
