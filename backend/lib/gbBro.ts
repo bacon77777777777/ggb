@@ -617,7 +617,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         user_id: { type: 'string', description: '用戶 UUID' },
         delta:   { type: 'number', description: '代幣增減量（正=增加、負=扣除）' },
-        reason:  { type: 'string', description: '調整原因（必填，會記錄在 user_event_logs）' },
+        reason:  { type: 'string', description: '調整原因（必填，會記錄在 user_events）' },
       },
       required: ['user_id', 'delta', 'reason'],
     },
@@ -824,7 +824,7 @@ async function adjustUserTokens(userId: string, delta: number, reason: string, a
     return { error: `代幣已調整但帳本寫入失敗，已回滾：${ledgerErr.message}` }
   }
 
-  await supabase.from('user_event_logs').insert({
+  await supabase.from('user_events').insert({
     user_id:    userId,
     event_type: 'token_adjustment',
     detail:     { delta, reason, before: user.tokens, after: newTokens, by: actorId ?? 'GB哥' },
@@ -876,7 +876,7 @@ async function cancelOrder(identifier: string, reason?: string, actorId?: string
   const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id)
   if (error) return { error: error.message }
 
-  await supabase.from('user_event_logs').insert({
+  await supabase.from('user_events').insert({
     user_id:    order.user_id,
     event_type: 'order_cancelled',
     detail:     { order_number: order.order_number, reason, by: actorId ?? 'GB哥' },
@@ -971,7 +971,7 @@ async function riskAction(
   const { error } = await supabase.from('users').update(update).eq('id', userId)
   if (error) return { error: error.message }
 
-  await supabase.from('user_event_logs').insert({
+  await supabase.from('user_events').insert({
     user_id:    userId,
     event_type: action,
     detail:     { action, reason, by: actorId ?? 'GB哥' },
@@ -1578,7 +1578,7 @@ async function buildSystemPrompt(): Promise<string> {
 
 ── 使用者 ──
 users(id uuid, name, email, phone_number, tokens int, status, is_bot bool, created_at, last_login_at)
-user_event_logs(id, user_id, event_type, detail jsonb, ip, created_at) -- 玩家行為事件（登入/抽獎/儲值等）
+user_events(id, user_id, event_type, detail jsonb, ip, created_at) -- 玩家行為事件（登入/抽獎/儲值等）
 user_badges(user_id, badge_id text, earned_at)
 user_titles(user_id, title_id text, earned_at, is_selected bool)
 daily_check_ins(id, user_id, check_in_date date, reward_amount int, created_at)
@@ -1631,32 +1631,49 @@ platform_settings(key, value text, updated_at) -- 系統參數設定
 risk_alert_settings(key, value text, description, updated_at)
 
 詞彙對應（問題模糊時自行套用）：
-- 「流量」「瀏覽量」「人氣」「熱門商品」「哪個商品最受歡迎」→ product_view_events 尚未實作（0 筆），必須改用 draw_records 抽獎次數作為 proxy。範例 SQL：
-  SELECT p.name, COUNT(dr.id) AS draws
-  FROM draw_records dr
-  JOIN products p ON p.id = dr.product_id
-  JOIN users u ON u.id = dr.user_id
-  WHERE (u.is_bot IS NULL OR u.is_bot = false)
-    AND dr.type = 'draw'
-    AND dr.created_at >= NOW() - INTERVAL '7 days'
-  GROUP BY p.id, p.name
-  ORDER BY draws DESC
-  LIMIT 3
-  回覆時說明「以抽獎次數代表熱門度（瀏覽量統計尚未上線）」。
+- 「流量」「瀏覽量」「人氣」「熱門商品」「哪個商品最受歡迎」→ 主動拉多維度，一次回答，不要只列單一數字。用以下 SQL 同時取得瀏覽、抽獎、獨立玩家、庫存：
+  SELECT
+    p.name,
+    p.remaining,
+    p.total_count,
+    COALESCE(pv.views, 0)    AS views,
+    COALESCE(dr.draws, 0)    AS draws,
+    COALESCE(dr.players, 0)  AS unique_players
+  FROM products p
+  LEFT JOIN (
+    SELECT product_id, COUNT(*) AS views
+    FROM user_events
+    WHERE event_type = 'product_view'
+      AND created_at >= NOW() - INTERVAL '7 days'
+    GROUP BY product_id
+  ) pv ON pv.product_id = p.id
+  LEFT JOIN (
+    SELECT product_id, COUNT(*) AS draws, COUNT(DISTINCT user_id) AS players
+    FROM draw_records dr2
+    JOIN users u ON u.id = dr2.user_id
+    WHERE (u.is_bot IS NULL OR u.is_bot = false)
+      AND dr2.created_at >= NOW() - INTERVAL '7 days'
+    GROUP BY product_id
+  ) dr ON dr.product_id = p.id
+  WHERE p.status = 'active'
+    AND (pv.views > 0 OR dr.draws > 0)
+  ORDER BY COALESCE(pv.views, 0) DESC, COALESCE(dr.draws, 0) DESC
+  LIMIT 5
+  回覆格式範例：「近7天流量前幾名：1. 迪士尼麵包吊飾：32 次瀏覽、85 抽（38 人），庫存剩 12 件」
 - 「搜尋熱詞」「玩家搜什麼」→ search_logs GROUP BY keyword ORDER BY COUNT DESC
 - 「管理員做了什麼」→ action_logs
 - 「AI 待處理事項」→ agent_events WHERE status = 'pending'
 - 「功能是否開啟」→ feature_flags WHERE key = '...'
 - 「二手市場」→ sell_listings / sell_orders（平台內）或 marketplace_listings（外部連結）
-- 「試試看觸擊/點擊/互動/表現/轉換」→ user_event_logs WHERE event_type = 'draw_trial'
+- 「試試看觸擊/點擊/互動/表現/轉換」→ user_events WHERE event_type = 'draw_trial'
   - 轉換率 = 試試看後有真實 draw 事件的用戶比（JOIN event_type IN ('draw','draw_single','draw_multi')）
   - 常用維度：product_id（哪個商品最多試玩）、user_id distinct（多少人試玩）
-- 「充值/儲值觸發點」「topup 行為」→ user_event_logs WHERE event_type IN ('topup_page_view','topup_plan_select','topup_success')
-- 「G幣不足」「餘額不足」→ user_event_logs WHERE event_type = 'insufficient_balance'
-- 「banner 點擊」→ user_event_logs WHERE event_type = 'banner_click'
-- 「倉庫出貨行為」→ user_event_logs WHERE event_type IN ('delivery_modal_open','delivery_success','delivery_abandon')
+- 「充值/儲值觸發點」「topup 行為」→ user_events WHERE event_type IN ('topup_page_view','topup_plan_select','topup_success')
+- 「G幣不足」「餘額不足」→ user_events WHERE event_type = 'insufficient_balance'
+- 「banner 點擊」→ user_events WHERE event_type = 'banner_click'
+- 「倉庫出貨行為」→ user_events WHERE event_type IN ('delivery_modal_open','delivery_success','delivery_abandon')
 
-user_event_logs 完整 event_type 清單：
+user_events 完整 event_type 清單：
 page_view, page_exit, scroll_depth, product_view, product_click, series_click, winning_records_view,
 draw, draw_single, draw_multi, draw_preview, draw_trial, draw_result_view, prize_reveal,
 insufficient_balance, topup_page_view, topup_plan_select, topup_success,
@@ -1691,7 +1708,7 @@ error_draw_fail, error_delivery_fail
 - 每件商品抽完後公開隨機 Seed，玩家可自行用 Seed + 籤號重算結果
 - 確保抽獎流程不可事後竄改
 
-**規則：「功能是什麼 / 怎麼運作」→ 從本節說明回答；「觸擊多少次 / 點擊表現 / 數字分析」→ 去 user_event_logs 查**
+**規則：「功能是什麼 / 怎麼運作」→ 從本節說明回答；「觸擊多少次 / 點擊表現 / 數字分析」→ 去 user_events 查**
 
 ## 工具能力總覽
 查詢：營收統計、平台統計、待處理事項、庫存、訂單、會員資料、廠商月結、退款、任意 SQL
