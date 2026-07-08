@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-07-09｜Supabase egress 爆量 → 圖片策略調整（待完成）
+
+### 問題
+Supabase 免費方案 cached egress 爆量（56.28 GB / 5.5 GB），服務停擺到 7/29。
+根本原因：AI 補全每次對 Supabase Storage CDN 發 HEAD request，且 DB 中圖片 URL 指向 Supabase Storage，每次前後台載入都燒流量。
+
+### 已修正
+- `ai-enrich/route.ts`：移除 `resolveStorageImage` 的 HEAD ping（直接回傳 publicUrl）
+- `ai-enrich/route.ts`：`finalImage` 優先順序改為外部 URL 優先（萬代 > 品牌官網 > DDG > DB舊圖 > Storage），下次對商品重跑補全時 DB 中的 Storage URL 會被外部 URL 取代
+- `XlsxImportWizard.tsx`：圖片有效性判斷改為接受任何 http URL（不限 Supabase Storage）
+
+### 待決定：圖片儲存方案
+- **選項 A：Cloudflare R2**（egress 免費，$0.015/GB 儲存），需開 Cloudflare 帳號
+- **選項 B：Vercel Blob**（已在用 Vercel，視方案是否含額度）
+- 確認 Vercel 方案後決定，換掉 upload API 的 Storage 目標
+
+### 服務恢復
+Supabase 服務停擺中（超出 cached egress 配額），配額重置日：2026-07-29。
+升級 Pro ($25/月) 可立即恢復，圖片策略改完後再評估是否維持 Pro。
+
+---
+
 ## 2026-07-08｜麵包屑全面修正 + 移除開發自動登入
 
 ### 麵包屑全面修正

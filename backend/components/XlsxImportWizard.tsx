@@ -68,10 +68,9 @@ function isHttpUrl(s?: string | null): boolean {
   return !!s && /^https?:\/\//i.test(s)
 }
 
-const SUPABASE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-// 只有自己 Storage 的 URL 才算有效圖片（外部 URL 不信任）
+// 接受任何 http URL（CSV 外部 URL 已在 parse-xlsx 被丟棄，能到這裡的都是 AI 找的可信圖片）
 function isValidImg(url?: string | null): boolean {
-  return !!(url && SUPABASE_BASE && url.startsWith(SUPABASE_BASE))
+  return !!(url && /^https?:\/\//.test(url))
 }
 // 清掉代理商佔位文字
 const DIST_PLACEHOLDERS = new Set(['代理商', '製造商', '品牌', 'distributor', '代理商名稱', '廠牌'])
@@ -358,8 +357,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           image_url:   resolvedImg,
           distributor: resolvedDist,
           variants: (() => {
+            const aiHasImages = ai.variants?.some((v: any) => v.image_url)
+            const csvComplete = x.variants?.length && x.variants.every((v: any) => v.name?.trim())
+            // AI 有圖就用 AI（Vision 命名圖文配對）；CSV 名稱完整且 AI 無圖就保留 CSV
+            if (aiHasImages) return ai.variants
+            if (csvComplete) return x.variants
             if (ai.variants?.length && ai.variants.some((v: any) => v.name)) return ai.variants
-            return x.variants?.length ? x.variants : ai.variants
+            return x.variants ?? []
           })(),
           variant_count: ai.variant_count || x.variant_count,
           jp_price_yen: ai.jp_price_yen || x.jp_price_yen,

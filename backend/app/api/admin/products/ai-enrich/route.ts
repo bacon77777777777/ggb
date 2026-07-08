@@ -565,10 +565,7 @@ async function resolveStorageImage(raw_image_name: string | null): Promise<strin
   if (!raw_image_name) return null
   const supabase = getSupabaseAdmin()
   const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(raw_image_name)
-  try {
-    const res = await fetch(publicUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) })
-    return res.ok ? publicUrl : null
-  } catch { return null }
+  return publicUrl
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -912,7 +909,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const finalImage = storageImageUrl ?? dbImageByName ?? bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? null
+    // 優先外部 URL（不燒 Supabase egress），Storage 只作最後備援
+    const finalImage = bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? storageImageUrl ?? null
     const source = siteResult?.source_site
       ?? (bandaiMainImg ? 'bandai_catalog' : identified.jp_search_query ? 'claude_identified' : 'claude_generated')
 
