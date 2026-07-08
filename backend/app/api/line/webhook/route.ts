@@ -97,8 +97,6 @@ export async function POST(request: NextRequest) {
       await handleFollow(event)
     } else if (event.type === 'message' && event.message?.type === 'text') {
       await handleTextMessage(event)
-    } else if (event.type === 'message' && event.message?.type === 'file') {
-      await handleFileMessage(event)
     }
   }
 
@@ -132,21 +130,6 @@ function stripWakeWord(text: string): string {
   return text
 }
 
-// Store last xlsx file message per source (group/user), so user can just say "gb哥上架" after sending the file
-async function handleFileMessage(event: any) {
-  if (!isAdminSource(event)) return
-  const messageId = event.message?.id
-  const fileName  = (event.message?.fileName ?? '') as string
-  if (!messageId || !fileName.toLowerCase().endsWith('.xlsx')) return
-  try {
-    const supabase = getSupabaseAdmin()
-    const sourceId = event.source?.groupId ?? event.source?.userId ?? ''
-    await supabase.from('line_pending_files').upsert(
-      { source_id: sourceId, message_id: messageId, file_name: fileName },
-      { onConflict: 'source_id' }
-    )
-  } catch { /* non-critical */ }
-}
 
 async function handleFollow(event: any) {
   await replyMessage(event.replyToken, [
@@ -176,47 +159,6 @@ async function handleTextMessage(event: any) {
   if (isAdminSource(event)) {
     const query = hasWakeWord ? stripWakeWord(text) : text
 
-    // ── 智能上架：有 wake word + 上架意圖 → 找 xlsx 文件 ──
-    const isUploadIntent = hasWakeWord && /上架|匯入|import/i.test(lower)
-    if (isUploadIntent) {
-      const sourceId = event.source?.groupId ?? event.source?.userId ?? ''
-
-      // Priority 1: quoted message
-      let fileMessageId: string | null = quotedMessageId ?? null
-
-      // Priority 2: latest pending file from same source (within 30 min)
-      if (!fileMessageId) {
-        try {
-          const supabase = getSupabaseAdmin()
-          const cutoff = new Date(Date.now() - 30 * 60_000).toISOString()
-          const { data } = await supabase
-            .from('line_pending_files')
-            .select('message_id')
-            .eq('source_id', sourceId)
-            .gte('updated_at', cutoff)
-            .single()
-          fileMessageId = data?.message_id ?? null
-        } catch { /* no pending file */ }
-      }
-
-      if (fileMessageId) {
-        await replyMessage(event.replyToken, [{ type: 'text', text: '📦 收到！開始智能上架，補全圖片與品項名稱中，完成後會回報結果…' }])
-        // Pass only fileMessageId (tiny payload) — import-job downloads the file itself
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-          ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3001')
-        fetch(`${backendUrl}/api/admin/line-import-job`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET ?? '' },
-          body: JSON.stringify({ fileMessageId, targetId: sourceId }),
-        }).catch(err => {
-          console.error('[line-import-job trigger]', err)
-          pushLineMessage(sourceId, '😵 智能上架發生錯誤，請稍後再試。').catch(() => {})
-        })
-        return
-      }
-
-      // No xlsx found — fall through to normal GB哥
-    }
 
     if (!query) {
       await replyMessage(event.replyToken, [
