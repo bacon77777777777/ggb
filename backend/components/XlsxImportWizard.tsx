@@ -194,8 +194,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                   variants: variants.length ? variants : undefined,
                   distributor: String(row['代理商'] ?? '').trim() || null,
                   price_twd: Number(row['價格']) || null,
-                  // 有圖片就算補全，沒圖片標 partial 可重試 AI
-                  aiStatus: image_url ? 'done' as const : 'partial' as const,
+                  // 同時有圖片 + 品項才算補全，其他讓使用者手動決定是否 AI 補全
+                  aiStatus: (image_url && variants.length > 0) ? 'done' as const : 'idle' as const,
                   selected: true,
                 } as EnrichedProduct
               }).filter(p => p.name)
