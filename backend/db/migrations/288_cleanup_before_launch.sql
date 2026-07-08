@@ -4,18 +4,22 @@
 -- 執行前確認：只有在收到老闆指令「清全站資料」後才執行。
 -- 此腳本在 transaction 中執行；執行後請確認輸出無誤再 COMMIT。
 --
--- 保留：products, product_prizes, suppliers, admins,
---        feature_flags, platform_settings, categories,
---        banners, risk_alert_settings, series_keywords,
---        roles, titles, badges（系統定義），tags，
---        dev_logs（永不清除），
+-- 保留：admins, feature_flags, platform_settings,
+--        dev_logs（永不清除），AI 記憶資料（永不清除），
 --        users WHERE is_bot = true（機器人帳號），
 --        draw_records WHERE is_bot = true（機器人抽獎記錄，維持排行榜）
 -- ============================================================
 
 BEGIN;
 
--- ── 1. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
+-- ── 1. 商品/廠商資料（全清） ────────────────────────────────────
+TRUNCATE TABLE
+  product_prizes,
+  products,
+  suppliers
+RESTART IDENTITY CASCADE;
+
+-- ── 2. 使用者交易/行為資料（全清，CASCADE 處理 FK） ────────────
 TRUNCATE TABLE
   order_items,
   orders,
@@ -54,7 +58,7 @@ TRUNCATE TABLE
   marketplace_transactions
 RESTART IDENTITY CASCADE;
 
--- ── 2. draw_records：只清真實用戶，保留機器人記錄（維持排行榜） ──
+-- ── 3. draw_records：只清真實用戶，保留機器人記錄（維持排行榜） ──
 -- 注意：不用 TRUNCATE，改用 DELETE 才能加 WHERE
 DELETE FROM draw_records
 WHERE user_id IN (
@@ -62,7 +66,7 @@ WHERE user_id IN (
   WHERE is_bot IS NULL OR is_bot = false
 );
 
--- ── 3. AI / 系統資料（永久保留，不清除） ───────────────────────
+-- ── 4. AI / 系統資料（永久保留，不清除） ───────────────────────
 -- 以下表為 AI 長期積累的記憶與經驗，不可清除：
 -- line_conversations（GB哥對話記憶）
 -- agent_events（事件匯流排歷史）
@@ -80,7 +84,7 @@ WHERE user_id IN (
 -- 只清 webhook_events（ECPay 冪等記錄，舊付款不再需要）
 TRUNCATE TABLE webhook_events RESTART IDENTITY CASCADE;
 
--- ── 4. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
+-- ── 5. 使用者帳號：只清測試帳號，保留真人 + 機器人 ────────────
 DELETE FROM users
 WHERE email IN ('test001@gmail.com', 'test002@gmail.com');
 
@@ -89,7 +93,7 @@ UPDATE users
 SET tokens = 0
 WHERE email IN ('bacon731@gmail.com', 'bacon731jp@gmail.com');
 
--- ── 5. 寫入 dev_logs 記錄此次清除操作 ─────────────────────────
+-- ── 6. 寫入 dev_logs 記錄此次清除操作 ─────────────────────────
 INSERT INTO dev_logs (version, title, description, type, status, priority)
 VALUES (
   'DB-RESET',
@@ -100,7 +104,7 @@ VALUES (
   'high'
 );
 
--- ── 6. 確認結果（清除後的各表筆數） ───────────────────────────
+-- ── 7. 確認結果（清除後的各表筆數） ───────────────────────────
 SELECT 'users（全部）'        AS tbl, COUNT(*) AS remaining FROM users
 UNION ALL SELECT 'users（真人）',     COUNT(*) FROM users WHERE is_bot IS NULL OR is_bot = false
 UNION ALL SELECT 'users（機器人）',   COUNT(*) FROM users WHERE is_bot = true
@@ -113,9 +117,6 @@ UNION ALL SELECT 'action_logs',       COUNT(*) FROM action_logs
 UNION ALL SELECT 'line_conversations',COUNT(*) FROM line_conversations
 UNION ALL SELECT 'agent_events',      COUNT(*) FROM agent_events
 UNION ALL SELECT '--- KEPT ---',      0
-UNION ALL SELECT 'products',          COUNT(*) FROM products
-UNION ALL SELECT 'product_prizes',    COUNT(*) FROM product_prizes
-UNION ALL SELECT 'suppliers',         COUNT(*) FROM suppliers
 UNION ALL SELECT 'admins',            COUNT(*) FROM admins
 UNION ALL SELECT 'dev_logs',          COUNT(*) FROM dev_logs
 UNION ALL SELECT 'feature_flags',     COUNT(*) FROM feature_flags

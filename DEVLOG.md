@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-07-08｜清全站資料腳本修正：商品廠商納入清除範圍
+
+### 修正（`db/migrations/288_cleanup_before_launch.sql`、`CLAUDE.md`）
+商品（`products`、`product_prizes`）與廠商（`suppliers`）需隨全站資料一起清除，不保留。
+新增區塊 1 優先 TRUNCATE 這三張表（CASCADE 處理 FK）。
+
+---
+
 ## 2026-07-08｜清全站資料腳本修正：AI 記憶永久保留
 
 ### 修正（`db/migrations/288_cleanup_before_launch.sql`）
