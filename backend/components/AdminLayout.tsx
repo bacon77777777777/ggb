@@ -48,6 +48,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string>('v1.7.6')
   const [memberCount, setMemberCount] = useState(0)
+  const [onlineCount, setOnlineCount] = useState(0)
   const [pendingSettlements, setPendingSettlements] = useState(0)
   const [pendingRefunds, setPendingRefunds] = useState(0)
   const [pendingRechargeReview, setPendingRechargeReview] = useState(0)
@@ -121,6 +122,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
             setPendingRefunds(d.pendingRefunds ?? 0)
             setPendingRechargeReview(d.pendingRechargeReview ?? 0)
             setMemberCount(d.totalMembers ?? 0)
+            setOnlineCount(d.onlineCount ?? 0)
           }
         })
         .catch(() => {})
@@ -841,11 +843,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {/* 會員人數 */}
+                {/* 會員人數 + 在線人數 */}
                 {canAccess('/header-members') && (
-                  <span className="hidden lg:flex items-center gap-1 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
-                    會員 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span> 人
-                  </span>
+                  <div className="hidden lg:flex items-center gap-4 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
+                    <span>總會員數 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span></span>
+                    <span>在線人數 <span className="font-semibold text-emerald-600">{onlineCount.toLocaleString()}</span></span>
+                  </div>
                 )}
 
                 {/* 廠商月結 */}

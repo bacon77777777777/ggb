@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-07-08｜機器人假數據自動補回 + 頂部導航會員/在線統計
+
+### 機器人假數據自動化（不再需要手動跑腳本）
+- 新增 `lib/seedBotDraws.ts` 共用函式（冪等，已有 bot 記錄就跳過）
+- 新增 `app/api/admin/seed-bot-draws/route.ts` API
+- `app/api/admin/products/route.ts`：新增商品成功後 fire-and-forget 呼叫 seedBotDraws
+- `components/XlsxImportWizard.tsx`：批量匯入成功後自動呼叫 seed API
+- 觸發條件：有上架商品 + bot draw_records = 0 才執行，否則跳過
+
+### 頂部導航改版
+- 「會員 N 人」改為「總會員數 x,xxx  在線人數 x,xxx」
+- 在線人數：`visit_logs` 近 15 分鐘的訪問記錄數
+- `dashboard/pending` API 新增 `onlineCount` 欄位
+
+### 其他修正
+- 頂部會員數排除 `is_bot = true` 帳號
+
+---
+
 ## 2026-07-08｜智能上架支援混合類型 xlsx
 
 ### 問題

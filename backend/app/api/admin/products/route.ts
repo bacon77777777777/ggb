@@ -98,6 +98,9 @@ export async function POST(request: Request) {
       ip: getClientIp(request),
     })
 
+    // Auto-seed bot draws on first product creation (fire-and-forget)
+    import('@/lib/seedBotDraws').then(m => m.seedBotDraws()).catch(() => {})
+
     return NextResponse.json({ product: finalProduct || { ...created, product_code: newProductCode } })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '新增商品失敗' }, { status: 500 })

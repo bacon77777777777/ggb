@@ -18,6 +18,7 @@ export async function GET() {
       { count: pendingSettlements },
       { count: totalMembers },
       { count: pendingRechargeReview },
+      { count: onlineCount },
     ] = await Promise.all([
       supabase
         .from('orders')
@@ -46,6 +47,10 @@ export async function GET() {
         .select('id', { count: 'exact', head: true })
         .eq('needs_review', true)
         .eq('status', 'pending'),
+      supabase
+        .from('visit_logs')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', new Date(Date.now() - 15 * 60_000).toISOString()),
     ])
 
     return NextResponse.json({
@@ -53,7 +58,8 @@ export async function GET() {
       lowInventory:         lowInventory         ?? 0,
       pendingRefunds:       pendingRefunds        ?? 0,
       pendingSettlements:   pendingSettlements    ?? 0,
-      totalMembers:         totalMembers          ?? 0,
+      totalMembers:          totalMembers          ?? 0,
+      onlineCount:           onlineCount           ?? 0,
       pendingRechargeReview: pendingRechargeReview ?? 0,
     })
   } catch (e: any) {
