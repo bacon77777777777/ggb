@@ -117,8 +117,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const handleClose = () => { reset(); onClose() }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  // 缺主圖 = 沒有 URL 且沒有待配對檔名（raw_image_name）
-  const missingImageList  = products.filter(p => p.selected && !p.image_url && !p.raw_image_name)
+  // 缺主圖 = 沒有可顯示的圖片 URL（raw_image_name 是待上傳檔名，不算有圖）
+  const missingImageList  = products.filter(p => p.selected && !p.image_url)
   const missingPrizesList = products.filter(p => p.selected && !p.variants?.length)
   const missingPriceList  = products.filter(p => p.selected && !p.jp_price_yen && !p.price_twd)
 
