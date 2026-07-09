@@ -143,7 +143,7 @@ async function downloadImageToR2(imgUrl: string): Promise<string | null> {
     const ct = res.headers.get('content-type') ?? ''
     if (!ct.startsWith('image/')) return null   // 確保是圖片
     const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 500) return null            // 排除 1×1 tracking pixel
+    if (buf.length < 10_000) return null         // 排除 favicon / icon / tracking pixel（真實文章圖 > 10KB）
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     return await r2Upload(key, buf, ct)
@@ -317,8 +317,9 @@ export async function POST(req: NextRequest) {
       // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
       if (isDuplicateTopic(draft.title)) { results.skipped++; continue }
 
-      // 下載圖片到 R2（失敗則用外部 URL，但不跳過）
-      const imageUrl = await downloadImageToR2(ogImage) ?? ogImage
+      // 下載圖片到 R2（失敗直接 skip，不接受外部 URL fallback）
+      const imageUrl = await downloadImageToR2(ogImage)
+      if (!imageUrl) { results.skipped++; continue }
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
