@@ -2,7 +2,7 @@ import sharp from 'sharp'
 
 const OPTS: Record<string, { w: number; h: number; q: number }> = {
   products:    { w: 800,  h: 800,  q: 85 },
-  banners:     { w: 1440, h: 1440, q: 88 },
+  banners:     { w: 1200, h: 400,  q: 88 },
   avatars:     { w: 400,  h: 400,  q: 85 },
   marketplace: { w: 800,  h: 800,  q: 85 },
 }
