@@ -53,7 +53,7 @@ function MobileTabbarInner() {
 
   const { theme } = useTheme();
 
-  if (isSecondaryPage) {
+  if (isSecondaryPage || isNewsDetail) {
     return null;
   }
 

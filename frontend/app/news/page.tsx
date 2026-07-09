@@ -19,6 +19,8 @@ interface NewsItem {
   is_active: boolean;
   created_at: string;
   view_count: number;
+  likes_count: number;
+  comments_count: number;
 }
 
 const CATEGORIES = [
@@ -121,7 +123,7 @@ function ArticleRow({ item }: { item: NewsItem }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-[1.5] mb-2">
+        <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-[1.5] h-[42px] mb-1.5">
           {item.title}
         </h3>
         <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -130,6 +132,13 @@ function ArticleRow({ item }: { item: NewsItem }) {
           )}
           {item.category && <span>·</span>}
           <span>{timeAgo(item.created_at)}</span>
+          <span className="flex-1" />
+          {(item.comments_count > 0 || item.likes_count > 0) && (
+            <span className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 tabular-nums">
+              {item.comments_count > 0 && <span>留言 {item.comments_count}</span>}
+              {item.likes_count > 0 && <span>讚 {item.likes_count}</span>}
+            </span>
+          )}
         </div>
       </div>
     </Link>
@@ -185,7 +194,30 @@ export default function NewsPage() {
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(60)
-      .then(({ data }) => { setAll(data ?? []); setIsLoading(false); });
+      .then(async ({ data }) => {
+        const articles = data ?? [];
+        if (articles.length === 0) { setAll([]); setIsLoading(false); return; }
+
+        const ids = articles.map(a => a.id);
+
+        const [{ data: likesData }, { data: commentsData }] = await Promise.all([
+          supabase.from('news_likes').select('news_id').in('news_id', ids),
+          supabase.from('news_comments').select('news_id').in('news_id', ids),
+        ]);
+
+        const likesMap: Record<string, number> = {};
+        for (const l of likesData ?? []) likesMap[l.news_id] = (likesMap[l.news_id] ?? 0) + 1;
+
+        const commentsMap: Record<string, number> = {};
+        for (const c of commentsData ?? []) commentsMap[c.news_id] = (commentsMap[c.news_id] ?? 0) + 1;
+
+        setAll(articles.map(a => ({
+          ...a,
+          likes_count:    likesMap[a.id] ?? 0,
+          comments_count: commentsMap[a.id] ?? 0,
+        })));
+        setIsLoading(false);
+      });
   }, []);
 
   const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);

@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-07-09｜文章留言按讚系統 + 商品管理主圖欄位
+
+### 留言按讚系統（migration 303、304）
+- 新建 `news_likes`、`news_comments`、`news_comment_likes` 三張表，含 RLS 政策
+- migration 304 為所有上架文章注入 bot 種子留言（3~8 則/篇）及按讚
+- 前台新增 4 個 API routes：`/api/news/[id]/like`、`/api/news/[id]/comments`、`/api/news/comments/[commentId]`、`/api/news/comments/[commentId]/like`
+
+### 文章內頁底部互動 bar
+- 移除 MobileTabbar（/news/[id] 不再顯示底部 Tab 列）
+- 固定底部 bar：左側讚圖標（切換動效）+ 數字，右側橘圓圈白紙飛機輸入框（顯示則留言數）
+- 留言抽屜：底部滑出，顯示留言列表、留言按讚、自己留言左滑刪除
+- 已登入展開抽屜自動 focus 輸入框彈出鍵盤；未登入輸入框 disabled
+- 留言數快取：先用 supabase HEAD count 快速顯示，背景再載完整列表
+
+### 情報列表顯示留言 / 讚數
+- 列表每列右下角顯示「留言 X 讚 Y」（深色）
+- 標題固定兩行高度 42px，分類時間行對齊一致
+
+### 商品管理主圖欄位
+- products 列表 checkbox 右側新增 40×40 主圖縮圖欄位（object-cover rounded-lg）
+
+---
+
 ## 2026-07-09｜前台情報頁 UI 全面優化
 
 ### 輪播升級

@@ -927,6 +927,7 @@ export default function ProductsPage() {
                       className="w-4 h-4 text-primary focus:ring-primary rounded"
                     />
                   </th>
+                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 whitespace-nowrap`}>主圖</th>
                   {visibleColumns.productCode && (
                     <SortableTableHeader sortKey="productCode" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                       編號
@@ -1019,6 +1020,15 @@ export default function ProductsPage() {
                           onChange={() => handleSelectProduct(product.id)}
                           className="w-4 h-4 text-primary focus:ring-primary rounded"
                         />
+                      </td>
+                      <td className={getDensityClasses()}>
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-neutral-300 text-[9px] font-bold">GGB</div>
+                          )}
+                        </div>
                       </td>
                       {visibleColumns.productCode && (
                         <td className={`${getDensityClasses()} text-sm text-neutral-700 font-mono whitespace-nowrap`}>
