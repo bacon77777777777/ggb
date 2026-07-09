@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-07-09｜下拉重整圖標置中修正
+
+### PwaPullToRefresh.tsx
+- `show()` 更新 transform 時覆蓋掉 `translateX(-50%)`，導致圖標偏右
+- 修正為 `translateX(-50%) translateY(${translate}px)` 合併兩個 transform
+
+---
+
 ## 2026-07-09｜Auth 錯誤訊息全中文化
 
 ### authErrors.ts 擴充

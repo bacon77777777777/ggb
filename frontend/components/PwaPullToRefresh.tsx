@@ -31,7 +31,7 @@ export default function PwaPullToRefresh() {
       const translate = Math.min(pullY * 0.6, MAX_PULL);
       const el = indicatorRef.current;
       if (!el) return;
-      el.style.transform = `translateY(${translate}px)`;
+      el.style.transform = `translateX(-50%) translateY(${translate}px)`;
       el.style.opacity   = String(ratio);
       if (spinnerRef.current) {
         spinnerRef.current.style.transform = `rotate(${pullY * 2}deg)`;
