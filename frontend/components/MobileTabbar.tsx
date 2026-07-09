@@ -77,9 +77,9 @@ function MobileTabbarInner() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)] bg-white dark:bg-neutral-900" data-testid="mobile-tabbar">
+    <div className="fixed bottom-0 left-0 right-0 md:hidden z-50 pb-[env(safe-area-inset-bottom)] bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 transition-colors" data-testid="mobile-tabbar">
       <div className="relative h-16 w-full flex items-end">
-        <div className="absolute bottom-0 left-0 right-0 h-[56px] bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-800 transition-colors" />
+        <div className="absolute bottom-0 left-0 right-0 h-[56px] bg-white dark:bg-neutral-900 transition-colors" />
 
         <div className={cn("relative w-full grid px-2 h-[56px]", tabs.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
           {tabs.map((tab) => {
