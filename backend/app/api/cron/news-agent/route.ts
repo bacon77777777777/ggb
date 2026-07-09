@@ -111,6 +111,14 @@ function extractOgImage(html: string): string {
   return extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image') || ''
 }
 
+// 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
+function resolveImageUrl(imgUrl: string, pageUrl: string): string {
+  if (!imgUrl) return ''
+  if (imgUrl.startsWith('data:')) return ''
+  if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) return imgUrl
+  try { return new URL(imgUrl, pageUrl).href } catch { return '' }
+}
+
 // Google News link → 실제 기사 URL（follow redirect）
 async function resolveGoogleLink(googleUrl: string): Promise<string> {
   try {
@@ -128,14 +136,15 @@ async function resolveGoogleLink(googleUrl: string): Promise<string> {
 async function downloadImageToR2(imgUrl: string): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
-      headers: { 'User-Agent': UA },
-      signal: AbortSignal.timeout(8_000),
+      headers: { 'User-Agent': UA, 'Referer': new URL(imgUrl).origin },
+      signal: AbortSignal.timeout(12_000),
     })
     if (!res.ok) return null
+    const ct = res.headers.get('content-type') ?? ''
+    if (!ct.startsWith('image/')) return null   // 確保是圖片
     const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 2000) return null
-    const ct = res.headers.get('content-type') ?? 'image/jpeg'
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg'
+    if (buf.length < 500) return null            // 排除 1×1 tracking pixel
+    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     return await r2Upload(key, buf, ct)
   } catch { return null }
@@ -254,8 +263,8 @@ export async function POST(req: NextRequest) {
       const articleHtml = await fetchText(realUrl, 8_000)
       if (!articleHtml) { results.skipped++; continue }
 
-      const ogImage = extractOgImage(articleHtml)
-      if (!ogImage) { results.skipped++; continue }  // 沒有圖片直接跳過
+      const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
+      if (!ogImage) { results.skipped++; continue }  // 沒有有效圖片 URL 直接跳過
 
       const bodyText = articleHtml
         .replace(/<script[\s\S]*?<\/script>/gi, '')
