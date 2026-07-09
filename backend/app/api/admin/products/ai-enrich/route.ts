@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
+import { r2Upload } from '@/lib/r2'
+import sharp from 'sharp'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -914,10 +916,26 @@ export async function POST(req: Request) {
       }
     }
 
-    // 優先外部 URL（不燒 Supabase egress），Storage 只作最後備援
-    const finalImage = bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? storageImageUrl ?? null
+    const rawImage = bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? storageImageUrl ?? null
     const source = siteResult?.source_site
       ?? (bandaiMainImg ? 'bandai_catalog' : identified.jp_search_query ? 'claude_identified' : 'claude_generated')
+
+    // 找到外部圖片就下載壓縮後存到 R2，確保 Vercel 地區可訪問性
+    let finalImage = rawImage
+    if (rawImage && !rawImage.startsWith((process.env.R2_PUBLIC_URL ?? '!!!'))) {
+      try {
+        const imgRes = await fetch(rawImage, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) })
+        if (imgRes.ok) {
+          const buf = Buffer.from(await imgRes.arrayBuffer())
+          const compressed = await sharp(buf)
+            .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer()
+          const key = `products/ai-${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
+          finalImage = await r2Upload(key, compressed, 'image/webp')
+        }
+      } catch { /* 下載失敗保留原始 URL */ }
+    }
 
     return NextResponse.json({
       ok: true,
