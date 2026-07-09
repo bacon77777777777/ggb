@@ -3,6 +3,25 @@
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect } from 'react'
 
+// ── 監控 ────────────────────────────────────────────────────────────────────
+interface MonitorLog {
+  id: number
+  checked_at: string
+  supabase_db_mb: number | null
+  supabase_status: string
+  r2_objects: number | null
+  r2_size_mb: number | null
+  r2_status: string
+  vercel_status: string
+  vercel_deploy_state: string | null
+  vercel_deployed_at: string | null
+  github_status: string
+  github_ci_conclusion: string | null
+  github_commit_sha: string | null
+  overall_status: string
+  alerts: string[]
+}
+
 type LogType   = 'feature' | 'fix' | 'improvement' | 'issue'
 type LogStatus = 'released' | 'planned' | 'open' | 'in_progress' | 'resolved'
 type Priority  = 'high' | 'medium' | 'low'
@@ -60,8 +79,11 @@ function Badge({ meta }: { meta: { label: string; color: string } }) {
 export default function DevLogsPage() {
   const [logs, setLogs] = useState<DevLog[]>([])
   const [meetings, setMeetings] = useState<MeetingLog[]>([])
+  const [monitorLogs, setMonitorLogs] = useState<MonitorLog[]>([])
+  const [monitorLoading, setMonitorLoading] = useState(false)
+  const [monitorRefreshing, setMonitorRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'changelog' | 'issues' | 'roadmap' | 'meetings'>('changelog')
+  const [activeTab, setActiveTab] = useState<'changelog' | 'issues' | 'roadmap' | 'meetings' | 'monitor'>('changelog')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Partial<DevLog>>(BLANK)
   const [meetingForm, setMeetingForm] = useState<Partial<MeetingLog>>(MEETING_BLANK)
@@ -81,7 +103,22 @@ export default function DevLogsPage() {
     setLoading(false)
   }
 
+  const fetchMonitor = async () => {
+    setMonitorLoading(true)
+    const res = await fetch('/api/admin/platform-monitor')
+    if (res.ok) setMonitorLogs(await res.json())
+    setMonitorLoading(false)
+  }
+
+  const triggerMonitor = async () => {
+    setMonitorRefreshing(true)
+    await fetch('/api/admin/platform-monitor', { method: 'POST' })
+    await fetchMonitor()
+    setMonitorRefreshing(false)
+  }
+
   useEffect(() => { fetchLogs() }, [])
+  useEffect(() => { if (activeTab === 'monitor') fetchMonitor() }, [activeTab])
 
   const roadmap   = logs.filter(l => l.version === '擴展計畫')
   const changelog = logs.filter(l => l.type !== 'issue' && l.version !== '擴展計畫')
@@ -188,6 +225,7 @@ export default function DevLogsPage() {
               ['issues',   '問題追蹤', issues.length],
               ['roadmap',  '擴展計畫', roadmap.length],
               ['meetings', '會議記錄', meetings.length],
+            ['monitor', '監控', null],
             ] as const).map(([tab, label, count]) => (
               <button
                 key={tab}
@@ -197,13 +235,13 @@ export default function DevLogsPage() {
                 }`}
               >
                 {label}
-                <span className="ml-1.5 text-xs opacity-60">{count}</span>
+                {count !== null && <span className="ml-1.5 text-xs opacity-60">{count}</span>}
               </button>
             ))}
           </div>
           <button
             onClick={() => openNewForm()}
-            className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+            className={`px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 ${activeTab === 'monitor' ? 'invisible' : ''}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -212,8 +250,31 @@ export default function DevLogsPage() {
           </button>
         </div>
 
+        {/* 監控 Tab 的立即檢查按鈕（取代新增按鈕） */}
+        {activeTab === 'monitor' && (
+          <div className="flex justify-end -mt-12 mb-4">
+            <button
+              onClick={triggerMonitor}
+              disabled={monitorRefreshing}
+              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {monitorRefreshing ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              {monitorRefreshing ? '檢查中…' : '立即檢查'}
+            </button>
+          </div>
+        )}
+
         {/* 表單：Dev Log */}
-        {showForm && !isMeetingTab && (
+        {showForm && !isMeetingTab && activeTab !== 'monitor' && (
           <div className="bg-white rounded-xl border border-neutral-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-neutral-800">{form.id ? '編輯紀錄' : '新增紀錄'}</h3>
@@ -504,6 +565,150 @@ export default function DevLogsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── 監控 Tab ── */}
+            {activeTab === 'monitor' && (
+              <div className="space-y-4">
+                {monitorLoading ? (
+                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+                ) : monitorLogs.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
+                    尚無監控資料，點「立即檢查」執行第一次快照
+                  </div>
+                ) : (() => {
+                  const latest = monitorLogs[0]
+                  const statusColor = (s: string) =>
+                    s === 'ok' ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                    : s === 'warning' ? 'text-amber-600 bg-amber-50 border-amber-200'
+                    : s === 'error' ? 'text-red-600 bg-red-50 border-red-200'
+                    : 'text-neutral-400 bg-neutral-50 border-neutral-200'
+                  const statusDot = (s: string) =>
+                    s === 'ok' ? 'bg-emerald-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
+                  const statusLabel = (s: string) =>
+                    s === 'ok' ? '正常' : s === 'warning' ? '注意' : s === 'error' ? '異常' : '未知'
+
+                  return (
+                    <>
+                      {/* 最新快照卡片 */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          {
+                            name: 'Supabase DB',
+                            status: latest.supabase_status,
+                            detail: latest.supabase_db_mb != null
+                              ? `${latest.supabase_db_mb} MB / 500 MB`
+                              : '—',
+                            sub: latest.supabase_db_mb != null
+                              ? `${Math.round(latest.supabase_db_mb / 500 * 100)}% 已用`
+                              : '',
+                          },
+                          {
+                            name: 'Cloudflare R2',
+                            status: latest.r2_status,
+                            detail: latest.r2_size_mb != null
+                              ? `${latest.r2_size_mb} MB / 10,240 MB`
+                              : '—',
+                            sub: latest.r2_objects != null ? `${latest.r2_objects.toLocaleString()} 個檔案` : '',
+                          },
+                          {
+                            name: 'Vercel',
+                            status: latest.vercel_status,
+                            detail: latest.vercel_deploy_state ?? latest.vercel_status,
+                            sub: latest.vercel_deployed_at
+                              ? new Date(latest.vercel_deployed_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              : '未設定 token',
+                          },
+                          {
+                            name: 'GitHub CI',
+                            status: latest.github_status,
+                            detail: latest.github_ci_conclusion ?? latest.github_status,
+                            sub: latest.github_commit_sha
+                              ? `#${latest.github_commit_sha}`
+                              : '未設定 token',
+                          },
+                        ].map(card => (
+                          <div key={card.name} className={`rounded-xl border p-4 ${statusColor(card.status)}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`w-2 h-2 rounded-full ${statusDot(card.status)}`} />
+                              <span className="text-xs font-medium opacity-70">{card.name}</span>
+                            </div>
+                            <p className="text-sm font-semibold">{statusLabel(card.status)}</p>
+                            <p className="text-xs mt-0.5 opacity-75">{card.detail}</p>
+                            {card.sub && <p className="text-xs opacity-50">{card.sub}</p>}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 告警列表 */}
+                      {latest.alerts?.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                          <p className="text-sm font-semibold text-red-700 mb-2">告警</p>
+                          <ul className="space-y-1">
+                            {latest.alerts.map((a, i) => (
+                              <li key={i} className="text-sm text-red-600 flex items-start gap-2">
+                                <span className="mt-0.5 shrink-0">⚠</span>{a}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* 最後檢查時間 */}
+                      <p className="text-xs text-neutral-400">
+                        最後檢查：{new Date(latest.checked_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}
+                        {'　'}每 6 小時自動更新
+                      </p>
+
+                      {/* 歷史紀錄 */}
+                      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+                        <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50">
+                          <span className="text-sm font-semibold text-neutral-700">歷史紀錄</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-neutral-50 border-b border-neutral-100">
+                              <tr>
+                                {['時間', 'DB (MB)', 'R2 (MB)', 'R2 檔數', 'Vercel', 'GitHub CI', '整體'].map(h => (
+                                  <th key={h} className="px-4 py-2 text-left text-neutral-500 font-medium whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-50">
+                              {monitorLogs.map(log => (
+                                <tr key={log.id} className="hover:bg-neutral-50">
+                                  <td className="px-4 py-2 whitespace-nowrap text-neutral-500">
+                                    {new Date(log.checked_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="px-4 py-2 font-mono">{log.supabase_db_mb ?? '—'}</td>
+                                  <td className="px-4 py-2 font-mono">{log.r2_size_mb ?? '—'}</td>
+                                  <td className="px-4 py-2 font-mono">{log.r2_objects?.toLocaleString() ?? '—'}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.vercel_status)}`}>
+                                      {log.vercel_deploy_state ?? log.vercel_status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.github_status)}`}>
+                                      {log.github_ci_conclusion ?? log.github_status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${statusColor(log.overall_status)}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${statusDot(log.overall_status)}`} />
+                                      {statusLabel(log.overall_status)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             )}
 
