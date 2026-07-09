@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-07-09｜news-agent cron 修正 + 文章管理移至系統設定
+
+### news-agent-hourly cron 修正（migration 305）
+- cron job 仍在用 `current_setting('app.cron_secret')` → 整點無法取得值 → 每小時 401 被擋，無新文章
+- migration 301 未生效（未覆蓋舊 job），305 重新 unschedule + 以 hardcode secret 重建
+
+### AdminLayout 選單調整
+- 「文章管理」從「其他黑科技」移至「系統設定」，排在「輪播圖管理」下方
+
+---
+
 ## 2026-07-09｜文章留言按讚系統 + 商品管理主圖欄位
 
 ### 留言按讚系統（migration 303、304）

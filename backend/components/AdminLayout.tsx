@@ -597,6 +597,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '輪播圖管理', path: '/banners', icon: IconBanners },
+          { name: '文章管理', path: '/news', icon: IconNews },
           { name: '分類清單', path: '/categories', icon: IconCategories },
           { name: '抽獎模組設定', path: '/settings/modules', icon: IconSettings },
           { name: '功能開關', path: '/settings/features', icon: IconSettings },
@@ -633,7 +634,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'blacktech',
         title: '其他黑科技',
         items: [
-          { name: '文章管理', path: '/news', icon: IconNews },
           { name: '事件中心', path: '/agent-events', icon: IconEvents },
           { name: '競品情報', path: '/competitor-intel', icon: IconReports },
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
