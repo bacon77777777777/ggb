@@ -107,7 +107,7 @@ async function getFirstProductLink(html: string, base: string, pattern: RegExp):
 }
 
 interface SiteResult {
-  distributor: string
+  distributor: string | null
   jp_price_yen: number | null
   prizes: PrizeInfo[]
   source_site: string
@@ -251,6 +251,32 @@ async function searchSquareEnix(name: string): Promise<SiteResult | null> {
   const prizes = extractPrizes(detail)
   if (!prizes.length) return null
   return withImages({ distributor: 'SQUARE ENIX', jp_price_yen: extractPrice(detail), prizes, source_site: 'square-enix.com' }, detail)
+}
+
+// Happy Kuji（ハッピーくじ）
+async function searchHappyKuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://www.h-kuji.com/?s=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://www.h-kuji.com', /href="(https:\/\/www\.h-kuji\.com\/[^"#?]+\/)"/)
+  if (!url || url === 'https://www.h-kuji.com/') return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return withImages({ distributor: null, jp_price_yen: extractPrice(detail), prizes, source_site: 'h-kuji.com' }, detail)
+}
+
+// Good Smile Kuji（GSC 自家一番賞）
+async function searchGscKuji(name: string): Promise<SiteResult | null> {
+  const html = await fetchPage(`https://kuji.goodsmile.com/search?keyword=${encodeURIComponent(name)}`)
+  if (!html) return null
+  const url = await getFirstProductLink(html, 'https://kuji.goodsmile.com', /href="(https:\/\/kuji\.goodsmile\.com\/[^"#?]+)"/)
+  if (!url) return null
+  const detail = await fetchPage(url)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  if (!prizes.length) return null
+  return withImages({ distributor: 'Good Smile Company（好微笑）', jp_price_yen: extractPrice(detail), prizes, source_site: 'kuji.goodsmile.com' }, detail)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -561,6 +587,39 @@ async function scrapePriceFromYahoo(name: string, barcode?: string | null): Prom
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// JAN 條碼逆查（商品名 → Yahoo Shopping → 解析 JAN 碼）
+// 找到條碼後可觸發 scrapeBandaiCatalog，大幅提升 BANDAI 系圖片命中率
+// ─────────────────────────────────────────────────────────────────────────────
+async function findJanCode(name: string, variantHint?: string): Promise<string | null> {
+  const q = encodeURIComponent(variantHint ? `${name} ${variantHint}` : name)
+  const html = await fetchPage(`https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce&n=1`)
+  if (!html) return null
+  const m = html.match(/href="(https?:\/\/store\.shopping\.yahoo\.co\.jp\/[^"?#]+)"/)
+  if (!m) return null
+  const detail = await fetchPage(m[1])
+  if (!detail) return null
+  return detail.match(/JAN[コード]*[：:\s]+([0-9]{13})/i)?.[1]
+      ?? detail.match(/バーコード[：:\s]+([0-9]{13})/)?.[1]
+      ?? detail.match(/\b(49[0-9]{11})\b/)?.[1]
+      ?? null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AmiAmi 通路搜尋（涵蓋所有日本廠商，官方圖素材品質高）
+// ─────────────────────────────────────────────────────────────────────────────
+async function searchAmiAmi(name: string, barcode?: string | null): Promise<SiteResult | null> {
+  const q = encodeURIComponent(barcode ?? name)
+  const html = await fetchPage(`https://www.amiami.com/jpn/search/list/?s_keywords=${q}`)
+  if (!html) return null
+  const path = html.match(/href="(\/jpn\/detail\/\?scode=[^"]+)"/)?.[1]
+  if (!path) return null
+  const detail = await fetchPage(`https://www.amiami.com${path}`)
+  if (!detail) return null
+  const prizes = extractPrizes(detail)
+  return withImages({ distributor: null, jp_price_yen: extractPrice(detail), prizes, source_site: 'amiami.com' }, detail)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ════ Storage 圖片比對 ════
 // ─────────────────────────────────────────────────────────────────────────────
 async function resolveStorageImage(raw_image_name: string | null): Promise<string | null> {
@@ -774,10 +833,14 @@ export async function POST(req: Request) {
     // ── Step 2.5: DB 商品名稱復用圖片 ────────────────────────────────────────
     const dbImageByName = storageImageUrl ? null : await fetchImageFromDBByName(product_name)
 
-    // ── Step 3: Claude 識別 IP + 取得日文搜尋詞（並行執行，不等待網路）────
-    const identified = await claudeIdentify(product_name, pType, hintCount)
+    // ── Step 2.5 + Step 3: JAN 逆查 & Claude 識別（並行，節省時間）────────
+    const [identified, foundBarcode] = await Promise.all([
+      claudeIdentify(product_name, pType, hintCount),
+      !barcode ? findJanCode(clean, existing_variant_names?.[0]) : Promise.resolve(null),
+    ])
+    const effectiveBarcode = barcode ?? foundBarcode ?? null
     // 優先用 Claude 提供的日文搜尋詞；若無則用清理過的商品名
-    const jpQuery  = identified.jp_search_query ? cleanName(identified.jp_search_query) : clean
+    const jpQuery = identified.jp_search_query ? cleanName(identified.jp_search_query) : clean
 
     // ── Step 4: 品牌網站搜尋（按類型路由，並行）───────────────────────────
     type SearchFn = () => Promise<SiteResult | null>
@@ -792,15 +855,19 @@ export async function POST(req: Request) {
         () => searchTaitokuji(jpQuery),
         () => searchSanrioKuji(jpQuery),
         () => searchSquareEnix(jpQuery),
+        () => searchHappyKuji(jpQuery),
+        () => searchGscKuji(jpQuery),
+        () => searchAmiAmi(jpQuery, effectiveBarcode),
       ],
       gacha: [
-        () => searchGashapon(jpQuery, barcode),
+        () => searchGashapon(jpQuery, effectiveBarcode),
         () => searchTarts(jpQuery),
         () => searchKitan(jpQuery),
         () => searchKenelephant(jpQuery),
         () => searchEpoch(jpQuery),
         () => searchQualia(jpQuery),
         () => searchBushiroad(jpQuery),
+        () => searchAmiAmi(jpQuery, effectiveBarcode),
       ],
       blindbox: [
         () => searchRement(jpQuery),
@@ -808,6 +875,7 @@ export async function POST(req: Request) {
         () => searchGoodSmile(jpQuery),
         () => searchKotobukiya(jpQuery),
         () => searchPopMart(jpQuery),
+        () => searchAmiAmi(jpQuery, effectiveBarcode),
       ],
       card: [
         () => searchWeissSchwarz(jpQuery),
@@ -817,6 +885,7 @@ export async function POST(req: Request) {
         () => searchOsica(jpQuery),
         () => searchShadowverse(jpQuery),
         () => searchBattleSpirits(jpQuery),
+        () => searchAmiAmi(jpQuery, effectiveBarcode),
       ],
       custom: [
         () => search1kuji(jpQuery),
@@ -826,6 +895,7 @@ export async function POST(req: Request) {
         () => searchKujibikido(jpQuery),
         () => searchMegahouse(jpQuery),
         () => searchGoodSmile(jpQuery),
+        () => searchAmiAmi(jpQuery, effectiveBarcode),
       ],
     }
 
@@ -844,8 +914,8 @@ export async function POST(req: Request) {
     const ddgQueryJp = jpQuery + typeSuffix
     const ddgQueryZh = clean + typeSuffix
     const [bandai, yahooPrice, ddgResJp, ddgResZh] = await Promise.all([
-      barcode ? scrapeBandaiCatalog(barcode) : null,
-      !siteResult?.jp_price_yen ? scrapePriceFromYahoo(jpQuery, barcode) : null,
+      effectiveBarcode ? scrapeBandaiCatalog(effectiveBarcode) : null,
+      !siteResult?.jp_price_yen ? scrapePriceFromYahoo(jpQuery, effectiveBarcode) : null,
       needImg ? ddgImages(ddgQueryJp) : Promise.resolve([]),
       needImg && ddgQueryJp !== ddgQueryZh ? ddgImages(ddgQueryZh) : Promise.resolve([]),
     ])
@@ -853,7 +923,7 @@ export async function POST(req: Request) {
     const bandaiVariantImgs = bandai?.images?.slice(1) ?? []
     // 合併兩組 DDG 結果，優先日文（更精準），中文補位
     const ddgResults = [...ddgResJp, ...ddgResZh.filter(r => !ddgResJp.some(j => j.image === r.image))]
-    const ddgImage   = needImg && !bandaiMainImg ? bestDdgImage(ddgResults, barcode) : null
+    const ddgImage   = needImg && !bandaiMainImg ? bestDdgImage(ddgResults, effectiveBarcode) : null
 
     // 合併：網站結果 > Claude 識別 > 萬代備援
     const jp_price_yen = siteResult?.jp_price_yen ?? bandai?.jp_price_yen ?? yahooPrice ?? identified.jp_price_yen ?? null
