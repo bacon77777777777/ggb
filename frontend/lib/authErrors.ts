@@ -19,20 +19,33 @@ const ERROR_MAP: Array<{ match: RegExp | string; code: string; msg: string }> = 
   { match: /new password should be different/i, code: 'A022', msg: '新密碼不能與舊密碼相同' },
   { match: /same password/i,                  code: 'A022', msg: '新密碼不能與舊密碼相同' },
   // 頻率限制
-  { match: /too many requests/i,              code: 'A031', msg: '嘗試次數過多，請稍後再試' },
-  { match: /rate limit/i,                     code: 'A031', msg: '請求過於頻繁，請稍後再試' },
-  { match: /email rate limit/i,               code: 'A032', msg: '發送次數已達上限，請稍後再試' },
+  { match: /too many requests/i,                            code: 'A031', msg: '嘗試次數過多，請稍後再試' },
+  { match: /rate limit/i,                                   code: 'A031', msg: '請求過於頻繁，請稍後再試' },
+  { match: /email rate limit/i,                             code: 'A032', msg: '發送次數已達上限，請稍後再試' },
+  { match: /security purposes.*after (\d+) seconds?/i,     code: 'A033', msg: '操作太頻繁，請等待 10 秒後再試' },
+  { match: /for security purposes/i,                        code: 'A033', msg: '操作太頻繁，請稍後再試' },
+  { match: /after \d+ seconds?/i,                           code: 'A033', msg: '操作太頻繁，請稍後再試' },
+  // 帳號狀態
+  { match: /user is banned/i,                               code: 'A041', msg: '此帳號已被停用' },
+  { match: /account.*disabled/i,                            code: 'A041', msg: '此帳號已被停用' },
+  { match: /signup.*disabled/i,                             code: 'A042', msg: '目前暫停開放註冊' },
+  // session / token
+  { match: /session.*expired/i,                             code: 'A051', msg: '登入已過期，請重新登入' },
+  { match: /refresh.*token/i,                               code: 'A051', msg: '登入狀態已失效，請重新登入' },
   // 網路 / 系統
-  { match: /network/i,                        code: 'A091', msg: '網路連線錯誤，請稍後再試' },
-  { match: /fetch/i,                          code: 'A091', msg: '網路連線錯誤，請稍後再試' },
+  { match: /network/i,                                      code: 'A091', msg: '網路連線錯誤，請稍後再試' },
+  { match: /fetch/i,                                        code: 'A091', msg: '網路連線錯誤，請稍後再試' },
+  { match: /unexpected.*error/i,                            code: 'A092', msg: '系統發生錯誤，請稍後再試' },
+  { match: /server.*error/i,                                code: 'A092', msg: '伺服器錯誤，請稍後再試' },
 ]
 
 export function translateAuthError(raw?: string | null): string {
-  if (!raw) return '[A099] 發生未知錯誤，請稍後再試'
+  if (!raw) return '發生未知錯誤，請稍後再試'
   for (const { match, code, msg } of ERROR_MAP) {
     const hit = typeof match === 'string' ? raw.includes(match) : match.test(raw)
-    if (hit) return `[${code}] ${msg}`
+    if (hit) return msg
   }
-  // fallback: return original wrapped in code
-  return `[A099] ${raw}`
+  // fallback：不顯示英文原文，統一顯示中文
+  console.warn('[Auth Error]', raw)
+  return '操作失敗，請稍後再試'
 }

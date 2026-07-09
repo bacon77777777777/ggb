@@ -2,6 +2,15 @@
 
 ---
 
+## 2026-07-09｜Auth 錯誤訊息全中文化
+
+### authErrors.ts 擴充
+- 補 A033：Supabase 頻率限制「security purposes / after X seconds」→「操作太頻繁，請稍後再試」
+- 補 A041（帳號停用）、A042（暫停註冊）、A051（Session 過期）
+- fallback 不再顯示英文原文，改為「操作失敗，請稍後再試」，原始錯誤只 console.warn
+
+---
+
 ## 2026-07-09｜情報列表手勢修正 + news-agent 每 20 分鐘
 
 ### 情報列表手勢修正
