@@ -366,57 +366,69 @@ export default function ProductDetailPage() {
   const [shareCopied, setShareCopied] = useState(false);
   const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
 
-  const getShareText = () => {
-    const url = window.location.href;
-    const name = product?.name || 'GGB';
-    return `【吉吉比線上轉蛋】${name} ${url}`;
+  // 每個商品只計一次分享任務，以 localStorage 去重
+  const trackShareOnce = () => {
+    if (!user || !params.id) return;
+    const key = 'ggb_shared_products';
+    try {
+      const shared: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+      const pid = String(params.id);
+      if (!shared.includes(pid)) {
+        MissionService.trackEvent('share_app', {}).catch(() => {});
+        localStorage.setItem(key, JSON.stringify([...shared, pid]));
+      }
+    } catch {
+      MissionService.trackEvent('share_app', {}).catch(() => {});
+    }
   };
 
   const handleShare = async () => {
     const url = window.location.href;
     const name = product?.name || 'GGB';
-    const shareText = getShareText();
-    // Only use native share on touch devices (mobile); Mac/desktop uses clipboard
+    // 有觸控支援（手機/平板）且瀏覽器支援 Web Share API → 原生分享介面
     const isTouchDevice = navigator.maxTouchPoints > 0;
     if (navigator.share && isTouchDevice) {
       try {
-        await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, text: shareText, url });
-        if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
-      } catch {}
+        await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, url });
+        trackShareOnce();
+      } catch {
+        // 使用者取消或不支援，不計次數
+      }
     } else {
+      // 桌面/Mac：複製商品連結
       try {
-        await navigator.clipboard.writeText(shareText);
+        await navigator.clipboard.writeText(url);
       } catch {
         const el = document.createElement('textarea');
-        el.value = shareText;
+        el.value = url;
         document.body.appendChild(el);
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
       }
-      if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
+      trackShareOnce();
+      showToast('商品連結已複製', 'success');
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     }
   };
 
   const handleCopyLink = async () => {
-    const shareText = getShareText();
+    const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(shareText);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
+      await navigator.clipboard.writeText(url);
     } catch {
       const el = document.createElement('textarea');
-      el.value = shareText;
+      el.value = url;
       document.body.appendChild(el);
       el.select();
       document.execCommand('copy');
       document.body.removeChild(el);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
     }
-    if (user) MissionService.trackEvent('share_app', {}).catch(() => {});
+    trackShareOnce();
+    showToast('商品連結已複製', 'success');
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
   };
 
   // Page view + scroll depth tracking
