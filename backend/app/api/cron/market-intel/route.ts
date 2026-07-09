@@ -91,25 +91,62 @@ interface SiteSnapshot {
   error?: string
 }
 
-async function scrapeOne(name: string, url: string): Promise<SiteSnapshot> {
-  const base: SiteSnapshot = { name, url, ok: false, title: '', description: '', bodyText: '', nextSnippet: '' }
+// 嘗試多個 sub-path，取第一個有豐富內容的頁面
+const PRODUCT_SUB_PATHS = [
+  '', '/products', '/kuji', '/new-arrival', '/new', '/lottery',
+  '/活動', '/商品', '/catalog', '/items',
+]
+
+async function scrapeUrl(url: string): Promise<{ html: string; finalUrl: string } | null> {
   try {
-    const res = await fetchWithTimeout(url, 10_000, {
+    const res = await fetchWithTimeout(url, 8_000, {
       headers: { 'user-agent': UA, accept: 'text/html,*/*;q=0.9', 'accept-language': 'zh-TW,zh;q=0.9,en;q=0.8' },
       redirect: 'follow',
     })
-    if (!res.ok) return { ...base, error: `HTTP ${res.status}` }
-    const html = await res.text()
-    return {
-      ...base,
-      ok:          true,
-      title:       extractTitle(html),
-      description: extractMeta(html, 'name', 'description') || extractMeta(html, 'property', 'og:description'),
-      bodyText:    stripHtml(html, 2000),
-      nextSnippet: extractNextDataSnippet(html),
-    }
-  } catch (e: any) {
-    return { ...base, error: e?.message?.slice(0, 80) ?? 'timeout' }
+    if (!res.ok) return null
+    return { html: await res.text(), finalUrl: res.url }
+  } catch { return null }
+}
+
+function contentRichness(html: string): number {
+  // 評估頁面內容豐富度：字數 + 含商品關鍵字加分
+  const text = stripHtml(html, 5000)
+  const keywords = ['一番賞', 'kuji', '限定', '新品', '活動', '商品', '售完', '開售', '預購', '轉蛋', '扭蛋', '盒玩']
+  const kwScore = keywords.reduce((s, k) => s + (text.toLowerCase().includes(k.toLowerCase()) ? 30 : 0), 0)
+  return text.length + kwScore
+}
+
+async function scrapeOne(name: string, baseUrl: string): Promise<SiteSnapshot> {
+  const base: SiteSnapshot = { name, url: baseUrl, ok: false, title: '', description: '', bodyText: '', nextSnippet: '' }
+
+  // 先抓首頁
+  const home = await scrapeUrl(baseUrl)
+  if (!home) return { ...base, error: 'timeout or HTTP error' }
+
+  let bestHtml = home.html
+  let bestScore = contentRichness(home.html)
+
+  // 嘗試產品列表 sub-path（最多試 3 個）
+  const origin = new URL(baseUrl).origin
+  let tried = 0
+  for (const path of PRODUCT_SUB_PATHS.slice(1)) {
+    if (tried >= 3) break
+    const subUrl = origin + path
+    const sub = await scrapeUrl(subUrl)
+    if (!sub) continue
+    const score = contentRichness(sub.html)
+    if (score > bestScore) { bestHtml = sub.html; bestScore = score }
+    tried++
+    await sleep(400)
+  }
+
+  return {
+    ...base,
+    ok:          true,
+    title:       extractTitle(bestHtml),
+    description: extractMeta(bestHtml, 'name', 'description') || extractMeta(bestHtml, 'property', 'og:description'),
+    bodyText:    stripHtml(bestHtml, 2000),
+    nextSnippet: extractNextDataSnippet(bestHtml),
   }
 }
 
@@ -498,16 +535,25 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // 也把本次抓到的資訊寫入 competitor_posts（供其他 agent 查詢）
+  // 把本次抓到的資訊寫入 competitor_posts（供 CMO / CFO 等 agent 查詢）
+  // content 優先用 nextSnippet（__NEXT_DATA__ 含商品名稱等結構化資料）
+  // 否則用 bodyText 前 300 字（篩掉導覽列/頁尾雜訊後的正文）
   const postsToInsert = snapshots
-    .filter(s => s.ok && (s.title || s.description))
-    .map(s => ({
-      competitor: s.name,
-      platform:   '網站',
-      content:    [s.title, s.description].filter(Boolean).join(' — ').slice(0, 500),
-      url:        s.url,
-      added_by:   'market_intel_v2',
-    }))
+    .filter(s => s.ok && (s.title || s.bodyText || s.nextSnippet))
+    .map(s => {
+      const richBody = s.nextSnippet
+        ? `${s.title} — ${s.nextSnippet.slice(0, 300)}`
+        : s.bodyText.length > 50
+          ? `${s.title} — ${s.bodyText.slice(0, 300)}`
+          : [s.title, s.description].filter(Boolean).join(' — ')
+      return {
+        competitor: s.name,
+        platform:   '網站',
+        content:    richBody.slice(0, 500),
+        url:        s.url,
+        added_by:   'market_intel_v2',
+      }
+    })
   if (postsToInsert.length > 0) {
     await supabase.from('competitor_posts').insert(postsToInsert)
   }
