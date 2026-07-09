@@ -238,16 +238,6 @@ export default function NewsPage() {
       <div className="space-y-4">
 
         <PageCard>
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              {isGenerating ? '生成中...' : '⚡ 生成文章'}
-            </button>
-            <span className="text-xs text-neutral-400">自動抓取 1 篇新品情報（不重複、需有圖）</span>
-          </div>
           <SearchToolbar
             searchPlaceholder="搜尋標題..."
             searchValue={searchQ}
@@ -288,7 +278,15 @@ export default function NewsPage() {
               { label: '批量刪除', onClick: handleBatchDelete,    variant: 'danger'    },
             ]}
             onClearSelection={() => setSelectedIds(new Set())}
-          />
+          >
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            >
+              {isGenerating ? '生成中...' : '⚡ 生成文章'}
+            </button>
+          </SearchToolbar>
 
           <FilterTags
             tags={[
