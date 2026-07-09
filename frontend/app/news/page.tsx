@@ -238,7 +238,7 @@ export default function NewsPage() {
   }, []);
 
   const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);
-  const carousel = [...all].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
+  const carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
@@ -258,7 +258,7 @@ export default function NewsPage() {
 
         {isLoading ? <LoadingSkeleton /> : (
           <div>
-            {activeTab === 'all' && carousel.length > 0 && <Carousel items={carousel} />}
+            {carousel.length > 0 && <Carousel items={carousel} />}
             <div className="px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               {filtered.length === 0 ? (
                 <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
