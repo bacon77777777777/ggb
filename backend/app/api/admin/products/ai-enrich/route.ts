@@ -561,10 +561,16 @@ async function scrapePriceFromYahoo(name: string, barcode?: string | null): Prom
 // ─────────────────────────────────────────────────────────────────────────────
 // ════ Storage 圖片比對 ════
 // ─────────────────────────────────────────────────────────────────────────────
-function resolveStorageImage(raw_image_name: string | null): string | null {
+async function resolveStorageImage(raw_image_name: string | null): Promise<string | null> {
   if (!raw_image_name) return null
   const base = (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, '')
-  return `${base}/products/${raw_image_name}`
+  const url  = `${base}/products/${raw_image_name}`
+  try {
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(4000) })
+    return res.ok ? url : null
+  } catch {
+    return null
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -741,8 +747,8 @@ export async function POST(req: Request) {
   const clean     = cleanName(product_name)
 
   try {
-    // ── Step 1: Storage 圖片配對 ─────────────────────────────────────────────
-    const storageImageUrl = resolveStorageImage(raw_image_name ?? null)
+    // ── Step 1: Storage 圖片配對（HEAD 驗證 R2 確實有此檔）────────────────────
+    const storageImageUrl = await resolveStorageImage(raw_image_name ?? null)
 
     // ── Step 2: DB 條碼復用 ──────────────────────────────────────────────────
     const dbResult = await fetchFromDB(barcode ?? null)
