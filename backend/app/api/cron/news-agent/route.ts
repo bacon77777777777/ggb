@@ -219,6 +219,27 @@ ${combined}
   catch { return null }
 }
 
+// ─── 標題相似度去重 ──────────────────────────────────────────────────────────
+
+// 把標題拆成 CJK 單字 + 英數詞，過濾掉短於 2 字的助詞雜訊
+function tokenize(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[！？。、，【】「」『』《》〈〉・\-\s]+/g, ' ')
+      .split(' ')
+      .filter(t => t.length >= 2)
+  )
+}
+
+// Jaccard 相似度：兩組 token 交集 / 聯集
+function jaccardSim(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  const inter = [...a].filter(t => b.has(t)).length
+  const union  = new Set([...a, ...b]).size
+  return inter / union
+}
+
 // ─── 主流程 ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -230,13 +251,24 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseAdmin()
   const claude   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-  // 已寫入的 source_url 集合（防重複）
+  // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url')
+    .select('source_url, title')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
-  const existing = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
+  const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
+  // 近 7 天標題的 token set，用於主題去重
+  const recentTitles  = (existingRows ?? [])
+    .filter((r: any) => new Date(r.created_at ?? 0).getTime() > Date.now() - 7 * 86400_000)
+    .map((r: any) => tokenize(r.title ?? ''))
+  // 本次 session 已寫入的標題也加入比對（防止同一次跑多篇同主題）
+  const sessionTitles: Set<string>[] = []
+
+  function isDuplicateTopic(newTitle: string): boolean {
+    const tokens = tokenize(newTitle)
+    return [...recentTitles, ...sessionTitles].some(t => jaccardSim(tokens, t) >= 0.55)
+  }
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[] }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
@@ -279,6 +311,9 @@ export async function POST(req: NextRequest) {
       )
       if (!draft) { results.skipped++; continue }
 
+      // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
+      if (isDuplicateTopic(draft.title)) { results.skipped++; continue }
+
       // 下載圖片到 R2（失敗則用外部 URL，但不跳過）
       const imageUrl = await downloadImageToR2(ogImage) ?? ogImage
 
@@ -299,6 +334,7 @@ export async function POST(req: NextRequest) {
         results.written++
         results.articles.push(draft.title)
         existing.add(realUrl)
+        sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
         perQuery++
       } else if (error.code === '23505') {
         results.skipped++

@@ -46,7 +46,7 @@ function savePrefs(patch: Record<string, unknown>) {
   try {
     const cur = loadPrefs()
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...cur, ...patch }))
-  } catch {}
+  } catch (_) { /* ignore */ }
 }
 
 export default function NewsPage() {
