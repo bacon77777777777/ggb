@@ -112,13 +112,6 @@ export default function NewsDetailPage() {
           {item.title}
         </h1>
 
-        {/* 摘要 */}
-        {item.summary && (
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed mb-4 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-            {item.summary}
-          </p>
-        )}
-
         {/* ── 文章內容（HTML）── */}
         {item.content ? (
           <div

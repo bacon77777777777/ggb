@@ -70,7 +70,7 @@ function Carousel({ items }: { items: NewsItem[] }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-16">
-          <span className="inline-block px-2 py-0.5 bg-primary text-white text-[10px] font-black rounded mb-2">
+          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded mb-2">
             {CATEGORY_LABELS[item.category ?? ''] ?? '情報'}
           </span>
           <h2 className="text-white font-black text-[17px] leading-[1.35] line-clamp-2 overflow-hidden">
