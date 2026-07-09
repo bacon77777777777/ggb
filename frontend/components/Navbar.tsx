@@ -292,9 +292,10 @@ function NavbarInner() {
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
     if (!url) return;
+    const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
     try {
       const nav = navigator as unknown as { share?: (data: { url: string }) => Promise<void> };
-      if (typeof nav.share === 'function') {
+      if (typeof nav.share === 'function' && isTouchDevice) {
         await nav.share({ url });
         return;
       }

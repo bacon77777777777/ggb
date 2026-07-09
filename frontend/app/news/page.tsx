@@ -21,15 +21,16 @@ interface NewsItem {
   view_count: number;
   likes_count: number;
   comments_count: number;
+  liked?: boolean;
 }
 
 const CATEGORIES = [
   { key: 'all',      label: '全部' },
+  { key: 'general',  label: '綜合' },
   { key: 'ichiban',  label: '一番賞' },
   { key: 'gacha',    label: '轉蛋' },
   { key: 'blindbox', label: '盒玩' },
   { key: 'tcg',      label: '卡牌' },
-  { key: 'general',  label: '綜合' },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -130,35 +131,57 @@ function Carousel({ items }: { items: NewsItem[] }) {
 }
 
 // ─── 文章列表項目 ────────────────────────────────────────────────────────────
-function ArticleRow({ item }: { item: NewsItem }) {
+function ArticleRow({ item, onLike }: { item: NewsItem; onLike: (id: string) => void }) {
   return (
-    <Link href={`/news/${item.id}`}
-      className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
-      <div className="flex-shrink-0 w-[70px] h-[70px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
+    <div className="relative flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/40 transition-colors">
+      {/* 整行透明 link，覆蓋整個列 */}
+      <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title} />
+
+      {/* 縮圖 */}
+      <div className="pointer-events-none relative z-10 flex-shrink-0 w-[70px] h-[70px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-neutral-300 text-xs font-bold">GGB</div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
+
+      {/* 文字區 */}
+      <div className="pointer-events-none relative z-10 flex-1 min-w-0">
         <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-[1.5] h-[42px] mb-1.5">
           {item.title}
         </h3>
-        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-          {item.category && <CategoryBadge category={item.category} />}
-          {item.category && <span>·</span>}
-          <span>{timeAgo(item.created_at)}</span>
-          <span className="flex-1" />
-          {(item.comments_count > 0 || item.likes_count > 0) && (
-            <span className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 tabular-nums">
-              {item.comments_count > 0 && <span>留言 {item.comments_count}</span>}
-              {item.likes_count > 0 && <span>讚 {item.likes_count}</span>}
-            </span>
-          )}
+        <div className="flex items-center justify-between gap-2 text-[11px] text-neutral-400 dark:text-neutral-500">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {item.category && <CategoryBadge category={item.category} />}
+            {item.category && <span>·</span>}
+            <span className="truncate">{timeAgo(item.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0 text-neutral-500 dark:text-neutral-400">
+            {/* 留言（點擊整行已進頁面，此處純顯示） */}
+            <div className="flex items-center gap-0.5 w-9">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span className="tabular-nums font-bold">{item.comments_count}</span>
+            </div>
+            {/* 讚（pointer-events-auto 讓按鈕浮出覆蓋在透明 link 上） */}
+            <button
+              onClick={e => { e.stopPropagation(); onLike(item.id); }}
+              className={cn(
+                'pointer-events-auto flex items-center gap-0.5 w-9 transition-colors active:scale-110',
+                item.liked ? 'text-primary' : ''
+              )}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={item.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" />
+              </svg>
+              <span className="tabular-nums font-bold">{item.likes_count}</span>
+            </button>
+          </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -189,6 +212,14 @@ export default function NewsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const supabase = createClient();
+
+  const handleLike = async (id: string) => {
+    setAll(prev => prev.map(a => a.id === id
+      ? { ...a, liked: !a.liked, likes_count: a.likes_count + (a.liked ? -1 : 1) }
+      : a
+    ));
+    await fetch(`/api/news/${id}/like`, { method: 'POST' }).catch(() => {});
+  };
 
   const tabKeys  = CATEGORIES.map(c => c.key);
   const swipeX   = useRef<number | null>(null);
@@ -265,7 +296,7 @@ export default function NewsPage() {
                   此分類目前沒有文章
                 </div>
               ) : (
-                filtered.map(item => <ArticleRow key={item.id} item={item} />)
+                filtered.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)
               )}
             </div>
           </div>

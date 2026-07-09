@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Clock, Tag, Send, ChevronLeft, Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
 interface NewsItem {
   id: string;
@@ -166,15 +167,13 @@ function CommentItem({
         {/* 留言按讚 */}
         <button
           onClick={handleLike}
-          className={cn('flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5',
+          className={cn('flex items-center gap-1 flex-shrink-0 self-center',
             comment.is_liked ? 'text-primary' : 'text-neutral-400'
           )}
         >
           <ThumbUpIcon filled={comment.is_liked}
             className={cn('w-4 h-4 transition-transform', likeAnim && 'scale-[1.5]')} />
-          {comment.likes_count > 0 && (
-            <span className="text-[10px] font-black leading-none">{comment.likes_count}</span>
-          )}
+          <span className="text-[11px] font-bold tabular-nums">{comment.likes_count}</span>
         </button>
       </div>
     </div>
@@ -250,10 +249,10 @@ function CommentSheet({
         'fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-neutral-900 rounded-t-2xl shadow-xl',
         'flex flex-col transition-transform duration-300',
         open ? 'translate-y-0' : 'translate-y-full'
-      )} style={{ maxHeight: '65vh' }}>
+      )} style={{ height: '60vh' }}>
 
         {/* 標題列 */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100 dark:border-neutral-800 flex-shrink-0">
           <span className="text-[15px] font-black text-neutral-900 dark:text-white">
             留言 <span className="text-neutral-400 font-bold">{totalCount}</span>
           </span>
@@ -326,6 +325,7 @@ export default function NewsDetailPage() {
   const supabase = createClient();
   const { user } = useAuth();
 
+  const { showToast } = useToast();
   const [item, setItem]           = useState<NewsItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -428,11 +428,27 @@ export default function NewsDetailPage() {
     }
   };
 
-  const handleShare = () => {
-    if (navigator.share && item) {
-      navigator.share({ title: item.title, url: window.location.href }).catch(() => {});
+  const handleShare = async () => {
+    const url = window.location.href;
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    if (navigator.share && isTouchDevice) {
+      try {
+        await navigator.share({ title: item?.title ?? 'GGB 情報', url });
+      } catch {
+        // 使用者取消，不處理
+      }
     } else {
-      navigator.clipboard.writeText(window.location.href).then(() => alert('連結已複製'));
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      showToast('文章連結已複製', 'success');
     }
   };
 
@@ -466,7 +482,7 @@ export default function NewsDetailPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[80px]">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-2 pt-[env(safe-area-inset-top)] pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 pt-[env(safe-area-inset-top)] pointer-events-none">
         <Link href="/news"
           className="pointer-events-auto m-2 w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
@@ -542,7 +558,7 @@ export default function NewsDetailPage() {
           className="flex-1 relative flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-full text-left"
         >
           <span className="flex-1 text-[13px] text-neutral-400 px-4 py-2 pr-10">
-            {commentCount ? `${commentCount} 則留言` : '則留言'}
+            {commentCount !== null ? `${commentCount} 則留言` : '則留言'}
           </span>
           <span className="absolute right-2 top-1/2 -translate-y-1/2">
             <SendCircle />

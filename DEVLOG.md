@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-07-10｜情報頁 UX 全面升級
+
+### 情報列表（`frontend/app/news/page.tsx`）
+- 整行可點進文章：overlay link 技巧（`absolute inset-0 z-0`），內容層 `pointer-events-none`
+- 讚按鈕 `pointer-events-auto` 浮出，可在列表直接點讚（樂觀更新）
+- 留言圖標點擊也進文章內頁
+- 統計區改為水平圖標排列（留言泡泡 + 拇指讚），固定寬度容器（`w-9`）確保上下篇圖標對齊
+- 數字欄 `w-5 text-right tabular-nums` 對齊
+
+### 分享圖標修正（`Navbar.tsx`、`item/[id]/page.tsx`、`news/[id]/page.tsx`）
+- Mac/PC 點分享：直接複製連結 + toast「連結已複製」
+- 手機/平板：彈出原生分享介面
+- 判斷改用 `window.matchMedia('(pointer: coarse)').matches` 取代 `maxTouchPoints`
+- Navbar.tsx 同步修正（原本只要 `navigator.share` 存在就呼叫）
+
+### 留言抽屜（`news/[id]/page.tsx`）
+- 固定高度 `60vh`（原 `maxHeight: 65vh`），展開高度一致
+- header padding `pt-4 pb-3` → `px-4 py-2`
+- nav z-index `z-30` → `z-20`，確保遮罩（`z-40`）覆蓋頂部導航
+- 留言讚按鈕：`flex-col` → `flex`，圖標與數字水平排列；永遠顯示數字（含 0）；`self-center` 垂直置中
+
+---
+
 ## 2026-07-09｜文章生成圖片抓取強化（進行中）
 
 ### 問題
