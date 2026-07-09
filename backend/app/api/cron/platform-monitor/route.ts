@@ -12,11 +12,9 @@ export const maxDuration = 60
 async function fetchSupabaseStatus() {
   try {
     const supabase = getSupabaseAdmin()
-    const { data, error } = await supabase.rpc('execute_readonly_sql', {
-      query: `SELECT round(pg_database_size(current_database()) / 1024.0 / 1024.0, 2) AS mb`
-    })
-    if (error || !data?.[0]) return { db_mb: null, status: 'error' as const }
-    const mb = Number(data[0].mb)
+    const { data, error } = await supabase.rpc('get_db_size_mb')
+    if (error) return { db_mb: null, status: 'error' as const }
+    const mb = Number(data)
     const LIMIT_MB = 8192  // Pro plan: 8 GB
     const pct = mb / LIMIT_MB * 100
     return {
