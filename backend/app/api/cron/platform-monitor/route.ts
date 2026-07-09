@@ -13,11 +13,12 @@ async function fetchSupabaseStatus() {
   try {
     const supabase = getSupabaseAdmin()
     const { data, error } = await supabase.rpc('execute_readonly_sql', {
-      sql: `SELECT round(pg_database_size(current_database()) / 1024.0 / 1024.0, 2) AS mb`
+      query: `SELECT round(pg_database_size(current_database()) / 1024.0 / 1024.0, 2) AS mb`
     })
     if (error || !data?.[0]) return { db_mb: null, status: 'error' as const }
     const mb = Number(data[0].mb)
-    const pct = mb / 500 * 100
+    const LIMIT_MB = 8192  // Pro plan: 8 GB
+    const pct = mb / LIMIT_MB * 100
     return {
       db_mb: mb,
       status: pct > 90 ? 'error' : pct > 75 ? 'warning' : 'ok' as 'ok' | 'warning' | 'error',
@@ -173,8 +174,8 @@ export async function POST(req: Request) {
 
   // 告警訊息
   const alerts: string[] = []
-  if (supabase.status === 'error')   alerts.push(`Supabase DB 接近上限：${supabase.db_mb} MB / 500 MB`)
-  if (supabase.status === 'warning') alerts.push(`Supabase DB 用量偏高：${supabase.db_mb} MB / 500 MB`)
+  if (supabase.status === 'error')   alerts.push(`Supabase DB 接近上限：${supabase.db_mb} MB / 8,192 MB`)
+  if (supabase.status === 'warning') alerts.push(`Supabase DB 用量偏高：${supabase.db_mb} MB / 8,192 MB`)
   if (r2Status.status === 'error')   alerts.push(`R2 儲存接近上限：${r2Status.size_mb} MB / 10,240 MB`)
   if (vercel.status === 'error')     alerts.push(`Vercel 最新部署失敗：${vercel.state}`)
   if (github.status === 'error')     alerts.push(`GitHub CI 失敗：${github.conclusion}`)

@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-07-09｜cron 修復 + 監控修正 + wizard 圖片驗證強化
+
+### Cron 全面修復（7 個 job 因 GUC 未設而全掛）
+- `app.backend_url` / `app.base_url` / `app.cron_secret` GUC 參數在 Supabase 不允許 `ALTER DATABASE` 設定
+- 解法：全部 unschedule → reschedule，把 `current_setting()` 換成 hardcode URL + secret
+- 受影響：`health-check`、`risk-check`、`flag-pending-recharge`、`auto-deliver`、`cmo-agent-daily`、`market-intel-weekly`、`market-discovery-monthly`
+- 同步修正 `cmo-agent-daily` 排程：`0 3 * * *` (UTC 3am = 台灣 11am) → `0 1 * * *` (UTC 1am = 台灣 9am)
+- 停用 `daily-content-drafts` cron（AI 文案暫停推播）
+
+### 平台監控修正
+- `platform-monitor/route.ts`：RPC 參數 `sql` → `query`，Supabase Pro 容量上限 500 MB → 8,192 MB
+
+### 智能批量匯入 wizard 圖片驗證強化
+- `resolvedImg` 只接受 R2 URL（`NEXT_PUBLIC_R2_PUBLIC_URL` 前綴）；外部 URL（Yahoo Japan 等可能被 hotlink 擋）視為無效
+- AI 成功找到 R2 圖片後自動清除 `raw_image_name`（避免重複配對）
+- 移除 expanded section 中的「待配對圖片：xxx.webp」文字顯示
+
+---
+
 ## 2026-07-09｜Supabase egress 危機處理 + 圖片遷移 R2 + 平台監控
 
 ### 問題根本原因

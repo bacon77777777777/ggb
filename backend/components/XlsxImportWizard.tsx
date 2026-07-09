@@ -358,9 +358,12 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         if (i !== idx) return x
         const resolvedDist = cleanDist(ai.distributor) || cleanDist(x.distributor) || null
         // raw_image_name 衍生的 R2 URL 未必存在，AI 找不到圖時不能 fallback 回去
-        const resolvedImg  = isValidImg(ai.image_url)
+        // 只接受 R2 URL 為有效圖片；外部 URL（Yahoo Japan 等）可能被 hotlink 擋
+        const r2Base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
+        const isR2Img = (url?: string | null) => !!(url && r2Base && url.startsWith(r2Base))
+        const resolvedImg  = isR2Img(ai.image_url)
           ? ai.image_url
-          : (isValidImg(x.image_url) && !x.raw_image_name ? x.image_url : null)
+          : null
         const hasRealData  = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
         // raw_image_name 代表「預期要有圖」，若找不到圖就算 partial
         const imageOk = resolvedImg ? true : !x.raw_image_name
@@ -369,8 +372,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
           : 'partial'
         return {
           ...x,
-          image_url:   resolvedImg,
-          distributor: resolvedDist,
+          image_url:      resolvedImg,
+          raw_image_name: resolvedImg ? null : x.raw_image_name,
+          distributor:    resolvedDist,
           variants: (() => {
             const aiHasImages = ai.variants?.some((v: any) => v.image_url)
             const csvComplete = x.variants?.length && x.variants.every((v: any) => v.name?.trim())
@@ -755,7 +759,6 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                             {(p.release_year || p.release_month) && <span>📅 發售 {p.release_year ?? '?'}年{p.release_month ? `${p.release_month}月` : ''}</span>}
                             {p.cost && <span>💴 成本 {p.cost}G</span>}
                             {p.special_price && <span>🏷 特價 {p.special_price}G</span>}
-                            {p.raw_image_name && <span className="text-amber-600">📄 待配對圖片：{p.raw_image_name}</span>}
                           </div>
                           {/* Variants */}
                           {variantList.length > 0 ? (
