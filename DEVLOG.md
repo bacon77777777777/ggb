@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-07-09｜文章生成圖片抓取強化（進行中）
+
+### 問題
+- 手動生成：新增 0 篇，跳過 160 篇（重複8、無圖150、Claude拒絕2）
+- 根本原因：大多數文章來源站（PR TIMES / 電撃ホビー / Google News 目標站）有反爬蟲保護，直接 fetch 拿不到 HTML，og:image 為空
+
+### 已嘗試
+- 多 UA 策略（Chrome / Mobile / Googlebot）
+- RSS `content:encoded` 解析、`enclosure` 放寬格式
+- HTML body `<img>` tag 掃描
+- Jina Reader API fallback（`r.jina.ai/{url}`）— 加入但效果待驗證
+
+### 待查
+- Jina 返回格式是否符合 regex（`!\[...\](url)`）
+- 150 篇逐一 Jina 呼叫是否在 4 分鐘 deadline 內來不及完成
+- 需要詳細 server log 確認各站回應狀況
+
+---
+
 ## 2026-07-09｜文章生成升級 + 功能開關 GB哥推播區塊
 
 ### 文章生成（news-agent）

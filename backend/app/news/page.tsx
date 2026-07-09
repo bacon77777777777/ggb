@@ -64,7 +64,15 @@ export default function NewsPage() {
       const res = await fetch('/api/admin/trigger/news-agent', { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (!res.ok) { alert(data?.error ?? '生成失敗'); return }
-      alert(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇（重複或無圖）`)
+      const r = data.skipReasons ?? {}
+      const detail = [
+        r.duplicate  ? `重複${r.duplicate}` : '',
+        r.noImage    ? `無圖${r.noImage}` : '',
+        r.claudeReject ? `Claude拒絕${r.claudeReject}` : '',
+        r.titleDup   ? `標題重複${r.titleDup}` : '',
+        r.insertErr  ? `寫入錯誤${r.insertErr}` : '',
+      ].filter(Boolean).join('、')
+      alert(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇\n${detail || '（重複或無圖）'}`)
       fetchData()
     } catch { alert('生成失敗') } finally { setIsGenerating(false) }
   }

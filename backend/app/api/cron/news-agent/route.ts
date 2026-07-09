@@ -13,6 +13,8 @@ export const maxDuration = 300
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/125.0 Safari/537.36'
+const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
+const UA_BOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 
 // ─── Google News RSS 搜尋詞（中文 + 日文 + 英文，多語言廣覆蓋）─────────────
 // 每次全局最多 8 篇，每詞最多 2 篇
@@ -95,10 +97,13 @@ function parseRss(xml: string): RssItem[] {
     const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim() ?? ''
     const source  = block.match(/<source[^>]*>([\s\S]*?)<\/source>/i)?.[1]?.trim() ?? ''
     // 從 enclosure / media:content / media:thumbnail / content:encoded 取圖片
+    const contentEncoded = block.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i)?.[1]
+      ?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, '$1') ?? ''
     const rssImage =
-      block.match(/enclosure[^>]+url=["']([^"']+\.(?:jpe?g|png|webp|gif))/i)?.[1] ??
+      block.match(/enclosure[^>]+url=["']([^"']+)/i)?.[1] ??
       block.match(/media:content[^>]+url=["']([^"']+)/i)?.[1] ??
       block.match(/media:thumbnail[^>]+url=["']([^"']+)/i)?.[1] ??
+      contentEncoded.match(/<img[^>]+src=["']([^"']+)/i)?.[1] ??
       block.match(/<img[^>]+src=["']([^"']+)/i)?.[1] ??
       ''
     if (title && link) items.push({ title, link, description: desc, pubDate, source, rssImage })
@@ -116,13 +121,21 @@ function isRecent(pubDate: string, days = 7): boolean {
 // ─── HTTP ────────────────────────────────────────────────────────────────────
 
 async function fetchText(url: string, timeoutMs = 10_000): Promise<string> {
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: { 'User-Agent': UA, 'Accept-Language': 'ja,en;q=0.8' },
-    })
-    return await res.text()
-  } catch { return '' }
+  for (const ua of [UA, UA_MOBILE, UA_BOT]) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: {
+          'User-Agent': ua,
+          'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+          'Accept-Language': 'ja,zh-TW;q=0.9,en;q=0.7',
+        },
+        redirect: 'follow',
+      })
+      if (res.ok) return await res.text()
+    } catch { continue }
+  }
+  return ''
 }
 
 function extractMeta(html: string, prop: string): string {
@@ -135,6 +148,22 @@ function extractMeta(html: string, prop: string): string {
 
 function extractOgImage(html: string): string {
   return extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image') || ''
+}
+
+// og:image 抓不到時，從 <img> 標籤掃描（跳過小圖示）
+function extractBodyImage(html: string): string {
+  const matches = [...html.matchAll(/<img[^>]+src=["']([^"']{20,500})["'][^>]*/gi)]
+  for (const m of matches) {
+    const src = m[0]
+    if (/logo|icon|avatar|pixel|spacer|sprite|banner_\d+x\d+/i.test(src)) continue
+    const url = m[1]
+    if (!url || url.startsWith('data:')) continue
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (BLOCKED_IMG_DOMAINS.some(d => url.includes(d))) continue
+      return url
+    }
+  }
+  return ''
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
@@ -152,6 +181,43 @@ function resolveImageUrl(imgUrl: string, pageUrl: string): string {
     return imgUrl
   }
   try { return new URL(imgUrl, pageUrl).href } catch { return '' }
+}
+
+// Jina Reader API — 繞過反爬蟲，返回 Markdown（含圖片 URL）
+async function fetchViaJina(url: string): Promise<string> {
+  try {
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      signal: AbortSignal.timeout(15_000),
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'text/plain',
+        'X-Return-Format': 'markdown',
+      },
+    })
+    if (res.ok) return await res.text()
+  } catch {}
+  return ''
+}
+
+// 從 Jina Markdown 提取第一張有效圖片
+function extractImageFromJina(jinaText: string, pageUrl: string): string {
+  // 格式: ![alt](url) 或 Image: url
+  const patterns = [
+    /!\[[^\]]*\]\((https?:\/\/[^)\s]{10,})\)/g,
+    /Image:\s*(https?:\/\/\S+)/g,
+    /Cover Image:\s*(https?:\/\/\S+)/g,
+  ]
+  for (const re of patterns) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(jinaText)) !== null) {
+      const url = m[1].replace(/[)>\s]+$/, '')
+      if (!url || BLOCKED_IMG_DOMAINS.some(d => url.includes(d))) continue
+      if (/\.(jpe?g|png|webp|gif)(\?|$)/i.test(url) || url.includes('img') || url.includes('image') || url.includes('photo')) {
+        return resolveImageUrl(url, pageUrl) || url
+      }
+    }
+  }
+  return ''
 }
 
 // Google News link → 실제 기사 URL（follow redirect）
@@ -366,9 +432,14 @@ export async function POST(req: NextRequest) {
       if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
       const articleHtml = await fetchText(realUrl, 8_000)
-      const ogImage = articleHtml
-        ? resolveImageUrl(extractOgImage(articleHtml), realUrl)
+      let ogImage = articleHtml
+        ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
         : resolveImageUrl(item.rssImage, realUrl)
+      let jinaText = ''
+      if (!ogImage) {
+        jinaText = await fetchViaJina(realUrl)
+        if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
+      }
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
 
       const bodyText = articleHtml
@@ -378,7 +449,7 @@ export async function POST(req: NextRequest) {
             .replace(/<[^>]+>/g, ' ')
             .replace(/\s+/g, ' ').trim()
             .slice(0, 1500)
-        : item.description
+        : (jinaText || item.description).slice(0, 1500)
 
       const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
@@ -428,9 +499,14 @@ export async function POST(req: NextRequest) {
 
       // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
       const articleHtml = await fetchText(realUrl, 8_000)
-      const ogImage = articleHtml
-        ? resolveImageUrl(extractOgImage(articleHtml), realUrl)
+      let ogImage = articleHtml
+        ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
         : resolveImageUrl(item.rssImage, realUrl)
+      let jinaText = ''
+      if (!ogImage) {
+        jinaText = await fetchViaJina(realUrl)
+        if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
+      }
       // 沒有任何圖片來源才跳過
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
 
@@ -441,7 +517,7 @@ export async function POST(req: NextRequest) {
             .replace(/<[^>]+>/g, ' ')
             .replace(/\s+/g, ' ').trim()
             .slice(0, 1500)
-        : item.description  // HTML 抓不到，用 RSS description 當內容提示
+        : (jinaText || item.description).slice(0, 1500)  // HTML 抓不到，用 Jina/RSS description
 
       // Claude 改寫
       const draft = await rewriteArticle(
