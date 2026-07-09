@@ -2,7 +2,7 @@
 
 ---
 
-## 2026-07-09｜cron 修復 + 監控修正 + wizard 圖片驗證強化
+## 2026-07-09｜cron 修復 + 監控修正 + wizard 圖片補全 + 競品情報升級
 
 ### Cron 全面修復（7 個 job 因 GUC 未設而全掛）
 - `app.backend_url` / `app.base_url` / `app.cron_secret` GUC 參數在 Supabase 不允許 `ALTER DATABASE` 設定
@@ -12,12 +12,21 @@
 - 停用 `daily-content-drafts` cron（AI 文案暫停推播）
 
 ### 平台監控修正
-- `platform-monitor/route.ts`：RPC 參數 `sql` → `query`，Supabase Pro 容量上限 500 MB → 8,192 MB
+- 建立 `get_db_size_mb()` SQL function（SECURITY DEFINER），繞過 execute_readonly_sql 動態 SQL 無法查 `pg_database_size()` 的限制
+- `platform-monitor/route.ts`：改呼叫 `get_db_size_mb()` RPC，Supabase Pro 容量上限 500 MB → 8,192 MB，告警文字同步修正
 
-### 智能批量匯入 wizard 圖片驗證強化
-- `resolvedImg` 只接受 R2 URL（`NEXT_PUBLIC_R2_PUBLIC_URL` 前綴）；外部 URL（Yahoo Japan 等可能被 hotlink 擋）視為無效
-- AI 成功找到 R2 圖片後自動清除 `raw_image_name`（避免重複配對）
+### 智能批量匯入 wizard 圖片補全修正
+- `imageOk = !!resolvedImg`：一定要有圖才算補全（之前 `raw_image_name` 為空的商品沒圖也顯示「已補全」）
+- `resolvedImg = isValidImg(ai.image_url)`：接受任何 https URL（R2 或外部均可）
+- `ai-enrich/route.ts`：AI 找到圖後自動下載壓縮（WebP）並上傳 R2，`finalImage` 為 R2 永久 URL
 - 移除 expanded section 中的「待配對圖片：xxx.webp」文字顯示
+- 加入診斷 log：`rawImage`、`ddgImage`、`R2 upload OK` 方便除錯
+
+### 競品情報頁升級
+- 新增「AI 情報週報」頁籤：展示 `market_intel_analysis` 的四層分析（事實 / 解讀 / 建議 / 異常）
+- 監控清單顯示：active（綠點）/ candidate（橘點），附「立即爬取分析」按鈕
+- 爬蟲升級：子頁多頁嘗試（/products, /kuji 等），`contentRichness()` 取內容最豐頁面，改用 bodyText / `__NEXT_DATA__` snippet 取代 meta description
+- 新增 `/api/admin/market-intel` route（GET watchlist/analysis、POST 手動觸發）
 
 ---
 
