@@ -5,12 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-function maskName(name: string): string {
-  if (!name) return '***'
-  if (name.length <= 2) return name[0] + '***'
-  return name.slice(0, 2) + '***'
-}
-
 function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max) + '…' : str
 }
@@ -95,7 +89,7 @@ export default function WinningMarquee() {
                     className={currentRecord.user_id ? 'text-primary font-black cursor-pointer underline underline-offset-2' : 'text-primary font-black'}
                     onClick={handleNameClick}
                   >
-                    {maskName(currentRecord.user_name)}
+                    {currentRecord.user_name}
                   </span>
                   抽到<span className="font-black text-neutral-800 dark:text-neutral-200">{truncate(currentRecord.product_name, 12)}</span>
                 </>
