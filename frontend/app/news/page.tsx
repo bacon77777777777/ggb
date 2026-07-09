@@ -124,8 +124,8 @@ function Carousel({ items }: { items: NewsItem[] }) {
 function ArticleRow({ item }: { item: NewsItem }) {
   return (
     <Link href={`/news/${item.id}`}
-      className="flex items-start gap-3 py-4 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
-      <div className="flex-shrink-0 w-[90px] h-[90px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
+      className="flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
+      <div className="flex-shrink-0 w-[70px] h-[70px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
         ) : (
@@ -155,8 +155,8 @@ function LoadingSkeleton() {
       <Skeleton className="w-full aspect-[16/9] rounded-none" />
       <div className="px-4 pt-2">
         {[1,2,3,4,5].map(i => (
-          <div key={i} className="flex gap-3 py-4 border-b border-neutral-100 dark:border-neutral-800">
-            <Skeleton className="w-[90px] h-[65px] rounded-lg flex-shrink-0" />
+          <div key={i} className="flex gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
+            <Skeleton className="w-[70px] h-[70px] rounded-lg flex-shrink-0" />
             <div className="flex-1 space-y-2 pt-1">
               <Skeleton className="h-4 w-full rounded" />
               <Skeleton className="h-4 w-3/4 rounded" />
