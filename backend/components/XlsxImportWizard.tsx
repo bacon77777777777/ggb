@@ -686,13 +686,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                         <div className="w-12 h-12 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex-shrink-0 relative">
                           {isValidImg(p.image_url) && (
                             <img
+                              key={p.image_url}
                               src={p.image_url!}
                               alt=""
                               className="absolute inset-0 w-full h-full object-cover"
-                              onError={e => {
-                                (e.target as HTMLImageElement).style.display = 'none'
+                              onError={() => {
                                 setProducts(prev => prev.map((x, j) =>
-                                  j === i && x.aiStatus === 'done' ? { ...x, aiStatus: 'partial' } : x
+                                  j === i && x.aiStatus === 'done' ? { ...x, aiStatus: 'partial', image_url: null } : x
                                 ))
                               }}
                             />
