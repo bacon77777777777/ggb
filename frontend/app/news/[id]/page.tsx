@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { ArrowLeft, Clock, Tag, ExternalLink } from 'lucide-react';
+import { Clock, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NewsItem {
@@ -34,7 +34,6 @@ function formatDate(dateStr: string) {
 
 export default function NewsDetailPage() {
   const params  = useParams();
-  const router  = useRouter();
   const [item, setItem]       = useState<NewsItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
@@ -49,7 +48,6 @@ export default function NewsDetailPage() {
       .then(({ data }) => {
         setItem(data);
         setIsLoading(false);
-        // 增加瀏覽數
         if (data) {
           supabase.from('news').update({ view_count: (data.view_count ?? 0) + 1 }).eq('id', data.id);
         }
@@ -59,10 +57,6 @@ export default function NewsDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
-        <div className="sticky top-0 z-20 h-12 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 flex items-center px-4">
-          <Skeleton className="w-8 h-8 rounded-full" />
-          <Skeleton className="ml-3 h-4 w-24 rounded" />
-        </div>
         <Skeleton className="w-full aspect-[16/9]" />
         <div className="px-4 pt-4 space-y-3">
           <Skeleton className="h-6 w-full rounded" />
@@ -88,22 +82,6 @@ export default function NewsDetailPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-28">
-
-      {/* ── 頂部導航 ── */}
-      <div className="sticky top-0 z-20 h-12 bg-white/95 dark:bg-neutral-950/95 backdrop-blur border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between px-4">
-        <button onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 active:text-neutral-800">
-          <ArrowLeft className="w-5 h-5" />
-          <span className="text-[13px] font-bold">情報</span>
-        </button>
-        {item.source_url && (
-          <a href={item.source_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[12px] text-neutral-400 dark:text-neutral-500 font-bold">
-            原文
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        )}
-      </div>
 
       {/* ── 主圖 ── */}
       {item.image_url && (
@@ -163,24 +141,6 @@ export default function NewsDetailPage() {
             ))}
           </div>
         )}
-
-        {/* 來源連結 */}
-        {item.source_url && (
-          <div className="mt-6 p-3 bg-neutral-50 dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800">
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 font-bold mb-1">資料來源</p>
-            <a href={item.source_url} target="_blank" rel="noopener noreferrer"
-              className="text-[12px] text-primary font-bold break-all line-clamp-2 hover:underline">
-              {item.source_url}
-            </a>
-          </div>
-        )}
-
-        {/* 回到情報列表 */}
-        <Link href="/news"
-          className="mt-6 mb-4 flex items-center justify-center gap-2 py-3 border border-neutral-200 dark:border-neutral-700 rounded-xl text-[13px] font-bold text-neutral-500 dark:text-neutral-400 active:bg-neutral-50 dark:active:bg-neutral-800 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          回到情報列表
-        </Link>
       </article>
     </div>
   );

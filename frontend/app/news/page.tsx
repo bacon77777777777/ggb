@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,13 +68,15 @@ function Carousel({ items }: { items: NewsItem[] }) {
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <span className="inline-block px-2 py-0.5 bg-primary text-white text-[10px] font-black rounded mb-1.5">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-16">
+          <span className="inline-block px-2 py-0.5 bg-primary text-white text-[10px] font-black rounded mb-2">
             {CATEGORY_LABELS[item.category ?? ''] ?? '情報'}
           </span>
-          <h2 className="text-white font-black text-[15px] leading-snug line-clamp-2">{item.title}</h2>
-          <p className="text-white/60 text-[11px] mt-1">{timeAgo(item.created_at)}</p>
+          <h2 className="text-white font-black text-[17px] leading-[1.35] line-clamp-2 overflow-hidden">
+            {item.title}
+          </h2>
+          <p className="text-white/60 text-[11px] mt-1.5">{timeAgo(item.created_at)}</p>
         </div>
       </Link>
       {items.length > 1 && (
@@ -86,7 +89,7 @@ function Carousel({ items }: { items: NewsItem[] }) {
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <div className="absolute bottom-3 right-4 flex gap-1">
+          <div className="absolute bottom-4 right-4 flex gap-1">
             {items.map((_, i) => (
               <button key={i} onClick={() => setIdx(i)}
                 className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === idx ? 'bg-white' : 'bg-white/40')} />
@@ -102,8 +105,8 @@ function Carousel({ items }: { items: NewsItem[] }) {
 function ArticleRow({ item }: { item: NewsItem }) {
   return (
     <Link href={`/news/${item.id}`}
-      className="flex items-start gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
-      <div className="flex-shrink-0 w-[90px] h-[60px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
+      className="flex items-start gap-3 py-4 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
+      <div className="flex-shrink-0 w-[90px] h-[65px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
         ) : (
@@ -111,7 +114,7 @@ function ArticleRow({ item }: { item: NewsItem }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-snug mb-1.5">
+        <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-[1.5] mb-2">
           {item.title}
         </h3>
         <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -133,8 +136,8 @@ function LoadingSkeleton() {
       <Skeleton className="w-full aspect-[16/9] rounded-none" />
       <div className="px-4 pt-2">
         {[1,2,3,4,5].map(i => (
-          <div key={i} className="flex gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800">
-            <Skeleton className="w-[90px] h-[60px] rounded-lg flex-shrink-0" />
+          <div key={i} className="flex gap-3 py-4 border-b border-neutral-100 dark:border-neutral-800">
+            <Skeleton className="w-[90px] h-[65px] rounded-lg flex-shrink-0" />
             <div className="flex-1 space-y-2 pt-1">
               <Skeleton className="h-4 w-full rounded" />
               <Skeleton className="h-4 w-3/4 rounded" />
@@ -167,33 +170,20 @@ export default function NewsPage() {
   const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);
   const carousel = [...all].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
 
-  const handleTab = (key: string, el: HTMLButtonElement) => {
-    setActiveTab(key);
-    el.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
 
       {/* 手機端 */}
       <div className="md:hidden">
         {/* 固定 Tab 欄 */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800">
-          <div className="flex overflow-x-auto scrollbar-none px-2">
-            {CATEGORIES.map(cat => (
-              <button key={cat.key}
-                onClick={e => handleTab(cat.key, e.currentTarget)}
-                className={cn(
-                  'flex-shrink-0 px-4 py-3 text-[13px] font-black transition-colors relative whitespace-nowrap',
-                  activeTab === cat.key ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500'
-                )}>
-                {cat.label}
-                {activeTab === cat.key && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-primary rounded-full" />
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="bg-transparent px-0">
+              {CATEGORIES.map(cat => (
+                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         {isLoading ? <LoadingSkeleton /> : (

@@ -262,7 +262,7 @@ function NavbarInner() {
     if (pathname.endsWith('/confirm')) return '確認購買';
     if (isSellDetailPage) return productName || '販售';
     if (pathname.startsWith('/item/') || pathname.startsWith('/blindbox/') || pathname.startsWith('/gacha/') || pathname.startsWith('/card/')) return productName || '商品詳情';
-    if (isNewsDetailPage) return productName || '最新情報';
+    if (isNewsDetailPage) return '';
     if (pathname === '/topup') return '儲值代幣';
     if (pathname === '/faq') return '常見問題';
     if (pathname === '/about') return '關於我們';
