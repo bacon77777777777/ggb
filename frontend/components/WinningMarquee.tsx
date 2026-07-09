@@ -81,16 +81,14 @@ export default function WinningMarquee() {
             >
               {hasRecords && currentRecord ? (
                 <>
-                  太神啦！
+                  🎊&nbsp;
                   <span
                     className={currentRecord.user_id ? 'text-primary font-black mx-0.5 cursor-pointer underline underline-offset-2' : 'text-primary font-black mx-0.5'}
                     onClick={handleNameClick}
                   >
                     {currentRecord.user_name}
                   </span>
-                  抽到<span className="text-primary font-black mx-0.5">
-                    {currentRecord.prize_level}賞 {currentRecord.prize_name}
-                  </span>
+                  從&nbsp;<span className="font-black text-neutral-800 dark:text-neutral-200">{currentRecord.product_name}</span>&nbsp;抽到&nbsp;<span className="text-primary font-black">{currentRecord.prize_name}</span>！
                 </>
               ) : (
                 <span className="font-black text-primary">
