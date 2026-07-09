@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
-
-const BATCH_SIZE = 200
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { r2DeletePrefix } from '@/lib/r2'
 
 async function requireSuperAdmin(adminId: string) {
-  const supabaseAdmin = getSupabaseAdmin()
-  const { data: admin, error } = await supabaseAdmin
+  const supabase = getSupabaseAdmin()
+  const { data: admin, error } = await supabase
     .from('admins')
     .select('id, role:roles(name)')
     .eq('id', adminId)
     .single()
   if (error || !admin) return false
-  const roleName = (admin as any).role?.name || ''
-  return roleName === 'super_admin'
+  return ((admin as any).role?.name || '') === 'super_admin'
+}
+
+// bucket 名稱對應 R2 prefix
+const BUCKET_PREFIX_MAP: Record<string, string> = {
+  products: 'products/',
+  banners:  'banners/',
+  avatars:  'avatars/',
+  marketplace: 'marketplace/',
 }
 
 export async function POST(request: Request) {
@@ -26,53 +32,19 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}))
     const bucket = String(body?.bucket || 'products')
-    const prefixes = Array.isArray(body?.prefixes) ? body.prefixes.map((s: any) => String(s)).filter(Boolean) : []
 
-    const supabaseAdmin = getSupabaseAdmin()
-
-    let deleted = 0
-    const failed: Array<{ name: string; error: string }> = []
-
-    const deleteNames = async (names: string[]) => {
-      if (names.length === 0) return
-      const { data, error } = await supabaseAdmin.storage.from(bucket).remove(names)
-      if (error) {
-        for (const n of names) failed.push({ name: n, error: error.message })
-        return
-      }
-      deleted += Array.isArray(data) ? data.length : names.length
+    // exchange-receipts 永不清除
+    if (bucket === 'exchange-receipts') {
+      return NextResponse.json({ error: '儲值截圖不可清除' }, { status: 403 })
     }
 
-    const fetchBatch = async (offset: number, prefix?: string) => {
-      let q = supabaseAdmin.from('storage.objects').select('name').eq('bucket_id', bucket)
-      if (prefix) q = q.like('name', `${prefix}%`)
-      const { data, error } = await q.order('name', { ascending: true }).range(offset, offset + BATCH_SIZE - 1)
-      if (error) throw error
-      return (data || []).map((r: any) => String(r.name))
-    }
+    const prefix = BUCKET_PREFIX_MAP[bucket]
+    if (!prefix) return NextResponse.json({ error: `未知 bucket: ${bucket}` }, { status: 400 })
 
-    const runClear = async (prefix?: string) => {
-      let offset = 0
-      while (true) {
-        const names = await fetchBatch(offset, prefix)
-        if (names.length === 0) break
-        await deleteNames(names)
-        if (names.length < BATCH_SIZE) break
-        offset += BATCH_SIZE
-      }
-    }
+    const deleted = await r2DeletePrefix(prefix)
 
-    if (prefixes.length > 0) {
-      for (const p of prefixes) {
-        await runClear(p)
-      }
-    } else {
-      await runClear(undefined)
-    }
-
-    return NextResponse.json({ deleted, failedCount: failed.length, failed })
+    return NextResponse.json({ deleted, failedCount: 0, failed: [] })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '清除失敗' }, { status: 500 })
   }
 }
-

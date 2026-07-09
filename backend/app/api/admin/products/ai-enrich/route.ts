@@ -561,11 +561,10 @@ async function scrapePriceFromYahoo(name: string, barcode?: string | null): Prom
 // ─────────────────────────────────────────────────────────────────────────────
 // ════ Storage 圖片比對 ════
 // ─────────────────────────────────────────────────────────────────────────────
-async function resolveStorageImage(raw_image_name: string | null): Promise<string | null> {
+function resolveStorageImage(raw_image_name: string | null): string | null {
   if (!raw_image_name) return null
-  const supabase = getSupabaseAdmin()
-  const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(raw_image_name)
-  return publicUrl
+  const base = (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, '')
+  return `${base}/products/${raw_image_name}`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -743,7 +742,7 @@ export async function POST(req: Request) {
 
   try {
     // ── Step 1: Storage 圖片配對 ─────────────────────────────────────────────
-    const storageImageUrl = await resolveStorageImage(raw_image_name ?? null)
+    const storageImageUrl = resolveStorageImage(raw_image_name ?? null)
 
     // ── Step 2: DB 條碼復用 ──────────────────────────────────────────────────
     const dbResult = await fetchFromDB(barcode ?? null)

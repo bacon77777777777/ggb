@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { r2Upload } from '@/lib/r2'
 import AdmZip from 'adm-zip'
 import path from 'path'
 
@@ -8,6 +8,14 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
+
+const contentTypeMap: Record<string, string> = {
+  '.jpg':  'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png':  'image/png',
+  '.webp': 'image/webp',
+  '.gif':  'image/gif',
+}
 
 export async function POST(req: Request) {
   const session = await requireAdminSession()
@@ -26,8 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '無法讀取壓縮檔，請確認是 .zip 格式' }, { status: 400 })
   }
 
-  const supabase = getSupabaseAdmin()
-  const entries  = zip.getEntries()
+  const entries = zip.getEntries()
   const results: { name: string; url: string }[] = []
   const errors:  { name: string; error: string }[] = []
 
@@ -36,31 +43,13 @@ export async function POST(req: Request) {
     const ext = path.extname(entry.name).toLowerCase()
     if (!IMAGE_EXTS.has(ext)) continue
 
-    // Use only the filename (strip any directory path)
     const filename = path.basename(entry.entryName)
+    const key = `products/${filename}`
 
     try {
       const data = entry.getData()
-      const { error } = await supabase.storage
-        .from('products')
-        .upload(filename, data, {
-          contentType: ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-            : ext === '.png' ? 'image/png'
-            : ext === '.webp' ? 'image/webp'
-            : 'image/gif',
-          upsert: true,  // overwrite if same filename exists
-        })
-
-      if (error) {
-        errors.push({ name: filename, error: error.message })
-        continue
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('products')
-        .getPublicUrl(filename)
-
-      results.push({ name: filename, url: publicUrl })
+      const url = await r2Upload(key, data, contentTypeMap[ext] ?? 'image/jpeg')
+      results.push({ name: filename, url })
     } catch (e: any) {
       errors.push({ name: filename, error: String(e?.message || e) })
     }
@@ -69,8 +58,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     uploaded: results.length,
-    failed: errors.length,
-    files: results,
-    errors: errors.slice(0, 5),  // cap error list
+    failed:   errors.length,
+    files:    results,
+    errors:   errors.slice(0, 5),
   })
 }
