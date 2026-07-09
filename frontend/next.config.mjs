@@ -6,6 +6,8 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co',                      pathname: '/storage/v1/object/public/**' },
+      // Cloudflare R2 public bucket
+      { protocol: 'https', hostname: '**.r2.dev',                           pathname: '/**' },
       { protocol: 'https', hostname: 'img.slimetoy.com.tw',                 pathname: '/products/**' },
       { protocol: 'https', hostname: 'limitlesstcg.nyc3.cdn.digitaloceanspaces.com', pathname: '/**' },
       // Bandai / Gashapon
