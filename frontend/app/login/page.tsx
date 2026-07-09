@@ -53,13 +53,10 @@ function AuthContent() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      // If we are in the middle of registration (step 3), don't redirect yet
-      // unless we are just visiting the page
-      if (view === 'register' && step === 3) {
-        // User is authenticated (verified OTP), now setting password
-        return
-      }
-      
+      // OTP 驗證完成後 AuthContext 先設 tempUser（step 仍為 2），
+      // 不可在此時 redirect，否則 step 3 設密碼的機會會被跳走
+      if (view === 'register' && step >= 2) return
+
       router.replace('/')
     }
   }, [user, router, view, step])

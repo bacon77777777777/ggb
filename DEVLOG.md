@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-07-09｜修正註冊流程 redirect race condition
+
+### login/page.tsx
+- `onAuthStateChange` 觸發 `setUser(tempUser)` 時 step 仍為 2，useEffect 看到 user 就 redirect 到 /，step 3 根本沒機會出現
+- 修正：`view === 'register' && step >= 2` 都不跳轉，讓 OTP 驗證（step 2）和設定密碼（step 3）完整完成
+
+---
+
 ## 2026-07-09｜修正新用戶註冊設定密碼失敗
 
 ### 根本原因
