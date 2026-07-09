@@ -1,7 +1,8 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 
@@ -50,28 +51,12 @@ function savePrefs(patch: Record<string, unknown>) {
 }
 
 export default function NewsPage() {
-  const prefs = loadPrefs()
+  const prefs  = loadPrefs()
+  const router = useRouter()
 
   const [news, setNews]               = useState<NewsArticle[]>([])
   const [isLoading, setIsLoading]     = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingNews, setEditingNews] = useState<NewsArticle | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isUploading, setIsUploading]   = useState(false)
-
-  const handleImageUpload = async (file: File) => {
-    setIsUploading(true)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('bucket', 'news')
-      form.append('path', `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: form, credentials: 'include' })
-      const data = await res.json()
-      if (!res.ok) { alert(data?.error ?? '上傳失敗'); return }
-      setFormData(f => ({ ...f, image_url: data.publicUrl }))
-    } catch { alert('上傳失敗') } finally { setIsUploading(false) }
-  }
 
   const handleGenerate = async () => {
     setIsGenerating(true)
@@ -84,7 +69,6 @@ export default function NewsPage() {
     } catch { alert('生成失敗') } finally { setIsGenerating(false) }
   }
 
-  // 批量選取
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // 篩選（記憶）
@@ -95,15 +79,6 @@ export default function NewsPage() {
   // 排序（記憶）
   const [sortField,     setSortField]     = useState<string>(prefs.sortField     ?? 'created_at')
   const [sortDirection, setSortDirection] = useState<'asc'|'desc'>(prefs.sortDirection ?? 'desc')
-
-  const [formData, setFormData] = useState({
-    title:     '',
-    summary:   '',
-    content:   '',
-    image_url: '',
-    category:  'general',
-    is_active: false,
-  })
 
   useEffect(() => { savePrefs({ filterStatus, filterCat, searchQ, sortField, sortDirection }) },
     [filterStatus, filterCat, searchQ, sortField, sortDirection])
@@ -203,46 +178,8 @@ export default function NewsPage() {
   }
 
   // ─── 編輯 / 新增 ──────────────────────────────────────────────────────────
-  const handleEdit = (article: NewsArticle) => {
-    setEditingNews(article)
-    setFormData({
-      title:     article.title,
-      summary:   article.summary ?? '',
-      content:   article.content ?? '',
-      image_url: article.image_url ?? '',
-      category:  article.category ?? 'general',
-      is_active: article.is_active,
-    })
-    setIsModalOpen(true)
-  }
-
-  const handleAdd = () => {
-    setEditingNews(null)
-    setFormData({ title: '', summary: '', content: '', image_url: '', category: 'general', is_active: false })
-    setIsModalOpen(true)
-  }
-
-  const handleSubmit = async () => {
-    if (!formData.title.trim()) { alert('請輸入標題'); return }
-    const payload = {
-      title:     formData.title.trim(),
-      summary:   formData.summary || null,
-      content:   formData.content || null,
-      image_url: formData.image_url || null,
-      category:  formData.category,
-      is_active: formData.is_active,
-    }
-    if (editingNews) {
-      const { error } = await supabase.from('news').update(payload).eq('id', editingNews.id)
-      if (error) { alert('儲存失敗：' + error.message); return }
-    } else {
-      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
-      const { error } = await supabase.from('news').insert([{ ...payload, id }])
-      if (error) { alert('儲存失敗：' + error.message); return }
-    }
-    setIsModalOpen(false)
-    fetchData()
-  }
+  const handleEdit = (article: NewsArticle) => router.push(`/news/${article.id}`)
+  const handleAdd  = ()                      => router.push('/news/new')
 
   const activeCount = news.filter(n =>  n.is_active).length
   const draftCount  = news.filter(n => !n.is_active).length
@@ -472,96 +409,6 @@ export default function NewsPage() {
           )}
         </PageCard>
 
-        {/* ── 編輯 / 新增 Modal ── */}
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
-          title={editingNews ? '編輯文章' : '新增文章'}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">標題 *</label>
-              <input type="text" value={formData.title}
-                onChange={e => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="文章標題" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">一句話摘要</label>
-              <input type="text" value={formData.summary}
-                onChange={e => setFormData({ ...formData, summary: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="50 字以內摘要（列表預覽用）" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">分類</label>
-                <select value={formData.category}
-                  onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none">
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">主圖</label>
-                <div className="flex gap-2">
-                  <input type="text" value={formData.image_url}
-                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                    className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
-                    placeholder="貼上圖片網址..." />
-                  <label className={`px-3 py-2 rounded-lg border text-sm font-medium cursor-pointer whitespace-nowrap transition-colors ${isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50'}`}>
-                    {isUploading ? '上傳中...' : '📂 上傳圖片'}
-                    <input type="file" accept="image/*" className="hidden" disabled={isUploading}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {formData.image_url && (
-              <div className="relative">
-                <img src={formData.image_url} alt="preview"
-                  className="w-full h-40 object-cover rounded-lg border border-neutral-200" />
-                <button type="button" onClick={() => setFormData(f => ({ ...f, image_url: '' }))}
-                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full text-xs flex items-center justify-center">
-                  ✕
-                </button>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">內容（HTML）</label>
-              <textarea value={formData.content ?? ''}
-                onChange={e => setFormData({ ...formData, content: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg h-48 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="<p>文章內容...</p>" />
-            </div>
-
-            <div className="flex items-center gap-3 py-2 px-3 bg-neutral-50 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setFormData(f => ({ ...f, is_active: !f.is_active }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  formData.is_active ? 'bg-primary' : 'bg-neutral-300'
-                }`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                  formData.is_active ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
-              <span className="text-sm font-medium text-neutral-700">
-                {formData.is_active ? '立即上架至前台' : '儲存為下架草稿'}
-              </span>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">
-              <button onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 text-sm">取消</button>
-              <button onClick={handleSubmit}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-semibold">儲存</button>
-            </div>
-          </div>
-        </Modal>
       </div>
     </AdminLayout>
   )
