@@ -7,7 +7,7 @@ import { r2Upload } from '@/lib/r2'
 export const runtime = 'nodejs'
 
 const OPTS: Record<string, { w: number; h: number; q: number }> = {
-  avatars:     { w: 400, h: 400, q: 85 },
+  avatars:     { w: 200, h: 200, q: 85 },
   marketplace: { w: 800, h: 800, q: 85 },
 }
 
