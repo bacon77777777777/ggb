@@ -357,7 +357,10 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       setProducts(prev => prev.map((x, i) => {
         if (i !== idx) return x
         const resolvedDist = cleanDist(ai.distributor) || cleanDist(x.distributor) || null
-        const resolvedImg  = isValidImg(ai.image_url) ? ai.image_url : isValidImg(x.image_url) ? x.image_url : null
+        // raw_image_name 衍生的 R2 URL 未必存在，AI 找不到圖時不能 fallback 回去
+        const resolvedImg  = isValidImg(ai.image_url)
+          ? ai.image_url
+          : (isValidImg(x.image_url) && !x.raw_image_name ? x.image_url : null)
         const hasRealData  = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
         // raw_image_name 代表「預期要有圖」，若找不到圖就算 partial
         const imageOk = resolvedImg ? true : !x.raw_image_name
