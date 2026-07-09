@@ -200,10 +200,12 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
             if (isFullFormat) {
               const all: EnrichedProduct[] = rows.map((row: any, i) => {
+                const EXCEL_ERRORS = /^#(NAME|REF|VALUE|N\/A|DIV\/0!|NULL!|NUM!|NA)[?!]?$/i
                 const variants: { name: string; image_url: string | null }[] = []
                 for (let n = 1; n <= 30; n++) {
                   const prizeName = String(row[`獎項${n}名稱`] ?? '').trim()
-                  if (!prizeName) break
+                  if (!prizeName) break                          // 空白 = 品項結束
+                  if (EXCEL_ERRORS.test(prizeName)) continue    // Excel 錯誤 = 跳過，繼續讀
                   const imgRaw = String(row[`獎項${n}圖片名稱`] ?? '').trim()
                   variants.push({
                     name: prizeName,
