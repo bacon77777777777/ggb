@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-07-09｜新聞採集 Agent + 後台文章管理升級
+
+### 新聞採集 Agent（news-agent）
+- 每天 TW 06:30 自動執行（pg_cron `news-agent-daily`）
+- 12 個日本來源：一番賞/轉蛋/盒玩/TCG/玩具媒體
+- Claude Haiku 改寫成繁體中文（台灣用語）
+- 主圖從來源站下載後上傳 R2 `news/` 路徑
+- 全部預設 `is_active = false`（下架草稿），管理員審閱後手動上架
+- LINE 通知：採集完成後推播新增篇數與標題預覽
+- Claude Code skill：`/news-agent` 手動觸發
+
+### news 表擴充（migration 297）
+- 新增欄位：`image_url`、`source_url`（unique，防重複）、`category`、`summary`、`tags`
+
+### 後台文章管理頁升級
+- 表格加圖片縮圖、分類標籤、一句話摘要
+- 分類篩選（一番賞/轉蛋/盒玩/卡牌/綜合）+ 狀態篩選
+- 狀態欄改為可點擊一鍵切換上架/下架
+- 有草稿時顯示黃色提示橫幅
+- 編輯表單加入主圖 URL 預覽、摘要、分類欄位
+
+---
+
 ## 2026-07-09｜ai-enrich 修正 + CSV 品項圖上傳 R2
 
 ### ai-enrich 主圖優先順序修正
