@@ -20,23 +20,23 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 C
 type Locale = 'TW' | 'JP' | 'US'
 
 const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
-  // ── 繁體中文（台灣）
-  { q: '一番賞 新品',   category: 'ichiban',  locale: 'TW' },
-  { q: '盒玩 新品',     category: 'blindbox', locale: 'TW' },
+  // ── 繁體中文（台灣）—— 主力
+  { q: '一番賞 發售',   category: 'ichiban',  locale: 'TW' },
+  { q: '盒玩 發售',     category: 'blindbox', locale: 'TW' },
   { q: '盲盒 新品',     category: 'blindbox', locale: 'TW' },
-  { q: '轉蛋 新品',     category: 'gacha',    locale: 'TW' },
-  { q: '實體卡牌',      category: 'tcg',      locale: 'TW' },
-  // ── 日文（日本）
-  { q: '一番くじ 新商品',               category: 'ichiban',  locale: 'JP' },
-  { q: 'ガチャガチャ 新製品',           category: 'gacha',    locale: 'JP' },
-  { q: 'ブラインドボックス フィギュア', category: 'blindbox', locale: 'JP' },
-  { q: 'ポケモンカード 新弾',           category: 'tcg',      locale: 'JP' },
-  { q: '遊戯王 OCG 新カード',           category: 'tcg',      locale: 'JP' },
-  // ── 英文（全球）
-  { q: 'gashapon new release',         category: 'gacha',    locale: 'US' },
-  { q: 'OCG trading card new',         category: 'tcg',      locale: 'US' },
-  { q: 'TCG new set release',          category: 'tcg',      locale: 'US' },
-  { q: 'blind box figure new',         category: 'blindbox', locale: 'US' },
+  { q: '轉蛋 新品 發售', category: 'gacha',   locale: 'TW' },
+  { q: '卡牌 新彈 發售', category: 'tcg',     locale: 'TW' },
+  // ── 日文（日本）—— 商品情報主要來源
+  { q: '一番くじ 新商品 発売',            category: 'ichiban',  locale: 'JP' },
+  { q: 'ガシャポン 新商品 発売',          category: 'gacha',    locale: 'JP' },
+  { q: 'ブラインドボックス 新商品',       category: 'blindbox', locale: 'JP' },
+  { q: 'ポケモンカード 新弾 発売',        category: 'tcg',      locale: 'JP' },
+  { q: '遊戯王 OCG 新カード 発売',        category: 'tcg',      locale: 'JP' },
+  // ── 英文（全球）—— 補充英語圈資訊
+  { q: 'gashapon new product release',  category: 'gacha',    locale: 'US' },
+  { q: 'OCG new card release',          category: 'tcg',      locale: 'US' },
+  { q: 'TCG new set announcement',      category: 'tcg',      locale: 'US' },
+  { q: 'blind box new figure release',  category: 'blindbox', locale: 'US' },
 ]
 
 const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
@@ -167,8 +167,7 @@ async function rewriteArticle(
     max_tokens: 1000,
     messages: [{
       role: 'user',
-      content: `你是吉吉比（GGB）台灣線上轉蛋平台的內容編輯。
-請根據以下日本玩具新聞，改寫成繁體中文（台灣用語）文章，輸出 JSON。
+      content: `你是吉吉比（GGB）台灣線上轉蛋平台的內容編輯，負責篩選「商品發售情報」。
 
 原始資訊：
 ${combined}
@@ -176,16 +175,30 @@ ${combined}
 來源：${sourceUrl}
 預設分類：${defaultCategory}
 
-只輸出 JSON（不加說明）：
+【嚴格篩選原則】
+只接受以下類型，其他一律回傳 null：
+✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋 新品上市、預售、到貨）
+✅ 商品情報曝光（新品圖片首公開、品項公開）
+✅ 聯名商品、限定版發售情報
+
+直接 null 的情況（不接受）：
+❌ 實體店鋪開幕、搬遷、促銷活動
+❌ 公司業績、經營新聞、股價、授權合作消息
+❌ 錦標賽、大會、比賽結果（除非是新卡牌發售）
+❌ 玩家開箱、抽卡開箱心得
+❌ 市場分析、產業報告
+❌ 商品已停售、絕版回憶文
+
+通過篩選後，改寫成繁體中文（台灣用語），輸出 JSON，只輸出 JSON 不加說明：
 {
-  "title": "吸引人的標題（繁體中文，25字以內）",
-  "summary": "一句話摘要（40字以內）",
-  "content": "<h2>小標</h2><p>段落...</p>（繁體中文正文，250-400字，2-3段，台灣玩家視角）",
-  "tags": ["標籤1","標籤2","標籤3"],
+  "title": "吸引台灣玩家點擊的標題（繁體中文，25字以內，含商品名）",
+  "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
+  "content": "<h2>小標</h2><p>段落...</p>（繁體中文，250-400字，2-3段，從玩家視角介紹商品特色與發售資訊）",
+  "tags": ["品牌","系列名","類型"],
   "category": "ichiban|gacha|blindbox|tcg|general"
 }
 
-若此內容與玩具/轉蛋/一番賞/卡牌完全無關，回傳 null。`,
+若不符合篩選條件，直接回傳：null`,
     }],
   })
 
