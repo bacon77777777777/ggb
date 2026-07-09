@@ -186,7 +186,7 @@ export default function NewsPage() {
   const allChecked  = sorted.length > 0 && selectedIds.size === sorted.length
 
   return (
-    <AdminLayout pageTitle="文章管理" breadcrumbs={[{ label: '文章管理', href: '/news' }]}>
+    <AdminLayout pageTitle="文章管理">
       <div className="space-y-4">
 
         <PageCard>

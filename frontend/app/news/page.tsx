@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NewsItem {
@@ -98,23 +97,12 @@ function Carousel({ items }: { items: NewsItem[] }) {
         </div>
       </Link>
       {items.length > 1 && (
-        <>
-          <button onClick={e => { e.preventDefault(); stop(); go(idx - 1); start(); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button onClick={e => { e.preventDefault(); stop(); go(idx + 1); start(); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          {/* 居中點點，樣式同首頁輪播 */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {items.map((_, i) => (
-              <button key={i} onClick={() => setIdx(i)}
-                className={cn('h-1.5 rounded-full transition-all duration-500', i === idx ? 'w-8 bg-white' : 'w-1.5 bg-white/40')} />
-            ))}
-          </div>
-        </>
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {items.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)}
+              className={cn('h-1.5 rounded-full transition-all duration-500', i === idx ? 'w-8 bg-white' : 'w-1.5 bg-white/40')} />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -176,6 +164,20 @@ export default function NewsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const supabase = createClient();
 
+  const tabKeys  = CATEGORIES.map(c => c.key);
+  const swipeX   = useRef<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => { swipeX.current = e.touches[0].clientX; };
+  const onTouchEnd   = (e: React.TouchEvent) => {
+    if (swipeX.current === null) return;
+    const dist = swipeX.current - e.changedTouches[0].clientX;
+    swipeX.current = null;
+    if (Math.abs(dist) < 50) return;
+    const cur = tabKeys.indexOf(activeTab);
+    if (dist > 0 && cur < tabKeys.length - 1) setActiveTab(tabKeys[cur + 1]);
+    if (dist < 0 && cur > 0) setActiveTab(tabKeys[cur - 1]);
+  };
+
   useEffect(() => {
     supabase
       .from('news')
@@ -206,7 +208,7 @@ export default function NewsPage() {
         </div>
 
         {isLoading ? <LoadingSkeleton /> : (
-          <>
+          <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {activeTab === 'all' && carousel.length > 0 && <Carousel items={carousel} />}
             <div className="px-4">
               {filtered.length === 0 ? (
@@ -217,7 +219,7 @@ export default function NewsPage() {
                 filtered.map(item => <ArticleRow key={item.id} item={item} />)
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 

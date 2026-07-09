@@ -112,10 +112,19 @@ function extractOgImage(html: string): string {
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
+const BLOCKED_IMG_DOMAINS = [
+  'google.com', 'googleapis.com', 'googleusercontent.com',
+  'gstatic.com', 'ggpht.com', 'lh3.google', 'lh4.google',
+  'news.google.', 'encrypted-tbn', 'facebook.com/images', 'fbcdn.net',
+]
+
 function resolveImageUrl(imgUrl: string, pageUrl: string): string {
   if (!imgUrl) return ''
   if (imgUrl.startsWith('data:')) return ''
-  if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) return imgUrl
+  if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+    if (BLOCKED_IMG_DOMAINS.some(d => imgUrl.includes(d))) return ''
+    return imgUrl
+  }
   try { return new URL(imgUrl, pageUrl).href } catch { return '' }
 }
 
