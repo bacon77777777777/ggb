@@ -160,19 +160,19 @@ export default function MissionPage() {
         router.push('/topup');
       } else if (mission.title.includes('上架')) {
         router.push('/profile?tab=warehouse');
-      } else if (mission.title.includes('社群') || mission.title.includes('分享')) {
-        if (mission.periodKey) {
-          // 先追蹤事件（clipboard 失敗不能影響任務計數）
-          await MissionService.trackShare(mission.id, mission.periodKey).catch(() => {});
-          // 嘗試複製連結，失敗不影響計數
-          try {
-            await navigator.clipboard.writeText(window.location.origin);
-            showToast('已複製連結，快去分享吧！', 'success');
-          } catch {
-            showToast('分享任務已記錄！', 'success');
-          }
-          fetchMissions();
+      } else if (mission.condition_type === 'invite_friend') {
+        // 邀請好友：複製個人邀請連結
+        const inviteCode = user?.invite_code;
+        const inviteLink = `${window.location.origin}/login?view=register${inviteCode ? `&invite=${inviteCode}` : ''}`;
+        try {
+          await navigator.clipboard.writeText(inviteLink);
+          showToast('邀請連結已複製！快去分享給朋友', 'success');
+        } catch {
+          showToast(`你的邀請碼：${inviteCode ?? '請先登入'}`, 'info');
         }
+      } else if (mission.condition_type === 'share_app' || mission.title.includes('社群') || mission.title.includes('分享')) {
+        // 分享任務：導去首頁（實際計數在商品頁點分享圖標時觸發）
+        router.push('/');
       } else {
         router.push('/');
       }

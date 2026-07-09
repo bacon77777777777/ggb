@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ChevronLeft, Gift } from 'lucide-react'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Input } from '@/components/ui'
@@ -27,6 +27,7 @@ function AuthContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   
   // UI State
   const [isLoading, setIsLoading] = useState(false)
@@ -39,6 +40,8 @@ function AuthContent() {
     if (searchParams.get('view') === 'register') {
       setView('register')
     }
+    const invite = searchParams.get('invite')
+    if (invite) setInviteCode(invite)
   }, [searchParams])
 
   // Timer for OTP
@@ -110,7 +113,10 @@ function AuthContent() {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true }
+      options: {
+        shouldCreateUser: true,
+        ...(inviteCode.trim() ? { data: { invite_code: inviteCode.trim() } } : {}),
+      },
     })
 
     if (error) {
@@ -162,14 +168,18 @@ function AuthContent() {
     }
 
     const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({
+    const { data: updateData, error } = await supabase.auth.updateUser({
       password
     })
 
     if (error) {
       handleError(error)
     } else {
-      // Complete!
+      // 計入邀請人任務進度（若有邀請碼）；失敗不阻擋流程
+      const uid = updateData?.user?.id
+      if (uid) {
+        supabase.rpc('complete_registration_referral', { p_user_id: uid }).catch(() => {})
+      }
       router.push('/?message=註冊成功')
       router.refresh()
     }
@@ -293,7 +303,7 @@ function AuthContent() {
 
   const renderRegisterStep1 = () => (
     <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="mb-8">
+      <div className="space-y-4 mb-8">
         <Input
           name="email"
           type="email"
@@ -303,6 +313,15 @@ function AuthContent() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+        />
+        <Input
+          name="invite_code"
+          type="text"
+          placeholder="邀請碼（選填）"
+          className={inputBaseClass}
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+          leftIcon={<Gift className="w-5 h-5 text-neutral-400" />}
         />
       </div>
 

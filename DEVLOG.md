@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-09｜邀請好友系統 + 分享任務觸發點調整
+
+### 邀請好友系統
+- Migration 311：`referrals.is_mission_credited` 欄位（防止重設密碼重複計入）+ `complete_registration_referral(user_id)` DB 函式
+- `login/page.tsx`：Step 1 加選填邀請碼輸入框（URL 帶 `?invite=XXX` 自動填入），Step 3 設密碼完成後呼叫 `complete_registration_referral` 計入邀請人任務
+- `register/page.tsx`：重導時保留 `?invite=XXX` 參數
+- `mission/page.tsx`：`invite_friend` 任務點「去完成」複製個人邀請連結（`/login?view=register&invite={code}`）
+
+### 分享任務觸發點調整
+- `mission/page.tsx`：分享任務「去完成」改導首頁，不再自動記次數
+- 實際計數保留在商品頁點分享圖標時觸發（`item/[id]/page.tsx` 已有 `MissionService.trackEvent('share_app', {})`）
+
+---
+
 ## 2026-07-09｜任務追蹤修復 + 多項 UI 優化
 
 ### 儲值任務不計次數（backend）

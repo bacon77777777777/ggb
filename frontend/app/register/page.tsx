@@ -1,14 +1,19 @@
 'use client';
 
 import { Suspense, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 function RegisterRedirect() {
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
   useEffect(() => {
-    router.replace('/login?view=register');
-  }, [router]);
+    const invite = searchParams.get('invite');
+    const target = invite
+      ? `/login?view=register&invite=${invite}`
+      : '/login?view=register';
+    router.replace(target);
+  }, [router, searchParams]);
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-white dark:bg-neutral-950">
