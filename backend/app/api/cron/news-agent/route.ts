@@ -195,7 +195,9 @@ async function fetchViaJina(url: string): Promise<string> {
       },
     })
     if (res.ok) return await res.text()
-  } catch {}
+  } catch {
+    // fetch 失敗，回傳空字串
+  }
   return ''
 }
 
