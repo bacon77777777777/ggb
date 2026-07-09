@@ -48,7 +48,10 @@ function timeAgo(dateStr: string): string {
 function Carousel({ items }: { items: NewsItem[] }) {
   const [idx, setIdx] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStart = useRef<number | null>(null);
+  const touchEnd = useRef<number | null>(null);
 
+  const go = (i: number) => setIdx((i + items.length) % items.length);
   const start = () => {
     timerRef.current = setInterval(() => setIdx(i => (i + 1) % items.length), 4000);
   };
@@ -56,12 +59,27 @@ function Carousel({ items }: { items: NewsItem[] }) {
 
   useEffect(() => { if (items.length > 1) { start(); return stop; } }, [items.length]);
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEnd.current = null;
+    touchStart.current = e.targetTouches[0].clientX;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEnd.current = e.targetTouches[0].clientX;
+  };
+  const onTouchEnd = () => {
+    if (!touchStart.current || !touchEnd.current) return;
+    const dist = touchStart.current - touchEnd.current;
+    if (dist > 50) { stop(); go(idx + 1); start(); }
+    if (dist < -50) { stop(); go(idx - 1); start(); }
+  };
+
   if (!items.length) return null;
   const item = items[idx];
 
   return (
     <div className="relative w-full aspect-[16/9] bg-neutral-900 overflow-hidden"
-      onMouseEnter={stop} onMouseLeave={start}>
+      onMouseEnter={stop} onMouseLeave={start}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <Link href={`/news/${item.id}`} className="block w-full h-full">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
@@ -69,7 +87,7 @@ function Carousel({ items }: { items: NewsItem[] }) {
           <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-16">
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16">
           <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded mb-2">
             {CATEGORY_LABELS[item.category ?? ''] ?? '情報'}
           </span>
@@ -81,18 +99,19 @@ function Carousel({ items }: { items: NewsItem[] }) {
       </Link>
       {items.length > 1 && (
         <>
-          <button onClick={e => { e.preventDefault(); stop(); setIdx(i => (i - 1 + items.length) % items.length); start(); }}
+          <button onClick={e => { e.preventDefault(); stop(); go(idx - 1); start(); }}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <button onClick={e => { e.preventDefault(); stop(); setIdx(i => (i + 1) % items.length); start(); }}
+          <button onClick={e => { e.preventDefault(); stop(); go(idx + 1); start(); }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <div className="absolute bottom-4 right-4 flex gap-1">
+          {/* 居中點點，樣式同首頁輪播 */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
             {items.map((_, i) => (
               <button key={i} onClick={() => setIdx(i)}
-                className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === idx ? 'bg-white' : 'bg-white/40')} />
+                className={cn('h-1.5 rounded-full transition-all duration-500', i === idx ? 'w-8 bg-white' : 'w-1.5 bg-white/40')} />
             ))}
           </div>
         </>
@@ -106,7 +125,7 @@ function ArticleRow({ item }: { item: NewsItem }) {
   return (
     <Link href={`/news/${item.id}`}
       className="flex items-start gap-3 py-4 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
-      <div className="flex-shrink-0 w-[90px] h-[65px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
+      <div className="flex-shrink-0 w-[90px] h-[90px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
         ) : (

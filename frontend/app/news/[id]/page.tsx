@@ -57,7 +57,7 @@ export default function NewsDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
-        <Skeleton className="w-full aspect-[16/9]" />
+        <Skeleton className="w-full aspect-[4/3]" />
         <div className="px-4 pt-4 space-y-3">
           <Skeleton className="h-6 w-full rounded" />
           <Skeleton className="h-6 w-3/4 rounded" />
@@ -83,10 +83,10 @@ export default function NewsDetailPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-28">
 
-      {/* ── 主圖 ── */}
+      {/* ── 主圖（等比例，不限高度）── */}
       {item.image_url && (
-        <div className="relative w-full aspect-[16/9] bg-neutral-100 dark:bg-neutral-900">
-          <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
+        <div className="w-full bg-neutral-100 dark:bg-neutral-900">
+          <Image src={item.image_url} alt={item.title} width={800} height={600} className="w-full h-auto" unoptimized />
         </div>
       )}
 

@@ -2,6 +2,42 @@
 
 ---
 
+## 2026-07-09｜前台情報頁 UI 全面優化
+
+### 輪播升級
+- 新增手勢滑動（touch swipe）支援
+- 點點圖示改為居中 pill 樣式，與首頁輪播一致（active 白色長條、inactive 小圓白半透明）
+
+### 文章內頁圖片等比例
+- 移除固定 `aspect-[16/9]` 限制，改為 `w-full h-auto` 等比例顯示
+
+### 列表縮圖改正方形
+- 縮圖從 90×65 改為 90×90 正方形，object-cover 裁切滿圖
+
+### 移除情報頁頂部導覽列
+- `/news` 頁不顯示 Navbar（Navbar.tsx 新增路徑判斷，return null）
+- 分類 Tab 已固定在頁頂，Navbar 重複顯示
+
+---
+
+## 2026-07-09｜文章管理新增生成按鈕 + news-agent cron 修正 + GB哥情報分類修正
+
+### news-agent cron 修正（migration 301）
+- migration 300 的 `news-agent-hourly` 還在用 `current_setting('app.cron_secret')` → 拿不到值 → 每小時 401 被擋
+- migration 301 改用 hardcode secret（同其他 7 個已修正的 cron job）
+
+### 文章管理新增「⚡ 生成文章」按鈕
+- 新增 `/api/admin/trigger/news-agent` 管理員 API（server-side 呼叫，cron secret 不外露）
+- news-agent 支援 `limit` 參數，手動觸發時 limit:1（只抓一篇）
+- 按鈕顯示生成結果（新增 N 篇 / 跳過 N 篇）
+
+### GB哥情報分類修正（gbBro.ts）
+- 新增 news-agent 每小時排程說明
+- 明確區分：`news 表`（前台文章） vs `competitor_posts 表`（競品分析）
+- 修正 GB哥 把「有新文章嗎」誤判為查競品情報的問題
+
+---
+
 ## 2026-07-09｜新聞採集升級 + 文章管理對齊商品管理
 
 ### news-agent 全面升級（migration 300）

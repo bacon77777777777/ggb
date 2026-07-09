@@ -56,6 +56,18 @@ export default function NewsPage() {
   const [isLoading, setIsLoading]     = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleGenerate = async () => {
+    setIsGenerating(true)
+    try {
+      const res = await fetch('/api/admin/trigger/news-agent', { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) { alert(data?.error ?? '生成失敗'); return }
+      alert(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇（重複或無圖）`)
+      fetchData()
+    } catch { alert('生成失敗') } finally { setIsGenerating(false) }
+  }
 
   // 批量選取
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -226,6 +238,16 @@ export default function NewsPage() {
       <div className="space-y-4">
 
         <PageCard>
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              {isGenerating ? '生成中...' : '⚡ 生成文章'}
+            </button>
+            <span className="text-xs text-neutral-400">自動抓取 1 篇新品情報（不重複、需有圖）</span>
+          </div>
           <SearchToolbar
             searchPlaceholder="搜尋標題..."
             searchValue={searchQ}

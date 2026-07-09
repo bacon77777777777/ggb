@@ -270,10 +270,13 @@ export async function POST(req: NextRequest) {
     return [...recentTitles, ...sessionTitles].some(t => jaccardSim(tokens, t) >= 0.55)
   }
 
+  const body = await req.json().catch(() => ({}))
+  const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
+
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[] }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
-  const MAX_TOTAL    = 8   // 每次全局上限
-  const MAX_PER_QUERY = 2  // 每個關鍵字上限
+  const MAX_TOTAL    = limitOverride ?? 8    // 每次全局上限（手動觸發可傳 limit:1）
+  const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
   for (const { q, category, locale } of RSS_QUERIES) {
     if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break

@@ -529,6 +529,8 @@ function NavbarInner() {
     }
   };
 
+  if (pathname === '/news') return null;
+
   return (
     <>
       <NavbarLayout
