@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard, SortableTableHeader, Modal } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal } from '@/components'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -57,6 +57,9 @@ export default function NewsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null)
 
+  // 批量選取
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
   // 篩選（記憶）
   const [filterStatus, setFilterStatus] = useState<string>(prefs.filterStatus ?? 'all')
   const [filterCat,    setFilterCat]    = useState<string>(prefs.filterCat    ?? 'all')
@@ -75,7 +78,6 @@ export default function NewsPage() {
     is_active: false,
   })
 
-  // 篩選/排序變更時寫入 localStorage
   useEffect(() => { savePrefs({ filterStatus, filterCat, searchQ, sortField, sortDirection }) },
     [filterStatus, filterCat, searchQ, sortField, sortDirection])
 
@@ -99,16 +101,16 @@ export default function NewsPage() {
       const q = searchQ.toLowerCase()
       arr = arr.filter(n => n.title.toLowerCase().includes(q) || (n.summary ?? '').toLowerCase().includes(q))
     }
-    if (filterCat !== 'all')    arr = arr.filter(n => n.category === filterCat)
+    if (filterCat !== 'all')       arr = arr.filter(n => n.category === filterCat)
     if (filterStatus === 'active') arr = arr.filter(n =>  n.is_active)
     if (filterStatus === 'draft')  arr = arr.filter(n => !n.is_active)
 
     arr.sort((a, b) => {
       let av: any, bv: any
-      if (sortField === 'title')      { av = a.title;       bv = b.title }
-      else if (sortField === 'category') { av = a.category; bv = b.category }
+      if (sortField === 'title')         { av = a.title;        bv = b.title }
+      else if (sortField === 'category') { av = a.category;     bv = b.category }
       else if (sortField === 'view_count') { av = a.view_count ?? 0; bv = b.view_count ?? 0 }
-      else                            { av = a.created_at;  bv = b.created_at }
+      else                               { av = a.created_at;   bv = b.created_at }
       if (av < bv) return sortDirection === 'asc' ? -1 :  1
       if (av > bv) return sortDirection === 'asc' ?  1 : -1
       return 0
@@ -119,6 +121,42 @@ export default function NewsPage() {
   const handleSort = (field: string) => {
     if (sortField === field) setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortField(field); setSortDirection('desc') }
+  }
+
+  // ─── 批量選取 ─────────────────────────────────────────────────────────────
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(sorted.map(n => n.id)) : new Set())
+  }
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  // ─── 批量操作 ─────────────────────────────────────────────────────────────
+  const handleBatchPublish = async () => {
+    const ids = [...selectedIds]
+    await supabase.from('news').update({ is_active: true }).in('id', ids)
+    setNews(prev => prev.map(n => selectedIds.has(n.id) ? { ...n, is_active: true } : n))
+    setSelectedIds(new Set())
+  }
+
+  const handleBatchUnpublish = async () => {
+    const ids = [...selectedIds]
+    await supabase.from('news').update({ is_active: false }).in('id', ids)
+    setNews(prev => prev.map(n => selectedIds.has(n.id) ? { ...n, is_active: false } : n))
+    setSelectedIds(new Set())
+  }
+
+  const handleBatchDelete = async () => {
+    if (!confirm(`確定要刪除選取的 ${selectedIds.size} 篇文章嗎？`)) return
+    const ids = [...selectedIds]
+    await supabase.from('news').delete().in('id', ids)
+    setNews(prev => prev.filter(n => !selectedIds.has(n.id)))
+    setSelectedIds(new Set())
   }
 
   // ─── 上架開關 ─────────────────────────────────────────────────────────────
@@ -179,82 +217,104 @@ export default function NewsPage() {
     fetchData()
   }
 
-  const draftCount  = news.filter(n => !n.is_active).length
   const activeCount = news.filter(n =>  n.is_active).length
+  const draftCount  = news.filter(n => !n.is_active).length
+  const allChecked  = sorted.length > 0 && selectedIds.size === sorted.length
 
   return (
     <AdminLayout pageTitle="文章管理" breadcrumbs={[{ label: '文章管理', href: '/news' }]}>
       <div className="space-y-4">
 
-        {/* ── 頂部統計 + 篩選工具列 ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-neutral-500">共 {news.length} 篇</span>
-            <button
-              onClick={() => setFilterStatus(s => s === 'active' ? 'all' : 'active')}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
-                filterStatus === 'active'
-                  ? 'bg-green-600 text-white border-green-600'
-                  : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-              }`}>
-              已上架 {activeCount}
-            </button>
-            <button
-              onClick={() => setFilterStatus(s => s === 'draft' ? 'all' : 'draft')}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
-                filterStatus === 'draft'
-                  ? 'bg-neutral-600 text-white border-neutral-600'
-                  : 'bg-neutral-100 text-neutral-500 border-neutral-200 hover:bg-neutral-200'
-              }`}>
-              下架草稿 {draftCount}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* 關鍵字搜尋 */}
-            <input
-              value={searchQ}
-              onChange={e => setSearchQ(e.target.value)}
-              placeholder="搜尋標題..."
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 w-44 focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {/* 分類篩選 */}
-            <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-2 py-1.5 focus:outline-none">
-              <option value="all">全部分類</option>
-              {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-            {/* 清除篩選 */}
-            {(filterStatus !== 'all' || filterCat !== 'all' || searchQ) && (
-              <button
-                onClick={() => { setFilterStatus('all'); setFilterCat('all'); setSearchQ('') }}
-                className="text-xs text-neutral-400 hover:text-neutral-600 border border-neutral-200 rounded-lg px-2 py-1.5">
-                清除篩選
-              </button>
-            )}
-            <button onClick={handleAdd}
-              className="px-4 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-semibold">
-              + 新增文章
-            </button>
-          </div>
-        </div>
-
-        {/* AI 草稿提示橫幅 */}
-        {draftCount > 0 && filterStatus !== 'active' && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-700 flex items-center gap-2">
-            <span>⚠️</span>
-            <span>有 <strong>{draftCount}</strong> 篇下架草稿（含 AI 自動採集），審閱後點上架開關切換至前台顯示。</span>
-          </div>
-        )}
-
-        {/* ── 表格 ── */}
         <PageCard>
+          <SearchToolbar
+            searchPlaceholder="搜尋標題..."
+            searchValue={searchQ}
+            onSearchChange={setSearchQ}
+            showAddButton={true}
+            addButtonText="+ 新增文章"
+            onAddClick={handleAdd}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: '狀態',
+                type: 'select',
+                value: filterStatus,
+                onChange: setFilterStatus,
+                options: [
+                  { value: 'all',    label: '全部狀態' },
+                  { value: 'active', label: '已上架' },
+                  { value: 'draft',  label: '下架草稿' },
+                ],
+              },
+              {
+                key: 'category',
+                label: '分類',
+                type: 'select',
+                value: filterCat,
+                onChange: setFilterCat,
+                options: [
+                  { value: 'all', label: '全部分類' },
+                  ...Object.entries(CATEGORY_LABELS).map(([k, v]) => ({ value: k, label: v })),
+                ],
+              },
+            ]}
+            selectedCount={selectedIds.size}
+            batchActions={[
+              { label: '批量上架', onClick: handleBatchPublish,   variant: 'primary'   },
+              { label: '批量下架', onClick: handleBatchUnpublish, variant: 'secondary' },
+              { label: '批量刪除', onClick: handleBatchDelete,    variant: 'danger'    },
+            ]}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
+
+          <FilterTags
+            tags={[
+              ...(filterStatus !== 'all' ? [{
+                key: 'status',
+                label: '狀態',
+                value: filterStatus === 'active' ? '已上架' : '下架草稿',
+                color: 'primary' as const,
+                onRemove: () => setFilterStatus('all'),
+              }] : []),
+              ...(filterCat !== 'all' ? [{
+                key: 'category',
+                label: '分類',
+                value: CATEGORY_LABELS[filterCat] ?? filterCat,
+                color: 'primary' as const,
+                onRemove: () => setFilterCat('all'),
+              }] : []),
+            ]}
+            onClearAll={() => { setFilterStatus('all'); setFilterCat('all'); setSearchQ('') }}
+          />
+
+          {/* ── 統計列 ── */}
+          <div className="flex items-center gap-3 px-4 py-2 text-sm border-b border-neutral-100">
+            <span className="text-neutral-500">共 {news.length} 篇</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+              已上架 {activeCount}
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200">
+              下架草稿 {draftCount}
+            </span>
+            {sorted.length !== news.length && (
+              <span className="text-neutral-400 text-xs">篩選後顯示 {sorted.length} 篇</span>
+            )}
+          </div>
+
+          {/* ── 表格 ── */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-neutral-200">
+                  <th className="px-4 py-2.5 text-left w-10">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      onChange={e => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-primary focus:ring-primary rounded"
+                    />
+                  </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 w-16">圖片</th>
                   <SortableTableHeader sortKey="title" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     標題
@@ -276,6 +336,7 @@ export default function NewsPage() {
                 {isLoading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="border-b border-neutral-100">
+                      <td className="px-4 py-3"><div className="w-4 h-4 bg-neutral-100 rounded animate-pulse" /></td>
                       <td className="px-3 py-3"><div className="w-14 h-10 bg-neutral-100 rounded animate-pulse" /></td>
                       <td className="px-3 py-3"><div className="h-4 bg-neutral-100 rounded animate-pulse w-64" /></td>
                       <td className="px-3 py-3"><div className="h-5 bg-neutral-100 rounded-full animate-pulse w-12" /></td>
@@ -287,14 +348,25 @@ export default function NewsPage() {
                   ))
                 ) : sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-16 text-center text-neutral-400 text-sm">
+                    <td colSpan={8} className="py-16 text-center text-neutral-400 text-sm">
                       {news.length === 0 ? '尚無文章資料' : '沒有符合條件的文章'}
                     </td>
                   </tr>
                 ) : (
                   sorted.map(article => (
                     <tr key={article.id}
-                      className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors group">
+                      className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors group ${
+                        selectedIds.has(article.id) ? 'bg-primary/5' : ''
+                      }`}>
+                      {/* 勾選 */}
+                      <td className="px-4 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(article.id)}
+                          onChange={() => handleSelectOne(article.id)}
+                          className="w-4 h-4 text-primary focus:ring-primary rounded"
+                        />
+                      </td>
                       {/* 圖片 */}
                       <td className="px-3 py-2.5">
                         {article.image_url
