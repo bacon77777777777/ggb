@@ -531,7 +531,7 @@ function NavbarInner() {
     }
   };
 
-  if (pathname === '/news') return null;
+  if (pathname === '/news' || isNewsDetailPage) return null;
 
   return (
     <>
