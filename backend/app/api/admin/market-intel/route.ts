@@ -5,8 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const err = await requireAdminSession(req)
-  if (err) return err
+  const session = await requireAdminSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = getSupabaseAdmin()
   const { searchParams } = req.nextUrl
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
 
 // 手動觸發 market-intel
 export async function POST(req: NextRequest) {
-  const err = await requireAdminSession(req)
-  if (err) return err
+  const session = await requireAdminSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const CRON_SECRET = process.env.CRON_SECRET ?? ''
   const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? ''
