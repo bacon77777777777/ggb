@@ -20,23 +20,41 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 C
 type Locale = 'TW' | 'JP' | 'US'
 
 const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
-  // ── 繁體中文（台灣）—— 主力
-  { q: '一番賞 發售',   category: 'ichiban',  locale: 'TW' },
-  { q: '盒玩 發售',     category: 'blindbox', locale: 'TW' },
-  { q: '盲盒 新品',     category: 'blindbox', locale: 'TW' },
-  { q: '轉蛋 新品 發售', category: 'gacha',   locale: 'TW' },
-  { q: '卡牌 新彈 發售', category: 'tcg',     locale: 'TW' },
-  // ── 日文（日本）—— 商品情報主要來源
-  { q: '一番くじ 新商品 発売',            category: 'ichiban',  locale: 'JP' },
-  { q: 'ガシャポン 新商品 発売',          category: 'gacha',    locale: 'JP' },
-  { q: 'ブラインドボックス 新商品',       category: 'blindbox', locale: 'JP' },
-  { q: 'ポケモンカード 新弾 発売',        category: 'tcg',      locale: 'JP' },
-  { q: '遊戯王 OCG 新カード 発売',        category: 'tcg',      locale: 'JP' },
-  // ── 英文（全球）—— 補充英語圈資訊
-  { q: 'gashapon new product release',  category: 'gacha',    locale: 'US' },
-  { q: 'OCG new card release',          category: 'tcg',      locale: 'US' },
-  { q: 'TCG new set announcement',      category: 'tcg',      locale: 'US' },
-  { q: 'blind box new figure release',  category: 'blindbox', locale: 'US' },
+  // ── 繁體中文（台灣）
+  { q: '一番賞 發售',         category: 'ichiban',  locale: 'TW' },
+  { q: '盒玩 發售 新品',      category: 'blindbox', locale: 'TW' },
+  { q: '盲盒 新品 上市',      category: 'blindbox', locale: 'TW' },
+  { q: '轉蛋 新品 發售',      category: 'gacha',    locale: 'TW' },
+  { q: '卡牌 新彈 發售',      category: 'tcg',      locale: 'TW' },
+  { q: '扭蛋 新商品',         category: 'gacha',    locale: 'TW' },
+  // ── 日文（日本）
+  { q: '一番くじ 新商品 発売',           category: 'ichiban',  locale: 'JP' },
+  { q: '一番くじ 予約',                  category: 'ichiban',  locale: 'JP' },
+  { q: 'バンダイ ガシャポン 新商品',     category: 'gacha',    locale: 'JP' },
+  { q: 'ガシャポン 発売 予約',           category: 'gacha',    locale: 'JP' },
+  { q: 'ブラインドボックス 新商品 発売', category: 'blindbox', locale: 'JP' },
+  { q: 'ポップマート 新商品',            category: 'blindbox', locale: 'JP' },
+  { q: 'ポケモンカード 新弾 発売',       category: 'tcg',      locale: 'JP' },
+  { q: '遊戯王 OCG 新カード 発売',       category: 'tcg',      locale: 'JP' },
+  { q: 'デュエルマスターズ 新弾',        category: 'tcg',      locale: 'JP' },
+  // ── 英文（全球）
+  { q: 'gashapon new product release 2026', category: 'gacha',    locale: 'US' },
+  { q: 'Pokemon TCG new set 2026',          category: 'tcg',      locale: 'US' },
+  { q: 'blind box figure new release',      category: 'blindbox', locale: 'US' },
+  { q: 'Pop Mart new figure',               category: 'blindbox', locale: 'US' },
+  { q: 'Yu-Gi-Oh OCG new card 2026',        category: 'tcg',      locale: 'US' },
+]
+
+// ── 直接 RSS 來源（非 Google News）──────────────────────────────────────────
+const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
+  // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
+  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'general',  label: 'PRTimes-hobby' },
+  // 電撃ホビーウェブ
+  { url: 'https://hobby.dengeki.com/feed/',             category: 'general',  label: 'DengekiHobby' },
+  // Animate Times
+  { url: 'https://www.animatetimes.com/rss.xml',       category: 'general',  label: 'AnimateTimes' },
+  // 巴哈姆特 GNN 遊戲動漫新聞（繁中）
+  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'general',  label: 'GNN-TW' },
 ]
 
 const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
@@ -58,6 +76,7 @@ interface RssItem {
   description: string
   pubDate:     string
   source:      string
+  rssImage:    string  // enclosure / media:thumbnail / content:encoded 內的圖片
 }
 
 function parseRss(xml: string): RssItem[] {
@@ -75,7 +94,14 @@ function parseRss(xml: string): RssItem[] {
       ?.replace(/<a[^>]+>|<\/a>|<font[^>]+>|<\/font>/gi, '').trim() ?? ''
     const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim() ?? ''
     const source  = block.match(/<source[^>]*>([\s\S]*?)<\/source>/i)?.[1]?.trim() ?? ''
-    if (title && link) items.push({ title, link, description: desc, pubDate, source })
+    // 從 enclosure / media:content / media:thumbnail / content:encoded 取圖片
+    const rssImage =
+      block.match(/enclosure[^>]+url=["']([^"']+\.(?:jpe?g|png|webp|gif))/i)?.[1] ??
+      block.match(/media:content[^>]+url=["']([^"']+)/i)?.[1] ??
+      block.match(/media:thumbnail[^>]+url=["']([^"']+)/i)?.[1] ??
+      block.match(/<img[^>]+src=["']([^"']+)/i)?.[1] ??
+      ''
+    if (title && link) items.push({ title, link, description: desc, pubDate, source, rssImage })
   }
   return items
 }
@@ -143,20 +169,46 @@ async function resolveGoogleLink(googleUrl: string): Promise<string> {
 // ─── 圖片下載至 R2 ───────────────────────────────────────────────────────────
 
 async function downloadImageToR2(imgUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(imgUrl, {
-      headers: { 'User-Agent': UA, 'Referer': new URL(imgUrl).origin },
-      signal: AbortSignal.timeout(12_000),
-    })
-    if (!res.ok) return null
-    const ct = res.headers.get('content-type') ?? ''
-    if (!ct.startsWith('image/')) return null   // 確保是圖片
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 10_000) return null         // 排除 favicon / icon / tracking pixel（真實文章圖 > 10KB）
-    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
-    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    return await r2Upload(key, buf, ct)
-  } catch { return null }
+  // 嘗試多種 Referer 策略繞過 hotlink 保護
+  const origin = (() => { try { return new URL(imgUrl).origin } catch { return '' } })()
+  const strategies: Record<string, string>[] = [
+    { 'Referer': origin, 'Origin': origin },
+    { 'Referer': imgUrl },
+    {},
+  ]
+
+  for (const extraHeaders of strategies) {
+    try {
+      const res = await fetch(imgUrl, {
+        headers: {
+          'User-Agent': UA,
+          'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+          'Accept-Language': 'ja,zh-TW;q=0.9,en;q=0.7',
+          'Cache-Control': 'no-cache',
+          ...extraHeaders,
+        },
+        signal: AbortSignal.timeout(12_000),
+        redirect: 'follow',
+      })
+      if (!res.ok) continue
+      const ct = res.headers.get('content-type') ?? ''
+      // 接受 image/* 以及未明確 content-type 但確實為圖片的情況
+      if (ct && !ct.startsWith('image/') && !ct.startsWith('application/octet-stream')) continue
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length < 3_000) continue  // 排除 tracking pixel（降至 3KB）
+      // 嘗試從 magic bytes 判斷副檔名
+      const isJpeg = buf[0] === 0xFF && buf[1] === 0xD8
+      const isPng  = buf[0] === 0x89 && buf[1] === 0x50
+      const isWebp = buf.slice(8, 12).toString() === 'WEBP'
+      const isGif  = buf.slice(0, 3).toString() === 'GIF'
+      const ext = isJpeg ? 'jpg' : isPng ? 'png' : isWebp ? 'webp' : isGif ? 'gif' : 'jpg'
+      const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`
+      const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const uploaded = await r2Upload(key, buf, contentType)
+      if (uploaded) return uploaded
+    } catch { continue }
+  }
+  return null
 }
 
 // ─── Claude 改寫 ─────────────────────────────────────────────────────────────
@@ -263,7 +315,7 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title')
+    .select('source_url, title, created_at')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
@@ -282,11 +334,64 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[] }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
-  const MAX_TOTAL    = limitOverride ?? 8    // 每次全局上限（手動觸發可傳 limit:1）
+  const MAX_TOTAL    = limitOverride ?? 12   // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
+  // ── 直接 RSS 來源（PR TIMES / 電撃ホビー / Animate Times 等）────────────────
+  for (const feed of DIRECT_FEEDS) {
+    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+    const xml = await fetchText(feed.url)
+    if (!xml) { results.errors++; continue }
+
+    const items = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
+    for (const item of items) {
+      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+      const realUrl = item.link
+      if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+
+      const articleHtml = await fetchText(realUrl, 8_000)
+      const ogImage = articleHtml
+        ? resolveImageUrl(extractOgImage(articleHtml), realUrl)
+        : resolveImageUrl(item.rssImage, realUrl)
+      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+
+      const bodyText = articleHtml
+        ? articleHtml
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ').trim()
+            .slice(0, 1500)
+        : item.description
+
+      const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
+      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
+      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+      const { error } = await supabase.from('news').insert({
+        id, title: draft.title, summary: draft.summary, content: draft.content,
+        image_url: imageUrl, source_url: realUrl,
+        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: false,
+      })
+      if (!error) {
+        results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
+        existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
+      } else if (error.code === '23505') {
+        results.skipped++; results.skipReasons.duplicate++
+      } else {
+        results.errors++
+      }
+      await new Promise(r => setTimeout(r, 300))
+    }
+  }
+
+  // ── Google News RSS ────────────────────────────────────────────────────────
   for (const { q, category, locale } of RSS_QUERIES) {
     if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
 
@@ -301,34 +406,36 @@ export async function POST(req: NextRequest) {
 
       // Google News 的 link 是 redirect，先 resolve 到真實 URL
       const realUrl = await resolveGoogleLink(item.link)
-      if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; continue }
+      if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
-      // 抓實際文章頁：取 og:image（必須有圖才處理）+ body text
+      // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
       const articleHtml = await fetchText(realUrl, 8_000)
-      if (!articleHtml) { results.skipped++; continue }
-
-      const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
-      if (!ogImage) { results.skipped++; continue }  // 沒有有效圖片 URL 直接跳過
+      const ogImage = articleHtml
+        ? resolveImageUrl(extractOgImage(articleHtml), realUrl)
+        : resolveImageUrl(item.rssImage, realUrl)
+      // 沒有任何圖片來源才跳過
+      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
 
       const bodyText = articleHtml
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ').trim()
-        .slice(0, 1500)
+        ? articleHtml
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ').trim()
+            .slice(0, 1500)
+        : item.description  // HTML 抓不到，用 RSS description 當內容提示
 
       // Claude 改寫
       const draft = await rewriteArticle(
         claude, item.title, item.description, bodyText, realUrl, category
       )
-      if (!draft) { results.skipped++; continue }
+      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
 
       // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
-      if (isDuplicateTopic(draft.title)) { results.skipped++; continue }
+      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      // 下載圖片到 R2（失敗直接 skip，不接受外部 URL fallback）
-      const imageUrl = await downloadImageToR2(ogImage)
-      if (!imageUrl) { results.skipped++; continue }
+      // 下載圖片到 R2；失敗時 fallback 用外部 og:image URL（不因圖片問題跳過文章）
+      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
@@ -350,7 +457,7 @@ export async function POST(req: NextRequest) {
         sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
         perQuery++
       } else if (error.code === '23505') {
-        results.skipped++
+        results.skipped++; results.skipReasons.duplicate++
       } else {
         console.error('[news-agent] insert error:', error.message)
         results.errors++
