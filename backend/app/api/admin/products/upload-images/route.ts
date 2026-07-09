@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { r2Upload } from '@/lib/r2'
+import { compressToWebP } from '@/lib/imageCompress'
 import AdmZip from 'adm-zip'
 import path from 'path'
 
@@ -8,14 +9,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif'])
-
-const contentTypeMap: Record<string, string> = {
-  '.jpg':  'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png':  'image/png',
-  '.webp': 'image/webp',
-  '.gif':  'image/gif',
-}
 
 export async function POST(req: Request) {
   const session = await requireAdminSession()
@@ -47,8 +40,9 @@ export async function POST(req: Request) {
     const key = `products/${filename}`
 
     try {
-      const data = entry.getData()
-      const url = await r2Upload(key, data, contentTypeMap[ext] ?? 'image/jpeg')
+      const raw = entry.getData()
+      const compressed = await compressToWebP(raw, 'products')
+      const url = await r2Upload(key, compressed, 'image/webp')
       results.push({ name: filename, url })
     } catch (e: any) {
       errors.push({ name: filename, error: String(e?.message || e) })

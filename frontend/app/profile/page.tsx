@@ -58,7 +58,6 @@ import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { compressImage } from '@/lib/image-utils';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import SolidButton from '@/components/ui/SolidButton';
 
@@ -673,62 +672,30 @@ function ProfileContent() {
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    let file = e.target.files?.[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingAvatar(true);
     try {
-      // Compress image if larger than 1MB or dimensions too large
-      // Max size: 2MB limit by backend/storage policy, but let's aim for <1MB for speed
-      console.log('Original file size:', file.size / 1024 / 1024, 'MB');
-      
-      // Attempt compression
-      try {
-        const compressed = await compressImage(file, 800, 800, 0.8, 1);
-        console.log('Compressed file size:', compressed.size / 1024 / 1024, 'MB');
-        file = compressed;
-      } catch (compError) {
-        console.warn('Image compression failed, using original file:', compError);
-        // Continue with original file if compression fails
-      }
+      const timestamp = Date.now();
+      const fileName = `${user!.id}-${timestamp}`;
 
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('圖片壓縮後仍超過 2MB，請選擇較小的圖片');
-        setIsUploadingAvatar(false);
-        return;
-      }
-
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      // Add timestamp to filename to avoid Supabase storage cache
-      const timestamp = new Date().getTime();
-      const fileName = `${user!.id}-${timestamp}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type // Ensure correct content type
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      // Add a query param to bust browser cache just in case
-      const publicUrlWithTimestamp = `${publicUrl}?t=${timestamp}`;
+      const form = new FormData();
+      form.append('file', file);
+      form.append('bucket', 'avatars');
+      form.append('path', fileName);
+      const res = await fetch('/api/upload/image', { method: 'POST', body: form });
+      if (!res.ok) throw new Error((await res.json()).error || '上傳失敗');
+      const { publicUrl } = await res.json();
 
       const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrlWithTimestamp }
+        data: { avatar_url: publicUrl }
       });
       if (updateError) throw updateError;
 
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
-        await supabase.from('users').update({ avatar_url: publicUrlWithTimestamp }).eq('id', authUser.id);
+        await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', authUser.id);
       }
 
       toast.success('頭像更新成功');

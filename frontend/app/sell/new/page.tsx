@@ -146,17 +146,15 @@ export default function SellNewPage() {
     })();
 
     const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
-    const objectPath = `${user.id}/sell/${Date.now()}-${id}.${ext}`;
+    const objectPath = `${user.id}/sell/${Date.now()}-${id}`;
 
-    const supabase = createClient();
-    const { error } = await supabase.storage.from('marketplace').upload(objectPath, file, {
-      upsert: true,
-      contentType: file.type,
-      cacheControl: '3600',
-    });
-    if (error) throw error;
-    const { data } = supabase.storage.from('marketplace').getPublicUrl(objectPath);
-    const publicUrl = String(data?.publicUrl || '').trim();
+    const form = new FormData();
+    form.append('file', file);
+    form.append('bucket', 'marketplace');
+    form.append('path', objectPath);
+    const res = await fetch('/api/upload/image', { method: 'POST', body: form });
+    if (!res.ok) throw new Error((await res.json()).error || 'no_public_url');
+    const { publicUrl } = await res.json();
     if (!publicUrl) throw new Error('no_public_url');
     return publicUrl;
   };
