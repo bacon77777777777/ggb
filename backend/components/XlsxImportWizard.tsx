@@ -150,8 +150,12 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         const data = await res.json()
         if (!res.ok) { alert(data.error || '解析失敗'); return }
         const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+        const r2BaseXlsx   = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
         const isOurStorageUrl = (url?: string | null) =>
-          !!url && !!supabaseBase && url.startsWith(supabaseBase)
+          !!url && (
+            (!!supabaseBase && url.startsWith(supabaseBase)) ||
+            (!!r2BaseXlsx   && url.startsWith(r2BaseXlsx))
+          )
 
         const all: EnrichedProduct[] = data.sheets.flatMap((s: any) =>
           s.products.map((p: ParsedProduct) => {
@@ -187,7 +191,11 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               '一番賞': 'ichiban', '盒玩': 'blindbox', '盲盒': 'blindbox',
               '轉蛋': 'gacha', '抽卡': 'card', '卡牌': 'card', '自製賞': 'custom',
             }
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+            const r2Base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
+            // 把檔名轉成 R2 URL；外部 URL 一律忽略
+            const toR2Url = (raw: string) =>
+              raw && !isHttpUrl(raw) ? `${r2Base}/products/${raw}` : null
+
             const isFullFormat = headers.includes('商品名稱') && headers.includes('商品類型')
 
             if (isFullFormat) {
@@ -196,14 +204,15 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 for (let n = 1; n <= 30; n++) {
                   const prizeName = String(row[`獎項${n}名稱`] ?? '').trim()
                   if (!prizeName) break
-                  const imgFile = String(row[`獎項${n}圖片名稱`] ?? '').trim()
+                  const imgRaw = String(row[`獎項${n}圖片名稱`] ?? '').trim()
                   variants.push({
                     name: prizeName,
-                    image_url: imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null,
+                    image_url: toR2Url(imgRaw),
                   })
                 }
-                const imgFile  = String(row['商品圖片'] ?? '').trim()
-                const image_url = imgFile ? `${supabaseUrl}/storage/v1/object/public/products/${imgFile}` : null
+                const imgRaw    = String(row['商品圖片'] ?? '').trim()
+                const image_url = toR2Url(imgRaw)
+                const raw_image_name = (imgRaw && !isHttpUrl(imgRaw)) ? imgRaw : null
                 const typeRaw  = String(row['商品類型'] ?? '').trim()
                 const totalCount = variants.reduce((sum, _, idx) => sum + (Number(row[`獎項${idx + 1}數量`]) || 0), 0)
                 return {
@@ -222,12 +231,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                   full_spec: '',
                   type: CSV_TYPE_MAP[typeRaw] ?? 'gacha',
                   image_url,
+                  raw_image_name,
                   distributor: String(row['代理商'] ?? '').trim() || null,
                   series: String(row['系列'] ?? '').trim() || null,
                   release_year: String(row['發售年'] ?? '').trim() || null,
                   release_month: String(row['發售月'] ?? '').trim() || null,
                   variants: variants.length ? variants : undefined,
-                  aiStatus: 'idle' as const,
+                  aiStatus: (image_url || raw_image_name) ? 'idle' as const : 'idle' as const,
                   selected: true,
                 } as EnrichedProduct
               }).filter(p => p.name)

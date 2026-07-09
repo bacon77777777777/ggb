@@ -49,10 +49,12 @@ function isHttpUrl(s: string | null | undefined): boolean {
   return !!s && /^https?:\/\//i.test(s)
 }
 
-// 只有自己 Supabase Storage 的 URL 才算「可顯示的圖片 URL」
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+// 自己 Supabase Storage 或 R2 的 URL 才算「可顯示的圖片 URL」
+const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? ''
 function isOurStorageUrl(s: string): boolean {
-  return !!SUPABASE_URL && s.startsWith(SUPABASE_URL)
+  return (!!SUPABASE_URL && s.startsWith(SUPABASE_URL)) ||
+         (!!R2_PUBLIC_URL && s.startsWith(R2_PUBLIC_URL))
 }
 
 
