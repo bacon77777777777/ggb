@@ -76,7 +76,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // If profile不存在，很可能是資料被清空，強制登出回登入頁
+          // Profile missing - 可能是新用戶尚未建立，或資料被清空的舊帳號
+          // 先嘗試自動建立 profile，再重試
+          try {
+            const res = await fetch('/api/user/ensure-profile', { method: 'POST' })
+            if (res.ok) {
+              const { data: retryData } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single()
+              if (retryData) {
+                return {
+                  id: retryData.id,
+                  name: retryData.name || email.split('@')[0],
+                  full_name: retryData.name,
+                  avatar_url: retryData.avatar_url || '/images/avatar/01.png',
+                  points: retryData.points || 0,
+                  tokens: retryData.tokens || 0,
+                  tickets: retryData.tickets || 0,
+                  email,
+                  phone_number: retryData.phone_number ?? null,
+                  is_phone_verified: retryData.is_phone_verified ?? false,
+                  recipient_name: retryData.recipient_name,
+                  recipient_phone: retryData.recipient_phone,
+                  recipient_address: retryData.address,
+                  role: retryData.role || 'user',
+                  invite_code: retryData.invite_code,
+                  gender: retryData.gender || null,
+                  birthday: retryData.birthday || null,
+                  cvs_store_name: retryData.cvs_store_name || null,
+                  cvs_store_branch: retryData.cvs_store_branch || null,
+                  cvs_store_address: retryData.cvs_store_address || null,
+                  cvs_recipient_name: retryData.cvs_recipient_name || null,
+                  cvs_recipient_phone: retryData.cvs_recipient_phone || null,
+                } as Profile;
+              }
+            }
+          } catch {}
+          // 自動建立失敗，才強制登出
           await supabase.auth.signOut();
           setSupabaseUser(null);
           setUser(null);

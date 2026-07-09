@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-09｜修正新用戶註冊設定密碼失敗
+
+### 根本原因
+- 用戶完成 OTP 驗證後，`onAuthStateChange` 觸發 `fetchProfile`
+- 若 `public.users` 無 profile（曾清資料的舊帳號），原本直接 `signOut()` → session 被清除
+- Step 3 呼叫 `updateUser({ password })` 時得到 "Auth session missing!"
+
+### 修正
+- `AuthContext.tsx`：PGRST116 時改為先呼叫 `/api/user/ensure-profile` 自動建立 profile，retry 後再設 user；只有建立失敗才 signOut
+- 新增 `frontend/app/api/user/ensure-profile/route.ts`：驗證 auth 後用 service role upsert profile（含 generate_invite_code）
+- `authErrors.ts`：補 "Auth session missing!" → "登入狀態已失效，請重新登入"
+
+---
+
 ## 2026-07-09｜下拉重整圖標置中修正
 
 ### PwaPullToRefresh.tsx
