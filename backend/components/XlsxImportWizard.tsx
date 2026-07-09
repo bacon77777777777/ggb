@@ -359,7 +359,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         const resolvedDist = cleanDist(ai.distributor) || cleanDist(x.distributor) || null
         const resolvedImg  = isValidImg(ai.image_url) ? ai.image_url : isValidImg(x.image_url) ? x.image_url : null
         const hasRealData  = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
-        const aiStatus: EnrichedProduct['aiStatus'] = hasRealData
+        // raw_image_name 代表「預期要有圖」，若找不到圖就算 partial
+        const imageOk = resolvedImg ? true : !x.raw_image_name
+        const aiStatus: EnrichedProduct['aiStatus'] = (hasRealData && imageOk)
           ? (data.aiStatus ?? 'done')
           : 'partial'
         return {
