@@ -178,7 +178,7 @@ function AuthContent() {
       // 計入邀請人任務進度（若有邀請碼）；失敗不阻擋流程
       const uid = updateData?.user?.id
       if (uid) {
-        supabase.rpc('complete_registration_referral', { p_user_id: uid }).catch(() => {})
+        supabase.rpc('complete_registration_referral', { p_user_id: uid }).then(undefined, () => {})
       }
       router.push('/?message=註冊成功')
       router.refresh()

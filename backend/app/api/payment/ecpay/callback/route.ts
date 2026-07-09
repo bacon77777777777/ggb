@@ -118,12 +118,12 @@ export async function POST(req: Request) {
           p_user_id:    recharge.user_id,
           p_event_type: 'recharge',
           p_data:       { amount: rechargeAmt },
-        }).catch(() => {}) // non-critical, don't fail the callback
+        }).then(undefined, () => {}) // non-critical, don't fail the callback
         await supabase.rpc('track_mission_event_for_user', {
           p_user_id:    recharge.user_id,
           p_event_type: 'recharge_amount',
           p_data:       { amount: rechargeAmt },
-        }).catch(() => {}) // non-critical
+        }).then(undefined, () => {}) // non-critical
 
         // 風控：快速重複儲值偵測（Redis 1小時計數）
         const rechargeCount = await rechargeRiskCounter.increment(recharge.user_id)
