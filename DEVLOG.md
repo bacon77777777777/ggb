@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-07-09｜ai-enrich 修正 + CSV 品項圖上傳 R2
+
+### ai-enrich 主圖優先順序修正
+- `storageImageUrl`（用戶自行上傳 R2 圖）移至最高優先，不再被 DDG 爬蟲圖覆蓋
+- 修正前：`bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? storageImageUrl`
+- 修正後：`storageImageUrl ?? bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName`
+
+### CSV 匯入品項圖 R2 上傳
+- alltest.csv 共 198 張品項圖（分散於 `final_500x500_direct` 和 `images_500x500_webp` 目錄）全部上傳至 R2 `products/` 路徑
+- 修正 wizard 品項圖全部顯示「?」的問題（圖片不在 R2 → onError 觸發）
+- 上傳腳本：Python3 直接使用 AWS4 簽章，無需額外套件
+
+---
+
 ## 2026-07-09｜cron 修復 + 監控修正 + wizard 圖片補全 + 競品情報升級
 
 ### Cron 全面修復（7 個 job 因 GUC 未設而全掛）
