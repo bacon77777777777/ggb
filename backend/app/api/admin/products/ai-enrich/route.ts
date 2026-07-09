@@ -987,7 +987,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const rawImage = bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? storageImageUrl ?? null
+    const rawImage = storageImageUrl ?? bandaiMainImg ?? siteResult?.image_url ?? ddgImage ?? dbImageByName ?? null
     const source = siteResult?.source_site
       ?? (bandaiMainImg ? 'bandai_catalog' : identified.jp_search_query ? 'claude_identified' : 'claude_generated')
 
