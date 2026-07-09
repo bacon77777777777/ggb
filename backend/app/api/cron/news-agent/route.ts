@@ -1,7 +1,7 @@
 /**
- * news-agent — 每天自動從 Google News RSS 抓取日本最新
- * 轉蛋/一番賞/盲盒/TCG 資訊，用 Claude 改寫成繁中，寫入 news 表（預設下架）。
- * 排程：每天 TW 06:30（UTC 22:30 前一天）
+ * news-agent — 每小時從 Google News RSS 抓取最新
+ * 一番賞/盒玩/盲盒/轉蛋/卡牌資訊，用 Claude 改寫成繁中，寫入 news 表（預設下架）。
+ * 排程：每小時整點（UTC 0 * * * *）
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
@@ -12,26 +12,42 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/125.0 Safari/537.36'
 
-// ─── Google News RSS 搜尋詞（日文）─────────────────────────────────────────
-// 每次跑最多取 5 個搜尋詞，每詞最多 3 篇新文章
+// ─── Google News RSS 搜尋詞（中文 + 日文 + 英文，多語言廣覆蓋）─────────────
+// 每次全局最多 8 篇，每詞最多 2 篇
 
-const RSS_QUERIES: Array<{ q: string; category: string }> = [
-  { q: '一番くじ 新商品',             category: 'ichiban'  },
-  { q: 'ガチャガチャ カプセルトイ 新製品', category: 'gacha'    },
-  { q: 'ブラインドボックス フィギュア 新作', category: 'blindbox' },
-  { q: 'ポケモンカード 新弾 発売',      category: 'tcg'      },
-  { q: '遊戯王 OCG 新カード',          category: 'tcg'      },
-  { q: 'ねんどろいど 新商品 グッドスマイル', category: 'blindbox' },
-  { q: 'バンダイ ガシャポン 2026',     category: 'gacha'    },
-  { q: 'リーメント ぷちサンプル 新作',  category: 'blindbox' },
+type Locale = 'TW' | 'JP' | 'US'
+
+const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
+  // ── 繁體中文（台灣）
+  { q: '一番賞 新品',   category: 'ichiban',  locale: 'TW' },
+  { q: '盒玩 新品',     category: 'blindbox', locale: 'TW' },
+  { q: '盲盒 新品',     category: 'blindbox', locale: 'TW' },
+  { q: '轉蛋 新品',     category: 'gacha',    locale: 'TW' },
+  { q: '實體卡牌',      category: 'tcg',      locale: 'TW' },
+  // ── 日文（日本）
+  { q: '一番くじ 新商品',               category: 'ichiban',  locale: 'JP' },
+  { q: 'ガチャガチャ 新製品',           category: 'gacha',    locale: 'JP' },
+  { q: 'ブラインドボックス フィギュア', category: 'blindbox', locale: 'JP' },
+  { q: 'ポケモンカード 新弾',           category: 'tcg',      locale: 'JP' },
+  { q: '遊戯王 OCG 新カード',           category: 'tcg',      locale: 'JP' },
+  // ── 英文（全球）
+  { q: 'gashapon new release',         category: 'gacha',    locale: 'US' },
+  { q: 'OCG trading card new',         category: 'tcg',      locale: 'US' },
+  { q: 'TCG new set release',          category: 'tcg',      locale: 'US' },
+  { q: 'blind box figure new',         category: 'blindbox', locale: 'US' },
 ]
 
-function rssUrl(q: string) {
-  return `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ja&gl=JP&ceid=JP:ja`
+const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
+  TW: { hl: 'zh-TW', gl: 'TW', ceid: 'TW:zh-Hant' },
+  JP: { hl: 'ja',    gl: 'JP', ceid: 'JP:ja'       },
+  US: { hl: 'en-US', gl: 'US', ceid: 'US:en'       },
+}
+
+function rssUrl(q: string, locale: Locale) {
+  const { hl, gl, ceid } = LOCALE_PARAMS[locale]
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${hl}&gl=${gl}&ceid=${ceid}`
 }
 
 // ─── RSS 解析 ────────────────────────────────────────────────────────────────
@@ -181,17 +197,6 @@ ${combined}
   catch { return null }
 }
 
-// ─── LINE 通知 ───────────────────────────────────────────────────────────────
-
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  }).catch(() => {})
-}
-
 // ─── 主流程 ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -212,38 +217,39 @@ export async function POST(req: NextRequest) {
   const existing = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[] }
-  const DEADLINE = Date.now() + 240_000  // 最多跑 4 分鐘
-  const MAX_PER_QUERY = 3
+  const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
+  const MAX_TOTAL    = 8   // 每次全局上限
+  const MAX_PER_QUERY = 2  // 每個關鍵字上限
 
-  for (const { q, category } of RSS_QUERIES) {
-    if (Date.now() > DEADLINE) break
+  for (const { q, category, locale } of RSS_QUERIES) {
+    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
 
-    const xml = await fetchText(rssUrl(q))
+    const xml = await fetchText(rssUrl(q, locale))
     if (!xml) { results.errors++; continue }
 
     const items = parseRss(xml).filter(it => isRecent(it.pubDate))
     let perQuery = 0
 
     for (const item of items) {
-      if (Date.now() > DEADLINE || perQuery >= MAX_PER_QUERY) break
+      if (Date.now() > DEADLINE || perQuery >= MAX_PER_QUERY || results.written >= MAX_TOTAL) break
 
       // Google News 的 link 是 redirect，先 resolve 到真實 URL
       const realUrl = await resolveGoogleLink(item.link)
       if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; continue }
 
-      // 嘗試抓實際文章頁（取 og:image + body）
-      let ogImage  = ''
-      let bodyText = ''
+      // 抓實際文章頁：取 og:image（必須有圖才處理）+ body text
       const articleHtml = await fetchText(realUrl, 8_000)
-      if (articleHtml) {
-        ogImage  = extractOgImage(articleHtml)
-        bodyText = articleHtml
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ').trim()
-          .slice(0, 1500)
-      }
+      if (!articleHtml) { results.skipped++; continue }
+
+      const ogImage = extractOgImage(articleHtml)
+      if (!ogImage) { results.skipped++; continue }  // 沒有圖片直接跳過
+
+      const bodyText = articleHtml
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ').trim()
+        .slice(0, 1500)
 
       // Claude 改寫
       const draft = await rewriteArticle(
@@ -251,11 +257,8 @@ export async function POST(req: NextRequest) {
       )
       if (!draft) { results.skipped++; continue }
 
-      // 主圖：先嘗試下載到 R2，失敗則直接用外部 URL
-      let imageUrl: string | null = null
-      if (ogImage) {
-        imageUrl = await downloadImageToR2(ogImage) ?? ogImage
-      }
+      // 下載圖片到 R2（失敗則用外部 URL，但不跳過）
+      const imageUrl = await downloadImageToR2(ogImage) ?? ogImage
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
@@ -284,15 +287,6 @@ export async function POST(req: NextRequest) {
 
       await new Promise(r => setTimeout(r, 300))
     }
-  }
-
-  if (results.written > 0) {
-    const preview = results.articles.slice(0, 3).map((t, i) => `${i + 1}. ${t}`).join('\n')
-    await pushLine(
-      `📰 今日新聞採集完成\n新增 ${results.written} 篇（全部下架待審）\n\n${preview}` +
-      (results.articles.length > 3 ? `\n...共 ${results.articles.length} 篇` : '') +
-      '\n\n➡️ 後台 > 文章管理 審閱後上架'
-    )
   }
 
   return NextResponse.json({ ok: true, ...results })
