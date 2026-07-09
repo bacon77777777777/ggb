@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 300
 
 export async function POST() {
   const session = await requireAdminSession()
@@ -18,7 +18,7 @@ export async function POST() {
       'Content-Type': 'application/json',
       'x-cron-secret': secret,
     },
-    body: JSON.stringify({ limit: 1 }),
+    body: JSON.stringify({ limit: 5 }),
   })
 
   const data = await res.json().catch(() => ({}))

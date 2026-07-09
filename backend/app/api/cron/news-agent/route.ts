@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase
     .from('news')
-    .select('source_url, title, created_at')
+    .select('source_url, title, created_at, image_url')
     .not('source_url', 'is', null)
     .gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString())
   const existing      = new Set((existingRows ?? []).map((r: any) => r.source_url as string))
@@ -323,6 +323,13 @@ export async function POST(req: NextRequest) {
   const recentTitles  = (existingRows ?? [])
     .filter((r: any) => new Date(r.created_at ?? 0).getTime() > Date.now() - 7 * 86400_000)
     .map((r: any) => tokenize(r.title ?? ''))
+  // 歷史上成功抓到圖片的來源域名（優先處理）
+  const trustedDomains = new Set(
+    (existingRows ?? [])
+      .filter((r: any) => r.image_url)
+      .map((r: any) => { try { return new URL(r.source_url).hostname } catch { return '' } })
+      .filter(Boolean)
+  )
   // 本次 session 已寫入的標題也加入比對（防止同一次跑多篇同主題）
   const sessionTitles: Set<string>[] = []
 
@@ -346,7 +353,12 @@ export async function POST(req: NextRequest) {
     const xml = await fetchText(feed.url)
     if (!xml) { results.errors++; continue }
 
-    const items = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
+    const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate, 3)) // 只抓 3 天內
+    const items = rawItems.sort((a, b) => {
+      const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
+      const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
+      return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
+    })
     for (const item of items) {
       if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
 
@@ -377,7 +389,7 @@ export async function POST(req: NextRequest) {
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
         image_url: imageUrl, source_url: realUrl,
-        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: false,
+        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: true,
       })
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
@@ -398,7 +410,13 @@ export async function POST(req: NextRequest) {
     const xml = await fetchText(rssUrl(q, locale))
     if (!xml) { results.errors++; continue }
 
-    const items = parseRss(xml).filter(it => isRecent(it.pubDate))
+    const rawItems = parseRss(xml).filter(it => isRecent(it.pubDate))
+    // trusted domain 排前面
+    const items = rawItems.sort((a, b) => {
+      const da = (() => { try { return new URL(a.link).hostname } catch { return '' } })()
+      const db = (() => { try { return new URL(b.link).hostname } catch { return '' } })()
+      return (trustedDomains.has(db) ? 1 : 0) - (trustedDomains.has(da) ? 1 : 0)
+    })
     let perQuery = 0
 
     for (const item of items) {
@@ -447,7 +465,7 @@ export async function POST(req: NextRequest) {
         source_url: realUrl,
         category:   draft.category ?? category,
         tags:       draft.tags ?? [],
-        is_active:  false,
+        is_active:  true,
       })
 
       if (!error) {

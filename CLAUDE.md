@@ -194,6 +194,7 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
 
 - 所有 migration 執行後 commit 並 push（不需詢問）
 - **推版前必須更新 `DEVLOG.md`**：在對應日期下記錄本次變更的功能、修正、migration，再 commit + push
+- **推版節奏**：完成功能後不自動推版，等老闆本地測試完、明確說「推版」再推
 - 後台 API 統一用 `getSupabaseAdmin()`，前台用 `createClient()`（anon key）
 - 財務對帳公式：`expected = recharge_total + manual_total - draw_total - refund_deducted`
 - 稽核軌跡：所有管理員操作都呼叫 `logAdminAction()`

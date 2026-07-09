@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-07-09｜文章生成升級 + 功能開關 GB哥推播區塊
+
+### 文章生成（news-agent）
+- `is_active: false` → `is_active: true`：生成文章直接上架，不需手動審核
+- 手動「生成文章」按鈕：`limit: 1` → `limit: 5`，`maxDuration` 120 → 300 秒
+- 新增「trusted domain 優先」：啟動時從 DB 拿歷史上有成功抓到圖片的來源域名，同批 RSS 文章排序時優先處理這些域名
+- `NEXT_PUBLIC_BACKEND_URL=http://localhost:3001` 加入 `.env.local`（本地測試打本地 API）
+
+### 功能開關頁面（`backend/app/settings/features/page.tsx`）
+- 移除頁面副標題「控制前台是否顯示各功能入口」
+- 新增「GB哥推播」區塊，列出全部 14 個推播開關（每日早報、CFO 財務對帳…），可獨立開關
+- 新增 API：`/api/admin/line-push-flags`（GET 讀取 / PUT 儲存，附稽核軌跡）
+
+---
+
 ## 2026-07-09｜邀請好友系統 + 分享任務觸發點調整
 
 ### 邀請好友系統
