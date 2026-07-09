@@ -385,8 +385,8 @@ export default function ProductDetailPage() {
   const handleShare = async () => {
     const url = window.location.href;
     const name = product?.name || 'GGB';
-    // 有觸控支援（手機/平板）且瀏覽器支援 Web Share API → 原生分享介面
-    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches && isMobileUA;
     if (navigator.share && isTouchDevice) {
       try {
         await navigator.share({ title: `【吉吉比線上轉蛋】${name}`, url });

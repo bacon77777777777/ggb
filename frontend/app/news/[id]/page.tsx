@@ -430,7 +430,8 @@ export default function NewsDetailPage() {
 
   const handleShare = async () => {
     const url = window.location.href;
-    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches && isMobileUA;
     if (navigator.share && isTouchDevice) {
       try {
         await navigator.share({ title: item?.title ?? 'GGB 情報', url });

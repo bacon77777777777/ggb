@@ -189,7 +189,7 @@ function NavbarInner() {
   };
   
   // Control visibility based on page type
-  const showBackButton = isInnerPage || (pathname as string) === '/topup';
+  const showBackButton = (isInnerPage || (pathname as string) === '/topup') && !isNewsDetailPage;
   const showLogo = isHomePage;
 
   // 獲取頁面名稱
@@ -292,7 +292,8 @@ function NavbarInner() {
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
     if (!url) return;
-    const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+    const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches && isMobileUA;
     try {
       const nav = navigator as unknown as { share?: (data: { url: string }) => Promise<void> };
       if (typeof nav.share === 'function' && isTouchDevice) {
@@ -302,7 +303,7 @@ function NavbarInner() {
       await navigator.clipboard.writeText(url);
       showToast('連結已複製', 'success');
     } catch {
-      showToast('分享已取消', 'info');
+      // 使用者取消，不處理
     }
   };
 
@@ -694,16 +695,7 @@ function NavbarInner() {
               </button>
             )}
 
-            {isNewsDetailPage && (
-              <button
-                type="button"
-                onClick={handleShare}
-                className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-95 transition-transform"
-                aria-label="分享"
-              >
-                <Share2 className="w-5 h-5 stroke-[2]" />
-              </button>
-            )}
+            {/* news detail page 的返回/分享由文章頁自身的 fixed nav 處理，Navbar 不重複顯示 */}
 
             {/* Product Page Mobile Actions */}
             {isProductDetailPage && (

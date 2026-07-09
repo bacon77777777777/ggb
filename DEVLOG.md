@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-07-10｜分享圖標修正（二）+ 文章頁重複導航修復
+
+### 分享判斷升級（`Navbar.tsx`、`item/[id]/page.tsx`、`news/[id]/page.tsx`）
+- 改用 `pointer: coarse` + UA 雙重判斷，避免 Chrome DevTools 裝置模擬誤觸原生分享
+- Mac/PC（UA 無 Mobile/iPhone/Android）→ 複製連結；真實手機/平板 → 原生分享
+- Navbar catch 改為靜默（不再顯示「分享已取消」toast）
+
+### 文章內頁重複導航修復（`Navbar.tsx`）
+- `showBackButton` 排除 news detail 頁（文章頁有自己的浮動返回按鈕）
+- 移除 Navbar 在 news detail 頁多餘的 share 按鈕，改由文章頁 fixed nav 統一處理
+
+---
+
 ## 2026-07-10｜情報頁 UX 全面升級
 
 ### 情報列表（`frontend/app/news/page.tsx`）
