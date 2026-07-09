@@ -583,7 +583,8 @@ async function scrapePriceFromYahoo(name: string, barcode?: string | null): Prom
   const html = await fetchPage(`https://shopping.yahoo.co.jp/search?p=${q}&tab_ex=commerce`)
   if (!html) return null
   const m = html.match(/(\d{3,6})\s*円/)
-  return m ? parseInt(m[1]) : null
+  const val = m ? parseInt(m[1]) : null
+  return val && val >= 300 ? val : null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -725,7 +726,7 @@ async function claudeIdentify(name: string, type: string, count: number): Promis
     return {
       distributor:     typeof p.distributor === 'string' ? p.distributor : null,
       jp_search_query: typeof p.jp_search_query === 'string' ? p.jp_search_query : null,
-      jp_price_yen:    typeof p.jp_price_yen === 'number' ? p.jp_price_yen : null,
+      jp_price_yen:    typeof p.jp_price_yen === 'number' && p.jp_price_yen > 0 ? p.jp_price_yen : null,
       variant_names:   Array.isArray(p.variant_names) ? p.variant_names.slice(0, 20) : [],
     }
   } catch {
@@ -778,7 +779,7 @@ ${knownParts.length ? `已知品項（可能不完整）：\n${knownParts.map((p
         const name  = l.replace(/^[A-ZＡ-Ｚ一ラＷW][^\u3000\s]{0,6}?賞\s*/, '').replace(/^[\d.\-*、。\s]+/, '').trim()
         return { grade, name: name || l.trim() }
       })
-      .filter(r => r.name.length > 0 && r.name.length <= 30)
+      .filter(r => r.name.length > 0 && r.name.length <= 30 && !r.name.startsWith("#"))
     return lines.slice(0, count)
   } catch {
     return (sitePrizes ?? existingNames?.map(n => ({ grade: '', name: n })) ?? []).slice(0, count)
