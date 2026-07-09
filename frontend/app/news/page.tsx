@@ -1,101 +1,223 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { Database } from '@/types/database.types';
-import NewsCard from '@/components/NewsCard';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export default function NewsPage() {
-  const [news, setNews] = useState<Database['public']['Tables']['news']['Row'][]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [supabase] = useState(() => createClient());
+interface NewsItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  image_url: string | null;
+  source_url: string | null;
+  category: string | null;
+  tags: string[] | null;
+  is_active: boolean;
+  created_at: string;
+  view_count: number;
+}
 
-  useEffect(() => {
-    const LOAD_TIMEOUT_MS = 8000;
-    const withTimeout = async <T,>(p: Promise<T>) => {
-      return Promise.race<T>([
-        p,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS))
-      ]);
-    };
+const CATEGORIES = [
+  { key: 'all',      label: '全部' },
+  { key: 'ichiban',  label: '一番賞' },
+  { key: 'gacha',    label: '轉蛋' },
+  { key: 'blindbox', label: '盒玩' },
+  { key: 'tcg',      label: '卡牌' },
+  { key: 'general',  label: '綜合' },
+];
 
-    type NewsQueryResult = {
-      data: Database['public']['Tables']['news']['Row'][] | null;
-      error: unknown;
-    };
+const CATEGORY_LABELS: Record<string, string> = {
+  ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', general: '綜合',
+};
 
-    const fetchNews = async () => {
-      try {
-        setLoadError(null);
-        const { data, error } = await withTimeout<NewsQueryResult>(
-          supabase
-            .from('news')
-            .select('*')
-            .eq('is_published', true)
-            .order('published_at', { ascending: false }) as unknown as Promise<NewsQueryResult>
-        );
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60)    return '剛剛';
+  if (diff < 3600)  return `${Math.floor(diff / 60)} 分鐘前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} 小時前`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} 天前`;
+  return new Date(dateStr).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+}
 
-        if (error) throw error;
-        setNews(data || []);
-      } catch (error) {
-        console.error('Error fetching news:', error);
-        setLoadError('載入逾時或失敗，請稍後重試');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchNews();
-  }, [supabase]);
+// ─── 輪播 ──────────────────────────────────────────────────────────────────
+function Carousel({ items }: { items: NewsItem[] }) {
+  const [idx, setIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const start = () => {
+    timerRef.current = setInterval(() => setIdx(i => (i + 1) % items.length), 4000);
+  };
+  const stop = () => { if (timerRef.current) clearInterval(timerRef.current); };
+
+  useEffect(() => { if (items.length > 1) { start(); return stop; } }, [items.length]);
+
+  if (!items.length) return null;
+  const item = items[idx];
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20 transition-colors">
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 pt-2 md:pt-6">
-        <div className="hidden md:flex flex-col gap-4 sm:gap-6 mb-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 min-h-[38px]">
-            <h1 className="flex items-baseline gap-4 text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-              最新情報
-              <span className="text-xs font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-                <span className="font-amount">{news.length.toLocaleString()}</span> 篇文章
-              </span>
-            </h1>
+    <div className="relative w-full aspect-[16/9] bg-neutral-900 overflow-hidden"
+      onMouseEnter={stop} onMouseLeave={start}>
+      <Link href={`/news/${item.id}`} className="block w-full h-full">
+        {item.image_url ? (
+          <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <span className="inline-block px-2 py-0.5 bg-primary text-white text-[10px] font-black rounded mb-1.5">
+            {CATEGORY_LABELS[item.category ?? ''] ?? '情報'}
+          </span>
+          <h2 className="text-white font-black text-[15px] leading-snug line-clamp-2">{item.title}</h2>
+          <p className="text-white/60 text-[11px] mt-1">{timeAgo(item.created_at)}</p>
+        </div>
+      </Link>
+      {items.length > 1 && (
+        <>
+          <button onClick={e => { e.preventDefault(); stop(); setIdx(i => (i - 1 + items.length) % items.length); start(); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button onClick={e => { e.preventDefault(); stop(); setIdx(i => (i + 1) % items.length); start(); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-3 right-4 flex gap-1">
+            {items.map((_, i) => (
+              <button key={i} onClick={() => setIdx(i)}
+                className={cn('w-1.5 h-1.5 rounded-full transition-colors', i === idx ? 'bg-white' : 'bg-white/40')} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── 文章列表項目 ────────────────────────────────────────────────────────────
+function ArticleRow({ item }: { item: NewsItem }) {
+  return (
+    <Link href={`/news/${item.id}`}
+      className="flex items-start gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/50 transition-colors">
+      <div className="flex-shrink-0 w-[90px] h-[60px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
+        {item.image_url ? (
+          <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-neutral-300 text-xs font-bold">GGB</div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[14px] font-bold text-neutral-900 dark:text-white line-clamp-2 leading-snug mb-1.5">
+          {item.title}
+        </h3>
+        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+          {item.category && (
+            <span className="text-primary font-bold">{CATEGORY_LABELS[item.category] ?? item.category}</span>
+          )}
+          {item.category && <span>·</span>}
+          <span>{timeAgo(item.created_at)}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ─── 骨架屏 ──────────────────────────────────────────────────────────────────
+function LoadingSkeleton() {
+  return (
+    <div>
+      <Skeleton className="w-full aspect-[16/9] rounded-none" />
+      <div className="px-4 pt-2">
+        {[1,2,3,4,5].map(i => (
+          <div key={i} className="flex gap-3 py-3 border-b border-neutral-100 dark:border-neutral-800">
+            <Skeleton className="w-[90px] h-[60px] rounded-lg flex-shrink-0" />
+            <div className="flex-1 space-y-2 pt-1">
+              <Skeleton className="h-4 w-full rounded" />
+              <Skeleton className="h-4 w-3/4 rounded" />
+              <Skeleton className="h-3 w-1/3 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── 主頁 ────────────────────────────────────────────────────────────────────
+export default function NewsPage() {
+  const [all, setAll]         = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase
+      .from('news')
+      .select('id,title,summary,image_url,source_url,category,tags,is_active,created_at,view_count')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(60)
+      .then(({ data }) => { setAll(data ?? []); setIsLoading(false); });
+  }, []);
+
+  const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);
+  const carousel = [...all].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
+
+  const handleTab = (key: string, el: HTMLButtonElement) => {
+    setActiveTab(key);
+    el.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
+
+      {/* 手機端 */}
+      <div className="md:hidden">
+        {/* 固定 Tab 欄 */}
+        <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex overflow-x-auto scrollbar-none px-2">
+            {CATEGORIES.map(cat => (
+              <button key={cat.key}
+                onClick={e => handleTab(cat.key, e.currentTarget)}
+                className={cn(
+                  'flex-shrink-0 px-4 py-3 text-[13px] font-black transition-colors relative whitespace-nowrap',
+                  activeTab === cat.key ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500'
+                )}>
+                {cat.label}
+                {activeTab === cat.key && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-primary rounded-full" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-[200px] bg-white dark:bg-neutral-900 rounded-3xl p-6 border border-neutral-100 dark:border-neutral-800 space-y-4">
-                <div className="flex justify-between">
-                  <Skeleton className="h-6 w-16 rounded-xl" />
-                  <Skeleton className="h-4 w-24 rounded-lg" />
+        {isLoading ? <LoadingSkeleton /> : (
+          <>
+            {activeTab === 'all' && carousel.length > 0 && <Carousel items={carousel} />}
+            <div className="px-4">
+              {filtered.length === 0 ? (
+                <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
+                  此分類目前沒有文章
                 </div>
-                <Skeleton className="h-7 w-3/4 rounded-xl" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full rounded-lg" />
-                  <Skeleton className="h-4 w-2/3 rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : loadError ? (
-          <div className="text-center text-sm text-neutral-500 dark:text-neutral-400 font-black">{loadError}</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {news.map((item) => (
-              <NewsCard
-                key={item.id}
-                id={item.id}
-                title={item.title}
-                category={item.category || '公告'}
-                date={new Date(item.published_at || '').toLocaleDateString()}
-                content={item.content || ''}
-              />
-            ))}
-          </div>
+              ) : (
+                filtered.map(item => <ArticleRow key={item.id} item={item} />)
+              )}
+            </div>
+          </>
         )}
+      </div>
+
+      {/* 電腦端暫不開放 */}
+      <div className="hidden md:flex items-center justify-center min-h-[60vh] text-neutral-400 dark:text-neutral-500">
+        <div className="text-center">
+          <p className="text-5xl mb-4">📰</p>
+          <p className="font-bold">情報功能目前僅支援手機瀏覽</p>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, User, Gift, Box, Trophy, Store } from 'lucide-react';
+import { Home, User, Gift, Box, Trophy, Store, Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -46,8 +46,10 @@ function MobileTabbarInner() {
   const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
 
   const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/ranking'];
+  // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
+  const isNewsDetail = pathname.startsWith('/news/') && pathname !== '/news';
   const isMainTabPath = mainTabPaths.includes(pathname);
-  const isSecondaryPage = !isMainTabPath || (pathname === '/profile' && !!activeTab);
+  const isSecondaryPage = (!isMainTabPath && !isNewsDetail) || (pathname === '/profile' && !!activeTab);
 
   const { theme } = useTheme();
 
@@ -65,7 +67,7 @@ function MobileTabbarInner() {
   const tabs: Array<{ name: string; href: string; icon: any; isCenter?: boolean }> = [
     { name: '首頁', href: '/', icon: Home },
     { name: '排行榜', href: '/ranking', icon: Trophy },
-    ...(centerTab ? [centerTab] : []),
+    { name: '情報', href: '/news', icon: Newspaper, isCenter: true },
     { name: '簽到', href: '/mission', icon: Gift },
     { name: '會員', href: '/profile', icon: User },
   ];

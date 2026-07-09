@@ -95,6 +95,50 @@ input, textarea, select, button {
   }
 }
 
+/* ─── 文章內容 HTML 排版 ─────────────────────────────────────────────────── */
+.news-content h2 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  color: var(--color-neutral-900, #171717);
+}
+.dark .news-content h2 { color: #f5f5f5; }
+
+.news-content h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+}
+
+.news-content p {
+  margin-bottom: 1em;
+  line-height: 1.75;
+}
+
+.news-content img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1em 0;
+  object-fit: cover;
+}
+
+.news-content a {
+  color: #EE4D2D;
+  text-decoration: underline;
+}
+
+.news-content ul, .news-content ol {
+  padding-left: 1.4em;
+  margin-bottom: 1em;
+}
+
+.news-content li {
+  margin-bottom: 0.3em;
+}
+
 /* DIN Alternate - fallback to system fonts for this custom font */
 @font-face {
   font-family: 'DIN_Alternate';
