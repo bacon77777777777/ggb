@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Megaphone } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 
@@ -68,7 +68,7 @@ export default function WinningMarquee() {
     <>
       <div className="h-[32px] bg-primary/5 px-3 flex items-center gap-2 overflow-hidden -mx-2 sm:mx-0">
         <div className="flex-shrink-0 bg-primary text-white px-1.5 py-1 rounded-full">
-          <Trophy className="w-3 h-3 stroke-[3]" />
+          <Megaphone className="w-3 h-3 stroke-[2.5]" />
         </div>
         <div className="flex-1 overflow-hidden relative h-full flex items-center">
           <AnimatePresence mode="wait">
