@@ -2,25 +2,34 @@
 
 ---
 
-## 2026-07-09｜Supabase egress 爆量 → 圖片策略調整（待完成）
+## 2026-07-09｜Supabase egress 危機處理 + 圖片遷移 R2 + 平台監控
 
-### 問題
-Supabase 免費方案 cached egress 爆量（56.28 GB / 5.5 GB），服務停擺到 7/29。
-根本原因：AI 補全每次對 Supabase Storage CDN 發 HEAD request，且 DB 中圖片 URL 指向 Supabase Storage，每次前後台載入都燒流量。
+### 問題根本原因
+Supabase 免費方案 cached egress 爆量（56.28 GB / 5.5 GB），整個專案 REST API 全停（402 Payment Required）。
+根本原因：AI 補全每次對 Supabase Storage CDN 發 HEAD request，zip 上傳大量圖片，多輪測試重複產生重複圖片。
 
-### 已修正
-- `ai-enrich/route.ts`：移除 `resolveStorageImage` 的 HEAD ping（直接回傳 publicUrl）
-- `ai-enrich/route.ts`：`finalImage` 優先順序改為外部 URL 優先（萬代 > 品牌官網 > DDG > DB舊圖 > Storage），下次對商品重跑補全時 DB 中的 Storage URL 會被外部 URL 取代
-- `XlsxImportWizard.tsx`：圖片有效性判斷改為接受任何 http URL（不限 Supabase Storage）
+### 解法 1：圖片儲存遷移至 Cloudflare R2
+- 開 R2 bucket `ggb`，啟用 Public Development URL
+- 新增 `backend/lib/r2.ts`：封裝 `r2Upload`、`r2DeletePrefix`、`r2PublicUrl`
+- `upload-images/route.ts`：上傳改寫 R2（key = `products/{filename}`）
+- `storage/clear-products/route.ts`：清除改用 `r2DeletePrefix()`，保護 `exchange-receipts`
+- `ai-enrich/route.ts`：`resolveStorageImage` 改為同步建構 R2 URL，不再 HEAD ping
+- R2 環境變數加至 Vercel（`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET` / `R2_ENDPOINT` / `R2_PUBLIC_URL`）
 
-### 待決定：圖片儲存方案
-- **選項 A：Cloudflare R2**（egress 免費，$0.015/GB 儲存），需開 Cloudflare 帳號
-- **選項 B：Vercel Blob**（已在用 Vercel，視方案是否含額度）
-- 確認 Vercel 方案後決定，換掉 upload API 的 Storage 目標
+### 解法 2：升級 Supabase Pro（$25/月）
+- 立即恢復 REST API，後台登入及所有功能恢復正常
+- 已開 Spend Cap（超量保護），R2 接手圖片後不會再有 egress 問題
 
-### 服務恢復
-Supabase 服務停擺中（超出 cached egress 配額），配額重置日：2026-07-29。
-升級 Pro ($25/月) 可立即恢復，圖片策略改完後再評估是否維持 Pro。
+### 平台監控儀表板
+- `backend/db/migrations/295_platform_monitor_logs.sql`：建立 `platform_monitor_logs` 表，pg_cron 每 6 小時觸發
+- `backend/app/api/cron/platform-monitor/route.ts`：檢查 Supabase DB 大小、R2 用量、Vercel 部署狀態、GitHub CI
+- `backend/app/api/admin/platform-monitor/route.ts`：管理員讀取 / 手動觸發
+- 後台「開發日誌」頁新增「監控」頁籤，4 個狀態卡 + 歷史記錄表
+- 異常時推 LINE 告警
+
+### AI 補全升級（merge 進來的 remote 版本）
+- 20+ 品牌爬蟲（萬代、壽屋、海洋堂等），DB 條碼復用，4 並行批次處理
+- `XlsxImportWizard.tsx`：圖片 onError 降級（`done` → `partial`），`isValidImg` 接受任何 http URL
 
 ---
 
