@@ -57,6 +57,21 @@ export default function NewsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isUploading, setIsUploading]   = useState(false)
+
+  const handleImageUpload = async (file: File) => {
+    setIsUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('bucket', 'news')
+      form.append('path', `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: form, credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) { alert(data?.error ?? '上傳失敗'); return }
+      setFormData(f => ({ ...f, image_url: data.publicUrl }))
+    } catch { alert('上傳失敗') } finally { setIsUploading(false) }
+  }
 
   const handleGenerate = async () => {
     setIsGenerating(true)
@@ -489,17 +504,30 @@ export default function NewsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">主圖 URL</label>
-                <input type="text" value={formData.image_url}
-                  onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="https://..." />
+                <label className="block text-sm font-medium text-neutral-700 mb-1">主圖</label>
+                <div className="flex gap-2">
+                  <input type="text" value={formData.image_url}
+                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+                    placeholder="貼上圖片網址..." />
+                  <label className={`px-3 py-2 rounded-lg border text-sm font-medium cursor-pointer whitespace-nowrap transition-colors ${isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50'}`}>
+                    {isUploading ? '上傳中...' : '📂 上傳圖片'}
+                    <input type="file" accept="image/*" className="hidden" disabled={isUploading}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
+                  </label>
+                </div>
               </div>
             </div>
 
             {formData.image_url && (
-              <img src={formData.image_url} alt="preview"
-                className="w-full h-32 object-cover rounded-lg border border-neutral-200" />
+              <div className="relative">
+                <img src={formData.image_url} alt="preview"
+                  className="w-full h-40 object-cover rounded-lg border border-neutral-200" />
+                <button type="button" onClick={() => setFormData(f => ({ ...f, image_url: '' }))}
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full text-xs flex items-center justify-center">
+                  ✕
+                </button>
+              </div>
             )}
 
             <div>
