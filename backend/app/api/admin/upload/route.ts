@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { r2Upload } from '@/lib/r2'
 
 export async function POST(request: Request) {
   try {
@@ -19,18 +19,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '缺少 path' }, { status: 400 })
     }
 
-    const supabaseAdmin = getSupabaseAdmin()
     const arrayBuffer = await file.arrayBuffer()
-    const buf = new Uint8Array(arrayBuffer)
+    const buf = Buffer.from(arrayBuffer)
+    const key = `${bucket}/${path}`
+    const publicUrl = await r2Upload(key, buf, file.type || 'application/octet-stream')
 
-    const { error: uploadError } = await supabaseAdmin.storage.from(bucket).upload(path, buf, {
-      upsert: true,
-      contentType: file.type || 'application/octet-stream',
-    })
-    if (uploadError) throw uploadError
-
-    const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path)
-    return NextResponse.json({ publicUrl: data.publicUrl })
+    return NextResponse.json({ publicUrl })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '上傳失敗' }, { status: 500 })
   }
