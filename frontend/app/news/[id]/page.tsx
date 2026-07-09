@@ -108,7 +108,7 @@ export default function NewsDetailPage() {
         </div>
 
         {/* 標題 */}
-        <h1 className="text-[20px] font-black text-neutral-900 dark:text-white leading-snug mb-3">
+        <h1 className="text-[20px] font-black text-neutral-900 dark:text-white leading-[1.6] mb-4">
           {item.title}
         </h1>
 

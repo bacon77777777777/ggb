@@ -691,6 +691,17 @@ function NavbarInner() {
               </button>
             )}
 
+            {isNewsDetailPage && (
+              <button
+                type="button"
+                onClick={handleShare}
+                className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-95 transition-transform"
+                aria-label="分享"
+              >
+                <Share2 className="w-5 h-5 stroke-[2]" />
+              </button>
+            )}
+
             {/* Product Page Mobile Actions */}
             {isProductDetailPage && (
               <div className="flex items-center gap-0.5 md:hidden">
@@ -828,7 +839,7 @@ function NavbarInner() {
                 </div>
               </div>
             ) : (
-              !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && (
+              !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
                 <>
                   {/* Mobile login button: 細膠囊線框 */}
                   <Link

@@ -298,6 +298,29 @@ async function searchGashapon(name: string, barcode?: string | null): Promise<Si
   return withImages({ distributor: '萬代股份有限公司（BANDAI）', jp_price_yen: price, prizes, source_site: 'gashapon.jp' }, detail)
 }
 
+// Bandai Gashapon US（海外海外轉蛋 us.gashapon.jp）
+// 適用：GBO 海外限定、北美/海外限定色、海外獨家 MOBILE SUIT ENSEMBLE 等
+async function searchGashaponUS(name: string): Promise<SiteResult | null> {
+  const CATEGORIES = ['gundam', 'dragonball', 'onepiece', 'naruto', 'jujutsukaisen', 'kirby', 'demonslayer', 'digimon']
+  const nameTokens = name.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/).filter(t => t.length >= 3)
+  for (const cat of CATEGORIES) {
+    const html = await fetchPage(`https://us.gashapon.jp/item/${cat}`)
+    if (!html) continue
+    const links = [...html.matchAll(/href="(\/item\/detail\.php\?[^"]+)"/g)].map(m => `https://us.gashapon.jp${m[1]}`)
+    for (const link of links) {
+      const detail = await fetchPage(link)
+      if (!detail) continue
+      const title = (detail.match(/<title>([^<]+)<\/title>/i)?.[1] ?? '').toLowerCase()
+      const matched = nameTokens.some(t => title.includes(t))
+      if (!matched) continue
+      const prizes = extractPrizes(detail)
+      const price = extractPrice(detail)
+      return withImages({ distributor: '萬代（BANDAI Gashapon US 海外限定）', jp_price_yen: price, prizes, source_site: 'us.gashapon.jp' }, detail)
+    }
+  }
+  return null
+}
+
 // T-ARTS (TAKARA TOMY A.R.T.S)
 async function searchTarts(name: string): Promise<SiteResult | null> {
   const html = await fetchPage(`https://www.takaratomy-arts.co.jp/items/gacha/?keyword=${encodeURIComponent(name)}`)
@@ -862,6 +885,7 @@ export async function POST(req: Request) {
       ],
       gacha: [
         () => searchGashapon(jpQuery, effectiveBarcode),
+        () => searchGashaponUS(jpQuery),
         () => searchTarts(jpQuery),
         () => searchKitan(jpQuery),
         () => searchKenelephant(jpQuery),
