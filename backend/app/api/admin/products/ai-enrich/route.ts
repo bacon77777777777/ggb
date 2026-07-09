@@ -920,6 +920,8 @@ export async function POST(req: Request) {
     const source = siteResult?.source_site
       ?? (bandaiMainImg ? 'bandai_catalog' : identified.jp_search_query ? 'claude_identified' : 'claude_generated')
 
+    console.log(`[ai-enrich] ${product_name} | jpQuery=${jpQuery} | distributor=${distributor} | rawImage=${rawImage ? rawImage.slice(0, 80) : 'null'} | siteResult=${!!siteResult} | ddgImage=${ddgImage ? ddgImage.slice(0, 60) : 'null'}`)
+
     // 找到外部圖片就下載壓縮後存到 R2，確保 Vercel 地區可訪問性
     let finalImage = rawImage
     if (rawImage && !rawImage.startsWith((process.env.R2_PUBLIC_URL ?? '!!!'))) {
@@ -933,9 +935,15 @@ export async function POST(req: Request) {
             .toBuffer()
           const key = `products/ai-${Date.now()}-${Math.random().toString(36).slice(2)}.webp`
           finalImage = await r2Upload(key, compressed, 'image/webp')
+          console.log(`[ai-enrich] R2 upload OK → ${finalImage}`)
+        } else {
+          console.warn(`[ai-enrich] image fetch failed: ${imgRes.status} ${rawImage.slice(0, 80)}`)
         }
-      } catch { /* 下載失敗保留原始 URL */ }
+      } catch (e: any) {
+        console.warn(`[ai-enrich] image download/upload error: ${e?.message} | url=${rawImage?.slice(0, 80)}`)
+      }
     }
+    console.log(`[ai-enrich] finalImage=${finalImage ? finalImage.slice(0, 80) : 'null'}`)
 
     return NextResponse.json({
       ok: true,

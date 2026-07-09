@@ -358,15 +358,12 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         if (i !== idx) return x
         const resolvedDist = cleanDist(ai.distributor) || cleanDist(x.distributor) || null
         // raw_image_name 衍生的 R2 URL 未必存在，AI 找不到圖時不能 fallback 回去
-        // 只接受 R2 URL 為有效圖片；外部 URL（Yahoo Japan 等）可能被 hotlink 擋
-        const r2Base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
-        const isR2Img = (url?: string | null) => !!(url && r2Base && url.startsWith(r2Base))
-        const resolvedImg  = isR2Img(ai.image_url)
-          ? ai.image_url
-          : null
-        const hasRealData  = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
-        // raw_image_name 代表「預期要有圖」，若找不到圖就算 partial
-        const imageOk = resolvedImg ? true : !x.raw_image_name
+        // 接受 AI 回傳的任何 https 圖片 URL（R2 or 外部）；
+        // 外部 URL 若載入失敗會由 onError handler 降回 partial
+        const resolvedImg = isValidImg(ai.image_url) ? ai.image_url : null
+        const hasRealData = !!(resolvedDist || ai.jp_price_yen || resolvedImg)
+        // 一定要有圖才算補全：distributor/price 有值但沒圖仍是 partial
+        const imageOk = !!resolvedImg
         const aiStatus: EnrichedProduct['aiStatus'] = (hasRealData && imageOk)
           ? (data.aiStatus ?? 'done')
           : 'partial'
