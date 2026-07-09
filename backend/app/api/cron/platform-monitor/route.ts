@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { r2, R2_BUCKET } from '@/lib/r2'
 import { ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { createLinePusher } from '@/lib/linePush'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -129,24 +130,7 @@ async function fetchGithubStatus() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LINE 推播
-// ─────────────────────────────────────────────────────────────────────────────
-async function pushLine(message: string) {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  const targetId = process.env.NOTIFY_TARGET_ID
-  const targetType = process.env.NOTIFY_TARGET_TYPE ?? 'user'
-  if (!token || !targetId) return
-
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      to: targetId,
-      messages: [{ type: 'text', text: message }],
-    }),
-  }).catch(() => {})
-}
+const pushLine = createLinePusher('line_push_monitor')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主 Handler

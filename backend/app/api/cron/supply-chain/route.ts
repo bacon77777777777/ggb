@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_supply')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 
 // 可透過 env 調整閾值
 const OVERDUE_DAYS          = Number(process.env.SUPPLY_OVERDUE_DAYS         ?? 3)
 const LOW_STOCK_PCT         = Number(process.env.SUPPLY_LOW_STOCK_PCT         ?? 20)  // 剩餘 < 20%
 const SETTLEMENT_OVERDUE    = Number(process.env.SUPPLY_SETTLEMENT_OVERDUE    ?? 7)   // draft > 7天
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 export async function GET(req: NextRequest) { return POST(req) }
 

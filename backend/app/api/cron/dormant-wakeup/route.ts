@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_dormant')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 
 // Config (can be adjusted without code change via env)
 const DORMANT_DAYS    = Number(process.env.DORMANT_DAYS    ?? 30)  // inactive threshold
@@ -14,14 +14,6 @@ const COUPON_MINSPE   = Number(process.env.DORMANT_COUPON_MINSPEND ?? 100)  // N
 const COUPON_DAYS     = Number(process.env.DORMANT_COUPON_DAYS ?? 14)       // expiry
 const COUPON_CODE     = 'DORMANT_WAKEUP'
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body: JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 export async function GET(req: NextRequest) { return POST(req) }
 

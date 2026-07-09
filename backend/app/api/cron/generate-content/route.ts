@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
+import { createLinePusher } from '@/lib/linePush'
+
+const pushLine = createLinePusher('line_push_content')
 
 export const dynamic = 'force-dynamic'
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateCheckMacValue } from '@/lib/ecpay'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_finance')
 
 export const dynamic = 'force-dynamic'
 
@@ -8,8 +10,6 @@ const CRON_SECRET    = process.env.CRON_SECRET ?? ''
 const MERCHANT_ID    = process.env.ECPAY_MERCHANT_ID ?? ''
 const HASH_KEY       = process.env.ECPAY_HASH_KEY ?? ''
 const HASH_IV        = process.env.ECPAY_HASH_IV ?? ''
-const LINE_TOKEN     = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID      = process.env.NOTIFY_TARGET_ID ?? ''
 
 // 從 AioCheckOut URL 推算 QueryTradeInfo URL
 function getQueryUrl(): string {
@@ -47,14 +47,6 @@ async function queryEcpayTrade(merchantTradeNo: string): Promise<{ status: strin
   }
 }
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body: JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 export async function GET(req: NextRequest) { return POST(req) }
 

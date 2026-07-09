@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_market')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 
 // ─── 關鍵字組合輪替 ────────────────────────────────────────────────────────
@@ -418,14 +418,6 @@ ${resultsText}
 
 // ─── LINE push ────────────────────────────────────────────────────────────
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 // ─── Route ────────────────────────────────────────────────────────────────
 

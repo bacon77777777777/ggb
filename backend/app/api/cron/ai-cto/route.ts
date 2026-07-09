@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_cto')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 
 const DB_SCHEMA = `
 users(id uuid, name, email, phone_number, tokens int, status, is_bot bool, created_at, last_login_at)
@@ -22,14 +22,6 @@ user_coupons(id, user_id, coupon_id, used_at, expiry_date)
 competitor_posts(id, competitor, platform, content, url, created_at)
 `.trim()
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 export async function GET(req: NextRequest) { return POST(req) }
 

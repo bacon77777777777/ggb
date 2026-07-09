@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_risk')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 
 // Thresholds (override via env if needed)
 const DRAW_ANOMALY_COUNT   = Number(process.env.RISK_DRAW_THRESHOLD   ?? 80)   // 24h draws per user
@@ -13,14 +13,6 @@ const RECHARGE_SINGLE_MAX  = Number(process.env.RISK_RECHARGE_SINGLE  ?? 5000) /
 const RECHARGE_DAILY_MAX   = Number(process.env.RISK_RECHARGE_DAILY   ?? 10000)// daily total NT$
 const ADMIN_OP_MAX         = Number(process.env.RISK_ADMIN_OPS        ?? 20)   // admin write ops in 24h
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body:    JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 export async function GET(req: NextRequest) { return POST(req) }
 

@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-07-09｜任務追蹤修復 + 多項 UI 優化
+
+### 儲值任務不計次數（backend）
+- ECPay callback 確認儲值後新增呼叫 `track_mission_event_for_user` RPC
+- Migration 310：新增 `track_mission_event_for_user(user_id, event_type, data)` — service_role only
+- 支援 `recharge`（今日首次儲值）與 `recharge_amount`（週累積代幣）兩種條件
+
+### 分享任務不計次數（frontend）
+- `mission/page.tsx`：將 clipboard 與 mission tracking 拆開，clipboard 失敗不再影響任務計數
+- 改為先呼叫 `trackShare` 再複製連結，確保任意情況下都能記錄
+
+### 簽到頁面 iPhone PWA 底部問題
+- `MissionFrame.tsx`：`pb-[140px]` → `pb-[220px]`，scale 後足以覆蓋 iPhone 底部 nav + safe area
+- `overflow-visible` → `overflow-hidden`，避免 scrollHeight 計算包含溢出內容造成無限滑動
+- `mission/page.tsx`：使用 `visualViewport.height` 扣掉 nav 高度(60px) 計算 minContentHeight；外層改 `100dvh`
+
+### 跑馬燈品項名稱截斷
+- `WinningMarquee.tsx`：移除 12 字 JS 截斷，加顯示 `prize_name`，讓 CSS 自然處理溢出
+
+### 情報頁面 category badge 樣式
+- `news/page.tsx` + `news/[id]/page.tsx`：新增 `CategoryBadge` 元件，與商品 badge 一致（colored bg pill）
+- 對應：ichiban=blue, gacha=orange, blindbox=purple, tcg=amber, general=neutral
+
+### 情報讚數列表/內頁不同步
+- 新增 `frontend/app/api/news/counts/route.ts`：batch 查詢讚數和留言數（service role，繞過 RLS）
+- `news/page.tsx`：改用此 API 而非 anon client 直查 `news_likes`；加 `visibilitychange` 監聽，回到頁面自動重新拉取
+
+### 頭像上傳修復 + 裁切功能
+- 新增 `backend/app/api/upload/user-avatar/route.ts`：驗證 Supabase JWT，sharp 400x400 webp，上傳 R2
+- 新增 `frontend/components/ImageCropper.tsx`：純 canvas 裁切器，支援拖曳/雙指縮放、圓形/正方形切換
+- `profile/page.tsx`：選圖後開裁切 → 裁切完成才上傳（呼叫後台 admin.ggb.com.tw）
+
+### GB 推播開關（功能架構完成）
+- 新增 `backend/lib/linePush.ts`：`createLinePusher(key)` factory，查 `feature_flags` 決定是否推播
+- 所有 cron routes 改用 `createLinePusher` 替換原本的 inline pushLine
+
+---
+
 ## 2026-07-09｜修正註冊流程 redirect race condition
 
 ### login/page.tsx

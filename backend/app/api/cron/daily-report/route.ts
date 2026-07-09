@@ -7,21 +7,13 @@ import {
   getTaiwanYesterdayWindow,
   isRealRevenueRecharge,
 } from '@/lib/financeMetrics'
+import { createLinePusher } from '@/lib/linePush'
+const pushLine = createLinePusher('line_push_daily')
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
-const LINE_TOKEN  = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
-const NOTIFY_ID   = process.env.NOTIFY_TARGET_ID ?? ''
 
-async function pushLine(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
-    body: JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
-  })
-}
 
 function fmt(n: number) {
   return n.toLocaleString('en-US')

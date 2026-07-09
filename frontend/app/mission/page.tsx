@@ -161,15 +161,17 @@ export default function MissionPage() {
       } else if (mission.title.includes('上架')) {
         router.push('/profile?tab=warehouse');
       } else if (mission.title.includes('社群') || mission.title.includes('分享')) {
-        try {
-          if (mission.periodKey) {
+        if (mission.periodKey) {
+          // 先追蹤事件（clipboard 失敗不能影響任務計數）
+          await MissionService.trackShare(mission.id, mission.periodKey).catch(() => {});
+          // 嘗試複製連結，失敗不影響計數
+          try {
             await navigator.clipboard.writeText(window.location.origin);
-            await MissionService.trackShare(mission.id, mission.periodKey);
             showToast('已複製連結，快去分享吧！', 'success');
-            fetchMissions();
+          } catch {
+            showToast('分享任務已記錄！', 'success');
           }
-        } catch {
-          router.push('/');
+          fetchMissions();
         }
       } else {
         router.push('/');
@@ -180,10 +182,12 @@ export default function MissionPage() {
   const updateScale = useCallback(() => {
     if (typeof window === 'undefined') return;
     const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-    const viewportHeight = window.innerHeight;
+    // 用 dvh 或 innerHeight，扣掉底部 nav 高度（60px）讓內容不被蓋住
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const bottomNav = 60; // BottomNav 高度
     const nextScale = Math.min(1, (viewportWidth / 375) * 0.5);
     setScale(nextScale);
-    setMinContentHeight(viewportHeight / nextScale);
+    setMinContentHeight((viewportHeight - bottomNav) / nextScale);
   }, []);
 
   useEffect(() => {
@@ -218,12 +222,15 @@ export default function MissionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden flex justify-center">
+    <div className="bg-neutral-50 overflow-x-hidden flex justify-center"
+      style={{ minHeight: '100dvh' }}>
       <div
         className="overflow-hidden"
         style={{
           width: Math.ceil(750 * scale),
+          // 確保容器恰好等於內容高度，不產生多餘空白
           height: scaledHeight ?? undefined,
+          minHeight: scaledHeight ?? undefined,
         }}
       >
         <div

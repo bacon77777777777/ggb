@@ -5,9 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-function truncate(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max) + '…' : str
-}
 
 const PlayerProfileCard = dynamic(() => import('@/components/ranking/PlayerProfileCard'), { ssr: false });
 
@@ -91,7 +88,13 @@ export default function WinningMarquee() {
                   >
                     {currentRecord.user_name}
                   </span>
-                  抽到<span className="font-black text-neutral-800 dark:text-neutral-200">{truncate(currentRecord.product_name, 12)}</span>
+                  抽到<span className="font-black text-neutral-800 dark:text-neutral-200">{currentRecord.product_name}</span>
+                  {currentRecord.prize_name && (
+                    <span className="text-neutral-500 dark:text-neutral-400 mx-1">·</span>
+                  )}
+                  {currentRecord.prize_name && (
+                    <span className="text-primary/80">{currentRecord.prize_name}</span>
+                  )}
                 </>
               ) : (
                 <span className="font-black text-primary">

@@ -60,6 +60,7 @@ import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import SolidButton from '@/components/ui/SolidButton';
+import ImageCropper from '@/components/ImageCropper';
 
 // --- Interfaces ---
 interface MarketListing {
@@ -663,36 +664,44 @@ function ProfileContent() {
     return `${v.slice(0, 4)}****${v.slice(-3)}`;
   };
 
-  // Avatar Upload
+  // Avatar Upload + Crop
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState<string | null>(null);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: 選完圖片後 → 開 cropper
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = ev => { if (ev.target?.result) setCropperSrc(ev.target.result as string); };
+    reader.readAsDataURL(file);
+  };
 
+  // Step 2: 裁切完成後 → 上傳到後台 R2
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropperSrc(null);
     setIsUploadingAvatar(true);
     try {
-      const timestamp = Date.now();
-      const fileName = `${user!.id}-${timestamp}`;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('請先登入');
 
       const form = new FormData();
-      form.append('file', file);
-      form.append('bucket', 'avatars');
-      form.append('path', fileName);
-      const res = await fetch('/api/upload/image', { method: 'POST', body: form });
+      form.append('file', blob, 'avatar.webp');
+      const res = await fetch('https://admin.ggb.com.tw/api/upload/user-avatar', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: form,
+      });
       if (!res.ok) throw new Error((await res.json()).error || '上傳失敗');
       const { publicUrl } = await res.json();
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl }
-      });
-      if (updateError) throw updateError;
-
+      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', authUser.id);
@@ -700,7 +709,6 @@ function ProfileContent() {
 
       toast.success('頭像更新成功');
       await refreshProfile();
-      // Force a hard reload if needed, but refreshProfile should update the context
     } catch (error) {
       console.error('Avatar upload error:', error);
       toast.error('頭像上傳失敗');
@@ -7304,6 +7312,14 @@ function ProfileContent() {
         )}
       </AnimatePresence>
 
+      {/* 頭像裁切器 */}
+      {cropperSrc && (
+        <ImageCropper
+          src={cropperSrc}
+          onConfirm={handleCropConfirm}
+          onCancel={() => setCropperSrc(null)}
+        />
+      )}
     </div>
   );
 }

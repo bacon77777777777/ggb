@@ -530,7 +530,7 @@ function MissionFrame({
             <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-[#a8a8a8] text-[24px] text-right top-[34px] whitespace-nowrap">完成任務，即可領取積分哦</p>
           </div>
           
-          <div className="relative bg-white content-stretch flex flex-col items-center left-0 px-[24px] rounded-bl-[16px] rounded-br-[16px] w-[702px] h-auto pb-[140px] overflow-visible" data-name="list">
+          <div className="relative bg-white content-stretch flex flex-col items-center left-0 px-[24px] rounded-bl-[16px] rounded-br-[16px] w-[702px] h-auto pb-[220px] overflow-hidden" data-name="list">
             {/* Tabs */}
             <div className="content-stretch flex h-[100px] items-center relative shrink-0 w-full">
               <div 

@@ -36,6 +36,27 @@ const CATEGORY_LABELS: Record<string, string> = {
   ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', general: '綜合',
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  ichiban: 'bg-blue-500',
+  gacha:   'bg-orange-500',
+  blindbox:'bg-purple-500',
+  tcg:     'bg-amber-500',
+  general: 'bg-neutral-400',
+};
+
+function CategoryBadge({ category, className }: { category: string; className?: string }) {
+  const color = CATEGORY_COLORS[category] ?? 'bg-neutral-400';
+  const label = CATEGORY_LABELS[category] ?? category;
+  return (
+    <span className={cn(
+      'inline-flex items-center h-[18px] px-1.5 text-[10px] font-bold text-white rounded-[4px] flex-shrink-0',
+      color, className
+    )}>
+      {label}
+    </span>
+  );
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 60)    return '剛剛';
@@ -89,9 +110,7 @@ function Carousel({ items }: { items: NewsItem[] }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16">
-          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded mb-2">
-            {CATEGORY_LABELS[item.category ?? ''] ?? '情報'}
-          </span>
+          <CategoryBadge category={item.category ?? 'general'} className="mb-2" />
           <h2 className="text-white font-black text-[17px] leading-[1.35] line-clamp-2 overflow-hidden">
             {item.title}
           </h2>
@@ -127,9 +146,7 @@ function ArticleRow({ item }: { item: NewsItem }) {
           {item.title}
         </h3>
         <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
-          {item.category && (
-            <span className="text-primary font-bold">{CATEGORY_LABELS[item.category] ?? item.category}</span>
-          )}
+          {item.category && <CategoryBadge category={item.category} />}
           {item.category && <span>·</span>}
           <span>{timeAgo(item.created_at)}</span>
           <span className="flex-1" />
@@ -187,37 +204,37 @@ export default function NewsPage() {
     if (dist < 0 && cur > 0) setActiveTab(tabKeys[cur - 1]);
   };
 
-  useEffect(() => {
-    supabase
+  const loadArticles = async () => {
+    const { data } = await supabase
       .from('news')
       .select('id,title,summary,image_url,source_url,category,tags,is_active,created_at,view_count')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(60)
-      .then(async ({ data }) => {
-        const articles = data ?? [];
-        if (articles.length === 0) { setAll([]); setIsLoading(false); return; }
+      .limit(60);
 
-        const ids = articles.map(a => a.id);
+    const articles = data ?? [];
+    if (articles.length === 0) { setAll([]); setIsLoading(false); return; }
 
-        const [{ data: likesData }, { data: commentsData }] = await Promise.all([
-          supabase.from('news_likes').select('news_id').in('news_id', ids),
-          supabase.from('news_comments').select('news_id').in('news_id', ids),
-        ]);
+    const ids = articles.map(a => String(a.id));
+    const countsRes = await fetch(`/api/news/counts?ids=${ids.join(',')}`).then(r => r.json()).catch(() => ({}));
+    const likesMap:    Record<string, number> = countsRes.likes    ?? {};
+    const commentsMap: Record<string, number> = countsRes.comments ?? {};
 
-        const likesMap: Record<string, number> = {};
-        for (const l of likesData ?? []) likesMap[l.news_id] = (likesMap[l.news_id] ?? 0) + 1;
+    setAll(articles.map(a => ({
+      ...a,
+      likes_count:    likesMap[String(a.id)]    ?? 0,
+      comments_count: commentsMap[String(a.id)] ?? 0,
+    })));
+    setIsLoading(false);
+  };
 
-        const commentsMap: Record<string, number> = {};
-        for (const c of commentsData ?? []) commentsMap[c.news_id] = (commentsMap[c.news_id] ?? 0) + 1;
-
-        setAll(articles.map(a => ({
-          ...a,
-          likes_count:    likesMap[a.id] ?? 0,
-          comments_count: commentsMap[a.id] ?? 0,
-        })));
-        setIsLoading(false);
-      });
+  useEffect(() => {
+    loadArticles();
+    // 回到頁面時刷新讚/留言數，確保與內頁同步
+    const onFocus = () => { if (document.visibilityState === 'visible') loadArticles(); };
+    document.addEventListener('visibilitychange', onFocus);
+    return () => document.removeEventListener('visibilitychange', onFocus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);

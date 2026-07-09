@@ -39,6 +39,22 @@ const CATEGORY_LABELS: Record<string, string> = {
   ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', general: '綜合',
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  ichiban: 'bg-blue-500', gacha: 'bg-orange-500', blindbox: 'bg-purple-500',
+  tcg: 'bg-amber-500', general: 'bg-neutral-400',
+};
+
+function CategoryBadge({ category }: { category: string }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center h-[18px] px-1.5 text-[10px] font-bold text-white rounded-[4px]',
+      CATEGORY_COLORS[category] ?? 'bg-neutral-400'
+    )}>
+      {CATEGORY_LABELS[category] ?? category}
+    </span>
+  );
+}
+
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('zh-TW', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -471,11 +487,7 @@ export default function NewsDetailPage() {
       <article className="px-4 pt-4">
         {/* 分類 + 時間 */}
         <div className="flex items-center gap-2 mb-3">
-          {item.category && (
-            <span className="px-2 py-0.5 rounded text-[11px] font-black bg-primary/10 text-primary">
-              {CATEGORY_LABELS[item.category] ?? item.category}
-            </span>
-          )}
+          {item.category && <CategoryBadge category={item.category} />}
           <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
             <Clock className="w-3 h-3" />
             <span>{formatDate(item.created_at)}</span>
