@@ -88,13 +88,7 @@ export default function WinningMarquee() {
                   >
                     {currentRecord.user_name}
                   </span>
-                  抽到<span className="font-black text-neutral-800 dark:text-neutral-200">{currentRecord.product_name}</span>
-                  {currentRecord.prize_name && (
-                    <span className="text-neutral-500 dark:text-neutral-400 mx-1">·</span>
-                  )}
-                  {currentRecord.prize_name && (
-                    <span className="text-primary/80">{currentRecord.prize_name}</span>
-                  )}
+                  抽到<span className="text-primary/80">{currentRecord.prize_name || currentRecord.product_name}</span>
                 </>
               ) : (
                 <span className="font-black text-primary">
