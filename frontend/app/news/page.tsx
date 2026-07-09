@@ -240,9 +240,9 @@ export default function NewsPage() {
         </div>
 
         {isLoading ? <LoadingSkeleton /> : (
-          <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          <div>
             {activeTab === 'all' && carousel.length > 0 && <Carousel items={carousel} />}
-            <div className="px-4">
+            <div className="px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               {filtered.length === 0 ? (
                 <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
                   此分類目前沒有文章
