@@ -113,7 +113,6 @@ export default function Home() {
           supabase
             .from('products')
             .select('*')
-            .eq('type', 'gacha')
             .neq('status', 'pending')
             .order('created_at', { ascending: false }) as unknown as Promise<ProductsQueryResult>,
           'products'
