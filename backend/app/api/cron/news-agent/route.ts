@@ -442,7 +442,7 @@ export async function POST(req: NextRequest) {
         jinaText = await fetchViaJina(realUrl)
         if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
       }
-      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      if (!ogImage) ogImage = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/images/banner_defaulet.png`
 
       const bodyText = articleHtml
         ? articleHtml
@@ -510,8 +510,7 @@ export async function POST(req: NextRequest) {
         jinaText = await fetchViaJina(realUrl)
         if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
       }
-      // 沒有任何圖片來源才跳過
-      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      if (!ogImage) ogImage = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/images/banner_defaulet.png`
 
       const bodyText = articleHtml
         ? articleHtml

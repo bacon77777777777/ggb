@@ -2,11 +2,15 @@
 
 ---
 
-## 2026-07-10｜新文章自動種 bot 留言/讚
+## 2026-07-10｜新文章自動種 bot 留言/讚 + 無圖改用預設 banner
 
 ### news-agent 自動補種（`backend/app/api/cron/news-agent/route.ts`）
 - 每篇成功寫入後立即呼叫 `seed_bot_engagement_for_article(id)`（fire-and-forget，不阻塞主流程）
 - 函式已在 migration 312 建立：2~5 則 bot 留言、3~12 個 bot 讚，跳過已有留言的文章
+
+### 無圖文章改用預設 banner（`backend/app/api/cron/news-agent/route.ts`）
+- 原本：og:image 抓不到 → 跳過整篇文章
+- 現在：fallback 用 `NEXT_PUBLIC_FRONTEND_URL/images/banner_defaulet.png`，不再因無圖而跳過
 
 ---
 
