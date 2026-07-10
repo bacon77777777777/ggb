@@ -256,12 +256,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {/* Darkens as cover rotates away (back of the paper is darker) */}
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      background: `rgba(0,0,0,${Math.min(0.75, peel * 1.1)})`,
-                      pointerEvents: 'none',
-                    }} />
                   </div>
                 </div>
               )}
@@ -278,18 +272,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
 
-              {/* ── Fold shadow on revealed bg.svg side ── */}
-              {peel > 0.004 && (
-                <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 15, overflow: 'visible' }}
-                  width={ticketW} height={ticketH}>
-                  {/* Wide soft shadow */}
-                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
-                    stroke="rgba(0,0,0,0.22)" strokeWidth={28} strokeLinecap="round" />
-                  {/* Tighter core */}
-                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
-                    stroke="rgba(0,0,0,0.3)" strokeWidth={10} strokeLinecap="round" />
-                </svg>
-              )}
 
               {/* ── Finger swipe hint — diagonal right-upward ── */}
               {peel < 0.03 && (
