@@ -117,7 +117,7 @@ export default function FAQPage() {
 
         <div className="mb-6">
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">常見問題</h1>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 uppercase tracking-widest font-bold">FAQ · {totalCount} 個問題</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 uppercase tracking-widest font-bold">FAQ</p>
         </div>
 
         <div className="space-y-3">
