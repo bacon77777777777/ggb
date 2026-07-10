@@ -238,24 +238,39 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
           {/* Cover: turn.js-style 3D flip — left half rotates back, right stays flat */}
           {!done && (
             <>
-              {/* ── LEFT half: peeled back in 3D around fold axis ── */}
+              {/* ── LEFT half: peeled back in 3D, front=up.svg / back=white paper ── */}
               {peel > 0.004 && (
                 <div style={{
                   position: 'absolute', inset: 0,
+                  clipPath: leftClip,
                   perspective: `${700 * s}px`,
                   perspectiveOrigin: `${foldX}px center`,
                 }}>
+                  {/* Rotating card — preserve-3d lets front/back coexist in 3D */}
                   <div style={{
                     position: 'absolute', inset: 0,
-                    clipPath: leftClip,
                     transformOrigin: `${foldX}px center`,
                     transform: `rotateY(${flipAngle}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
+                    transformStyle: 'preserve-3d',
                   }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {/* Front face: up.svg (visible while rotating toward viewer) */}
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                    }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    {/* Back face: white paper (visible once past 90° fold crease) */}
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)',
+                      background: '#ffffff',
+                    }} />
                   </div>
                 </div>
               )}
