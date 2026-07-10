@@ -177,7 +177,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     try {
       const { data, error } = await supabase
         .from('draw_records')
-        .select('ticket_number, prize_level, prize_name, image_url, is_last_one')
+        .select('ticket_number, prize_level, prize_name, prize_image_url, is_last_one')
         .eq('product_id', product.id)
         .order('ticket_number', { ascending: true });
 
@@ -187,7 +187,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         grade: record.prize_level,
         name: record.prize_name,
         isOpened: true,
-        image_url: record.image_url || '',
+        image_url: record.prize_image_url || '',
         is_last_one: record.is_last_one || false,
         ticket_number: record.ticket_number
       }));

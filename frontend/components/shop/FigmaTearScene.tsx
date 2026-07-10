@@ -128,9 +128,8 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (dragStartX.current === null || done || committedRef.current) return;
-      // Only allow rightward drag
-      const dx = Math.max(0, e.clientX - dragStartX.current);
-      const raw = Math.min(1, dragStartPeel.current + dx / coverW);
+      const dx = e.clientX - dragStartX.current;
+      const raw = Math.max(0, Math.min(1, dragStartPeel.current + dx / coverW));
       if (!hintHidden && raw > 0.02) setHintHidden(true);
       peelRef.current = raw;
       setPeel(raw);
