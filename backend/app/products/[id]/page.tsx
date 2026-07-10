@@ -772,7 +772,6 @@ export default function EditProductPage() {
               })()}
             </div>
 
-            {formData.type === 'gacha' && (
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 抽獎模組 <span className="text-neutral-400 font-normal">（留空 = 跟隨類別預設）</span>
@@ -788,7 +787,6 @@ export default function EditProductPage() {
                 <option value="retro_machine">復古街頭扭蛋機</option>
               </select>
             </div>
-            )}
           </div>
 
           {/* 熱賣商品標記 */}

@@ -45,6 +45,7 @@ export default function NewProductPage() {
     startedAt: '',  // 開賣時間（選填，格式：YYYY-MM-DD）
     isPreorder: false,
     preorderAvailableAt: '',
+    machineTheme: '',
   })
   
   const isLastOneLevel = (level: string) => {
@@ -270,7 +271,8 @@ export default function NewProductPage() {
         started_at: startedAt,
         image_url: productImageUrl || '/images/item.png',
         is_preorder: formData.isPreorder,
-        preorder_available_at: formData.preorderAvailableAt ? `${formData.preorderAvailableAt} 00:00:00` : null
+        preorder_available_at: formData.preorderAvailableAt ? `${formData.preorderAvailableAt} 00:00:00` : null,
+        machine_theme: formData.machineTheme || null,
       }
 
       // 3.5 Insert Product Tags
@@ -578,6 +580,21 @@ export default function NewProductPage() {
                   <p className="text-xs text-neutral-400 mt-1">統一編號：<span className="font-mono">{sup.tax_id}</span></p>
                 ) : null
               })()}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+                抽獎模組 <span className="text-neutral-400 font-normal">（留空 = 跟隨類別預設）</span>
+              </label>
+              <select
+                value={formData.machineTheme}
+                onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
+                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+              >
+                <option value="">— 跟隨類別預設 —</option>
+                <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
+                <option value="modern_machine">現代膠囊展示機</option>
+                <option value="retro_machine">復古街頭扭蛋機</option>
+              </select>
             </div>
           </div>
 
