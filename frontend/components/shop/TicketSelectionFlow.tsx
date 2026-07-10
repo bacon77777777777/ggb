@@ -13,6 +13,7 @@ import { PurchaseConfirmation } from '@/components/shop/PurchaseConfirmation';
 import { IchibanTicket } from '@/components/IchibanTicket';
 import { LastOneCelebrationModal } from '@/components/shop/LastOneCelebrationModal';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
+import FigmaTearScene from '@/components/shop/FigmaTearScene';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
@@ -119,6 +120,19 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [remainingTickets, setRemainingTickets] = useState<number | null>(null);
   const [isSoldOut, setIsSoldOut] = useState(false);
   const [blindboxPhase, setBlindboxPhase] = useState<'opening' | 'revealed'>('opening');
+
+  // FigmaTear mode
+  const [ichibanTheme, setIchibanTheme] = useState<string>('classic_capsule');
+  const [showFigmaTear, setShowFigmaTear] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/module-settings')
+      .then(r => r.json())
+      .then((d: Record<string, string>) => {
+        if (d.ichiban) setIchibanTheme(d.ichiban);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -510,6 +524,12 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         console.warn('Failed to enrich prize images', e);
       }
       setDrawnResults(results);
+
+      // 沉浸式撕紙模式：在票券網格前先播全畫面撕紙動畫
+      if (product?.type === 'ichiban' && ichibanTheme === 'figma_tear') {
+        setShowFigmaTear(true);
+      }
+
       setSoldTickets(prev => {
         const merged = new Set(prev);
         ticketsToPlay.forEach(n => merged.add(n));
@@ -903,6 +923,30 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
             )}
           </motion.div>
         )}
+      </div>
+    );
+  }
+
+  // FigmaTear overlay：結果到了、模式符合、尚未結束撕紙動畫
+  if (drawnResults.length > 0 && showFigmaTear) {
+    const gradeOrder = ['last', 'a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    const bestResult = [...drawnResults].sort((a, b) => {
+      const ga = a.is_last_one ? 'last' : (a.grade ?? '').toLowerCase().replace('賞', '').trim();
+      const gb = b.is_last_one ? 'last' : (b.grade ?? '').toLowerCase().replace('賞', '').trim();
+      const ia = gradeOrder.indexOf(ga) === -1 ? 99 : gradeOrder.indexOf(ga);
+      const ib = gradeOrder.indexOf(gb) === -1 ? 99 : gradeOrder.indexOf(gb);
+      return ia - ib;
+    })[0];
+    const prizeLetter = bestResult?.is_last_one
+      ? 'LAST'
+      : (bestResult?.grade ?? 'F').replace('賞', '').trim().toUpperCase();
+
+    return (
+      <div className="fixed inset-0 z-[3000]">
+        <FigmaTearScene
+          prizeTierLetter={prizeLetter}
+          onDone={() => setShowFigmaTear(false)}
+        />
       </div>
     );
   }

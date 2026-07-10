@@ -17,7 +17,14 @@ const PRODUCT_TYPES: {
       { value: 'retro_machine', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
     ],
   },
-  // 其他類別模組切換開發中，暫時隱藏
+  {
+    type: 'ichiban',
+    label: '一番賞',
+    themes: [
+      { value: 'classic_capsule', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
+      { value: 'figma_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
+    ],
+  },
 ]
 
 type Setting = { product_type: string; machine_theme: string }
