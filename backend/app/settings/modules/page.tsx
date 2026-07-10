@@ -25,6 +25,29 @@ const PRODUCT_TYPES: {
       { value: 'figma_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
     ],
   },
+  {
+    type: 'card',
+    label: '抽卡',
+    themes: [
+      { value: 'card_pack', label: '拆卡包', desc: '動態開卡包揭曉（預設）' },
+    ],
+  },
+  {
+    type: 'custom',
+    label: '自製賞',
+    themes: [
+      { value: 'classic_capsule', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
+      { value: 'figma_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞' },
+    ],
+  },
+  {
+    type: 'blindbox',
+    label: '盒玩',
+    themes: [
+      { value: 'classic_machine', label: '原始經典', desc: '物理蛋球掉落轉蛋機（預設）' },
+      { value: 'claw_machine', label: '夾娃娃機', desc: '夾娃娃機風格揭曉' },
+    ],
+  },
 ]
 
 type Setting = { product_type: string; machine_theme: string }

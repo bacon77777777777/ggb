@@ -1,5 +1,28 @@
 'use client'
 
+const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  gacha:    [
+    { value: 'classic_machine', label: '原始經典（物理蛋球掉落）' },
+    { value: 'modern_machine',  label: '現代膠囊機（格列膠囊展示）' },
+    { value: 'retro_machine',   label: '復古街頭機（日式扭蛋街機）' },
+  ],
+  ichiban:  [
+    { value: 'classic_capsule', label: '經典列表（票券網格撕開）' },
+    { value: 'figma_tear',      label: '沉浸式撕紙（全畫面揭曉）' },
+  ],
+  card:     [
+    { value: 'card_pack',       label: '拆卡包（動態開卡）' },
+  ],
+  custom:   [
+    { value: 'classic_capsule', label: '經典列表（票券網格撕開）' },
+    { value: 'figma_tear',      label: '沉浸式撕紙（全畫面揭曉）' },
+  ],
+  blindbox: [
+    { value: 'classic_machine', label: '原始經典（物理蛋球掉落）' },
+    { value: 'claw_machine',    label: '夾娃娃機' },
+  ],
+}
+
 import AdminLayout from '@/components/AdminLayout'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
 import { useLog } from '@/contexts/LogContext'
@@ -591,9 +614,9 @@ export default function NewProductPage() {
                 className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
               >
                 <option value="">— 跟隨類別預設 —</option>
-                <option value="classic_machine">物理蛋球轉蛋機（原始經典）</option>
-                <option value="modern_machine">現代膠囊展示機</option>
-                <option value="retro_machine">復古街頭扭蛋機</option>
+                {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
           </div>
