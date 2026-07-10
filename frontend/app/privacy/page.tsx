@@ -90,10 +90,6 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <div className="p-6">
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">最後更新：2026 年 7 月｜聯絡客服：LINE @ggb.tw</p>
-          </div>
-
         </div>
       </div>
     </div>
