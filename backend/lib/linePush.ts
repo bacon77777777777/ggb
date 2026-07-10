@@ -18,25 +18,27 @@ export const LINE_PUSH_KEYS = [
   'line_push_recharge',
   'line_push_content',
   'line_push_cto',
+  'line_push_warehouse_dismantle',
 ] as const
 
 export type LinePushKey = (typeof LINE_PUSH_KEYS)[number]
 
 export const LINE_PUSH_LABELS: Record<LinePushKey, string> = {
-  line_push_daily:    '每日早報',
-  line_push_cfo:      'CFO 財務對帳',
-  line_push_cmo:      'CMO 行銷日報',
-  line_push_supply:   '供應鏈警示',
-  line_push_health:   '健康監測',
-  line_push_market:   '市場 / 競品情報',
-  line_push_risk:     '風控掃描',
-  line_push_monitor:  '平台監測',
-  line_push_finance:  '對帳 / 月結',
-  line_push_deliver:  '自動出貨通知',
-  line_push_dormant:  '沉睡客喚回',
-  line_push_recharge: '待審核儲值',
-  line_push_content:  'AI 文案生成',
-  line_push_cto:      'AI CTO 報告',
+  line_push_daily:               '每日早報',
+  line_push_cfo:                 'CFO 財務對帳',
+  line_push_cmo:                 'CMO 行銷日報',
+  line_push_supply:              '供應鏈警示',
+  line_push_health:              '健康監測',
+  line_push_market:              '市場 / 競品情報',
+  line_push_risk:                '風控掃描',
+  line_push_monitor:             '平台監測',
+  line_push_finance:             '對帳 / 月結',
+  line_push_deliver:             '自動出貨通知',
+  line_push_dormant:             '沉睡客喚回',
+  line_push_recharge:            '待審核儲值',
+  line_push_content:             'AI 文案生成',
+  line_push_cto:                 'AI CTO 報告',
+  line_push_warehouse_dismantle: '倉庫自動分解',
 }
 
 async function isFlagEnabled(key: LinePushKey): Promise<boolean> {
