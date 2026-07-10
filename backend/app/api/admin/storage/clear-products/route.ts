@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { r2DeletePrefix } from '@/lib/r2'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 async function requireSuperAdmin(adminId: string) {
   const supabase = getSupabaseAdmin()
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
 
     const deleted = await r2DeletePrefix(prefix)
 
+    await logAdminAction({ adminId: session.adminId, action: '清除儲存空間', targetType: 'storage', detail: { bucket, deleted }, ip: getClientIp(request) })
     return NextResponse.json({ deleted, failedCount: 0, failed: [] })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '清除失敗' }, { status: 500 })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin.from('orders').update(patch).in('id', ids)
     if (error) throw error
 
+    await logAdminAction({ adminId: session.adminId, action: '批次更新訂單', targetType: 'orders', detail: { ids, patch }, ip: getClientIp(request) })
     return NextResponse.json({ success: true })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '更新失敗' }, { status: 500 })

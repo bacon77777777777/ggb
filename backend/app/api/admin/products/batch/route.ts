@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 const generateSeedHex = () => crypto.randomBytes(32).toString('hex')
 const sha256Hex = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
@@ -52,12 +53,14 @@ export async function POST(request: Request) {
         .select('id, status, seed, txid_hash, started_at')
         .in('id', ids)
 
+      await logAdminAction({ adminId: session.adminId, action: '批次更新商品狀態', targetType: 'products', detail: { ids, status }, ip: getClientIp(request) })
       return NextResponse.json({ products: updated || [] })
     }
 
     if (action === 'delete') {
       const { error: deleteError } = await supabaseAdmin.from('products').delete().in('id', ids)
       if (deleteError) throw deleteError
+      await logAdminAction({ adminId: session.adminId, action: '批次刪除商品', targetType: 'products', detail: { ids }, ip: getClientIp(request) })
       return NextResponse.json({ success: true })
     }
 

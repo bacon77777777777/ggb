@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const session = await requireAdminSession()
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({ adminId: session.adminId, action: '新增排行榜機器人', targetType: 'leaderboard_bots', targetId: String(data.id), detail: { nickname }, ip: getClientIp(req) })
   return NextResponse.json(data)
 }
 
@@ -48,6 +50,7 @@ export async function PATCH(req: NextRequest) {
     .eq('id', id).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({ adminId: session.adminId, action: '更新排行榜機器人', targetType: 'leaderboard_bots', targetId: String(id), ip: getClientIp(req) })
   return NextResponse.json(data)
 }
 
@@ -62,5 +65,6 @@ export async function DELETE(req: NextRequest) {
   const supabase = getSupabaseAdmin()
   const { error } = await supabase.from('leaderboard_bots').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({ adminId: session.adminId, action: '刪除排行榜機器人', targetType: 'leaderboard_bots', targetId: id, ip: getClientIp(req) })
   return NextResponse.json({ ok: true })
 }

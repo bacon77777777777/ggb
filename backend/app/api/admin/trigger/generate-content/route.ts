@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -18,5 +19,8 @@ export async function POST() {
   })
 
   const data = await res.json().catch(() => ({}))
+  if (res.ok) {
+    await logAdminAction({ adminId: session.adminId, action: '手動生成AI文案', targetType: 'content_drafts', ip: getClientIp(req) })
+  }
   return NextResponse.json(data, { status: res.status })
 }

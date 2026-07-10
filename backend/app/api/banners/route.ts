@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
+    await logAdminAction({ adminId: session.adminId, action: '新增輪播圖', targetType: 'banners', targetId: String(data.id), detail: { name }, ip: getClientIp(request) })
     return NextResponse.json(data)
   } catch (error: any) {
     console.error('Error creating banner:', error)

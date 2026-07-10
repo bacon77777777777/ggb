@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const session = await requireAdminSession()
@@ -32,5 +33,8 @@ export async function POST(req: Request) {
   })
 
   const data = await res.json()
+  if (res.ok) {
+    await logAdminAction({ adminId: session.adminId, action: '手動觸發平台監控', targetType: 'platform_monitor', ip: getClientIp(req) })
+  }
   return NextResponse.json(data, { status: res.status })
 }

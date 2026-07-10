@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const session = await requireAdminSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,7 +41,9 @@ export async function POST() {
       await supabaseAdmin.from('draw_records').update({ status: 'listing' }).in('id', recordIds as any)
     }
 
-    return NextResponse.json({ success: true, created: Array.isArray(created) ? created.length : 0 })
+    const createdCount = Array.isArray(created) ? created.length : 0
+    await logAdminAction({ adminId: session.adminId, action: '建立市集假資料', targetType: 'marketplace_listings', detail: { created: createdCount }, ip: getClientIp(request) })
+    return NextResponse.json({ success: true, created: createdCount })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '建立假資料失敗' }, { status: 500 })
   }

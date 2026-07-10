@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -40,6 +41,7 @@ export async function PUT(request: Request) {
       .upsert(rows, { onConflict: 'key' })
 
     if (error) throw error
+    await logAdminAction({ adminId: session.adminId, action: '更新平台設定', targetType: 'platform_settings', detail: { keys: Object.keys(body) }, ip: getClientIp(request) })
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '儲存失敗' }, { status: 500 })

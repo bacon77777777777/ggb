@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
+    await logAdminAction({ adminId: session.adminId, action: '後台新增文章', targetType: 'news', targetId: String(data.id), detail: { title }, ip: getClientIp(request) })
     return NextResponse.json(data)
   } catch (error: any) {
     console.error('Error creating news:', error)

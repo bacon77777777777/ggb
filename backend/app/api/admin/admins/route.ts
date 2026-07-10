@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 type AdminStatus = 'active' | 'inactive'
 
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
         console.error('Update admin error:', error)
         return NextResponse.json({ error: error.message || JSON.stringify(error) }, { status: 500 })
       }
+      await logAdminAction({ adminId: session.adminId, action: '更新管理員', targetType: 'admins', targetId: String(body.id), detail: { username, status }, ip: getClientIp(request) })
       return NextResponse.json({ ok: true })
     }
 
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
       console.error('Insert admin error:', error)
       return NextResponse.json({ error: error.message || JSON.stringify(error) }, { status: 500 })
     }
+    await logAdminAction({ adminId: session.adminId, action: '新增管理員', targetType: 'admins', detail: { username, role_id: roleId }, ip: getClientIp(request) })
     return NextResponse.json({ ok: true })
   } catch (error: unknown) {
     const e = error as any

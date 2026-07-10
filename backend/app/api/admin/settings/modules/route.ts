@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const session = await requireAdminSession()
@@ -36,5 +37,6 @@ export async function PUT(request: Request) {
     )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({ adminId: session.adminId, action: '更新模組設定', targetType: 'module_settings', detail: { count: body.length }, ip: getClientIp(request) })
   return NextResponse.json({ success: true })
 }
