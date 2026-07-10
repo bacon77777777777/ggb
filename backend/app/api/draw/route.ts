@@ -60,9 +60,8 @@ export async function POST(request: NextRequest) {
       originalProbability: p.probability
     }))
 
-    // 盒玩與轉蛋不套用殺率（機率由商品本身決定）
-    const NO_PROFIT_RATE_CATEGORIES = ['boxplay', 'gacha', '盒玩', '轉蛋']
-    const skipProfitRate = NO_PROFIT_RATE_CATEGORIES.includes(product.category ?? '')
+    // 盒玩（blindbox）與轉蛋（gacha）不套用殺率，其餘類型（ichiban/card/custom）套用
+    const skipProfitRate = product.type === 'gacha' || product.type === 'blindbox'
 
     const rawProfitRate = (product as any).profit_rate
     let profitRate = 1.0

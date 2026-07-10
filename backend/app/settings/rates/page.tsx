@@ -31,7 +31,7 @@ export default function RatesPage() {
     const fetchProducts = async () => {
       const { data: productsData } = await supabase
         .from('products')
-        .select('*, prizes:product_prizes(*)')
+        .select('*, type, prizes:product_prizes(*)')
       
       if (productsData) {
         const mappedProducts: Product[] = productsData.map((p: any) => ({
@@ -62,8 +62,7 @@ export default function RatesPage() {
           majorPrizes: p.major_prizes,
           txidHash: p.txid_hash,
           seed: p.seed,
-          // Add profitRate to the product object for internal use if needed, 
-          // though we manage it in a separate state for editing.
+          type: p.type,
         }))
         setProducts(mappedProducts)
 
@@ -703,6 +702,7 @@ export default function RatesPage() {
               const profitRate = product.profitRate
               const displayTotalRate = isExpanded ? calculateDisplayTotalRate(product) : 0
               const isEnded = product.status === 'ended'
+              const isRateLocked = (product as any).type === 'gacha' || (product as any).type === 'blindbox'
 
               return (
                 <div
@@ -732,7 +732,12 @@ export default function RatesPage() {
                           }`}>
                             {product.status === 'active' ? '進行中' : product.status === 'pending' ? '待上架' : '已完抽'}
                           </span>
-                          {hasAdjustment && (
+                          {isRateLocked && (
+                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200">
+                              不適用殺率
+                            </span>
+                          )}
+                          {!isRateLocked && hasAdjustment && (
                             <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-blue-100 text-blue-700 border border-blue-200">
                               殺率: {(profitRate * 100).toFixed(0)}%
                             </span>
@@ -778,8 +783,13 @@ export default function RatesPage() {
                   {/* 展開的殺率調整區域 */}
                   {isExpanded && (
                     <div className="border-t border-gray-200 p-4 bg-white">
+                      {isRateLocked && (
+                        <div className="mb-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-[12px] text-neutral-500">
+                          此商品類型（盒玩/轉蛋）不適用殺率調整，機率由商品設定直接決定，profit_rate 固定為 1.0。
+                        </div>
+                      )}
                       {/* 殺率調整主控區 */}
-                      <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+                      <div className={`mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 ${isRateLocked ? 'opacity-40 pointer-events-none' : ''}`}>
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <h4 className="text-sm font-semibold text-gray-900 mb-0.5">殺率參數調整</h4>
