@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-07-10｜後台操作 Log 全面補齊
+
+### 覆蓋範圍
+19 個後台 API route 全數加入 `logAdminAction`，確保所有寫入操作都留下稽核軌跡：
+
+| 操作 | 記錄動作 |
+|------|---------|
+| banners POST | 新增輪播圖 |
+| settings PUT | 更新平台設定 |
+| settings/modules PUT | 更新模組設定 |
+| news POST | 後台新增文章 |
+| news PUT / DELETE | 更新文章 / 刪除文章 |
+| orders/batch POST | 批次更新訂單 |
+| refund-requests PATCH | 核准退款 / 拒絕退款 / 執行退款（三種 action 分開記錄） |
+| marketplace/clear POST | 清除市集資料 |
+| marketplace/seed POST | 建立市集假資料 |
+| storage/clear-products POST | 清除 R2 儲存空間 |
+| platform-monitor POST | 手動觸發平台監控 |
+| admins POST | 新增管理員 / 更新管理員 |
+| leaderboard-bots POST/PATCH/DELETE | 排行榜機器人 CRUD |
+| meeting-logs POST/PATCH/DELETE | 會議記錄 CRUD |
+| sell/clear POST | 清除寄賣列表 |
+| products/batch POST | 批次更新商品狀態 / 批次刪除商品 |
+| trigger/news-agent POST | 手動生成文章 |
+| trigger/generate-content POST | 手動生成 AI 文案 |
+| dev-logs POST/PATCH/DELETE | 開發日誌 CRUD |
+
+---
+
 ## 2026-07-10｜情報頁埋點全覆蓋
 
 ### 新增 EventType（`frontend/lib/trackEvent.ts`）
