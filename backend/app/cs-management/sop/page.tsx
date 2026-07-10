@@ -5,7 +5,6 @@ import AdminLayout from '@/components/AdminLayout'
 const SOP_SECTIONS = [
   {
     title: '情境一：代幣問題',
-    color: 'yellow',
     situations: [
       {
         problem: '用戶說代幣被扣但沒有成功儲值',
@@ -32,7 +31,6 @@ const SOP_SECTIONS = [
   },
   {
     title: '情境二：抽獎問題',
-    color: 'blue',
     situations: [
       {
         problem: '用戶說抽獎扣幣但無結果/無紀錄',
@@ -58,7 +56,6 @@ const SOP_SECTIONS = [
   },
   {
     title: '情境三：商品問題',
-    color: 'red',
     situations: [
       {
         problem: '收到商品有缺件或寄錯品',
@@ -85,7 +82,6 @@ const SOP_SECTIONS = [
   },
   {
     title: '情境四：出貨問題',
-    color: 'green',
     situations: [
       {
         problem: '用戶說已超過預期時間未收到貨',
@@ -111,28 +107,15 @@ const SOP_SECTIONS = [
   },
 ]
 
-const COLOR_MAP: Record<string, string> = {
-  yellow: 'border-yellow-400 dark:border-yellow-600',
-  blue: 'border-blue-400 dark:border-blue-600',
-  red: 'border-red-400 dark:border-red-600',
-  green: 'border-green-400 dark:border-green-600',
-}
-
-const COMP_COLOR_MAP: Record<string, string> = {
-  yellow: 'bg-yellow-50 dark:bg-yellow-900/10 text-yellow-700 dark:text-yellow-400',
-  blue: 'bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400',
-  red: 'bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400',
-  green: 'bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400',
-}
-
 export default function CsSopPage() {
   return (
-    <AdminLayout pageTitle="客服操作手冊" pageSubtitle="標準作業流程 SOP — 四大情境處理指南">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <AdminLayout pageTitle="客服操作手冊">
+      <div className="max-w-4xl mx-auto space-y-5">
 
-        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4">
-          <p className="text-[13px] text-amber-700 dark:text-amber-400 font-bold mb-1">補償原則（請優先遵守）</p>
-          <ul className="text-[12px] text-amber-600 dark:text-amber-500 space-y-1">
+        {/* 補償原則 */}
+        <div className="bg-white rounded-xl border border-neutral-200 px-5 py-4">
+          <p className="text-sm font-bold text-neutral-700 mb-2">補償原則（請優先遵守）</p>
+          <ul className="space-y-1 text-sm text-neutral-500">
             <li>① 補償優先以「補代幣」方式處理，不退現金（除非確認重複扣款等金流錯誤）</li>
             <li>② 代幣已儲值一律不退款；抽獎結果不滿意不在退款範圍</li>
             <li>③ 商品缺件/瑕疵需 7 日內提出，且必須有完整開箱錄影</li>
@@ -140,24 +123,25 @@ export default function CsSopPage() {
           </ul>
         </div>
 
+        {/* SOP sections */}
         {SOP_SECTIONS.map((section) => (
-          <div key={section.title} className={`bg-white dark:bg-neutral-900 rounded-xl border-l-4 ${COLOR_MAP[section.color]} border border-neutral-100 dark:border-neutral-800 overflow-hidden`}>
-            <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
-              <h2 className="text-sm font-black text-neutral-900 dark:text-white">{section.title}</h2>
+          <div key={section.title} className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50">
+              <h2 className="text-sm font-bold text-neutral-700">{section.title}</h2>
             </div>
-            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <div className="divide-y divide-neutral-100">
               {section.situations.map((sit, i) => (
                 <div key={i} className="p-5 space-y-3">
-                  <p className="text-[13px] font-bold text-neutral-800 dark:text-neutral-200">🔹 {sit.problem}</p>
+                  <p className="text-sm font-semibold text-neutral-800">{sit.problem}</p>
                   <ol className="space-y-1.5">
                     {sit.steps.map((step, si) => (
-                      <li key={si} className="flex gap-2 text-[12px] text-neutral-600 dark:text-neutral-400">
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 flex items-center justify-center text-[10px] font-bold mt-0.5">{si + 1}</span>
-                        <span>{step}</span>
+                      <li key={si} className="flex gap-2.5 text-sm text-neutral-500">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-neutral-100 text-neutral-500 flex items-center justify-center text-[11px] font-bold mt-0.5">{si + 1}</span>
+                        <span className="leading-relaxed">{step}</span>
                       </li>
                     ))}
                   </ol>
-                  <div className={`rounded-lg px-3 py-2 text-[11px] font-bold ${COMP_COLOR_MAP[section.color]}`}>
+                  <div className="rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-600">
                     補償結果：{sit.compensation}
                   </div>
                 </div>
@@ -166,9 +150,10 @@ export default function CsSopPage() {
           </div>
         ))}
 
-        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 p-5">
-          <p className="text-[12px] font-bold text-neutral-700 dark:text-neutral-300 mb-2">補幣操作方式</p>
-          <ol className="text-[12px] text-neutral-500 dark:text-neutral-400 space-y-1">
+        {/* 補幣操作 */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-5">
+          <p className="text-sm font-bold text-neutral-700 mb-2">補幣操作方式</p>
+          <ol className="space-y-1 text-sm text-neutral-500">
             <li>1. 後台左側 → 會員管理 → 搜尋對應用戶</li>
             <li>2. 點擊用戶進入詳細頁面 → 「手動補幣」按鈕</li>
             <li>3. 輸入補幣數量與原因，送出後系統自動寫入 token_adjustments 並更新代幣餘額</li>

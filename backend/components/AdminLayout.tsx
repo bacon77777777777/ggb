@@ -611,6 +611,14 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
+        id: 'cs',
+        title: '客服管理',
+        items: [
+          { name: '客服工單', path: '/cs-management/tickets', icon: IconLogs },
+          { name: '操作手冊', path: '/cs-management/sop', icon: IconSettings },
+        ],
+      },
+      {
         id: 'marketplace',
         title: '交易所',
         items: [
@@ -631,14 +639,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '交換商品管理', path: '/exchange', icon: IconExchange },
           { name: '交換紀錄', path: '/exchange-orders', icon: IconExchange },
-        ],
-      },
-      {
-        id: 'cs',
-        title: '客服管理',
-        items: [
-          { name: '客服工單', path: '/cs-management/tickets', icon: IconLogs },
-          { name: '操作手冊', path: '/cs-management/sop', icon: IconSettings },
         ],
       },
       {

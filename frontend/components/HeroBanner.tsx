@@ -61,8 +61,8 @@ export default function HeroBanner({ banners, onBannerClick }: { banners: Banner
   };
 
   return (
-    <div 
-      className="relative w-full aspect-[3/1] bg-neutral-100 overflow-hidden rounded-none md:rounded-[8px] group mx-0"
+    <div
+      className="relative w-full aspect-[3/1] bg-neutral-100 overflow-hidden rounded-none md:rounded-xl group mx-0"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -103,7 +103,7 @@ export default function HeroBanner({ banners, onBannerClick }: { banners: Banner
       </button>
 
       {/* Dots */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-3">
+      <div className="absolute bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 flex gap-3">
         {items.map((_, index) => (
           <button
             key={index}

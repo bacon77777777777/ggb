@@ -16,11 +16,19 @@ interface CsTicket {
 }
 
 const STATUS_META = {
-  open:        { label: '待處理', cls: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' },
-  in_progress: { label: '處理中', cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' },
-  resolved:    { label: '已解決', cls: 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' },
-  closed:      { label: '已關閉', cls: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400' },
+  open:        { label: '待處理', cls: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
+  in_progress: { label: '處理中', cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  resolved:    { label: '已解決', cls: 'bg-green-50 text-green-700 border border-green-200' },
+  closed:      { label: '已關閉', cls: 'bg-neutral-100 text-neutral-500 border border-neutral-200' },
 }
+
+const STATUS_TABS = [
+  { key: 'open', label: '待處理' },
+  { key: 'in_progress', label: '處理中' },
+  { key: 'resolved', label: '已解決' },
+  { key: 'closed', label: '已關閉' },
+  { key: 'all', label: '全部' },
+] as const
 
 export default function CsTicketsPage() {
   const [tickets, setTickets] = useState<CsTicket[]>([])
@@ -51,105 +59,172 @@ export default function CsTicketsPage() {
     load()
   }
 
-  const fmtDate = (s: string) => new Date(s).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const fmtDate = (s: string) =>
+    new Date(s).toLocaleString('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    })
 
   return (
-    <AdminLayout pageTitle="客服工單" pageSubtitle="前台聯絡我們表單提交的問題">
-      <div className="max-w-5xl mx-auto space-y-4">
+    <AdminLayout pageTitle="客服工單">
+      <div className="space-y-4">
 
-        {/* Status filter */}
-        <div className="flex gap-2">
-          {(['open', 'in_progress', 'resolved', 'closed', 'all'] as const).map(s => (
+        {/* Filter + Actions bar */}
+        <div className="bg-white rounded-xl border border-neutral-200 px-4 py-3 flex items-center gap-2 flex-wrap">
+          {STATUS_TABS.map(tab => (
             <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${filterStatus === s ? 'bg-primary text-white' : 'bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                filterStatus === tab.key
+                  ? 'bg-primary text-white'
+                  : 'text-neutral-500 hover:bg-neutral-100'
+              }`}
             >
-              {s === 'all' ? '全部' : STATUS_META[s].label}
+              {tab.label}
             </button>
           ))}
-          <button onClick={load} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700">重新整理</button>
+          <button
+            onClick={load}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-100 transition-colors"
+          >
+            重新整理
+          </button>
         </div>
 
-        {loading && <p className="text-sm text-neutral-400 py-8 text-center">載入中…</p>}
+        {/* Table */}
+        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-neutral-100 bg-neutral-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">狀態</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">類型</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">用戶</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">問題摘要</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">時間</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500 whitespace-nowrap">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-neutral-400">載入中…</td>
+                </tr>
+              )}
+              {!loading && tickets.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-neutral-400">
+                    目前沒有{filterStatus !== 'all' ? STATUS_META[filterStatus as keyof typeof STATUS_META]?.label : ''}工單
+                  </td>
+                </tr>
+              )}
+              {tickets.map(t => {
+                const meta = STATUS_META[t.status]
+                const isOpen = expanded === t.id
+                return (
+                  <>
+                    <tr
+                      key={t.id}
+                      className={`cursor-pointer transition-colors ${isOpen ? 'bg-neutral-50' : 'hover:bg-neutral-50'}`}
+                      onClick={() => setExpanded(isOpen ? null : t.id)}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.cls}`}>
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[13px] font-semibold text-neutral-700 whitespace-nowrap">{t.category}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-[13px] font-medium text-neutral-800">{t.user?.name || '—'}</p>
+                        <p className="text-[11px] text-neutral-400">{t.user?.email || '—'}</p>
+                      </td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <p className="text-[13px] text-neutral-600 truncate">{t.content}</p>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-neutral-400 whitespace-nowrap">{fmtDate(t.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-xs text-neutral-400">{isOpen ? '收起 ▲' : '展開 ▼'}</span>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr key={`${t.id}-detail`} className="bg-neutral-50">
+                        <td colSpan={6} className="px-6 pb-5 pt-4">
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-6 text-[13px]">
+                              <div>
+                                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">聯絡資訊</p>
+                                <p className="text-neutral-700">{t.email}</p>
+                                <p className="text-neutral-500">{t.phone}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">代幣餘額</p>
+                                <p className="text-neutral-700 font-mono">{t.user?.tokens?.toLocaleString() ?? '—'}</p>
+                              </div>
+                            </div>
 
-        {!loading && tickets.length === 0 && (
-          <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 p-10 text-center">
-            <p className="text-sm text-neutral-400">目前沒有{filterStatus !== 'all' ? STATUS_META[filterStatus as keyof typeof STATUS_META]?.label : ''}工單</p>
-          </div>
-        )}
+                            <div>
+                              <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">問題內容</p>
+                              <p className="text-[13px] text-neutral-700 whitespace-pre-wrap bg-white rounded-lg border border-neutral-200 px-4 py-3 leading-relaxed">{t.content}</p>
+                            </div>
 
-        <div className="space-y-2">
-          {tickets.map(t => {
-            const meta = STATUS_META[t.status]
-            const isOpen = expanded === t.id
-            return (
-              <div key={t.id} className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                <button
-                  onClick={() => setExpanded(isOpen ? null : t.id)}
-                  className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
-                >
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.cls}`}>{meta.label}</span>
-                  <span className="text-[13px] font-bold text-neutral-900 dark:text-white shrink-0">{t.category}</span>
-                  <span className="text-[12px] text-neutral-400 dark:text-neutral-500 truncate">{t.content}</span>
-                  <span className="ml-auto text-[11px] text-neutral-400 dark:text-neutral-500 shrink-0">{fmtDate(t.created_at)}</span>
-                </button>
+                            <div>
+                              <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">內部備註</p>
+                              <textarea
+                                rows={2}
+                                value={notes[t.id] ?? (t.admin_note || '')}
+                                onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
+                                placeholder="填寫處理記錄…"
+                                className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 bg-white text-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                onClick={e => e.stopPropagation()}
+                              />
+                            </div>
 
-                {isOpen && (
-                  <div className="px-5 pb-5 border-t border-neutral-100 dark:border-neutral-800 space-y-3 pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-[12px]">
-                      <div>
-                        <p className="text-neutral-400 mb-0.5 uppercase tracking-widest font-bold text-[10px]">用戶</p>
-                        <p className="text-neutral-800 dark:text-neutral-200">{t.user?.name || '—'}</p>
-                        <p className="text-neutral-500">{t.user?.email || '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-neutral-400 mb-0.5 uppercase tracking-widest font-bold text-[10px]">聯絡方式</p>
-                        <p className="text-neutral-800 dark:text-neutral-200">{t.email}</p>
-                        <p className="text-neutral-500">{t.phone}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-neutral-400 mb-1 uppercase tracking-widest font-bold text-[10px]">問題內容</p>
-                      <p className="text-[13px] text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3">{t.content}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-neutral-400 mb-1 uppercase tracking-widest font-bold text-[10px]">內部備註</p>
-                      <textarea
-                        rows={2}
-                        value={notes[t.id] ?? (t.admin_note || '')}
-                        onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
-                        placeholder="填寫處理記錄…"
-                        className="w-full px-3 py-2 text-[12px] rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-
-                    <div className="flex gap-2 flex-wrap">
-                      {t.status === 'open' && (
-                        <button onClick={() => update(t.id, { status: 'in_progress', admin_note: notes[t.id] ?? t.admin_note })} disabled={saving === t.id} className="px-3 py-1.5 rounded-lg text-[12px] font-bold bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors">
-                          標為處理中
-                        </button>
-                      )}
-                      {(t.status === 'open' || t.status === 'in_progress') && (
-                        <button onClick={() => update(t.id, { status: 'resolved', admin_note: notes[t.id] ?? t.admin_note })} disabled={saving === t.id} className="px-3 py-1.5 rounded-lg text-[12px] font-bold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors">
-                          標為已解決
-                        </button>
-                      )}
-                      <button onClick={() => update(t.id, { status: 'closed', admin_note: notes[t.id] ?? t.admin_note })} disabled={saving === t.id} className="px-3 py-1.5 rounded-lg text-[12px] font-bold bg-neutral-500 text-white hover:bg-neutral-600 disabled:opacity-50 transition-colors">
-                        關閉工單
-                      </button>
-                      <button onClick={() => update(t.id, { admin_note: notes[t.id] ?? t.admin_note })} disabled={saving === t.id} className="px-3 py-1.5 rounded-lg text-[12px] font-bold border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors">
-                        {saving === t.id ? '儲存中…' : '儲存備註'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                            <div className="flex gap-2 flex-wrap">
+                              {t.status === 'open' && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); update(t.id, { status: 'in_progress', admin_note: notes[t.id] ?? t.admin_note }) }}
+                                  disabled={saving === t.id}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                                >
+                                  標為處理中
+                                </button>
+                              )}
+                              {(t.status === 'open' || t.status === 'in_progress') && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); update(t.id, { status: 'resolved', admin_note: notes[t.id] ?? t.admin_note }) }}
+                                  disabled={saving === t.id}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
+                                >
+                                  標為已解決
+                                </button>
+                              )}
+                              <button
+                                onClick={e => { e.stopPropagation(); update(t.id, { status: 'closed', admin_note: notes[t.id] ?? t.admin_note }) }}
+                                disabled={saving === t.id}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-neutral-500 text-white hover:bg-neutral-600 disabled:opacity-50 transition-colors"
+                              >
+                                關閉工單
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); update(t.id, { admin_note: notes[t.id] ?? t.admin_note }) }}
+                                disabled={saving === t.id}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-200 text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 transition-colors"
+                              >
+                                {saving === t.id ? '儲存中…' : '儲存備註'}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
+
       </div>
     </AdminLayout>
   )
