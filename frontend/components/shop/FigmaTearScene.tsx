@@ -263,14 +263,20 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                       <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                    {/* Back face: white paper (visible once past 90° fold crease) */}
+                    {/* Back face: up.svg mirrored (rotateY(180deg) naturally flips X) */}
                     <div style={{
                       position: 'absolute', inset: 0,
                       backfaceVisibility: 'hidden',
                       WebkitBackfaceVisibility: 'hidden',
                       transform: 'rotateY(180deg)',
-                      background: '#ffffff',
-                    }} />
+                      overflow: 'hidden',
+                    }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {/* Slight darkening — back of label is dimmer than front */}
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />
+                    </div>
                   </div>
                 </div>
               )}
