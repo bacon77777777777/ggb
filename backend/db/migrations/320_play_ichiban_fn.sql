@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.play_ichiban(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_user_id              UUID;
@@ -317,7 +317,7 @@ CREATE OR REPLACE FUNCTION public.play_ichiban_locked(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_user_id UUID;
