@@ -130,14 +130,16 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
   // Fold position: how far the peel has progressed across the ticket width
   const foldX = peel * ticketW;
-  // Diagonal lean from drag velocity: offsets top/bottom of fold line
-  const foldTopX = foldX + foldLean * 0.4;
-  const foldBotX = foldX - foldLean * 0.4;
-  // Clip polygons — follow the diagonal fold line
-  const leftClip  = `polygon(0 0, ${foldTopX}px 0, ${foldBotX}px ${ticketH}px, 0 ${ticketH}px)`;
-  const rightClip = `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, ${foldBotX}px ${ticketH}px)`;
-  // 3D flip: left half rotates back around fold axis (turn.js approach)
-  const flipAngle = -peel * 172; // deg: 0 (flat) → past -90 (hidden by backface)
+  // Diagonal fold: top point moves right with foldX, anchored at bottom-left corner.
+  // foldLean shifts the top point for a dynamic wobble during fast drags.
+  const foldTopX = Math.max(0, foldX + foldLean * 0.35);
+  // Triangle for peeled area; trapezoid for remaining cover
+  const leftClip  = `polygon(0 0, ${foldTopX}px 0, 0 ${ticketH}px)`;
+  const rightClip = `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, 0 ${ticketH}px)`;
+  // Diagonal fold crease angle and length (from top point down to bottom-left corner)
+  const foldLineLen = Math.sqrt(foldTopX * foldTopX + ticketH * ticketH);
+  // CSS rotate: counterclockwise from pointing-down to pointing toward bottom-left anchor
+  const foldCreaseAngle = -Math.atan2(foldTopX, ticketH) * 180 / Math.PI;
 
   return (
     <div
@@ -235,48 +237,10 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: turn.js-style 3D flip — left half rotates back, right stays flat */}
+          {/* Cover: turn.js 風格對角掀起效果 */}
           {!done && (
             <>
-              {/* ── LEFT half FRONT face: 0°→-172°, hides after -90° ── */}
-              {/* clipPath + preserve-3d can't coexist, so front & back are separate elements */}
-              {peel > 0.004 && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  clipPath: leftClip,
-                  perspective: `${700 * s}px`,
-                  perspectiveOrigin: `${foldX}px center`,
-                }}>
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    transformOrigin: `${foldX}px center`,
-                    transform: `rotateY(${flipAngle}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* ── LEFT half BACK: up2.svg 靜態疊在折痕後方，慢慢淡入 ── */}
-              {/* peel > 0.5 時開始顯示，不旋轉 */}
-              {peel > 0.5 && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  clipPath: leftClip,
-                  opacity: Math.min(1, (peel - 0.5) * 2),
-                  overflow: 'hidden',
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              )}
-
-              {/* ── RIGHT half: remaining flat cover ── */}
+              {/* ── 剩餘蓋板（梯形右側）── */}
               <div style={{
                 position: 'absolute', inset: 0,
                 clipPath: rightClip,
@@ -286,10 +250,52 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* 靠近折線的陰影，製造立體深度感 */}
+                {peel > 0.01 && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to right, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 30%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
               </div>
 
+              {/* ── 掀起的貼紙背面（三角形左側）── */}
+              {peel > 0.005 && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  clipPath: leftClip,
+                  overflow: 'hidden',
+                  opacity: Math.min(1, peel * 10),
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {/* 背面右側陰影：讓掀起的貼紙有厚度感 */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to left, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0) 35%)',
+                    pointerEvents: 'none',
+                  }} />
+                </div>
+              )}
 
-              {/* ── Finger swipe hint — diagonal right-upward ── */}
+              {/* ── 對角折痕高光條 ── */}
+              {peel > 0.01 && foldLineLen > 1 && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: foldTopX - 3 * s,
+                  width: 6 * s,
+                  height: foldLineLen,
+                  transformOrigin: `${3 * s}px 0`,
+                  transform: `rotate(${foldCreaseAngle}deg)`,
+                  background: 'linear-gradient(90deg, rgba(0,0,0,0.2) 0%, rgba(255,255,255,0.6) 50%, rgba(0,0,0,0.15) 100%)',
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              {/* ── 手指提示動畫 ── */}
               {peel < 0.03 && (
                 <motion.div
                   style={{
