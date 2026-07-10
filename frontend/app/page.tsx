@@ -380,7 +380,7 @@ export default function Home() {
   }, []);
 
   const primaryTabs: { id: PrimaryTabId; label: string }[] = useMemo(() => {
-    const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '精選' }];
+    const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '綜合' }];
     if (flags.sell) base.push({ id: 'sell', label: '販售' });
     if (flags.ichiban) base.push({ id: 'ichiban', label: '一番賞' });
     if (flags.blindbox) base.push({ id: 'blindbox', label: '盒玩' });
@@ -514,12 +514,12 @@ export default function Home() {
         if (ordered.length >= 14) break;
       }
       return [
-        { id: 'featured', label: '精選' },
+        { id: 'featured', label: '推薦' },
         ...ordered.map((s) => ({ id: `series:${s}`, label: s.length > 8 ? s.slice(0, 8) : s })),
       ];
     }
     // Default: 精選 + series tabs derived from product data
-    return [{ id: 'featured', label: '精選' }, ...seriesTabs];
+    return [{ id: 'featured', label: '推薦' }, ...seriesTabs];
   }, [activePrimaryTab, sellListings, seriesTabs]);
 
   useEffect(() => {
@@ -1429,7 +1429,7 @@ export default function Home() {
               </Tabs>
             )}
 
-            <div className="flex items-center gap-1.5 py-2 px-2">
+            <div className={cn("flex items-center gap-1.5 py-2 px-2", secondaryTabs.length <= 1 && "hidden")}>
               <div ref={secondaryTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
                 <div className="flex items-center gap-1.5">
                   {secondaryTabs.map((tab) => (
