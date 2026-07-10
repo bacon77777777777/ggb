@@ -84,13 +84,6 @@ export default function ReturnPolicyPage() {
             </p>
           </section>
 
-          <div className="p-6">
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              客服聯繫：LINE 官方帳號 <strong className="text-neutral-700 dark:text-neutral-300">@ggb.tw</strong>
-            </p>
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">最後更新：2026 年 7 月</p>
-          </div>
-
         </div>
       </div>
     </div>
