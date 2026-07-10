@@ -136,7 +136,7 @@ export default function FAQPage() {
                         onClick={() => toggle(key)}
                         className="w-full px-5 py-4 flex items-start justify-between text-left gap-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
                       >
-                        <span className={cn('text-[14px] font-bold leading-relaxed', isOpen ? 'text-primary' : 'text-neutral-900 dark:text-white')}>
+                        <span className={cn('text-sm font-bold leading-relaxed', isOpen ? 'text-primary' : 'text-neutral-900 dark:text-white')}>
                           {item.q}
                         </span>
                         {isOpen
@@ -144,7 +144,7 @@ export default function FAQPage() {
                           : <ChevronDown className="w-4 h-4 text-neutral-400 shrink-0 mt-0.5" />}
                       </button>
                       <div className={cn('overflow-hidden transition-all duration-200', isOpen ? 'max-h-96' : 'max-h-0')}>
-                        <p className="px-5 pb-4 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                        <p className="px-5 pb-4 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
                           {item.a}
                         </p>
                       </div>
@@ -156,7 +156,7 @@ export default function FAQPage() {
           ))}
 
           <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-1">聯絡我們</h2>
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-1">聯絡我們</h2>
             <p className="text-[12px] text-neutral-400 dark:text-neutral-500 mb-4">找不到答案？填寫表單，客服將於 1–2 個工作天內回覆。</p>
 
             {submitted ? (
@@ -173,7 +173,7 @@ export default function FAQPage() {
                     onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                     disabled={!user || submitting}
                     required
-                    className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">請選擇問題類型</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -190,7 +190,7 @@ export default function FAQPage() {
                       disabled={!user || submitting}
                       required
                       placeholder="your@email.com"
-                      className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <div>
@@ -202,7 +202,7 @@ export default function FAQPage() {
                       disabled={!user || submitting}
                       required
                       placeholder="09xx-xxx-xxx"
-                      className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
@@ -216,7 +216,7 @@ export default function FAQPage() {
                     required
                     rows={4}
                     placeholder={!user ? '使用前請先登入' : '請詳細描述您的問題，包含訂單編號、發生時間等資訊有助於快速處理。'}
-                    className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
                   />
                 </div>
 
@@ -230,7 +230,7 @@ export default function FAQPage() {
                 <button
                   type="submit"
                   disabled={!user || submitting}
-                  className="w-full py-2.5 rounded-lg bg-primary text-white text-[13px] font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                  className="w-full py-2.5 rounded-lg bg-primary text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
                 >
                   {submitting ? '提交中…' : '提交回報'}
                 </button>

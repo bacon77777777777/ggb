@@ -97,6 +97,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
   const [soldTickets, setSoldTickets] = useState<number[]>([]);
+  const [soldTicketInfo, setSoldTicketInfo] = useState<Record<number, { prizeLevel: string; prizeName: string }>>({});
   const [selectedTickets, setSelectedTickets] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -231,15 +232,26 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
         const { data: historyData, error: historyError } = await supabase
           .from('draw_records')
-          .select('ticket_number')
+          .select('ticket_number, prize_level, prize_name')
           .eq('product_id', productId);
-        
+
         if (historyError) throw historyError;
-        
+
         const sold = historyData
           .map(h => h.ticket_number || 0)
           .filter(n => n > 0);
         setSoldTickets(sold);
+
+        const infoMap: Record<number, { prizeLevel: string; prizeName: string }> = {};
+        for (const h of historyData) {
+          if (h.ticket_number && h.ticket_number > 0) {
+            infoMap[h.ticket_number] = {
+              prizeLevel: h.prize_level || '',
+              prizeName: h.prize_name || '',
+            };
+          }
+        }
+        setSoldTicketInfo(infoMap);
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -276,11 +288,17 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       }
     }
 
-    return Array.from({ length: totalTicketsCount }, (_, i) => ({
-      number: i + 1,
-      isSold: soldSet.has(i + 1)
-    }));
-  }, [totalTicketsCount, soldTickets, remainingTickets]);
+    return Array.from({ length: totalTicketsCount }, (_, i) => {
+      const num = i + 1;
+      const info = soldTicketInfo[num];
+      return {
+        number: num,
+        isSold: soldSet.has(num),
+        prizeLevel: info?.prizeLevel,
+        prizeName: info?.prizeName,
+      };
+    });
+  }, [totalTicketsCount, soldTickets, remainingTickets, soldTicketInfo]);
 
   useEffect(() => {
     if (!product) return;
@@ -496,6 +514,15 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         const merged = new Set(prev);
         ticketsToPlay.forEach(n => merged.add(n));
         return Array.from(merged).sort((a, b) => a - b);
+      });
+      setSoldTicketInfo(prev => {
+        const updated = { ...prev };
+        results.forEach(r => {
+          if (r.ticket_number && r.ticket_number > 0) {
+            updated[r.ticket_number] = { prizeLevel: r.grade || '', prizeName: r.name || '' };
+          }
+        });
+        return updated;
       });
       setRemainingTickets(prev =>
         typeof prev === 'number' ? Math.max(prev - ticketsToPlay.length, 0) : prev

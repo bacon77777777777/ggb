@@ -18,9 +18,9 @@ export default function PrivacyPage() {
             </p>
           </div>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">一、蒐集的個人資料類型</h2>
-            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">一、蒐集的個人資料類型</h2>
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               <li><span className="font-bold text-neutral-700 dark:text-neutral-300">帳號資料：</span>電子郵件信箱、會員暱稱、密碼（加密儲存）。</li>
               <li><span className="font-bold text-neutral-700 dark:text-neutral-300">交易資料：</span>儲值記錄、抽獎紀錄、訂單內容、物流資訊。</li>
               <li><span className="font-bold text-neutral-700 dark:text-neutral-300">收件資料：</span>申請出貨時填寫之收件人姓名、電話、地址。</li>
@@ -29,9 +29,9 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">二、資料使用目的</h2>
-            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">二、資料使用目的</h2>
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               <li>提供、維護及改善本平台服務。</li>
               <li>處理交易、出貨及客服事宜。</li>
               <li>寄送訂單確認、出貨通知、平台公告等服務性通知。</li>
@@ -41,9 +41,9 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">三、資料分享與揭露</h2>
-            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">三、資料分享與揭露</h2>
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               <li>本平台不會出售您的個人資料給第三方。</li>
               <li>為提供服務，可能與以下第三方分享必要資料：物流業者（收件地址）、金流服務商（綠界 ECPay，支付相關資料）、雲端服務供應商（資料儲存）。</li>
               <li>如依法律規定、法院命令或主管機關要求，本平台將依規定揭露您的資料。</li>
@@ -51,46 +51,46 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">四、Cookie 使用</h2>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">四、Cookie 使用</h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               本平台使用 Cookie 維持登入狀態、記憶使用偏好及統計使用情形。您可透過瀏覽器設定拒絕 Cookie，但部分功能（如保持登入）可能因此無法正常運作。
             </p>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">五、資料保存期限</h2>
-            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">五、資料保存期限</h2>
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               <li>帳號資料：帳號存續期間持續保存，帳號刪除後依法定期限保留必要資料。</li>
               <li>交易記錄：依商業帳簿及稅法規定至少保存 5 年。</li>
               <li>收件資料：訂單完成後 6 個月內定期清除非必要資料。</li>
             </ul>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">六、您的權利</h2>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed mb-2">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">六、您的權利</h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed mb-2">
               依個人資料保護法，您可向本平台行使以下權利：
             </p>
-            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+            <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               <li>查詢或閱覽您的個人資料。</li>
               <li>要求更正不正確的個人資料。</li>
               <li>要求停止蒐集、處理或利用您的個人資料。</li>
               <li>要求刪除個人資料（依法律規定需保留之資料除外）。</li>
             </ul>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed mt-2">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed mt-2">
               如需行使上述權利，請透過 LINE 官方帳號聯繫客服。
             </p>
           </section>
 
-          <section className="p-5">
-            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">七、未成年人保護</h2>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">七、未成年人保護</h2>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
               本平台服務對象為 18 歲以上成年人。若未成年人使用本服務，須取得法定代理人同意。本平台不會主動蒐集未成年人之個人資料，如發現有誤，將立即刪除。
             </p>
           </section>
 
-          <div className="p-5">
+          <div className="p-6">
             <p className="text-[11px] text-neutral-400 dark:text-neutral-500">最後更新：2026 年 7 月｜聯絡客服：LINE @ggb.tw</p>
           </div>
 
