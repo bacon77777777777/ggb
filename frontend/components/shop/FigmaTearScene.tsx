@@ -238,7 +238,8 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
           {/* Cover: turn.js-style 3D flip — left half rotates back, right stays flat */}
           {!done && (
             <>
-              {/* ── LEFT half: peeled back in 3D, front=up.svg / back=white paper ── */}
+              {/* ── LEFT half FRONT face: 0°→-172°, hides after -90° ── */}
+              {/* clipPath + preserve-3d can't coexist, so front & back are separate elements */}
               {peel > 0.004 && (
                 <div style={{
                   position: 'absolute', inset: 0,
@@ -246,37 +247,42 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                   perspective: `${700 * s}px`,
                   perspectiveOrigin: `${foldX}px center`,
                 }}>
-                  {/* Rotating card — preserve-3d lets front/back coexist in 3D */}
                   <div style={{
                     position: 'absolute', inset: 0,
                     transformOrigin: `${foldX}px center`,
                     transform: `rotateY(${flipAngle}deg)`,
-                    transformStyle: 'preserve-3d',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
                   }}>
-                    {/* Front face: up.svg (visible while rotating toward viewer) */}
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      backfaceVisibility: 'hidden',
-                      WebkitBackfaceVisibility: 'hidden',
-                    }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    {/* Back face: up.svg mirrored (rotateY(180deg) naturally flips X) */}
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      backfaceVisibility: 'hidden',
-                      WebkitBackfaceVisibility: 'hidden',
-                      transform: 'rotateY(180deg)',
-                      overflow: 'hidden',
-                    }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                      {/* Slight darkening — back of label is dimmer than front */}
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }} />
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── LEFT half BACK face: 180°→8°, appears after 90° ── */}
+              {/* rotateY(flipAngle+180) starts face-down (hidden), comes up past fold crease */}
+              {peel > 0.004 && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  clipPath: leftClip,
+                  perspective: `${700 * s}px`,
+                  perspectiveOrigin: `${foldX}px center`,
+                }}>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    transformOrigin: `${foldX}px center`,
+                    transform: `rotateY(${flipAngle + 180}deg)`,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                    overflow: 'hidden',
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {/* White wash — back of sticker is brighter/washed out */}
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.45)', pointerEvents: 'none' }} />
                   </div>
                 </div>
               )}
