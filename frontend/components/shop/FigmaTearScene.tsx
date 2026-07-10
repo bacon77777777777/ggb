@@ -30,10 +30,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
   const s = dims.w / 393;
   const ticketW = 255 * s;
   const ticketH = 124 * s;
-  const coverScale = 0.85;
-  const coverW = ticketW * coverScale;
-  const coverH = ticketH * coverScale;
-  const coverLeft = (ticketW - coverW) / 2 + 2 * s;
 
   const peelRef = useRef(0);
   const [peel, setPeel] = useState(0);
@@ -95,7 +91,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
     animatePeel(0, 300);
   }, [animatePeel]);
 
-  // Auto-dismiss 3 seconds after fully revealed
   useEffect(() => {
     if (!done) return;
     autoTimerRef.current = setTimeout(onDone, AUTO_DISMISS_DELAY);
@@ -115,26 +110,27 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
       const localX = e.clientX - rect.left;
-      const ticketCenterX = rect.width * 0.5 - ticketW / 2 + 178 * s;
-      // Only start drag on the left 60% of the ticket cover area
-      if (localX > ticketCenterX + coverW * 0.6) return;
+      // Ticket starts at roughly: centerX - ticketW/2 + 178*s (from scene group left offset)
+      const ticketLeft = rect.width * 0.5 - ticketW / 2 + 178 * s - 71 * s;
+      const ticketRight = ticketLeft + ticketW;
+      if (localX < ticketLeft || localX > ticketRight) return;
       dragStartX.current = e.clientX;
       dragStartPeel.current = peelRef.current;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     },
-    [done, s, ticketW, coverW],
+    [done, s, ticketW],
   );
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (dragStartX.current === null || done || committedRef.current) return;
       const dx = e.clientX - dragStartX.current;
-      const raw = Math.max(0, Math.min(1, dragStartPeel.current + dx / coverW));
+      const raw = Math.max(0, Math.min(1, dragStartPeel.current + dx / ticketW));
       if (!hintHidden && raw > 0.02) setHintHidden(true);
       peelRef.current = raw;
       setPeel(raw);
     },
-    [coverW, done, hintHidden],
+    [ticketW, done, hintHidden],
   );
 
   const onPointerUp = useCallback(() => {
@@ -146,16 +142,13 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
     else snapBack();
   }, [done, hintHidden, reveal, snapBack]);
 
-  // Visual derivations
-  const foldW = peel * coverW;
-  const rightW = coverW - foldW;
-  const imgShift = -foldW;
-  const backImgShift = foldW - coverW;
-  const coverOpacity = peel > 0.92 ? 0 : 1;
+  // Visual derivations — cover spans full ticket width
+  const foldW = peel * ticketW;
+  const rightW = ticketW - foldW;
   const prizeOpacity = peel < 0.45 ? 0 : peel < 0.55 ? (peel - 0.45) / 0.10 : 1;
-  const flyX = peel > 0.9 ? ((peel - 0.9) / 0.1) * ticketW * 2.4 : 0;
-  const flyOpacity = peel > 0.86 && peel < 0.92
-    ? (peel - 0.86) / 0.06
+  const flyX = peel > 0.9 ? ((peel - 0.9) / 0.1) * ticketW * 2 : 0;
+  const flyOpacity =
+    peel > 0.86 && peel < 0.92 ? (peel - 0.86) / 0.06
     : peel >= 0.92 ? Math.max(0, 1 - (peel - 0.92) / 0.08) : 0;
   const ticketGroupY = Math.max(0, (dims.h - 843 * s) / 2) + 217 * s;
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
@@ -170,7 +163,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* Full-screen background */}
+      {/* Full-screen background scene */}
       <Image
         src="/images/ichiban-tear/bg.png"
         alt=""
@@ -180,7 +173,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
         priority
       />
 
-      {/* Scene group: hand + ticket — fades out after reveal */}
+      {/* Scene group: hand + ticket */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -211,7 +204,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
           height={467}
         />
 
-        {/* Ticket */}
+        {/* Ticket container */}
         <div
           className="absolute"
           style={{
@@ -223,16 +216,14 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
             borderRadius: 18 * s,
             overflow: 'hidden',
             pointerEvents: 'none',
-            cursor: 'grab',
           }}
         >
-          {/* Ticket base */}
-          <Image
-            src="/images/ichiban-tear/ticket_front.png"
+          {/* Base layer: bg.svg — always visible, prize letter goes here */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/ichiban-tear/bg.svg"
             alt=""
-            fill
-            className="object-contain"
-            unoptimized
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
 
           {/* Prize letter — fades in as cover peels back */}
@@ -240,11 +231,11 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ opacity: prizeOpacity }}
           >
-            <svg width="100%" height="100%" viewBox="0 0 260 160">
+            <svg width="100%" height="100%" viewBox="0 0 320 156">
               <text
-                x={prizeTierLetter === 'LAST' ? '130' : '116'}
-                y="112"
-                fontSize={prizeTierLetter === 'LAST' ? '60' : '105.6'}
+                x={prizeTierLetter === 'LAST' ? '220' : '210'}
+                y="115"
+                fontSize={prizeTierLetter === 'LAST' ? '56' : '96'}
                 fontWeight="900"
                 fill="#FFC400"
                 textAnchor="middle"
@@ -255,43 +246,40 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
             </svg>
           </div>
 
-          {/* Peeling cover */}
+          {/* Peeling cover: up.svg */}
           {!done && (
-            <div
-              className="absolute pointer-events-none"
-              style={{
-                top: (ticketH - coverH) / 2,
-                left: coverLeft,
-                width: coverW,
-                height: coverH,
-                opacity: coverOpacity,
-              }}
-            >
-              {/* Right un-peeled portion — shrinks left */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: foldW,
-                  top: 0,
-                  width: Math.max(0, rightW),
-                  height: coverH,
-                  overflow: 'hidden',
-                  // Shadow on left edge simulates fold depth
-                  boxShadow: foldW > 4 ? 'inset 4px 0 10px rgba(0,0,0,0.25)' : 'none',
-                }}
-              >
-                <div style={{ transform: `translateX(${imgShift}px)`, width: coverW, height: coverH, position: 'relative' }}>
-                  <Image
-                    src="/images/ichiban-tear/ticket_front.png"
+            <>
+              {/* Right un-peeled portion of up.svg */}
+              {rightW > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: foldW,
+                    top: 0,
+                    width: rightW,
+                    height: ticketH,
+                    overflow: 'hidden',
+                    // Inset shadow on left edge = fold crease depth
+                    boxShadow: foldW > 4 ? 'inset 5px 0 12px rgba(0,0,0,0.3)' : 'none',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/ichiban-tear/up.svg"
                     alt=""
-                    fill
-                    className="object-contain"
-                    unoptimized
+                    style={{
+                      position: 'absolute',
+                      left: -foldW,
+                      top: 0,
+                      width: ticketW,
+                      height: ticketH,
+                      objectFit: 'cover',
+                    }}
                   />
                 </div>
-              </div>
+              )}
 
-              {/* Left peeled-back portion with curl sheen */}
+              {/* Left peeled-back portion — shows the back of the sticker */}
               {foldW > 0 && (
                 <div
                   style={{
@@ -299,25 +287,33 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
                     left: 0,
                     top: 0,
                     width: foldW,
-                    height: coverH,
+                    height: ticketH,
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{ transform: `translateX(${backImgShift}px)`, width: coverW, height: coverH, position: 'relative' }}>
-                    <Image
-                      src="/images/ichiban-tear/ticket_back.png"
-                      alt=""
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  </div>
-                  {/* Curl highlight: bright on the lifted left edge, shadow toward the crease */}
+                  {/* Back of the sticker: muted/desaturated version of up.svg */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/ichiban-tear/up.svg"
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      width: ticketW,
+                      height: ticketH,
+                      objectFit: 'cover',
+                      objectPosition: 'right center',
+                      filter: 'brightness(0.55) saturate(0.3)',
+                    }}
+                  />
+                  {/* Curl highlight — bright on the lifted edge */}
                   <div
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'linear-gradient(to right, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 30%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.28) 100%)',
+                      background:
+                        'linear-gradient(to right, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.15) 35%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0.35) 100%)',
                       pointerEvents: 'none',
                     }}
                   />
@@ -331,40 +327,35 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
                     position: 'absolute',
                     left: foldW - 4,
                     top: -2,
-                    width: 8,
-                    height: coverH + 4,
-                    background: 'linear-gradient(to right, rgba(0,0,0,0.45), rgba(0,0,0,0.08) 60%, transparent)',
+                    width: 9,
+                    height: ticketH + 4,
+                    background:
+                      'linear-gradient(to right, rgba(0,0,0,0.5), rgba(0,0,0,0.1) 55%, transparent)',
                     borderRadius: 3,
                     pointerEvents: 'none',
                     zIndex: 3,
                   }}
                 />
               )}
-            </div>
+            </>
           )}
 
-          {/* Fly-away piece after tear */}
+          {/* Fly-away piece after full peel */}
           {!done && flyOpacity > 0 && (
             <div
-              className="absolute pointer-events-none"
               style={{
-                top: (ticketH - coverH) / 2,
-                left: coverLeft,
-                width: coverW,
-                height: coverH,
+                position: 'absolute',
+                inset: 0,
                 opacity: flyOpacity,
-                transform: `translateX(${flyX}px) rotate(${flyX * 0.05}deg)`,
+                transform: `translateX(${flyX}px) rotate(${flyX * 0.04}deg)`,
               }}
             >
-              <div style={{ position: 'relative', width: coverW, height: coverH }}>
-                <Image
-                  src="/images/ichiban-tear/ticket_back.png"
-                  alt=""
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/ichiban-tear/up.svg"
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
           )}
         </div>
@@ -395,7 +386,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
         )}
       </div>
 
-      {/* Sparkle overlay — screen blend so it brightens without darkening */}
+      {/* Sparkle overlay */}
       {done && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -407,11 +398,11 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
         </div>
       )}
 
-      {/* Prize announcement — appears over the background scene, no black overlay */}
+      {/* Prize announcement — over background, no black overlay */}
       {done && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none"
-          style={{ animation: 'figmaTearPrize 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s both' }}
+          style={{ animation: 'figmaTearPrize 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.35s both' }}
         >
           <p
             className="text-sm font-bold tracking-widest uppercase mb-3"
@@ -445,6 +436,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
           style={{
             background: 'rgba(255,255,255,0.18)',
             backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             animation: 'figmaTearSkip 0.4s ease-out 0.2s both',
           }}
         >
@@ -457,7 +449,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
 
       <style>{`
         @keyframes figmaTearHint {
-          0%   { transform: translateX(0);     opacity: 0; }
+          0%   { transform: translateX(0); opacity: 0; }
           10%  { opacity: 1; }
           90%  { opacity: 1; }
           100% { transform: translateX(${110 * s}px); opacity: 0; }
