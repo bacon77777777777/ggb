@@ -128,20 +128,16 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
-  // Bezier fold curve (adapted from BlubluBlue7/Page bezier-assembler)
-  // peel 0→1 maps to fold moving left→right across ticketW
-  // bow = lateral bulge of the fold curve (max at peel=0.5, simulates paper curling)
+  // Fold position: how far the peel has progressed across the ticket width
   const foldX = peel * ticketW;
-  const bow = ticketW * 0.22 * Math.sin(peel * Math.PI);
-  const leanOffset = foldLean * 0.3; // diagonal lean from drag velocity
-  const c1x = foldX - bow * 0.65;
-  const c2x = foldX - bow * 0.65;
-  const c1y = ticketH * 0.22 + leanOffset;
-  const c2y = ticketH * 0.78 + leanOffset;
-  // SVG path for the fold crease line
-  const foldPath = `M ${foldX} 0 C ${c1x} ${c1y}, ${c2x} ${c2y}, ${foldX} ${ticketH}`;
-  // Clip path: right side of fold curve (cover remains visible here)
-  const coverClipPath = `${foldPath} L ${ticketW} ${ticketH} L ${ticketW} 0 Z`;
+  // Diagonal lean from drag velocity: offsets top/bottom of fold line
+  const foldTopX = foldX + foldLean * 0.4;
+  const foldBotX = foldX - foldLean * 0.4;
+  // Clip polygons — follow the diagonal fold line
+  const leftClip  = `polygon(0 0, ${foldTopX}px 0, ${foldBotX}px ${ticketH}px, 0 ${ticketH}px)`;
+  const rightClip = `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, ${foldBotX}px ${ticketH}px)`;
+  // 3D flip: left half rotates back around fold axis (turn.js approach)
+  const flipAngle = -peel * 172; // deg: 0 (flat) → past -90 (hidden by backface)
 
   return (
     <div
@@ -239,80 +235,74 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: up.svg clipped to right of bezier fold curve */}
+          {/* Cover: turn.js-style 3D flip — left half rotates back, right stays flat */}
           {!done && (
             <>
-              {/* SVG defs: bezier clipPath for the cover */}
-              <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
-                <defs>
-                  <clipPath id="figma-tear-cover-clip" clipPathUnits="userSpaceOnUse">
-                    <path d={coverClipPath} />
-                  </clipPath>
-                </defs>
-              </svg>
-
-              {/* Cover image clipped to right of fold curve */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: 18 * s,
-                overflow: 'hidden',
-                clipPath: 'url(#figma-tear-cover-clip)',
-              }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/ichiban-tear/up.svg"
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  draggable={false}
-                />
-                {/* Inner shadow near fold edge: simulates cover lifting */}
+              {/* ── LEFT half: peeled back in 3D around fold axis ── */}
+              {peel > 0.004 && (
                 <div style={{
                   position: 'absolute', inset: 0,
-                  background: `linear-gradient(to right, rgba(0,0,0,${Math.min(0.65, peel * 1.3)}) 0%, rgba(0,0,0,0) 30%)`,
-                  pointerEvents: 'none',
-                }} />
+                  perspective: `${700 * s}px`,
+                  perspectiveOrigin: `${foldX}px center`,
+                }}>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    clipPath: leftClip,
+                    transformOrigin: `${foldX}px center`,
+                    transform: `rotateY(${flipAngle}deg)`,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {/* Darkens as cover rotates away (back of the paper is darker) */}
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: `rgba(0,0,0,${Math.min(0.75, peel * 1.1)})`,
+                      pointerEvents: 'none',
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── RIGHT half: remaining flat cover ── */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                clipPath: rightClip,
+                borderRadius: 18 * s,
+                overflow: 'hidden',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
 
-              {/* Fold crease: shadow band + highlight along bezier curve */}
-              {peel > 0.008 && (
-                <svg
-                  style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 20 }}
-                  width={ticketW}
-                  height={ticketH}
-                >
-                  {/* Wide soft shadow */}
-                  <path d={foldPath} stroke="rgba(0,0,0,0.28)" strokeWidth={20} fill="none" strokeLinecap="round" />
-                  {/* Tighter dark core */}
-                  <path d={foldPath} stroke="rgba(0,0,0,0.45)" strokeWidth={8} fill="none" strokeLinecap="round" />
-                  {/* Bright highlight crease */}
-                  <path d={foldPath} stroke="rgba(255,255,255,0.7)" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+              {/* ── Fold shadow on revealed bg.svg side ── */}
+              {peel > 0.004 && (
+                <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 15, overflow: 'visible' }}
+                  width={ticketW} height={ticketH}>
+                  {/* Soft shadow band left of fold */}
+                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
+                    stroke="rgba(0,0,0,0.35)" strokeWidth={22} strokeLinecap="round" />
+                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
+                    stroke="rgba(0,0,0,0.4)" strokeWidth={9} strokeLinecap="round" />
+                  {/* Bright crease highlight */}
+                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
+                    stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} strokeLinecap="round" />
                 </svg>
               )}
 
-              {/* Finger swipe hint — diagonal right-upward */}
+              {/* ── Finger swipe hint — diagonal right-upward ── */}
               {peel < 0.03 && (
                 <motion.div
                   style={{
-                    position: 'absolute',
-                    left: '10%',
-                    top: '55%',
-                    width: 52 * s,
-                    height: 52 * s,
-                    pointerEvents: 'none',
-                    zIndex: 25,
+                    position: 'absolute', left: '10%', top: '55%',
+                    width: 52 * s, height: 52 * s,
+                    pointerEvents: 'none', zIndex: 25,
                   }}
-                  animate={{
-                    x: [0, 72 * s, 72 * s],
-                    y: [0, -36 * s, -36 * s],
-                    opacity: [0, 1, 1, 0],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    times: [0, 0.5, 0.8, 1],
-                  }}
+                  animate={{ x: [0, 72*s, 72*s], y: [0, -36*s, -36*s], opacity: [0,1,1,0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 0.8, 1] }}
                 >
                   <Image src="/images/finger.png" alt="" fill className="object-contain drop-shadow-md" unoptimized />
                 </motion.div>
