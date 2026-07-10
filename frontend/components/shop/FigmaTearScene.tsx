@@ -128,9 +128,20 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
-  // 3D peel: cover rotates around its right edge
-  const coverRotateY = -peel * 115; // deg: 0 (flat) → -115 (past backface, hidden)
-  const coverRotateX = foldLean * 0.06; // slight diagonal lean from drag velocity
+  // Bezier fold curve (adapted from BlubluBlue7/Page bezier-assembler)
+  // peel 0→1 maps to fold moving left→right across ticketW
+  // bow = lateral bulge of the fold curve (max at peel=0.5, simulates paper curling)
+  const foldX = peel * ticketW;
+  const bow = ticketW * 0.22 * Math.sin(peel * Math.PI);
+  const leanOffset = foldLean * 0.3; // diagonal lean from drag velocity
+  const c1x = foldX - bow * 0.65;
+  const c2x = foldX - bow * 0.65;
+  const c1y = ticketH * 0.22 + leanOffset;
+  const c2y = ticketH * 0.78 + leanOffset;
+  // SVG path for the fold crease line
+  const foldPath = `M ${foldX} 0 C ${c1x} ${c1y}, ${c2x} ${c2y}, ${foldX} ${ticketH}`;
+  // Clip path: right side of fold curve (cover remains visible here)
+  const coverClipPath = `${foldPath} L ${ticketW} ${ticketH} L ${ticketW} 0 Z`;
 
   return (
     <div
@@ -228,47 +239,55 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: up.svg folds back around right edge in 3D */}
+          {/* Cover: up.svg clipped to right of bezier fold curve */}
           {!done && (
             <>
-              {/* Perspective wrapper — vanishing point at right center */}
-              <div style={{ perspective: `${900 * s}px`, perspectiveOrigin: 'right center', position: 'absolute', inset: 0 }}>
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 18 * s,
-                    overflow: 'hidden',
-                    transformOrigin: 'right center',
-                    transform: `rotateY(${coverRotateY}deg) rotateX(${coverRotateX}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                    willChange: 'transform',
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/ichiban-tear/up.svg"
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    draggable={false}
-                  />
-                  {/* Inner shadow: darkens left portion of cover as it curls (simulates inside of peel) */}
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: `linear-gradient(to right, rgba(0,0,0,${Math.min(0.7, peel * 1.4)}) 0%, rgba(0,0,0,0) 55%)`,
-                    pointerEvents: 'none',
-                  }} />
-                </div>
+              {/* SVG defs: bezier clipPath for the cover */}
+              <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+                <defs>
+                  <clipPath id="figma-tear-cover-clip" clipPathUnits="userSpaceOnUse">
+                    <path d={coverClipPath} />
+                  </clipPath>
+                </defs>
+              </svg>
+
+              {/* Cover image clipped to right of fold curve */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 18 * s,
+                overflow: 'hidden',
+                clipPath: 'url(#figma-tear-cover-clip)',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/ichiban-tear/up.svg"
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  draggable={false}
+                />
+                {/* Inner shadow near fold edge: simulates cover lifting */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: `linear-gradient(to right, rgba(0,0,0,${Math.min(0.65, peel * 1.3)}) 0%, rgba(0,0,0,0) 30%)`,
+                  pointerEvents: 'none',
+                }} />
               </div>
 
-              {/* Cast shadow on bg.svg where cover has peeled away */}
-              {peel > 0.02 && (
-                <div style={{
-                  position: 'absolute', inset: 0, borderRadius: 18 * s,
-                  background: `linear-gradient(to left, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) ${Math.min(18, peel * 20)}%, rgba(0,0,0,0) ${Math.min(45, peel * 50)}%)`,
-                  pointerEvents: 'none', zIndex: 5,
-                }} />
+              {/* Fold crease: shadow band + highlight along bezier curve */}
+              {peel > 0.008 && (
+                <svg
+                  style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 20 }}
+                  width={ticketW}
+                  height={ticketH}
+                >
+                  {/* Wide soft shadow */}
+                  <path d={foldPath} stroke="rgba(0,0,0,0.28)" strokeWidth={20} fill="none" strokeLinecap="round" />
+                  {/* Tighter dark core */}
+                  <path d={foldPath} stroke="rgba(0,0,0,0.45)" strokeWidth={8} fill="none" strokeLinecap="round" />
+                  {/* Bright highlight crease */}
+                  <path d={foldPath} stroke="rgba(255,255,255,0.7)" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                </svg>
               )}
 
               {/* Finger swipe hint — diagonal right-upward */}
