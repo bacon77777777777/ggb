@@ -338,15 +338,6 @@ export default function EditProductPage() {
         return data.publicUrl
       }
 
-      // 0. Validate Prizes
-      for (const prize of prizes) {
-        if (prize.level && prize.level.length > 15) {
-          alert(`獎項等級「${prize.level}」長度超過 15 個字元，請修正。`)
-          setIsSubmitting(false)
-          return
-        }
-      }
-
       // 1. Upload Product Image
       let productImageUrl = formData.imagePreview
       // If the image is a blob URL (newly selected), upload it.

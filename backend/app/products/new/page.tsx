@@ -214,15 +214,6 @@ export default function NewProductPage() {
     setIsSubmitting(true)
     
     try {
-      // 0. Validate Prizes
-      for (const prize of prizes) {
-        if (prize.level && prize.level.length > 15) {
-          alert(`獎項等級「${prize.level}」長度超過 15 個字元，請修正。`)
-          setIsSubmitting(false)
-          return
-        }
-      }
-
       const uploadViaAdmin = async (file: File, fileName: string) => {
         const form = new FormData()
         form.append('file', file)
