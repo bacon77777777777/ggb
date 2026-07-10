@@ -417,68 +417,6 @@ export default function Home() {
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
   }, [activePrimaryTab, hasAnyPrimaryFeature]);
 
-  // Series tabs: personal prefs → global popularity → product count
-  const seriesTabs = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of allProducts) {
-      const s = p.series;
-      if (s && typeof s === 'string' && s.trim()) {
-        counts.set(s.trim(), (counts.get(s.trim()) || 0) + 1);
-      }
-    }
-    return Array.from(counts.entries())
-      .sort((a, b) => {
-        const prefDiff = (userSeriesPref.get(b[0]) || 0) - (userSeriesPref.get(a[0]) || 0);
-        if (prefDiff !== 0) return prefDiff;
-        const popDiff = (globalSeriesPop.get(b[0]) || 0) - (globalSeriesPop.get(a[0]) || 0);
-        if (popDiff !== 0) return popDiff;
-        return b[1] - a[1];
-      })
-      .slice(0, 14)
-      .map(([s]) => ({
-        id: `series:${s}`,
-        label: s.length > 8 ? s.slice(0, 8) : s,
-      }));
-  }, [allProducts, userSeriesPref, globalSeriesPop]);
-
-  const secondaryTabs = useMemo(() => {
-    if (activePrimaryTab === 'exchange') {
-      return [
-        { id: 'all', label: '全部' },
-        { id: 'new', label: '最新' },
-      ];
-    }
-    if (activePrimaryTab === 'sell') {
-      const seen = new Set<string>();
-      const ordered: string[] = [];
-      for (const l of sellListings) {
-        const s = String(l?.product?.series || '').trim();
-        if (!s) continue;
-        if (seen.has(s)) continue;
-        seen.add(s);
-        ordered.push(s);
-        if (ordered.length >= 14) break;
-      }
-      return [
-        { id: 'featured', label: '精選' },
-        ...ordered.map((s) => ({ id: `series:${s}`, label: s.length > 8 ? s.slice(0, 8) : s })),
-      ];
-    }
-    // Default: 精選 + series tabs derived from product data
-    return [{ id: 'featured', label: '精選' }, ...seriesTabs];
-  }, [activePrimaryTab, sellListings, seriesTabs]);
-
-  useEffect(() => {
-    if (activePrimaryTab === 'exchange') setActivePrimaryTab('all');
-    if (restoringSecondaryTabRef.current) {
-      setActiveSecondaryTab(restoringSecondaryTabRef.current);
-      restoringSecondaryTabRef.current = null;
-      return;
-    }
-    setActiveSecondaryTab('featured');
-  }, [activePrimaryTab]);
-
-
   useEffect(() => {
     if (!activePrimaryTab.startsWith('menu:')) return;
     const menuId = activePrimaryTab.slice('menu:'.length);
@@ -530,6 +468,69 @@ export default function Home() {
     },
     [activePrimaryTab, flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, menuProductIdsByMenuId]
   );
+
+  // Series tabs: personal prefs → global popularity → product count
+  // Only include series from products in the current primary tab
+  const seriesTabs = useMemo(() => {
+    const tabProducts = filterByPrimaryTab(allProducts);
+    const counts = new Map<string, number>();
+    for (const p of tabProducts) {
+      const s = p.series;
+      if (s && typeof s === 'string' && s.trim()) {
+        counts.set(s.trim(), (counts.get(s.trim()) || 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => {
+        const prefDiff = (userSeriesPref.get(b[0]) || 0) - (userSeriesPref.get(a[0]) || 0);
+        if (prefDiff !== 0) return prefDiff;
+        const popDiff = (globalSeriesPop.get(b[0]) || 0) - (globalSeriesPop.get(a[0]) || 0);
+        if (popDiff !== 0) return popDiff;
+        return b[1] - a[1];
+      })
+      .slice(0, 14)
+      .map(([s]) => ({
+        id: `series:${s}`,
+        label: s.length > 8 ? s.slice(0, 8) : s,
+      }));
+  }, [allProducts, filterByPrimaryTab, userSeriesPref, globalSeriesPop]);
+
+  const secondaryTabs = useMemo(() => {
+    if (activePrimaryTab === 'exchange') {
+      return [
+        { id: 'all', label: '全部' },
+        { id: 'new', label: '最新' },
+      ];
+    }
+    if (activePrimaryTab === 'sell') {
+      const seen = new Set<string>();
+      const ordered: string[] = [];
+      for (const l of sellListings) {
+        const s = String(l?.product?.series || '').trim();
+        if (!s) continue;
+        if (seen.has(s)) continue;
+        seen.add(s);
+        ordered.push(s);
+        if (ordered.length >= 14) break;
+      }
+      return [
+        { id: 'featured', label: '精選' },
+        ...ordered.map((s) => ({ id: `series:${s}`, label: s.length > 8 ? s.slice(0, 8) : s })),
+      ];
+    }
+    // Default: 精選 + series tabs derived from product data
+    return [{ id: 'featured', label: '精選' }, ...seriesTabs];
+  }, [activePrimaryTab, sellListings, seriesTabs]);
+
+  useEffect(() => {
+    if (activePrimaryTab === 'exchange') setActivePrimaryTab('all');
+    if (restoringSecondaryTabRef.current) {
+      setActiveSecondaryTab(restoringSecondaryTabRef.current);
+      restoringSecondaryTabRef.current = null;
+      return;
+    }
+    setActiveSecondaryTab('featured');
+  }, [activePrimaryTab]);
 
   const handlePriceChange = (value: string, setter: (val: string) => void) => {
     const raw = value.replace(/\D/g, '');
