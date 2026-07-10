@@ -261,29 +261,18 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                 </div>
               )}
 
-              {/* ── LEFT half BACK face: 180°→8°, appears after 90° ── */}
-              {/* rotateY(flipAngle+180) starts face-down (hidden), comes up past fold crease */}
-              {peel > 0.004 && (
+              {/* ── LEFT half BACK: up2.svg 靜態疊在折痕後方，慢慢淡入 ── */}
+              {/* peel > 0.5 時開始顯示，不旋轉 */}
+              {peel > 0.5 && (
                 <div style={{
                   position: 'absolute', inset: 0,
                   clipPath: leftClip,
-                  perspective: `${700 * s}px`,
-                  perspectiveOrigin: `${foldX}px center`,
+                  opacity: Math.min(1, (peel - 0.5) * 2),
+                  overflow: 'hidden',
                 }}>
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    transformOrigin: `${foldX}px center`,
-                    transform: `rotateY(${flipAngle + 180}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                    overflow: 'hidden',
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {/* White wash — back of sticker is brighter/washed out */}
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.45)', pointerEvents: 'none' }} />
-                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
 
