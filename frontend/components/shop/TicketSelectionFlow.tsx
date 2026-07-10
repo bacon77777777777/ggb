@@ -124,6 +124,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   // FigmaTear mode
   const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
   const [showFigmaTear, setShowFigmaTear] = useState(false);
+  const [tearIsDone, setTearIsDone] = useState(false);
 
   useEffect(() => {
     fetch('/api/module-settings')
@@ -945,10 +946,19 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       <div className="fixed inset-0 z-[3000]">
         <FigmaTearScene
           prizeTierLetter={prizeLetter}
+          initialDone={tearIsDone}
           onDone={() => {
-            setDrawnResults(prev => prev.map(r => ({ ...r, isOpened: true })));
-            setShowFigmaTear(false);
-            handleShowFullResults();
+            if (tearIsDone) {
+              // Second showing (back from prize page) — just return to prize page
+              setShowFigmaTear(false);
+              setShowPrizeDetails(true);
+            } else {
+              // First time — mark results opened, go to prize detail view
+              setDrawnResults(prev => prev.map(r => ({ ...r, isOpened: true })));
+              setShowFigmaTear(false);
+              setShowPrizeDetails(true);
+              setTearIsDone(true);
+            }
           }}
         />
       </div>
@@ -1154,11 +1164,18 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               >
                 前往倉庫
               </Button>
-              <Button 
-                onClick={() => setShowPrizeDetails(!showPrizeDetails)} 
+              <Button
+                onClick={() => {
+                  if (tearIsDone) {
+                    // ichiban_tear mode: "顯示籤號" goes back to the tear scene
+                    setShowFigmaTear(true);
+                  } else {
+                    setShowPrizeDetails(!showPrizeDetails);
+                  }
+                }}
                 className="flex-1 md:flex-none md:w-[180px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-200 hover:bg-neutral-300 text-neutral-700 shadow-sm whitespace-nowrap"
               >
-                {showPrizeDetails ? "顯示籤號" : "顯示獎項"}
+                {tearIsDone ? "顯示籤號" : (showPrizeDetails ? "顯示籤號" : "顯示獎項")}
               </Button>
               <Button 
                 onClick={() => {

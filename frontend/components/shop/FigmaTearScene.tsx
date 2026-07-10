@@ -1,40 +1,28 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
 interface FigmaTearSceneProps {
   prizeTierLetter: string;
   onDone: () => void;
+  initialDone?: boolean;
 }
 
-const AUTO_DISMISS_DELAY = 3000;
-
-export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSceneProps) {
+export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = false }: FigmaTearSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 393, h: 844 });
-  const [done, setDone] = useState(false);
-  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [peel, setPeel] = useState(initialDone ? 1 : 0);
+  const [done, setDone] = useState(initialDone);
+  const [showButton, setShowButton] = useState(initialDone);
+  // Fold lean — how much the crease line tilts based on drag direction
+  const [foldLean, setFoldLean] = useState(0);
 
-  const tearAudioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    tearAudioRef.current = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
-    tearAudioRef.current.preload = 'auto';
-  }, []);
-
-  const playTear = () => {
-    const a = tearAudioRef.current;
-    if (!a) return;
-    a.currentTime = 0;
-    void a.play().catch(() => {});
-  };
-
-  useEffect(() => {
-    if (!done) return;
-    autoTimerRef.current = setTimeout(onDone, AUTO_DISMISS_DELAY);
-    return () => { if (autoTimerRef.current) clearTimeout(autoTimerRef.current); };
-  }, [done, onDone]);
+  const peelRef = useRef(initialDone ? 1 : 0);
+  const foldLeanRef = useRef(0);
+  const animFrameRef = useRef<number | null>(null);
+  const dragRef = useRef<{ startX: number; startPeel: number; lastX: number } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -45,23 +33,120 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!done || showButton) return;
+    const t = setTimeout(() => setShowButton(true), 3000);
+    return () => clearTimeout(t);
+  }, [done, showButton]);
+
+  useEffect(() => {
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, []);
+
   const s = dims.w / 393;
   const ticketW = 255 * s;
   const ticketH = 124 * s;
   const ticketGroupY = Math.max(0, (dims.h - 843 * s) / 2) + 217 * s;
+
+  const tearAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    tearAudioRef.current = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
+    tearAudioRef.current.preload = 'auto';
+  }, []);
+
+  const playTear = useCallback(() => {
+    const a = tearAudioRef.current;
+    if (!a) return;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  }, []);
+
+  const animatePeel = useCallback((target: number, duration: number, onComplete?: () => void) => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    const start = peelRef.current;
+    const startLean = foldLeanRef.current;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const val = start + (target - start) * ease;
+      const lean = startLean * (1 - ease); // lean eases back to 0
+      peelRef.current = val;
+      foldLeanRef.current = lean;
+      setPeel(val);
+      setFoldLean(lean);
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        peelRef.current = target;
+        foldLeanRef.current = 0;
+        setPeel(target);
+        setFoldLean(0);
+        onComplete?.();
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const handleReveal = useCallback(() => {
+    playTear();
+    animatePeel(1, 500, () => setDone(true));
+  }, [animatePeel, playTear]);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (done) return;
+    dragRef.current = { startX: e.clientX, startPeel: peelRef.current, lastX: e.clientX };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }, [done]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || done) return;
+    const velocity = e.clientX - dragRef.current.lastX;
+    dragRef.current.lastX = e.clientX;
+    const dx = e.clientX - dragRef.current.startX;
+    const newPeel = Math.max(0, Math.min(1, dragRef.current.startPeel + dx / ticketW));
+    // Lean: proportional to velocity, clamped to ±20% of ticket height
+    const maxLean = ticketH * 0.2;
+    const newLean = Math.max(-maxLean, Math.min(maxLean, velocity * 1.8));
+    peelRef.current = newPeel;
+    foldLeanRef.current = newLean;
+    setPeel(newPeel);
+    setFoldLean(newLean);
+  }, [done, ticketW, ticketH]);
+
+  const onPointerUp = useCallback(() => {
+    if (!dragRef.current || done) return;
+    dragRef.current = null;
+    if (peelRef.current > 0.25) {
+      handleReveal();
+    } else {
+      animatePeel(0, 300);
+    }
+  }, [done, handleReveal, animatePeel]);
+
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
-  const handleOpen = () => {
-    if (done) return;
-    playTear();
-    setDone(true);
-  };
+  // Diagonal clip polygon: top of fold line and bottom of fold line lean based on velocity
+  // foldX = peel * ticketW (center of fold)
+  // foldTopX = center + lean (top)  foldBotX = center - lean (bottom)
+  const foldX = peel * ticketW;
+  const foldTopX = foldX + foldLean;
+  const foldBotX = foldX - foldLean;
+
+  // Polygon for the visible right portion of up.svg
+  const coverClip = done
+    ? 'inset(100%)'
+    : `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, ${foldBotX}px ${ticketH}px)`;
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none"
+      className="relative w-full h-full overflow-hidden select-none touch-none"
       style={{ minHeight: '100dvh', background: '#111' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
       {/* Full-screen background scene */}
       <Image
@@ -73,7 +158,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
         priority
       />
 
-      {/* Scene group: hand + ticket */}
+      {/* Scene group: hand + ticket — always visible */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -82,11 +167,8 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
           width: 433 * s,
           height: 491 * s,
           transform: 'rotate(4deg)',
-          opacity: done ? 0 : 1,
-          transition: done ? 'opacity 0.5s ease-out' : undefined,
         }}
       >
-        {/* Hand */}
         <Image
           src="/images/ichiban-tear/hand.png"
           alt=""
@@ -104,7 +186,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
           height={467}
         />
 
-        {/* Ticket area — NO overflow:hidden so exit animation flies beyond */}
+        {/* Ticket — separate base (clipped) + cover layer */}
         <div
           style={{
             position: 'absolute',
@@ -115,49 +197,36 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
             transform: 'rotate(-12deg)',
           }}
         >
-          {/* Base layer — clipped to rounded rect */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: 18 * s,
-              overflow: 'hidden',
-            }}
-          >
+          {/* Base layer: bg.svg + prize text, clipped to rounded rect */}
+          <div style={{ position: 'absolute', inset: 0, borderRadius: 18 * s, overflow: 'hidden' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/ichiban-tear/bg.svg"
               alt=""
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
-
-            {/* Prize grade revealed when cover flies away */}
             <motion.div
               className="absolute inset-0 flex items-center justify-center"
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={initialDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
               animate={done ? { opacity: 1, scale: 1 } : {}}
-              transition={{ delay: 0.3, duration: 0.6, type: 'spring' }}
+              transition={initialDone ? { duration: 0 } : { delay: 0.2, duration: 0.5, type: 'spring' }}
             >
-              <div className="flex flex-col items-center justify-center w-full pl-[18%]">
-                <div className="flex items-baseline gap-1 justify-center">
-                  <span
-                    style={{
-                      fontSize: prizeTierLetter === 'LAST' ? ticketH * 0.3 : ticketH * 0.5,
-                      fontWeight: 900,
-                      color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
-                      lineHeight: 1,
-                      textShadow: '0 2px 8px rgba(0,0,0,0.6)',
-                    }}
-                  >
+              <div className="flex flex-col items-center w-full pl-[18%]">
+                <div className="flex items-baseline gap-1">
+                  <span style={{
+                    fontSize: prizeTierLetter === 'LAST' ? ticketH * 0.3 : ticketH * 0.5,
+                    fontWeight: 900,
+                    color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
+                    lineHeight: 1,
+                    textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                  }}>
                     {prizeTierLetter === 'LAST' ? 'LAST' : prizeTierLetter}
                   </span>
-                  <span
-                    style={{
-                      fontSize: ticketH * 0.22,
-                      fontWeight: 900,
-                      color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
-                    }}
-                  >
+                  <span style={{
+                    fontSize: ticketH * 0.22,
+                    fontWeight: 900,
+                    color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
+                  }}>
                     {prizeTierLetter === 'LAST' ? 'ONE' : '賞'}
                   </span>
                 </div>
@@ -165,63 +234,69 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
             </motion.div>
           </div>
 
-          {/* Draggable cover (up.svg) — outside clipped base so exit can fly away */}
-          <AnimatePresence>
-            {!done && (
-              <motion.div
-                drag="x"
-                dragConstraints={{ left: 0, right: 1000 }}
-                dragElastic={0.08}
-                onDragEnd={(_, info) => {
-                  if (info.offset.x > 8) handleOpen();
-                }}
-                onClick={handleOpen}
-                exit={{
-                  rotateY: -110,
-                  x: '110%',
-                  z: 400,
-                  opacity: 0,
-                  transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] },
-                }}
+          {/* Cover: up.svg clipped to the RIGHT of the diagonal fold line */}
+          {!done && (
+            <>
+              <div
                 style={{
-                  originX: 1,
-                  originY: 0.5,
-                  perspective: 2000,
-                  transformStyle: 'preserve-3d',
                   position: 'absolute',
                   inset: 0,
-                  zIndex: 10,
-                  pointerEvents: 'auto',
+                  borderRadius: 18 * s,
+                  overflow: 'hidden',
+                  clipPath: coverClip,
                 }}
-                className="touch-none cursor-grab active:cursor-grabbing will-change-transform"
               >
-                {/* Cover image clipped to rounded rect */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 18 * s,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/ichiban-tear/up.svg"
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    draggable={false}
-                  />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/ichiban-tear/up.svg"
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  draggable={false}
+                />
+              </div>
 
-                {/* Finger swipe hint — diagonal right-upward */}
+              {/* Fold crease visualization — SVG diagonal line + shadow */}
+              {peel > 0.005 && (
+                <svg
+                  style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20, overflow: 'visible' }}
+                  width={ticketW}
+                  height={ticketH}
+                >
+                  <defs>
+                    <linearGradient id="foldShadow" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="rgba(0,0,0,0)" />
+                      <stop offset="35%" stopColor="rgba(0,0,0,0.45)" />
+                      <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+                    </linearGradient>
+                  </defs>
+                  {/* Shadow band straddling the fold line */}
+                  <polygon
+                    points={`${foldTopX - 6},0 ${foldTopX + 7},0 ${foldBotX + 7},${ticketH} ${foldBotX - 6},${ticketH}`}
+                    fill="url(#foldShadow)"
+                  />
+                  {/* Bright highlight line at the exact crease */}
+                  <line
+                    x1={foldTopX}
+                    y1={0}
+                    x2={foldBotX}
+                    y2={ticketH}
+                    stroke="rgba(255,255,255,0.55)"
+                    strokeWidth={1.5}
+                  />
+                </svg>
+              )}
+
+              {/* Finger swipe hint — diagonal right-upward, fades when user starts dragging */}
+              {peel < 0.03 && (
                 <motion.div
                   style={{
                     position: 'absolute',
-                    left: '22%',
-                    top: '65%',
+                    left: '10%',
+                    top: '55%',
                     width: 52 * s,
                     height: 52 * s,
                     pointerEvents: 'none',
+                    zIndex: 25,
                   }}
                   animate={{
                     x: [0, 72 * s, 72 * s],
@@ -235,93 +310,36 @@ export default function FigmaTearScene({ prizeTierLetter, onDone }: FigmaTearSce
                     times: [0, 0.5, 0.8, 1],
                   }}
                 >
-                  <Image
-                    src="/images/finger.png"
-                    alt=""
-                    fill
-                    className="object-contain drop-shadow-md"
-                    unoptimized
-                  />
+                  <Image src="/images/finger.png" alt="" fill className="object-contain drop-shadow-md" unoptimized />
                 </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      {/* Sparkle overlay */}
-      {done && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/ichiban-tear/light.gif"
-            alt=""
-            className="w-full h-full object-cover opacity-70 mix-blend-screen"
-          />
-        </div>
-      )}
-
-      {/* Prize announcement */}
-      {done && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.75 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.35, type: 'spring', stiffness: 180 }}
-            className="flex flex-col items-center"
+      {/* "開獎列表" button — appears 3s after done, no dark overlay */}
+      <AnimatePresence>
+        {showButton && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            onClick={onDone}
+            className="absolute bottom-8 right-6 z-30 flex items-center gap-2 px-5 py-3 rounded-full border border-white/40 text-white text-sm font-bold active:scale-95"
+            style={{
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            }}
           >
-            <p
-              className="text-sm font-bold mb-3"
-              style={{
-                color: 'rgba(255,255,255,0.95)',
-                textShadow: '0 2px 16px rgba(0,0,0,0.95)',
-                letterSpacing: '0.18em',
-              }}
-            >
-              恭喜獲得
-            </p>
-            <p
-              className="font-black leading-none"
-              style={{
-                fontSize: Math.min(108 * s, 108),
-                color: prizeTierLetter === 'LAST' ? '#FFD700' : '#FFFFFF',
-                textShadow:
-                  '0 0 80px rgba(255,196,0,0.95), 0 0 40px rgba(255,196,0,0.7), 0 6px 40px rgba(0,0,0,0.98), 0 2px 8px rgba(0,0,0,0.9)',
-              }}
-            >
-              {prizeLabel}
-            </p>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Skip button */}
-      {done && (
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          onClick={onDone}
-          className="absolute bottom-8 right-6 z-30 flex items-center gap-2 px-5 py-3 rounded-full border border-white/40 text-white text-sm font-bold active:scale-95"
-          style={{
-            background: 'rgba(255,255,255,0.18)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-          }}
-        >
-          開獎列表
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <path
-              d="M6 3l5 5-5 5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
-        </motion.button>
-      )}
+            {prizeLabel} 開獎列表
+            <svg width="16" height="16" viewBox="0 0 16 16">
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

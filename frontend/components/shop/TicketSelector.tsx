@@ -37,9 +37,8 @@ export function TicketSelector({
 
         const shortLevel = ticket.prizeLevel
           ? ticket.prizeLevel
-              .replace(/賞$/, '')
               .replace(/Last One|LAST ONE|最後賞/i, 'LO')
-              .slice(0, 4)
+              .slice(0, 5)
           : '';
 
         return (
@@ -81,8 +80,8 @@ export function TicketSelector({
                   {shortLevel}
                 </span>
                 {ticket.prizeName && (
-                  <span className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 leading-tight max-w-full px-0.5 truncate">
-                    {ticket.prizeName.slice(0, 8)}
+                  <span className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 leading-tight max-w-full px-0.5 line-clamp-2 break-all">
+                    {ticket.prizeName}
                   </span>
                 )}
               </>
