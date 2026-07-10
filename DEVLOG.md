@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-07-10｜新文章自動種 bot 留言/讚
+
+### news-agent 自動補種（`backend/app/api/cron/news-agent/route.ts`）
+- 每篇成功寫入後立即呼叫 `seed_bot_engagement_for_article(id)`（fire-and-forget，不阻塞主流程）
+- 函式已在 migration 312 建立：2~5 則 bot 留言、3~12 個 bot 讚，跳過已有留言的文章
+
+---
+
 ## 2026-07-10｜分享圖標修正（二）+ 文章頁重複導航修復
 
 ### 分享判斷升級（`Navbar.tsx`、`item/[id]/page.tsx`、`news/[id]/page.tsx`）

@@ -467,6 +467,7 @@ export async function POST(req: NextRequest) {
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
         existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
+        supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).catch(() => {})
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++
       } else {
@@ -551,6 +552,7 @@ export async function POST(req: NextRequest) {
         results.articles.push(draft.title)
         existing.add(realUrl)
         sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
+        supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).catch(() => {})
         perQuery++
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++
