@@ -2233,17 +2233,6 @@ export default function ProductDetailPage() {
                   ? '立即抽獎'
                   : '立即轉蛋'}
             </Button>
-            <button
-              onClick={handleShare}
-              className={cn(
-                "w-[44px] h-[44px] shrink-0 border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95",
-                shareCopied
-                  ? "bg-green-50 border-green-400 text-green-500 dark:bg-green-900/20 dark:border-green-600"
-                  : "bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-400 hover:text-primary hover:border-primary/50"
-              )}
-            >
-              {shareCopied ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Share2 className="w-5 h-5 stroke-[2.5]" />}
-            </button>
           </div>
         </div>
 
