@@ -128,18 +128,8 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
-  // Fold position: how far the peel has progressed across the ticket width
   const foldX = peel * ticketW;
-  // Diagonal fold: top point moves right with foldX, anchored at bottom-left corner.
-  // foldLean shifts the top point for a dynamic wobble during fast drags.
-  const foldTopX = Math.max(0, foldX + foldLean * 0.35);
-  // Triangle for peeled area; trapezoid for remaining cover
-  const leftClip  = `polygon(0 0, ${foldTopX}px 0, 0 ${ticketH}px)`;
-  const rightClip = `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, 0 ${ticketH}px)`;
-  // Diagonal fold crease angle and length (from top point down to bottom-left corner)
-  const foldLineLen = Math.sqrt(foldTopX * foldTopX + ticketH * ticketH);
-  // CSS rotate: counterclockwise from pointing-down to pointing toward bottom-left anchor
-  const foldCreaseAngle = -Math.atan2(foldTopX, ticketH) * 180 / Math.PI;
+  const flipAngle = peel * 180; // 0° (flat) → 180° (fully flipped)
 
   return (
     <div
@@ -237,60 +227,95 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: turn.js 風格對角掀起效果 */}
+          {/* Cover: turn.js hard-page 原理 — overflow:hidden + rotateY 前後兩面 */}
           {!done && (
             <>
-              {/* ── 剩餘蓋板（梯形右側）── */}
+              {/* ── 右側靜止蓋板（foldX → ticketW） ── */}
               <div style={{
-                position: 'absolute', inset: 0,
-                clipPath: rightClip,
-                borderRadius: 18 * s,
+                position: 'absolute',
+                left: foldX, top: 0,
+                width: ticketW - foldX,
+                height: ticketH,
                 overflow: 'hidden',
               }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                {/* 靠近折線的陰影，製造立體深度感 */}
+                  style={{
+                    position: 'absolute',
+                    left: -foldX, top: 0,
+                    width: ticketW, height: ticketH,
+                    objectFit: 'cover',
+                  }} />
                 {peel > 0.01 && (
                   <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to right, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 30%)',
+                    background: 'linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 28%)',
                     pointerEvents: 'none',
                   }} />
                 )}
               </div>
 
-              {/* ── 掀起的貼紙背面（三角形左側）── */}
-              {peel > 0.005 && (
+              {/* ── 左側翻起區塊（0 → foldX）：前後兩面 3D 旋轉 ── */}
+              {peel > 0.001 && (
                 <div style={{
-                  position: 'absolute', inset: 0,
-                  clipPath: leftClip,
+                  position: 'absolute',
+                  left: 0, top: 0,
+                  width: foldX,
+                  height: ticketH,
                   overflow: 'hidden',
-                  opacity: Math.min(1, peel * 10),
+                  perspective: `${ticketW * 2.5}px`,
+                  perspectiveOrigin: `${foldX}px 50%`,
                 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  {/* 背面右側陰影：讓掀起的貼紙有厚度感 */}
+                  {/* 前面（up.svg）：rotateY 0° → -180°，過 90° 後 backfaceVisibility 隱藏 */}
                   <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to left, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0) 35%)',
-                    pointerEvents: 'none',
-                  }} />
+                    position: 'absolute', left: 0, top: 0,
+                    width: ticketW, height: ticketH,
+                    transformOrigin: `${foldX}px 50%`,
+                    transform: `rotateY(${-flipAngle}deg)`,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {/* 旋轉愈深，表面愈暗（離光源愈遠） */}
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: `rgba(0,0,0,${Math.min(0.6, peel * 1.2)})`,
+                      pointerEvents: 'none',
+                    }} />
+                  </div>
+
+                  {/* 背面（up2.svg）：rotateY 180° → 0°，前面消失後出現 */}
+                  <div style={{
+                    position: 'absolute', left: 0, top: 0,
+                    width: ticketW, height: ticketH,
+                    transformOrigin: `${foldX}px 50%`,
+                    transform: `rotateY(${180 - flipAngle}deg)`,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: 'linear-gradient(to left, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.2) 100%)',
+                      pointerEvents: 'none',
+                    }} />
+                  </div>
                 </div>
               )}
 
-              {/* ── 對角折痕高光條 ── */}
-              {peel > 0.01 && foldLineLen > 1 && (
+              {/* ── 折線高光條 ── */}
+              {peel > 0.01 && peel < 0.99 && (
                 <div style={{
                   position: 'absolute',
+                  left: foldX - 2 * s,
                   top: 0,
-                  left: foldTopX - 3 * s,
-                  width: 6 * s,
-                  height: foldLineLen,
-                  transformOrigin: `${3 * s}px 0`,
-                  transform: `rotate(${foldCreaseAngle}deg)`,
-                  background: 'linear-gradient(90deg, rgba(0,0,0,0.2) 0%, rgba(255,255,255,0.6) 50%, rgba(0,0,0,0.15) 100%)',
+                  width: 4 * s,
+                  height: ticketH,
+                  background: 'linear-gradient(90deg, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.55) 50%, rgba(0,0,0,0.1) 100%)',
                   pointerEvents: 'none',
                 }} />
               )}
