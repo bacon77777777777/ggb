@@ -45,9 +45,8 @@ export function TicketSelector({
           <div
             key={ticket.number}
             className={cn(
-              "relative rounded-[8px] border-2 transition-all duration-200 flex flex-col items-center justify-center",
-              // Sold tickets with result get slightly taller; all other tickets are square
-              hasResult ? "py-1.5 min-h-[4rem]" : "aspect-square",
+              "relative rounded-[8px] border-2 transition-all duration-200 flex flex-col items-center",
+              hasResult ? "justify-start p-0 gap-0" : "justify-center aspect-square",
               ticket.isSold || isDisabledByLimit
                 ? "bg-neutral-200 dark:bg-neutral-800 border-transparent cursor-not-allowed"
                 : isSelected
@@ -59,10 +58,11 @@ export function TicketSelector({
               if (!disabled) onToggle(ticket.number);
             }}
           >
-            {/* Ticket number — same size regardless of sold/available */}
+            {/* Ticket number */}
             <span
               className={cn(
-                "text-sm font-black leading-none tracking-wider",
+                "leading-none tracking-wider",
+                hasResult ? "text-[11px] font-bold" : "text-sm font-black",
                 ticket.isSold
                   ? "text-neutral-500 dark:text-neutral-400"
                   : isSelected
@@ -76,11 +76,11 @@ export function TicketSelector({
             {/* Prize info for sold tickets */}
             {hasResult && (
               <>
-                <span className="text-[12px] font-black text-neutral-700 dark:text-neutral-300 leading-tight mt-0.5 max-w-full px-0.5 truncate">
+                <span className="text-[11px] font-black text-neutral-700 dark:text-neutral-300 leading-tight max-w-full truncate w-full text-center">
                   {shortLevel}
                 </span>
                 {ticket.prizeName && (
-                  <span className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 leading-tight max-w-full px-0.5 line-clamp-2 break-all">
+                  <span className="text-[9px] font-bold text-neutral-600 dark:text-neutral-400 leading-tight max-w-full line-clamp-2 break-all w-full text-center">
                     {ticket.prizeName}
                   </span>
                 )}

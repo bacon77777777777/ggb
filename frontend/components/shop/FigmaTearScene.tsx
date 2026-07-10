@@ -114,10 +114,12 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
     setFoldLean(newLean);
   }, [done, ticketW, ticketH]);
 
-  const onPointerUp = useCallback(() => {
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current || done) return;
+    const movedX = Math.abs(e.clientX - dragRef.current.startX);
     dragRef.current = null;
-    if (peelRef.current > 0.25) {
+    // Tap (< 8px movement) or enough drag → full reveal
+    if (movedX < 8 || peelRef.current > 0.25) {
       handleReveal();
     } else {
       animatePeel(0, 300);
@@ -126,17 +128,9 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
   const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
-  // Diagonal clip polygon: top of fold line and bottom of fold line lean based on velocity
-  // foldX = peel * ticketW (center of fold)
-  // foldTopX = center + lean (top)  foldBotX = center - lean (bottom)
-  const foldX = peel * ticketW;
-  const foldTopX = foldX + foldLean;
-  const foldBotX = foldX - foldLean;
-
-  // Polygon for the visible right portion of up.svg
-  const coverClip = done
-    ? 'inset(100%)'
-    : `polygon(${foldTopX}px 0, ${ticketW}px 0, ${ticketW}px ${ticketH}px, ${foldBotX}px ${ticketH}px)`;
+  // 3D peel: cover rotates around its right edge
+  const coverRotateY = -peel * 115; // deg: 0 (flat) → -115 (past backface, hidden)
+  const coverRotateX = foldLean * 0.06; // slight diagonal lean from drag velocity
 
   return (
     <div
@@ -234,59 +228,50 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: up.svg clipped to the RIGHT of the diagonal fold line */}
+          {/* Cover: up.svg folds back around right edge in 3D */}
           {!done && (
             <>
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 18 * s,
-                  overflow: 'hidden',
-                  clipPath: coverClip,
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/ichiban-tear/up.svg"
-                  alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  draggable={false}
-                />
+              {/* Perspective wrapper — vanishing point at right center */}
+              <div style={{ perspective: `${900 * s}px`, perspectiveOrigin: 'right center', position: 'absolute', inset: 0 }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 18 * s,
+                    overflow: 'hidden',
+                    transformOrigin: 'right center',
+                    transform: `rotateY(${coverRotateY}deg) rotateX(${coverRotateX}deg)`,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                    willChange: 'transform',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/ichiban-tear/up.svg"
+                    alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    draggable={false}
+                  />
+                  {/* Inner shadow: darkens left portion of cover as it curls (simulates inside of peel) */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: `linear-gradient(to right, rgba(0,0,0,${Math.min(0.7, peel * 1.4)}) 0%, rgba(0,0,0,0) 55%)`,
+                    pointerEvents: 'none',
+                  }} />
+                </div>
               </div>
 
-              {/* Fold crease visualization — SVG diagonal line + shadow */}
-              {peel > 0.005 && (
-                <svg
-                  style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20, overflow: 'visible' }}
-                  width={ticketW}
-                  height={ticketH}
-                >
-                  <defs>
-                    <linearGradient id="foldShadow" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="rgba(0,0,0,0)" />
-                      <stop offset="35%" stopColor="rgba(0,0,0,0.45)" />
-                      <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-                    </linearGradient>
-                  </defs>
-                  {/* Shadow band straddling the fold line */}
-                  <polygon
-                    points={`${foldTopX - 6},0 ${foldTopX + 7},0 ${foldBotX + 7},${ticketH} ${foldBotX - 6},${ticketH}`}
-                    fill="url(#foldShadow)"
-                  />
-                  {/* Bright highlight line at the exact crease */}
-                  <line
-                    x1={foldTopX}
-                    y1={0}
-                    x2={foldBotX}
-                    y2={ticketH}
-                    stroke="rgba(255,255,255,0.55)"
-                    strokeWidth={1.5}
-                  />
-                </svg>
+              {/* Cast shadow on bg.svg where cover has peeled away */}
+              {peel > 0.02 && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 18 * s,
+                  background: `linear-gradient(to left, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) ${Math.min(18, peel * 20)}%, rgba(0,0,0,0) ${Math.min(45, peel * 50)}%)`,
+                  pointerEvents: 'none', zIndex: 5,
+                }} />
               )}
 
-              {/* Finger swipe hint — diagonal right-upward, fades when user starts dragging */}
+              {/* Finger swipe hint — diagonal right-upward */}
               {peel < 0.03 && (
                 <motion.div
                   style={{
