@@ -10,11 +10,12 @@ interface DrawRecord {
   user_id: string
   product_id: number
   prize_level: string
+  prize_name: string
   created_at: string
   ticket_number: number
   status: string
   user?: { name: string; email: string; id: string }
-  product?: { name: string; image_url: string; price?: number }
+  product?: { name: string; image_url: string; price?: number; type?: string }
 }
 
 export default function DrawsPage() {
@@ -187,13 +188,21 @@ export default function DrawsPage() {
     },
     {
       key: 'prize_level',
-      label: '賞品等級',
+      label: '品項',
       sortable: true,
-      render: (record) => (
-        <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 font-bold text-xs">
-          {record.prize_level}賞
-        </span>
-      )
+      render: (record) => {
+        const hasGrade = ['ichiban', 'card', 'custom'].includes(record.product?.type || '')
+        return (
+          <div className="flex items-center gap-1.5">
+            {hasGrade && record.prize_level && (
+              <span className="px-1.5 py-0.5 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 font-bold text-xs whitespace-nowrap">
+                {record.prize_level}
+              </span>
+            )}
+            <span className="text-sm text-neutral-700">{record.prize_name || '—'}</span>
+          </div>
+        )
+      }
     },
     {
       key: 'ticket_number',
@@ -224,13 +233,14 @@ export default function DrawsPage() {
 
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['時間', '用戶姓名', '用戶Email', '商品', '賞品等級', '籤號', '消費(G)', '狀態']
+    const headers = ['時間', '用戶姓名', '用戶Email', '商品', '賞等', '品項名稱', '籤號', '消費(G)', '狀態']
     const rows = sortedRecords.map(r => [
       formatDateTime(r.created_at),
       r.user?.name || '',
       r.user?.email || '',
       r.product?.name || '',
       r.prize_level || '',
+      r.prize_name || '',
       String(r.ticket_number ?? ''),
       String(r.product?.price ?? ''),
       r.status === 'success' ? '成功' : r.status,
@@ -321,7 +331,7 @@ export default function DrawsPage() {
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
               { key: 'user', label: '用戶', visible: visibleColumns.user },
               { key: 'product', label: '商品', visible: visibleColumns.product },
-              { key: 'prize_level', label: '賞品等級', visible: visibleColumns.prize_level },
+              { key: 'prize_level', label: '品項', visible: visibleColumns.prize_level },
               { key: 'ticket_number', label: '籤號', visible: visibleColumns.ticket_number },
               { key: 'status', label: '狀態', visible: visibleColumns.status }
             ]}

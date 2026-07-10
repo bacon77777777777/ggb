@@ -18,7 +18,7 @@ export async function GET() {
         `
           *,
           user:users (id, name, email),
-          product:products (name, image_url, price)
+          product:products (name, image_url, price, type)
         `
       )
       .order('created_at', { ascending: false })

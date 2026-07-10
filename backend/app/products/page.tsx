@@ -1262,8 +1262,8 @@ export default function ProductsPage() {
                                       <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>
                                       <span className="text-neutral-500 font-mono text-xs min-w-[80px]">{getDisplayCode(product)}{(idx + 1).toString().padStart(2, '0')}</span>
                                       <img src={prize.imageUrl} alt={prize.name} className="w-10 h-10 object-cover rounded-lg" />
+                                      <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
-                                      <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
                                       <span className="text-blue-500 font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
                                       {drawn > 0 && <span className="text-xs text-neutral-400">已抽 {drawn}</span>}
