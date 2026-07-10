@@ -340,8 +340,8 @@ export default function EditProductPage() {
 
       // 0. Validate Prizes
       for (const prize of prizes) {
-        if (prize.level && prize.level.length > 19) {
-          alert(`獎項等級「${prize.level}」長度超過 19 個字元，請修正。`)
+        if (prize.level && prize.level.length > 15) {
+          alert(`獎項等級「${prize.level}」長度超過 15 個字元，請修正。`)
           setIsSubmitting(false)
           return
         }
