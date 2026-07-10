@@ -945,7 +945,11 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       <div className="fixed inset-0 z-[3000]">
         <FigmaTearScene
           prizeTierLetter={prizeLetter}
-          onDone={() => setShowFigmaTear(false)}
+          onDone={() => {
+            setDrawnResults(prev => prev.map(r => ({ ...r, isOpened: true })));
+            setShowFigmaTear(false);
+            handleShowFullResults();
+          }}
         />
       </div>
     );

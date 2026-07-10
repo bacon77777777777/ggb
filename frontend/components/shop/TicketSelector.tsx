@@ -48,7 +48,7 @@ export function TicketSelector({
             key={ticket.number}
             className={cn(
               "relative rounded-[8px] border-2 transition-all duration-200 flex flex-col items-center justify-center",
-              hasResult ? "py-1 min-h-[3.2rem]" : "aspect-square",
+              hasResult ? "py-1.5 min-h-[3.8rem]" : "aspect-square",
               ticket.isSold || isDisabledByLimit
                 ? "bg-neutral-200 dark:bg-neutral-800 border-transparent cursor-not-allowed"
                 : isSelected
@@ -63,7 +63,7 @@ export function TicketSelector({
             <span
               className={cn(
                 "font-black leading-none tracking-wider",
-                hasResult ? "text-[9px] text-neutral-400 dark:text-neutral-600" : "text-xs",
+                hasResult ? "text-[11px] text-neutral-400 dark:text-neutral-600" : "text-sm",
                 !hasResult && ticket.isSold && "text-neutral-400 dark:text-neutral-600",
                 isSelected && "text-neutral-900",
                 !ticket.isSold && !isSelected && "text-white"
@@ -73,12 +73,12 @@ export function TicketSelector({
             </span>
             {hasResult && (
               <>
-                <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 leading-tight mt-0.5 max-w-full px-0.5 truncate">
+                <span className="text-[12px] font-black text-neutral-600 dark:text-neutral-400 leading-tight mt-0.5 max-w-full px-0.5 truncate">
                   {shortLevel}
                 </span>
                 {ticket.prizeName && (
-                  <span className="text-[8px] text-neutral-400 dark:text-neutral-600 leading-tight max-w-full px-0.5 truncate">
-                    {ticket.prizeName.slice(0, 6)}
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-600 leading-tight max-w-full px-0.5 truncate">
+                    {ticket.prizeName.slice(0, 8)}
                   </span>
                 )}
               </>
