@@ -282,14 +282,12 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
               {peel > 0.004 && (
                 <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 15, overflow: 'visible' }}
                   width={ticketW} height={ticketH}>
-                  {/* Soft shadow band left of fold */}
+                  {/* Wide soft shadow */}
                   <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
-                    stroke="rgba(0,0,0,0.35)" strokeWidth={22} strokeLinecap="round" />
+                    stroke="rgba(0,0,0,0.22)" strokeWidth={28} strokeLinecap="round" />
+                  {/* Tighter core */}
                   <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
-                    stroke="rgba(0,0,0,0.4)" strokeWidth={9} strokeLinecap="round" />
-                  {/* Bright crease highlight */}
-                  <line x1={foldTopX} y1={0} x2={foldBotX} y2={ticketH}
-                    stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} strokeLinecap="round" />
+                    stroke="rgba(0,0,0,0.3)" strokeWidth={10} strokeLinecap="round" />
                 </svg>
               )}
 
