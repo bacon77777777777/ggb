@@ -2,24 +2,24 @@
 
 const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   gacha:    [
-    { value: 'classic_machine', label: '原始經典（物理蛋球掉落）' },
-    { value: 'modern_machine',  label: '現代膠囊機（格列膠囊展示）' },
-    { value: 'retro_machine',   label: '復古街頭機（日式扭蛋街機）' },
+    { value: 'gacha_classic', label: '原始經典（物理蛋球掉落）' },
+    { value: 'gacha_modern',  label: '現代膠囊機（格列膠囊展示）' },
+    { value: 'gacha_retro',   label: '復古街頭機（日式扭蛋街機）' },
   ],
   ichiban:  [
-    { value: 'classic_capsule', label: '經典列表（票券網格撕開）' },
-    { value: 'figma_tear',      label: '沉浸式撕紙（全畫面揭曉）' },
+    { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },
+    { value: 'ichiban_tear', label: '沉浸式撕紙（全畫面揭曉）' },
   ],
   card:     [
-    { value: 'card_pack',       label: '拆卡包（動態開卡）' },
+    { value: 'card_pack',    label: '拆卡包（動態開卡）' },
   ],
   custom:   [
-    { value: 'classic_capsule', label: '經典列表（票券網格撕開）' },
-    { value: 'figma_tear',      label: '沉浸式撕紙（全畫面揭曉）' },
+    { value: 'custom_grid', label: '經典列表（票券網格撕開）' },
+    { value: 'custom_tear', label: '沉浸式撕紙（全畫面揭曉）' },
   ],
   blindbox: [
-    { value: 'classic_machine', label: '原始經典（物理蛋球掉落）' },
-    { value: 'claw_machine',    label: '夾娃娃機' },
+    { value: 'blindbox_classic', label: '原始經典（物理蛋球掉落）' },
+    { value: 'blindbox_claw',    label: '夾娃娃機' },
   ],
 }
 

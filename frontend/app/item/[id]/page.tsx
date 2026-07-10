@@ -1169,7 +1169,7 @@ export default function ProductDetailPage() {
   };
 
   if (product.type === 'gacha') {
-    const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'classic_machine'
+    const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'gacha_classic'
     return <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} />;
   }
 
@@ -2268,10 +2268,10 @@ export default function ProductDetailPage() {
 
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
-          if (effectiveTheme === 'classic_capsule') {
+          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid') {
             return (
               <GachaThemeRenderer
-                theme={effectiveTheme || 'classic_capsule'}
+                theme={effectiveTheme || 'gacha_classic'}
                 isOpen={isGachaOpen}
                 prizes={wonPrizes}
                 isLoading={isGachaLoading}

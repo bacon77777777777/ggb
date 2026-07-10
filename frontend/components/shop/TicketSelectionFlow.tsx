@@ -122,7 +122,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [blindboxPhase, setBlindboxPhase] = useState<'opening' | 'revealed'>('opening');
 
   // FigmaTear mode
-  const [ichibanTheme, setIchibanTheme] = useState<string>('classic_capsule');
+  const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
   const [showFigmaTear, setShowFigmaTear] = useState(false);
 
   useEffect(() => {
@@ -526,7 +526,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       setDrawnResults(results);
 
       // 沉浸式撕紙模式：在票券網格前先播全畫面撕紙動畫
-      if (product?.type === 'ichiban' && ichibanTheme === 'figma_tear') {
+      if (product?.type === 'ichiban' && ichibanTheme === 'ichiban_tear') {
         setShowFigmaTear(true);
       }
 

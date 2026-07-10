@@ -12,17 +12,17 @@ const PRODUCT_TYPES: {
     type: 'gacha',
     label: '轉蛋',
     themes: [
-      { value: 'classic_machine', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
-      { value: 'modern_machine', label: '現代膠囊機', desc: '格列膠囊展示，側邊把手風格' },
-      { value: 'retro_machine', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
+      { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
+      { value: 'gacha_modern', label: '現代膠囊機', desc: '格列膠囊展示，側邊把手風格' },
+      { value: 'gacha_retro', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
     ],
   },
   {
     type: 'ichiban',
     label: '一番賞',
     themes: [
-      { value: 'classic_capsule', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
-      { value: 'figma_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
+      { value: 'ichiban_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
+      { value: 'ichiban_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞，再進開獎列表' },
     ],
   },
   {
@@ -36,16 +36,16 @@ const PRODUCT_TYPES: {
     type: 'custom',
     label: '自製賞',
     themes: [
-      { value: 'classic_capsule', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
-      { value: 'figma_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞' },
+      { value: 'custom_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
+      { value: 'custom_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞' },
     ],
   },
   {
     type: 'blindbox',
     label: '盒玩',
     themes: [
-      { value: 'classic_machine', label: '原始經典', desc: '物理蛋球掉落轉蛋機（預設）' },
-      { value: 'claw_machine', label: '夾娃娃機', desc: '夾娃娃機風格揭曉' },
+      { value: 'blindbox_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機（預設）' },
+      { value: 'blindbox_claw', label: '夾娃娃機', desc: '夾娃娃機風格揭曉' },
     ],
   },
 ]

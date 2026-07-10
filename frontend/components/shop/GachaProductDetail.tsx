@@ -22,9 +22,9 @@ interface GachaProductDetailProps {
 }
 
 const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
-  classic_machine: GachaMachineVisual,
-  modern_machine: GachaMachineModern,
-  retro_machine: GachaMachineRetro,
+  gacha_classic: GachaMachineVisual,
+  gacha_modern: GachaMachineModern,
+  gacha_retro: GachaMachineRetro,
 }
 
 export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {
@@ -413,7 +413,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
           <div className="w-full max-w-[750px] mx-auto">
             <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
               {(() => {
-                const MachineComponent = MACHINE_COMPONENTS[machineTheme || 'classic_machine'] ?? GachaMachineVisual
+                const MachineComponent = MACHINE_COMPONENTS[machineTheme || 'gacha_classic'] ?? GachaMachineVisual
                 return (
                   <MachineComponent
                     state={machineState}
