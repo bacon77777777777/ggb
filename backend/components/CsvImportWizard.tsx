@@ -182,6 +182,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
       nameCol: null,
       quantityCol: null,
       imageCol: null,
+      levelCol: null,
     }])
   }
 
@@ -215,7 +216,9 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
         const prizeName = get(g.nameCol)(row).trim()
         const qty = toNumber(get(g.quantityCol)(row)) ?? 0
         const img = formatImageUrl(get(g.imageCol)(row))
-        const level = g.levelOverride || g.suggestedLevel || '賞'
+        // Use per-row level from CSV's 等級 column if available; fall back to override/suggested
+        const rowLevel = g.levelCol ? get(g.levelCol)(row).trim() : ''
+        const level = (rowLevel || g.levelOverride || g.suggestedLevel || '賞').slice(0, 50)
         if (!prizeName && qty === 0) continue
         prizes.push({
           level,

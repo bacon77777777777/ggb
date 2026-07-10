@@ -105,6 +105,7 @@ export interface PrizeGroup {
   nameCol: string | null
   quantityCol: string | null
   imageCol: string | null
+  levelCol: string | null  // column that holds the per-row grade value (e.g. "獎項1等級")
   levelOverride: string    // user-editable level string
 }
 
@@ -184,12 +185,14 @@ export function detectPrizeGroups(headers: string[]): PrizeGroup[] {
         nameCol: null,
         quantityCol: null,
         imageCol: null,
+        levelCol: null,
       })
     }
     const g = groups.get(p.levelKey)!
     if (p.fieldType === 'name'     && !g.nameCol)     g.nameCol     = p.col
     if (p.fieldType === 'quantity' && !g.quantityCol) g.quantityCol = p.col
     if (p.fieldType === 'image'    && !g.imageCol)    g.imageCol    = p.col
+    if (p.fieldType === 'level'    && !g.levelCol)    g.levelCol    = p.col
   }
 
   // Sort: A賞 → B賞 → ... → SP賞 → Last One → numbered

@@ -1360,8 +1360,17 @@ export default function Home() {
             </div>
           )}
           {activePrimaryTab !== 'sell' && (
-            <div ref={homeSentinelRef} className="py-6 text-center text-[13px] font-black text-neutral-400">
-              {homeDisplayCount < filteredProducts.length ? '載入中...' : filteredProducts.length > 0 ? '到底了' : ''}
+            <div
+              ref={homeSentinelRef}
+              className={`text-center text-[13px] font-black text-neutral-400 ${!isLoading && !loadError && filteredProducts.length === 0 ? 'min-h-[40vh] flex items-center justify-center' : 'py-6'}`}
+            >
+              {homeDisplayCount < filteredProducts.length
+                ? '載入中...'
+                : filteredProducts.length > 0
+                  ? '到底了'
+                  : !isLoading && !loadError
+                    ? '此分類暫無商品'
+                    : ''}
             </div>
           )}
         </motion.div>
