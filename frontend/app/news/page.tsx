@@ -286,6 +286,9 @@ export default function NewsPage() {
 
   const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);
   const carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
+  const carouselIds = new Set(carousel.map(c => c.id));
+  // 列表不重複顯示輪播中已出現的文章
+  const listItems = filtered.filter(item => !carouselIds.has(item.id));
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-24">
@@ -312,7 +315,7 @@ export default function NewsPage() {
                   此分類目前沒有文章
                 </div>
               ) : (
-                filtered.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)
+                listItems.map(item => <ArticleRow key={item.id} item={item} onLike={handleLike} />)
               )}
             </div>
           </div>

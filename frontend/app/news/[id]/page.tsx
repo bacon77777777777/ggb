@@ -527,10 +527,10 @@ export default function NewsDetailPage() {
           {item.title}
         </h1>
 
-        {/* 文章內容 */}
+        {/* 文章內容（移除舊版 news-agent 殘留的「閱讀原文」連結）*/}
         {item.content ? (
           <div className="news-content text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: item.content }} />
+            dangerouslySetInnerHTML={{ __html: item.content.replace(/<a\b[^>]*>[^<]*閱讀原文[^<]*<\/a>/gi, '') }} />
         ) : (
           <p className="text-neutral-400 text-sm">暫無內容</p>
         )}
