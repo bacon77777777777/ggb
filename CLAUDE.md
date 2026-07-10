@@ -73,10 +73,11 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 ### AI 組織架構（Cron Agents）
 
-所有 AI 單位為 `backend/app/api/cron/` 下的 API routes，由 pg_cron（`app.backend_url` + `app.cron_secret` GUC 參數）定時呼叫：
+所有 AI 單位為 `backend/app/api/cron/` 下的 API routes，由 pg_cron 定時呼叫：
 
 | Agent | 排程（台灣時間） | 職責 |
 |-------|----------------|------|
+| `news-agent` | **每 20 分鐘** | 爬蟲三語 RSS → Claude 改寫 → 寫入 `news` 表，最多 12 篇/次 |
 | `daily-report` | 08:00 | 每日早報（待處理事項） |
 | `cfo-agent` | 08:30 | 代幣對帳、收入趨勢、廠商月結 |
 | `cmo-agent` | 09:00 | 行銷日報 + 跨部門行動建議 |
@@ -88,7 +89,18 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 所有 cron route 驗證 `x-cron-secret` header（對應 `CRON_SECRET` env）。
 
+**pg_cron secret 注意**：Supabase pg_cron 執行環境無法使用 `current_setting('app.cron_secret')`，所有 cron job SQL 必須把 secret 字串 hardcode 在 SQL 內，不可用動態讀取。
+
 **agent_events 事件匯流排**：任何 AI 單位偵測到跨部門信號 → INSERT `agent_events` + 推 LINE → 後台「事件中心」（`/agent-events`）顯示待處理。
+
+### 情報系統（News）
+
+- **資料表**：`news`（id, title, summary, content, image_url, source_url, category, tags, is_active, view_count）
+- **後台管理**：`backend/app/news/page.tsx` — 顯示全部文章（含 news-agent 自動生成），可批量上架/下架/刪除
+- **前台**：`frontend/app/news/` — 列表 + 內頁留言/讚
+- **前台 API**（`frontend/app/api/news/[id]/like|comments`）需要 `SUPABASE_SERVICE_ROLE_KEY` 在前台 env
+- **bot 互動**：每篇新文章寫入後呼叫 `seed_bot_engagement_for_article(id)` DB function，種 2~5 則留言、3~12 個讚
+- **圖片 fallback**：og:image 抓不到時用 `NEXT_PUBLIC_FRONTEND_URL/images/banner_defaulet.png`（注意檔名 typo）
 
 ### GB哥（LINE AI 助手）
 
@@ -126,6 +138,12 @@ NOTIFY_TARGET_ID / NOTIFY_TARGET_TYPE   # LINE 推播目標
 CRON_SECRET                  # pg_cron 呼叫 API 的驗證密碼
 ANTHROPIC_API_KEY            # GB哥 + Cron Agent Claude 呼叫
 ADMIN_LINE_IDS               # 允許私訊 GB哥 的 LINE user IDs（逗號分隔）
+NEXT_PUBLIC_FRONTEND_URL     # 前台域名（https://www.ggb.com.tw），用於 news-agent 圖片 fallback URL
+```
+
+前台（`frontend/.env.local`）同樣需要：
+```
+SUPABASE_SERVICE_ROLE_KEY    # 前台 API routes（留言/讚）讀寫需要 service role 繞過 RLS
 ```
 
 ## 清全站資料（重置腳本）

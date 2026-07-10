@@ -2,6 +2,40 @@
 
 ---
 
+## 2026-07-10｜情報系統完整記錄
+
+### 系統架構
+- 資料表：`news`（`backend/db/migrations/297_news_enhance.sql`）
+- 前台：`frontend/app/news/` — 情報列表 + 文章內頁（留言/讚/分享）
+- 後台管理：`backend/app/news/` — 批量上架/下架/刪除、搜尋篩選排序
+- 自動爬蟲：`backend/app/api/cron/news-agent/route.ts`
+
+### news-agent 爬蟲規格
+- 排程：每 20 分鐘（pg_cron `news-agent-20min`，`*/20 * * * *`）
+- 每次上限：最多 12 篇（`MAX_TOTAL = 12`），每個搜尋詞最多 2 篇
+- 搜尋來源：20 組關鍵詞，三語（繁中/日文/英文），Google News RSS
+- 分類：`ichiban`、`blindbox`、`gacha`、`tcg`
+- 圖片：優先抓 og:image → Jina Reader fallback → 預設 `banner_defaulet.png`
+- 去重：DB source_url 比對 + Jaccard 標題相似度（≥ 0.55 跳過）
+- Claude 篩選：只收商品發售情報，排除開幕/業績/開箱雜訊
+- 寫入：`is_active: true` 直接上架，同時呼叫 `seed_bot_engagement_for_article`
+
+### bot 互動補種
+- DB function：`seed_bot_engagement_for_article(p_news_id TEXT)`（migration 312）
+- 每篇新文章寫入後立即種：2~5 則 bot 留言、3~12 個 bot 讚
+- 冪等：文章已有留言則跳過，`news_likes` ON CONFLICT DO NOTHING
+
+### 前台情報頁
+- `frontend/app/news/page.tsx`：整行點進文章，列表直接按讚（樂觀更新）
+- `frontend/app/news/[id]/page.tsx`：留言抽屜、分享（PC 複製連結/手機原生分享）
+- `frontend/app/api/news/[id]/like/`、`/comments/`：需 `SUPABASE_SERVICE_ROLE_KEY`（前台 env）
+
+### pg_cron 重要說明
+- Supabase pg_cron 無法使用 `current_setting('app.cron_secret')`
+- 所有 cron job 的 secret 必須 hardcode 在 SQL 內（見 migration 301、306）
+
+---
+
 ## 2026-07-10｜新文章自動種 bot 留言/讚 + 無圖改用預設 banner
 
 ### news-agent 自動補種（`backend/app/api/cron/news-agent/route.ts`）
