@@ -41,6 +41,14 @@ export type EventType =
   | 'search_query'
   | 'banner_click'
   | 'leaderboard_view'
+  // News
+  | 'news_list_view'
+  | 'news_article_click'
+  | 'news_category_filter'
+  | 'news_like'
+  | 'news_comment'
+  | 'news_share'
+  | 'news_source_click'
   // Errors
   | 'error_draw_fail'
   | 'error_delivery_fail';

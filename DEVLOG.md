@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-07-10｜情報頁埋點全覆蓋
+
+### 新增 EventType（`frontend/lib/trackEvent.ts`）
+`news_list_view` / `news_article_click` / `news_category_filter` / `news_like` / `news_comment` / `news_share` / `news_source_click`
+
+### 列表頁（`frontend/app/news/page.tsx`）
+- 進入頁面：`news_list_view`
+- 點分類 tab：`news_category_filter`（meta: category，'all' 不記錄）
+- 點文章（列表列 + 輪播）：`news_article_click`（meta: news_id, category, title；輪播加 source: 'carousel'）
+
+### 文章內頁（`frontend/app/news/[id]/page.tsx`）
+- 進入 / 離開：`trackPageView` → `page_view` + `page_exit`（含 dwell_seconds 停留時間）
+- 捲動深度：`trackScrollDepth` → `scroll_depth` 25/50/75/100%
+- 按讚 / 取消讚：`news_like`（meta: action: 'like'|'unlike'）
+- 送出留言（成功）：`news_comment`
+- 點分享：`news_share`
+- 點閱讀原文：`news_source_click`（meta: source_url）
+- 新增「閱讀原文」外連按鈕（有 source_url 才顯示）
+
+---
+
 ## 2026-07-10｜情報系統完整記錄
 
 ### 系統架構

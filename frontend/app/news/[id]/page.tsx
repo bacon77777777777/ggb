@@ -10,6 +10,7 @@ import { Clock, Tag, Send, ChevronLeft, Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { trackEvent, trackPageView, trackScrollDepth } from '@/lib/trackEvent';
 
 interface NewsItem {
   id: string;
@@ -340,6 +341,14 @@ export default function NewsDetailPage() {
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [submitting, setSubmitting]   = useState(false);
 
+  // 停留時間 + 捲動深度埋點
+  useEffect(() => {
+    if (!newsId) return;
+    const cleanupView  = trackPageView(`/news/${newsId}`);
+    const cleanupScroll = trackScrollDepth(`/news/${newsId}`);
+    return () => { cleanupView(); cleanupScroll(); };
+  }, [newsId]);
+
   // 載入文章
   useEffect(() => {
     if (!newsId) return;
@@ -381,8 +390,8 @@ export default function NewsDetailPage() {
   const handleLike = async () => {
     setLikeAnim(true);
     setTimeout(() => setLikeAnim(false), 400);
-    // Optimistic update
     const nextLiked = !liked;
+    trackEvent('news_like', { path: `/news/${newsId}`, meta: { news_id: newsId, action: nextLiked ? 'like' : 'unlike' } });
     setLiked(nextLiked);
     setLikeCount(c => c + (nextLiked ? 1 : -1));
     const res = await fetch(`/api/news/${newsId}/like`, { method: 'POST' });
@@ -422,6 +431,7 @@ export default function NewsDetailPage() {
       if (res.ok) {
         const newComment = await res.json();
         setComments(prev => [...prev, newComment]);
+        trackEvent('news_comment', { path: `/news/${newsId}`, meta: { news_id: newsId } });
       }
     } finally {
       setSubmitting(false);
@@ -429,6 +439,7 @@ export default function NewsDetailPage() {
   };
 
   const handleShare = async () => {
+    trackEvent('news_share', { path: `/news/${newsId}`, meta: { news_id: newsId } });
     const url = window.location.href;
     const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
     const isTouchDevice = window.matchMedia('(pointer: coarse)').matches && isMobileUA;
@@ -533,6 +544,26 @@ export default function NewsDetailPage() {
                 {tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* 原文連結 */}
+        {item.source_url && (
+          <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+            <a
+              href={item.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('news_source_click', { path: `/news/${newsId}`, meta: { news_id: newsId, source_url: item.source_url } })}
+              className="inline-flex items-center gap-1.5 text-[13px] text-primary font-bold"
+            >
+              閱讀原文
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
           </div>
         )}
       </article>

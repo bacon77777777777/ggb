@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/trackEvent';
 
 interface NewsItem {
   id: string;
@@ -103,7 +104,9 @@ function Carousel({ items }: { items: NewsItem[] }) {
     <div className="relative w-full aspect-[16/9] bg-neutral-900 overflow-hidden"
       onMouseEnter={stop} onMouseLeave={start}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <Link href={`/news/${item.id}`} className="block w-full h-full">
+      <Link href={`/news/${item.id}`} className="block w-full h-full"
+        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title, source: 'carousel' } })}
+      >
         {item.image_url ? (
           <Image src={item.image_url} alt={item.title} fill className="object-cover" unoptimized />
         ) : (
@@ -135,7 +138,9 @@ function ArticleRow({ item, onLike }: { item: NewsItem; onLike: (id: string) => 
   return (
     <div className="relative flex items-start gap-3 py-2 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/40 transition-colors">
       {/* 整行透明 link，覆蓋整個列 */}
-      <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title} />
+      <Link href={`/news/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title}
+        onClick={() => trackEvent('news_article_click', { meta: { news_id: item.id, category: item.category, title: item.title } })}
+      />
 
       {/* 縮圖 */}
       <div className="pointer-events-none relative z-10 flex-shrink-0 w-[70px] h-[70px] rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
@@ -213,6 +218,17 @@ export default function NewsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const supabase = createClient();
 
+  useEffect(() => {
+    trackEvent('news_list_view', { path: '/news' });
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value !== 'all') {
+      trackEvent('news_category_filter', { path: '/news', meta: { category: value } });
+    }
+  };
+
   const handleLike = async (id: string) => {
     setAll(prev => prev.map(a => a.id === id
       ? { ...a, liked: !a.liked, likes_count: a.likes_count + (a.liked ? -1 : 1) }
@@ -278,7 +294,7 @@ export default function NewsPage() {
       <div className="md:hidden">
         {/* 固定 Tab 欄 */}
         <div className="sticky top-0 z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="bg-transparent px-0">
               {CATEGORIES.map(cat => (
                 <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
