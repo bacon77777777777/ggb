@@ -1,141 +1,99 @@
 'use client';
 
-import { Shield, Lock, Eye, Cookie, FileText, Link } from 'lucide-react';
-
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20 transition-colors">
-      <div className="max-w-3xl mx-auto md:pt-6 md:px-4">
-        
-        {/* Header */}
-        <div className="px-4 py-4 md:hidden bg-white dark:bg-neutral-900 sticky top-0 z-10 shadow-sm">
-           <h1 className="text-lg font-bold text-neutral-900 dark:text-white text-center">隱私權政策</h1>
-        </div>
+    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20">
+      <div className="max-w-3xl mx-auto pt-4 md:pt-8 px-4">
 
-        <div className="hidden md:flex items-baseline gap-4 mb-6">
+        <div className="mb-6">
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">隱私權政策</h1>
-          <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            PRIVACY POLICY
-          </span>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 uppercase tracking-widest font-bold">PRIVACY POLICY</p>
         </div>
 
-        <div className="px-4 md:px-0 mt-4 md:mt-0">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 p-6 md:p-8">
-            
-            <div className="flex items-start gap-4 mb-8 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-900/50">
-              <Shield className="w-6 h-6 text-green-600 dark:text-green-400 shrink-0 mt-1" />
-              <div className="text-sm text-green-800 dark:text-green-300 leading-relaxed font-medium">
-                一番賞線上抽（以下簡稱「本服務」）非常重視您的隱私權。為了讓您能安心使用本服務，特此向您說明本服務的隱私權保護政策，以保障您的權益。
-              </div>
-            </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
 
-            <div className="space-y-8">
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  一、隱私權保護政策的適用範圍
-                </h3>
-                <p className="pl-10 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-                  隱私權保護政策內容，包括本服務如何處理在您使用網站服務時收集到的個人識別資料。隱私權保護政策不適用於本服務以外的相關連結網站，也不適用於非本服務所委託或參與管理的人員。
-                </p>
-              </section>
-
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <Eye className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  二、個人資料的蒐集、處理及利用方式
-                </h3>
-                <ul className="space-y-3 pl-12">
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    當您造訪本服務或使用本服務所提供之功能服務時，我們將視該服務功能性質，請您提供必要的個人資料，並在該特定目的範圍內處理及利用您的個人資料。
-                  </li>
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    本服務在您註冊帳號、使用服務、參加活動時，會收集您的姓名、電子郵件地址、聯絡電話、收件地址等個人資料。
-                  </li>
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    本服務所蒐集之個人資料，主要用於身分確認、客戶管理、商品寄送、聯絡通知、行銷活動推廣等目的。
-                  </li>
-                </ul>
-              </section>
-
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <Lock className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  三、資料之保護
-                </h3>
-                <ul className="space-y-3 pl-12">
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    本服務主機均設有防火牆、防毒系統等相關的各項資訊安全設備及必要的安全防護措施，加以保護網站及您的個人資料。
-                  </li>
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    只由經過授權的人員才能接觸您的個人資料，相關處理人員皆簽有保密合約，如有違反保密義務者，將會受到相關的法律處分。
-                  </li>
-                  <li className="flex gap-3 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed -ml-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-700 mt-2 shrink-0" />
-                    如因業務需要有必要委託其他單位提供服務時，本服務亦會嚴格要求其遵守保密義務，並且採取必要檢查程序以確定其將確實遵守。
-                  </li>
-                </ul>
-              </section>
-
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <Link className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  四、網站對外的相關連結
-                </h3>
-                <p className="pl-10 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-                  本服務的網頁提供其他網站的網路連結，您也可經由本服務所提供的連結，點選進入其他網站。但該連結網站不適用本服務的隱私權保護政策，您必須參考該連結網站中的隱私權保護政策。
-                </p>
-              </section>
-
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <Cookie className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  五、Cookie 之使用
-                </h3>
-                <p className="pl-10 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-                  為了提供您最佳的服務，本服務會在您的電腦中放置並取用我們的 Cookie，若您不願接受 Cookie 的寫入，您可在您使用的瀏覽器功能項中設定隱私權等級為高，即可拒絕 Cookie 的寫入，但可能會導致網站某些功能無法正常執行。
-                </p>
-              </section>
-
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-              <section>
-                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white mb-4">
-                  <span className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
-                    <Shield className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                  </span>
-                  六、隱私權保護政策之修正
-                </h3>
-                <p className="pl-10 text-sm text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-                  本服務隱私權保護政策將因應需求隨時進行修正，修正後的條款將刊登於網站上。
-                </p>
-              </section>
-
-            </div>
+          <div className="p-5 bg-neutral-50 dark:bg-neutral-800/50">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              GGB 吉吉比（以下簡稱「本平台」）重視您的個人資料隱私，並依個人資料保護法及相關法令妥善處理。使用本平台服務，即表示您同意本隱私權政策。本政策可能隨業務需求更新，更新後將公告於網站。
+            </p>
           </div>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">一、蒐集的個人資料類型</h2>
+            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              <li><span className="font-bold text-neutral-700 dark:text-neutral-300">帳號資料：</span>電子郵件信箱、會員暱稱、密碼（加密儲存）。</li>
+              <li><span className="font-bold text-neutral-700 dark:text-neutral-300">交易資料：</span>儲值記錄、抽獎紀錄、訂單內容、物流資訊。</li>
+              <li><span className="font-bold text-neutral-700 dark:text-neutral-300">收件資料：</span>申請出貨時填寫之收件人姓名、電話、地址。</li>
+              <li><span className="font-bold text-neutral-700 dark:text-neutral-300">行為資料：</span>瀏覽頁面、點擊行為、停留時間等匿名化使用統計，用於改善服務體驗。</li>
+              <li><span className="font-bold text-neutral-700 dark:text-neutral-300">裝置資料：</span>IP 位址、瀏覽器類型、Cookie 識別碼。</li>
+            </ul>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">二、資料使用目的</h2>
+            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              <li>提供、維護及改善本平台服務。</li>
+              <li>處理交易、出貨及客服事宜。</li>
+              <li>寄送訂單確認、出貨通知、平台公告等服務性通知。</li>
+              <li>分析服務使用狀況以優化使用體驗。</li>
+              <li>偵測及防範詐欺、濫用或違規行為。</li>
+              <li>依法律規定或主管機關要求進行揭露。</li>
+            </ul>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">三、資料分享與揭露</h2>
+            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              <li>本平台不會出售您的個人資料給第三方。</li>
+              <li>為提供服務，可能與以下第三方分享必要資料：物流業者（收件地址）、金流服務商（綠界 ECPay，支付相關資料）、雲端服務供應商（資料儲存）。</li>
+              <li>如依法律規定、法院命令或主管機關要求，本平台將依規定揭露您的資料。</li>
+              <li>上述第三方服務商均有其隱私保護義務，本平台將要求其遵守。</li>
+            </ul>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">四、Cookie 使用</h2>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              本平台使用 Cookie 維持登入狀態、記憶使用偏好及統計使用情形。您可透過瀏覽器設定拒絕 Cookie，但部分功能（如保持登入）可能因此無法正常運作。
+            </p>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">五、資料保存期限</h2>
+            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              <li>帳號資料：帳號存續期間持續保存，帳號刪除後依法定期限保留必要資料。</li>
+              <li>交易記錄：依商業帳簿及稅法規定至少保存 5 年。</li>
+              <li>收件資料：訂單完成後 6 個月內定期清除非必要資料。</li>
+            </ul>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">六、您的權利</h2>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed mb-2">
+              依個人資料保護法，您可向本平台行使以下權利：
+            </p>
+            <ul className="space-y-2 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              <li>查詢或閱覽您的個人資料。</li>
+              <li>要求更正不正確的個人資料。</li>
+              <li>要求停止蒐集、處理或利用您的個人資料。</li>
+              <li>要求刪除個人資料（依法律規定需保留之資料除外）。</li>
+            </ul>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed mt-2">
+              如需行使上述權利，請透過 LINE 官方帳號聯繫客服。
+            </p>
+          </section>
+
+          <section className="p-5">
+            <h2 className="text-sm font-black text-neutral-900 dark:text-white mb-3">七、未成年人保護</h2>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              本平台服務對象為 18 歲以上成年人。若未成年人使用本服務，須取得法定代理人同意。本平台不會主動蒐集未成年人之個人資料，如發現有誤，將立即刪除。
+            </p>
+          </section>
+
+          <div className="p-5">
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">最後更新：2026 年 7 月｜聯絡客服：LINE @ggb.tw</p>
+          </div>
+
         </div>
       </div>
     </div>

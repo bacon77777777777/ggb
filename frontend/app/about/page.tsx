@@ -1,109 +1,54 @@
 'use client';
 
-import { Rocket, Heart, Shield, Users, Trophy, Gift, Star } from 'lucide-react';
-
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20 transition-colors">
-      <div className="max-w-3xl mx-auto md:pt-6 md:px-4">
-        
-        {/* Header */}
-        <div className="px-4 py-4 md:hidden bg-white dark:bg-neutral-900 sticky top-0 z-10 shadow-sm">
-           <h1 className="text-lg font-bold text-neutral-900 dark:text-white text-center">關於我們</h1>
-        </div>
+    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20">
+      <div className="max-w-3xl mx-auto pt-4 md:pt-8 px-4">
 
-        <div className="hidden md:flex items-baseline gap-4 mb-6">
+        <div className="mb-6">
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">關於我們</h1>
-          <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            ABOUT US
-          </span>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 uppercase tracking-widest font-bold">ABOUT GGB</p>
         </div>
 
-        <div className="space-y-4 px-4 md:px-0 mt-4 md:mt-0">
-          
-          {/* Hero / Intro Card */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 p-6 md:p-8 text-center relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-            
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10">
-              <Gift className="w-8 h-8 text-primary" />
-            </div>
-            
-            <h2 className="text-xl md:text-2xl font-black text-neutral-900 dark:text-white mb-4 relative z-10">
-              打造最公平、有趣的<br/>線上抽獎平台
-            </h2>
-            <p className="text-sm md:text-base text-neutral-600 dark:text-neutral-400 leading-relaxed font-medium max-w-lg mx-auto relative z-10">
-              讓每一次的抽獎，都充滿期待與驚喜。我們致力於打破時間與空間的限制，讓動漫愛好者隨時隨地享受一番賞的樂趣。
+        <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 divide-y divide-neutral-100 dark:divide-neutral-800">
+
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">什麼是 GGB 吉吉比？</h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              GGB 吉吉比是台灣正版潮玩線上平台，提供一番賞、轉蛋、盒玩、抽卡等多元玩法。我們以「廠商供貨、平台出貨」為核心模式，嚴格把關商品正版授權，讓收藏家隨時隨地都能享受開盲盒的樂趣與驚喜。
             </p>
-          </div>
+          </section>
 
-          {/* Mission Card */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 p-6">
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-              <Trophy className="w-5 h-5 text-primary" />
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">我們的使命</h3>
-            </div>
-            <div className="space-y-4 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-medium">
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">我們的理念</h2>
+            <div className="space-y-3 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
               <p>
-                一番賞線上抽成立於 2024 年，我們是一群熱愛動漫與收藏的團隊。我們深知每位收藏家對於喜愛角色的熱情，因此建立了這個平台。
+                市場上許多線上抽獎平台機率不透明、結果難以驗證。GGB 導入哈希值驗證機制，每一次抽獎的隨機種子（Seed）在抽前公開，抽後可供任何人自行驗算，確保結果真實不可竄改。
               </p>
               <p>
-                我們堅持 <span className="text-primary font-bold">公開透明的機率</span> 與 <span className="text-primary font-bold">公平的機制</span>，確保每一次的抽獎都是真實且公正的。所有的抽獎過程都經過嚴格驗證，讓您玩得安心。
+                我們相信收藏不只是消費，更是一種生活方式。平台持續引進市場最新商品，並提供安全的倉庫寄存服務，讓您依自己的節奏決定何時出貨。
               </p>
             </div>
-          </div>
+          </section>
 
-          {/* Values Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-3 text-blue-500">
-                <Shield className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1">公平公正</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">機率透明，絕無後台操控</p>
-            </div>
-            
-            <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-3 text-green-500">
-                <Rocket className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1">快速出貨</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">專業倉儲，安全送達</p>
-            </div>
-            
-            <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mb-3 text-red-500">
-                <Heart className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1">優質服務</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">貼心客服，溫暖體驗</p>
-            </div>
-            
-            <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-sm border border-neutral-100 dark:border-neutral-800 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mb-3 text-purple-500">
-                <Users className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1">社群互動</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">同好交流，分享喜悅</p>
-            </div>
-          </div>
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">我們的承諾</h2>
+            <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+              <li className="flex gap-2"><span className="text-primary font-bold shrink-0">—</span>所有商品均為官方正版授權，不販售盜版或仿冒品</li>
+              <li className="flex gap-2"><span className="text-primary font-bold shrink-0">—</span>抽獎機率公開透明，結果可哈希驗證</li>
+              <li className="flex gap-2"><span className="text-primary font-bold shrink-0">—</span>倉庫商品安全保管，出貨快速確實</li>
+              <li className="flex gap-2"><span className="text-primary font-bold shrink-0">—</span>客服以 LINE 官方帳號為主要聯絡管道，盡速回覆</li>
+            </ul>
+          </section>
 
-          {/* Why Choose Us */}
-          <div className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 p-6">
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-100 dark:border-neutral-800">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">為什麼選擇我們？</h3>
+          <section className="p-6">
+            <h2 className="text-base font-black text-neutral-900 dark:text-white mb-3">聯絡我們</h2>
+            <div className="space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
+              <p>官方 LINE：<span className="font-bold text-neutral-900 dark:text-white">@ggb.tw</span></p>
+              <p>服務時間：週一至週六 12:00 – 22:00</p>
+              <p>非服務時段留言將於下一工作日回覆。</p>
             </div>
-            <div className="space-y-4 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-medium">
-              <p>
-                我們不僅僅是一個抽獎平台，更是一個連結收藏家與夢想的橋樑。我們與日本各大廠商緊密合作，確保提供最新、最豐富的正版商品。
-              </p>
-              <p>
-                從網站的流暢體驗到收到商品的開箱驚喜，我們在意每一個細節。您的滿意與信任，是我們持續進步的最大動力。
-              </p>
-            </div>
-          </div>
+          </section>
 
         </div>
       </div>

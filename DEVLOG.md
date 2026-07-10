@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-07-10｜客服系統 + 倉庫自動分解 + 前台靜態頁重寫
+
+### 客服管理系統（全新）
+- **前台聯絡表單**：FAQ 頁底部新增聯絡表單（回報類型/信箱/手機/內容），未登入時全部禁用並顯示提示
+- **DB**：migration 318 建立 `cs_tickets` 表（category/email/phone/content/status/admin_note）
+- **前台 API**：`/api/cs-tickets` POST — 驗證 session 後寫入工單
+- **後台客服工單頁**：`/cs-management/tickets` — 依狀態篩選、展開查看詳情、標記狀態、填寫內部備註
+- **後台操作手冊**：`/cs-management/sop` — 四大情境（代幣/抽獎/商品/出貨）標準處理流程與補償原則
+- 側欄新增「客服管理」群組
+
+### 倉庫30天自動分解（全新）
+- **DB**：migration 317 建立 `auto_dismantle_expired_warehouse_items()` 函數
+  - 對 `status='in_warehouse'` 且 `created_at < NOW() - INTERVAL '30 days'` 的品項執行分解
+  - 排除機器人帳號、寫入 `token_adjustments`（type=dismantle）並更新用戶代幣
+- **Cron**：`/api/cron/warehouse-dismantle` — POST，驗 `x-cron-secret`，呼叫 RPC，推 LINE 通知
+- 待設定：pg_cron 每日凌晨執行
+
+### 前台靜態頁全面重寫（UI + 法律內容）
+重寫五個頁面（`about` / `faq` / `terms` / `privacy` / `return-policy`）：
+- 統一標題樣式（無圖示圓圈、無多層卡片）
+- GGB 平台專屬文字（非仿史萊姆玩具通用文）
+- 法律保護語言：消保法第19條排除七日鑑賞期、儲值不退款、代幣不換現金
+- 倉庫30天自動分解條款明確寫入 `terms` 和 `return-policy`
+
+### 殺率排除盒玩/轉蛋
+- `/api/draw`：category 為 `boxplay` / `gacha` / `盒玩` / `轉蛋` 時強制 `profitRate = 1.0`
+
+### Migration 執行
+- migration 317（warehouse auto-dismantle function）✅ 已執行
+- migration 318（cs_tickets table）✅ 已執行
+
+---
+
 ## 2026-07-10｜後台操作 Log 全面補齊
 
 ### 覆蓋範圍

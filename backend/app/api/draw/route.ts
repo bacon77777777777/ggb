@@ -60,18 +60,24 @@ export async function POST(request: NextRequest) {
       originalProbability: p.probability
     }))
 
+    // 盒玩與轉蛋不套用殺率（機率由商品本身決定）
+    const NO_PROFIT_RATE_CATEGORIES = ['boxplay', 'gacha', '盒玩', '轉蛋']
+    const skipProfitRate = NO_PROFIT_RATE_CATEGORIES.includes(product.category ?? '')
+
     const rawProfitRate = (product as any).profit_rate
     let profitRate = 1.0
-    if (typeof rawProfitRate === 'number') {
-      profitRate = rawProfitRate
-    } else if (typeof rawProfitRate === 'string' && rawProfitRate.trim() !== '') {
-      const parsed = parseFloat(rawProfitRate)
-      if (!Number.isNaN(parsed)) {
-        profitRate = parsed
+    if (!skipProfitRate) {
+      if (typeof rawProfitRate === 'number') {
+        profitRate = rawProfitRate
+      } else if (typeof rawProfitRate === 'string' && rawProfitRate.trim() !== '') {
+        const parsed = parseFloat(rawProfitRate)
+        if (!Number.isNaN(parsed)) {
+          profitRate = parsed
+        }
       }
-    }
-    if (!Number.isFinite(profitRate) || profitRate <= 0) {
-      profitRate = 1.0
+      if (!Number.isFinite(profitRate) || profitRate <= 0) {
+        profitRate = 1.0
+      }
     }
 
     // 5. 執行抽獎
