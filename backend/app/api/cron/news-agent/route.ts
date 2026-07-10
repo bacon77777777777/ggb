@@ -462,7 +462,7 @@ export async function POST(req: NextRequest) {
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
         image_url: imageUrl, source_url: realUrl,
-        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: true,
+        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: !!imageUrl,
       })
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
@@ -543,7 +543,7 @@ export async function POST(req: NextRequest) {
         source_url: realUrl,
         category:   draft.category ?? category,
         tags:       draft.tags ?? [],
-        is_active:  true,
+        is_active:  !!imageUrl,
       })
 
       if (!error) {
