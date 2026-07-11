@@ -13,6 +13,7 @@ import { PurchaseConfirmation } from '@/components/shop/PurchaseConfirmation';
 import { IchibanTicket } from '@/components/IchibanTicket';
 import { LastOneCelebrationModal } from '@/components/shop/LastOneCelebrationModal';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
+import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import FigmaTearScene from '@/components/shop/FigmaTearScene';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -125,6 +126,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
   const [showFigmaTear, setShowFigmaTear] = useState(false);
   const [tearIsDone, setTearIsDone] = useState(false);
+  const [tearIndex, setTearIndex] = useState(0);
+  const [pendingGachaResult, setPendingGachaResult] = useState<Array<{ id: string; name: string; rarity: string; grade: string; image_url: string; is_last_one: boolean }> | null>(null);
 
   useEffect(() => {
     fetch('/api/module-settings')
@@ -528,6 +531,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
       // 沉浸式撕紙模式：在票券網格前先播全畫面撕紙動畫
       if (product?.type === 'ichiban' && ichibanTheme === 'ichiban_tear') {
+        setTearIndex(0);
+        setTearIsDone(false);
         setShowFigmaTear(true);
       }
 
@@ -727,7 +732,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const computedRemaining = Math.max(baseRemaining, 0);
   const isProductEnded = product.status === 'ended' || computedRemaining <= 0 || isSoldOut;
 
-  if (isProductEnded && drawnResults.length === 0) {
+  if (isProductEnded && drawnResults.length === 0 && !pendingGachaResult) {
     return (
       <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
         <div className="flex flex-col items-center gap-3 text-white">
@@ -928,38 +933,47 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     );
   }
 
-  // FigmaTear overlay：結果到了、模式符合、尚未結束撕紙動畫
+  // FigmaTear overlay：逐張撕紙
   if (drawnResults.length > 0 && showFigmaTear) {
-    const gradeOrder = ['last', 'a', 'b', 'c', 'd', 'e', 'f', 'g'];
-    const bestResult = [...drawnResults].sort((a, b) => {
-      const ga = a.is_last_one ? 'last' : (a.grade ?? '').toLowerCase().replace('賞', '').trim();
-      const gb = b.is_last_one ? 'last' : (b.grade ?? '').toLowerCase().replace('賞', '').trim();
-      const ia = gradeOrder.indexOf(ga) === -1 ? 99 : gradeOrder.indexOf(ga);
-      const ib = gradeOrder.indexOf(gb) === -1 ? 99 : gradeOrder.indexOf(gb);
-      return ia - ib;
-    })[0];
-    const prizeLetter = bestResult?.is_last_one
+    const safeIndex = Math.min(tearIndex, drawnResults.length - 1);
+    const currentResult = drawnResults[safeIndex];
+    const isLast = safeIndex >= drawnResults.length - 1;
+    const prizeLetter = currentResult?.is_last_one
       ? 'LAST'
-      : (bestResult?.grade ?? 'F').replace('賞', '').trim().toUpperCase();
+      : (currentResult?.grade ?? 'F').replace('賞', '').trim().toUpperCase();
+
+    const handleNext = () => {
+      setTearIsDone(false);
+      setTearIndex(safeIndex + 1);
+    };
+
+    // 全部開啟 / 最後一張撕完：清除撕紙狀態 → 回到商品頁 → 彈出恭喜彈窗
+    const handleFinish = () => {
+      const results = drawnResults.map((r, i) => ({
+        id: String(i),
+        name: r.name,
+        rarity: r.grade || 'E',
+        grade: r.grade,
+        image_url: r.image_url,
+        is_last_one: r.is_last_one,
+      }));
+      setPendingGachaResult(results);
+      setHasTriggeredAutoResults(true); // 防止 isProductEnded effect 自動跳轉
+      setShowFigmaTear(false);
+      setDrawnResults([]);
+      setTearIndex(0);
+    };
 
     return (
       <div className="fixed inset-0 z-[3000]">
         <FigmaTearScene
+          key={safeIndex}
           prizeTierLetter={prizeLetter}
-          initialDone={tearIsDone}
-          onDone={() => {
-            if (tearIsDone) {
-              // Second showing (back from prize page) — just return to prize page
-              setShowFigmaTear(false);
-              setShowPrizeDetails(true);
-            } else {
-              // First time — mark results opened, go to prize detail view
-              setDrawnResults(prev => prev.map(r => ({ ...r, isOpened: true })));
-              setShowFigmaTear(false);
-              setShowPrizeDetails(true);
-              setTearIsDone(true);
-            }
-          }}
+          initialDone={false}
+          isLast={isLast}
+          onNext={handleNext}
+          onOpenAll={handleFinish}
+          onBack={handleFinish}
         />
       </div>
     );
@@ -1320,6 +1334,15 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
           </div>
         </div>
       </div>
+
+      {/* 撕紙完成後：恭喜獲得彈窗浮在商品頁上 */}
+      {pendingGachaResult && (
+        <GachaResultModal
+          isOpen={true}
+          results={pendingGachaResult}
+          onClose={() => setPendingGachaResult(null)}
+        />
+      )}
 
       {/* Purchase Confirmation Overlay */}
       {showConfirm && (

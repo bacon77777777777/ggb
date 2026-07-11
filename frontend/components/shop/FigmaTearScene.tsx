@@ -10,21 +10,41 @@ declare global {
 
 interface FigmaTearSceneProps {
   prizeTierLetter: string;
-  onDone: () => void;
+  onDone?: () => void;
   initialDone?: boolean;
+  isLast?: boolean;
+  onNext?: () => void;
+  onOpenAll?: () => void;
+  onBack?: () => void;
 }
 
-export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = false }: FigmaTearSceneProps) {
+export default function FigmaTearScene({
+  prizeTierLetter,
+  onDone,
+  initialDone = false,
+  isLast = true,
+  onNext,
+  onOpenAll,
+  onBack,
+}: FigmaTearSceneProps) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const flipbookRef   = useRef<HTMLDivElement>(null);
   const [dims, setDims]           = useState({ w: 393, h: 844 });
   const [done, setDone]           = useState(initialDone);
   const [showButton, setShowButton] = useState(initialDone);
+  const [showPrize, setShowPrize]  = useState(initialDone);
   const [touched, setTouched]     = useState(false);
   const wrapperRef    = useRef<HTMLDivElement>(null);  // .ichiban-flipbook
   const turnReady     = useRef(false);
   const pressStartX   = useRef<number | null>(null);
   const slideRight    = useRef(false);
+
+  // 進場後 2 秒才顯示獎項文字（讓 up1.svg 先載入蓋住）
+  useEffect(() => {
+    if (initialDone) return;
+    const t = setTimeout(() => setShowPrize(true), 2000);
+    return () => clearTimeout(t);
+  }, [initialDone]);
 
   // Container resize
   useEffect(() => {
@@ -36,12 +56,22 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
     return () => ro.disconnect();
   }, []);
 
-  // 完成後 3 秒顯示按鈕
+  // 撕完後 1 秒顯示「下一張」按鈕（SKIP 隨時可按）
   useEffect(() => {
     if (!done || showButton) return;
-    const t = setTimeout(() => setShowButton(true), 3000);
+    const t = setTimeout(() => setShowButton(true), 1000);
     return () => clearTimeout(t);
   }, [done, showButton]);
+
+  // 最後一張撕完 → 1 秒自動結束（不等使用者按 SKIP）
+  useEffect(() => {
+    if (!done || !isLast) return;
+    const t = setTimeout(() => {
+      (onOpenAll ?? onBack ?? onDone)?.();
+    }, 1000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, isLast]);
 
   // 音效
   const tearAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -65,15 +95,25 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
 
     let cancelled = false;
 
-    // 滑動追蹤：>5px 就顯示 p-temporal；pointerup 時若沒到 24px 再藏回去
+    // 滑動追蹤：>5px 顯示 up2，同步操作 DOM 避免 class cascade 延遲問題
+    const getPtEl = () =>
+      flipbookRef.current?.querySelector('.p-temporal') as HTMLElement | null;
+
     const onPointerMove = (e: PointerEvent) => {
       if (pressStartX.current === null) return;
       const dx = e.clientX - pressStartX.current;
-      if (dx > 5) wrapperRef.current?.classList.add('tearing');
-      if (dx > 24) slideRight.current = true;
+      if (dx > 5) {
+        wrapperRef.current?.classList.add('tearing');
+        const pt = getPtEl();
+        if (pt) pt.style.visibility = 'visible';
+      }
     };
     const onPointerUp = () => {
-      if (!slideRight.current) wrapperRef.current?.classList.remove('tearing');
+      if (!slideRight.current) {
+        wrapperRef.current?.classList.remove('tearing');
+        const pt = getPtEl();
+        if (pt) pt.style.visibility = '';
+      }
       pressStartX.current = null;
     };
 
@@ -116,12 +156,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         },
       });
 
-      // 只有往右滑動才撕開；點擊一律取消
-      $fb.bind('turning', (_e: Event, page: number) => {
-        if (page === 2 && !slideRight.current) {
-          (_e as Event & { preventDefault(): void }).preventDefault();
-        }
-      });
 
       turnReady.current = true;
     })();
@@ -143,7 +177,6 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
   const ticketW      = 255 * s;
   const ticketH      = 124 * s;
   const ticketGroupY = Math.max(0, (dims.h - 843 * s) / 2) + 217 * s;
-  const prizeLabel   = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
   return (
     <div
@@ -189,11 +222,9 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/ichiban-tear/bg.svg" alt=""
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-            <motion.div
+            <div
               className="absolute inset-0 flex items-center justify-center"
-              initial={initialDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-              animate={done ? { opacity: 1, scale: 1 } : {}}
-              transition={initialDone ? { duration: 0 } : { delay: 0.2, duration: 0.5, type: 'spring' }}
+              style={{ opacity: showPrize ? 1 : 0, transition: 'opacity 0.4s' }}
             >
               <div className="flex flex-col items-center w-full pl-[18%]">
                 <div className="flex items-baseline gap-1">
@@ -214,7 +245,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                   </span>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
 
           {/* turn.js flipbook 貼紙蓋板 */}
@@ -234,7 +265,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                 onPointerDown={(e) => {
                   setTouched(true);
                   pressStartX.current = e.clientX;
-                  slideRight.current  = false;
+                  slideRight.current  = true;   // pointerdown 立刻放行，純點擊不會觸發 turn.js turning 事件
                 }}
               >
                 <div ref={flipbookRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -262,28 +293,29 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         </div>
       </div>
 
-      {/* 開獎列表按鈕 */}
-      <AnimatePresence>
-        {showButton && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            onClick={onDone}
-            className="absolute bottom-8 right-6 z-30 flex items-center gap-2 px-5 py-3 rounded-full border border-white/40 text-white text-sm font-bold active:scale-95"
-            style={{
-              background: 'rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-            }}
-          >
-            {prizeLabel} 開獎列表
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* 底部按鈕列：SKIP 永遠靠右；下一張從左邊展開填滿 */}
+      <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end gap-3">
+        <AnimatePresence>
+          {showButton && !isLast && (
+            <motion.button
+              key="next"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              onClick={onNext ?? onDone}
+              className="flex-1 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
+            >
+              下一張
+            </motion.button>
+          )}
+        </AnimatePresence>
+        <button
+          onClick={onOpenAll ?? onBack ?? onDone}
+          className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
+        >
+          SKIP
+        </button>
+      </div>
     </div>
   );
 }
