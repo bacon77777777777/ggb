@@ -51,18 +51,20 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
   useEffect(() => {
     if (done || turnReady.current || !flipbookRef.current) return;
 
-    const loadScript = (src: string) =>
+    const injectScript = (src: string): Promise<void> =>
       new Promise<void>(resolve => {
-        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
         const s = document.createElement('script');
         s.src = src;
         s.onload = () => resolve();
+        s.onerror = () => resolve();
         document.head.appendChild(s);
       });
 
     (async () => {
-      await loadScript('/js/jquery.min.js');
-      await loadScript('/js/turn.js');
+      // 每次都檢查 global，缺哪個才注入
+      if (!window.jQuery)          await injectScript('/js/jquery.min.js');
+      if (!window.jQuery?.fn?.turn) await injectScript('/js/turn.js');
+
       const $ = window.jQuery;
       if (!$ || !flipbookRef.current) return;
 
