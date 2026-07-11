@@ -1,8 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+
+declare global {
+  interface Window { jQuery: any }
+}
 
 interface FigmaTearSceneProps {
   prizeTierLetter: string;
@@ -11,19 +15,15 @@ interface FigmaTearSceneProps {
 }
 
 export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = false }: FigmaTearSceneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dims, setDims] = useState({ w: 393, h: 844 });
-  const [peel, setPeel] = useState(initialDone ? 1 : 0);
-  const [done, setDone] = useState(initialDone);
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const flipbookRef   = useRef<HTMLDivElement>(null);
+  const [dims, setDims]           = useState({ w: 393, h: 844 });
+  const [done, setDone]           = useState(initialDone);
   const [showButton, setShowButton] = useState(initialDone);
-  // Fold lean — how much the crease line tilts based on drag direction
-  const [foldLean, setFoldLean] = useState(0);
+  const [touched, setTouched]     = useState(false);
+  const turnReady = useRef(false);
 
-  const peelRef = useRef(initialDone ? 1 : 0);
-  const foldLeanRef = useRef(0);
-  const animFrameRef = useRef<number | null>(null);
-  const dragRef = useRef<{ startX: number; startPeel: number; lastX: number } | null>(null);
-
+  // Container resize
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -33,171 +33,127 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
     return () => ro.disconnect();
   }, []);
 
+  // 完成後 3 秒顯示按鈕
   useEffect(() => {
     if (!done || showButton) return;
     const t = setTimeout(() => setShowButton(true), 3000);
     return () => clearTimeout(t);
   }, [done, showButton]);
 
-  useEffect(() => {
-    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, []);
-
-  const s = dims.w / 393;
-  const ticketW = 255 * s;
-  const ticketH = 124 * s;
-  const ticketGroupY = Math.max(0, (dims.h - 843 * s) / 2) + 217 * s;
-
+  // 音效
   const tearAudioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     tearAudioRef.current = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
     tearAudioRef.current.preload = 'auto';
   }, []);
 
-  const playTear = useCallback(() => {
-    const a = tearAudioRef.current;
-    if (!a) return;
-    a.currentTime = 0;
-    void a.play().catch(() => {});
-  }, []);
+  // 載入 jQuery + turn.js，初始化 flipbook
+  useEffect(() => {
+    if (done || turnReady.current || !flipbookRef.current) return;
 
-  const animatePeel = useCallback((target: number, duration: number, onComplete?: () => void) => {
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    const start = peelRef.current;
-    const startLean = foldLeanRef.current;
-    const startTime = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - startTime) / duration, 1);
-      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      const val = start + (target - start) * ease;
-      const lean = startLean * (1 - ease); // lean eases back to 0
-      peelRef.current = val;
-      foldLeanRef.current = lean;
-      setPeel(val);
-      setFoldLean(lean);
-      if (t < 1) {
-        animFrameRef.current = requestAnimationFrame(tick);
-      } else {
-        peelRef.current = target;
-        foldLeanRef.current = 0;
-        setPeel(target);
-        setFoldLean(0);
-        onComplete?.();
+    const loadScript = (src: string) =>
+      new Promise<void>(resolve => {
+        if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        document.head.appendChild(s);
+      });
+
+    (async () => {
+      await loadScript('/js/jquery.min.js');
+      await loadScript('/js/turn.js');
+      const $ = window.jQuery;
+      if (!$ || !flipbookRef.current) return;
+
+      const $fb = $(flipbookRef.current);
+      $fb.turn({
+        display:    'single',
+        gradients:  true,
+        duration:   800,
+        pages:      2,
+        direction:  'rtl',    // 貼紙從左角掀起往右撕
+        autoCenter: false,
+        elevation:  0,        // 關掉矩形投影（四角不散出陰影）
+        when: {
+          turned: (_e: Event, page: number) => {
+            if (page === 2) {
+              tearAudioRef.current?.play().catch(() => {});
+              setTimeout(() => setDone(true), 300);
+            }
+          },
+        },
+      });
+
+      // 點一下直接翻頁
+      $fb.on('click', () => {
+        if ($fb.turn('page') === 1 && !$fb.turn('animating')) {
+          $fb.turn('next');
+        }
+      });
+
+      turnReady.current = true;
+    })();
+
+    return () => {
+      const $ = window.jQuery;
+      if ($ && flipbookRef.current && turnReady.current) {
+        try { $(flipbookRef.current).turn('destroy'); } catch { /* ignore */ }
+        turnReady.current = false;
       }
     };
-    animFrameRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  const handleReveal = useCallback(() => {
-    playTear();
-    animatePeel(1, 500, () => setDone(true));
-  }, [animatePeel, playTear]);
-
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (done) return;
-    dragRef.current = { startX: e.clientX, startPeel: peelRef.current, lastX: e.clientX };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current || done) return;
-    const velocity = e.clientX - dragRef.current.lastX;
-    dragRef.current.lastX = e.clientX;
-    const dx = e.clientX - dragRef.current.startX;
-    const newPeel = Math.max(0, Math.min(1, dragRef.current.startPeel + dx / ticketW));
-    // Lean: proportional to velocity, clamped to ±20% of ticket height
-    const maxLean = ticketH * 0.2;
-    const newLean = Math.max(-maxLean, Math.min(maxLean, velocity * 1.8));
-    peelRef.current = newPeel;
-    foldLeanRef.current = newLean;
-    setPeel(newPeel);
-    setFoldLean(newLean);
-  }, [done, ticketW, ticketH]);
-
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current || done) return;
-    const movedX = Math.abs(e.clientX - dragRef.current.startX);
-    dragRef.current = null;
-    // Tap (< 8px movement) or enough drag → full reveal
-    if (movedX < 8 || peelRef.current > 0.25) {
-      handleReveal();
-    } else {
-      animatePeel(0, 300);
-    }
-  }, [done, handleReveal, animatePeel]);
-
-  const prizeLabel = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
-
-  const foldX = peel * ticketW;
-  const flipAngle = peel * 180; // 0° (flat) → 180° (fully flipped)
+  const s            = dims.w / 393;
+  const ticketW      = 255 * s;
+  const ticketH      = 124 * s;
+  const ticketGroupY = Math.max(0, (dims.h - 843 * s) / 2) + 217 * s;
+  const prizeLabel   = prizeTierLetter === 'LAST' ? 'LAST ONE' : `${prizeTierLetter} 賞`;
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none touch-none"
-      style={{ minHeight: '100dvh', background: '#111' }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      className="relative w-full h-full overflow-hidden select-none"
+      style={{ minHeight: '100dvh', background: '#111', touchAction: 'none' }}
     >
-      {/* Full-screen background scene */}
-      <Image
-        src="/images/ichiban-tear/bg.png"
-        alt=""
-        fill
-        className="object-cover"
-        unoptimized
-        priority
-      />
+      {/* 全屏背景 */}
+      <Image src="/images/ichiban-tear/bg.png" alt="" fill className="object-cover" unoptimized priority />
 
-      {/* Scene group: hand + ticket — always visible */}
+      {/* 場景群組：手 + 票 */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute"
         style={{
-          top: ticketGroupY,
-          left: -71 * s,
-          width: 433 * s,
-          height: 491 * s,
+          top: ticketGroupY, left: -71 * s,
+          width: 433 * s, height: 491 * s,
           transform: 'rotate(4deg)',
+          pointerEvents: 'none',
         }}
       >
+        {/* 手 */}
         <Image
-          src="/images/ichiban-tear/hand.png"
-          alt=""
-          unoptimized
+          src="/images/ichiban-tear/hand.png" alt="" unoptimized
           style={{
-            position: 'absolute',
-            top: 11 * s,
-            left: 21 * s,
-            width: 283 * s,
-            height: 467 * s,
-            transform: 'rotate(-5deg)',
-            objectFit: 'contain',
+            position: 'absolute', top: 11 * s, left: 21 * s,
+            width: 283 * s, height: 467 * s,
+            transform: 'rotate(-5deg)', objectFit: 'contain',
           }}
-          width={283}
-          height={467}
+          width={283} height={467}
         />
 
-        {/* Ticket — separate base (clipped) + cover layer */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 42 * s,
-            left: 178 * s,
-            width: ticketW,
-            height: ticketH,
-            transform: 'rotate(-12deg)',
-          }}
-        >
-          {/* Base layer: bg.svg + prize text, clipped to rounded rect */}
+        {/* 票 */}
+        <div style={{
+          position: 'absolute',
+          top: 42 * s, left: 178 * s,
+          width: ticketW, height: ticketH,
+          transform: 'rotate(-12deg)',
+          pointerEvents: done ? 'none' : 'auto',
+        }}>
+          {/* 底層：bg.svg + 獎項文字 */}
           <div style={{ position: 'absolute', inset: 0, borderRadius: 18 * s, overflow: 'hidden' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/ichiban-tear/bg.svg"
-              alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <img src="/images/ichiban-tear/bg.svg" alt=""
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
             <motion.div
               className="absolute inset-0 flex items-center justify-center"
               initial={initialDone ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
@@ -216,8 +172,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                     {prizeTierLetter === 'LAST' ? 'LAST' : prizeTierLetter}
                   </span>
                   <span style={{
-                    fontSize: ticketH * 0.22,
-                    fontWeight: 900,
+                    fontSize: ticketH * 0.22, fontWeight: 900,
                     color: prizeTierLetter === 'LAST' ? '#FFC400' : '#D3D3D3',
                   }}>
                     {prizeTierLetter === 'LAST' ? 'ONE' : '賞'}
@@ -227,101 +182,25 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: turn.js hard-page style — right cover on top (z:2) clips the rotating panel's overhang */}
+          {/* turn.js flipbook 貼紙蓋板 */}
           {!done && (
             <>
-              {/* ── 左側翻起區塊（0 → foldX）：前後兩面 3D 旋轉，z:1 ── */}
-              {peel > 0.001 && (
-                <div style={{
-                  position: 'absolute',
-                  left: 0, top: 0,
-                  width: foldX,
-                  height: ticketH,
-                  zIndex: 1,
-                  /* NO overflow:hidden — right cover clips overhang instead */
-                }}>
-                  {/* 前面（up.svg）：rotateY 0° → -180°，過 90° 後 backfaceVisibility 隱藏 */}
-                  <div style={{
-                    position: 'absolute', left: 0, top: 0,
-                    width: ticketW, height: ticketH,
-                    transformOrigin: `${foldX}px 50%`,
-                    transform: `rotateY(${-flipAngle}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      background: `linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(0,0,0,${Math.min(0.65, peel * 1.3)}) 100%)`,
-                      pointerEvents: 'none',
-                    }} />
-                  </div>
-
-                  {/* 背面（up2.svg）：rotateY 180° → 0°，前面消失後出現 */}
-                  <div style={{
-                    position: 'absolute', left: 0, top: 0,
-                    width: ticketW, height: ticketH,
-                    transformOrigin: `${foldX}px 50%`,
-                    transform: `rotateY(${180 - flipAngle}deg)`,
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                  }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/ichiban-tear/up2.svg" alt="" draggable={false}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      background: 'linear-gradient(to right, rgba(0,0,0,0.28) 0%, rgba(255,255,255,0.18) 100%)',
-                      pointerEvents: 'none',
-                    }} />
-                  </div>
+              <div
+                className={`ichiban-flipbook${touched ? ' touched' : ''}`}
+                style={{
+                  position: 'absolute', inset: 0,
+                  borderRadius: 18 * s, overflow: 'hidden',
+                }}
+                onPointerDown={() => setTouched(true)}
+              >
+                <div ref={flipbookRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  <div className="sheet cover" />  {/* 第 1 頁：up.svg 貼紙正面 */}
+                  <div className="sheet blank" />  {/* 第 2 頁：透明，撕開後露出 bg */}
                 </div>
-              )}
-
-              {/* ── 右側靜止蓋板（foldX → ticketW），z:2 蓋住左側翻起的溢出 ── */}
-              <div style={{
-                position: 'absolute',
-                left: foldX, top: 0,
-                width: ticketW - foldX,
-                height: ticketH,
-                overflow: 'hidden',
-                zIndex: 2,
-              }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                  style={{
-                    position: 'absolute',
-                    left: -foldX, top: 0,
-                    width: ticketW, height: ticketH,
-                    objectFit: 'cover',
-                  }} />
-                {peel > 0.01 && (
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to right, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%)',
-                    pointerEvents: 'none',
-                  }} />
-                )}
               </div>
 
-              {/* ── 折線高光條，z:3 高於右側蓋板 ── */}
-              {peel > 0.01 && peel < 0.99 && (
-                <div style={{
-                  position: 'absolute',
-                  left: foldX - 2 * s,
-                  top: 0,
-                  width: 4 * s,
-                  height: ticketH,
-                  zIndex: 3,
-                  background: 'linear-gradient(90deg, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.7) 50%, rgba(0,0,0,0.1) 100%)',
-                  pointerEvents: 'none',
-                }} />
-              )}
-
-              {/* ── 手指提示動畫 ── */}
-              {peel < 0.03 && (
+              {/* 手指提示 */}
+              {!touched && (
                 <motion.div
                   style={{
                     position: 'absolute', left: '10%', top: '55%',
@@ -339,7 +218,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         </div>
       </div>
 
-      {/* "開獎列表" button — appears 3s after done, no dark overlay */}
+      {/* 開獎列表按鈕 */}
       <AnimatePresence>
         {showButton && (
           <motion.button

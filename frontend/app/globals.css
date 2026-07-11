@@ -152,3 +152,39 @@ input, textarea, select, button {
   font-weight: normal;
   src: local('Microsoft YaHei'), local('SimHei'), local('sans-serif');
 }
+
+/* ── 一番賞撕紙 turn.js ───────────────────────────────────────── */
+.ichiban-flipbook .sheet {
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+.ichiban-flipbook .sheet.cover {
+  background-image: url('/images/ichiban-tear/up.svg');
+}
+.ichiban-flipbook .sheet.blank {
+  background: transparent;
+}
+/* 掀起時的背面（up2.svg）：互動前隱藏避免閃爍 */
+.ichiban-flipbook .p-temporal {
+  background-color: transparent !important;
+  background-image: url('/images/ichiban-tear/up2.svg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+  visibility: hidden;
+}
+.ichiban-flipbook.touched .p-temporal {
+  visibility: visible;
+}
+/* 用 light.svg 遮罩讓摺痕光影限制在貼紙輪廓內 */
+.ichiban-flipbook div[style*="gradient"] {
+  -webkit-mask-image: url('/images/ichiban-tear/light.svg');
+          mask-image: url('/images/ichiban-tear/light.svg');
+  -webkit-mask-size: 100% 100%;    mask-size: 100% 100%;
+  -webkit-mask-position: center;   mask-position: center;
+  -webkit-mask-repeat: no-repeat;  mask-repeat: no-repeat;
+}
+.ichiban-flipbook .shadow { border-radius: 6px; }
