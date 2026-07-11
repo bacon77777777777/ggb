@@ -362,6 +362,7 @@ export default function ProductDetailPage() {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false);
+  const [tearGachaResults, setTearGachaResults] = useState<Prize[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
@@ -473,6 +474,18 @@ export default function ProductDetailPage() {
     return () => {
       window.removeEventListener('resize', updateIsMobile);
     };
+  }, []);
+
+  // 手機撕紙回導後，從 sessionStorage 讀取結果並顯示恭喜彈窗
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('ggb_tear_results');
+      if (raw) {
+        sessionStorage.removeItem('ggb_tear_results');
+        const results = JSON.parse(raw) as Prize[];
+        if (results.length > 0) setTearGachaResults(results);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -2300,6 +2313,18 @@ export default function ProductDetailPage() {
           results={wonPrizes}
         />
 
+        {/* 一番賞撕紙完成後的恭喜彈窗（手機/桌機都在這裡顯示） */}
+        {tearGachaResults.length > 0 && (
+          <GachaResultModal
+            isOpen={true}
+            onClose={() => {
+              setTearGachaResults([]);
+              fetchData();
+            }}
+            results={tearGachaResults}
+          />
+        )}
+
         {/* 其他型別統一使用戰鬥演出 */}
 
         {isTicketModalOpen && (
@@ -2313,6 +2338,10 @@ export default function ProductDetailPage() {
                 isModal
                 onClose={() => setIsTicketModalOpen(false)}
                 onRefreshProduct={fetchData}
+                onTearFinish={(results) => {
+                  setIsTicketModalOpen(false);
+                  setTearGachaResults(results as Prize[]);
+                }}
               />
             </div>
           </div>

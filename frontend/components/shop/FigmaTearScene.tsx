@@ -95,19 +95,28 @@ export default function FigmaTearScene({
 
     let cancelled = false;
 
-    // 滑動追蹤：>5px 顯示 up2，同步操作 DOM 避免 class cascade 延遲問題
+    // 滑動追蹤：>3px 顯示 up2，capture 相位確保在 turn.js 之前執行
     const getPtEl = () =>
       flipbookRef.current?.querySelector('.p-temporal') as HTMLElement | null;
 
-    const onPointerMove = (e: PointerEvent) => {
+    const onCapturePointerDown = (e: PointerEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) return;
+      setTouched(true);
+      pressStartX.current = e.clientX;
+      slideRight.current = false;  // 確認拖曳前先重置
+    };
+
+    const onCapturePointerMove = (e: PointerEvent) => {
       if (pressStartX.current === null) return;
       const dx = e.clientX - pressStartX.current;
-      if (dx > 5) {
+      if (dx > 3) {
+        slideRight.current = true;
         wrapperRef.current?.classList.add('tearing');
         const pt = getPtEl();
         if (pt) pt.style.visibility = 'visible';
       }
     };
+
     const onPointerUp = () => {
       if (!slideRight.current) {
         wrapperRef.current?.classList.remove('tearing');
@@ -129,7 +138,8 @@ export default function FigmaTearScene({
       const $fb = $(flipbookRef.current);
       try { if ($fb.data('turn')) $fb.turn('destroy'); } catch { /* ignore */ }
 
-      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerdown', onCapturePointerDown, true);  // capture
+      document.addEventListener('pointermove', onCapturePointerMove, true);  // capture
       document.addEventListener('pointerup',   onPointerUp);
 
       // cornerSize 超過高度一半 → tl+bl 合起來覆蓋整個 Y 軸；X 軸觸發寬度 = cornerSize
@@ -145,12 +155,23 @@ export default function FigmaTearScene({
         autoCenter:  false,
         elevation:   0,
         cornerSize:  cs,
-        turnCorners: 'tl,bl',  // 左上+左下：任意 Y 位置按壓都能觸發，中心跟著滑動
+        turnCorners: 'tl,bl',
         when: {
+          turning: (_e: Event, page: number) => {
+            // 只有確認拖曳才放行翻頁，純點擊攔截
+            if (page === 2 && !slideRight.current) {
+              (_e as any).preventDefault?.();
+            }
+          },
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearAudioRef.current?.play().catch(() => {});
               setTimeout(() => setDone(true), 300);
+            } else if (page === 1) {
+              // 彈回時清除拖曳狀態
+              wrapperRef.current?.classList.remove('tearing');
+              const pt = getPtEl();
+              if (pt) pt.style.visibility = '';
             }
           },
         },
@@ -162,7 +183,8 @@ export default function FigmaTearScene({
 
     return () => {
       cancelled = true;
-      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerdown', onCapturePointerDown, true);
+      document.removeEventListener('pointermove', onCapturePointerMove, true);
       document.removeEventListener('pointerup',   onPointerUp);
       const $ = window.jQuery;
       if ($ && flipbookRef.current && turnReady.current) {
@@ -261,11 +283,6 @@ export default function FigmaTearScene({
                   width:  242 / 320 * ticketW,
                   height: 133 / 156 * ticketH,
                   overflow: 'visible',
-                }}
-                onPointerDown={(e) => {
-                  setTouched(true);
-                  pressStartX.current = e.clientX;
-                  slideRight.current  = true;   // pointerdown 立刻放行，純點擊不會觸發 turn.js turning 事件
                 }}
               >
                 <div ref={flipbookRef} style={{ width: '100%', height: '100%', position: 'relative' }}>

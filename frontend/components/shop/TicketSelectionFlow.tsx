@@ -13,7 +13,6 @@ import { PurchaseConfirmation } from '@/components/shop/PurchaseConfirmation';
 import { IchibanTicket } from '@/components/IchibanTicket';
 import { LastOneCelebrationModal } from '@/components/shop/LastOneCelebrationModal';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
-import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import FigmaTearScene from '@/components/shop/FigmaTearScene';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,10 +20,20 @@ import Image from 'next/image';
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
 
+interface TearResult {
+  id: string;
+  name: string;
+  rarity: string;
+  grade: string;
+  image_url: string;
+  is_last_one: boolean;
+}
+
 interface TicketSelectionFlowProps {
   isModal?: boolean;
   onClose?: () => void;
   onRefreshProduct?: () => void;
+  onTearFinish?: (results: TearResult[]) => void;
 }
 
 interface DrawResult {
@@ -66,7 +75,7 @@ const getPlayErrorMessage = (err: unknown): string => {
   return '購買失敗';
 };
 
-export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct }: TicketSelectionFlowProps) {
+export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct, onTearFinish }: TicketSelectionFlowProps) {
   const params = useParams();
   const router = useRouter();
   const [supabase] = useState(() => createClient());
@@ -127,7 +136,6 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [showFigmaTear, setShowFigmaTear] = useState(false);
   const [tearIsDone, setTearIsDone] = useState(false);
   const [tearIndex, setTearIndex] = useState(0);
-  const [pendingGachaResult, setPendingGachaResult] = useState<Array<{ id: string; name: string; rarity: string; grade: string; image_url: string; is_last_one: boolean }> | null>(null);
 
   useEffect(() => {
     fetch('/api/module-settings')
@@ -732,7 +740,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const computedRemaining = Math.max(baseRemaining, 0);
   const isProductEnded = product.status === 'ended' || computedRemaining <= 0 || isSoldOut;
 
-  if (isProductEnded && drawnResults.length === 0 && !pendingGachaResult) {
+  if (isProductEnded && drawnResults.length === 0) {
     return (
       <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
         <div className="flex flex-col items-center gap-3 text-white">
@@ -947,9 +955,9 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       setTearIndex(safeIndex + 1);
     };
 
-    // 全部開啟 / 最後一張撕完：清除撕紙狀態 → 回到商品頁 → 彈出恭喜彈窗
+    // 全部開啟 / 最後一張撕完：清除撕紙狀態 → 恭喜彈窗顯示在商品詳情頁
     const handleFinish = () => {
-      const results = drawnResults.map((r, i) => ({
+      const results: TearResult[] = drawnResults.map((r, i) => ({
         id: String(i),
         name: r.name,
         rarity: r.grade || 'E',
@@ -957,11 +965,20 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         image_url: r.image_url,
         is_last_one: r.is_last_one,
       }));
-      setPendingGachaResult(results);
-      setHasTriggeredAutoResults(true); // 防止 isProductEnded effect 自動跳轉
+      setHasTriggeredAutoResults(true);
       setShowFigmaTear(false);
       setDrawnResults([]);
       setTearIndex(0);
+      if (onTearFinish) {
+        // 桌機 modal 模式：直接回調，商品詳情頁彈窗
+        onTearFinish(results);
+      } else {
+        // 手機模式：存 sessionStorage → 導回商品詳情頁
+        try {
+          sessionStorage.setItem('ggb_tear_results', JSON.stringify(results));
+        } catch { /* ignore */ }
+        router.push(`/item/${params.id}`);
+      }
     };
 
     return (
@@ -1334,15 +1351,6 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
           </div>
         </div>
       </div>
-
-      {/* 撕紙完成後：恭喜獲得彈窗浮在商品頁上 */}
-      {pendingGachaResult && (
-        <GachaResultModal
-          isOpen={true}
-          results={pendingGachaResult}
-          onClose={() => setPendingGachaResult(null)}
-        />
-      )}
 
       {/* Purchase Confirmation Overlay */}
       {showConfirm && (

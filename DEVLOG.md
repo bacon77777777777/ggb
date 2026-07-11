@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-07-11｜一番賞撕紙四大修正
+
+### 問題修正
+1. **恭喜彈窗移至商品詳情頁（Issue 1）**
+   - TicketSelectionFlow 新增 `onTearFinish` prop
+   - 桌機 modal：回調 → ProductDetailPage 接收後顯示 `GachaResultModal`
+   - 手機：撕完後存 `sessionStorage('ggb_tear_results')` → `router.push('/item/[id]')` → ProductDetailPage mount 時讀取並顯示彈窗
+   - 確定只關閉彈窗，停留在商品詳情頁
+
+2. **第二張起 up2.svg 不顯示修正（Issue 2）**
+   - 原因：React `onPointerDown` 在 bubble 相位執行，turn.js 可能在前已消費事件，導致 `pressStartX.current` 未設定
+   - 修正：改用 `document.addEventListener('pointerdown', ..., true)` capture 相位，確保在 turn.js 之前攔截
+
+3. **防止點擊直接撕開（Issue 3）**
+   - 重新加回 `turning` event gate：`!slideRight.current` 時 `preventDefault()`
+   - `slideRight` 只在拖曳 dx > 3px 後才設 true，純點擊維持 false → 翻頁被阻止
+   - 彈回時（`turned` page=1）清除 tearing class 和 p-temporal visibility
+
+4. **拖曳事件全改為 capture 相位**
+   - `onCapturePointerDown` / `onCapturePointerMove` 均以 capture 模式監聽
+   - 確保任何 Y 軸位置按壓都能正確設定 pressStartX 並觸發 up2 顯示
+
+---
+
 ## 2026-07-11｜FigmaTearScene UI 微調
 
 ### 一番賞撕票場景調整
