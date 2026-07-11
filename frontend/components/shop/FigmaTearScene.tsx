@@ -227,44 +227,18 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
             </motion.div>
           </div>
 
-          {/* Cover: turn.js hard-page 原理 — overflow:hidden + rotateY 前後兩面 */}
+          {/* Cover: turn.js hard-page style — right cover on top (z:2) clips the rotating panel's overhang */}
           {!done && (
             <>
-              {/* ── 右側靜止蓋板（foldX → ticketW） ── */}
-              <div style={{
-                position: 'absolute',
-                left: foldX, top: 0,
-                width: ticketW - foldX,
-                height: ticketH,
-                overflow: 'hidden',
-              }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
-                  style={{
-                    position: 'absolute',
-                    left: -foldX, top: 0,
-                    width: ticketW, height: ticketH,
-                    objectFit: 'cover',
-                  }} />
-                {peel > 0.01 && (
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 28%)',
-                    pointerEvents: 'none',
-                  }} />
-                )}
-              </div>
-
-              {/* ── 左側翻起區塊（0 → foldX）：前後兩面 3D 旋轉 ── */}
+              {/* ── 左側翻起區塊（0 → foldX）：前後兩面 3D 旋轉，z:1 ── */}
               {peel > 0.001 && (
                 <div style={{
                   position: 'absolute',
                   left: 0, top: 0,
                   width: foldX,
                   height: ticketH,
-                  overflow: 'hidden',
-                  perspective: `${ticketW * 2.5}px`,
-                  perspectiveOrigin: `${foldX}px 50%`,
+                  zIndex: 1,
+                  /* NO overflow:hidden — right cover clips overhang instead */
                 }}>
                   {/* 前面（up.svg）：rotateY 0° → -180°，過 90° 後 backfaceVisibility 隱藏 */}
                   <div style={{
@@ -278,10 +252,9 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {/* 旋轉愈深，表面愈暗（離光源愈遠） */}
                     <div style={{
                       position: 'absolute', inset: 0,
-                      background: `rgba(0,0,0,${Math.min(0.6, peel * 1.2)})`,
+                      background: `linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(0,0,0,${Math.min(0.65, peel * 1.3)}) 100%)`,
                       pointerEvents: 'none',
                     }} />
                   </div>
@@ -300,14 +273,40 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{
                       position: 'absolute', inset: 0,
-                      background: 'linear-gradient(to left, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.2) 100%)',
+                      background: 'linear-gradient(to right, rgba(0,0,0,0.28) 0%, rgba(255,255,255,0.18) 100%)',
                       pointerEvents: 'none',
                     }} />
                   </div>
                 </div>
               )}
 
-              {/* ── 折線高光條 ── */}
+              {/* ── 右側靜止蓋板（foldX → ticketW），z:2 蓋住左側翻起的溢出 ── */}
+              <div style={{
+                position: 'absolute',
+                left: foldX, top: 0,
+                width: ticketW - foldX,
+                height: ticketH,
+                overflow: 'hidden',
+                zIndex: 2,
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/ichiban-tear/up.svg" alt="" draggable={false}
+                  style={{
+                    position: 'absolute',
+                    left: -foldX, top: 0,
+                    width: ticketW, height: ticketH,
+                    objectFit: 'cover',
+                  }} />
+                {peel > 0.01 && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to right, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%)',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+              </div>
+
+              {/* ── 折線高光條，z:3 高於右側蓋板 ── */}
               {peel > 0.01 && peel < 0.99 && (
                 <div style={{
                   position: 'absolute',
@@ -315,7 +314,8 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                   top: 0,
                   width: 4 * s,
                   height: ticketH,
-                  background: 'linear-gradient(90deg, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.55) 50%, rgba(0,0,0,0.1) 100%)',
+                  zIndex: 3,
+                  background: 'linear-gradient(90deg, rgba(0,0,0,0.15) 0%, rgba(255,255,255,0.7) 50%, rgba(0,0,0,0.1) 100%)',
                   pointerEvents: 'none',
                 }} />
               )}
