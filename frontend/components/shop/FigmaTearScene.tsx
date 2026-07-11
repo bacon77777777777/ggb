@@ -188,8 +188,12 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
               <div
                 className={`ichiban-flipbook${touched ? ' touched' : ''}`}
                 style={{
-                  position: 'absolute', inset: 0,
-                  borderRadius: 18 * s, overflow: 'hidden',
+                  position: 'absolute',
+                  left:   24 / 320 * ticketW,
+                  top:    11 / 156 * ticketH,
+                  width:  242 / 320 * ticketW,
+                  height: 133 / 156 * ticketH,
+                  overflow: 'visible',  // turn.js 翻起時允許溢出貼紙範圍
                 }}
                 onPointerDown={() => setTouched(true)}
               >
