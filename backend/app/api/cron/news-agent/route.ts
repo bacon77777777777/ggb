@@ -411,7 +411,7 @@ export async function POST(req: NextRequest) {
 
   const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
-  const MAX_TOTAL    = limitOverride ?? 12   // 每次全局上限（手動觸發可傳 limit:1）
+  const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
   // ── 直接 RSS 來源（PR TIMES / 電撃ホビー / Animate Times 等）────────────────
