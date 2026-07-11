@@ -21,7 +21,10 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
   const [done, setDone]           = useState(initialDone);
   const [showButton, setShowButton] = useState(initialDone);
   const [touched, setTouched]     = useState(false);
-  const turnReady = useRef(false);
+  const wrapperRef    = useRef<HTMLDivElement>(null);  // .ichiban-flipbook
+  const turnReady     = useRef(false);
+  const pressStartX   = useRef<number | null>(null);
+  const slideRight    = useRef(false);
 
   // Container resize
   useEffect(() => {
@@ -60,23 +63,49 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         document.head.appendChild(s);
       });
 
+    let cancelled = false;
+
+    // 滑動追蹤：>5px 就顯示 p-temporal；pointerup 時若沒到 24px 再藏回去
+    const onPointerMove = (e: PointerEvent) => {
+      if (pressStartX.current === null) return;
+      const dx = e.clientX - pressStartX.current;
+      if (dx > 5) wrapperRef.current?.classList.add('tearing');
+      if (dx > 24) slideRight.current = true;
+    };
+    const onPointerUp = () => {
+      if (!slideRight.current) wrapperRef.current?.classList.remove('tearing');
+      pressStartX.current = null;
+    };
+
     (async () => {
-      // 每次都檢查 global，缺哪個才注入
-      if (!window.jQuery)          await injectScript('/js/jquery.min.js');
+      if (!window.jQuery)           await injectScript('/js/jquery.min.js');
       if (!window.jQuery?.fn?.turn) await injectScript('/js/turn.js');
 
+      if (cancelled || !flipbookRef.current) return;
+
       const $ = window.jQuery;
-      if (!$ || !flipbookRef.current) return;
+      if (!$) return;
 
       const $fb = $(flipbookRef.current);
+      try { if ($fb.data('turn')) $fb.turn('destroy'); } catch { /* ignore */ }
+
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup',   onPointerUp);
+
+      // cornerSize 超過高度一半 → tl+bl 合起來覆蓋整個 Y 軸；X 軸觸發寬度 = cornerSize
+      const fbH = flipbookRef.current.clientHeight || 100;
+      const cs  = Math.ceil(fbH / 2) + 4; // +4 確保中間無縫
+
       $fb.turn({
-        display:    'single',
-        gradients:  true,
-        duration:   800,
-        pages:      2,
-        direction:  'rtl',    // 貼紙從左角掀起往右撕
-        autoCenter: false,
-        elevation:  0,        // 關掉矩形投影（四角不散出陰影）
+        display:     'single',
+        gradients:   true,
+        duration:    800,
+        pages:       2,
+        direction:   'rtl',
+        autoCenter:  false,
+        elevation:   0,
+        cornerSize:  cs,
+        turnCorners: 'tl,bl',  // 左上+左下：任意 Y 位置按壓都能觸發，中心跟著滑動
         when: {
           turned: (_e: Event, page: number) => {
             if (page === 2) {
@@ -87,10 +116,10 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         },
       });
 
-      // 點一下直接翻頁
-      $fb.on('click', () => {
-        if ($fb.turn('page') === 1 && !$fb.turn('animating')) {
-          $fb.turn('next');
+      // 只有往右滑動才撕開；點擊一律取消
+      $fb.bind('turning', (_e: Event, page: number) => {
+        if (page === 2 && !slideRight.current) {
+          (_e as Event & { preventDefault(): void }).preventDefault();
         }
       });
 
@@ -98,6 +127,9 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
     })();
 
     return () => {
+      cancelled = true;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup',   onPointerUp);
       const $ = window.jQuery;
       if ($ && flipbookRef.current && turnReady.current) {
         try { $(flipbookRef.current).turn('destroy'); } catch { /* ignore */ }
@@ -136,9 +168,10 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         <Image
           src="/images/ichiban-tear/hand.png" alt="" unoptimized
           style={{
-            position: 'absolute', top: 11 * s, left: 21 * s,
+            position: 'absolute', top: 11 * s, left: 5 * s,
             width: 283 * s, height: 467 * s,
             transform: 'rotate(-5deg)', objectFit: 'contain',
+            zIndex: 10,
           }}
           width={283} height={467}
         />
@@ -146,7 +179,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
         {/* 票 */}
         <div style={{
           position: 'absolute',
-          top: 42 * s, left: 178 * s,
+          top: 34 * s, left: 178 * s,
           width: ticketW, height: ticketH,
           transform: 'rotate(-12deg)',
           pointerEvents: done ? 'none' : 'auto',
@@ -188,6 +221,7 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
           {!done && (
             <>
               <div
+                ref={wrapperRef}
                 className={`ichiban-flipbook${touched ? ' touched' : ''}`}
                 style={{
                   position: 'absolute',
@@ -195,9 +229,13 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
                   top:    12 / 156 * ticketH,
                   width:  242 / 320 * ticketW,
                   height: 133 / 156 * ticketH,
-                  overflow: 'visible',  // turn.js 翻起時允許溢出貼紙範圍
+                  overflow: 'visible',
                 }}
-                onPointerDown={() => setTouched(true)}
+                onPointerDown={(e) => {
+                  setTouched(true);
+                  pressStartX.current = e.clientX;
+                  slideRight.current  = false;
+                }}
               >
                 <div ref={flipbookRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
                   <div className="sheet cover" />  {/* 第 1 頁：up.svg 貼紙正面 */}
@@ -209,11 +247,11 @@ export default function FigmaTearScene({ prizeTierLetter, onDone, initialDone = 
               {!touched && (
                 <motion.div
                   style={{
-                    position: 'absolute', left: '10%', top: '55%',
+                    position: 'absolute', left: '35%', top: '55%',
                     width: 52 * s, height: 52 * s,
                     pointerEvents: 'none', zIndex: 25,
                   }}
-                  animate={{ x: [0, 72*s, 72*s], y: [0, -36*s, -36*s], opacity: [0,1,1,0] }}
+                  animate={{ x: [0, 72*s, 72*s], y: [-8.5*s, -8*s, -8*s], opacity: [0,1,1,0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 0.8, 1] }}
                 >
                   <Image src="/images/finger.png" alt="" fill className="object-contain drop-shadow-md" unoptimized />
