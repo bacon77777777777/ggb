@@ -136,6 +136,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [showFigmaTear, setShowFigmaTear] = useState(false);
   const [tearIsDone, setTearIsDone] = useState(false);
   const [tearIndex, setTearIndex] = useState(0);
+  // 每次新購買給不同的 sessionId，作為 FigmaTearScene key 的一部分，確保重新掛載
+  const [tearSessionId, setTearSessionId] = useState(0);
 
   useEffect(() => {
     fetch('/api/module-settings')
@@ -541,6 +543,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       if (product?.type === 'ichiban' && ichibanTheme === 'ichiban_tear') {
         setTearIndex(0);
         setTearIsDone(false);
+        setTearSessionId(s => s + 1);  // 強制 FigmaTearScene 重新掛載
         setShowFigmaTear(true);
       }
 
@@ -955,7 +958,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       setTearIndex(safeIndex + 1);
     };
 
-    // 全部開啟 / 最後一張撕完：清除撕紙狀態 → 恭喜彈窗顯示在商品詳情頁
+    // 全部開啟 / 最後一張撕完 → 恭喜彈窗顯示在商品詳情頁
+    // 不在這裡清 state：讓 unmount（navigate 或 modal 關閉）自然清理，避免中間閃一格選籤頁
     const handleFinish = () => {
       const results: TearResult[] = drawnResults.map((r, i) => ({
         id: String(i),
@@ -965,15 +969,11 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         image_url: r.image_url,
         is_last_one: r.is_last_one,
       }));
-      setHasTriggeredAutoResults(true);
-      setShowFigmaTear(false);
-      setDrawnResults([]);
-      setTearIndex(0);
       if (onTearFinish) {
-        // 桌機 modal 模式：直接回調，商品詳情頁彈窗
+        // 桌機 modal 模式：回調給商品頁，商品頁關閉 modal + 顯示彈窗
         onTearFinish(results);
       } else {
-        // 手機模式：存 sessionStorage → 導回商品詳情頁
+        // 手機模式：存 sessionStorage → 導回商品頁，商品頁 mount 時讀取並彈窗
         try {
           sessionStorage.setItem('ggb_tear_results', JSON.stringify(results));
         } catch { /* ignore */ }
@@ -984,7 +984,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     return (
       <div className="fixed inset-0 z-[3000]">
         <FigmaTearScene
-          key={safeIndex}
+          key={`${tearSessionId}-${safeIndex}`}
           prizeTierLetter={prizeLetter}
           initialDone={false}
           isLast={isLast}

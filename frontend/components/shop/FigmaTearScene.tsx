@@ -100,7 +100,6 @@ export default function FigmaTearScene({
       flipbookRef.current?.querySelector('.p-temporal') as HTMLElement | null;
 
     const onCapturePointerDown = (e: PointerEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) return;
       setTouched(true);
       pressStartX.current = e.clientX;
       slideRight.current = false;  // 確認拖曳前先重置

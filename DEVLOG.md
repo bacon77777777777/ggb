@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-07-11｜一番賞撕紙深度修正（第二輪）
+
+### 根本原因修正
+- **同頁二次購買崩潰**：`tearIndex` 重置為 0，`key=0` 不變 → React 不重新掛載 FigmaTearScene → `turnReady.current=true` 殘留 → 新的 useEffect 被 guard 擋住，turn.js 和 listeners 沒有重新初始化
+  - 修正：新增 `tearSessionId`，每次購買 +1，作為 `key` 的前綴：`key={\`${tearSessionId}-${safeIndex}\`}`
+- **選籤頁閃現**：`handleFinish` 先清 `showFigmaTear`/`drawnResults` state → React 重渲染露出選籤頁 → 再 navigate
+  - 修正：移除 state 清理，讓 navigate/unmount 自然清理
+- **capture pointerdown contains 檢查失敗**：全螢幕 tear scene overlay，`contains` 有時因 turn.js 動態元素返回 false → `pressStartX` 沒設定 → slideRight 永遠 false → turning gate 擋住全部翻頁
+  - 修正：移除 `contains` check，全螢幕 overlay 任何 press 都屬於它
+
+---
+
 ## 2026-07-11｜一番賞撕紙四大修正
 
 ### 問題修正
