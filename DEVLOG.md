@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-07-11｜一番賞撕紙 turn.js 真實翻書效果 + news-agent 節流
+
+### 一番賞撕紙動畫（FigmaTearScene）
+- **改用真實 turn.js**：jQuery + turn.js 動態載入，`display:single / direction:rtl`，貼紙從左角掀起往右撕開
+- **資源對齊**：複製 `up1.svg`、`up2.svg`、`light.svg` 自 demo dist，CSS mask 讓摺痕光影限制在貼紙輪廓內
+- **座標系**：flipbook 相對於 320×156 bg，offset (53, 12) 242×133，精準對齊貼紙位置
+- **p-temporal 背面**：互動前隱藏避免載入閃爍，`.touched` class 觸發顯示
+- **完成判斷**：`turned` event page===2 後 300ms 進入 done 狀態，顯示獎項文字與開獎按鈕
+
+### news-agent 節流
+- 排程：每 20 分鐘 → 每 6 小時（migration 322）
+- 每次上限：12 篇 → 3 篇
+- 無圖片直接 skip，不呼叫 Claude（省 token）
+
+---
+
 ## 2026-07-11｜FigmaTearScene 對角折線掀起效果
 
 ### 一番賞撕票動畫重寫（turn.js 風格）
