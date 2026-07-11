@@ -442,7 +442,8 @@ export async function POST(req: NextRequest) {
         jinaText = await fetchViaJina(realUrl)
         if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
       }
-      if (!ogImage) ogImage = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/images/banner_defaulet.png`
+      // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
+      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
 
       const bodyText = articleHtml
         ? articleHtml
@@ -510,7 +511,8 @@ export async function POST(req: NextRequest) {
         jinaText = await fetchViaJina(realUrl)
         if (jinaText) ogImage = extractImageFromJina(jinaText, realUrl)
       }
-      if (!ogImage) ogImage = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/images/banner_defaulet.png`
+      // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
+      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
 
       const bodyText = articleHtml
         ? articleHtml
@@ -519,7 +521,7 @@ export async function POST(req: NextRequest) {
             .replace(/<[^>]+>/g, ' ')
             .replace(/\s+/g, ' ').trim()
             .slice(0, 1500)
-        : (jinaText || item.description).slice(0, 1500)  // HTML 抓不到，用 Jina/RSS description
+        : (jinaText || item.description).slice(0, 1500)
 
       // Claude 改寫
       const draft = await rewriteArticle(
@@ -530,7 +532,6 @@ export async function POST(req: NextRequest) {
       // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      // 下載圖片到 R2；失敗時 fallback 用外部 og:image URL（不因圖片問題跳過文章）
       const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
