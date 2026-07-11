@@ -161,7 +161,7 @@ input, textarea, select, button {
   background-size: 100% 100%;
 }
 .ichiban-flipbook .sheet.cover {
-  background-image: url('/images/ichiban-tear/up.svg');
+  background-image: url('/images/ichiban-tear/up1.svg');
 }
 .ichiban-flipbook .sheet.blank {
   background: transparent;
@@ -169,7 +169,7 @@ input, textarea, select, button {
 /* 掀起時的背面（up2.svg）：互動前隱藏避免閃爍 */
 .ichiban-flipbook .p-temporal {
   background-color: transparent !important;
-  background-image: url('/images/ichiban-tear/up2.svg') !important;
+  background-image: url('/images/ichiban-tear/up2.svg') !important;  /* demo 版 up2 */
   background-repeat: no-repeat !important;
   background-position: center !important;
   background-size: 100% 100% !important;
