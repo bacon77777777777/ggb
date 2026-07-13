@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Check } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,6 @@ import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
-import CardDrawAnimation from '@/components/card/CardDrawAnimation';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { useAlert } from '@/components/ui/AlertDialog';
@@ -359,11 +358,15 @@ export default function ProductDetailPage() {
   const [cardScale, setCardScale] = useState(1);
   const [isCardImageMode, setIsCardImageMode] = useState(false);
   const packCarouselRef = useRef<PackSelectionCarouselHandle | null>(null);
+  const openingVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+
   const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false);
   const [tearGachaResults, setTearGachaResults] = useState<Prize[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const openingVideoSrc = product?.type === 'card' ? '/videos/card.mp4' : '/videos/blindbox_op.mp4';
 
   // 每個商品只計一次分享任務，以 localStorage 去重
   const trackShareOnce = () => {
@@ -696,6 +699,7 @@ export default function ProductDetailPage() {
     }
 
     setWonPrizes([trialPrize]);
+    setIsVideoMuted(false);
     setIsVideoOpen(true);
   };
 
@@ -807,7 +811,8 @@ export default function ProductDetailPage() {
       // 任務追蹤由 /api/gacha route 統一處理（避免重複計算）
 
       if (isCardType) {
-            setIsVideoOpen(true);
+        setIsVideoMuted(false);
+        setIsVideoOpen(true);
       }
       // For non-card: GachaMachine already opened above; auto-spin fires via useEffect in GachaMachine
       
@@ -867,14 +872,10 @@ export default function ProductDetailPage() {
     fetchData();
   };
 
-  const handleCardAnimContinue = () => {
-    setIsVideoOpen(false);
-    setWonPrizes([]);
-    fetchData();
-  };
 
   const handleVideoEnd = () => {
     setIsVideoOpen(false);
+    setIsVideoMuted(false);
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
       if (product) {
@@ -888,6 +889,21 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleVideoError = () => {
+    setIsVideoOpen(false);
+    setIsVideoMuted(false);
+    if (wonPrizes.length > 0) {
+      setIsPrizeModalOpen(true);
+      if (product) {
+        wonPrizes.forEach(prize => {
+          trackEvent('prize_reveal', {
+            productId: product.id,
+            meta: { prize_level: prize.grade || prize.rarity, prize_name: prize.name },
+          });
+        });
+      }
+    }
+  };
 
   const battleResults: BattleCardItem[] = useMemo(
     () =>
@@ -1088,6 +1104,16 @@ export default function ProductDetailPage() {
       supabase.removeChannel(channel);
     };
   }, [params.id, supabase, showToast]);
+
+  useEffect(() => {
+    if (!isVideoOpen) return;
+    const el = openingVideoRef.current;
+    if (!el) return;
+    try {
+      el.currentTime = 0;
+      el.play().catch(() => undefined);
+    } catch { /* ignore */ }
+  }, [isVideoOpen]);
 
   // Handle back button click
   // const handleBackClick = () => {
@@ -1668,12 +1694,46 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        <CardDrawAnimation
-          isOpen={isVideoOpen}
-          prizes={wonPrizes}
-          onGoToWarehouse={handleVideoEnd}
-          onContinue={handleCardAnimContinue}
-        />
+        {isVideoOpen && (
+          <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
+            <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
+              <video
+                ref={openingVideoRef}
+                src={openingVideoSrc}
+                className="w-full h-full object-cover"
+                preload="auto"
+                muted={isVideoMuted}
+                playsInline
+                onEnded={handleVideoEnd}
+                onError={handleVideoError}
+              />
+              <button
+                type="button"
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
+                onClick={() => {
+                  setIsVideoMuted((prev) => {
+                    const next = !prev;
+                    const el = openingVideoRef.current;
+                    if (el) {
+                      el.muted = next;
+                      if (!next) el.play().catch(() => undefined);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+              <button
+                type="button"
+                className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
+                onClick={handleVideoEnd}
+              >
+                SKIP
+              </button>
+            </div>
+          </div>
+        )}
 
         <GachaResultModal
           isOpen={isPrizeModalOpen}
@@ -2217,7 +2277,7 @@ export default function ProductDetailPage() {
 
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
-          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid') {
+          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack') {
             return (
               <GachaThemeRenderer
                 theme={effectiveTheme || 'gacha_classic'}

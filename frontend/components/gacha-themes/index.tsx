@@ -25,6 +25,7 @@ export interface GachaThemeProps {
 
 // 各主題 lazy load（尚未實作的暫時 fallback 到 ClassicCapsule）
 const ClassicCapsule = dynamic(() => import('@/components/GachaMachine'), { ssr: false });
+const CardPackAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
 
 const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   gacha_classic:    ClassicCapsule,
@@ -34,7 +35,7 @@ const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   ichiban_tear:     ClassicCapsule,
   custom_grid:      ClassicCapsule,
   custom_tear:      ClassicCapsule,
-  card_pack:        ClassicCapsule,
+  card_pack:        CardPackAnimation,
   blindbox_classic: ClassicCapsule,
   blindbox_claw:    ClassicCapsule,
 };
