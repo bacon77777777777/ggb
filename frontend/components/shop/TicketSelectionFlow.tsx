@@ -984,13 +984,10 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     return (
       // 外層：全螢幕黑色底 + 居中（桌機時兩側留黑邊）
       <div className="fixed inset-0 z-[3000] bg-black flex items-center justify-center">
-        {/* 內層：維持手機比例（393:844），高度 = 100dvh，寬度由 min() 自動計算 */}
+        {/* ≤767px：滿版寬，等比縮放，上下裁切；≥768px：維持 393:844 比例 */}
         <div
-          className="relative overflow-hidden"
-          style={{
-            width: 'min(100vw, calc(100dvh * 393 / 844))',
-            height: '100dvh',
-          }}
+          className="relative overflow-hidden w-screen md:w-[min(100vw,_calc(100dvh_*_393_/_844))]"
+          style={{ height: '100dvh' }}
         >
           <FigmaTearScene
             key={`${tearSessionId}-${safeIndex}`}
