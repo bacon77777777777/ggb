@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-07-13｜一番賞撕紙桌機第二次購買修正
+
+### 桌機第二次撕紙 fold 無法完成（彈回）
+腳本已快取時 IIFE 同步執行（無 await），前一次拖曳的 mouseup 事件可能仍在佇列中或殘留的 jQuery document handler 未清除，導致 turn.js 初始化後立刻被舊事件干擾，fold 無法完成。
+- **修正 A**：加 `requestAnimationFrame` delay，讓瀏覽器先清空事件佇列再初始化 turn.js
+- **修正 B**：init 前先 `$(document).off('mousemove mouseup touchmove touchend')` 強制清除所有 jQuery document drag handlers（turn.js 是 app 內唯一使用者，全清安全）
+
 ## 2026-07-13｜一番賞撕紙桌機排版修正
 
 ### 桌機撕紙畫面跑版

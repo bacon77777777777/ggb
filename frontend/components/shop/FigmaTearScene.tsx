@@ -135,13 +135,23 @@ export default function FigmaTearScene({
       if (!window.jQuery)           await injectScript('/js/jquery.min.js');
       if (!window.jQuery?.fn?.turn) await injectScript('/js/turn.js');
 
+      // 等下一個動畫幀：確保前一次交互的 mouseup/pointerup 事件已被瀏覽器清空，
+      // 且 DOM layout 穩定（第二次購買無 await 時同步跑到這裡，RAf 提供必要的間隔）
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
       if (cancelled || !flipbookRef.current) return;
 
       const $ = window.jQuery;
       if (!$) return;
 
       const $fb = $(flipbookRef.current);
+      // 防禦：若舊 turn.js 資料殘留在此元素（key 已變不應有，但保險起見），先清除
       try { if ($fb.data('turn')) $fb.turn('destroy'); } catch { /* ignore */ }
+      // 核心清理：移除 document 上所有 jQuery drag 事件
+      // turn.js 用無 namespace 的 bind，destroy 用 specific handler ref unbind
+      // 若上一個 instance 的 destroy 因某原因未執行，殘留 handler 可能阻擋新 instance
+      // 本 app 只有 turn.js 會在 document 上 bind mousemove/mouseup，所以全清安全
+      try { $(document).off('mousemove mouseup touchmove touchend'); } catch { /* ignore */ }
 
       document.addEventListener('pointerdown', onCapturePointerDown, true);  // capture
       document.addEventListener('pointermove', onCapturePointerMove, true);  // capture
