@@ -243,25 +243,6 @@ export default function BoosterPackOpenEffect({
               {renderFace()}
             </motion.button>
 
-            {/* Hint / charge text */}
-            {phase === 'idle' ? (
-              <motion.p
-                style={{ color: 'rgba(255,255,255,0.48)', fontSize: 11, letterSpacing: '0.35em', textAlign: 'center' }}
-                animate={{ opacity: [0.35, 0.75, 0.35] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-              >
-                按住撕開卡包
-              </motion.p>
-            ) : (
-              <motion.p
-                style={{ color: 'rgba(255,210,60,0.85)', fontSize: 11, letterSpacing: '0.35em', textAlign: 'center' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 0.3, repeat: Infinity }}
-              >
-                蓄力中…
-              </motion.p>
-            )}
           </motion.div>
         )}
 
