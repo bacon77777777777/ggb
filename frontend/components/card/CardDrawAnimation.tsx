@@ -42,10 +42,10 @@ const RARITY_STYLE = {
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
-const CX = 83;   // card left (centered for CW=227)
+const CX = 89;   // card left (centered for CW=216)
 const CY = 150;  // card top
-const CW = 227;  // card width
-const CH = 317;  // card height (≈ CW * 88/63)
+const CW = 216;  // card width
+const CH = 301;  // card height (≈ CW * 88/63)
 const CR = -2;   // card rotation degrees
 const H1_TOP = 230;  // hand1 top
 const H1_W = 490;    // hand1 width
@@ -56,11 +56,10 @@ interface TopCardProps {
   current: number;
   total: number;
   onSwiped: () => void;
-  showHint: boolean;
   s: number;
 }
 
-function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps) {
+function TopCard({ prize, current, total, onSwiped, s }: TopCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 0, 200], [CR - 12, CR, CR + 12]);
   const rarity = getRarity(prize);
@@ -128,23 +127,6 @@ function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps)
 
       </div>
 
-      {showHint && (
-        <motion.div
-          style={{
-            position: 'absolute',
-            right: -36 * s,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            pointerEvents: 'none',
-          }}
-          animate={{ x: [0, 8, 0] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <svg width={28 * s} height={28 * s} viewBox="0 0 28 28" fill="none">
-            <path d="M6 14h16M16 8l6 6-6 6" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </motion.div>
-      )}
     </motion.div>
   );
 }
@@ -337,7 +319,6 @@ export default function CardDrawAnimation({
                   current={swipeIndex}
                   total={prizes.length}
                   onSwiped={handleSwiped}
-                  showHint={swipeIndex < 2}
                   s={s}
                 />
               </AnimatePresence>
