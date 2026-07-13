@@ -42,10 +42,10 @@ const RARITY_STYLE = {
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
-const CX = 71;   // card left (centered for CW=252)
+const CX = 83;   // card left (centered for CW=227)
 const CY = 150;  // card top
-const CW = 252;  // card width
-const CH = 352;  // card height (≈ CW * 88/63)
+const CW = 227;  // card width
+const CH = 317;  // card height (≈ CW * 88/63)
 const CR = -2;   // card rotation degrees
 const H1_TOP = 230;  // hand1 top
 const H1_W = 490;    // hand1 width
@@ -111,8 +111,8 @@ function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps)
           overflow: 'hidden',
           position: 'relative',
           boxShadow: isSSR
-            ? `0 0 50px ${rs.glow}, 0 0 20px ${rs.glow}, 0 24px 60px rgba(0,0,0,0.85)`
-            : `0 0 24px ${rs.glow}, 0 20px 50px rgba(0,0,0,0.8)`,
+            ? `0 0 25px ${rs.glow}, 0 0 10px ${rs.glow}, 0 12px 30px rgba(0,0,0,0.85)`
+            : `0 0 12px ${rs.glow}, 0 10px 25px rgba(0,0,0,0.8)`,
         }}
       >
         <Image src={getCardImage(prize)} alt={prize.name} fill className="object-cover" unoptimized priority />
@@ -126,12 +126,6 @@ function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps)
           />
         )}
 
-        <div
-          className="absolute top-2 right-2 px-2 py-[2px] rounded-full text-[11px] font-black"
-          style={{ background: rs.bg, color: rs.text, boxShadow: `0 0 10px ${rs.glow}` }}
-        >
-          {rs.label}
-        </div>
       </div>
 
       {showHint && (
