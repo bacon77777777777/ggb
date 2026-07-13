@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-07-13｜一番賞撕紙桌機排版修正
+
+### 桌機撕紙畫面跑版
+桌機寬度（如 1440px）導致 `s = dims.w / 393 ≈ 3.66`，ticket Y 軸超出 viewport，整個場景飛出畫面。
+- **修正**：TicketSelectionFlow 在 FigmaTearScene 外層包一個比例約束容器：
+  `width: min(100vw, calc(100dvh * 393/844)); height: 100dvh`
+  CSS `min()` 自動處理手機（取 100vw）vs 桌機（取高度算出的寬度），兩側補黑色底。
+  ResizeObserver 量到正確的約束尺寸，`s ≈ 1`，排版與手機一致。
+
+---
+
 ## 2026-07-13｜一番賞撕紙深度修正（第四輪）
 
 ### 根本原因 C：turning gate 仍阻擋第二次購買的撕紙完成
