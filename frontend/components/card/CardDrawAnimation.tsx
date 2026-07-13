@@ -42,10 +42,10 @@ const RARITY_STYLE = {
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
-const CX = 54;   // card left
+const CX = 71;   // card left (centered for CW=252)
 const CY = 150;  // card top
-const CW = 280;  // card width
-const CH = 391;  // card height (≈ 280 * 88/63)
+const CW = 252;  // card width
+const CH = 352;  // card height (≈ CW * 88/63)
 const CR = -2;   // card rotation degrees
 const H1_TOP = 230;  // hand1 top
 const H1_W = 490;    // hand1 width
@@ -132,23 +132,6 @@ function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps)
         >
           {rs.label}
         </div>
-      </div>
-
-      {/* Card name */}
-      <div className="mt-3 text-center">
-        <p
-          className="text-white font-bold drop-shadow-md px-2 line-clamp-1"
-          style={{ fontSize: Math.max(12, 14 * s), lineHeight: '1.4' }}
-        >
-          {prize.name}
-        </p>
-      </div>
-
-      {/* Counter */}
-      <div className="mt-1 text-center">
-        <span className="text-white/40 tracking-widest" style={{ fontSize: Math.max(10, 12 * s) }}>
-          {current + 1} / {total}
-        </span>
       </div>
 
       {showHint && (
@@ -364,6 +347,23 @@ export default function CardDrawAnimation({
                   s={s}
                 />
               </AnimatePresence>
+
+              {/* hand2 — in front of card, same position as charge screen */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/card/charge/hand2.png"
+                alt=""
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: H1_TOP * s,
+                  width: H1_W * s,
+                  zIndex: 20,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
 
               {/* SKIP button */}
               <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end">
