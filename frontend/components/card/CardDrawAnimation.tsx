@@ -63,13 +63,10 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-      const shouldThrow = info.offset.x > 65 || info.velocity.x > 240;
-      if (shouldThrow) {
+      if (info.offset.x > 65 || info.velocity.x > 240) {
         animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
-      } else {
-        // Snap back
-        animate(x, 0, { type: 'spring', stiffness: 650, damping: 38 } as Parameters<typeof animate>[2]);
       }
+      // else: dragConstraints + dragTransition handle snap-back automatically
     },
     [x, onSwiped],
   );
@@ -78,6 +75,9 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
     <motion.div
       key={`top-${current}`}
       drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0.15, right: 0.9 }}
+      dragTransition={{ bounceStiffness: 650, bounceDamping: 38 }}
       style={{ x, rotate, position: 'absolute', zIndex: 12, touchAction: 'none', userSelect: 'none' }}
       onDragEnd={handleDragEnd}
       initial={{ scale: 0.88, opacity: 0 }}
