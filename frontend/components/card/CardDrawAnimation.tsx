@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import Image from 'next/image';
 import type { Prize } from '@/components/GachaMachine';
@@ -25,7 +25,6 @@ function getCardImage(prize: Prize) {
   return '/images/card/00004.png';
 }
 
-
 function getRarity(prize: Prize) {
   const raw = (prize.grade || prize.rarity || '').toUpperCase();
   if (raw.includes('SSR') || raw.includes('超稀有')) return 'SSR';
@@ -41,10 +40,15 @@ const RARITY_STYLE = {
   N:   { label: 'N',   bg: '#475569', text: '#fff', glow: 'rgba(71,85,105,0.3)' },
 };
 
-// Card width in px — stack cards behind scale down from this
-const CARD_W = 230;
-const CARD_RATIO = 63 / 88; // standard card aspect ratio (width / height)
-const CARD_H = CARD_W / CARD_RATIO;
+// Scene design coords at DW=393 base (same scene as charge screen)
+const DW = 393;
+const CX = 54;   // card left
+const CY = 150;  // card top
+const CW = 280;  // card width
+const CH = 391;  // card height (≈ 280 * 88/63)
+const CR = -2;   // card rotation degrees
+const H1_TOP = 230;  // hand1 top
+const H1_W = 490;    // hand1 width
 
 // ── Draggable top card ────────────────────────────────────────────────────────
 interface TopCardProps {
@@ -53,21 +57,24 @@ interface TopCardProps {
   total: number;
   onSwiped: () => void;
   showHint: boolean;
+  s: number;
 }
 
-function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
+function TopCard({ prize, current, total, onSwiped, showHint, s }: TopCardProps) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 0, 200], [-14, 0, 14]);
+  const rotate = useTransform(x, [-200, 0, 200], [CR - 12, CR, CR + 12]);
   const rarity = getRarity(prize);
   const rs = RARITY_STYLE[rarity];
   const isSSR = rarity === 'SSR';
+
+  const cardW = CW * s;
+  const cardH = CH * s;
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
       if (info.offset.x > 65 || info.velocity.x > 240) {
         animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
       }
-      // else: dragConstraints + dragTransition handle snap-back automatically
     },
     [x, onSwiped],
   );
@@ -79,19 +86,28 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={{ left: 0.15, right: 0.9 }}
       dragTransition={{ bounceStiffness: 650, bounceDamping: 38 }}
-      style={{ x, rotate, position: 'absolute', zIndex: 12, touchAction: 'none', userSelect: 'none' }}
+      style={{
+        x,
+        rotate,
+        position: 'absolute',
+        top: CY * s,
+        left: CX * s,
+        zIndex: 12,
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      } as React.CSSProperties}
       onDragEnd={handleDragEnd}
-      initial={{ scale: 0.88, opacity: 0 }}
+      initial={{ scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.28, ease: 'easeOut' }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className="cursor-grab active:cursor-grabbing"
     >
-      {/* Card */}
       <div
         style={{
-          width: CARD_W,
-          height: CARD_H,
-          borderRadius: 14,
+          width: cardW,
+          height: cardH,
+          borderRadius: 14 * s,
           overflow: 'hidden',
           position: 'relative',
           boxShadow: isSSR
@@ -101,7 +117,6 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
       >
         <Image src={getCardImage(prize)} alt={prize.name} fill className="object-cover" unoptimized priority />
 
-        {/* SSR pulse overlay */}
         {isSSR && (
           <motion.div
             className="absolute inset-0 pointer-events-none"
@@ -111,7 +126,6 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
           />
         )}
 
-        {/* Rarity badge */}
         <div
           className="absolute top-2 right-2 px-2 py-[2px] rounded-full text-[11px] font-black"
           style={{ background: rs.bg, color: rs.text, boxShadow: `0 0 10px ${rs.glow}` }}
@@ -122,22 +136,34 @@ function TopCard({ prize, current, total, onSwiped, showHint }: TopCardProps) {
 
       {/* Card name */}
       <div className="mt-3 text-center">
-        <p className="text-white text-sm font-bold drop-shadow-md px-2 line-clamp-1">{prize.name}</p>
+        <p
+          className="text-white font-bold drop-shadow-md px-2 line-clamp-1"
+          style={{ fontSize: Math.max(12, 14 * s), lineHeight: '1.4' }}
+        >
+          {prize.name}
+        </p>
       </div>
 
       {/* Counter */}
       <div className="mt-1 text-center">
-        <span className="text-white/40 text-xs tracking-widest">{current + 1} / {total}</span>
+        <span className="text-white/40 tracking-widest" style={{ fontSize: Math.max(10, 12 * s) }}>
+          {current + 1} / {total}
+        </span>
       </div>
 
-      {/* Swipe hint (first 2 cards) */}
       {showHint && (
         <motion.div
-          className="absolute -right-10 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{
+            position: 'absolute',
+            right: -36 * s,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+          }}
           animate={{ x: [0, 8, 0] }}
           transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
         >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <svg width={28 * s} height={28 * s} viewBox="0 0 28 28" fill="none">
             <path d="M6 14h16M16 8l6 6-6 6" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </motion.div>
@@ -158,8 +184,21 @@ export default function CardDrawAnimation({
   const [swipeIndex, setSwipeIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Responsive scale for swipe scene
+  const swipeSceneRef = useRef<HTMLDivElement>(null);
+  const [sceneDimW, setSceneDimW] = useState(DW);
+  const s = sceneDimW / DW;
 
-  // Reset on open
+  useEffect(() => {
+    if (phase !== 'swipe') return;
+    const el = swipeSceneRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setSceneDimW(el.clientWidth));
+    ro.observe(el);
+    setSceneDimW(el.clientWidth);
+    return () => ro.disconnect();
+  }, [phase]);
+
   useEffect(() => {
     if (!isOpen) return;
     setPhase('pack');
@@ -167,7 +206,6 @@ export default function CardDrawAnimation({
     setIsLoading(true);
   }, [isOpen, prizes]);
 
-  // 1.2s loading
   useEffect(() => {
     if (!isOpen) return;
     const t = setTimeout(() => setIsLoading(false), 1200);
@@ -198,18 +236,6 @@ export default function CardDrawAnimation({
 
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 -z-10">
-        <Image
-          src="/images/gacha_bg.png"
-          alt=""
-          fill
-          className="object-cover brightness-[0.28] blur-[10px]"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-black/45" />
-      </div>
-
       <AnimatePresence mode="wait">
         {/* ── Phase 1: Pack opening ── */}
         {phase === 'pack' && (
@@ -235,42 +261,78 @@ export default function CardDrawAnimation({
           </motion.div>
         )}
 
-        {/* ── Phase 2: Swipe reveal ── */}
+        {/* ── Phase 2: Immersive card reveal ── */}
         {phase === 'swipe' && prizes.length > 0 && (
           <motion.div
             key="swipe"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="relative w-full h-full flex items-center justify-center"
+            className="w-full h-full flex items-center justify-center"
           >
-            {/* Card stack container */}
+            {/* Scene container — same responsive sizing as charge screen */}
             <div
-              style={{ position: 'relative', width: CARD_W, height: CARD_H + 60 }}
-              className="flex items-center justify-center"
+              ref={swipeSceneRef}
+              className="relative overflow-hidden w-screen md:w-[calc(100dvh_*_393_/_852)] h-[100dvh]"
+              style={{
+                WebkitTouchCallout: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              } as React.CSSProperties}
+              onContextMenu={e => e.preventDefault()}
             >
-              {/* Cards behind top (static, depth 2 then 1) */}
+              {/* Background */}
+              <Image
+                src="/images/card/charge/bg.png"
+                alt=""
+                fill
+                className="object-cover"
+                unoptimized
+                priority
+                draggable={false}
+              />
+
+              {/* hand1 — open palm, behind cards */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/card/charge/hand1.png"
+                alt=""
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: H1_TOP * s,
+                  width: H1_W * s,
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
+
+              {/* Depth cards — fanned slightly behind top card */}
               {[2, 1].map(depth => {
                 const idx = swipeIndex + depth;
                 if (idx >= prizes.length) return null;
                 return (
                   <motion.div
-                    key={idx}
+                    key={`depth-${idx}`}
                     style={{
                       position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: CARD_W,
-                      height: CARD_H,
-                      borderRadius: 14,
+                      top: (CY + depth * 6) * s,
+                      left: (CX - depth * 8) * s,
+                      width: CW * s,
+                      height: CH * s,
+                      borderRadius: 14 * s,
                       overflow: 'hidden',
-                      zIndex: 12 - depth,
+                      zIndex: 2 - depth,
                       pointerEvents: 'none',
+                      rotate: CR + depth * 4,
+                      scale: 1 - depth * 0.04,
+                      opacity: 1 - depth * 0.22,
                     }}
                     animate={{
-                      y: depth * 10,
-                      scale: 1 - depth * 0.06,
-                      opacity: 1 - depth * 0.18,
+                      scale: 1 - depth * 0.04,
+                      opacity: 1 - depth * 0.22,
                     }}
                     transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                   >
@@ -280,11 +342,11 @@ export default function CardDrawAnimation({
                       fill
                       className="object-cover"
                       unoptimized
+                      draggable={false}
                     />
-                    {/* Darkening overlay for depth */}
                     <div
                       className="absolute inset-0"
-                      style={{ background: `rgba(0,0,0,${depth * 0.22})` }}
+                      style={{ background: `rgba(0,0,0,${depth * 0.25})` }}
                     />
                   </motion.div>
                 );
@@ -299,18 +361,19 @@ export default function CardDrawAnimation({
                   total={prizes.length}
                   onSwiped={handleSwiped}
                   showHint={swipeIndex < 2}
+                  s={s}
                 />
               </AnimatePresence>
-            </div>
 
-            {/* SKIP button — same style as 自製賞 */}
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-end">
-              <button
-                onClick={onGoToWarehouse}
-                className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
-              >
-                SKIP
-              </button>
+              {/* SKIP button */}
+              <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end">
+                <button
+                  onClick={onGoToWarehouse}
+                  className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
+                >
+                  SKIP
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
