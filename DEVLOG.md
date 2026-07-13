@@ -2,6 +2,16 @@
 
 ---
 
+## 2026-07-13｜新聞列表讚/留言數與內頁不同步修正
+
+### 根本原因
+`/api/news/counts` 直接 select raw rows（`news_likes`、`news_comments`），受 Supabase 預設 1000 rows 上限截斷。60 篇文章 × 每篇 N 筆讚 > 1000 → 超出的文章讚數顯示為 0。文章內頁用 `count: 'exact'` 精確計數，兩者不同步。
+
+- **修正**：migration 323 建立 `get_news_engagement_counts(text[])` RPC，使用 GROUP BY 真正聚合，一次 call 回傳所有文章的讚/留言數，無 row 上限問題。
+- counts API route 改呼叫此 RPC。
+
+---
+
 ## 2026-07-13｜一番賞撕紙桌機第二次購買修正
 
 ### 桌機第二次撕紙 fold 無法完成（彈回）
