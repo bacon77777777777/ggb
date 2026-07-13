@@ -215,14 +215,14 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
               onPointerCancel={cancelCharge}
               onContextMenu={e => e.preventDefault()}
               animate={
-                phase === 'idle'
-                  ? { y: [0, -7 * s, 0] }
-                  : { x: [-3 * s, 3 * s, -2.5 * s, 2.5 * s, 0] }
+                phase === 'charging'
+                  ? { x: [-3 * s, 3 * s, -2.5 * s, 2.5 * s, 0] }
+                  : {}
               }
               transition={
-                phase === 'idle'
-                  ? { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }
-                  : { duration: 0.28, repeat: Infinity }
+                phase === 'charging'
+                  ? { duration: 0.28, repeat: Infinity }
+                  : {}
               }
             >
               {packFace()}
