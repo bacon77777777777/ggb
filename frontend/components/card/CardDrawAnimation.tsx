@@ -42,10 +42,10 @@ const RARITY_STYLE = {
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
-const CX = 89;   // card left (centered for CW=216)
+const CX = 94;   // card left (centered for CW=205)
 const CY = 150;  // card top
-const CW = 216;  // card width
-const CH = 301;  // card height (≈ CW * 88/63)
+const CW = 205;  // card width
+const CH = 286;  // card height (≈ CW * 88/63)
 const CR = -2;   // card rotation degrees
 const H1_TOP = 230;  // hand1 top
 const H1_W = 490;    // hand1 width
