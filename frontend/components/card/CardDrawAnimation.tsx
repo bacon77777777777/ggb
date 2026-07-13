@@ -223,6 +223,7 @@ export default function CardDrawAnimation({
             <BoosterPackOpenEffect
               packImage={packImage}
               onComplete={() => setPhase('swipe')}
+              onSkip={onGoToWarehouse}
             />
           </motion.div>
         )}
