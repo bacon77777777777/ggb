@@ -248,6 +248,8 @@ export default function CardDrawAnimation({
                 unoptimized
                 priority
                 draggable={false}
+                style={{ WebkitTouchCallout: 'none', userSelect: 'none', pointerEvents: 'none' } as React.CSSProperties}
+                onContextMenu={e => e.preventDefault()}
               />
 
               {/* hand1 — open palm, behind cards */}

@@ -149,6 +149,9 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
         alt="" fill
         className="object-cover"
         unoptimized priority
+        draggable={false}
+        style={{ WebkitTouchCallout: 'none', userSelect: 'none', pointerEvents: 'none' } as React.CSSProperties}
+        onContextMenu={e => e.preventDefault()}
       />
 
       {/* 層 1：hand1（掌心，卡包下方） */}
