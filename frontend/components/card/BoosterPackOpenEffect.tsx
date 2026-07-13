@@ -49,7 +49,7 @@ const LIGHT_PATH =
 const DW = 393;
 
 // Pack placement in design coords
-const PX = 62;   // left
+const PX = 72;   // left
 const PY = 148;  // top
 const PW = 252;  // width
 const PH = 366;  // height  (≈ PW / (275/400))
