@@ -38,6 +38,7 @@ export default function FigmaTearScene({
   const turnReady     = useRef(false);
   const pressStartX   = useRef<number | null>(null);
   const slideRight    = useRef(false);
+  const hasMoved      = useRef(false);  // 任何 pointermove 觸發即為 true，比 slideRight 更早
 
   // 進場後 2 秒才顯示獎項文字（讓 up1.svg 先載入蓋住）
   useEffect(() => {
@@ -94,19 +95,24 @@ export default function FigmaTearScene({
       });
 
     let cancelled = false;
+    // 儲存 jQuery 物件：在 done=true 後 flipbookRef.current 會先變 null，
+    // 所以用 closure 變數保存，確保 destroy 在 cleanup 時能正確執行
+    let $fbSaved: any = null;
 
-    // 滑動追蹤：>3px 顯示 up2，capture 相位確保在 turn.js 之前執行
+    // 滑動追蹤：capture 相位確保在 turn.js 之前執行
     const getPtEl = () =>
       flipbookRef.current?.querySelector('.p-temporal') as HTMLElement | null;
 
     const onCapturePointerDown = (e: PointerEvent) => {
       setTouched(true);
       pressStartX.current = e.clientX;
-      slideRight.current = false;  // 確認拖曳前先重置
+      slideRight.current = false;
+      hasMoved.current = false;  // 每次按下重置
     };
 
     const onCapturePointerMove = (e: PointerEvent) => {
       if (pressStartX.current === null) return;
+      hasMoved.current = true;  // 只要有任何移動就設 true（turning gate 用這個）
       const dx = e.clientX - pressStartX.current;
       if (dx > 3) {
         slideRight.current = true;
@@ -157,8 +163,9 @@ export default function FigmaTearScene({
         turnCorners: 'tl,bl',
         when: {
           turning: (_e: Event, page: number) => {
-            // 只有確認拖曳才放行翻頁，純點擊攔截
-            if (page === 2 && !slideRight.current) {
+            // 用 hasMoved（任何移動）作為門檻，比 slideRight（dx>3）更早觸發
+            // 純點擊（沒有任何 pointermove）時 hasMoved=false → 攔截
+            if (page === 2 && !hasMoved.current) {
               (_e as any).preventDefault?.();
             }
           },
@@ -176,7 +183,7 @@ export default function FigmaTearScene({
         },
       });
 
-
+      $fbSaved = $fb;      // 儲存供 cleanup destroy 使用
       turnReady.current = true;
     })();
 
@@ -185,9 +192,10 @@ export default function FigmaTearScene({
       document.removeEventListener('pointerdown', onCapturePointerDown, true);
       document.removeEventListener('pointermove', onCapturePointerMove, true);
       document.removeEventListener('pointerup',   onPointerUp);
-      const $ = window.jQuery;
-      if ($ && flipbookRef.current && turnReady.current) {
-        try { $(flipbookRef.current).turn('destroy'); } catch { /* ignore */ }
+      // 用 closure 儲存的 $fbSaved，避免 flipbookRef.current 已經被 React 設為 null
+      if (turnReady.current && $fbSaved) {
+        try { $fbSaved.turn('destroy'); } catch { /* ignore */ }
+        $fbSaved = null;
         turnReady.current = false;
       }
     };

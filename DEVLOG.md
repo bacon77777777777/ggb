@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-07-13｜一番賞撕紙深度修正（第三輪）
+
+### 根本原因 A：turn.js destroy 從未被執行
+`done=true` → React 先 unmount `{!done && ...}` DOM → `flipbookRef.current = null` → useEffect cleanup 條件 `flipbookRef.current &&` 失敗 → `$fb.turn('destroy')` 沒執行 → turn.js document-level listeners 殘留 → 第二次購買產生雙重 listeners 衝突
+- **修正**：在 useEffect closure 內用 `$fbSaved` 儲存 jQuery 物件，cleanup 改用 `$fbSaved.turn('destroy')`，不依賴 `flipbookRef.current`
+
+### 根本原因 B：turning gate 比 dx > 3 更早觸發
+Turn.js 在拖曳很早（< 3px）就 fires `turning`，但 `slideRight` 需 dx > 3 → gate 擋住合法拖曳
+- **修正**：新增 `hasMoved` ref，任何 `pointermove` 即設 true，`turning` gate 改用 `!hasMoved.current`（只攔截完全沒有移動的純點擊）
+
+---
+
 ## 2026-07-11｜一番賞撕紙深度修正（第二輪）
 
 ### 根本原因修正
