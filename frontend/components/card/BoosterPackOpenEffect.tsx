@@ -285,8 +285,6 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
           top: 55 * s,
           width: 210 * s,
           zIndex: 3,
-          transform: 'rotate(-70deg)',
-          transformOrigin: 'right center',
           pointerEvents: 'none',
           userSelect: 'none',
           WebkitUserSelect: 'none',
