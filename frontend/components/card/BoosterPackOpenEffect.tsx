@@ -7,7 +7,6 @@ import Image from 'next/image';
 interface BoosterPackProps {
   packImage?: string;
   onComplete?: () => void;
-  onSkip?: () => void;
 }
 
 type Phase = 'idle' | 'charging' | 'tearing' | 'done';
@@ -51,7 +50,6 @@ const PACK_H = 400;
 export default function BoosterPackOpenEffect({
   packImage,
   onComplete,
-  onSkip,
 }: BoosterPackProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [charge, setCharge] = useState(0); // 0–100
@@ -315,17 +313,6 @@ export default function BoosterPackOpenEffect({
           />
         )}
       </AnimatePresence>
-
-      {/* ── SKIP button (pack phase only) ── */}
-      {onSkip && (phase === 'idle' || phase === 'charging') && (
-        <button
-          onClick={onSkip}
-          style={{ position: 'absolute', bottom: 4, right: 4 }}
-          className="px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
-        >
-          SKIP
-        </button>
-      )}
 
       {/* ── Particle burst ── */}
       {phase === 'tearing' && (

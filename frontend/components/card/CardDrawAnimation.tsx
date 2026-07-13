@@ -223,8 +223,15 @@ export default function CardDrawAnimation({
             <BoosterPackOpenEffect
               packImage={packImage}
               onComplete={() => setPhase('swipe')}
-              onSkip={onGoToWarehouse}
             />
+            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-end">
+              <button
+                onClick={onGoToWarehouse}
+                className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
+              >
+                SKIP
+              </button>
+            </div>
           </motion.div>
         )}
 
