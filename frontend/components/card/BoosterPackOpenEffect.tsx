@@ -51,8 +51,8 @@ const DW = 393;
 // Pack placement in design coords
 const PX = 91;   // left
 const PY = 148;  // top
-const PW = 237;  // width
-const PH = 344;  // height  (≈ PW / (275/400))
+const PW = 235;  // width
+const PH = 341;  // height  (≈ PW / (275/400))
 const PR = -2;   // rotation degrees
 
 export default function BoosterPackOpenEffect({ packImage, onComplete }: BoosterPackProps) {
