@@ -140,6 +140,8 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     <div
       ref={containerRef}
       className="relative overflow-hidden w-screen md:w-[calc(100dvh_*_393_/_852)] h-[100dvh]"
+      style={{ WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
+      onContextMenu={e => e.preventDefault()}
     >
       {/* 層 0：背景 */}
       <Image
@@ -152,6 +154,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
       {/* 層 1：hand1（掌心，卡包下方） */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        draggable={false}
         src="/images/card/charge/hand1.png"
         alt=""
         style={{
