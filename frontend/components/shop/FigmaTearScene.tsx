@@ -162,13 +162,7 @@ export default function FigmaTearScene({
         cornerSize:  cs,
         turnCorners: 'tl,bl',
         when: {
-          turning: (_e: Event, page: number) => {
-            // 用 hasMoved（任何移動）作為門檻，比 slideRight（dx>3）更早觸發
-            // 純點擊（沒有任何 pointermove）時 hasMoved=false → 攔截
-            if (page === 2 && !hasMoved.current) {
-              (_e as any).preventDefault?.();
-            }
-          },
+          // turning gate 已移除：turn.js 需要拖曳過 50% 才完成，純點擊不會到達，不需攔截
           turned: (_e: Event, page: number) => {
             if (page === 2) {
               tearAudioRef.current?.play().catch(() => {});

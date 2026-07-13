@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-07-13｜一番賞撕紙深度修正（第四輪）
+
+### 根本原因 C：turning gate 仍阻擋第二次購買的撕紙完成
+- 情境：即使 `hasMoved` 已設為 true，`onCapturePointerDown` 若未觸發（第二次掛載 capture listener 競態），`pressStartX = null` → `onCapturePointerMove` 直接 return → `hasMoved` 仍 false → `turning` gate 阻擋翻頁
+- **核心觀察**：turn.js 翻頁需拖曳過 50% 才能完成，純點擊無法到達 50%，`turning` gate 本身是多餘的
+- **修正**：完全移除 `turning` event handler，不再用任何條件攔截 turning 事件；`hasMoved`/`slideRight` 保留，僅用於控制 up2.svg 顯示和 tearing class
+
 ## 2026-07-13｜一番賞撕紙深度修正（第三輪）
 
 ### 根本原因 A：turn.js destroy 從未被執行
