@@ -101,8 +101,8 @@ export default function BoosterPackOpenEffect({
         ...extraStyle,
       }}
     >
-      {/* Bag image */}
-      <Image src={imgSrc} alt="" fill className="object-contain" priority unoptimized />
+      {/* Bag image — pointer-events-none prevents iOS long-press callout on the img */}
+      <Image src={imgSrc} alt="" fill className="object-contain pointer-events-none select-none" draggable={false} priority unoptimized />
 
       {/* Charge ring — traces the bag silhouette (light.svg) as charge fills */}
       {charge > 0 && (
@@ -204,11 +204,14 @@ export default function BoosterPackOpenEffect({
                 userSelect: 'none',
                 touchAction: 'none',
                 WebkitUserSelect: 'none',
-              }}
+                // Prevent iOS long-press image callout
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
               onPointerDown={startCharge}
               onPointerUp={cancelCharge}
               onPointerLeave={cancelCharge}
               onPointerCancel={cancelCharge}
+              onContextMenu={(e) => e.preventDefault()}
               // Floating when idle, vibrating when charging
               animate={
                 phase === 'idle'
