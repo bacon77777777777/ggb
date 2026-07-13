@@ -281,9 +281,9 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
         alt=""
         style={{
           position: 'absolute',
-          right: -35 * s,
-          top: 55 * s,
-          width: 150 * s,
+          left: 0 * s,
+          top: 240 * s,
+          width: 490 * s,
           zIndex: 3,
           pointerEvents: 'none',
           userSelect: 'none',
