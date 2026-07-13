@@ -11,7 +11,8 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'ichiban_tear', label: '沉浸式撕紙（全畫面揭曉）' },
   ],
   card:     [
-    { value: 'card_pack',    label: '拆卡包（動態開卡）' },
+    { value: 'card_pack',  label: '蓄力開卡包（按住撕開 → 翻牌）' },
+    { value: 'card_flip',  label: '直接翻牌（略過開包動畫）' },
   ],
   custom:   [
     { value: 'custom_grid', label: '經典列表（票券網格撕開）' },

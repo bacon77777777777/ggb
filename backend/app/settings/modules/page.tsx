@@ -29,7 +29,8 @@ const PRODUCT_TYPES: {
     type: 'card',
     label: '抽卡',
     themes: [
-      { value: 'card_pack', label: '拆卡包', desc: '動態開卡包揭曉（預設）' },
+      { value: 'card_pack', label: '蓄力開卡包', desc: '按住蓄力撕開卡包，卡牌一一揭曉（預設）' },
+      { value: 'card_flip', label: '直接翻牌', desc: '略過開包動畫，直接進入卡牌翻面選單' },
     ],
   },
   {

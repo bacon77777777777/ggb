@@ -2277,7 +2277,7 @@ export default function ProductDetailPage() {
 
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
-          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack') {
+          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack' || effectiveTheme === 'card_flip') {
             return (
               <GachaThemeRenderer
                 theme={effectiveTheme || 'gacha_classic'}
