@@ -1499,6 +1499,9 @@ function ProfileContent() {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const history = groupedHistory.map(({ _rawDate, ...rest }) => rest);
         setDrawHistory(history as unknown as DrawHistoryItem[]);
+        if (searchParams.get('expand') === 'latest' && groupedHistory.length > 0) {
+          setExpandedDrawId(groupedHistory[0].id.toString());
+        }
       }
       else if (activeTab === 'topup-history') {
         const { data, error } = await supabase
