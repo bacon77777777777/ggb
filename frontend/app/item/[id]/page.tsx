@@ -22,6 +22,8 @@ import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
+import CardDrawAnimation from '@/components/card/CardDrawAnimation';
+import CardFlipDirect from '@/components/card/CardFlipDirect';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { useAlert } from '@/components/ui/AlertDialog';
@@ -872,6 +874,12 @@ export default function ProductDetailPage() {
     fetchData();
   };
 
+  const handleCardContinue = () => {
+    setIsVideoOpen(false);
+    setWonPrizes([]);
+    fetchData();
+  };
+
 
   const handleVideoEnd = () => {
     setIsVideoOpen(false);
@@ -1694,46 +1702,70 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {isVideoOpen && (
-          <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
-            <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
-              <video
-                ref={openingVideoRef}
-                src={openingVideoSrc}
-                className="w-full h-full object-cover"
-                preload="auto"
-                muted={isVideoMuted}
-                playsInline
-                onEnded={handleVideoEnd}
-                onError={handleVideoError}
+        {(() => {
+          const cardTheme = (product as any).machine_theme || moduleSettings['card'];
+          if (cardTheme === 'card_pack') {
+            return (
+              <CardDrawAnimation
+                isOpen={isVideoOpen}
+                prizes={wonPrizes}
+                onGoToWarehouse={handleVideoEnd}
+                onContinue={handleCardContinue}
               />
-              <button
-                type="button"
-                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
-                onClick={() => {
-                  setIsVideoMuted((prev) => {
-                    const next = !prev;
-                    const el = openingVideoRef.current;
-                    if (el) {
-                      el.muted = next;
-                      if (!next) el.play().catch(() => undefined);
-                    }
-                    return next;
-                  });
-                }}
-              >
-                {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
-              <button
-                type="button"
-                className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
-                onClick={handleVideoEnd}
-              >
-                SKIP
-              </button>
+            );
+          }
+          if (cardTheme === 'card_flip') {
+            return (
+              <CardFlipDirect
+                isOpen={isVideoOpen}
+                prizes={wonPrizes}
+                onGoToWarehouse={handleVideoEnd}
+                onContinue={handleCardContinue}
+              />
+            );
+          }
+          // 預設：播放影片
+          return isVideoOpen ? (
+            <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
+              <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
+                <video
+                  ref={openingVideoRef}
+                  src={openingVideoSrc}
+                  className="w-full h-full object-cover"
+                  preload="auto"
+                  muted={isVideoMuted}
+                  playsInline
+                  onEnded={handleVideoEnd}
+                  onError={handleVideoError}
+                />
+                <button
+                  type="button"
+                  className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
+                  onClick={() => {
+                    setIsVideoMuted((prev) => {
+                      const next = !prev;
+                      const el = openingVideoRef.current;
+                      if (el) {
+                        el.muted = next;
+                        if (!next) el.play().catch(() => undefined);
+                      }
+                      return next;
+                    });
+                  }}
+                >
+                  {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+                <button
+                  type="button"
+                  className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
+                  onClick={handleVideoEnd}
+                >
+                  SKIP
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
 
         <GachaResultModal
           isOpen={isPrizeModalOpen}
