@@ -43,9 +43,9 @@ const TOP_CLIP =
 const BOTTOM_CLIP =
   'polygon(0% 21%, 5% 18%, 13% 22%, 22% 19%, 30% 22%, 39% 18%, 48% 22%, 57% 18%, 65% 22%, 74% 18%, 83% 22%, 91% 19%, 100% 21%, 100% 100%, 0% 100%)';
 
-// Match front.png / light.svg aspect ratio (384:557 ≈ 0.689)
-const PACK_W = 176;
-const PACK_H = 256;
+// Match front.png / light.svg aspect ratio (384:557 ≈ 0.689)  ×1.3 larger
+const PACK_W = 229;
+const PACK_H = 333;
 
 export default function BoosterPackOpenEffect({
   packImage,
@@ -138,9 +138,9 @@ export default function BoosterPackOpenEffect({
       style={{
         position: 'relative',
         width: '100%',
-        maxWidth: 380,
+        maxWidth: 440,
         margin: '0 auto',
-        height: 380,
+        height: 440,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
