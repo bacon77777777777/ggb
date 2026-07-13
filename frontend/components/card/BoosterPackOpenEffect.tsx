@@ -157,7 +157,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
         style={{
           position: 'absolute',
           left: 0 * s,
-          top: 280 * s,
+          top: 240 * s,
           width: 490 * s,
           zIndex: 1,
           pointerEvents: 'none',
