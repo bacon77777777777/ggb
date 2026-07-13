@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import Image from 'next/image';
 import type { Prize } from '@/components/GachaMachine';
@@ -24,13 +24,6 @@ function getCardImage(prize: Prize) {
   return '/images/card/00004.png';
 }
 
-function getCardBack(prize: Prize) {
-  const raw = (prize.grade || prize.rarity || '').toUpperCase();
-  if (raw.includes('SSR') || raw.includes('超稀有')) return '/images/card/cardback1.png';
-  if (raw.includes('SR')) return '/images/card/cardback2.png';
-  if (raw.includes('R') || raw.includes('稀有')) return '/images/card/cardback3.png';
-  return '/images/card/cardback4.png';
-}
 
 function getRarity(prize: Prize) {
   const raw = (prize.grade || prize.rarity || '').toUpperCase();
@@ -163,10 +156,6 @@ export default function CardDrawAnimation({
   const [swipeIndex, setSwipeIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  const boosterBackImages = useMemo(
-    () => prizes.map(p => getCardBack(p)),
-    [prizes],
-  );
 
   // Reset on open
   useEffect(() => {
@@ -230,7 +219,6 @@ export default function CardDrawAnimation({
             className="w-full h-full flex items-center justify-center"
           >
             <BoosterPackOpenEffect
-              cardBackImages={boosterBackImages}
               onComplete={() => setPhase('swipe')}
             />
           </motion.div>
