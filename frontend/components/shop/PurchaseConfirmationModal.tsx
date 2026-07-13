@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { X, Ticket, ChevronRight, Coins, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
@@ -49,6 +49,8 @@ export function PurchaseConfirmationModal({
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const [loadingCoupons, setLoadingCoupons] = useState(false);
   const [lockedQuantity, setLockedQuantity] = useState<number | null>(null);
+  // Ref-based lock: updated synchronously before any state change, avoids batching race condition
+  const processingQuantityRef = useRef<number>(1);
 
   useEffect(() => {
     if (isOpen) {
@@ -155,11 +157,13 @@ export function PurchaseConfirmationModal({
       });
       return;
     }
-    
+
     if (isSoldOut) {
       return;
     }
 
+    // Set ref synchronously before any state/prop changes (no batching delay)
+    processingQuantityRef.current = quantity;
     setLockedQuantity(quantity);
     if (isInsufficient) {
       if (usePoints) {
@@ -305,7 +309,7 @@ export function PurchaseConfirmationModal({
                           avoiding flicker from auto-fallback or external updates.
                         */}
                         {(() => {
-                          const effectiveQuantity = isProcessing ? (lockedQuantity ?? quantity) : quantity;
+                          const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
                           return (
                             <>
                         <button
