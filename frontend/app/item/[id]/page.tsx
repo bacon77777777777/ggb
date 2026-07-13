@@ -31,12 +31,27 @@ import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
 
+function getRandomPackStyles(): string[] {
+  return Array.from({ length: 9 }, () =>
+    String(Math.floor(Math.random() * 5) + 1).padStart(2, '0')
+  );
+}
+
 type PackSelectionCarouselHandle = {
   goToNext: () => void;
+  getActiveIndex: () => number;
 };
 
-const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, { cardScale: number }>(
-  (_props, ref) => {
+type PackSelectionCarouselProps = {
+  cardScale: number;
+  packStyles: string[];
+  onActiveStyleChange?: (styleId: string) => void;
+};
+
+const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelectionCarouselProps>(
+  ({ packStyles, onActiveStyleChange }, ref) => {
+    const onActiveStyleChangeRef = useRef(onActiveStyleChange);
+    useEffect(() => { onActiveStyleChangeRef.current = onActiveStyleChange; });
     const audioCtxRef = useRef<AudioContext | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const offsetRef = useRef(0);
@@ -102,9 +117,16 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, { cardScal
       if (nearest !== lastActiveIndexRef.current) {
         lastActiveIndexRef.current = nearest;
         setActiveIndex(nearest);
+        onActiveStyleChangeRef.current?.(packStyles[nearest]);
         playTickSound();
       }
     };
+
+    // Notify parent when packStyles reshuffled (換一批)
+    useEffect(() => {
+      onActiveStyleChangeRef.current?.(packStyles[activeIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [packStyles]);
 
     const setOffsetBoth = (value: number) => {
       const normalized = normalizeOffset(value);
@@ -191,6 +213,7 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, { cardScal
         const target = offsetRef.current + 1;
         animateToOffset(target);
       },
+      getActiveIndex: () => lastActiveIndexRef.current,
     }));
 
     useEffect(() => {
@@ -287,7 +310,9 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, { cardScal
               >
                 <div className="relative">
                   <ProductPackViewer3D
-                    packImage={isBehind ? '/images/card/back.png' : '/images/card/front.png'}
+                    packImage={isBehind
+                      ? `/images/card/card/${packStyles[index] ?? '01'}b.png`
+                      : `/images/card/card/${packStyles[index] ?? '01'}a.png`}
                     interactive={isActive}
                     showSSRGlare={false}
                   />
@@ -360,6 +385,12 @@ export default function ProductDetailPage() {
   const [cardScale, setCardScale] = useState(1);
   const [isCardImageMode, setIsCardImageMode] = useState(false);
   const packCarouselRef = useRef<PackSelectionCarouselHandle | null>(null);
+  const firstPackStyles = useRef<string[]>(getRandomPackStyles());
+  const [packStyles, setPackStyles] = useState<string[]>(firstPackStyles.current);
+  const [activePackStyle, setActivePackStyle] = useState<string>(firstPackStyles.current[0]);
+  const handleActiveStyleChange = useCallback((styleId: string) => {
+    setActivePackStyle(styleId);
+  }, []);
   const openingVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
@@ -652,7 +683,10 @@ export default function ProductDetailPage() {
   };
 
   const handleChangePack = () => {
-    packCarouselRef.current?.goToNext();
+    const newStyles = getRandomPackStyles();
+    const currentIdx = packCarouselRef.current?.getActiveIndex() ?? 0;
+    setPackStyles(newStyles);
+    setActivePackStyle(newStyles[currentIdx]);
   };
 
   const handleTrialCard = () => {
@@ -1334,14 +1368,19 @@ export default function ProductDetailPage() {
                     className="relative w-full flex items-center justify-center"
                     style={{ bottom: isMobile ? '40px' : '35px' }}
                   >
-                    <PackSelectionCarousel cardScale={cardScale} ref={packCarouselRef} />
+                    <PackSelectionCarousel
+                      cardScale={cardScale}
+                      ref={packCarouselRef}
+                      packStyles={packStyles}
+                      onActiveStyleChange={handleActiveStyleChange}
+                    />
                   </div>
                 </div>
 
                 <ImageButton
                   src="/images/gacha/btn2.png"
-                  alt="換一包"
-                  text="換一包"
+                  alt="換一批"
+                  text="換一批"
                   className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
                   textClassName="text-base md:text-lg"
                   style={{
@@ -1709,6 +1748,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
+                packImage={`/images/card/card/${activePackStyle}a.png`}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />

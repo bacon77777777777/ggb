@@ -11,6 +11,7 @@ type CardDrawAnimationProps = {
   prizes: Prize[];
   onGoToWarehouse: () => void;
   onContinue: () => void;
+  packImage?: string;
 };
 
 type Phase = 'pack' | 'swipe';
@@ -151,6 +152,7 @@ export default function CardDrawAnimation({
   prizes,
   onGoToWarehouse,
   onContinue,
+  packImage,
 }: CardDrawAnimationProps) {
   const [phase, setPhase] = useState<Phase>('pack');
   const [swipeIndex, setSwipeIndex] = useState(0);
@@ -219,6 +221,7 @@ export default function CardDrawAnimation({
             className="w-full h-full flex items-center justify-center"
           >
             <BoosterPackOpenEffect
+              packImage={packImage}
               onComplete={() => setPhase('swipe')}
             />
           </motion.div>
