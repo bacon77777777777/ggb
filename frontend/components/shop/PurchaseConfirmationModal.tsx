@@ -117,8 +117,11 @@ export function PurchaseConfirmationModal({
     }
   }, [isOpen, isProcessing, canTenPull, quantity]);
 
+  // Freeze displayed quantity during processing so prices stay consistent with button selection
+  const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
+
   // Calculations
-  const totalPrice = product.price * quantity;
+  const totalPrice = product.price * effectiveQuantity;
   
   // Calculate discount
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
@@ -309,7 +312,6 @@ export function PurchaseConfirmationModal({
                           avoiding flicker from auto-fallback or external updates.
                         */}
                         {(() => {
-                          const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
                           return (
                             <>
                         <button
