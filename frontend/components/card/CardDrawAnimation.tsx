@@ -83,7 +83,7 @@ function TopCard({ prize, current, total, onSwiped, s }: TopCardProps) {
       key={`top-${current}`}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0.15, right: 0.9 }}
+      dragElastic={{ left: 0.075, right: 0.9 }}
       dragTransition={{ bounceStiffness: 650, bounceDamping: 38 }}
       style={{
         x,
