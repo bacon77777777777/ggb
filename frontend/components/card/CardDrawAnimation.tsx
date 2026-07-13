@@ -109,8 +109,8 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
           overflow: 'hidden',
           position: 'relative',
           boxShadow: isSSR
-            ? `0 0 25px ${rs.glow}, 0 0 10px ${rs.glow}, 0 12px 30px rgba(0,0,0,0.85)`
-            : `0 0 12px ${rs.glow}, 0 10px 25px rgba(0,0,0,0.8)`,
+            ? `0 0 12px ${rs.glow}, 0 0 5px ${rs.glow}, 0 6px 15px rgba(0,0,0,0.85)`
+            : `0 0 6px ${rs.glow}, 0 5px 12px rgba(0,0,0,0.8)`,
         }}
       >
         <Image src={getCardImage(prize)} alt={prize.name} fill className="object-cover" unoptimized priority />
