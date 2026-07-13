@@ -172,9 +172,9 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
           <motion.div
             key="pack-live"
             style={{ position: 'absolute', top: PY * s, left: PX * s, zIndex: 2 }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.28 }}
           >
             {/* 蓄力光暈 */}
@@ -283,7 +283,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
           position: 'absolute',
           right: -35 * s,
           top: 55 * s,
-          width: 210 * s,
+          width: 150 * s,
           zIndex: 3,
           pointerEvents: 'none',
           userSelect: 'none',
