@@ -53,7 +53,7 @@ const PX = 72;   // left
 const PY = 148;  // top
 const PW = 239;  // width
 const PH = 348;  // height  (≈ PW / (275/400))
-const PR = -5;   // rotation degrees
+const PR = -4;   // rotation degrees
 
 export default function BoosterPackOpenEffect({ packImage, onComplete }: BoosterPackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
