@@ -192,7 +192,6 @@ export default function CardDrawAnimation({
             className="w-full h-full flex items-center justify-center"
           >
             <BoosterPackOpenEffect
-              packImage="/images/card/cardpack.png"
               cardBackImages={boosterBackImages}
               onComplete={() => {
                 // setShowBooster(false); // Removed unused state setter

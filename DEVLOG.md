@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-07-13｜抽卡模組 — Pokémon TCG 風卡包撕開互動
+
+### 功能
+TCG（集換式卡牌）抽獎改為完整卡包開啟體驗，取代原本的影片播放。
+
+- **`BoosterPackOpenEffect.tsx` 全面重寫**：
+  - 純 CSS 卡包設計（深藍/紫漸層 + 動態全息折射效果），不依賴外部圖片
+  - **按住蓄力機制**：按住 ~700ms 蓄力進度條（黃色 SVG 邊框動畫），蓄滿自動觸發
+  - **撕裂動畫**：Top 殘片飛上 + Bottom 殘片落下，搭配鋸齒 clip-path 撕口
+  - **全螢幕白閃**：撕開瞬間過場
+  - **粒子爆炸**：24 顆彩色粒子向外散射
+  - **卡牌展開**：卡背圖依稀有度扇形排列，錯落有致
+- **`CardDrawAnimation.tsx`**：移除不存在的 `packImage` 路徑（改用 CSS 卡包）
+- **`item/[id]/page.tsx`**：
+  - 引入 `CardDrawAnimation`
+  - card 類型抽獎完成後，以 `CardDrawAnimation` 取代影片播放
+  - 前往倉庫 → 顯示 `GachaResultModal`（查看實際得獎品項）
+  - 繼續開抽 → 關閉動畫、重置狀態
+  - 清除孤立的影片相關狀態（`openingVideoRef`、`isVideoMuted`、`openingVideoSrc`、`handleVideoError`）
+
+---
+
 ## 2026-07-13｜機器人留言 AI 化（B+C 方案）
 
 ### 問題
