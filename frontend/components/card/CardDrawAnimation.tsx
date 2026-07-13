@@ -54,12 +54,11 @@ const H1_W = 490;    // hand1 width
 interface TopCardProps {
   prize: Prize;
   current: number;
-  total: number;
   onSwiped: () => void;
   s: number;
 }
 
-function TopCard({ prize, current, total, onSwiped, s }: TopCardProps) {
+function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 0, 200], [CR - 12, CR, CR + 12]);
   const rarity = getRarity(prize);
@@ -95,7 +94,7 @@ function TopCard({ prize, current, total, onSwiped, s }: TopCardProps) {
         touchAction: 'none',
         userSelect: 'none',
         WebkitUserSelect: 'none',
-      } as React.CSSProperties}
+      }}
       onDragEnd={handleDragEnd}
       initial={{ scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -136,7 +135,7 @@ export default function CardDrawAnimation({
   isOpen,
   prizes,
   onGoToWarehouse,
-  onContinue,
+  onContinue: _onContinue,
   packImage,
 }: CardDrawAnimationProps) {
   const [phase, setPhase] = useState<Phase>('pack');
@@ -317,7 +316,6 @@ export default function CardDrawAnimation({
                   key={swipeIndex}
                   prize={prizes[swipeIndex]}
                   current={swipeIndex}
-                  total={prizes.length}
                   onSwiped={handleSwiped}
                   s={s}
                 />
