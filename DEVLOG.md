@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-07-13｜機器人留言 AI 化（B+C 方案）
+
+### 問題
+舊留言為 hardcoded 範本池，與文章內容無關（可愛商品卻說「太猛了」），且重複率高。
+
+### 修正
+- **Migration 324**：`seed_bot_engagement_for_article` 移除留言 seeding，只保留按讚（15~40 個 bot 讚）
+- **news-agent 新增 `generateAndSeedComments()`**：
+  - 每篇新文章調用 Claude Haiku 4.5，根據標題/摘要/類別生成 3~5 則脈絡符合的留言
+  - Prompt 按 category 調整語氣（ichiban→興奮/期待、blindbox→可愛/驚喜、tcg→強度討論）
+  - 留 1 則中性/略負面（顯真實感）
+  - 留言 `created_at` 隨機分布在文章發布後 0~8 小時內，按時間排序植入
+  - 費用估算：每篇 ~$0.00084，正常用量 $0.5~1/月
+
+---
+
 ## 2026-07-13｜新聞列表讚/留言數與內頁不同步修正
 
 ### 根本原因

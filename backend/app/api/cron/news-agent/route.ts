@@ -369,6 +369,91 @@ function jaccardSim(a: Set<string>, b: Set<string>): number {
   return inter / union
 }
 
+// ─── AI 留言生成 + 時間分布植入 ─────────────────────────────────────────────
+
+const CATEGORY_TONE: Record<string, string> = {
+  ichiban:  '一番賞景品，語氣可以興奮、期待、或喊衝',
+  gacha:    '扭蛋/轉蛋商品，語氣可以可愛、期待、或問哪裡買',
+  blindbox: '盲盒/盒玩商品，語氣可以可愛、驚喜、或分享收藏心情',
+  tcg:      '集換式卡牌，語氣可以討論強度、卡圖、或問價格',
+  general:  '周邊商品情報，語氣自然，依內容決定',
+}
+
+async function generateAndSeedComments(
+  supabase: ReturnType<typeof import('@/lib/supabaseAdmin').getSupabaseAdmin>,
+  claude: import('@anthropic-ai/sdk').default,
+  newsId: string,
+  title: string,
+  summary: string,
+  category: string,
+): Promise<void> {
+  try {
+    // 防止重複種（若已有留言則跳過）
+    const { count } = await supabase
+      .from('news_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('news_id', newsId)
+    if (count && count > 0) return
+
+    const tone = CATEGORY_TONE[category] ?? CATEGORY_TONE.general
+    const n    = 3 + Math.floor(Math.random() * 3) // 3~5 則
+
+    const msg = await claude.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{
+        role: 'user',
+        content:
+`你是台灣熱愛日本動漫景品、扭蛋、一番賞的社群用戶。根據以下文章，用台灣網友口吻寫 ${n} 則留言。
+
+規則：
+- 繁體中文，可加少量 emoji（不要過度）
+- 根據文章內容直接回應，不要套公版話術
+- 文章類型：${tone}
+- 每則 5~25 字，互相不重複
+- 留 1 則中性或略負面（如「有點貴」「先等評測」「不如上一波」）使其看起來真實
+- 不要直接複製標題文字
+- 只回傳 JSON array of strings，不含任何其他說明文字
+
+標題：${title}
+摘要：${summary.slice(0, 300)}`
+      }]
+    })
+
+    const raw      = ((msg.content[0] as { text?: string }).text ?? '').trim()
+    const jsonMatch = raw.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return
+    const comments: string[] = JSON.parse(jsonMatch[0])
+    if (!Array.isArray(comments) || comments.length === 0) return
+
+    // 取隨機 bot 用戶
+    const { data: bots } = await supabase
+      .from('users')
+      .select('id')
+      .eq('is_bot', true)
+      .limit(30)
+    if (!bots?.length) return
+
+    const shuffled = [...bots].sort(() => Math.random() - 0.5)
+    const maxHours = 8 * 60 * 60 * 1000 // 8 小時分布
+
+    // 生成並按時間排序（讓留言看起來是陸續出現的）
+    const rows = comments
+      .slice(0, Math.min(comments.length, shuffled.length))
+      .map((content, i) => ({
+        news_id:    newsId,
+        user_id:    shuffled[i].id,
+        content:    String(content).slice(0, 200),
+        created_at: new Date(Date.now() - Math.random() * maxHours).toISOString(),
+      }))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+    await supabase.from('news_comments').insert(rows)
+  } catch (err) {
+    console.error('[news-agent] AI comment seed error:', err)
+  }
+}
+
 // ─── 主流程 ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -469,6 +554,7 @@ export async function POST(req: NextRequest) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
         existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+        void generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++
       } else {
@@ -553,6 +639,7 @@ export async function POST(req: NextRequest) {
         existing.add(realUrl)
         sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+        void generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
         perQuery++
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++
