@@ -373,11 +373,11 @@ export default function ProductDetailPage() {
 
   // Result Modal State
   const [showResultModal, setShowResultModal] = useState(false);
-  const [drawResults, setDrawResults] = useState<{ 
-    ticket_number: number; 
-    prize_level: string; 
+  const [drawResults, setDrawResults] = useState<{
+    ticket_number: number;
+    prize_level: string;
     prize_name: string;
-    image_url?: string;
+    prize_image_url?: string;
     is_last_one?: boolean;
   }[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
@@ -610,7 +610,7 @@ export default function ProductDetailPage() {
     try {
       const { data, error } = await supabase
         .from('draw_records')
-        .select('ticket_number, prize_level, prize_name, image_url, is_last_one')
+        .select('ticket_number, prize_level, prize_name, prize_image_url, is_last_one')
         .eq('product_id', product.id)
         .order('ticket_number', { ascending: true });
 
@@ -637,7 +637,7 @@ export default function ProductDetailPage() {
                 ticket_number: 0,
                 prize_level: loPrize.level || 'Last One',
                 prize_name: loPrize.name || '最後賞',
-                image_url: loPrize.image_url || '',
+                prize_image_url: loPrize.image_url || '',
                 is_last_one: true
               }
             ];
@@ -1825,7 +1825,7 @@ export default function ProductDetailPage() {
               grade: r.prize_level,
               name: r.prize_name,
               isOpened: true,
-              image_url: r.image_url || '',
+              image_url: r.prize_image_url || '',
               is_last_one: r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || (r.ticket_number === 0),
               ticket_number: r.ticket_number || 0
             }))}
@@ -2325,7 +2325,7 @@ export default function ProductDetailPage() {
               grade: r.prize_level,
               name: r.prize_name,
               isOpened: true,
-              image_url: r.image_url || '',
+              image_url: r.prize_image_url || '',
               is_last_one: r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || (r.ticket_number === 0),
               ticket_number: r.ticket_number || 0
             }))}
