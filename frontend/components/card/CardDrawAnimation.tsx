@@ -70,7 +70,7 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-      if (info.offset.x > 65 || info.velocity.x > 240) {
+      if (info.offset.x > 35 || info.velocity.x > 100) {
         animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
       }
     },
@@ -82,8 +82,8 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
       key={`top-${current}`}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0.03, right: 0.9 }}
-      dragTransition={{ bounceStiffness: 650, bounceDamping: 38 }}
+      dragElastic={{ left: 0.03, right: 1.1 }}
+      dragTransition={{ bounceStiffness: 450, bounceDamping: 24 }}
       style={{
         x,
         rotate,

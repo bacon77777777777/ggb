@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
-const THRESHOLD = 72; // px to pull before refresh triggers
-const MAX_PULL   = 96; // px cap on visual pull distance
+const THRESHOLD = 140; // px to pull before refresh triggers
+const MAX_PULL   = 180; // px cap on visual pull distance
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false;

@@ -86,20 +86,40 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     }
   }, [onComplete]);
 
-  const startCharge = useCallback(() => {
+  const pointerStartX = useRef(0);
+  const pointerStartTime = useRef(0);
+
+  const triggerTear = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    setCharge(100);
+    setPhase('tearing');
+    setTimeout(() => { setPhase('done'); onComplete?.(); }, 420);
+  }, [onComplete]);
+
+  const startCharge = useCallback((e: React.PointerEvent) => {
     if (phase !== 'idle') return;
+    pointerStartX.current = e.clientX;
+    pointerStartTime.current = performance.now();
     setPhase('charging');
     setCharge(0);
     startRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
   }, [phase, tick]);
 
-  const cancelCharge = useCallback(() => {
+  const cancelCharge = useCallback((e: React.PointerEvent) => {
+    const dx = e.clientX - pointerStartX.current;
+    const dt = performance.now() - pointerStartTime.current;
+    const vx = dx / Math.max(dt, 1) * 1000; // px/s
+    // Right swipe: distance > 40px OR velocity > 300px/s
+    if (dx > 40 || vx > 300) {
+      triggerTear();
+      return;
+    }
     if (phase !== 'charging') return;
     cancelAnimationFrame(rafRef.current);
     setCharge(0);
     setPhase('idle');
-  }, [phase]);
+  }, [phase, triggerTear]);
 
   const imgSrc = packImage ?? '/images/card/front.png';
 
@@ -217,8 +237,18 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
               } as React.CSSProperties}
               onPointerDown={startCharge}
               onPointerUp={cancelCharge}
-              onPointerLeave={cancelCharge}
-              onPointerCancel={cancelCharge}
+              onPointerLeave={() => {
+                if (phase !== 'charging') return;
+                cancelAnimationFrame(rafRef.current);
+                setCharge(0);
+                setPhase('idle');
+              }}
+              onPointerCancel={() => {
+                if (phase !== 'charging') return;
+                cancelAnimationFrame(rafRef.current);
+                setCharge(0);
+                setPhase('idle');
+              }}
               onContextMenu={e => e.preventDefault()}
               animate={
                 phase === 'charging'

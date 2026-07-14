@@ -331,9 +331,20 @@ export default function FigmaTearScene({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
               onClick={onNext ?? onDone}
-              className="flex-1 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
+              className="relative overflow-hidden flex-1 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
             >
               下一張
+              {/* 光劃過特效 */}
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 w-1/2"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
+                }}
+                initial={{ left: '-50%' }}
+                animate={{ left: '150%' }}
+                transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 1.6, ease: 'easeInOut' }}
+              />
             </motion.button>
           )}
         </AnimatePresence>
