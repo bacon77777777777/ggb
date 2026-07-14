@@ -61,14 +61,14 @@ export function TicketSelector({
           return (
             <div
               key={ticket.number}
-              className="aspect-square rounded-[8px] bg-neutral-100 dark:bg-neutral-800 flex flex-col items-center justify-between py-1.5 px-1 cursor-not-allowed"
+              className="aspect-square rounded-[8px] bg-neutral-100 dark:bg-neutral-800 flex flex-col items-center justify-center gap-0.5 cursor-not-allowed"
             >
-              <span className="text-[10px] sm:text-[11px] font-bold text-neutral-400 dark:text-neutral-500 leading-none">
+              <span className="text-xs font-black leading-none tracking-wider text-neutral-400 dark:text-neutral-500">
                 {ticket.number.toString().padStart(2, '0')}
               </span>
               <span className={cn(
-                "text-[11px] sm:text-[12px] font-black leading-none",
-                isRare ? "text-red-500" : "text-neutral-800 dark:text-neutral-200"
+                "text-xs font-black leading-none text-center mt-0.5",
+                isRare ? "text-red-500" : "text-neutral-400 dark:text-neutral-500"
               )}>
                 {shortLevel}
               </span>
