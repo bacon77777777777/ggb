@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.07.4｜2026-07-14｜商品批量新增 + 欄位修復
+
+### 功能
+- **批量新增按鈕**（`backend/components/SimpleBatchImportModal.tsx`）：商品管理頁新增綠色「批量新增」按鈕，上傳 CSV/XLSX 直接匯入，不含 AI 補全
+- **範例 CSV 下載**：涵蓋所有 5 大類別（一番賞/轉蛋/盒玩/抽卡/自製賞），含全部欄位與 A~F+LAST 賞等
+
+### 修復
+- **批量匯入需先選廠商**：未選廠商時上傳區鎖定，匯入時自動帶入 `supplier_id`
+- **商品名稱長度限制**（migration 326）：`products.name/category/product_code` 從 `VARCHAR(50)` 改為 `TEXT`，解決日文長名稱匯入失敗
+- **Staging DB 補齊缺少欄位**：`products` 表補 `cost`、`remaining_count`、`sales` 等 9 個欄位；`users` 表補 `is_bot`
+- **PostgREST schema cache 刷新**：發 `NOTIFY pgrst` 讓 API 層重新讀取 schema
+
+---
+
 ## v2026.07.3｜2026-07-14｜LINE 推播修復 + 環境變數補齊
 
 ### 修復
