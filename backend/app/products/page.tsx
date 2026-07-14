@@ -2,18 +2,17 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import CsvImportWizard from '@/components/CsvImportWizard'
-import XlsxImportWizard from '@/components/XlsxImportWizard'
 import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import {
-  Button, Tag, Space, Popconfirm, Image, Card, Statistic,
-  Tooltip, message, Typography, Spin, Avatar, Empty, Switch
+  Button, Tag, Space, Popconfirm, Card, Statistic,
+  Tooltip, message, Typography, Spin, Empty, Switch, Input,
 } from 'antd'
 import {
   PlusOutlined, FireOutlined, UploadOutlined,
-  FileExcelOutlined, FileOutlined, DownloadOutlined, RightOutlined, UserOutlined
+  FileOutlined, DownloadOutlined, RightOutlined, UserOutlined, ThunderboltOutlined,
 } from '@ant-design/icons'
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import { useLog } from '@/contexts/LogContext'
@@ -72,14 +71,6 @@ const STATUS_ENUM = {
   ended:   { text: '已完抽', status: 'Success' as const },
 }
 
-const TYPE_ENUM = {
-  ichiban: { text: '一番賞' },
-  blindbox: { text: '盒玩' },
-  gacha:    { text: '轉蛋' },
-  card:     { text: '抽卡' },
-  custom:   { text: '自製賞' },
-}
-
 const LEVEL_COLOR: Record<string, string> = {
   A: '#f59e0b', B: '#3b82f6', C: '#6b7280', D: '#6b7280',
   E: '#a855f7', F: '#a855f7', G: '#ec4899', H: '#ec4899',
@@ -127,12 +118,11 @@ function mapProduct(p: any): Product {
   }
 }
 
-// 有賞等級別的商品類型
 const LEVELED_TYPES = new Set(['ichiban', 'custom', 'card'])
 
-// ─── Single prize row (expandable to show draw records) ───────────────
-function PrizeRow({ prize, stockTotal, productType, productId }: {
-  prize: Prize; stockTotal: number; productType: string; productId: number
+// ─── PrizeRow ─────────────────────────────────────────────────────────
+function PrizeRow({ prize, stockTotal, productType }: {
+  prize: Prize; stockTotal: number; productType: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const [draws, setDraws] = useState<DrawRecord[]>([])
@@ -173,7 +163,6 @@ function PrizeRow({ prize, stockTotal, productType, productId }: {
 
   return (
     <div style={{ borderBottom: '1px solid #f0f0f0' }}>
-      {/* Prize row */}
       <div
         onClick={handleExpand}
         style={{
@@ -197,36 +186,30 @@ function PrizeRow({ prize, stockTotal, productType, productId }: {
           }
         </div>
 
-        {/* Level tag — fixed 44px wide for header alignment */}
+        {/* Level tag */}
         {hasLevel ? (
           <div style={{ width: 44, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <Tag
-              style={{
-                fontSize: 11, lineHeight: '18px', padding: '0 5px',
-                color: levelColor, borderColor: levelColor, background: `${levelColor}18`,
-                margin: 0, whiteSpace: 'nowrap',
-              }}
-            >
+            <Tag style={{
+              fontSize: 11, lineHeight: '18px', padding: '0 5px',
+              color: levelColor, borderColor: levelColor, background: `${levelColor}18`,
+              margin: 0, whiteSpace: 'nowrap',
+            }}>
               {isLastOne(prize.level) ? 'Last' : prize.level}
             </Tag>
           </div>
         ) : null}
 
-        {/* Name — limited width so stats stay close */}
+        {/* Name */}
         <Tooltip title={prize.name} placement="top">
           <div style={{ width: 240, flexShrink: 0, overflow: 'hidden', cursor: 'default' }}>
-            <div style={{
-              fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
+            <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {prize.name}
             </div>
           </div>
         </Tooltip>
 
-        {/* Stats columns — fixed width for vertical alignment across rows */}
+        {/* Stats */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
-          {/* 剩餘/總數 */}
           <div style={{ width: 96, paddingLeft: 12 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4 }}>
               <span style={{ color: remainColor, fontWeight: 600 }}>{prize.remaining}</span>
@@ -234,12 +217,10 @@ function PrizeRow({ prize, stockTotal, productType, productId }: {
             </div>
             <div style={{ fontSize: 11, color: '#aaa' }}>剩餘/總數</div>
           </div>
-          {/* 機率 */}
           <div style={{ width: 72, paddingLeft: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4, color: '#555' }}>{pct}</div>
             <div style={{ fontSize: 11, color: '#aaa' }}>機率</div>
           </div>
-          {/* 已出 */}
           <div style={{ width: 56, paddingLeft: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4, color: sold > 0 ? '#3b82f6' : '#ccc', fontWeight: sold > 0 ? 600 : 400 }}>
               {sold}
@@ -248,15 +229,12 @@ function PrizeRow({ prize, stockTotal, productType, productId }: {
           </div>
         </div>
 
-        {/* Spacer + arrow */}
         <div style={{ flex: 1 }} />
-        <RightOutlined
-          style={{
-            fontSize: 10, color: '#bbb', flexShrink: 0,
-            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s',
-          }}
-        />
+        <RightOutlined style={{
+          fontSize: 10, color: '#bbb', flexShrink: 0,
+          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s',
+        }} />
       </div>
 
       {/* Draw records */}
@@ -295,7 +273,7 @@ function PrizeRow({ prize, stockTotal, productType, productId }: {
   )
 }
 
-// ─── Prize list for expanded product row ─────────────────────────────
+// ─── PrizeRows ────────────────────────────────────────────────────────
 function PrizeRows({ record }: { record: Product }) {
   const { total: stockTotal } = calcStock(record.prizes)
   const hasLevel = LEVELED_TYPES.has(record.type)
@@ -305,30 +283,22 @@ function PrizeRows({ record }: { record: Product }) {
   }
   return (
     <div style={{ background: '#fff', overflow: 'hidden' }}>
-      {/* Header — mirror PrizeRow layout: gap:8, padding:8px 14px */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '6px 14px', background: '#f0f5ff',
         fontSize: 11, color: '#6b7280', fontWeight: 500,
       }}>
-        {/* thumbnail placeholder */}
         <div style={{ width: 36, flexShrink: 0 }} />
-        {/* level tag placeholder */}
         {hasLevel && <div style={{ width: 44, flexShrink: 0 }} />}
-        {/* name placeholder = info text */}
-        <div style={{ width: 240, flexShrink: 0 }}>
-          品項 × {record.prizes.length} · 點擊展開出貨流向
-        </div>
-        {/* stats column headers — same widths as PrizeRow stats */}
+        <div style={{ width: 240, flexShrink: 0 }}>品項 × {record.prizes.length} · 點擊展開出貨流向</div>
         <div style={{ width: 96, paddingLeft: 12 }}>剩餘/總數</div>
         <div style={{ width: 72, paddingLeft: 8 }}>機率</div>
         <div style={{ width: 56, paddingLeft: 8 }}>已出</div>
         <div style={{ flex: 1 }} />
-        {/* arrow placeholder */}
         <div style={{ width: 20 }} />
       </div>
       {record.prizes.map(prize => (
-        <PrizeRow key={prize.id} prize={prize} stockTotal={stockTotal} productType={record.type} productId={record.id} />
+        <PrizeRow key={prize.id} prize={prize} stockTotal={stockTotal} productType={record.type} />
       ))}
     </div>
   )
@@ -345,9 +315,14 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [isXlsxOpen, setIsXlsxOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const zipRef = useRef<HTMLInputElement>(null)
+
+  // Infinite scroll + sort
+  const [searchText, setSearchText] = useState('')
+  const [sortConfig, setSortConfig] = useState<{ field?: string; order?: 'ascend' | 'descend' }>({})
+  const [displayCount, setDisplayCount] = useState(20)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -369,6 +344,61 @@ export default function ProductsPage() {
       setTimeout(() => setHighlightedProductId(null), 3000)
     }
   }, [highlightedProductId, setHighlightedProductId])
+
+  // Filter → sort → slice pipeline
+  const filteredProducts = useMemo(() => {
+    if (!searchText) return products
+    const q = searchText.toLowerCase()
+    return products.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.productCode.toLowerCase().includes(q) ||
+      p.prizes.some(pr => pr.name.toLowerCase().includes(q))
+    )
+  }, [products, searchText])
+
+  const sortedProducts = useMemo(() => {
+    if (!sortConfig.field || !sortConfig.order) return filteredProducts
+    const m = sortConfig.order === 'ascend' ? 1 : -1
+    return [...filteredProducts].sort((a, b) => {
+      switch (sortConfig.field) {
+        case 'type':
+          return m * (TYPE_MAP[a.type]?.label ?? a.type).localeCompare(TYPE_MAP[b.type]?.label ?? b.type, 'zh-TW')
+        case 'status': {
+          const ord = { active: 0, pending: 1, ended: 2 }
+          return m * ((ord[a.status as keyof typeof ord] ?? 9) - (ord[b.status as keyof typeof ord] ?? 9))
+        }
+        case 'price': return m * (a.price - b.price)
+        case 'cost': return m * ((a.cost ?? 0) - (b.cost ?? 0))
+        case 'remaining': return m * (calcStock(a.prizes).remaining - calcStock(b.prizes).remaining)
+        case 'sales': return m * ((a.sales || 0) - (b.sales || 0))
+        case 'isHot': return m * (Number(b.isHot) - Number(a.isHot))
+        case 'startedAt': return m * (new Date(a.startedAt || 0).getTime() - new Date(b.startedAt || 0).getTime())
+        case 'endedAt': {
+          if (!a.endedAt && !b.endedAt) return 0
+          if (!a.endedAt) return m
+          if (!b.endedAt) return -m
+          return m * (new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime())
+        }
+        default: return 0
+      }
+    })
+  }, [filteredProducts, sortConfig])
+
+  const displayedProducts = useMemo(() => sortedProducts.slice(0, displayCount), [sortedProducts, displayCount])
+  const hasMore = displayCount < sortedProducts.length
+
+  // Load more when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasMore) {
+        setDisplayCount(c => Math.min(c + 20, sortedProducts.length))
+      }
+    }, { rootMargin: '0px 0px 200px 0px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [hasMore, sortedProducts.length])
 
   // ─── Stats ─────────────────────────────────────────────────────────
   const stats = {
@@ -482,6 +512,20 @@ export default function ProductsPage() {
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, isHot: newHot } : p))
   }
 
+  const handleTableChange = (_: any, __: any, sorter: any) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter
+    const field = s?.columnKey ?? s?.field
+    if (field && s?.order) {
+      setSortConfig({ field, order: s.order })
+    } else {
+      setSortConfig({})
+    }
+    setDisplayCount(20)
+  }
+
+  // Helper for sort order indicator per column
+  const so = (field: string) => sortConfig.field === field ? sortConfig.order : undefined
+
   // ─── Columns ───────────────────────────────────────────────────────
   const columns: ProColumns<Product>[] = [
     {
@@ -491,21 +535,15 @@ export default function ProductsPage() {
       ellipsis: true,
       render: (_, r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          {/* Thumbnail 40×40 fixed */}
           <Tooltip title={r.imageUrl ? <img src={r.imageUrl} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 6 }} /> : '無商品圖片'} placement="right">
             <div style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0, overflow: 'hidden', cursor: 'default' }}>
               {r.imageUrl ? (
                 <img src={r.imageUrl} style={{ width: 40, height: 40, objectFit: 'cover', display: 'block' }} />
               ) : (
-                <div style={{
-                  width: 40, height: 40, background: '#f5f5f5',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, color: '#bbb', fontWeight: 'bold',
-                }}>GGB</div>
+                <div style={{ width: 40, height: 40, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#bbb', fontWeight: 'bold' }}>GGB</div>
               )}
             </div>
           </Tooltip>
-
           <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
             <Tooltip title={r.name} placement="top">
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
@@ -514,8 +552,7 @@ export default function ProductsPage() {
                     <FireOutlined style={{ color: '#f5222d', fontSize: 12, flexShrink: 0 }} />
                   </Tooltip>
                 )}
-                <Text
-                  style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', flex: 1 }}
+                <Text style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', flex: 1 }}
                   className={r.id === highlightedProductId ? 'text-primary' : ''}
                 >
                   {r.name}
@@ -530,10 +567,8 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: '類型',
-      dataIndex: 'type',
-      width: 90,
-      sorter: (a, b) => (TYPE_MAP[a.type]?.label ?? a.type).localeCompare(TYPE_MAP[b.type]?.label ?? b.type, 'zh-TW'),
+      title: '類型', dataIndex: 'type', width: 90,
+      key: 'type', sorter: true, sortOrder: so('type'),
       render: (_, r) => {
         const t = TYPE_MAP[r.type]
         return (
@@ -544,14 +579,8 @@ export default function ProductsPage() {
       },
     },
     {
-      title: '狀態',
-      dataIndex: 'status',
-      width: 90,
-      sorter: (a, b) => {
-        const order = { active: 0, pending: 1, ended: 2 }
-        return (order[a.status as keyof typeof order] ?? 9) - (order[b.status as keyof typeof order] ?? 9)
-      },
-      valueEnum: STATUS_ENUM,
+      title: '狀態', dataIndex: 'status', width: 90,
+      key: 'status', sorter: true, sortOrder: so('status'),
       render: (_, r) => {
         const s = STATUS_ENUM[r.status as keyof typeof STATUS_ENUM]
         const dotColor = r.status === 'active' ? '#1677ff' : r.status === 'ended' ? '#52c41a' : '#d9d9d9'
@@ -567,9 +596,8 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="每抽售價（代幣 G）">售價</Tooltip>,
-      dataIndex: 'price',
-      width: 72,
-      sorter: (a, b) => a.price - b.price,
+      dataIndex: 'price', width: 72,
+      key: 'price', sorter: true, sortOrder: so('price'),
       render: v => (
         <Tooltip title={`每抽售價 ${v} 代幣`}>
           <span style={{ fontFamily: 'monospace', cursor: 'default' }}>{v}G</span>
@@ -578,29 +606,25 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="廠商進貨成本">成本</Tooltip>,
-      dataIndex: 'cost',
-      width: 72,
+      dataIndex: 'cost', width: 72,
+      key: 'cost', sorter: true, sortOrder: so('cost'),
       render: v => v != null ? (
         <Tooltip title={`進貨成本 ${v} 代幣`}>
           <span style={{ fontFamily: 'monospace', color: '#888', cursor: 'default' }}>{v}G</span>
         </Tooltip>
       ) : (
-        <Tooltip title="尚未設定成本">
-          <Text type="secondary" style={{ cursor: 'default' }}>—</Text>
-        </Tooltip>
+        <Tooltip title="尚未設定成本"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
       ),
     },
     {
-      title: <Tooltip title="剩餘/總數（不含最後賞）。0%紅、低於20%橙、20%以上深綠">庫存</Tooltip>,
-      width: 110,
-      sorter: (a, b) => calcStock(a.prizes).remaining - calcStock(b.prizes).remaining,
+      title: <Tooltip title="剩餘/總數（不含最後賞）">庫存</Tooltip>,
+      width: 110, key: 'remaining', sorter: true, sortOrder: so('remaining'),
       render: (_, r) => {
         const { total, remaining } = calcStock(r.prizes)
         const pct = total > 0 ? remaining / total : 0
         const remainColor = remaining === 0 ? '#dc2626' : pct < 0.2 ? '#ea580c' : '#15803d'
-        const tip = `剩餘 ${remaining} 件 / 共 ${total} 件（${(pct * 100).toFixed(1)}%）`
         return (
-          <Tooltip title={tip}>
+          <Tooltip title={`剩餘 ${remaining} 件 / 共 ${total} 件（${(pct * 100).toFixed(1)}%）`}>
             <span style={{ fontFamily: 'monospace', cursor: 'default', whiteSpace: 'nowrap' }}>
               <span style={{ color: remainColor, fontWeight: 600 }}>{remaining}</span>
               <span style={{ color: '#333' }}>/{total}</span>
@@ -611,9 +635,8 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="累計銷售抽數">銷售</Tooltip>,
-      dataIndex: 'sales',
-      width: 60,
-      sorter: (a, b) => (a.sales || 0) - (b.sales || 0),
+      dataIndex: 'sales', width: 60,
+      key: 'sales', sorter: true, sortOrder: so('sales'),
       render: v => (
         <Tooltip title={`累計銷售 ${v || 0} 抽`}>
           <span style={{ fontFamily: 'monospace', cursor: 'default' }}>{v || 0}</span>
@@ -622,9 +645,8 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="標記為熱賣商品，顯示於前台熱賣區">熱賣</Tooltip>,
-      dataIndex: 'isHot',
-      width: 60,
-      sorter: (a, b) => Number(b.isHot) - Number(a.isHot),
+      dataIndex: 'isHot', width: 60,
+      key: 'isHot', sorter: true, sortOrder: so('isHot'),
       render: (_, r) => (
         <Switch
           size="small"
@@ -636,8 +658,8 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="商品上架開賣的時間（started_at）">開賣</Tooltip>,
-      dataIndex: 'startedAt',
-      width: 90,
+      dataIndex: 'startedAt', width: 90,
+      key: 'startedAt', sorter: true, sortOrder: so('startedAt'),
       render: (v: any) => v ? (
         <Tooltip title={new Date(v).toLocaleString('zh-TW')}>
           <span style={{ cursor: 'default', whiteSpace: 'nowrap' }}>
@@ -645,21 +667,13 @@ export default function ProductsPage() {
           </span>
         </Tooltip>
       ) : (
-        <Tooltip title="尚未設定上架時間">
-          <Text type="secondary" style={{ cursor: 'default' }}>—</Text>
-        </Tooltip>
+        <Tooltip title="尚未設定上架時間"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
       ),
     },
     {
       title: <Tooltip title="商品完全抽完的時間（ended_at）">完抽</Tooltip>,
-      dataIndex: 'endedAt',
-      width: 90,
-      sorter: (a, b) => {
-        if (!a.endedAt && !b.endedAt) return 0
-        if (!a.endedAt) return 1
-        if (!b.endedAt) return -1
-        return new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime()
-      },
+      dataIndex: 'endedAt', width: 90,
+      key: 'endedAt', sorter: true, sortOrder: so('endedAt'),
       render: (v: any) => {
         const d = v ? new Date(v) : null
         if (!d || isNaN(d.getTime())) return <Tooltip title="尚未完抽"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
@@ -673,9 +687,7 @@ export default function ProductsPage() {
       },
     },
     {
-      title: '操作',
-      width: 90,
-      fixed: 'right',
+      title: '操作', width: 90, fixed: 'right',
       render: (_, r) => (
         <Space size={0}>
           <Tooltip title="編輯商品資料">
@@ -692,12 +704,7 @@ export default function ProductsPage() {
               okText="刪除" cancelText="取消"
               okButtonProps={{ danger: true }}
             >
-              <Button
-                type="link"
-                size="small"
-                danger
-                onClick={e => e.stopPropagation()}
-              >
+              <Button type="link" size="small" danger onClick={e => e.stopPropagation()}>
                 刪除
               </Button>
             </Popconfirm>
@@ -712,14 +719,14 @@ export default function ProductsPage() {
       {/* Stats Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
-          { title: '全部商品', value: stats.total, tip: '所有商品總數（含下架）' },
-          { title: '上架中', value: stats.active, valueStyle: { color: '#3f8600' }, tip: '目前玩家可見、可抽的商品數' },
-          { title: '低庫存警示', value: stats.lowStock, valueStyle: { color: '#cf1322' }, tip: '上架中且剩餘庫存不足 10 件的商品' },
-          { title: '熱賣標記', value: stats.hot, valueStyle: { color: '#d46b08' }, tip: '已勾選「熱賣」標記的商品數' },
+          { title: '全部商品(個)', value: stats.total, tip: '所有商品總數（含下架）' },
+          { title: '上架中(個)', value: stats.active, valueStyle: { color: '#3f8600' }, tip: '目前玩家可見、可抽的商品數' },
+          { title: '低庫存警示(個)', value: stats.lowStock, valueStyle: { color: '#cf1322' }, tip: '上架中且剩餘庫存不足 10 件的商品' },
+          { title: '熱賣標記(個)', value: stats.hot, valueStyle: { color: '#d46b08' }, tip: '已勾選「熱賣」標記的商品數' },
         ].map(s => (
           <Tooltip key={s.title} title={s.tip} placement="bottom">
             <Card size="small" styles={{ body: { padding: '12px 16px' } }} style={{ cursor: 'default' }}>
-              <Statistic title={s.title} value={s.value} valueStyle={s.valueStyle} suffix="個" />
+              <Statistic title={s.title} value={s.value} valueStyle={s.valueStyle} />
             </Card>
           </Tooltip>
         ))}
@@ -731,66 +738,48 @@ export default function ProductsPage() {
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
-        dataSource={products}
+        dataSource={displayedProducts}
         loading={loading}
         search={false}
+        onChange={handleTableChange}
         options={{
-          search: { placeholder: '搜尋商品名稱、編號、品項...', style: { width: 260 } },
           reload: () => fetchProducts(),
           density: true,
           setting: { draggable: true },
         }}
         toolBarRender={() => [
-          <Button
-            key="export"
-            icon={<DownloadOutlined />}
-            onClick={handleExportCSV}
-          >
-            匯出
-          </Button>,
-          <Button
-            key="zip"
-            icon={<UploadOutlined />}
-            loading={zipUploading}
-            onClick={() => zipRef.current?.click()}
-          >
+          <Input.Search
+            key="search"
+            placeholder="搜尋商品名稱、編號、品項..."
+            style={{ width: 240 }}
+            value={searchText}
+            onChange={e => { setSearchText(e.target.value); setDisplayCount(20) }}
+            onSearch={v => { setSearchText(v); setDisplayCount(20) }}
+            allowClear
+          />,
+          <Button key="export" icon={<DownloadOutlined />} onClick={handleExportCSV}>匯出</Button>,
+          <Button key="zip" icon={<UploadOutlined />} loading={zipUploading} onClick={() => zipRef.current?.click()}>
             上傳圖片包
           </Button>,
-          <Button
-            key="csv"
-            icon={<FileOutlined />}
-            onClick={() => setIsBulkOpen(true)}
-          >
-            匯入 CSV
+          <Button key="bulk" icon={<ThunderboltOutlined />} onClick={() => setIsBulkOpen(true)}>
+            智能批量
           </Button>,
-          <Button
-            key="xlsx"
-            icon={<FileExcelOutlined />}
-            onClick={() => setIsXlsxOpen(true)}
-          >
-            匯入 Excel
-          </Button>,
-          <Button
-            key="new"
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push('/products/new')}
-          >
+          <Button key="new" type="primary" icon={<PlusOutlined />} onClick={() => router.push('/products/new')}>
             新增商品
           </Button>,
         ]}
         rowSelection={{
           selectedRowKeys,
-          onChange: setSelectedRowKeys,
+          onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
           preserveSelectedRowKeys: true,
         }}
-        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+        tableAlertRender={({ selectedRowKeys: sel, onCleanSelected }) => (
           <Space>
-            <span>已選 <strong>{selectedRowKeys.length}</strong> 個商品</span>
+            <span>已選 <strong>{sel.length}</strong> 個商品</span>
             <Button size="small" type="primary" onClick={() => handleBulkStatus('active')}>批量上架</Button>
             <Button size="small" onClick={() => handleBulkStatus('pending')}>批量下架</Button>
             <Popconfirm
-              title={`確定刪除 ${selectedRowKeys.length} 個商品？`}
+              title={`確定刪除 ${sel.length} 個商品？`}
               onConfirm={handleBulkDelete}
               okText="刪除" cancelText="取消" okButtonProps={{ danger: true }}
             >
@@ -805,33 +794,30 @@ export default function ProductsPage() {
           expandRowByClick: true,
           showExpandColumn: false,
         }}
-        pagination={{
-          pageSize: 20,
-          showQuickJumper: true,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50', '100'],
-          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 筆，共 ${total} 筆`,
-        }}
+        pagination={false}
         scroll={{ x: 1240 }}
         cardProps={{ styles: { body: { padding: 0 } } } as any}
         rowClassName={record =>
           record.id === highlightedProductId ? 'ant-table-row-selected' : ''
         }
+        footer={() => (
+          <div ref={sentinelRef} style={{ textAlign: 'center', padding: '8px 0', color: '#aaa', fontSize: 12 }}>
+            {hasMore
+              ? `顯示 ${displayedProducts.length} / ${sortedProducts.length} 筆，繼續捲動載入更多…`
+              : sortedProducts.length > 0 ? `共 ${sortedProducts.length} 筆，已全部顯示` : ''
+            }
+          </div>
+        )}
       />
 
       {/* Hidden zip input */}
       <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
 
-      {/* Import modals */}
+      {/* Import modal */}
       <CsvImportWizard
         isOpen={isBulkOpen}
         onClose={() => setIsBulkOpen(false)}
         onImported={() => { fetchProducts(); setIsBulkOpen(false) }}
-      />
-      <XlsxImportWizard
-        isOpen={isXlsxOpen}
-        onClose={() => setIsXlsxOpen(false)}
-        onImported={() => { fetchProducts(); setIsXlsxOpen(false) }}
       />
     </AdminLayout>
   )

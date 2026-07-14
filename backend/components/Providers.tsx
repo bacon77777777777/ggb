@@ -11,6 +11,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ConfigProvider
       locale={zhTW}
+      warning={{ strict: false }}
       theme={{
         token: {
           colorPrimary: '#3B82F6',
