@@ -429,6 +429,7 @@ export default function ProductsPage() {
   const { addLog } = useLog()
   const { highlightedProductId, setHighlightedProductId } = useProduct()
   const actionRef = useRef<ActionType>()
+  const reloadingRef = useRef(false)
 
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -494,7 +495,7 @@ export default function ProductsPage() {
           return m * (TYPE_MAP[a.type]?.label ?? a.type).localeCompare(TYPE_MAP[b.type]?.label ?? b.type, 'zh-TW')
         case 'status': {
           const ord = { active: 0, pending: 1, ended: 2 }
-          return m * ((ord[a.status as keyof typeof ord] ?? 9) - (ord[b.status as keyof typeof ord] ?? 9))
+          return m * ((ord[effectiveStatus(a) as keyof typeof ord] ?? 9) - (ord[effectiveStatus(b) as keyof typeof ord] ?? 9))
         }
         case 'price': return m * (a.price - b.price)
         case 'cost': return m * ((a.cost ?? 0) - (b.cost ?? 0))
@@ -503,7 +504,7 @@ export default function ProductsPage() {
         case 'isHot': return m * (Number(b.isHot) - Number(a.isHot))
         case 'startedAt': return m * (new Date(a.startedAt || 0).getTime() - new Date(b.startedAt || 0).getTime())
         case 'createdAt': return m * (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
-        case 'majorStatus': return m * (Number(isMajorDepleted(b)) - Number(isMajorDepleted(a)))
+        case 'majorStatus': return m * (Number(isMajorDepleted(a)) - Number(isMajorDepleted(b)))
         case 'endedAt': {
           if (!a.endedAt && !b.endedAt) return 0
           if (!a.endedAt) return m
@@ -512,7 +513,7 @@ export default function ProductsPage() {
         }
         case 'active': {
           const ord = { active: 0, pending: 1, ended: 2 }
-          return m * ((ord[a.status as keyof typeof ord] ?? 9) - (ord[b.status as keyof typeof ord] ?? 9))
+          return m * ((ord[effectiveStatus(a) as keyof typeof ord] ?? 9) - (ord[effectiveStatus(b) as keyof typeof ord] ?? 9))
         }
         default: return 0
       }
@@ -538,8 +539,8 @@ export default function ProductsPage() {
   // ─── Stats ─────────────────────────────────────────────────────────
   const stats = {
     total:     products.length,
-    active:    products.filter(p => p.status === 'active').length,
-    lowStock:  products.filter(p => { const { remaining } = calcStock(p.prizes); return remaining < 10 && p.status === 'active' }).length,
+    active:    products.filter(p => effectiveStatus(p) === 'active').length,
+    lowStock:  products.filter(p => { const { remaining } = calcStock(p.prizes); return remaining < 10 && effectiveStatus(p) === 'active' }).length,
     depleted:  products.filter(isMajorDepleted).length,
     hot:       products.filter(p => p.isHot).length,
     dismantled: dismantledCount,
@@ -665,6 +666,7 @@ export default function ProductsPage() {
   }
 
   const handleTableChange = (_: any, __: any, sorter: any) => {
+    if (reloadingRef.current) return
     const s = Array.isArray(sorter) ? sorter[0] : sorter
     const field = s?.columnKey ?? s?.field
     if (field && s?.order) {
@@ -677,6 +679,12 @@ export default function ProductsPage() {
 
   // Helper for sort order indicator per column
   const so = (field: string) => sortConfig.field === field ? sortConfig.order : undefined
+
+  // 若庫存歸零但 DB status 仍為 active，顯示已完抽
+  const effectiveStatus = (r: Product) => {
+    if (r.status === 'active' && r.prizes.length > 0 && calcStock(r.prizes).remaining === 0) return 'ended'
+    return r.status
+  }
 
   const fmtDT = (v: string) => {
     const d = new Date(v)
@@ -740,13 +748,14 @@ export default function ProductsPage() {
       title: '狀態', dataIndex: 'status', width: 90,
       key: 'status', sorter: true, sortOrder: so('status'),
       render: (_, r) => {
-        const s = STATUS_ENUM[r.status as keyof typeof STATUS_ENUM]
-        const dotColor = r.status === 'active' ? '#1677ff' : r.status === 'ended' ? '#52c41a' : '#d9d9d9'
+        const eff = effectiveStatus(r)
+        const s = STATUS_ENUM[eff as keyof typeof STATUS_ENUM]
+        const dotColor = eff === 'active' ? '#1677ff' : eff === 'ended' ? '#52c41a' : '#d9d9d9'
         return (
-          <Tooltip title={r.status === 'active' ? '上架中，玩家可抽' : r.status === 'ended' ? '已全數抽完' : '尚未上架'}>
+          <Tooltip title={eff === 'active' ? '上架中，玩家可抽' : eff === 'ended' ? '已全數抽完' : '尚未上架'}>
             <span style={{ whiteSpace: 'nowrap', cursor: 'default' }}>
               <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: dotColor, marginRight: 6, verticalAlign: 'middle' }} />
-              {s?.text ?? r.status}
+              {s?.text ?? eff}
             </span>
           </Tooltip>
         )
@@ -766,7 +775,7 @@ export default function ProductsPage() {
       title: <Tooltip title="廠商進貨成本（代幣 G）"><span style={{ whiteSpace: 'nowrap' }}>成本(G)</span></Tooltip>,
       dataIndex: 'cost', width: 90,
       key: 'cost', sorter: true, sortOrder: so('cost'),
-      render: (v: number | undefined | null) => v != null ? (
+      render: (v: any) => v != null ? (
         <Tooltip title={`進貨成本 ${v} 代幣`}>
           <span style={{ fontFamily: 'monospace', color: '#888', cursor: 'default' }}>{v}</span>
         </Tooltip>
@@ -831,13 +840,14 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: <Tooltip title="上架/下架此商品">上架</Tooltip>,
-      dataIndex: 'status', width: 60,
+      title: <Tooltip title="上架/下架此商品"><span style={{ whiteSpace: 'nowrap' }}>上架</span></Tooltip>,
+      dataIndex: 'status', width: 68,
       key: 'active', sorter: true, sortOrder: so('active'),
       render: (_, r) => (
         <Switch
           size="small"
-          checked={r.status === 'active'}
+          checked={effectiveStatus(r) === 'active'}
+          disabled={effectiveStatus(r) === 'ended'}
           onChange={() => handleToggleStatus(r)}
           onClick={(_checked, e) => e.stopPropagation()}
         />
@@ -947,7 +957,11 @@ export default function ProductsPage() {
           },
         }}
         options={{
-          reload: () => fetchProducts(),
+          reload: async () => {
+            reloadingRef.current = true
+            await fetchProducts()
+            setTimeout(() => { reloadingRef.current = false }, 100)
+          },
           density: true,
           setting: { draggable: true },
         }}
