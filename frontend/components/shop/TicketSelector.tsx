@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface Ticket {
@@ -27,13 +28,24 @@ export function TicketSelector({
     maxSelectable > 0 &&
     selectedTickets.length >= maxSelectable;
 
+  // Count occurrences of each prize level across all sold tickets
+  const prizeLevelCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of tickets) {
+      if (t.isSold && t.prizeLevel) {
+        counts[t.prizeLevel] = (counts[t.prizeLevel] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [tickets]);
+
   return (
     <div className={cn("grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 sm:gap-3 content-start", className)}>
       {tickets.map((ticket) => {
         const isSelected = selectedTickets.includes(ticket.number);
         const isDisabledByLimit = limitReached && !isSelected;
         const disabled = ticket.isSold || isDisabledByLimit;
-        const hasResult = ticket.isSold && (ticket.prizeLevel || ticket.prizeName);
+        const hasResult = ticket.isSold && !!ticket.prizeLevel;
 
         const shortLevel = ticket.prizeLevel
           ? ticket.prizeLevel
@@ -41,12 +53,34 @@ export function TicketSelector({
               .slice(0, 5)
           : '';
 
+        const isRare = ticket.prizeLevel
+          ? (prizeLevelCounts[ticket.prizeLevel] || 0) <= 5
+          : false;
+
+        if (hasResult) {
+          return (
+            <div
+              key={ticket.number}
+              className="aspect-square rounded-[8px] bg-neutral-100 dark:bg-neutral-800 flex flex-col items-center justify-between py-1.5 px-1 cursor-not-allowed"
+            >
+              <span className="text-[10px] sm:text-[11px] font-bold text-neutral-400 dark:text-neutral-500 leading-none">
+                {ticket.number.toString().padStart(2, '0')}
+              </span>
+              <span className={cn(
+                "text-[11px] sm:text-[12px] font-black leading-none",
+                isRare ? "text-red-500" : "text-neutral-800 dark:text-neutral-200"
+              )}>
+                {shortLevel}
+              </span>
+            </div>
+          );
+        }
+
         return (
           <div
             key={ticket.number}
             className={cn(
-              "relative rounded-[8px] border-2 transition-all duration-200 flex flex-col items-center",
-              hasResult ? "justify-start p-0 gap-0" : "justify-center aspect-square",
+              "aspect-square relative rounded-[8px] border-2 transition-all duration-200 flex flex-col items-center justify-center",
               ticket.isSold || isDisabledByLimit
                 ? "bg-neutral-200 dark:bg-neutral-800 border-transparent cursor-not-allowed"
                 : isSelected
@@ -58,11 +92,9 @@ export function TicketSelector({
               if (!disabled) onToggle(ticket.number);
             }}
           >
-            {/* Ticket number */}
             <span
               className={cn(
-                "leading-none tracking-wider",
-                hasResult ? "text-[11px] font-bold" : "text-sm font-black",
+                "text-sm font-black leading-none tracking-wider",
                 ticket.isSold
                   ? "text-neutral-500 dark:text-neutral-400"
                   : isSelected
@@ -70,22 +102,8 @@ export function TicketSelector({
                     : "text-white"
               )}
             >
-              {ticket.number.toString().padStart(2, "0")}
+              {ticket.number.toString().padStart(2, '0')}
             </span>
-
-            {/* Prize info for sold tickets */}
-            {hasResult && (
-              <>
-                <span className="text-[11px] font-black text-neutral-700 dark:text-neutral-300 leading-tight max-w-full truncate w-full text-center">
-                  {shortLevel}
-                </span>
-                {ticket.prizeName && (
-                  <span className="text-[9px] font-bold text-neutral-600 dark:text-neutral-400 leading-tight max-w-full line-clamp-2 break-all w-full text-center">
-                    {ticket.prizeName}
-                  </span>
-                )}
-              </>
-            )}
           </div>
         );
       })}
