@@ -1,8 +1,34 @@
 # 開發日誌
 
+> **版本號格式**：`v[年].[月].[次數]`，每次 merge main 打一個 git tag。緊急 hotfix 不等週期。
+
 ---
 
-## 2026-07-14｜前台商品頁 bug 修正 + 選籤 UI 優化
+## v2026.07.2｜2026-07-14｜版本管理系統 + GB哥週報
+
+### 版本管理
+- 建立 `v[年].[月].[次數]` 版本號規則，每次 merge main 打 git tag
+- 打第一個 tag `v2026.07.1`（歷史版本補標）
+- DEVLOG 格式加入版本號前綴
+
+### GB哥週報（每週一 09:00）
+- 新增 `backend/app/api/cron/weekly-report/route.ts`
+- 內容：業務數據（新用戶/抽獎/收入/待出貨）、管理員操作摘要、AI 事件、本週建議
+- Migration 325：pg_cron 排程（週一 01:00 UTC）
+- 推送方式：LINE 訊息直接推給老闆
+
+---
+
+## v2026.07.1｜2026-07-14｜前台 bug 修正 + 選籤 UI + 環境分離
+
+### 環境建設
+- 建立 `dev` branch（開發用）/ `main`（正式）雙軌流程
+- 啟用 `ggb-staging` Supabase project，跑完 324 個 migration 建好表結構
+- Vercel Preview 環境變數指向 staging DB，Production 保持 ggb-prod
+- 本機 `.env.local` 改指向 staging DB，開發不再碰正式資料
+
+### 修正
+- **「查看結果」報錯**（`frontend/app/item/[id]/page.tsx`）：`draw_records` 欄位為 `prize_image_url`，前台 query 誤用 `image_url`，導致 Supabase 回傳 error → 完抽商品點「查看結果」跳錯。同步修正 state 型別定義與兩處 modal mapping。
 
 ### 修正
 - **「查看結果」報錯**（`frontend/app/item/[id]/page.tsx`）：`draw_records` 欄位為 `prize_image_url`，前台 query 誤用 `image_url`，導致 Supabase 回傳 error → 完抽商品點「查看結果」跳錯。同步修正 state 型別定義與兩處 modal mapping。
