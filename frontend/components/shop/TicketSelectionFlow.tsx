@@ -1287,10 +1287,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         "flex-1 flex flex-col overflow-hidden relative z-0",
         "pt-[60px] md:pt-0" // Add padding for fixed header on mobile modal
       )}>
-        <div className="text-center py-2 text-sm text-neutral-500 font-bold bg-neutral-50/50 dark:bg-neutral-800/50 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
-          點擊號碼進行抽獎 (可複選，滿十抽送一抽活動進行中)
-        </div>
-        <TicketSelector 
+        <TicketSelector
           tickets={tickets} 
           selectedTickets={selectedTickets} 
           onToggle={toggleTicket}
