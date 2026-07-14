@@ -658,13 +658,14 @@ export default function ProductsPage() {
   }
 
   const handleToggleStatus = async (product: Product) => {
-    const newStatus = product.status === 'active' ? 'pending' : 'active'
+    const cur = effectiveStatus(product)
+    const newStatus = cur === 'active' ? 'pending' : 'active'
     try {
       const res = await fetch(`/api/admin/products/${product.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ status: newStatus, ...(newStatus === 'active' ? { autoGenerateTxid: true } : {}) }),
+        body: JSON.stringify({ status: newStatus }),
       })
       if (!res.ok) throw new Error()
       setProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: newStatus } : p))
@@ -835,12 +836,9 @@ export default function ProductsPage() {
       key: 'isHot', sorter: true, sortOrder: so('isHot'),
       hideInTable: true,
       render: (_, r) => (
-        <Switch
-          size="small"
-          checked={r.isHot}
-          onChange={() => handleToggleHot(r)}
-          onClick={(_checked, e) => e.stopPropagation()}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <Switch size="small" checked={r.isHot} onChange={() => handleToggleHot(r)} />
+        </div>
       ),
     },
     {
@@ -848,12 +846,9 @@ export default function ProductsPage() {
       dataIndex: 'status', width: 68,
       key: 'active', sorter: true, sortOrder: so('active'),
       render: (_, r) => (
-        <Switch
-          size="small"
-          checked={effectiveStatus(r) === 'active'}
-          onChange={() => handleToggleStatus(r)}
-          onClick={(_checked, e) => e.stopPropagation()}
-        />
+        <div onClick={e => e.stopPropagation()}>
+          <Switch size="small" checked={effectiveStatus(r) === 'active'} onChange={() => handleToggleStatus(r)} />
+        </div>
       ),
     },
     {
