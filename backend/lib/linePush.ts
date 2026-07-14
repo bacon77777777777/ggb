@@ -19,6 +19,7 @@ export const LINE_PUSH_KEYS = [
   'line_push_content',
   'line_push_cto',
   'line_push_warehouse_dismantle',
+  'line_push_weekly',
 ] as const
 
 export type LinePushKey = (typeof LINE_PUSH_KEYS)[number]
@@ -39,6 +40,7 @@ export const LINE_PUSH_LABELS: Record<LinePushKey, string> = {
   line_push_content:             'AI 文案生成',
   line_push_cto:                 'AI CTO 報告',
   line_push_warehouse_dismantle: '倉庫自動分解',
+  line_push_weekly:              'GB哥週報',
 }
 
 async function isFlagEnabled(key: LinePushKey): Promise<boolean> {
