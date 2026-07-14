@@ -17,31 +17,40 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ priz
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0'))
   const limit  = Math.min(100, parseInt(url.searchParams.get('limit')  || String(PAGE_LIMIT)))
 
-  // Total count
-  const { count } = await adminSupabase
-    .from('draw_records')
-    .select('*', { count: 'exact', head: true })
-    .eq('product_prize_id', id)
-
+  // Fetch extra to compensate for bot filtering
+  const fetchLimit = limit * 3
   const { data: draws, error } = await adminSupabase
     .from('draw_records')
     .select('id, status, created_at, user_id, order_id')
     .eq('product_prize_id', id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    .range(offset, offset + fetchLimit - 1)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const userIds  = [...new Set((draws || []).map((r: any) => r.user_id).filter(Boolean))]
-  const orderIds = [...new Set((draws || []).map((r: any) => r.order_id).filter(Boolean))]
-  let userMap:  Map<string, string> = new Map()
-  let orderMap: Map<number, string> = new Map()
+  const allUserIds = [...new Set((draws || []).map((r: any) => r.user_id).filter(Boolean))]
+  let validUserIds = new Set<string>()
+  let userMap: Map<string, string> = new Map()
 
-  if (userIds.length > 0) {
+  if (allUserIds.length > 0) {
     const { data: users } = await adminSupabase
-      .from('users').select('user_id, name').in('user_id', userIds)
-    userMap = new Map((users || []).map((u: any) => [u.user_id, u.name]))
+      .from('users')
+      .select('user_id, name')
+      .in('user_id', allUserIds)
+      .or('is_bot.is.null,is_bot.eq.false')
+    for (const u of (users || [])) {
+      userMap.set(u.user_id, u.name)
+      validUserIds.add(u.user_id)
+    }
   }
+
+  // Filter bots and ghost accounts, then slice to requested limit
+  const realDraws = (draws || [])
+    .filter((r: any) => validUserIds.has(r.user_id))
+    .slice(0, limit)
+
+  const orderIds = [...new Set(realDraws.map((r: any) => r.order_id).filter(Boolean))]
+  let orderMap: Map<number, string> = new Map()
 
   if (orderIds.length > 0) {
     const { data: orders } = await adminSupabase
@@ -49,9 +58,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ priz
     orderMap = new Map((orders || []).map((o: any) => [o.id, o.order_number]))
   }
 
-  const rows = (draws || []).map((r: any) => ({
+  // Total real draws count (approximate)
+  const { count } = await adminSupabase
+    .from('draw_records')
+    .select('*', { count: 'exact', head: true })
+    .eq('product_prize_id', id)
+
+  const rows = realDraws.map((r: any) => ({
     ...r,
-    userName:    userMap.get(r.user_id) || r.user_id?.slice(0, 8) || '—',
+    userId:      r.user_id,
+    userName:    userMap.get(r.user_id) || '—',
     orderNumber: r.order_id ? (orderMap.get(r.order_id) || `#${r.order_id}`) : null,
   }))
 
