@@ -98,6 +98,8 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
 
   const startCharge = useCallback((e: React.PointerEvent) => {
     if (phase !== 'idle') return;
+    // Capture pointer so onPointerUp fires even after leaving element (needed for swipe detection)
+    e.currentTarget.setPointerCapture(e.pointerId);
     pointerStartX.current = e.clientX;
     pointerStartTime.current = performance.now();
     setPhase('charging');
@@ -110,7 +112,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     const dx = e.clientX - pointerStartX.current;
     const dt = performance.now() - pointerStartTime.current;
     const vx = dx / Math.max(dt, 1) * 1000; // px/s
-    // Right swipe: distance > 40px OR velocity > 300px/s
+    // Right swipe triggers full charge-complete effect (flash + particles + tear)
     if (dx > 40 || vx > 300) {
       triggerTear();
       return;
@@ -237,13 +239,8 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
               } as React.CSSProperties}
               onPointerDown={startCharge}
               onPointerUp={cancelCharge}
-              onPointerLeave={() => {
-                if (phase !== 'charging') return;
-                cancelAnimationFrame(rafRef.current);
-                setCharge(0);
-                setPhase('idle');
-              }}
               onPointerCancel={() => {
+                // System interrupt (e.g. phone call) — cancel charge
                 if (phase !== 'charging') return;
                 cancelAnimationFrame(rafRef.current);
                 setCharge(0);
