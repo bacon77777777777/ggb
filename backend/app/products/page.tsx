@@ -8,6 +8,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import CsvImportWizard from '@/components/CsvImportWizard'
 import XlsxImportWizard from '@/components/XlsxImportWizard'
+import SimpleBatchImportModal from '@/components/SimpleBatchImportModal'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
@@ -24,6 +25,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [isXlsxOpen, setIsXlsxOpen] = useState(false)
+  const [isSimpleBatchOpen, setIsSimpleBatchOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
   const zipRef = useRef<HTMLInputElement>(null)
@@ -751,6 +753,12 @@ export default function ProductsPage() {
             children={
               <>
                 <button
+                  onClick={() => setIsSimpleBatchOpen(true)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  批量新增
+                </button>
+                <button
                   onClick={() => setIsXlsxOpen(true)}
                   className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                 >
@@ -1350,6 +1358,12 @@ export default function ProductsPage() {
           </div>
         </PageCard>
 
+        {/* 批量新增 Modal */}
+        <SimpleBatchImportModal
+          isOpen={isSimpleBatchOpen}
+          onClose={() => setIsSimpleBatchOpen(false)}
+          onImported={() => { fetchProducts(); setIsSimpleBatchOpen(false) }}
+        />
         {/* 智能 CSV 匯入 Wizard */}
         <CsvImportWizard
           isOpen={isBulkOpen}
