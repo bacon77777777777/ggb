@@ -536,6 +536,12 @@ export default function ProductsPage() {
     return () => obs.disconnect()
   }, [hasMore, sortedProducts.length])
 
+  // 若庫存歸零但 DB status 仍為 active，顯示已完抽
+  const effectiveStatus = (r: Product) => {
+    if (r.status === 'active' && r.prizes.length > 0 && calcStock(r.prizes).remaining === 0) return 'ended'
+    return r.status
+  }
+
   // ─── Stats ─────────────────────────────────────────────────────────
   const stats = {
     total:     products.length,
@@ -679,12 +685,6 @@ export default function ProductsPage() {
 
   // Helper for sort order indicator per column
   const so = (field: string) => sortConfig.field === field ? sortConfig.order : undefined
-
-  // 若庫存歸零但 DB status 仍為 active，顯示已完抽
-  const effectiveStatus = (r: Product) => {
-    if (r.status === 'active' && r.prizes.length > 0 && calcStock(r.prizes).remaining === 0) return 'ended'
-    return r.status
-  }
 
   const fmtDT = (v: string) => {
     const d = new Date(v)
