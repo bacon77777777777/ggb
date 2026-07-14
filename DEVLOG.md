@@ -4,6 +4,15 @@
 
 ---
 
+## v2026.07.3｜2026-07-14｜LINE 推播修復 + 環境變數補齊
+
+### 修復
+- **LINE 推播中斷**：Vercel Production 的 LINE 相關環境變數（`LINE_CHANNEL_ACCESS_TOKEN`、`NOTIFY_TARGET_ID` 等 5 個）在環境分離作業時被清空，導致所有 cron 推播靜默失敗。已重新設定並 redeploy。
+- **weekly-report build 錯誤**：`line_push_weekly` 未加入 `LINE_PUSH_KEYS` 型別定義，導致 TypeScript 編譯失敗。已補上。
+- **LINE 月額度說明**：免費方案 500 則/月，正常每日 8 則約 240 則/月不超額，測試期間耗量高屬正常，月初自動重置。
+
+---
+
 ## v2026.07.2｜2026-07-14｜版本管理系統 + GB哥週報
 
 ### 版本管理
