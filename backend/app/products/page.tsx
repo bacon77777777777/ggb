@@ -61,6 +61,7 @@ type Product = {
   sales: number
   isHot: boolean
   imageUrl?: string
+  createdAt?: string
   startedAt?: string
   endedAt?: string
   prizes: Prize[]
@@ -114,6 +115,7 @@ function mapProduct(p: any): Product {
     sales: p.sales ?? 0,
     isHot: p.is_hot,
     imageUrl: p.image_url,
+    createdAt: p.created_at,
     startedAt: p.started_at,
     endedAt: p.ended_at,
     prizes: (p.prizes ?? []).map((pr: any) => ({
@@ -129,6 +131,23 @@ function mapProduct(p: any): Product {
 }
 
 const LEVELED_TYPES = new Set(['ichiban', 'custom', 'card'])
+
+// 大獎狀態（廢套）判定
+const HIGH_TIER_LEVELS = new Set(['SP', 'A', 'B', 'C'])
+
+function normalizePrizeLevel(level: string | null | undefined): string {
+  if (!level) return ''
+  const t = level.trim()
+  if (t.toLowerCase().includes('last one') || t.includes('最後賞')) return 'Last One'
+  return t.endsWith('賞') ? t.slice(0, -1) : t
+}
+
+function isMajorDepleted(product: { type: string; prizes: Prize[] }): boolean {
+  if (!LEVELED_TYPES.has(product.type)) return false
+  const major = product.prizes.filter(p => HIGH_TIER_LEVELS.has(normalizePrizeLevel(p.level)))
+  if (major.length === 0) return false
+  return major.every(p => p.remaining === 0)
+}
 
 // ─── PrizeRow ─────────────────────────────────────────────────────────
 function PrizeRow({ prize, stockTotal, productType }: {
@@ -398,6 +417,8 @@ export default function ProductsPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
+  const [smallItemsCount, setSmallItemsCount] = useState(0)
+  const [dismantledCount, setDismantledCount] = useState(0)
   const zipRef = useRef<HTMLInputElement>(null)
 
   // Infinite scroll + sort
@@ -419,7 +440,15 @@ export default function ProductsPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchProducts() }, [fetchProducts])
+  useEffect(() => {
+    fetchProducts()
+    supabase.from('small_items').select('*', { count: 'exact', head: true })
+      .then(({ count }) => { if (count !== null) setSmallItemsCount(count) })
+    supabase.from('draw_records').select('*', { count: 'exact', head: true })
+      .eq('status', 'dismantled')
+      .then(({ count }) => { if (count !== null) setDismantledCount(count) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (highlightedProductId) {
@@ -455,6 +484,8 @@ export default function ProductsPage() {
         case 'sales': return m * ((a.sales || 0) - (b.sales || 0))
         case 'isHot': return m * (Number(b.isHot) - Number(a.isHot))
         case 'startedAt': return m * (new Date(a.startedAt || 0).getTime() - new Date(b.startedAt || 0).getTime())
+        case 'createdAt': return m * (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+        case 'majorStatus': return m * (Number(isMajorDepleted(b)) - Number(isMajorDepleted(a)))
         case 'endedAt': {
           if (!a.endedAt && !b.endedAt) return 0
           if (!a.endedAt) return m
@@ -484,13 +515,13 @@ export default function ProductsPage() {
 
   // ─── Stats ─────────────────────────────────────────────────────────
   const stats = {
-    total:    products.length,
-    active:   products.filter(p => p.status === 'active').length,
-    lowStock: products.filter(p => {
-      const { remaining } = calcStock(p.prizes)
-      return remaining < 10 && p.status === 'active'
-    }).length,
-    hot: products.filter(p => p.isHot).length,
+    total:     products.length,
+    active:    products.filter(p => p.status === 'active').length,
+    lowStock:  products.filter(p => { const { remaining } = calcStock(p.prizes); return remaining < 10 && p.status === 'active' }).length,
+    depleted:  products.filter(isMajorDepleted).length,
+    hot:       products.filter(p => p.isHot).length,
+    dismantled: dismantledCount,
+    smallItems: smallItemsCount,
   }
 
   // ─── Actions ───────────────────────────────────────────────────────
@@ -726,9 +757,28 @@ export default function ProductsPage() {
       ),
     },
     {
+      title: <Tooltip title="一番賞/自製賞/抽卡：A/B/C/SP賞是否已全部出完">大獎狀態</Tooltip>,
+      width: 76, key: 'majorStatus', sorter: true, sortOrder: so('majorStatus'),
+      disable: true,
+      render: (_, r) => {
+        if (!LEVELED_TYPES.has(r.type)) return <Text type="secondary" style={{ cursor: 'default' }}>—</Text>
+        const depleted = isMajorDepleted(r)
+        return depleted ? (
+          <Tooltip title="A/B/C/SP賞已全數抽完（廢套）">
+            <Tag color="red" style={{ cursor: 'default' }}>廢套</Tag>
+          </Tooltip>
+        ) : (
+          <Tooltip title="大獎仍有庫存">
+            <span style={{ fontSize: 12, color: '#6b7280', cursor: 'default' }}>正常</span>
+          </Tooltip>
+        )
+      },
+    },
+    {
       title: <Tooltip title="標記為熱賣商品，顯示於前台熱賣區">熱賣</Tooltip>,
       dataIndex: 'isHot', width: 60,
       key: 'isHot', sorter: true, sortOrder: so('isHot'),
+      disable: true,
       render: (_, r) => (
         <Switch
           size="small"
@@ -737,6 +787,18 @@ export default function ProductsPage() {
           onClick={(_checked, e) => e.stopPropagation()}
         />
       ),
+    },
+    {
+      title: <Tooltip title="商品建立時間（created_at）">建立</Tooltip>,
+      dataIndex: 'createdAt', width: 90,
+      key: 'createdAt', sorter: true, sortOrder: so('createdAt'),
+      render: (v: any) => v ? (
+        <Tooltip title={new Date(v).toLocaleString('zh-TW')}>
+          <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontSize: 12, color: '#888' }}>
+            {new Date(v).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', year: '2-digit' })}
+          </span>
+        </Tooltip>
+      ) : <Text type="secondary">—</Text>,
     },
     {
       title: <Tooltip title="商品上架開賣的時間（started_at）">開賣</Tooltip>,
@@ -769,12 +831,17 @@ export default function ProductsPage() {
       },
     },
     {
-      title: '操作', width: 90, fixed: 'right',
+      title: '操作', width: 130, fixed: 'right',
       render: (_, r) => (
         <Space size={0}>
           <Tooltip title="編輯商品資料">
             <Button type="link" size="small" onClick={e => { e.stopPropagation(); router.push(`/products/${r.id}`) }}>
               編輯
+            </Button>
+          </Tooltip>
+          <Tooltip title="公平性驗證（Seed / TXID Hash）">
+            <Button type="link" size="small" onClick={e => { e.stopPropagation(); router.push(`/products/${r.id}/verify`) }}>
+              驗證
             </Button>
           </Tooltip>
           <Tooltip title="刪除此商品（無法還原）">
@@ -799,15 +866,22 @@ export default function ProductsPage() {
   return (
     <AdminLayout pageTitle="商品管理">
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
-          { title: '全部商品(個)', value: stats.total, tip: '所有商品總數（含下架）' },
-          { title: '上架中(個)', value: stats.active, valueStyle: { color: '#3f8600' }, tip: '目前玩家可見、可抽的商品數' },
-          { title: '低庫存警示(個)', value: stats.lowStock, valueStyle: { color: '#cf1322' }, tip: '上架中且剩餘庫存不足 10 件的商品' },
-          { title: '熱賣標記(個)', value: stats.hot, valueStyle: { color: '#d46b08' }, tip: '已勾選「熱賣」標記的商品數' },
+          { title: '進行中 / 總商品數', value: `${stats.active} / ${stats.total}`, tip: '上架中商品數 / 所有商品總數' },
+          { title: '小物數量(個)', value: stats.smallItems, tip: '小物倉庫件數', onClick: () => router.push('/small-items') },
+          { title: '低庫存(<10)(個)', value: stats.lowStock, valueStyle: { color: '#cf1322' }, tip: '上架中且剩餘庫存不足 10 件的商品' },
+          { title: '廢套商品(個)', value: stats.depleted, valueStyle: { color: '#7c3aed' }, tip: '一番賞/自製賞中，A/B/C/SP賞已全數出完的商品' },
+          { title: '熱門商品(個)', value: stats.hot, valueStyle: { color: '#d46b08' }, tip: '已勾選「熱賣」標記的商品數' },
+          { title: '分解數(筆)', value: stats.dismantled, valueStyle: { color: '#6b7280' }, tip: '累計拆解紀錄數', onClick: () => router.push('/dismantled') },
         ].map(s => (
           <Tooltip key={s.title} title={s.tip} placement="bottom">
-            <Card size="small" styles={{ body: { padding: '12px 16px' } }} style={{ cursor: 'default' }}>
+            <Card
+              size="small"
+              styles={{ body: { padding: '12px 16px' } }}
+              style={{ cursor: s.onClick ? 'pointer' : 'default' }}
+              onClick={s.onClick}
+            >
               <Statistic title={s.title} value={s.value} valueStyle={s.valueStyle} />
             </Card>
           </Tooltip>
