@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
 interface ProductPackViewer3DProps {
@@ -18,6 +18,28 @@ const clamp = (value: number, min: number, max: number) => {
   return value;
 };
 
+function sampleEdgeGradient(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  side: 'left' | 'right',
+): { top: string; bot: string } {
+  const x = side === 'left' ? 0 : W - 3;
+  const third = Math.max(1, Math.floor(H / 3));
+  const avg = (data: Uint8ClampedArray) => {
+    let r = 0, g = 0, b = 0;
+    const px = data.length / 4;
+    for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+    return `rgb(${Math.round(r / px)},${Math.round(g / px)},${Math.round(b / px)})`;
+  };
+  return {
+    top: avg(ctx.getImageData(x, 0, 3, third).data),
+    bot: avg(ctx.getImageData(x, H - third, 3, third).data),
+  };
+}
+
+const FALLBACK = { top: '#e8e4dc', bot: '#b8b0a8' };
+
 export function ProductPackViewer3D({
   packImage,
   showSSRGlare = true,
@@ -26,6 +48,32 @@ export function ProductPackViewer3D({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [glare, setGlare] = useState({ x: 0, y: 0 });
+  const [leftEdge,  setLeftEdge]  = useState(FALLBACK);
+  const [rightEdge, setRightEdge] = useState(FALLBACK);
+
+  // 取樣 packImage 左右邊緣色
+  useEffect(() => {
+    if (!packImage) return;
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+        setLeftEdge(sampleEdgeGradient(ctx, W, H, 'left'));
+        setRightEdge(sampleEdgeGradient(ctx, W, H, 'right'));
+      } catch {
+        // CORS taint 或其他錯誤 — 保留預設色
+      }
+    };
+    img.src = packImage;
+  }, [packImage]);
 
   const updateTilt = (clientX: number, clientY: number) => {
     const el = containerRef.current;
@@ -38,17 +86,11 @@ export function ProductPackViewer3D({
     const dx = x - 0.5;
     const dy = y - 0.5;
 
-    const verticalFactor = 0.15;
-    const horizontalFactor = 0.5;
-
-    const rotateX = -dy * MAX_ANGLE * 2 * verticalFactor;
-    const rotateY = dx * MAX_ANGLE * 2 * horizontalFactor;
-
-    const glareX = clamp(-dx * 40, -30, 30);
-    const glareY = clamp(-dy * 40, -30, 30);
+    const rotateX = -dy * MAX_ANGLE * 2 * 0.15;
+    const rotateY =  dx * MAX_ANGLE * 2 * 0.5;
 
     setTilt({ x: rotateX, y: rotateY });
-    setGlare({ x: glareX, y: glareY });
+    setGlare({ x: clamp(-dx * 40, -30, 30), y: clamp(-dy * 40, -30, 30) });
   };
 
   const resetTilt = () => {
@@ -56,46 +98,13 @@ export function ProductPackViewer3D({
     setGlare({ x: 0, y: 0 });
   };
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    updateTilt(event.clientX, event.clientY);
-  };
-
-  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-  };
-
-  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-    const touch = event.touches[0];
-    if (!touch) return;
-    updateTilt(touch.clientX, touch.clientY);
-  };
-
-  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-    resetTilt();
-  };
-
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-  };
-
-  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-    updateTilt(event.clientX, event.clientY);
-  };
-
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    event.stopPropagation();
-    resetTilt();
-  };
+  const handleMouseMove  = (e: React.MouseEvent<HTMLDivElement>)   => { if (interactive) updateTilt(e.clientX, e.clientY); };
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>)   => { if (interactive) e.stopPropagation(); };
+  const handleTouchMove  = (e: React.TouchEvent<HTMLDivElement>)   => { if (!interactive) return; e.stopPropagation(); const t = e.touches[0]; if (t) updateTilt(t.clientX, t.clientY); };
+  const handleTouchEnd   = (e: React.TouchEvent<HTMLDivElement>)   => { if (interactive) { e.stopPropagation(); resetTilt(); } };
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => { if (interactive) e.stopPropagation(); };
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => { if (interactive) { e.stopPropagation(); updateTilt(e.clientX, e.clientY); } };
+  const handlePointerUp   = (e: React.PointerEvent<HTMLDivElement>) => { if (interactive) { e.stopPropagation(); resetTilt(); } };
 
   return (
     <div className="w-full max-w-[375px] h-[463px] mx-auto flex items-center justify-center pointer-events-none">
@@ -120,39 +129,23 @@ export function ProductPackViewer3D({
             transition: 'transform 160ms ease-out',
           }}
         >
+          {/* Front face */}
           <div
             className="absolute inset-0 rounded-[8px] overflow-hidden"
-            style={{
-              transform: `translateZ(${PACK_THICKNESS / 2}px)`,
-              backfaceVisibility: 'hidden',
-            }}
+            style={{ transform: `translateZ(${PACK_THICKNESS / 2}px)`, backfaceVisibility: 'hidden' }}
           >
-            <Image
-              src={packImage}
-              alt="Card Pack Front"
-              fill
-              className="object-cover select-none"
-              unoptimized
-            />
+            <Image src={packImage} alt="Card Pack Front" fill className="object-cover select-none" unoptimized />
           </div>
 
+          {/* Back face */}
           <div
             className="absolute inset-0 rounded-[8px] overflow-hidden"
-            style={{
-              transform: `rotateY(180deg) translateZ(${PACK_THICKNESS / 2}px)`,
-              backfaceVisibility: 'hidden',
-            }}
+            style={{ transform: `rotateY(180deg) translateZ(${PACK_THICKNESS / 2}px)`, backfaceVisibility: 'hidden' }}
           >
-            <Image
-              src="/images/card/back.png"
-              alt="Card Pack Back"
-              fill
-              className="object-cover select-none"
-              unoptimized
-            />
+            <Image src="/images/card/back.png" alt="Card Pack Back" fill className="object-cover select-none" unoptimized />
           </div>
 
-          {/* Side edges — colored faces for 3D pack thickness feel */}
+          {/* Right edge — 取樣自 packImage 右邊緣色 */}
           <div
             style={{
               position: 'absolute',
@@ -160,9 +153,11 @@ export function ProductPackViewer3D({
               right: -PACK_THICKNESS / 2,
               width: PACK_THICKNESS,
               transform: 'rotateY(-90deg)',
-              background: 'linear-gradient(to bottom, #e8e4dc, #b8b0a8)',
+              background: `linear-gradient(to bottom, ${rightEdge.top}, ${rightEdge.bot})`,
             }}
           />
+
+          {/* Left edge — 取樣自 packImage 左邊緣色 */}
           <div
             style={{
               position: 'absolute',
@@ -170,7 +165,7 @@ export function ProductPackViewer3D({
               left: -PACK_THICKNESS / 2,
               width: PACK_THICKNESS,
               transform: 'rotateY(90deg)',
-              background: 'linear-gradient(to bottom, #e8e4dc, #b8b0a8)',
+              background: `linear-gradient(to bottom, ${leftEdge.top}, ${leftEdge.bot})`,
             }}
           />
 
@@ -191,8 +186,7 @@ export function ProductPackViewer3D({
               <div
                 className="w-[160%] h-[160%] opacity-50"
                 style={{
-                  background:
-                    'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0) 40%)',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0) 40%)',
                   transform: `translate(${glare.x}px, ${glare.y}px) rotate(20deg)`,
                   transition: 'transform 120ms ease-out',
                 }}
