@@ -4,7 +4,7 @@ import { AdminProvider } from '@/contexts/AdminContext'
 import { ShipmentProvider } from '@/contexts/ShipmentContext'
 import { LogProvider } from '@/contexts/LogContext'
 import { ProductProvider } from '@/contexts/ProductContext'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App } from 'antd'
 import zhTW from 'antd/locale/zh_TW'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -23,13 +23,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <AdminProvider>
-        <LogProvider>
-          <ShipmentProvider>
-            <ProductProvider>{children}</ProductProvider>
-          </ShipmentProvider>
-        </LogProvider>
-      </AdminProvider>
+      <App>
+        <AdminProvider>
+          <LogProvider>
+            <ShipmentProvider>
+              <ProductProvider>{children}</ProductProvider>
+            </ShipmentProvider>
+          </LogProvider>
+        </AdminProvider>
+      </App>
     </ConfigProvider>
   )
 }

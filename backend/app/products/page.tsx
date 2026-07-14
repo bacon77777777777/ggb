@@ -6,7 +6,7 @@ import { ProTable } from '@ant-design/pro-components'
 import type { ProColumns, ActionType } from '@ant-design/pro-components'
 import {
   Button, Tag, Space, Popconfirm, Card, Statistic,
-  Tooltip, message, Typography, Spin, Empty, Switch, Input,
+  Tooltip, Typography, Spin, Empty, Switch, Input, App,
 } from 'antd'
 import {
   PlusOutlined, FireOutlined, UploadOutlined,
@@ -427,6 +427,7 @@ function PrizeRows({ record }: { record: Product }) {
 
 // ─── Main page ────────────────────────────────────────────────────────
 export default function ProductsPage() {
+  const { message } = App.useApp()
   const router = useRouter()
   const { addLog } = useLog()
   const { highlightedProductId, setHighlightedProductId } = useProduct()
@@ -832,6 +833,7 @@ export default function ProductsPage() {
       title: <Tooltip title="標記為熱賣商品，顯示於前台熱賣區">熱賣</Tooltip>,
       dataIndex: 'isHot', width: 60,
       key: 'isHot', sorter: true, sortOrder: so('isHot'),
+      hideInSetting: false,
       render: (_, r) => (
         <Switch
           size="small"
@@ -849,7 +851,6 @@ export default function ProductsPage() {
         <Switch
           size="small"
           checked={effectiveStatus(r) === 'active'}
-          disabled={effectiveStatus(r) === 'ended'}
           onChange={() => handleToggleStatus(r)}
           onClick={(_checked, e) => e.stopPropagation()}
         />
@@ -949,7 +950,7 @@ export default function ProductsPage() {
         search={false}
         onChange={handleTableChange}
         columnsState={{
-          persistenceKey: 'products-table-v5',
+          persistenceKey: 'products-table-v6',
           persistenceType: 'localStorage',
           defaultValue: {
             name: { show: true }, type: { show: true }, status: { show: true },
