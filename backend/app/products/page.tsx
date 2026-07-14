@@ -183,22 +183,24 @@ function PrizeRow({ prize, stockTotal, productType, prizeCode }: {
     status: r.status ?? undefined,
   })
 
-  const handleExpand = async () => {
-    if (!fetched) {
+  const handleExpand = () => {
+    const next = !expanded
+    setExpanded(next)
+    if (next && !fetched) {
       setLoadingDraws(true)
-      try {
-        const res = await fetch(`/api/prize-draws/${prize.id}?limit=10&offset=0`, { credentials: 'include' })
-        if (res.ok) {
-          const json = await res.json()
-          setDraws((json.rows ?? []).map(mapRow))
-          setDrawTotal(json.total ?? 0)
-        }
-      } finally {
-        setLoadingDraws(false)
-        setFetched(true)
-      }
+      fetch(`/api/prize-draws/${prize.id}?limit=10&offset=0`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .then(json => {
+          if (json) {
+            setDraws((json.rows ?? []).map(mapRow))
+            setDrawTotal(json.total ?? 0)
+          }
+        })
+        .finally(() => {
+          setLoadingDraws(false)
+          setFetched(true)
+        })
     }
-    setExpanded(v => !v)
   }
 
   const handleRecordsScroll = useCallback(async () => {
