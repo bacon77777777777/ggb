@@ -510,6 +510,10 @@ export default function ProductsPage() {
           if (!b.endedAt) return -m
           return m * (new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime())
         }
+        case 'active': {
+          const ord = { active: 0, pending: 1, ended: 2 }
+          return m * ((ord[a.status as keyof typeof ord] ?? 9) - (ord[b.status as keyof typeof ord] ?? 9))
+        }
         default: return 0
       }
     })
@@ -674,6 +678,12 @@ export default function ProductsPage() {
   // Helper for sort order indicator per column
   const so = (field: string) => sortConfig.field === field ? sortConfig.order : undefined
 
+  const fmtDT = (v: string) => {
+    const d = new Date(v)
+    const p = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  }
+
   // ─── Columns ───────────────────────────────────────────────────────
   const columns: ProColumns<Product>[] = [
     {
@@ -743,22 +753,22 @@ export default function ProductsPage() {
       },
     },
     {
-      title: <Tooltip title="每抽售價（代幣 G）">售價</Tooltip>,
+      title: <Tooltip title="每抽售價（代幣 G）"><span style={{ whiteSpace: 'nowrap' }}>售價(G)</span></Tooltip>,
       dataIndex: 'price', width: 72,
       key: 'price', sorter: true, sortOrder: so('price'),
       render: v => (
         <Tooltip title={`每抽售價 ${v} 代幣`}>
-          <span style={{ fontFamily: 'monospace', cursor: 'default' }}>{v}G</span>
+          <span style={{ fontFamily: 'monospace', cursor: 'default' }}>{v}</span>
         </Tooltip>
       ),
     },
     {
-      title: <Tooltip title="廠商進貨成本">成本</Tooltip>,
+      title: <Tooltip title="廠商進貨成本（代幣 G）"><span style={{ whiteSpace: 'nowrap' }}>成本(G)</span></Tooltip>,
       dataIndex: 'cost', width: 72,
       key: 'cost', sorter: true, sortOrder: so('cost'),
-      render: v => v != null ? (
+      render: (v: number | undefined | null) => v != null ? (
         <Tooltip title={`進貨成本 ${v} 代幣`}>
-          <span style={{ fontFamily: 'monospace', color: '#888', cursor: 'default' }}>{v}G</span>
+          <span style={{ fontFamily: 'monospace', color: '#888', cursor: 'default' }}>{v}</span>
         </Tooltip>
       ) : (
         <Tooltip title="尚未設定成本"><span style={{ color: '#bbb', cursor: 'default' }}>-</span></Tooltip>
@@ -792,9 +802,8 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: <Tooltip title="一番賞/自製賞/抽卡：A/B/C/SP賞是否已全部出完"><span style={{ whiteSpace: 'nowrap' }}>大獎狀態</span></Tooltip>,
-      width: 80, key: 'majorStatus', sorter: true, sortOrder: so('majorStatus'),
-      disable: true,
+      title: <Tooltip title="一番賞/自製賞/抽卡：A/B/C/SP賞是否已全部出完">大獎狀態</Tooltip>,
+      dataIndex: 'id', width: 96, key: 'majorStatus', sorter: true, sortOrder: so('majorStatus'),
       render: (_, r) => {
         const depleted = isMajorDepleted(r)
         return depleted ? (
@@ -812,7 +821,6 @@ export default function ProductsPage() {
       title: <Tooltip title="標記為熱賣商品，顯示於前台熱賣區">熱賣</Tooltip>,
       dataIndex: 'isHot', width: 60,
       key: 'isHot', sorter: true, sortOrder: so('isHot'),
-      disable: true,
       render: (_, r) => (
         <Switch
           size="small"
@@ -825,7 +833,7 @@ export default function ProductsPage() {
     {
       title: <Tooltip title="上架/下架此商品">上架</Tooltip>,
       dataIndex: 'status', width: 60,
-      key: 'active',
+      key: 'active', sorter: true, sortOrder: so('active'),
       render: (_, r) => (
         <Switch
           size="small"
@@ -837,56 +845,27 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="商品建立時間（created_at）">建立</Tooltip>,
-      dataIndex: 'createdAt', width: 115,
+      dataIndex: 'createdAt', width: 160,
       key: 'createdAt', sorter: true, sortOrder: so('createdAt'),
-      render: (v: any) => {
-        if (!v) return <Text type="secondary">—</Text>
-        const d = new Date(v)
-        return (
-          <Tooltip title={d.toLocaleString('zh-TW')}>
-            <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontSize: 12, color: '#888', fontFamily: 'monospace' }}>
-              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
-              {' '}
-              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </Tooltip>
-        )
-      },
+      render: (v: any) => v
+        ? <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontSize: 12, color: '#888', fontFamily: 'monospace' }}>{fmtDT(v)}</span>
+        : <Text type="secondary">—</Text>,
     },
     {
       title: <Tooltip title="商品上架開賣的時間（started_at）">開賣</Tooltip>,
-      dataIndex: 'startedAt', width: 115,
+      dataIndex: 'startedAt', width: 160,
       key: 'startedAt', sorter: true, sortOrder: so('startedAt'),
-      render: (v: any) => {
-        if (!v) return <Tooltip title="尚未設定上架時間"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
-        const d = new Date(v)
-        return (
-          <Tooltip title={d.toLocaleString('zh-TW')}>
-            <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>
-              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
-              {' '}
-              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </Tooltip>
-        )
-      },
+      render: (v: any) => v
+        ? <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>{fmtDT(v)}</span>
+        : <Text type="secondary" style={{ cursor: 'default' }}>—</Text>,
     },
     {
       title: <Tooltip title="商品完全抽完的時間（ended_at）">完抽</Tooltip>,
-      dataIndex: 'endedAt', width: 115,
+      dataIndex: 'endedAt', width: 160,
       key: 'endedAt', sorter: true, sortOrder: so('endedAt'),
       render: (v: any) => {
-        const d = v ? new Date(v) : null
-        if (!d || isNaN(d.getTime())) return <Tooltip title="尚未完抽"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
-        return (
-          <Tooltip title={d.toLocaleString('zh-TW')}>
-            <span style={{ cursor: 'default', whiteSpace: 'nowrap', color: '#52c41a', fontFamily: 'monospace', fontSize: 12 }}>
-              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
-              {' '}
-              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </Tooltip>
-        )
+        if (!v || isNaN(new Date(v).getTime())) return <Text type="secondary" style={{ cursor: 'default' }}>—</Text>
+        return <span style={{ cursor: 'default', whiteSpace: 'nowrap', color: '#52c41a', fontFamily: 'monospace', fontSize: 12 }}>{fmtDT(v)}</span>
       },
     },
     {
@@ -958,11 +937,13 @@ export default function ProductsPage() {
         search={false}
         onChange={handleTableChange}
         columnsState={{
-          persistenceKey: 'products-table-v4',
+          persistenceKey: 'products-table-v5',
           persistenceType: 'localStorage',
           defaultValue: {
-            isHot: { show: true },
-            majorStatus: { show: true },
+            name: { show: true }, type: { show: true }, status: { show: true },
+            price: { show: true }, cost: { show: true }, remaining: { show: true },
+            sales: { show: true }, majorStatus: { show: true }, isHot: { show: true },
+            active: { show: true }, createdAt: { show: true }, startedAt: { show: true }, endedAt: { show: true },
           },
         }}
         options={{
@@ -1019,7 +1000,7 @@ export default function ProductsPage() {
           showExpandColumn: false,
         }}
         pagination={false}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1540 }}
         cardProps={{ styles: { body: { padding: 0 } } } as any}
         rowClassName={record =>
           record.id === highlightedProductId ? 'ant-table-row-selected' : ''
