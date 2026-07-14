@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-07-14｜前台商品頁 bug 修正 + 選籤 UI 優化
+
+### 修正
+- **「查看結果」報錯**（`frontend/app/item/[id]/page.tsx`）：`draw_records` 欄位為 `prize_image_url`，前台 query 誤用 `image_url`，導致 Supabase 回傳 error → 完抽商品點「查看結果」跳錯。同步修正 state 型別定義與兩處 modal mapping。
+- **公平性驗證頁按鈕位置**：原本在底部加分隔線的獨立區塊，移至哈希值欄位正下方，完抽後（`isSoldOut`）才顯示，全寬按鈕樣式。手機版與桌機版同步更新。
+
+### 功能
+- **選籤頁已抽籤樣式重設計**（`frontend/components/shop/TicketSelector.tsx`）：
+  - 移除品項名稱，僅保留賞等
+  - 號碼置頂灰色小字，賞等置底粗體
+  - 稀有賞等（該賞等在全局籤中出現 ≤5 個）顯示紅色，>5 個顯示黑色
+  - 樣式與「抽獎結果一覽」Modal 保持一致
+
+---
+
 ## 2026-07-14｜後台 Ant Design 商品管理改版
 
 ### 功能
