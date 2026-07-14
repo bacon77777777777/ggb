@@ -404,7 +404,7 @@ function PrizeRows({ record }: { record: Product }) {
         <div style={{ width: 36, flexShrink: 0 }} />
         <div style={{ width: 84, flexShrink: 0 }}>品項編號</div>
         {hasLevel && <div style={{ width: 44, flexShrink: 0 }} />}
-        <div style={{ width: 200, flexShrink: 0 }}>品項 × {record.prizes.length} · 點擊展開出貨流向</div>
+        <div style={{ width: 200, flexShrink: 0 }}>品項({record.prizes.length})</div>
         <div style={{ width: 96, paddingLeft: 12 }}>剩餘/總數</div>
         <div style={{ width: 72, paddingLeft: 8 }}>機率</div>
         <div style={{ width: 56, paddingLeft: 8 }}>已出</div>
