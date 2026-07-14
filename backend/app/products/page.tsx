@@ -36,6 +36,16 @@ type DrawRecord = {
   createdAt: string
   userName?: string
   orderNumber?: string | null
+  status?: string
+}
+
+const DRAW_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  in_warehouse:     { label: '倉庫中', color: '#6d28d9', bg: '#ede9fe' },
+  pending_delivery: { label: '待配送', color: '#b45309', bg: '#fef3c7' },
+  shipped:          { label: '已出貨', color: '#1d4ed8', bg: '#dbeafe' },
+  dismantled:       { label: '已拆解', color: '#6b7280', bg: '#f3f4f6' },
+  exchanged:        { label: '已兌換', color: '#6b7280', bg: '#f3f4f6' },
+  success:          { label: '成功',   color: '#15803d', bg: '#dcfce7' },
 }
 
 type Product = {
@@ -126,8 +136,11 @@ function PrizeRow({ prize, stockTotal, productType }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const [draws, setDraws] = useState<DrawRecord[]>([])
+  const [drawTotal, setDrawTotal] = useState(0)
   const [loadingDraws, setLoadingDraws] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [fetched, setFetched] = useState(false)
+  const recordsRef = useRef<HTMLDivElement>(null)
 
   const hasLevel = LEVELED_TYPES.has(productType)
   const pct = !isLastOne(prize.level) && stockTotal > 0 && prize.total > 0
@@ -137,19 +150,23 @@ function PrizeRow({ prize, stockTotal, productType }: {
   const remainColor = prize.remaining === 0 ? '#dc2626' : (prize.total > 0 && prize.remaining / prize.total < 0.2) ? '#ea580c' : '#15803d'
   const sold = prize.total - prize.remaining
 
+  const mapRow = (r: any): DrawRecord => ({
+    id: r.id,
+    createdAt: r.created_at,
+    userName: r.userName ?? '—',
+    orderNumber: r.orderNumber ?? null,
+    status: r.status ?? undefined,
+  })
+
   const handleExpand = async () => {
     if (!fetched) {
       setLoadingDraws(true)
       try {
-        const res = await fetch(`/api/prize-draws/${prize.id}?limit=30`, { credentials: 'include' })
+        const res = await fetch(`/api/prize-draws/${prize.id}?limit=10&offset=0`, { credentials: 'include' })
         if (res.ok) {
           const json = await res.json()
-          setDraws((json.rows ?? []).map((r: any) => ({
-            id: r.id,
-            createdAt: r.created_at,
-            userName: r.userName ?? '未知用戶',
-            orderNumber: r.orderNumber ?? null,
-          })))
+          setDraws((json.rows ?? []).map(mapRow))
+          setDrawTotal(json.total ?? 0)
         }
       } finally {
         setLoadingDraws(false)
@@ -158,6 +175,25 @@ function PrizeRow({ prize, stockTotal, productType }: {
     }
     setExpanded(v => !v)
   }
+
+  const handleRecordsScroll = useCallback(async () => {
+    const el = recordsRef.current
+    if (!el || loadingMore) return
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > 60) return
+    if (draws.length >= drawTotal) return
+
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/prize-draws/${prize.id}?limit=10&offset=${draws.length}`, { credentials: 'include' })
+      if (res.ok) {
+        const json = await res.json()
+        setDraws(prev => [...prev, ...(json.rows ?? []).map(mapRow)])
+        setDrawTotal(json.total ?? 0)
+      }
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [draws.length, drawTotal, loadingMore, prize.id])
 
   const levelColor = LEVEL_COLOR[(prize.level ?? '').toUpperCase().replace('賞', '')] ?? '#6b7280'
 
@@ -239,33 +275,79 @@ function PrizeRow({ prize, stockTotal, productType }: {
 
       {/* Draw records */}
       {expanded && (
-        <div style={{ background: '#f8faff', borderTop: '1px solid #e8f0fe', padding: '8px 14px 8px 58px' }}>
+        <div style={{ background: '#f8faff', borderTop: '1px solid #e8f0fe', padding: '8px 14px' }}>
           {loadingDraws ? (
             <div style={{ textAlign: 'center', padding: '12px 0' }}><Spin size="small" /></div>
           ) : draws.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚無出貨紀錄" style={{ margin: '8px 0' }} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚無真實玩家出貨紀錄" style={{ margin: '8px 0' }} />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>最近 {draws.length} 筆 · 在玩家倉庫中</div>
-              {draws.map(d => (
-                <div key={d.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '4px 10px', background: '#fff',
-                  borderRadius: 6, border: '1px solid #e8f0fe',
-                }}>
-                  <UserOutlined style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#334155', fontWeight: 500 }}>{d.userName}</span>
-                  {d.orderNumber && (
-                    <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace' }}>{d.orderNumber}</span>
-                  )}
-                  <span style={{ fontSize: 11, color: '#aaa', marginLeft: 'auto', fontFamily: 'monospace' }}>
-                    {new Date(d.createdAt).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
-                    {' '}
-                    {new Date(d.createdAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+            <>
+              {/* Column header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 0,
+                padding: '3px 10px 5px', fontSize: 11, color: '#9ca3af', fontWeight: 500,
+              }}>
+                <div style={{ width: 140, flexShrink: 0 }}>玩家</div>
+                <div style={{ width: 64, flexShrink: 0 }}>狀態</div>
+                <div style={{ flex: 1 }}>訂單號</div>
+                <div style={{ width: 120, textAlign: 'right' }}>時間</div>
+              </div>
+              {/* Records list — fixed height + scroll */}
+              <div
+                ref={recordsRef}
+                onScroll={handleRecordsScroll}
+                style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                {draws.map(d => {
+                  const st = d.status ? DRAW_STATUS[d.status] : undefined
+                  return (
+                    <div key={d.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 0,
+                      padding: '5px 10px', background: '#fff',
+                      borderRadius: 6, border: '1px solid #e8f0fe',
+                    }}>
+                      <div style={{ width: 140, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <UserOutlined style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: '#334155', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {d.userName}
+                        </span>
+                      </div>
+                      <div style={{ width: 64, flexShrink: 0 }}>
+                        {st ? (
+                          <span style={{
+                            fontSize: 11, padding: '1px 6px', borderRadius: 4,
+                            color: st.color, background: st.bg, fontWeight: 500, whiteSpace: 'nowrap',
+                          }}>
+                            {st.label}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#ccc' }}>—</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        {d.orderNumber
+                          ? <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace' }}>{d.orderNumber}</span>
+                          : <span style={{ fontSize: 11, color: '#ccc' }}>—</span>
+                        }
+                      </div>
+                      <div style={{ width: 120, textAlign: 'right', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                        {new Date(d.createdAt).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
+                        {' '}
+                        {new Date(d.createdAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  )
+                })}
+                {loadingMore && (
+                  <div style={{ textAlign: 'center', padding: '8px 0' }}><Spin size="small" /></div>
+                )}
+              </div>
+              {draws.length < drawTotal && !loadingMore && (
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#9ca3af', padding: '6px 0 2px' }}>
+                  顯示 {draws.length} / {drawTotal} 筆，向下捲動載入更多
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}
