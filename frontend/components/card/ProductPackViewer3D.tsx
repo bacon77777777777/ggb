@@ -10,7 +10,7 @@ interface ProductPackViewer3DProps {
 }
 
 const MAX_ANGLE = 180;
-const PACK_THICKNESS = 24;
+const PACK_THICKNESS = 5;
 
 const clamp = (value: number, min: number, max: number) => {
   if (value < min) return min;
@@ -151,6 +151,48 @@ export function ProductPackViewer3D({
               unoptimized
             />
           </div>
+
+          {/* Side edges — colored faces for 3D pack thickness feel */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0, bottom: 0,
+              right: -PACK_THICKNESS / 2,
+              width: PACK_THICKNESS,
+              transform: 'rotateY(-90deg)',
+              background: 'linear-gradient(to bottom, #e8e4dc, #b8b0a8)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: 0, bottom: 0,
+              left: -PACK_THICKNESS / 2,
+              width: PACK_THICKNESS,
+              transform: 'rotateY(90deg)',
+              background: 'linear-gradient(to bottom, #e8e4dc, #b8b0a8)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: 0, right: 0,
+              top: -PACK_THICKNESS / 2,
+              height: PACK_THICKNESS,
+              transform: 'rotateX(90deg)',
+              background: 'linear-gradient(to right, #d0ccc4, #e8e4dc, #d0ccc4)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: 0, right: 0,
+              bottom: -PACK_THICKNESS / 2,
+              height: PACK_THICKNESS,
+              transform: 'rotateX(-90deg)',
+              background: 'linear-gradient(to right, #d0ccc4, #e8e4dc, #d0ccc4)',
+            }}
+          />
 
           {showSSRGlare && (
             <div
