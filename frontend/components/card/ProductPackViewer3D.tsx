@@ -173,26 +173,6 @@ export function ProductPackViewer3D({
               background: 'linear-gradient(to bottom, #e8e4dc, #b8b0a8)',
             }}
           />
-          <div
-            style={{
-              position: 'absolute',
-              left: 0, right: 0,
-              top: -PACK_THICKNESS / 2,
-              height: PACK_THICKNESS,
-              transform: 'rotateX(90deg)',
-              background: 'linear-gradient(to right, #d0ccc4, #e8e4dc, #d0ccc4)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              left: 0, right: 0,
-              bottom: -PACK_THICKNESS / 2,
-              height: PACK_THICKNESS,
-              transform: 'rotateX(-90deg)',
-              background: 'linear-gradient(to right, #d0ccc4, #e8e4dc, #d0ccc4)',
-            }}
-          />
 
           {showSSRGlare && (
             <div
