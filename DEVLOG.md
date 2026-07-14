@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-07-14｜後台 Ant Design 商品管理改版
+
+### 功能
+後台商品管理頁（`backend/app/products/page.tsx`）改用 Ant Design v5 + ProTable。
+
+- **安裝套件**：`antd @ant-design/pro-components @ant-design/icons @ant-design/nextjs-registry`
+- **`backend/app/layout.tsx`**：加入 `AntdRegistry`（Next.js App Router SSR style 支援）
+- **`backend/components/Providers.tsx`**：加入 `ConfigProvider`（主色 `#3B82F6`、繁體中文 locale、圓角 8px）
+- **商品列表 ProTable**：
+  - 頂部 4 格統計卡：全部/上架中/低庫存/熱賣
+  - ProTable columns：縮圖+名稱+編號、類型（Tag）、狀態（Badge）、售價、成本、庫存（顏色警示）、銷售、開賣日、操作
+  - 欄位 filter（類型/狀態）、欄位排序（售價/庫存/銷售）
+  - 展開列：顯示所有品項卡（縮圖 + 名稱 + 等級 + 剩餘/總數 + 機率）
+  - 多選 + 批量操作（上架/下架/刪除）
+  - toolbar：搜尋、匯出 CSV、上傳 ZIP、匯入 CSV/Excel、新增商品
+  - 內建 density 切換、欄位顯示設定、pagination（20/50/100 筆/頁）
+
+---
+
 ## 2026-07-13｜抽卡模組 — card_pack 模組整合進模組切換系統
 
 ### 功能
