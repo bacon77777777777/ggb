@@ -46,3 +46,12 @@ a {
 .animate-highlight-flash {
   animation: highlight-flash 1s ease-in-out infinite;
 }
+
+/* 商品管理展開列：移除 antd 預設 td padding，讓內容滿版 */
+.products-table .ant-table-expanded-row > td {
+  padding: 0 !important;
+}
+.products-table .ant-table-expanded-row-fixed {
+  padding: 0 !important;
+  margin: 0 !important;
+}

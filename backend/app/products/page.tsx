@@ -10,11 +10,13 @@ import {
 } from 'antd'
 import {
   PlusOutlined, FireOutlined, UploadOutlined,
-  FileOutlined, DownloadOutlined, RightOutlined, UserOutlined, ThunderboltOutlined,
+  FileOutlined, DownloadOutlined, UserOutlined, ThunderboltOutlined,
+  CaretRightOutlined, CaretDownOutlined,
 } from '@ant-design/icons'
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 
@@ -34,6 +36,8 @@ type Prize = {
 type DrawRecord = {
   id: number
   createdAt: string
+  userId?: string
+  orderId?: number | null
   userName?: string
   orderNumber?: string | null
   status?: string
@@ -150,8 +154,8 @@ function isMajorDepleted(product: { type: string; prizes: Prize[] }): boolean {
 }
 
 // ─── PrizeRow ─────────────────────────────────────────────────────────
-function PrizeRow({ prize, stockTotal, productType }: {
-  prize: Prize; stockTotal: number; productType: string
+function PrizeRow({ prize, stockTotal, productType, prizeCode }: {
+  prize: Prize; stockTotal: number; productType: string; prizeCode: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const [draws, setDraws] = useState<DrawRecord[]>([])
@@ -172,6 +176,8 @@ function PrizeRow({ prize, stockTotal, productType }: {
   const mapRow = (r: any): DrawRecord => ({
     id: r.id,
     createdAt: r.created_at,
+    userId: r.userId ?? r.user_id ?? undefined,
+    orderId: r.orderId ?? r.order_id ?? null,
     userName: r.userName ?? '—',
     orderNumber: r.orderNumber ?? null,
     status: r.status ?? undefined,
@@ -216,6 +222,11 @@ function PrizeRow({ prize, stockTotal, productType }: {
 
   const levelColor = LEVEL_COLOR[(prize.level ?? '').toUpperCase().replace('賞', '')] ?? '#6b7280'
 
+  const fmtDT = (iso: string) => {
+    const d = new Date(iso)
+    return `${d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })} ${d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}`
+  }
+
   return (
     <div style={{ borderBottom: '1px solid #f0f0f0' }}>
       <div
@@ -229,6 +240,14 @@ function PrizeRow({ prize, stockTotal, productType }: {
         onMouseEnter={e => { if (!expanded) (e.currentTarget as HTMLDivElement).style.background = '#fafafa' }}
         onMouseLeave={e => { if (!expanded) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
       >
+        {/* Expand arrow — LEFT */}
+        <div style={{ width: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {expanded
+            ? <CaretDownOutlined style={{ fontSize: 10, color: '#6b7280' }} />
+            : <CaretRightOutlined style={{ fontSize: 10, color: '#bbb' }} />
+          }
+        </div>
+
         {/* Thumbnail */}
         <div style={{
           width: 36, height: 36, borderRadius: 6, flexShrink: 0,
@@ -239,6 +258,11 @@ function PrizeRow({ prize, stockTotal, productType }: {
             ? <img src={prize.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : <span style={{ fontSize: 10, color: '#ccc' }}>無圖</span>
           }
+        </div>
+
+        {/* Prize code */}
+        <div style={{ width: 84, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: '#9ca3af', fontFamily: 'monospace' }}>{prizeCode}</span>
         </div>
 
         {/* Level tag */}
@@ -256,40 +280,26 @@ function PrizeRow({ prize, stockTotal, productType }: {
 
         {/* Name */}
         <Tooltip title={prize.name} placement="top">
-          <div style={{ width: 240, flexShrink: 0, overflow: 'hidden', cursor: 'default' }}>
+          <div style={{ width: 200, flexShrink: 0, overflow: 'hidden', cursor: 'default' }}>
             <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {prize.name}
             </div>
           </div>
         </Tooltip>
 
-        {/* Stats */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0 }}>
-          <div style={{ width: 96, paddingLeft: 12 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4 }}>
-              <span style={{ color: remainColor, fontWeight: 600 }}>{prize.remaining}</span>
-              <span style={{ color: '#333' }}>/{prize.total}</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#aaa' }}>剩餘/總數</div>
+        {/* Stats — no sub-labels */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <div style={{ width: 96, paddingLeft: 12, fontFamily: 'monospace', fontSize: 13 }}>
+            <span style={{ color: remainColor, fontWeight: 600 }}>{prize.remaining}</span>
+            <span style={{ color: '#333' }}>/{prize.total}</span>
           </div>
-          <div style={{ width: 72, paddingLeft: 8 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4, color: '#555' }}>{pct}</div>
-            <div style={{ fontSize: 11, color: '#aaa' }}>機率</div>
-          </div>
-          <div style={{ width: 56, paddingLeft: 8 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 1.4, color: sold > 0 ? '#3b82f6' : '#ccc', fontWeight: sold > 0 ? 600 : 400 }}>
-              {sold}
-            </div>
-            <div style={{ fontSize: 11, color: '#aaa' }}>已出</div>
+          <div style={{ width: 72, paddingLeft: 8, fontFamily: 'monospace', fontSize: 13, color: '#555' }}>{pct}</div>
+          <div style={{ width: 56, paddingLeft: 8, fontFamily: 'monospace', fontSize: 13, color: sold > 0 ? '#3b82f6' : '#ccc', fontWeight: sold > 0 ? 600 : 400 }}>
+            {sold}
           </div>
         </div>
 
         <div style={{ flex: 1 }} />
-        <RightOutlined style={{
-          fontSize: 10, color: '#bbb', flexShrink: 0,
-          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-          transition: 'transform 0.2s',
-        }} />
       </div>
 
       {/* Draw records */}
@@ -301,15 +311,12 @@ function PrizeRow({ prize, stockTotal, productType }: {
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚無真實玩家出貨紀錄" style={{ margin: '8px 0' }} />
           ) : (
             <>
-              {/* Column header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 0,
-                padding: '3px 10px 5px', fontSize: 11, color: '#9ca3af', fontWeight: 500,
-              }}>
-                <div style={{ width: 140, flexShrink: 0 }}>玩家</div>
-                <div style={{ width: 64, flexShrink: 0 }}>狀態</div>
-                <div style={{ flex: 1 }}>訂單號</div>
-                <div style={{ width: 120, textAlign: 'right' }}>時間</div>
+              {/* Column header — 時間 | 會員 | 狀態 | 配送訂單號 */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '3px 10px 5px', fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>
+                <div style={{ width: 130, flexShrink: 0 }}>時間</div>
+                <div style={{ width: 130, flexShrink: 0 }}>會員</div>
+                <div style={{ width: 68, flexShrink: 0 }}>狀態</div>
+                <div style={{ flex: 1 }}>配送訂單號</div>
               </div>
               {/* Records list — fixed height + scroll */}
               <div
@@ -321,38 +328,42 @@ function PrizeRow({ prize, stockTotal, productType }: {
                   const st = d.status ? DRAW_STATUS[d.status] : undefined
                   return (
                     <div key={d.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 0,
+                      display: 'flex', alignItems: 'center',
                       padding: '5px 10px', background: '#fff',
                       borderRadius: 6, border: '1px solid #e8f0fe',
                     }}>
-                      <div style={{ width: 140, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <UserOutlined style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: '#334155', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {d.userName}
-                        </span>
+                      {/* 時間 */}
+                      <div style={{ width: 130, flexShrink: 0, fontSize: 11, color: '#9ca3af', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                        {fmtDT(d.createdAt)}
                       </div>
-                      <div style={{ width: 64, flexShrink: 0 }}>
-                        {st ? (
-                          <span style={{
-                            fontSize: 11, padding: '1px 6px', borderRadius: 4,
-                            color: st.color, background: st.bg, fontWeight: 500, whiteSpace: 'nowrap',
-                          }}>
-                            {st.label}
-                          </span>
+                      {/* 會員 */}
+                      <div style={{ width: 130, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <UserOutlined style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }} />
+                        {d.userId ? (
+                          <Link href={`/users/${d.userId}`} onClick={e => e.stopPropagation()}
+                            style={{ fontSize: 12, color: '#2563eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {d.userName}
+                          </Link>
                         ) : (
-                          <span style={{ fontSize: 11, color: '#ccc' }}>—</span>
+                          <span style={{ fontSize: 12, color: '#334155', fontWeight: 500 }}>{d.userName}</span>
                         )}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        {d.orderNumber
-                          ? <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace' }}>{d.orderNumber}</span>
-                          : <span style={{ fontSize: 11, color: '#ccc' }}>—</span>
-                        }
+                      {/* 狀態 */}
+                      <div style={{ width: 68, flexShrink: 0 }}>
+                        {st ? (
+                          <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, color: st.color, background: st.bg, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                            {st.label}
+                          </span>
+                        ) : <span style={{ fontSize: 11, color: '#ccc' }}>—</span>}
                       </div>
-                      <div style={{ width: 120, textAlign: 'right', fontSize: 11, color: '#9ca3af', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                        {new Date(d.createdAt).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
-                        {' '}
-                        {new Date(d.createdAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                      {/* 配送訂單號 */}
+                      <div style={{ flex: 1 }}>
+                        {d.orderId ? (
+                          <Link href={`/orders/${d.orderId}`} onClick={e => e.stopPropagation()}
+                            style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace' }}>
+                            {d.orderNumber ?? `#${d.orderId}`}
+                          </Link>
+                        ) : <span style={{ fontSize: 11, color: '#ccc' }}>—</span>}
                       </div>
                     </div>
                   )
@@ -389,17 +400,24 @@ function PrizeRows({ record }: { record: Product }) {
         padding: '6px 14px', background: '#f0f5ff',
         fontSize: 11, color: '#6b7280', fontWeight: 500,
       }}>
+        <div style={{ width: 14, flexShrink: 0 }} />
         <div style={{ width: 36, flexShrink: 0 }} />
+        <div style={{ width: 84, flexShrink: 0 }}>品項編號</div>
         {hasLevel && <div style={{ width: 44, flexShrink: 0 }} />}
-        <div style={{ width: 240, flexShrink: 0 }}>品項 × {record.prizes.length} · 點擊展開出貨流向</div>
+        <div style={{ width: 200, flexShrink: 0 }}>品項 × {record.prizes.length} · 點擊展開出貨流向</div>
         <div style={{ width: 96, paddingLeft: 12 }}>剩餘/總數</div>
         <div style={{ width: 72, paddingLeft: 8 }}>機率</div>
         <div style={{ width: 56, paddingLeft: 8 }}>已出</div>
         <div style={{ flex: 1 }} />
-        <div style={{ width: 20 }} />
       </div>
-      {record.prizes.map(prize => (
-        <PrizeRow key={prize.id} prize={prize} stockTotal={stockTotal} productType={record.type} />
+      {record.prizes.map((prize, idx) => (
+        <PrizeRow
+          key={prize.id}
+          prize={prize}
+          stockTotal={stockTotal}
+          productType={record.type}
+          prizeCode={`${record.productCode}${(idx + 1).toString().padStart(2, '0')}`}
+        />
       ))}
     </div>
   )
@@ -625,6 +643,23 @@ export default function ProductsPage() {
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, isHot: newHot } : p))
   }
 
+  const handleToggleStatus = async (product: Product) => {
+    const newStatus = product.status === 'active' ? 'pending' : 'active'
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus, ...(newStatus === 'active' ? { autoGenerateTxid: true } : {}) }),
+      })
+      if (!res.ok) throw new Error()
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: newStatus } : p))
+      message.success(`商品已${newStatus === 'active' ? '上架' : '下架'}`)
+    } catch {
+      message.error('操作失敗')
+    }
+  }
+
   const handleTableChange = (_: any, __: any, sorter: any) => {
     const s = Array.isArray(sorter) ? sorter[0] : sorter
     const field = s?.columnKey ?? s?.field
@@ -726,7 +761,7 @@ export default function ProductsPage() {
           <span style={{ fontFamily: 'monospace', color: '#888', cursor: 'default' }}>{v}G</span>
         </Tooltip>
       ) : (
-        <Tooltip title="尚未設定成本"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
+        <Tooltip title="尚未設定成本"><span style={{ color: '#bbb', cursor: 'default' }}>-</span></Tooltip>
       ),
     },
     {
@@ -757,18 +792,17 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: <Tooltip title="一番賞/自製賞/抽卡：A/B/C/SP賞是否已全部出完">大獎狀態</Tooltip>,
-      width: 76, key: 'majorStatus', sorter: true, sortOrder: so('majorStatus'),
+      title: <Tooltip title="一番賞/自製賞/抽卡：A/B/C/SP賞是否已全部出完"><span style={{ whiteSpace: 'nowrap' }}>大獎狀態</span></Tooltip>,
+      width: 80, key: 'majorStatus', sorter: true, sortOrder: so('majorStatus'),
       disable: true,
       render: (_, r) => {
-        if (!LEVELED_TYPES.has(r.type)) return <Text type="secondary" style={{ cursor: 'default' }}>—</Text>
         const depleted = isMajorDepleted(r)
         return depleted ? (
           <Tooltip title="A/B/C/SP賞已全數抽完（廢套）">
             <Tag color="red" style={{ cursor: 'default' }}>廢套</Tag>
           </Tooltip>
         ) : (
-          <Tooltip title="大獎仍有庫存">
+          <Tooltip title={LEVELED_TYPES.has(r.type) ? '大獎仍有庫存' : '轉蛋/盒玩類型'}>
             <span style={{ fontSize: 12, color: '#6b7280', cursor: 'default' }}>正常</span>
           </Tooltip>
         )
@@ -789,42 +823,67 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: <Tooltip title="商品建立時間（created_at）">建立</Tooltip>,
-      dataIndex: 'createdAt', width: 90,
-      key: 'createdAt', sorter: true, sortOrder: so('createdAt'),
-      render: (v: any) => v ? (
-        <Tooltip title={new Date(v).toLocaleString('zh-TW')}>
-          <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontSize: 12, color: '#888' }}>
-            {new Date(v).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', year: '2-digit' })}
-          </span>
-        </Tooltip>
-      ) : <Text type="secondary">—</Text>,
-    },
-    {
-      title: <Tooltip title="商品上架開賣的時間（started_at）">開賣</Tooltip>,
-      dataIndex: 'startedAt', width: 90,
-      key: 'startedAt', sorter: true, sortOrder: so('startedAt'),
-      render: (v: any) => v ? (
-        <Tooltip title={new Date(v).toLocaleString('zh-TW')}>
-          <span style={{ cursor: 'default', whiteSpace: 'nowrap' }}>
-            {new Date(v).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', year: '2-digit' })}
-          </span>
-        </Tooltip>
-      ) : (
-        <Tooltip title="尚未設定上架時間"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
+      title: <Tooltip title="上架/下架此商品">上架</Tooltip>,
+      dataIndex: 'status', width: 60,
+      key: 'active',
+      render: (_, r) => (
+        <Switch
+          size="small"
+          checked={r.status === 'active'}
+          onChange={() => handleToggleStatus(r)}
+          onClick={(_checked, e) => e.stopPropagation()}
+        />
       ),
     },
     {
+      title: <Tooltip title="商品建立時間（created_at）">建立</Tooltip>,
+      dataIndex: 'createdAt', width: 115,
+      key: 'createdAt', sorter: true, sortOrder: so('createdAt'),
+      render: (v: any) => {
+        if (!v) return <Text type="secondary">—</Text>
+        const d = new Date(v)
+        return (
+          <Tooltip title={d.toLocaleString('zh-TW')}>
+            <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontSize: 12, color: '#888', fontFamily: 'monospace' }}>
+              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
+              {' '}
+              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      title: <Tooltip title="商品上架開賣的時間（started_at）">開賣</Tooltip>,
+      dataIndex: 'startedAt', width: 115,
+      key: 'startedAt', sorter: true, sortOrder: so('startedAt'),
+      render: (v: any) => {
+        if (!v) return <Tooltip title="尚未設定上架時間"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
+        const d = new Date(v)
+        return (
+          <Tooltip title={d.toLocaleString('zh-TW')}>
+            <span style={{ cursor: 'default', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>
+              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
+              {' '}
+              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
       title: <Tooltip title="商品完全抽完的時間（ended_at）">完抽</Tooltip>,
-      dataIndex: 'endedAt', width: 90,
+      dataIndex: 'endedAt', width: 115,
       key: 'endedAt', sorter: true, sortOrder: so('endedAt'),
       render: (v: any) => {
         const d = v ? new Date(v) : null
         if (!d || isNaN(d.getTime())) return <Tooltip title="尚未完抽"><Text type="secondary" style={{ cursor: 'default' }}>—</Text></Tooltip>
         return (
           <Tooltip title={d.toLocaleString('zh-TW')}>
-            <span style={{ cursor: 'default', whiteSpace: 'nowrap', color: '#52c41a' }}>
-              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', year: '2-digit' })}
+            <span style={{ cursor: 'default', whiteSpace: 'nowrap', color: '#52c41a', fontFamily: 'monospace', fontSize: 12 }}>
+              {d.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })}
+              {' '}
+              {d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </Tooltip>
         )
@@ -898,21 +957,30 @@ export default function ProductsPage() {
         loading={loading}
         search={false}
         onChange={handleTableChange}
+        columnsState={{
+          persistenceKey: 'products-table-v4',
+          persistenceType: 'localStorage',
+          defaultValue: {
+            isHot: { show: true },
+            majorStatus: { show: true },
+          },
+        }}
         options={{
           reload: () => fetchProducts(),
           density: true,
           setting: { draggable: true },
         }}
-        toolBarRender={() => [
+        headerTitle={
           <Input.Search
-            key="search"
             placeholder="搜尋商品名稱、編號、品項..."
-            style={{ width: 240 }}
+            style={{ width: 260 }}
             value={searchText}
             onChange={e => { setSearchText(e.target.value); setDisplayCount(20) }}
             onSearch={v => { setSearchText(v); setDisplayCount(20) }}
             allowClear
-          />,
+          />
+        }
+        toolBarRender={() => [
           <Button key="export" icon={<DownloadOutlined />} onClick={handleExportCSV}>匯出</Button>,
           <Button key="zip" icon={<UploadOutlined />} loading={zipUploading} onClick={() => zipRef.current?.click()}>
             上傳圖片包
@@ -951,7 +1019,7 @@ export default function ProductsPage() {
           showExpandColumn: false,
         }}
         pagination={false}
-        scroll={{ x: 1240 }}
+        scroll={{ x: 1400 }}
         cardProps={{ styles: { body: { padding: 0 } } } as any}
         rowClassName={record =>
           record.id === highlightedProductId ? 'ant-table-row-selected' : ''

@@ -69,7 +69,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ priz
 
   const rows = realDraws.map((r: any) => ({
     ...r,
-    userName:    userMap.get(r.user_id) || '—',
+    userId:      r.user_id,
+    orderId:     r.order_id ?? null,
+    userName:    userMap.get(r.user_id) || (r.user_id ? `#${r.user_id.slice(0, 8)}` : '—'),
     orderNumber: r.order_id ? (orderMap.get(r.order_id) || `#${r.order_id}`) : null,
   }))
 
