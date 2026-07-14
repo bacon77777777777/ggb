@@ -310,9 +310,8 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
               >
                 <div className="relative">
                   <ProductPackViewer3D
-                    packImage={isBehind
-                      ? `/images/card/card/${packStyles[index] ?? '01'}b.png`
-                      : `/images/card/card/${packStyles[index] ?? '01'}a.png`}
+                    packImage={`/images/card/pack/${packStyles[index] ?? '01'}a.png`}
+                    backImage={`/images/card/pack/${packStyles[index] ?? '01'}b.png`}
                     interactive={isActive}
                     showSSRGlare={false}
                   />
@@ -1748,7 +1747,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
-                packImage={`/images/card/card/${activePackStyle}a.png`}
+                packImage={`/images/card/pack/${activePackStyle}a.png`}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />

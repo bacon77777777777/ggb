@@ -1937,13 +1937,16 @@ Promise.allSettled([
 
 ---
 
-## 2026-07-14（卡包 3D 厚度感優化）
+## 2026-07-14（卡包 3D 厚度感優化 + 新包圖更新）
 
 ### 前台（Next.js / frontend）
 
 **卡包 3D 展示**
 - `ProductPackViewer3D`：`PACK_THICKNESS` 從 24px 改為 5px，更貼近真實卡包比例
-- 新增四個 CSS 3D 側面色塊（左、右、上、下），拖曳傾斜時顯示暖灰漸層邊緣，視覺上有實體厚度感
+- 新增左右 CSS 3D 側面色塊，自動取樣 packImage 左右邊緣像素顏色當作側面漸層
+- 新增 `backImage` prop，背面圖可傳入（預設 `/images/card/back.png`）
+- 新卡包圖更新至 `public/images/card/pack/`（01a~05a 正面、01b~05b 背面）
+- Carousel 與 CardDrawAnimation 路徑從 `/images/card/card/` 改為 `/images/card/pack/`
 
 ---
 

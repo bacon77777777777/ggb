@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 interface ProductPackViewer3DProps {
   packImage: string;
+  backImage?: string;
   showSSRGlare?: boolean;
   interactive?: boolean;
 }
@@ -42,6 +43,7 @@ const FALLBACK = { top: '#e8e4dc', bot: '#b8b0a8' };
 
 export function ProductPackViewer3D({
   packImage,
+  backImage = '/images/card/back.png',
   showSSRGlare = true,
   interactive = true,
 }: ProductPackViewer3DProps) {
@@ -142,7 +144,7 @@ export function ProductPackViewer3D({
             className="absolute inset-0 rounded-[8px] overflow-hidden"
             style={{ transform: `rotateY(180deg) translateZ(${PACK_THICKNESS / 2}px)`, backfaceVisibility: 'hidden' }}
           >
-            <Image src="/images/card/back.png" alt="Card Pack Back" fill className="object-cover select-none" unoptimized />
+            <Image src={backImage} alt="Card Pack Back" fill className="object-cover select-none" unoptimized />
           </div>
 
           {/* Right edge — 取樣自 packImage 右邊緣色 */}
