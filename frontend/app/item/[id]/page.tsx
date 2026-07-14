@@ -1624,7 +1624,7 @@ export default function ProductDetailPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="space-y-1.5 sm:space-y-2.5">
                   <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
                     <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
@@ -1637,18 +1637,13 @@ export default function ProductDetailPage() {
               </div>
 
               {isSoldOut && (
-                <div className="pt-3 sm:pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                    公平性驗證頁：
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleGoToFairness}
-                    className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
-                  >
-                    前往公平性驗證頁
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleGoToFairness}
+                  className="w-full flex items-center justify-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
+                >
+                  前往公平性驗證頁
+                </button>
               )}
             </div>
 
@@ -2157,7 +2152,7 @@ export default function ProductDetailPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="space-y-1.5 sm:space-y-2.5">
                   <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
                     <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
@@ -2169,19 +2164,14 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {product.type === 'ichiban' && isSoldOut && (
-                <div className="pt-3 sm:pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                    公平性驗證頁：
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleGoToFairness}
-                    className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
-                  >
-                    前往公平性驗證頁
-                  </button>
-                </div>
+              {isSoldOut && (
+                <button
+                  type="button"
+                  onClick={handleGoToFairness}
+                  className="w-full flex items-center justify-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
+                >
+                  前往公平性驗證頁
+                </button>
               )}
             </div>
 
