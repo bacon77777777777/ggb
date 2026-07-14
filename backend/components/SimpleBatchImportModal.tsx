@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 
@@ -151,12 +151,21 @@ export default function SimpleBatchImportModal({ isOpen, onClose, onImported }: 
   const [successCount, setSuccessCount] = useState(0)
   const [failCount, setFailCount] = useState(0)
   const [errors, setErrors] = useState<string[]>([])
+  const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
+  const [selectedSupplierId, setSelectedSupplierId] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetch('/api/admin/suppliers').then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
+  }, [isOpen])
 
   if (!isOpen) return null
 
   const handleClose = () => {
     setStep('idle'); setRows([]); setProgress(0)
     setSuccessCount(0); setFailCount(0); setErrors([])
+    setSelectedSupplierId('')
     onClose()
   }
 
@@ -195,7 +204,11 @@ export default function SimpleBatchImportModal({ isOpen, onClose, onImported }: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ product: item.product, prizes: item.prizes, tagIds: [] }),
+        body: JSON.stringify({
+          product: { ...item.product, supplier_id: selectedSupplierId ? parseInt(selectedSupplierId) : null },
+          prizes: item.prizes,
+          tagIds: [],
+        }),
       })
       if (res.ok) { ok++ } else {
         fail++
@@ -235,18 +248,38 @@ export default function SimpleBatchImportModal({ isOpen, onClose, onImported }: 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 'idle' && (
             <div className="space-y-4">
+              {/* 廠商選擇 */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1.5">供應廠商 <span className="text-red-500">*</span></label>
+                <select
+                  value={selectedSupplierId}
+                  onChange={e => setSelectedSupplierId(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">— 請先選擇廠商 —</option>
+                  {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                </select>
+              </div>
+
               <button
                 onClick={downloadSample}
                 className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg text-sm font-medium transition-colors"
               >
                 ⬇ 下載範例 CSV
               </button>
+
               <div
-                className="border-2 border-dashed border-neutral-300 rounded-xl p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
-                onClick={() => fileRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
+                  selectedSupplierId
+                    ? 'border-neutral-300 cursor-pointer hover:border-primary hover:bg-primary/5'
+                    : 'border-neutral-200 bg-neutral-50 cursor-not-allowed opacity-50'
+                }`}
+                onClick={() => selectedSupplierId && fileRef.current?.click()}
               >
                 <div className="text-4xl mb-3">📂</div>
-                <p className="text-neutral-600 font-medium">點擊選擇 CSV 或 XLSX 檔案</p>
+                <p className="text-neutral-600 font-medium">
+                  {selectedSupplierId ? '點擊選擇 CSV 或 XLSX 檔案' : '請先選擇廠商'}
+                </p>
                 <p className="text-xs text-neutral-400 mt-1">欄位名稱需與範例對應</p>
               </div>
               <input
@@ -261,7 +294,9 @@ export default function SimpleBatchImportModal({ isOpen, onClose, onImported }: 
 
           {step === 'preview' && (
             <div className="space-y-4">
-              <p className="text-sm text-neutral-600">共解析 <strong>{rows.length}</strong> 筆商品，確認後開始匯入。</p>
+              <p className="text-sm text-neutral-600">
+                共解析 <strong>{rows.length}</strong> 筆商品，廠商：<strong>{suppliers.find(s => String(s.id) === selectedSupplierId)?.name ?? '未指定'}</strong>，確認後開始匯入。
+              </p>
               <div className="max-h-64 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
                 {rows.map((r, i) => (
                   <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
