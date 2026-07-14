@@ -833,7 +833,7 @@ export default function ProductsPage() {
       title: <Tooltip title="標記為熱賣商品，顯示於前台熱賣區">熱賣</Tooltip>,
       dataIndex: 'isHot', width: 60,
       key: 'isHot', sorter: true, sortOrder: so('isHot'),
-      hideInSetting: false,
+      hideInTable: true,
       render: (_, r) => (
         <Switch
           size="small"
