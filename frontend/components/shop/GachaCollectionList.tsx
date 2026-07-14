@@ -89,8 +89,8 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     ichiban: '一番賞',
     blindbox: '盒玩',
     gacha: '轉蛋',
-    card: '集換式卡牌',
-    custom: '其他',
+    card: '抽卡',
+    custom: '自製賞',
   };
 
   const infoRows = [

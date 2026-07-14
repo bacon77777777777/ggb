@@ -1651,7 +1651,7 @@ export default function ProductDetailPage() {
               <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
                 {[
-                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
+                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '抽卡', custom: '自製賞' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
                   { label: '代理商', value: product.distributor || '-' },
                   { label: '條碼', value: (product as any).barcode || '-' },
@@ -2179,7 +2179,7 @@ export default function ProductDetailPage() {
               <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">商品資訊</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-5 gap-x-12">
                 {[
-                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '集換式卡牌', custom: '其他' } as Record<string, string>)[product.type] || product.type },
+                  { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '抽卡', custom: '自製賞' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
                   { label: '代理商', value: product.distributor || '-' },
                   { label: '條碼', value: (product as any).barcode || '-' },
