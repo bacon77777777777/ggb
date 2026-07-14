@@ -754,7 +754,7 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="每抽售價（代幣 G）"><span style={{ whiteSpace: 'nowrap' }}>售價(G)</span></Tooltip>,
-      dataIndex: 'price', width: 72,
+      dataIndex: 'price', width: 90,
       key: 'price', sorter: true, sortOrder: so('price'),
       render: v => (
         <Tooltip title={`每抽售價 ${v} 代幣`}>
@@ -764,7 +764,7 @@ export default function ProductsPage() {
     },
     {
       title: <Tooltip title="廠商進貨成本（代幣 G）"><span style={{ whiteSpace: 'nowrap' }}>成本(G)</span></Tooltip>,
-      dataIndex: 'cost', width: 72,
+      dataIndex: 'cost', width: 90,
       key: 'cost', sorter: true, sortOrder: so('cost'),
       render: (v: number | undefined | null) => v != null ? (
         <Tooltip title={`進貨成本 ${v} 代幣`}>
