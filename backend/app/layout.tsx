@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Providers from '@/components/Providers'
-import { AntdRegistry } from '@ant-design/nextjs-registry'
-import '@ant-design/v5-patch-for-react-19'
 
 export const metadata: Metadata = {
   title: {
@@ -38,9 +36,7 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body>
-        <AntdRegistry>
-          <Providers>{children}</Providers>
-        </AntdRegistry>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
