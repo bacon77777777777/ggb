@@ -68,7 +68,20 @@ export async function POST(request: NextRequest) {
       userSupabase.rpc('check_achievements', { p_user_id: user.id }),
     ])
 
-    return NextResponse.json({ prizes: data })
+    const rpcData = data as any
+    const prizesArray: any[] = Array.isArray(rpcData)
+      ? rpcData
+      : Array.isArray(rpcData?.prizes) ? rpcData.prizes : []
+
+    return NextResponse.json({
+      prizes: prizesArray.map((p: any) => ({
+        ...p,
+        grade: p.grade ?? p.level,
+        ticket_number: p.ticket_number ?? p.record_id,
+      })),
+      new_balance: rpcData?.new_balance,
+      discount_amount: rpcData?.discount_amount,
+    })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '抽獎失敗' }, { status: 500 })
   }
