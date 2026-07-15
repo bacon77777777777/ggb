@@ -491,9 +491,11 @@ export default function EditProductPage() {
     )
   }
 
-  // 品項欄位鎖定：一番賞 / 抽卡 / 自製賞 的品項名稱、等級、數量不可手動編輯
-  const PRIZE_LOCK_TYPES = ['ichiban', 'card', 'custom']
-  const isPrizeLocked = PRIZE_LOCK_TYPES.includes(formData.type)
+  // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
+  const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
+  // 轉蛋/盒玩：機率制，等級固定「普通」，數量可疊加
+  const isGachaType = ['gacha', 'blindbox'].includes(formData.type)
+  const defaultLevel = formData.type === 'gacha' ? 'Normal / Common' : '普通款'
 
   return (
     <AdminLayout
@@ -655,7 +657,7 @@ export default function EditProductPage() {
               {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
               <div className="grid grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">類型 <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">類別 <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <select value={formData.type} disabled
                       className="w-full px-2 py-1.5 pr-6 bg-neutral-50 border border-neutral-200 rounded-lg text-sm appearance-none cursor-not-allowed text-neutral-500">
@@ -759,7 +761,7 @@ export default function EditProductPage() {
                         <span className="text-xs font-mono text-neutral-400">
                           {prize.remaining}<span className="text-neutral-300">/</span>{prize.total}
                         </span>
-                        {!isPrizeLocked && (
+                        {!isVerifiable && (
                           <button
                             type="button"
                             onClick={() => {
@@ -832,6 +834,7 @@ export default function EditProductPage() {
                       <div className="flex-1 space-y-1.5 min-w-0">
                         {/* 名稱 + 等級 */}
                         <div className="grid grid-cols-2 gap-1.5">
+                          {/* 名稱：全類型可改 */}
                           <input
                             type="text"
                             value={prize.name}
@@ -840,74 +843,75 @@ export default function EditProductPage() {
                               updated[index].name = e.target.value
                               setPrizes(updated)
                             }}
-                            disabled={isPrizeLocked}
-                            className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                            className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                             placeholder="名稱"
                           />
-                          <select
-                            value={prize.level}
-                            onChange={(e) => {
-                              const updated = [...prizes]
-                              const newLevel = e.target.value
-                              updated[index].level = newLevel
-                              if (isLastOneLevel(newLevel)) {
-                                const fixed = updated[index]
-                                const ensureOne = (v: number) => (v && v > 0 ? Math.min(v, 1) : 1)
-                                fixed.total = ensureOne(fixed.total)
-                                fixed.remaining = Math.max(0, Math.min(fixed.remaining, 1))
-                                fixed.probability = 0
-                              }
-                              setPrizes(updated)
-                            }}
-                            disabled={isPrizeLocked}
-                            className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                          >
-                            <option value="">等級</option>
-                            {(formData.type === 'gacha' ? gachaLevels
-                              : formData.type === 'blindbox' ? blindboxLevels
-                              : formData.type === 'card' ? cardLevels
-                              : ichibanLevels).map(level => (
+                          {/* 等級：盒玩/轉蛋固定普通；一番賞/抽卡/自製賞可選 */}
+                          {isGachaType ? (
+                            <div className="w-full px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400">
+                              普通
+                            </div>
+                          ) : (
+                            <select
+                              value={prize.level}
+                              onChange={(e) => {
+                                const updated = [...prizes]
+                                const newLevel = e.target.value
+                                updated[index].level = newLevel
+                                if (isLastOneLevel(newLevel)) {
+                                  const fixed = updated[index]
+                                  const ensureOne = (v: number) => (v && v > 0 ? Math.min(v, 1) : 1)
+                                  fixed.total = ensureOne(fixed.total)
+                                  fixed.remaining = Math.max(0, Math.min(fixed.remaining, 1))
+                                  fixed.probability = 0
+                                }
+                                setPrizes(updated)
+                              }}
+                              className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
+                            >
+                              <option value="">等級</option>
+                              {(formData.type === 'card' ? cardLevels : ichibanLevels).map(level => (
                                 <option key={level.value} value={level.value}>{level.label}</option>
-                            ))}
-                          </select>
+                              ))}
+                            </select>
+                          )}
                         </div>
 
                         {/* 數量 + 剩餘 + 機率 */}
                         <div className="grid grid-cols-3 gap-1.5">
-                          <input
-                            type="number"
-                            value={prize.total === 0 ? '' : prize.total}
-                            onChange={(e) => {
-                              const updated = [...prizes]
-                              const newTotal = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
-                              updated[index].total = newTotal
-                              updated[index].remaining = newTotal
-                              setPrizes(updated)
-                            }}
-                            className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                            min="0"
-                            placeholder="數量"
-                            disabled={isLastOneLevel(prize.level) || isPrizeLocked}
-                          />
-                          {isLastOneLevel(prize.level) ? (
-                            <div className="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-700">
-                              {prize.remaining === 0 ? '0' : prize.remaining}
+                          {/* 數量：一番賞/抽卡/自製賞唯讀；盒玩/轉蛋可疊加 */}
+                          {isVerifiable ? (
+                            <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500">
+                              {prize.total || 0}
                             </div>
                           ) : (
                             <input
                               type="number"
-                              value={prize.remaining === 0 ? '' : prize.remaining}
+                              value={prize.total === 0 ? '' : prize.total}
                               onChange={(e) => {
+                                const newTotal = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                const savedPrize = savedPrizes.find(sp => String(sp.id) === String(prize.id))
+                                const minTotal = savedPrize ? savedPrize.total : 0
+                                if (newTotal < minTotal) {
+                                  alert(`數量不能小於原始數量（${minTotal}）`)
+                                  return
+                                }
+                                const delta = newTotal - prize.total
                                 const updated = [...prizes]
-                                updated[index].remaining = e.target.value === '' ? 0 : parseInt(e.target.value)
+                                updated[index].total = newTotal
+                                updated[index].remaining = Math.max(0, prize.remaining + delta)
                                 setPrizes(updated)
                               }}
-                              disabled={isPrizeLocked}
-                              className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                              className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono"
                               min="0"
-                              placeholder="剩餘"
+                              placeholder="數量"
                             />
                           )}
+                          {/* 剩餘：全類型唯讀 */}
+                          <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500">
+                            {prize.remaining}
+                          </div>
+                          {/* 機率 */}
                           <div className="px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-600 flex items-center justify-center">
                             {isLastOneLevel(prize.level)
                               ? '最後賞'
@@ -1002,11 +1006,11 @@ export default function EditProductPage() {
               </div>
 
               {/* 空品項提示 */}
-              {!isPrizeLocked && prizes.length === 0 && (
+              {!isVerifiable && prizes.length === 0 && (
                 <button
                   type="button"
                   onClick={() => {
-                    setPrizes([{ id: `p${Date.now()}`, name: '', level: '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
                   }}
                   className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                 >
@@ -1018,14 +1022,14 @@ export default function EditProductPage() {
               )}
 
               {/* 新增品項按鈕 */}
-              {!isPrizeLocked && prizes.length > 0 && (
+              {!isVerifiable && prizes.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
                     const newPrize = {
                       id: `p${Date.now()}`,
                       name: '',
-                      level: '',
+                      level: isGachaType ? defaultLevel : '',
                       image: '',
                       imageFile: null as File | null,
                       imagePreview: '',
