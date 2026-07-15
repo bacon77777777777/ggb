@@ -4,6 +4,28 @@
 
 ---
 
+## v2026.07.4｜2026-07-15｜商品編輯頁 UI 重構 + 品項欄位鎖定規則
+
+### 功能
+- **商品編輯頁佈局重構**（`backend/app/products/[id]/page.tsx`）：從左右雙欄卡片改為全寬上下三段（上架資訊 / 商品資訊 / 品項），品項改 grid-cols-3 排列
+- **重置按鈕**：儲存後快照 formData + prizes，點重置還原至最後儲存狀態
+- **「類別」欄位鎖定**：type 建立後不可修改（disabled select）
+- **品項欄位鎖定規則**：
+  - 一番賞 / 抽卡 / 自製賞（isVerifiable）：等級可選（不含「普通」）、總數量唯讀、剩餘唯讀
+  - 盒玩 / 轉蛋（isGachaType）：等級固定顯示「普通」、總數量可改（儲存時驗證不低於已抽數量）、剩餘唯讀自動 delta 計算
+  - 名稱、圖片全類型可改
+- **品項區塊標題**顯示整體 剩餘 / 總計；各品項卡片標題顯示個別 remaining/total
+- **商品主圖**改為 56px dashed 縮圖，與品項圖樣式統一
+
+### 修正
+- **ESLint build 錯誤**：`catch(e){}` 空 block statement，改為 `catch(_e){ /* clipboard unavailable */ }`
+
+### 樣式統一
+- DatePicker、YearMonthPicker、TagSelector trigger 高度與 border 統一為 `py-1.5 border border-neutral-200`
+- YearMonthPicker 新增 `onClear` prop
+
+---
+
 ## v2026.07.3｜2026-07-14｜LINE 推播修復 + 環境變數補齊
 
 ### 修復

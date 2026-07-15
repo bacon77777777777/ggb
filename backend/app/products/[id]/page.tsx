@@ -627,7 +627,7 @@ export default function EditProductPage() {
                     <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
                     <div className="flex gap-1">
                       <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
-                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); alert('已複製') } catch(e){} }}
+                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); alert('已複製') } catch(_e){ /* clipboard unavailable */ } }}
                         className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
                     </div>
                   </div>
