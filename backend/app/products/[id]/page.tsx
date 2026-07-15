@@ -657,8 +657,8 @@ export default function EditProductPage() {
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">類型 <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full px-2 py-1.5 pr-6 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
+                    <select value={formData.type} disabled
+                      className="w-full px-2 py-1.5 pr-6 bg-neutral-50 border border-neutral-200 rounded-lg text-sm appearance-none cursor-not-allowed text-neutral-500">
                       <option value="ichiban">一番賞</option>
                       <option value="blindbox">盒玩</option>
                       <option value="gacha">轉蛋</option>
@@ -666,7 +666,7 @@ export default function EditProductPage() {
                       <option value="custom">自製賞</option>
                     </select>
                     <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      <svg className="w-3.5 h-3.5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </div>
                   </div>
                 </div>
@@ -706,8 +706,8 @@ export default function EditProductPage() {
                 </div>
               </div>
 
-              {/* Row 3: 條碼 系列 標籤 總數量 剩餘 + 熱賣 */}
-              <div className="grid grid-cols-5 gap-3 items-end">
+              {/* Row 3: 條碼 系列 熱賣 */}
+              <div className="grid grid-cols-3 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
                   <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
@@ -719,14 +719,6 @@ export default function EditProductPage() {
                   <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
                     placeholder="寶可夢、鬼滅之刃..." />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
-                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-mono text-neutral-500">{calculatedTotalCount}</div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">剩餘</label>
-                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-mono text-neutral-500">{calculatedRemaining}</div>
                 </div>
                 <div className="flex items-center pb-1.5">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -756,24 +748,29 @@ export default function EditProductPage() {
                     {/* 品項標頭 */}
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-neutral-500">品項 {index + 1}</span>
-                      {!isPrizeLocked && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const prizeToDelete = prizes[index]
-                            if (!prizeToDelete.id.toString().startsWith('p')) {
-                              setDeletedPrizeIds(prev => [...prev, prizeToDelete.id])
-                            }
-                            setPrizes(prizes.filter((_, i) => i !== index))
-                          }}
-                          className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
-                          title="刪除此品項"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-neutral-400">
+                          {prize.remaining}<span className="text-neutral-300">/</span>{prize.total}
+                        </span>
+                        {!isPrizeLocked && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const prizeToDelete = prizes[index]
+                              if (!prizeToDelete.id.toString().startsWith('p')) {
+                                setDeletedPrizeIds(prev => [...prev, prizeToDelete.id])
+                              }
+                              setPrizes(prizes.filter((_, i) => i !== index))
+                            }}
+                            className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
+                            title="刪除此品項"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* 主內容：縮圖 + 欄位 */}
