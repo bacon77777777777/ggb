@@ -349,6 +349,18 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // 盒玩/轉蛋：儲存時才驗證數量不能減少
+    if (isGachaType && savedPrizes.length > 0) {
+      for (const prize of prizes) {
+        const saved = savedPrizes.find(sp => String(sp.id) === String(prize.id))
+        if (saved && prize.total < saved.total) {
+          alert(`品項「${prize.name || '未命名'}」的數量（${prize.total}）不能小於原始數量（${saved.total}）`)
+          return
+        }
+      }
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -890,12 +902,6 @@ export default function EditProductPage() {
                               value={prize.total === 0 ? '' : prize.total}
                               onChange={(e) => {
                                 const newTotal = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
-                                const savedPrize = savedPrizes.find(sp => String(sp.id) === String(prize.id))
-                                const minTotal = savedPrize ? savedPrize.total : 0
-                                if (newTotal < minTotal) {
-                                  alert(`數量不能小於原始數量（${minTotal}）`)
-                                  return
-                                }
                                 const delta = newTotal - prize.total
                                 const updated = [...prizes]
                                 updated[index].total = newTotal
