@@ -134,6 +134,8 @@ export default function EditProductPage() {
     decompose_type: 'auto' | 'percent' | 'fixed'
     decompose_value: number | null
   }>>([])
+  const [savedFormData, setSavedFormData] = useState<typeof formData | null>(null)
+  const [savedPrizes, setSavedPrizes] = useState<typeof prizes>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [productCode, setProductCode] = useState<string>('')
@@ -281,11 +283,11 @@ export default function EditProductPage() {
 
           const tagIds = tags ? tags.map((t: any) => t.tag_id) : []
 
-          setFormData({
+          const loaded = {
             name: product.name,
             price: product.price.toString(),
             cost: product.cost != null ? product.cost.toString() : '',
-            image: null,
+            image: null as File | null,
             imagePreview: product.image_url || '/images/item.png',
             status: product.status,
             category: product.category || '',
@@ -302,32 +304,34 @@ export default function EditProductPage() {
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
             machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
-            startedAt: product.started_at ? product.started_at.split('T')[0] : '', // 假設是 ISO 格式
-            endedAt: product.ended_at ? product.ended_at.replace('T', ' ').split('.')[0] : '', // 簡單處理
+            startedAt: product.started_at ? product.started_at.split('T')[0] : '',
+            endedAt: product.ended_at ? product.ended_at.replace('T', ' ').split('.')[0] : '',
             txidHash: product.txid_hash || '',
             seed: product.seed || '',
             selectedTagIds: tagIds,
-          })
+          }
+          setFormData(loaded)
+          setSavedFormData(loaded)
 
-          // 排序獎項 (可選：根據 level 或 created_at)
-          // 這裡假設需要按照某種順序，例如 level A, B, C...
           const sortedPrizes = (product.product_prizes || []).sort((a: any, b: any) => {
             return a.level.localeCompare(b.level)
           })
 
-          setPrizes(sortedPrizes.map((prize: any) => ({
+          const loadedPrizes = sortedPrizes.map((prize: any) => ({
             id: prize.id,
             name: prize.name,
             level: prize.level,
             image: prize.image_url,
-            imageFile: null,
+            imageFile: null as File | null,
             imagePreview: prize.image_url,
             total: prize.total,
             remaining: prize.remaining,
             probability: prize.probability,
             decompose_type: prize.decompose_type || 'auto',
             decompose_value: prize.decompose_value ?? null,
-          })))
+          }))
+          setPrizes(loadedPrizes)
+          setSavedPrizes(loadedPrizes)
         }
       } catch (e) {
         console.error('Error loading product:', e)
@@ -513,14 +517,29 @@ export default function EditProductPage() {
             </svg>
             返回
           </button>
-          <button
-            type="submit"
-            form="product-form"
-            disabled={isSubmitting}
-            className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm hover:shadow-md"
-          >
-            {isSubmitting ? '儲存中...' : '儲存'}
-          </button>
+          <div className="flex items-center gap-2">
+            {savedFormData && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(savedFormData)
+                  setPrizes(savedPrizes)
+                  setDeletedPrizeIds([])
+                }}
+                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-full hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md"
+              >
+                重置
+              </button>
+            )}
+            <button
+              type="submit"
+              form="product-form"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium shadow-sm hover:shadow-md"
+            >
+              {isSubmitting ? '儲存中...' : '儲存'}
+            </button>
+          </div>
         </div>
 
         <form id="product-form" onSubmit={handleSubmit} className="space-y-3">
