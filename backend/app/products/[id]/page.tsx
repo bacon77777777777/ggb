@@ -502,7 +502,7 @@ export default function EditProductPage() {
     >
       <div className="space-y-4">
         {/* 頂部操作列 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => router.back()}
@@ -523,380 +523,214 @@ export default function EditProductPage() {
           </button>
         </div>
 
-        <form id="product-form" onSubmit={handleSubmit} className="flex gap-4 items-start">
+        <form id="product-form" onSubmit={handleSubmit} className="space-y-3">
 
-          {/* ─── 左卡：商品設定 ─── */}
-          <div className="w-[440px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-neutral-200 p-4 overflow-y-auto h-[calc(100dvh-9rem)]">
-            <div className="space-y-3">
-
-              {/* 商品名稱 */}
+          {/* ── Section: 上架資訊 ── */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">上架資訊</h3>
+            <div className="grid grid-cols-5 gap-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                  商品名稱 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                  placeholder="請輸入商品名稱"
-                  required
-                />
-              </div>
-
-              {/* 類型 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  類型 <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">狀態</label>
                 <div className="relative">
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option value="ichiban">一番賞</option>
-                    <option value="blindbox">盒玩 (盲盒)</option>
-                    <option value="gacha">轉蛋</option>
-                    <option value="card">抽卡</option>
-                    <option value="custom">自製賞</option>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-2.5 py-1.5 pr-7 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
+                    <option value="active">進行中</option>
+                    <option value="pending">待上架</option>
+                    <option value="ended">已完抽</option>
                   </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </div>
                 </div>
               </div>
-
-              {/* 售價 / 成本 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    售價 (G) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                    placeholder="0"
-                    required
-                    min="1"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    成本
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              {/* 標籤選擇 */}
               <div>
-                <TagSelector
-                  value={formData.selectedTagIds}
-                  onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
-                  label="標籤"
-                />
+                <DatePicker label="開賣時間" value={formData.startedAt}
+                  onChange={(value) => setFormData(prev => ({ ...prev, startedAt: value }))}
+                  placeholder="選擇時間" />
               </div>
-
-              {/* 狀態 / 開賣時間 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    狀態
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                    >
-                      <option value="active">進行中</option>
-                      <option value="pending">待上架</option>
-                      <option value="ended">已完抽</option>
-                    </select>
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                      <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
+                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  placeholder="0" required min="1" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
+                <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  placeholder="0" min="0" step="0.01" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">稀有度</label>
+                <div className="relative">
+                  <select value={formData.rarity} onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
+                    className="w-full px-2.5 py-1.5 pr-7 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
+                    <option value="1">1★</option>
+                    <option value="2">2★</option>
+                    <option value="3">3★</option>
+                    <option value="4">4★</option>
+                    <option value="5">5★</option>
+                  </select>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </div>
                 </div>
-                <div>
-                  <DatePicker
-                    label="開賣時間"
-                    value={formData.startedAt}
-                    onChange={(value) => {
-                      setFormData(prev => ({ ...prev, startedAt: value }))
-                    }}
-                    placeholder="選擇開賣時間"
-                  />
-                </div>
               </div>
-
-              {/* 總數 / 剩餘（唯讀） */}
-              <div className="grid grid-cols-2 gap-3">
+            </div>
+            {/* 完抽時間 / Seed（條件顯示） */}
+            {formData.status === 'ended' && (
+              <div className="grid grid-cols-5 gap-3 mt-3">
                 <div>
-                  <Input
-                    label="總數量"
-                    value={calculatedTotalCount.toString()}
-                    disabled
-                    className="font-mono"
-                  />
-                </div>
-                <div>
-                  <Input
-                    label="剩餘數量"
-                    value={calculatedRemaining.toString()}
-                    disabled
-                    className="font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* 完抽時間（條件顯示） */}
-              {formData.status === 'ended' && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                    完抽時間
-                  </label>
-                  <div className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700">
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">完抽時間</label>
+                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600">
                     {formData.endedAt || '自動記錄中...'}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">當狀態變為「已完抽」時自動記錄</p>
                 </div>
-              )}
-
-              {/* Seed（活動結束後才顯示） */}
-              {formData.status === 'ended' && formData.seed && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                    隨機種子 (Seed)（活動結束後公布）
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700 break-all">
-                      {formData.seed}
+                {formData.seed && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
+                    <div className="flex gap-1">
+                      <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
+                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); alert('已複製') } catch(e){} }}
+                        className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(formData.seed || '')
-                          alert('Seed 已複製到剪貼板')
-                        } catch (e) {
-                          console.error('複製失敗:', e)
-                        }
-                      }}
-                      className="px-3 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm font-medium whitespace-nowrap"
-                      title="複製 Seed"
-                    >
-                      複製
-                    </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    此 Seed 在活動結束後才公布，玩家可使用此 Seed 和對應的 Nonce 來驗證抽獎結果
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
+            )}
+          </div>
 
-              {/* 稀有度 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  稀有度
-                </label>
-                <div className="relative">
-                  <select
-                    value={formData.rarity}
-                    onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option value="1">1 星</option>
-                    <option value="2">2 星</option>
-                    <option value="3">3 星</option>
-                    <option value="4">4 星</option>
-                    <option value="5">5 星</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+          {/* ── Section: 商品資訊 ── */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
+            <div className="space-y-2">
+              {/* Row 1: 名稱 + 圖 */}
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="請輸入商品名稱" required />
                 </div>
+                <label className="flex-shrink-0 cursor-pointer group relative">
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
+                    }} />
+                  <div className="w-[100px] h-[100px] rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-neutral-50 flex items-center justify-center group-hover:border-primary transition-colors">
+                    {formData.imagePreview
+                      ? <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
+                      : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    }
+                  </div>
+                  {formData.imagePreview && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 z-10">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </label>
               </div>
 
-              {/* 上市時間、代理商、條碼、系列、供應廠商、抽獎模組 */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
+              <div className="grid grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    上市時間
-                  </label>
-                  <YearMonthPicker
-                    year={formData.releaseYear}
-                    month={formData.releaseMonth}
-                    onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
-                    onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
-                    placeholder="選擇上市時間"
-                  />
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">類型 <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full px-2 py-1.5 pr-6 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
+                      <option value="ichiban">一番賞</option>
+                      <option value="blindbox">盒玩</option>
+                      <option value="gacha">轉蛋</option>
+                      <option value="card">抽卡</option>
+                      <option value="custom">自製賞</option>
+                    </select>
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    代理商
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.distributor}
-                    onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                    placeholder="例如：萬代南夢宮"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    條碼
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm font-mono"
-                    placeholder="4549660718956"
-                    maxLength={50}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    系列
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.series}
-                    onChange={(e) => setFormData({ ...formData, series: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                    placeholder="寶可夢、鬼滅之刃..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    廠商
-                  </label>
-                  <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                  >
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
+                  <select value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
                     <option value="">— 未指定 —</option>
                     {suppliers.map((s) => (
-                      <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
+                      <option key={s.id} value={String(s.id)}>{s.name}</option>
                     ))}
                   </select>
-                  {formData.supplierId && (() => {
-                    const sup = suppliers.find(s => String(s.id) === formData.supplierId)
-                    return sup?.tax_id ? (
-                      <p className="text-xs text-neutral-400 mt-0.5">統編：<span className="font-mono">{sup.tax_id}</span></p>
-                    ) : null
-                  })()}
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    抽獎模組
-                  </label>
-                  <select
-                    value={formData.machineTheme}
-                    onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                  >
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">抽獎模組</label>
+                  <select value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
                     <option value="">— 類別預設 —</option>
                     {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
                 </div>
-              </div>
-
-              {/* 熱賣商品標記 */}
-              <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isHot}
-                    onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
-                    className="w-5 h-5 text-primary focus:ring-primary rounded border-2 border-neutral-300 focus:border-primary"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-neutral-700">標記為熱賣商品</span>
-                    <p className="text-xs text-neutral-500 mt-0.5">熱賣商品將在前台顯示熱賣標籤</p>
-                  </div>
-                </label>
-              </div>
-
-              {/* 商品圖 */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  商品圖
-                </label>
-                <div className="space-y-3">
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          setFormData({
-                            ...formData,
-                            image: file,
-                            imagePreview: URL.createObjectURL(file)
-                          })
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white file:cursor-pointer hover:file:bg-primary-dark"
-                    />
-                  </div>
-                  {formData.imagePreview && (
-                    <div className="mt-4">
-                      <div className="relative inline-block">
-                        <img
-                          src={formData.imagePreview}
-                          alt="預覽"
-                          className="w-40 h-40 object-cover rounded-lg border-2 border-neutral-200 shadow-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, image: null, imagePreview: '' })}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
+                  <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
+                    onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
+                    onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
+                    placeholder="選擇上市時間" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">代理商</label>
+                  <input type="text" value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="萬代南夢宮" />
                 </div>
               </div>
 
+              {/* Row 3: 條碼 系列 標籤 總數量 剩餘 + 熱賣 */}
+              <div className="grid grid-cols-5 gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
+                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="4549660718956" maxLength={50} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">系列</label>
+                  <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="寶可夢、鬼滅之刃..." />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
+                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-mono text-neutral-500">{calculatedTotalCount}</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">剩餘</label>
+                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm font-mono text-neutral-500">{calculatedRemaining}</div>
+                </div>
+                <div className="flex items-center pb-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.isHot} onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
+                      className="w-4 h-4 text-primary focus:ring-primary rounded border border-neutral-300" />
+                    <span className="text-xs font-medium text-neutral-600">熱賣商品</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 標籤 */}
+              <div>
+                <TagSelector value={formData.selectedTagIds}
+                  onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
+                  label="標籤" />
+              </div>
             </div>
           </div>
 
-          {/* ─── 右卡：品項管理 ─── */}
-          <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 h-[calc(100dvh-9rem)] overflow-y-auto p-4">
-              <div className="space-y-2">
+          {/* ── Section: 品項 ── */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">品項</h3>
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-3">
                 {prizes.map((prize, index) => (
                   <div key={prize.id} className="border border-neutral-200 rounded-lg p-3 bg-neutral-50 hover:border-primary/50 transition-colors">
                     {/* 品項標頭 */}
@@ -1141,67 +975,55 @@ export default function EditProductPage() {
                     )}
                   </div>
                 ))}
-
-                {/* 新增品項按鈕（鎖定時隱藏） */}
-                {!isPrizeLocked && (
-                  prizes.length === 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPrize = {
-                          id: `p${Date.now()}`,
-                          name: '',
-                          level: '',
-                          image: '',
-                          imageFile: null as File | null,
-                          imagePreview: '',
-                          total: 0,
-                          remaining: 0,
-                          probability: 0,
-                          decompose_type: 'auto' as const,
-                          decompose_value: null as number | null,
-                        }
-                        setPrizes([...prizes, newPrize])
-                      }}
-                      className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
-                    >
-                      <svg className="w-8 h-8 mx-auto mb-2 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      <p className="text-sm text-neutral-500">點擊新增品項</p>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newPrize = {
-                          id: `p${Date.now()}`,
-                          name: '',
-                          level: '',
-                          image: '',
-                          imageFile: null as File | null,
-                          imagePreview: '',
-                          total: 0,
-                          remaining: 0,
-                          probability: 0,
-                          decompose_type: 'auto' as const,
-                          decompose_value: null as number | null,
-                        }
-                        setPrizes([...prizes, newPrize])
-                      }}
-                      className="w-full text-center py-3 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-primary">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        <span>新增品項</span>
-                      </div>
-                    </button>
-                  )
-                )}
               </div>
 
+              {/* 空品項提示 */}
+              {!isPrizeLocked && prizes.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
+                  }}
+                  className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
+                >
+                  <svg className="w-8 h-8 mx-auto mb-2 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <p className="text-sm text-neutral-500">點擊新增品項</p>
+                </button>
+              )}
+
+              {/* 新增品項按鈕 */}
+              {!isPrizeLocked && prizes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newPrize = {
+                      id: `p${Date.now()}`,
+                      name: '',
+                      level: '',
+                      image: '',
+                      imageFile: null as File | null,
+                      imagePreview: '',
+                      total: 0,
+                      remaining: 0,
+                      probability: 0,
+                      decompose_type: 'auto' as const,
+                      decompose_value: null as number | null,
+                    }
+                    setPrizes([...prizes, newPrize])
+                  }}
+                  className="w-full text-center py-2.5 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center justify-center gap-2 text-sm text-neutral-500 hover:text-primary">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span>新增品項</span>
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
 
         </form>
