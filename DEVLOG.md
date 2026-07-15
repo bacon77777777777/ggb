@@ -4,6 +4,14 @@
 
 ---
 
+## v2026.07.5｜2026-07-16｜Design System 批次 1 — Tailwind Token 地基
+
+### 設計系統
+- **補全 neutral scale**：新增 50/400/600/800，共 10 階完整 scale（原本缺 4 個，530+ 個 class 原本 fallback 到 Tailwind 預設不受控）
+- **移除 accent token**：dead alias（值與 primary 完全相同），全站僅 1 處使用，已清除
+
+---
+
 ## v2026.07.4｜2026-07-15｜商品編輯頁 UI 重構 + 品項欄位鎖定規則
 
 ### 功能
