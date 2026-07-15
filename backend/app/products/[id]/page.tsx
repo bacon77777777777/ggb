@@ -624,24 +624,21 @@ export default function EditProductPage() {
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
             <div className="space-y-2">
               {/* Row 1: 名稱 + 圖 */}
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
-                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                    placeholder="請輸入商品名稱" required />
-                </div>
+              <div className="flex items-center gap-3">
                 <label className="flex-shrink-0 cursor-pointer group relative">
                   <input type="file" accept="image/*" className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
                     }} />
-                  <div className="w-[100px] h-[100px] rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-neutral-50 flex items-center justify-center group-hover:border-primary transition-colors">
+                  <div className="w-14 h-14 rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 flex items-center justify-center group-hover:border-primary transition-colors relative">
                     {formData.imagePreview
                       ? <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
-                      : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                      : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     }
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    </div>
                   </div>
                   {formData.imagePreview && (
                     <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
@@ -650,6 +647,12 @@ export default function EditProductPage() {
                     </button>
                   )}
                 </label>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="請輸入商品名稱" required />
+                </div>
               </div>
 
               {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
