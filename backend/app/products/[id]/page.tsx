@@ -350,6 +350,20 @@ export default function EditProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // 盒玩/轉蛋：數量不能低於已抽數量
+    if (isGachaType && savedPrizes.length > 0) {
+      for (const prize of prizes) {
+        const saved = savedPrizes.find(sp => String(sp.id) === String(prize.id))
+        if (saved) {
+          const drawn = saved.total - saved.remaining
+          if (prize.total < drawn) {
+            alert(`品項「${prize.name || '未命名'}」已抽出 ${drawn} 個，總數量不能低於 ${drawn}`)
+            return
+          }
+        }
+      }
+    }
+
     setIsSubmitting(true)
 
     try {
