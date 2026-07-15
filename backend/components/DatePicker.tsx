@@ -161,7 +161,7 @@ export default function DatePicker({
 
   return (
     <div className="relative" ref={containerRef}>
-      {label && <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>}
+      {label && <label className="block text-xs font-medium text-neutral-500 mb-1">{label}</label>}
       <div
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}

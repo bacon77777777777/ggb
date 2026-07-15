@@ -695,6 +695,7 @@ export default function EditProductPage() {
                   <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
                     onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
                     onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
+                    onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
                     placeholder="選擇上市時間" />
                 </div>
                 <div>

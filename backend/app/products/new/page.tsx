@@ -362,7 +362,7 @@ export default function NewProductPage() {
     >
       <div className="space-y-4">
         {/* 頂部操作列 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => router.back()}
@@ -386,18 +386,53 @@ export default function NewProductPage() {
         <form id="new-product-form" onSubmit={handleSubmit} className="flex gap-4 items-start">
           {/* 左卡：商品設定 */}
           <div className="w-[440px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-neutral-200 p-4 space-y-3 overflow-y-auto h-[calc(100dvh-9rem)]">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                商品名稱 <span className="text-red-500">*</span>
+            {/* 商品名稱 + 商品圖 同一行 */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  商品名稱 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  placeholder="請輸入商品名稱"
+                  required
+                />
+              </div>
+              {/* 商品圖 — 點擊上傳 */}
+              <label className="flex-shrink-0 cursor-pointer group relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
+                  }}
+                />
+                <div className="w-[100px] h-[100px] rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
+                  {formData.imagePreview ? (
+                    <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  )}
+                </div>
+                {formData.imagePreview && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                  >
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                placeholder="請輸入商品名稱"
-                required
-              />
             </div>
 
             {/* 類型 */}
@@ -537,6 +572,7 @@ export default function NewProductPage() {
                   month={formData.releaseMonth}
                   onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
                   onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
+                  onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
                   placeholder="選擇上市時間"
                 />
               </div>
@@ -658,51 +694,6 @@ export default function NewProductPage() {
               </label>
             </div>
 
-            {/* 商品圖 */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                商品圖
-              </label>
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        setFormData({
-                          ...formData,
-                          image: file,
-                          imagePreview: URL.createObjectURL(file)
-                        })
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white file:cursor-pointer hover:file:bg-primary-dark"
-                  />
-                </div>
-                {formData.imagePreview && (
-                  <div className="mt-4">
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.imagePreview}
-                        alt="預覽"
-                        className="w-40 h-40 object-cover rounded-lg border-2 border-neutral-200 shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, image: null, imagePreview: '' })}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* 右卡：品項設定 */}
