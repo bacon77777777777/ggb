@@ -740,7 +740,14 @@ export default function EditProductPage() {
 
           {/* ── Section: 品項 ── */}
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
-            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">品項</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">品項</h3>
+              <span className="text-xs font-mono text-neutral-400">
+                剩餘 <span className="text-neutral-700 font-semibold">{calculatedRemaining}</span>
+                <span className="mx-1 text-neutral-300">/</span>
+                總計 <span className="text-neutral-700 font-semibold">{calculatedTotalCount}</span>
+              </span>
+            </div>
             <div className="space-y-2">
               <div className="grid grid-cols-3 gap-3">
                 {prizes.map((prize, index) => (
