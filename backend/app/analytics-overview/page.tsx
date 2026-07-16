@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
@@ -9,6 +9,11 @@ import DateRangePicker from '@/components/DateRangePicker'
 
 const TinyArea = dynamic(
   () => import('@ant-design/charts').then(m => ({ default: m.Tiny.Area })),
+  { ssr: false }
+)
+
+const TinyColumn = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Tiny.Column })),
   { ssr: false }
 )
 
@@ -26,25 +31,13 @@ const ColumnChart = dynamic(
 
 const COLORS = ['#1677ff', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
 
-// ── Tiny sparkline wrapper ────────────────────────────────────────────────────
+// ── Info icon ─────────────────────────────────────────────────────────────────
 
-function Spark({ data, yField, stroke, fill }: { data: any[]; yField: string; stroke: string; fill: string }) {
-  if (data.length < 2) return <div style={{ width: 80, height: 36 }} />
+function InfoIcon() {
   return (
-    <div style={{ width: 80, height: 36 }}>
-      <TinyArea
-        data={data}
-        xField="x"
-        yField={yField}
-        height={36}
-        autoFit={false}
-        width={80}
-        style={{ fill, stroke, lineWidth: 1.5, shape: 'smooth' } as any}
-        axis={false}
-        tooltip={false}
-        padding={[2, 2, 2, 2]}
-      />
-    </div>
+    <svg className="w-[15px] h-[15px] text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
   )
 }
 
@@ -77,17 +70,20 @@ function RingProgress({ pct, name, draws }: { pct: number; name: string; draws: 
   )
 }
 
-// ── Growth tag ────────────────────────────────────────────────────────────────
+// ── Growth tag (AntD Pro style: 紅漲綠跌，中文慣例) ──────────────────────────
 
-function GrowthTag({ value, label }: { value: number; label?: string }) {
+function GrowthTag({ value, label, style }: { value: number; label?: string; style?: React.CSSProperties }) {
   const up = value >= 0
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs">
-      <span className={up ? 'text-emerald-600' : 'text-red-500'}>
-        {up ? '↑' : '↓'} {Math.abs(value)}%
+    <div className="inline-block text-sm leading-[22px]" style={style}>
+      <span style={{ color: 'rgba(0,0,0,0.65)' }}>
+        {label}
+        <span style={{ marginLeft: 8, color: 'rgba(0,0,0,0.88)' }}>{Math.abs(value)}%</span>
       </span>
-      {label && <span className="text-neutral-400">{label}</span>}
-    </span>
+      <span style={{ marginLeft: 4, color: up ? '#f5222d' : '#52c41a' }}>
+        {up ? '▲' : '▼'}
+      </span>
+    </div>
   )
 }
 
@@ -100,7 +96,7 @@ interface AnalyticsData {
     yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number
     convRate: number
     bars: { label: string; sales: number; draws: number }[]
-    spark: { x: number; sales: number; draws: number }[]
+    spark: { x: number; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; salesPct: number; drawsPct: number; convRate: number }[]
@@ -199,135 +195,159 @@ export default function AnalyticsOverviewPage() {
           </button>
         </div>
 
-        {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-neutral-200 grid grid-cols-4 divide-x divide-neutral-100">
+        {/* ── KPI Cards — pixel-matched to AntD Pro ────────────────────── */}
+        <div className="grid grid-cols-4 gap-6">
 
-          {/* 總銷售額 */}
-          <div className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">總銷售額</p>
-                <p className="text-2xl font-bold text-neutral-900 font-mono">
-                  {loading ? '—' : (c?.totalSales ?? 0).toLocaleString()}
-                  <span className="text-sm font-normal text-neutral-400 ml-1">幣</span>
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+          {/* Card 1: 總銷售額 */}
+          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              總銷售額
             </div>
-            <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.sales} label="上期" />}
-              {g && <GrowthTag value={g.salesToday} label="日同比" />}
-            </div>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xs text-neutral-400">日銷售額</p>
-                <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : (c?.todaySales ?? 0).toLocaleString()}</p>
+            <div style={{ padding: '20px 24px 8px' }}>
+              <div className="relative w-full overflow-hidden mb-1">
+                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
+                  <span>總銷售額</span>
+                  <span className="absolute top-1 right-0"><InfoIcon /></span>
+                </div>
+                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? <span className="inline-block w-32 h-7 bg-neutral-100 rounded animate-pulse" /> :
+                    `${(c?.totalSales ?? 0).toLocaleString()} 幣`}
+                </div>
               </div>
-              {!loading && <Spark data={spark} yField="sales" stroke="#1677ff" fill="rgba(22,119,255,0.12)" />}
-            </div>
-          </div>
-
-          {/* 訪問量 */}
-          <div className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">訪問量</p>
-                <p className="text-2xl font-bold text-neutral-900 font-mono">
-                  {loading ? '—' : (c?.totalVisits ?? 0).toLocaleString()}
-                </p>
+              <div className="relative w-full mb-3" style={{ height: 46 }}>
+                <div className="absolute bottom-0 left-0 w-full flex gap-4">
+                  {g && <GrowthTag value={g.sales} label="周同比" />}
+                  {g && <GrowthTag value={g.salesToday} label="日同比" />}
+                </div>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.visits} label="上期" />}
-              {g && <GrowthTag value={g.visitsToday} label="日同比" />}
-            </div>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xs text-neutral-400">今日訪問</p>
-                <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : (c?.todayVisits ?? 0).toLocaleString()}</p>
-              </div>
-              <div className="w-20 h-9 flex items-center justify-end">
-                <span className={`text-2xl font-bold ${(g?.visitsToday ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
-                  {(g?.visitsToday ?? 0) >= 0 ? '↑' : '↓'}
+              <div className="pt-[9px]" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+                <span className="text-sm" style={{ color: 'rgba(0,0,0,0.65)' }}>日銷售額</span>
+                <span className="text-sm ml-2" style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? '—' : (c?.todaySales ?? 0).toLocaleString()}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 消費筆數 */}
-          <div className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">消費筆數（抽獎）</p>
-                <p className="text-2xl font-bold text-neutral-900 font-mono">
-                  {loading ? '—' : (c?.totalDrawCount ?? 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                <svg className="w-4 h-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
+          {/* Card 2: 訪問量 + TinyArea 紫色 */}
+          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              訪問量
             </div>
-            <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.draws} label="上期" />}
-              {g && <GrowthTag value={g.drawsToday} label="日同比" />}
-            </div>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xs text-neutral-400">轉化率</p>
-                <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : `${c?.convRate ?? 0}%`}</p>
+            <div style={{ padding: '20px 24px 8px' }}>
+              <div className="relative w-full overflow-hidden mb-1">
+                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
+                  <span>訪問量</span>
+                  <span className="absolute top-1 right-0"><InfoIcon /></span>
+                </div>
+                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? <span className="inline-block w-20 h-7 bg-neutral-100 rounded animate-pulse" /> :
+                    (c?.totalVisits ?? 0).toLocaleString()}
+                </div>
               </div>
-              {!loading && <Spark data={spark} yField="draws" stroke="#8b5cf6" fill="rgba(139,92,246,0.12)" />}
+              <div className="relative w-full mb-3" style={{ height: 46 }}>
+                <div className="absolute bottom-0 left-0 w-full h-full">
+                  {!loading && spark.some(d => d.visits > 0) ? (
+                    <TinyArea data={spark} xField="x" yField="visits"
+                      height={46} autoFit
+                      style={{ fill: 'rgba(114,46,209,0.1)', stroke: '#722ed1', lineWidth: 1.5, shape: 'smooth' } as any}
+                      axis={false} tooltip={false} padding={0} />
+                  ) : (
+                    <div className="w-full h-full" />
+                  )}
+                </div>
+              </div>
+              <div className="pt-[9px]" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+                <span className="text-sm" style={{ color: 'rgba(0,0,0,0.65)' }}>日訪問量</span>
+                <span className="text-sm ml-2" style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? '—' : (c?.todayVisits ?? 0).toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* 總儲值金額 */}
-          <div className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-xs text-neutral-500 mb-1">總儲值金額</p>
-                <p className="text-2xl font-bold text-neutral-900 font-mono">
-                  {loading ? '—' : `NT$${(c?.totalRecharges ?? 0).toLocaleString()}`}
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
+          {/* Card 3: 消費筆數 + TinyColumn 藍柱 */}
+          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              消費筆數
             </div>
-            <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.recharges} label="上期" />}
-            </div>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-xs text-neutral-400">客單價</p>
-                <p className="text-sm font-medium text-neutral-700 font-mono">
-                  {loading ? '—' : (c?.totalDrawCount ? Math.round(c.totalSales / c.totalDrawCount) : 0).toLocaleString()}
-                  <span className="text-xs text-neutral-400 ml-1">幣/次</span>
-                </p>
+            <div style={{ padding: '20px 24px 8px' }}>
+              <div className="relative w-full overflow-hidden mb-1">
+                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
+                  <span>消費筆數</span>
+                  <span className="absolute top-1 right-0"><InfoIcon /></span>
+                </div>
+                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? <span className="inline-block w-16 h-7 bg-neutral-100 rounded animate-pulse" /> :
+                    (c?.totalDrawCount ?? 0).toLocaleString()}
+                </div>
               </div>
-              {!loading && (
-                <Spark
-                  data={spark.map(d => ({ ...d, rev: Math.round(d.sales * 0.4) }))}
-                  yField="rev"
-                  stroke="#f59e0b"
-                  fill="rgba(245,158,11,0.12)"
-                />
-              )}
+              <div className="relative w-full mb-3" style={{ height: 46 }}>
+                <div className="absolute bottom-0 left-0 w-full h-full">
+                  {!loading && spark.some(d => d.draws > 0) ? (
+                    <TinyColumn data={spark} xField="x" yField="draws"
+                      height={46} autoFit
+                      style={{ fill: '#1677ff', opacity: 0.85 } as any}
+                      axis={false} tooltip={false} padding={0} />
+                  ) : (
+                    <div className="w-full h-full" />
+                  )}
+                </div>
+              </div>
+              <div className="pt-[9px]" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+                <span className="text-sm" style={{ color: 'rgba(0,0,0,0.65)' }}>轉化率</span>
+                <span className="text-sm ml-2" style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? '—' : `${c?.convRate ?? 0}%`}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Card 4: 運營轉化率 + Progress bar */}
+          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              運營轉化率
+            </div>
+            <div style={{ padding: '20px 24px 8px' }}>
+              <div className="relative w-full overflow-hidden mb-1">
+                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
+                  <span>運營轉化率</span>
+                  <span className="absolute top-1 right-0"><InfoIcon /></span>
+                </div>
+                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? <span className="inline-block w-16 h-7 bg-neutral-100 rounded animate-pulse" /> :
+                    `${c?.convRate ?? 0}%`}
+                </div>
+              </div>
+              <div className="relative w-full mb-3" style={{ height: 46 }}>
+                <div className="absolute bottom-0 left-0 w-full flex items-center gap-3">
+                  <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, background: 'rgba(0,0,0,0.06)' }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${loading ? 0 : Math.min(c?.convRate ?? 0, 100)}%`,
+                        background: 'linear-gradient(90deg, #108ee9 0%, #87d068 100%)',
+                      }} />
+                  </div>
+                  <span className="text-sm tabular-nums w-9 text-right flex-shrink-0" style={{ color: 'rgba(0,0,0,0.88)' }}>
+                    {loading ? '—' : `${c?.convRate ?? 0}%`}
+                  </span>
+                </div>
+              </div>
+              <div className="pt-[9px] overflow-hidden whitespace-nowrap" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+                {g && <GrowthTag value={g.convRate} label="周同比" style={{ marginRight: 16 }} />}
+                {g && <GrowthTag value={g.salesToday} label="日同比" />}
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* ── Keywords + Donut ──────────────────────────────────────────────── */}
