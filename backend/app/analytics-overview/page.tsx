@@ -363,7 +363,7 @@ export default function AnalyticsOverviewPage() {
               <span>儲值與消耗對比</span>
               <InfoIcon text="同時展示儲值金額與代幣消耗量。儲值高於消耗代表用戶在囤幣；消耗高於儲值代表用戶在花存量。" />
             </div>
-            <div style={{ padding: '12px 0 8px' }}>
+            <div style={{ padding: '24px 0 0' }}>
               {/* 圖例 */}
               <div style={{ display: 'flex', gap: 24, marginBottom: 12, paddingLeft: 52 }}>
                 {[{ color: '#9333ea', label: '儲值金額（元）' }, { color: '#10b981', label: '消耗代幣' }].map(({ color, label }) => (
@@ -387,10 +387,11 @@ export default function AnalyticsOverviewPage() {
                   yField="value"
                   colorField="type"
                   scale={{ color: { range: ['#9333ea', '#10b981'] } } as any}
-                  height={300}
+                  height={260}
                   autoFit
-                  padding={[4, 8, 4, 52]}
-                  insetTop={12}
+                  padding={[8, 8, 28, 52]}
+                  insetTop={8}
+                  insetBottom={0}
                   axis={{
                     x: { tick: false, line: false, label: { autoRotate: false, style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => { const n = c.bars.length; if (n === 24) { const h = parseInt(v); return h % 3 === 0 ? String(h) : '' } return v } } },
                     y: { grid: true, tick: false, line: false, label: { style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: any) => Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v) } },
