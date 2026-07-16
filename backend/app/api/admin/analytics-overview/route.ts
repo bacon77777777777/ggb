@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     q.gte(f, a.toISOString()).lt(f, b.toISOString())
 
   try {
-    const [drCur, drPrev, rcCur, rcPrev, drToday, drYest, visCur, visPrev, visToday, visYest, kwCur, kwPrev] =
+    const [drCur, drPrev, rcCur, rcPrev, drToday, drYest, visCur, visPrev, visToday, visYest, kwCur, kwPrev, rcToday, rcYest] =
       await Promise.all([
         inR(noBot(db.from('draw_records').select('id, points_used, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
         inR(noBot(db.from('draw_records').select('id, points_used')), prevStart, prevEnd),
@@ -69,6 +69,8 @@ export async function GET(req: NextRequest) {
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ys, ye),
         inR(db.from('search_logs').select('keyword'), curStart, curEnd),
         inR(db.from('search_logs').select('keyword'), prevStart, prevEnd),
+        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ts, te),
+        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ys, ye),
       ])
 
     const draws: any[] = drCur.data ?? []
@@ -82,6 +84,8 @@ export async function GET(req: NextRequest) {
     const prevDrawCount = prevDraws.length
     const totalRecharges = (rcCur.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const prevRecharges = (rcPrev.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const todayRecharges = (rcToday.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const yesterdayRecharges = (rcYest.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const todaySales = todayDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
     const yesterdaySales = yesterdayDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
     const todayDrawCount = todayDraws.length
@@ -103,17 +107,29 @@ export async function GET(req: NextRequest) {
       barMap[key].draws++
     })
 
-    const bars: { label: string; sales: number; draws: number }[] = []
+    // Daily visit breakdown for sparkline
+    const { data: visitRows } = await inR(db.from('visit_logs').select('created_at'), curStart, curEnd)
+    const visitByKey: Record<string, number> = {}
+    ;(visitRows ?? []).forEach((v: any) => {
+      const dt = new Date(new Date(v.created_at).getTime() + TW)
+      const key = isMonthly
+        ? `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+        : dt.toISOString().split('T')[0]
+      visitByKey[key] = (visitByKey[key] ?? 0) + 1
+    })
+
+    // Build bars with date keys for spark join
+    const barsWithKey: { key: string; label: string; sales: number; draws: number }[] = []
     if (isMonthly) {
-      // monthly from curStart to curEnd
       const cur = new Date(curStart)
       while (cur < curEnd) {
         const dt = new Date(cur.getTime() + TW)
         const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
-        if (!bars.find(b => b.label === `${dt.getUTCMonth() + 1}月`)) {
-          bars.push({ label: `${dt.getUTCMonth() + 1}月`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+        const label = `${dt.getUTCMonth() + 1}月`
+        if (!barsWithKey.find(b => b.label === label)) {
+          barsWithKey.push({ key, label, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
         }
-        cur.setDate(cur.getDate() + 28) // jump to next month-ish
+        cur.setDate(cur.getDate() + 28)
       }
     } else {
       const cur = new Date(curStart)
@@ -122,13 +138,16 @@ export async function GET(req: NextRequest) {
         const dt = new Date(cur.getTime() + TW)
         const key = dt.toISOString().split('T')[0]
         const mm = dt.getUTCMonth() + 1, dd = dt.getUTCDate()
-        bars.push({ label: `${mm}/${dd}`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+        barsWithKey.push({ key, label: `${mm}/${dd}`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
         cur.setDate(cur.getDate() + 1)
       }
     }
+    const bars = barsWithKey.map(({ key: _k, ...rest }) => rest)
 
-    // Sparkline: daily last 14 data points within period
-    const spark = bars.slice(-14).map((b, i) => ({ x: i, sales: b.sales, draws: b.draws }))
+    // Spark: last 14 points with visit counts
+    const spark = barsWithKey.slice(-14).map((b, i) => ({
+      x: i, sales: b.sales, draws: b.draws, visits: visitByKey[b.key] ?? 0,
+    }))
 
     // Keywords
     const kwMap: Record<string, number> = {}
@@ -175,8 +194,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       current: {
         totalSales, totalDrawCount, totalRecharges, totalVisits,
-        todaySales, todayDrawCount, todayVisits,
-        yesterdaySales, yesterdayDrawCount, yesterdayVisits,
+        todaySales, todayDrawCount, todayVisits, todayRecharges,
+        yesterdaySales, yesterdayDrawCount, yesterdayVisits, yesterdayRecharges,
         convRate, bars, spark, keywords, categories,
         suppliers: suppliers.map((s, i) => ({
           ...s, rank: i + 1,
@@ -195,6 +214,7 @@ export async function GET(req: NextRequest) {
         salesToday: pct(todaySales, yesterdaySales),
         drawsToday: pct(todayDrawCount, yesterdayDrawCount),
         visitsToday: pct(todayVisits, yesterdayVisits),
+        rechargesToday: pct(todayRecharges, yesterdayRecharges),
         convRate: pct(convRate, prevConvRate),
       },
     })

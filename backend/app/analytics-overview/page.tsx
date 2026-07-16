@@ -31,16 +31,6 @@ const ColumnChart = dynamic(
 
 const COLORS = ['#1677ff', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
 
-// ── Info icon ─────────────────────────────────────────────────────────────────
-
-function InfoIcon() {
-  return (
-    <svg className="w-[15px] h-[15px] text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
 // ── Ring progress (SVG) ───────────────────────────────────────────────────────
 
 function RingProgress({ pct, name, draws }: { pct: number; name: string; draws: number }) {
@@ -92,8 +82,8 @@ function GrowthTag({ value, label, style }: { value: number; label?: string; sty
 interface AnalyticsData {
   current: {
     totalSales: number; totalDrawCount: number; totalRecharges: number; totalVisits: number
-    todaySales: number; todayDrawCount: number; todayVisits: number
-    yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number
+    todaySales: number; todayDrawCount: number; todayVisits: number; todayRecharges: number
+    yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number; yesterdayRecharges: number
     convRate: number
     bars: { label: string; sales: number; draws: number }[]
     spark: { x: number; sales: number; draws: number; visits: number }[]
@@ -103,7 +93,7 @@ interface AnalyticsData {
   }
   growth: {
     sales: number; draws: number; recharges: number; visits: number
-    salesToday: number; drawsToday: number; visitsToday: number; convRate: number
+    salesToday: number; drawsToday: number; visitsToday: number; rechargesToday: number; convRate: number
   }
 }
 
@@ -118,6 +108,13 @@ function mondayOf(d: Date) {
   return r
 }
 
+function sundayOf(d: Date) {
+  const r = new Date(d)
+  const day = d.getDay()
+  r.setDate(d.getDate() + (day === 0 ? 0 : 7 - day))
+  return r
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AnalyticsOverviewPage() {
@@ -125,7 +122,9 @@ export default function AnalyticsOverviewPage() {
   const [startDate, setStartDate] = useState(() =>
     `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
   )
-  const [endDate, setEndDate] = useState(() => toDS(today))
+  const [endDate, setEndDate] = useState(() =>
+    toDS(new Date(today.getFullYear(), today.getMonth() + 1, 0))
+  )
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [chartMode, setChartMode] = useState<'sales' | 'draws'>('sales')
@@ -148,12 +147,16 @@ export default function AnalyticsOverviewPage() {
   const c = data?.current
   const g = data?.growth
 
-  const PRESETS = useMemo(() => [
-    { label: '今日', start: toDS(today), end: toDS(today) },
-    { label: '本週', start: toDS(mondayOf(today)), end: toDS(today) },
-    { label: '本月', start: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, end: toDS(today) },
-    { label: '本年', start: `${today.getFullYear()}-01-01`, end: toDS(today) },
-  ], [today])
+  const PRESETS = useMemo(() => {
+    const y = today.getFullYear(), m = today.getMonth()
+    const monthEnd = new Date(y, m + 1, 0) // last day of current month
+    return [
+      { label: '今日', start: toDS(today), end: toDS(today) },
+      { label: '本週', start: toDS(mondayOf(today)), end: toDS(sundayOf(today)) },
+      { label: '本月', start: `${y}-${String(m + 1).padStart(2, '0')}-01`, end: toDS(monthEnd) },
+      { label: '本年', start: `${y}-01-01`, end: `${y}-12-31` },
+    ]
+  }, [today])
 
   const activePreset = PRESETS.find(p => p.start === startDate && p.end === endDate)?.label
 
@@ -205,12 +208,8 @@ export default function AnalyticsOverviewPage() {
               總銷售額
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
-              <div className="relative w-full overflow-hidden mb-1">
-                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
-                  <span>總銷售額</span>
-                  <span className="absolute top-1 right-0"><InfoIcon /></span>
-                </div>
-                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+              <div className="relative w-full">
+                <div className="h-[38px] text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   {loading ? <span className="inline-block w-32 h-7 bg-neutral-100 rounded animate-pulse" /> :
                     `${(c?.totalSales ?? 0).toLocaleString()} 幣`}
@@ -238,12 +237,8 @@ export default function AnalyticsOverviewPage() {
               訪問量
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
-              <div className="relative w-full overflow-hidden mb-1">
-                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
-                  <span>訪問量</span>
-                  <span className="absolute top-1 right-0"><InfoIcon /></span>
-                </div>
-                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+              <div className="relative w-full">
+                <div className="h-[38px] text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   {loading ? <span className="inline-block w-20 h-7 bg-neutral-100 rounded animate-pulse" /> :
                     (c?.totalVisits ?? 0).toLocaleString()}
@@ -254,8 +249,8 @@ export default function AnalyticsOverviewPage() {
                   {!loading && spark.some(d => d.visits > 0) ? (
                     <TinyArea data={spark} xField="x" yField="visits"
                       height={46} autoFit
-                      style={{ fill: 'rgba(114,46,209,0.1)', stroke: '#722ed1', lineWidth: 1.5, shape: 'smooth' } as any}
-                      axis={false} tooltip={false} padding={0} />
+                      style={{ fill: 'rgba(114,46,209,0.25)', stroke: '#722ed1', lineWidth: 2, shape: 'smooth' } as any}
+                      axis={false} tooltip={false} padding={[2, 0, 0, 0]} />
                   ) : (
                     <div className="w-full h-full" />
                   )}
@@ -277,12 +272,8 @@ export default function AnalyticsOverviewPage() {
               消費筆數
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
-              <div className="relative w-full overflow-hidden mb-1">
-                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
-                  <span>消費筆數</span>
-                  <span className="absolute top-1 right-0"><InfoIcon /></span>
-                </div>
-                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+              <div className="relative w-full">
+                <div className="h-[38px] text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   {loading ? <span className="inline-block w-16 h-7 bg-neutral-100 rounded animate-pulse" /> :
                     (c?.totalDrawCount ?? 0).toLocaleString()}
@@ -309,41 +300,31 @@ export default function AnalyticsOverviewPage() {
             </div>
           </div>
 
-          {/* Card 4: 運營轉化率 + Progress bar */}
+          {/* Card 4: 總儲值金額 */}
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
-              運營轉化率
+              總儲值金額
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
-              <div className="relative w-full overflow-hidden mb-1">
-                <div className="relative h-[22px] text-sm leading-[22px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
-                  <span>運營轉化率</span>
-                  <span className="absolute top-1 right-0"><InfoIcon /></span>
-                </div>
-                <div className="h-[38px] mt-1 text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
+              <div className="relative w-full">
+                <div className="h-[38px] text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
-                  {loading ? <span className="inline-block w-16 h-7 bg-neutral-100 rounded animate-pulse" /> :
-                    `${c?.convRate ?? 0}%`}
+                  {loading ? <span className="inline-block w-24 h-7 bg-neutral-100 rounded animate-pulse" /> :
+                    `${(c?.totalRecharges ?? 0).toLocaleString()} 元`}
                 </div>
               </div>
               <div className="relative w-full mb-3" style={{ height: 46 }}>
-                <div className="absolute bottom-0 left-0 w-full flex items-center gap-3">
-                  <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, background: 'rgba(0,0,0,0.06)' }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${loading ? 0 : Math.min(c?.convRate ?? 0, 100)}%`,
-                        background: 'linear-gradient(90deg, #108ee9 0%, #87d068 100%)',
-                      }} />
-                  </div>
-                  <span className="text-sm tabular-nums w-9 text-right flex-shrink-0" style={{ color: 'rgba(0,0,0,0.88)' }}>
-                    {loading ? '—' : `${c?.convRate ?? 0}%`}
-                  </span>
+                <div className="absolute bottom-0 left-0 w-full flex gap-4">
+                  {g && <GrowthTag value={g.recharges} label="周同比" />}
+                  {g && <GrowthTag value={g.rechargesToday} label="日同比" />}
                 </div>
               </div>
-              <div className="pt-[9px] overflow-hidden whitespace-nowrap" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
-                {g && <GrowthTag value={g.convRate} label="周同比" style={{ marginRight: 16 }} />}
-                {g && <GrowthTag value={g.salesToday} label="日同比" />}
+              <div className="pt-[9px]" style={{ marginTop: 8, borderTop: '1px solid rgba(5,5,5,0.06)' }}>
+                <span className="text-sm" style={{ color: 'rgba(0,0,0,0.65)' }}>日儲值</span>
+                <span className="text-sm ml-2" style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  {loading ? '—' : (c?.todayRecharges ?? 0).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
