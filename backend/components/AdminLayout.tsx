@@ -474,6 +474,150 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     </svg>
   )
 
+  // ── 補充圖示 ─────────────────────────────────────────────────────────────────
+
+  // 分析頁（折線/趨勢圖）
+  const IconLineChart = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4m0 0v4m0-4h-4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+    </svg>
+  )
+  // 轉換分析（漏斗）
+  const IconConversion = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+    </svg>
+  )
+  // 點擊分析（游標）
+  const IconClick = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+    </svg>
+  )
+  // 物流明細（貨車）
+  const IconTruck = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" />
+    </svg>
+  )
+  // 消費明細（購物車）
+  const IconCart = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  )
+  // 分解明細（剪刀）
+  const IconScissors = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+    </svg>
+  )
+  // 廠商結算（收據/發票）
+  const IconReceipt = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
+    </svg>
+  )
+  // 退款申請（退回箭頭）
+  const IconRefund = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+    </svg>
+  )
+  // 運費設定（地圖 pin）
+  const IconShipping = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+  // 抽獎模組設定（拼圖）
+  const IconPuzzle = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+    </svg>
+  )
+  // 功能開關（滑桿）
+  const IconSliders = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+    </svg>
+  )
+  // 管理員清單（識別證）
+  const IconBadge = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+    </svg>
+  )
+  // 管理員權限（鑰匙）
+  const IconKey = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+    </svg>
+  )
+  // 開發紀錄（終端機）
+  const IconCode = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  )
+  // 客服工單（對話框）
+  const IconChat = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  )
+  // 操作手冊（書本）
+  const IconBook = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  )
+  // 販售商品管理（店面）
+  const IconStorefront = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 22V12h6v10" />
+    </svg>
+  )
+  // 販售訂單（待辦清單）
+  const IconClipboard = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+  )
+  // 交換紀錄（時鐘/歷史）
+  const IconHistory = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+  // 競品情報（放大鏡）
+  const IconSearch = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  )
+  // AI 文案草稿（閃爍星星）
+  const IconSparkle = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  )
+  // 殺率調整（閃電/機率）
+  const IconBolt = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  )
+  // Design System（調色板）
+  const IconPalette = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+    </svg>
+  )
+
   const handleNavScroll = () => {
     if (!navRef.current || !user?.username) return
     const top = navRef.current.scrollTop
@@ -557,9 +701,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '營運總覽',
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
-          { name: '分析頁', path: '/analytics-overview', icon: IconReports },
-          { name: '轉換分析', path: '/reports/overview', icon: IconReports },
-          { name: '點擊分析', path: '/reports/behavior', icon: IconReports },
+          { name: '分析頁', path: '/analytics-overview', icon: IconLineChart },
+          { name: '轉換分析', path: '/reports/overview', icon: IconConversion },
+          { name: '點擊分析', path: '/reports/behavior', icon: IconClick },
         ],
       },
       {
@@ -567,11 +711,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '對帳報表',
         items: [
           { name: '儲值明細', path: '/recharges', icon: IconRecharges },
-          { name: '物流明細', path: '/reports/logistics', icon: IconReports },
-          { name: '折價券明細', path: '/reports/coupons', icon: IconReports },
-          { name: '消費明細', path: '/reports/products', icon: IconReports },
-          { name: '分解明細', path: '/reports/dismantled', icon: IconReports },
-          { name: '廠商結算', path: '/reports/settlement', icon: IconReports },
+          { name: '物流明細', path: '/reports/logistics', icon: IconTruck },
+          { name: '折價券明細', path: '/reports/coupons', icon: IconCoupons },
+          { name: '消費明細', path: '/reports/products', icon: IconCart },
+          { name: '分解明細', path: '/reports/dismantled', icon: IconScissors },
+          { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
           { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
         ],
       },
@@ -582,9 +726,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '商品管理', path: '/products', icon: IconProducts },
           { name: '消費紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
-          { name: '退款申請', path: '/refund-requests', icon: IconLedger },
+          { name: '退款申請', path: '/refund-requests', icon: IconRefund },
           { name: '折價券管理', path: '/coupons', icon: IconCoupons },
-          { name: '運費設定', path: '/settings/shipping', icon: IconSettings },
+          { name: '運費設定', path: '/settings/shipping', icon: IconShipping },
         ],
       },
       {
@@ -603,20 +747,20 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '輪播圖管理', path: '/banners', icon: IconBanners },
           { name: '文章管理', path: '/news', icon: IconNews },
           { name: '分類清單', path: '/categories', icon: IconCategories },
-          { name: '抽獎模組設定', path: '/settings/modules', icon: IconSettings },
-          { name: '功能開關', path: '/settings/features', icon: IconSettings },
-          { name: '管理員清單', path: '/analytics', icon: IconAnalytics },
-          { name: '管理員權限', path: '/permissions', icon: IconSettings },
+          { name: '抽獎模組設定', path: '/settings/modules', icon: IconPuzzle },
+          { name: '功能開關', path: '/settings/features', icon: IconSliders },
+          { name: '管理員清單', path: '/analytics', icon: IconBadge },
+          { name: '管理員權限', path: '/permissions', icon: IconKey },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
-          { name: '開發紀錄', path: '/dev-logs', icon: IconLogs },
+          { name: '開發紀錄', path: '/dev-logs', icon: IconCode },
         ],
       },
       {
         id: 'cs',
         title: '客服管理',
         items: [
-          { name: '客服工單', path: '/cs-management/tickets', icon: IconLogs },
-          { name: '操作手冊', path: '/cs-management/sop', icon: IconSettings },
+          { name: '客服工單', path: '/cs-management/tickets', icon: IconChat },
+          { name: '操作手冊', path: '/cs-management/sop', icon: IconBook },
         ],
       },
       {
@@ -630,8 +774,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'sell',
         title: '商品買賣',
         items: [
-          { name: '販售商品管理', path: '/sell', icon: IconMarketplace },
-          { name: '販售訂單', path: '/sell-orders', icon: IconOrders },
+          { name: '販售商品管理', path: '/sell', icon: IconStorefront },
+          { name: '販售訂單', path: '/sell-orders', icon: IconClipboard },
         ],
       },
       {
@@ -639,7 +783,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '卡牌交換',
         items: [
           { name: '交換商品管理', path: '/exchange', icon: IconExchange },
-          { name: '交換紀錄', path: '/exchange-orders', icon: IconExchange },
+          { name: '交換紀錄', path: '/exchange-orders', icon: IconHistory },
         ],
       },
       {
@@ -647,11 +791,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '其他黑科技',
         items: [
           { name: '事件中心', path: '/agent-events', icon: IconEvents },
-          { name: '競品情報', path: '/competitor-intel', icon: IconReports },
-          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
+          { name: '競品情報', path: '/competitor-intel', icon: IconSearch },
+          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconSparkle },
           { name: '工具', path: '/tools', icon: IconTools },
-          { name: '殺率調整', path: '/settings/rates', icon: IconSettings },
-          { name: 'Design System', path: '/design-system', icon: IconTools },
+          { name: '殺率調整', path: '/settings/rates', icon: IconBolt },
+          { name: 'Design System', path: '/design-system', icon: IconPalette },
         ],
       },
     ],
@@ -741,13 +885,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         {/* LOGO 區域 */}
         <div className={`h-[72px] px-3 border-b border-neutral-200 transition-all duration-300 flex items-center ${isSidebarOpen ? '' : 'justify-center'}`}>
           <div className={`flex items-center ${isSidebarOpen ? 'gap-2' : 'justify-center'}`}>
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+              <img src="/images/favicon.png" alt="吉吉比" className="w-full h-full object-cover" />
             </div>
-            <h1 className={`text-lg font-bold text-primary whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-              管理後台
+            <h1 className={`text-base font-bold text-primary whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+              吉吉比管理後台
             </h1>
           </div>
         </div>
