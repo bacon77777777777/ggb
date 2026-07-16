@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
@@ -170,7 +171,7 @@ export default function ContentDraftsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className="text-sm font-semibold text-neutral-700">{s.emoji} {s.label}</span>
-                            <span className={`px-2 py-0.5 text-xs rounded border ${st.cls}`}>{st.label}</span>
+                            <Badge status={draft.status}>{st.label}</Badge>
                           </div>
                           <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-sans leading-relaxed bg-neutral-50 rounded-lg p-3 max-h-40 overflow-y-auto">
                             {draft.text_content}

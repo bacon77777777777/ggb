@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -195,9 +196,7 @@ export default function DrawsPage() {
         return (
           <div className="flex items-center gap-1.5">
             {hasGrade && record.prize_level && (
-              <span className="px-1.5 py-0.5 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 font-bold text-xs whitespace-nowrap">
-                {record.prize_level}
-              </span>
+              <Badge variant="warning" size="sm">{record.prize_level}</Badge>
             )}
             <span className="text-sm text-neutral-700">{record.prize_name || '—'}</span>
           </div>

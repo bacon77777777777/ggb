@@ -2,6 +2,7 @@
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useLog } from '@/contexts/LogContext'
@@ -1371,11 +1372,7 @@ export default function OrdersPage() {
                   {isLoading ? (
                     <TableSkeleton rows={8} cols={2 + Object.values(visibleColumns).filter(Boolean).length} />
                   ) : filteredShipments.length === 0 ? (
-                    <tr>
-                      <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} className="py-12 text-center text-neutral-500">
-                        沒有找到符合條件的訂單
-                      </td>
-                    </tr>
+                    <TableEmpty colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} message="沒有找到符合條件的訂單" />
                   ) : (
                     filteredShipments.slice(0, displayCount).map((shipment, index) => {
                       const isHighlighted = highlightedOrderId === shipment.orderId

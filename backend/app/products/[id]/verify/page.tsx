@@ -881,12 +881,12 @@ verifyDraws().then(results => {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-white z-10">
                     <tr className="border-b border-neutral-200">
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">Nonce</th>
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">抽獎編號</th>
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">實際獎項</th>
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">計算獎項</th>
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">隨機數</th>
-                      <th className="text-left py-2 px-3 font-semibold text-neutral-500">結果</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">Nonce</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">實際獎項</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">計算獎項</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">隨機數</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">結果</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -963,12 +963,12 @@ verifyDraws().then(results => {
                   <table className="w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr className="border-b border-neutral-200">
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">序號</th>
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">抽獎編號</th>
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">籤號</th>
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">使用者</th>
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">獎項</th>
-                        <th className="text-left py-2 px-3 font-semibold text-neutral-500">時間</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">序號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">籤號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">使用者</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">獎項</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">時間</th>
                       </tr>
                     </thead>
                     <tbody>

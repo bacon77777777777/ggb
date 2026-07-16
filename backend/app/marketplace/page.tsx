@@ -324,7 +324,7 @@ export default function MarketplaceAdminPage() {
                   >
                     狀態
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-right">操作</th>
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">

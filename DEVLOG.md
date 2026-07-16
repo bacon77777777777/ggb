@@ -4,6 +4,27 @@
 
 ---
 
+## v2026.07.8｜2026-07-16｜Design System 深掃第二輪 — Badge 全覆蓋 / TableEmpty / th 排版統一
+
+### Badge 組件擴充 + 全站覆蓋
+- statusVariantMap 新增 15 個狀態：open/in_progress/resolved/closed/approved/published/archived/confirmed/pending 等 CS 工單 + 草稿 + 月結狀態
+- 替換 content-drafts, cs-management/tickets, suppliers, settings/modules, draws, products (熱賣/已完抽), settings/rates 的 inline span → Badge
+- DataTable 組件 emptyMessage 升級：`<td>文字</td>` → `<TableEmpty message={...} />` 帶圖示
+- settlement-snapshots 狀態 span 也換成 Badge
+
+### TableEmpty / TableSkeleton 全站補完
+- news/page.tsx, orders/page.tsx, dismantled/page.tsx（修正多餘 `<tr>` wrapper bug）
+- reports/dismantled：spinner loading td → TableSkeleton，empty td → TableEmpty
+- sell, exchange, marketplace, cs-management/tickets 的 table loading + empty 全部標準化
+
+### `<th>` 排版統一
+- tools, products/[id]/verify, reports/logistics, dev-logs, reports/settlement, marketplace 補上 `text-xs font-semibold text-neutral-500` 標準排版
+
+### window.prompt 移除
+- settlement-snapshots/page.tsx：`window.prompt()` 替換為 inline 密碼輸入框，CRON_SECRET 常駐顯示於控制列
+
+---
+
 ## v2026.07.7｜2026-07-16｜Design System 全站 UX 掃蕩 — Toast / 骨架屏 / Badge / Empty State
 
 ### Toast 通知系統（`backend/contexts/ToastContext.tsx`）

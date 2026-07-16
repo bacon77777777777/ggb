@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Fragment, ReactNode } from 'react'
 import SortableTableHeader from './SortableTableHeader'
 import { TableSkeleton } from './ui/TableSkeleton'
+import { TableEmpty } from './ui/EmptyState'
 
 export interface Column<T> {
   key: string
@@ -224,14 +225,7 @@ export default function DataTable<T extends { id: number | string }>({
           {isLoading ? (
             <TableSkeleton rows={8} cols={filteredColumns.length + (selectable ? 1 : 0)} />
           ) : displayData.length === 0 ? (
-            <tr>
-              <td
-                colSpan={filteredColumns.length + (selectable ? 1 : 0)}
-                className="py-12 text-center text-neutral-500"
-              >
-                {emptyMessage}
-              </td>
-            </tr>
+            <TableEmpty colSpan={filteredColumns.length + (selectable ? 1 : 0)} message={emptyMessage} />
           ) : (
             displayData.map((item, index) => {
               const itemId = item[keyField] as number | string

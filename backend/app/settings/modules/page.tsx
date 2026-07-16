@@ -1,8 +1,9 @@
 'use client'
 
 import { AdminLayout, PageCard } from '@/components'
-import { useState, useEffect } from 'react'
+import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { useState, useEffect } from 'react'
 
 const PRODUCT_TYPES: {
   type: string
@@ -106,9 +107,7 @@ export default function ModuleSettingsPage() {
               <div key={type} className="p-4 border border-neutral-200 rounded-lg bg-white">
                 <div className="flex items-center gap-4">
                   <div className="w-20 shrink-0">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
-                      {label}
-                    </span>
+                    <Badge variant="default">{label}</Badge>
                   </div>
                   <div className="flex-1">
                     <select

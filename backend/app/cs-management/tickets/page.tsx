@@ -2,6 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { TableEmpty } from '@/components/ui/EmptyState'
 
@@ -124,9 +125,7 @@ export default function CsTicketsPage() {
                       onClick={() => setExpanded(isOpen ? null : t.id)}
                     >
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.cls}`}>
-                          {meta.label}
-                        </span>
+                        <Badge status={t.status}>{meta.label}</Badge>
                       </td>
                       <td className="px-4 py-3 text-[13px] font-semibold text-neutral-700 whitespace-nowrap">{t.category}</td>
                       <td className="px-4 py-3">

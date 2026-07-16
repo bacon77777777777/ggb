@@ -2,6 +2,7 @@
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal, FileInput } from '@/components'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import Badge from '@/components/ui/Badge'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
@@ -1047,17 +1048,13 @@ export default function ProductsPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                             <span className="whitespace-nowrap">{product.name}</span>
-                            {product.isHot && <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 whitespace-nowrap flex-shrink-0">熱賣</span>}
+                            {product.isHot && <Badge variant="danger" size="sm">熱賣</Badge>}
                             {(() => {
                               const normalPrizes = product.prizes.filter(p => !isLastOneLevel(p.level))
                               const fallbackRemaining = normalPrizes.reduce((sum, s) => sum + s.remaining, 0)
                               const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
                               const isSoldOut = remaining === 0 && product.status !== 'pending'
-                              return isSoldOut && (
-                                <span className="px-2 py-0.5 text-xs rounded-full bg-neutral-100 text-neutral-500 whitespace-nowrap flex-shrink-0">
-                                  已完抽
-                                </span>
-                              )
+                              return isSoldOut && <Badge variant="default" size="sm">已完抽</Badge>
                             })()}
                           </div>
                         </td>

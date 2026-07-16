@@ -56,6 +56,23 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   '審核中': 'warning',
   '已退款': 'default',
   '已拒絕': 'danger',
+  // CS 工單狀態
+  open: 'warning',
+  in_progress: 'info',
+  resolved: 'success',
+  closed: 'default',
+  // 內容草稿 / 月結狀態
+  approved: 'info',
+  published: 'success',
+  archived: 'default',
+  confirmed: 'info',
+  // 中文草稿 / 工單狀態
+  '待確認': 'warning',
+  '已確認': 'info',
+  '已發布': 'success',
+  '已棄用': 'default',
+  '已解決': 'success',
+  '已關閉': 'default',
 }
 
 const variantStyles: Record<BadgeVariant, string> = {

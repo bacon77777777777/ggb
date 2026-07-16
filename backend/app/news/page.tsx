@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -329,11 +330,7 @@ export default function NewsPage() {
                     </tr>
                   ))
                 ) : sorted.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-16 text-center text-neutral-400 text-sm">
-                      {news.length === 0 ? '尚無文章資料' : '沒有符合條件的文章'}
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={8} message={news.length === 0 ? '尚無文章資料' : '沒有符合條件的文章'} />
                 ) : (
                   sorted.map(article => (
                     <tr key={article.id}

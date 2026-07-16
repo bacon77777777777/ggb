@@ -2,6 +2,8 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
@@ -158,20 +160,9 @@ export default function DismantledReportPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-neutral-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                        載入中…
-                      </div>
-                    </td>
-                  </tr>
+                  <TableSkeleton rows={6} cols={7} />
                 ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-neutral-400 text-sm">
-                      此區間無分解紀錄
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={7} message="此區間無分解紀錄" />
                 ) : rows.map(row => (
                   <tr key={row.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                     <td className="px-4 py-2.5 text-xs text-neutral-500 font-mono whitespace-nowrap">

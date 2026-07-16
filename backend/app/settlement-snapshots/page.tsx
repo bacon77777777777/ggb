@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
@@ -53,8 +54,7 @@ export default function SettlementSnapshotsPage() {
   const [generating, setGenerating] = useState(false)
   const [genMonth, setGenMonth]     = useState('')
   const [editNote, setEditNote]     = useState<Record<number, string>>({})
-
-  const cronSecret = typeof window !== 'undefined' ? localStorage.getItem('cron_secret') ?? '' : ''
+  const [cronSecretInput, setCronSecretInput] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -88,8 +88,8 @@ export default function SettlementSnapshotsPage() {
   }
 
   const generate = async () => {
-    const secret = window.prompt('請輸入 CRON_SECRET 以執行月結快照：')
-    if (!secret) return
+    const secret = cronSecretInput.trim()
+    if (!secret) { toast('請輸入 CRON_SECRET', 'warning'); return }
     setGenerating(true)
     const params = genMonth ? `?secret=${secret}&month=${genMonth}` : `?secret=${secret}`
     const res = await fetch(`/api/cron/monthly-settlement${params}`)
@@ -145,6 +145,13 @@ export default function SettlementSnapshotsPage() {
             <option value="">上個月</option>
             {months.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
+          <input
+            type="password"
+            value={cronSecretInput}
+            onChange={e => setCronSecretInput(e.target.value)}
+            placeholder="CRON_SECRET"
+            className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary w-40"
+          />
           <button
             onClick={generate}
             disabled={generating}
@@ -207,7 +214,7 @@ export default function SettlementSnapshotsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${sm.cls}`}>{sm.label}</span>
+                            <Badge status={row.status}>{sm.label}</Badge>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1 justify-end">

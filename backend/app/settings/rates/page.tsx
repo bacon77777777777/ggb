@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, FilterTags, ConfirmDialog, AlertDialog } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { Product, Prize } from '@/types/product'
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
@@ -725,22 +726,12 @@ export default function RatesPage() {
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className={`font-mono text-xs ${isEnded && !isExpanded ? 'text-neutral-400' : 'text-neutral-500'}`}>{product.productCode}</span>
                           <h3 className={`text-sm font-semibold ${isEnded && !isExpanded ? 'text-neutral-500' : 'text-neutral-900'}`}>{product.name}</h3>
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            product.status === 'active' ? 'bg-green-100 text-green-700 border border-green-200' :
-                            product.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                            'bg-neutral-100 text-neutral-700 border border-neutral-200'
-                          }`}>
+                          <Badge status={product.status}>
                             {product.status === 'active' ? '進行中' : product.status === 'pending' ? '待上架' : '已完抽'}
-                          </span>
-                          {isRateLocked && (
-                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200">
-                              不適用殺率
-                            </span>
-                          )}
+                          </Badge>
+                          {isRateLocked && <Badge variant="default">不適用殺率</Badge>}
                           {!isRateLocked && hasAdjustment && (
-                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-blue-100 text-primary border border-blue-200">
-                              殺率: {(profitRate * 100).toFixed(0)}%
-                            </span>
+                            <Badge variant="primary">殺率: {(profitRate * 100).toFixed(0)}%</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-neutral-500">

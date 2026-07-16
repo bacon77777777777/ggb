@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -174,9 +175,7 @@ export default function SuppliersPage() {
                       <td className="px-4 py-3 text-neutral-600">{s.contact_phone ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-500 text-xs">{s.contact_email ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                          {s.is_active ? '啟用' : '停用'}
-                        </span>
+                        <Badge status={s.is_active ? 'active' : 'inactive'}>{s.is_active ? '啟用' : '停用'}</Badge>
                       </td>
                       <td className="px-4 py-3 text-neutral-500 max-w-[200px] truncate">{s.notes ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-400 text-xs whitespace-nowrap">{formatDateTime(s.created_at)}</td>

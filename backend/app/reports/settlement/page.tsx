@@ -391,10 +391,10 @@ export default function SettlementPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr className="text-xs text-neutral-400 border-b border-neutral-100">
-                      <th className="text-left px-4 py-2">商品</th>
-                      <th className="text-right px-4 py-2">單價</th>
-                      <th className="text-right px-4 py-2">次數</th>
-                      <th className="text-right px-4 py-2">小計</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">商品</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">單價</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">次數</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">小計</th>
                     </tr>
                   </thead>
                   <tbody>
