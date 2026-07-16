@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -259,20 +260,8 @@ export default function ExchangeOrdersAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading && (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && sortedOrders.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-neutral-500">
-                      沒有資料
-                    </td>
-                  </tr>
-                )}
+                {isLoading && <TableEmpty colSpan={8} message="載入中…" />}
+                {!isLoading && sortedOrders.length === 0 && <TableEmpty colSpan={8} message="沒有資料" />}
                 {!isLoading &&
                   sortedOrders.map((order) => (
                     <tr key={order.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">

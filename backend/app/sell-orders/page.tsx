@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -261,17 +262,9 @@ export default function SellOrdersAdminPage() {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={9} className="py-10 text-center text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={9} message="載入中…" />
                 ) : sortedOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-10 text-center text-neutral-500">
-                      目前沒有符合條件的販售訂單
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={9} message="目前沒有符合條件的販售訂單" />
                 ) : (
                   sortedOrders.map((o) => {
                     const isCompleted = Boolean(o.completed_at) && !o.cancelled
