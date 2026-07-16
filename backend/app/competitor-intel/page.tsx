@@ -122,7 +122,7 @@ export default function CompetitorIntelPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-100"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                 {w.name}
               </a>
             ))}
@@ -213,9 +213,9 @@ export default function CompetitorIntelPage() {
                           </div>
                         )}
                         {a.suggest_layer && (
-                          <div className="bg-emerald-50 rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-emerald-700 mb-1">建議層</h5>
-                            <p className="text-xs text-emerald-800 leading-relaxed">{a.suggest_layer}</p>
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <h5 className="text-xs font-semibold text-green-700 mb-1">建議層</h5>
+                            <p className="text-xs text-green-800 leading-relaxed">{a.suggest_layer}</p>
                           </div>
                         )}
                       </div>

@@ -8,28 +8,14 @@ export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
   helperText?: string
 }
 
-export default function Label({ 
-  children, 
-  required = false, 
-  helperText,
-  className,
-  ...props 
-}: LabelProps) {
+export default function Label({ children, required = false, helperText, className, ...props }: LabelProps) {
   return (
-    <div className="space-y-1.5">
-      <label
-        className={cn(
-          'block text-sm font-medium text-neutral-700',
-          className
-        )}
-        {...props}
-      >
+    <div className="space-y-1">
+      <label className={cn('block text-xs font-medium text-neutral-500', className)} {...props}>
         {children}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      {helperText && (
-        <p className="text-xs text-gray-500">{helperText}</p>
-      )}
+      {helperText && <p className="text-xs text-neutral-500">{helperText}</p>}
     </div>
   )
 }

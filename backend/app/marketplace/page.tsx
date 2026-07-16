@@ -401,7 +401,7 @@ export default function MarketplaceAdminPage() {
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             item.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700'
+                              ? 'bg-green-50 text-green-700'
                               : item.status === 'sold'
                               ? 'bg-blue-50 text-blue-700'
                               : 'bg-neutral-100 text-neutral-600'

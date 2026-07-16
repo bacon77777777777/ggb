@@ -337,7 +337,7 @@ export default function UserDetailPage() {
   const getStatusColor = (status: string) => {
     if (status === 'active')   return 'bg-green-100 text-green-700 border border-green-200'
     if (status === 'frozen')   return 'bg-blue-100 text-blue-700 border border-blue-200'
-    return 'bg-gray-100 text-gray-700 border border-gray-200'
+    return 'bg-neutral-100 text-neutral-600 border border-neutral-200'
   }
 
   const getStatusText = (status: string) => {
@@ -482,7 +482,7 @@ export default function UserDetailPage() {
                 className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
                   userStatus === 'active'
                     ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
                 {userStatus === 'active' ? (
@@ -928,7 +928,7 @@ export default function UserDetailPage() {
                                   order.status === 'delivered' ? 'bg-green-100 text-green-700 border border-green-200' :
                                   order.status === 'processing' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
                                   order.status === 'shipping' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
-                                  'bg-gray-100 text-gray-700 border border-gray-200'
+                                  'bg-neutral-100 text-neutral-600 border border-neutral-200'
                                 }`}>
                                   {order.status === 'submitted' ? '已提交' :
                                    order.status === 'delivered' ? '已送達' :
@@ -1034,7 +1034,7 @@ export default function UserDetailPage() {
                               const isPos = row.delta > 0
                               const isPending = row.type === 'recharge' && row.status !== 'success'
                               const typeMap: Record<string, { label: string; cls: string }> = {
-                                recharge:  { label: '儲值',     cls: 'bg-emerald-50 text-emerald-700' },
+                                recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
                                 draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
                                 dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
                                 manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
@@ -1064,7 +1064,7 @@ export default function UserDetailPage() {
                                   <td className="px-3 py-2 text-right font-mono text-neutral-600 text-xs">
                                     {row.recharge_bonus != null && row.recharge_bonus > 0 ? `+${Number(row.recharge_bonus).toLocaleString()}` : row.recharge_bonus != null ? '—' : '—'}
                                   </td>
-                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPending ? 'text-neutral-400' : isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPending ? 'text-neutral-400' : isPos ? 'text-green-600' : 'text-rose-600'}`}>
                                     {isPending ? '—' : `${isPos ? '+' : ''}${Number(row.delta).toLocaleString()}`}
                                   </td>
                                   <td className="px-3 py-2 text-right font-mono text-neutral-700">

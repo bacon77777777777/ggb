@@ -101,7 +101,7 @@ export default function LeaderboardBotsPage() {
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-neutral-500">共 <span className="font-semibold text-neutral-800">{bots.length}</span> 個機器人，啟用中 <span className="font-semibold text-emerald-600">{activeCount}</span> 個</span>
+            <span className="text-sm text-neutral-500">共 <span className="font-semibold text-neutral-800">{bots.length}</span> 個機器人，啟用中 <span className="font-semibold text-green-600">{activeCount}</span> 個</span>
             <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full">真實用戶優先，機器人填補剩餘名次至 20 名</span>
           </div>
           <button
@@ -256,7 +256,7 @@ export default function LeaderboardBotsPage() {
                       <button
                         onClick={() => handleToggleActive(bot)}
                         className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                          bot.is_active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                          bot.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
                         }`}
                       >
                         {bot.is_active ? '啟用' : '停用'}

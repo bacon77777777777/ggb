@@ -56,11 +56,11 @@ const TYPE_META: Record<LogType, { label: string; color: string }> = {
 }
 
 const STATUS_META: Record<LogStatus, { label: string; color: string }> = {
-  released:   { label: '已發布', color: 'bg-emerald-100 text-emerald-700' },
+  released:   { label: '已發布', color: 'bg-green-100 text-green-700' },
   planned:    { label: '計劃中', color: 'bg-neutral-100 text-neutral-500' },
   open:       { label: '待處理', color: 'bg-red-100 text-red-600' },
   in_progress:{ label: '進行中', color: 'bg-blue-100 text-blue-600' },
-  resolved:   { label: '已解決', color: 'bg-emerald-100 text-emerald-700' },
+  resolved:   { label: '已解決', color: 'bg-green-100 text-green-700' },
 }
 
 const PRIORITY_META: Record<Priority, { label: string; color: string }> = {
@@ -580,12 +580,12 @@ export default function DevLogsPage() {
                 ) : (() => {
                   const latest = monitorLogs[0]
                   const statusColor = (s: string) =>
-                    s === 'ok' ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                    s === 'ok' ? 'text-green-600 bg-green-50 border-green-200'
                     : s === 'warning' ? 'text-amber-600 bg-amber-50 border-amber-200'
                     : s === 'error' ? 'text-red-600 bg-red-50 border-red-200'
                     : 'text-neutral-400 bg-neutral-50 border-neutral-200'
                   const statusDot = (s: string) =>
-                    s === 'ok' ? 'bg-emerald-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
+                    s === 'ok' ? 'bg-green-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
                   const statusLabel = (s: string) =>
                     s === 'ok' ? '正常' : s === 'warning' ? '注意' : s === 'error' ? '異常' : '未知'
 

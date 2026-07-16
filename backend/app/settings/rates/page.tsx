@@ -665,7 +665,7 @@ export default function RatesPage() {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-3 py-1.5 rounded-lg transition-colors text-sm bg-primary text-white hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded-lg transition-colors text-sm bg-primary text-white hover:bg-primary-dark disabled:bg-neutral-300 disabled:cursor-not-allowed"
                 >
                   {isSaving ? (
                     '保存中...'
@@ -711,7 +711,7 @@ export default function RatesPage() {
                     isEnded && !isExpanded
                       ? 'opacity-50 border-gray-200 bg-gray-50'
                       : hasAdjustment
-                        ? 'border-blue-300 bg-blue-50/30'
+                        ? 'border-primary/40 bg-blue-50/30'
                         : 'border-gray-200 bg-white'
                   } ${isExpanded ? 'shadow-md' : 'hover:shadow-sm'}`}
                 >
@@ -840,7 +840,7 @@ export default function RatesPage() {
                                 handleProfitRateChange(product.id, value)
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full px-2 py-1.5 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono text-center"
+                              className="w-full px-2 py-1.5 border-2 border-primary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-mono text-center"
                             />
                           </div>
                         </div>

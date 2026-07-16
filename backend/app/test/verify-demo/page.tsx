@@ -880,7 +880,7 @@ export default function VerifyDemoPage() {
             {/* 驗證結果標題 - 更明顯 */}
             <div className={`mb-6 p-5 rounded-xl border-2 ${
               results.hashMatch 
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
+                ? 'bg-gradient-to-r from-green-50 to-green-50 border-green-300' 
                 : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300'
             }`}>
               <div className="flex items-center gap-4">
@@ -1002,7 +1002,7 @@ export default function VerifyDemoPage() {
 
             {/* 獎項對比 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-green-50 rounded-lg border border-green-200">
                 <h3 className="text-sm font-semibold text-green-900 mb-2">
                   初始殺率 ({profitRate1.toFixed(2)}x) 的獎項
                 </h3>

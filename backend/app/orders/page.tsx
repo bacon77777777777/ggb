@@ -205,7 +205,7 @@ export default function OrdersPage() {
       case 'delivered':
         return 'bg-green-100 text-green-700'
       case 'cancelled':
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-neutral-100 text-neutral-600'
       default:
         return 'bg-neutral-100 text-neutral-700'
     }
@@ -1568,7 +1568,7 @@ export default function OrdersPage() {
                                     addLog('確認送達', '配送管理', `訂單 ${shipment.orderId} 已標記為送達`, 'success')
                                   }
                                 }}
-                                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >
                                 確認送達
                               </button>

@@ -124,7 +124,7 @@ export default function LogisticsReportPage() {
       case 'picked_up': return 'bg-blue-50 text-blue-600'
       case 'shipping': return 'bg-indigo-50 text-indigo-700'
       case 'delivered': return 'bg-green-50 text-green-700'
-      case 'cancelled': return 'bg-gray-100 text-gray-500'
+      case 'cancelled': return 'bg-neutral-100 text-neutral-500'
       default: return 'bg-neutral-100 text-neutral-600'
     }
   }

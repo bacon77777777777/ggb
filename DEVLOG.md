@@ -4,6 +4,34 @@
 
 ---
 
+## v2026.07.6｜2026-07-16｜Design System 批次 2–7 — UI Kit 全站統一
+
+### 組件統一（components/ui/）
+- **Input / Select / Textarea / FileInput**：border-2 → border、py-2 min-h-[42px] → py-1.5、ring-2 → ring-1；disabled gray-* → neutral-100/400/200；helper text → neutral-500
+- **Label**：text-sm text-neutral-700 → text-xs text-neutral-500
+- **Switch**：bg-gray-200 → bg-neutral-200（unchecked track）
+- **Badge**：新增 `status` prop，內建 `statusVariantMap` 自動對照 20+ 種狀態字串到 variant，匯出 `BadgeVariant` 型別
+- **Select**：新增 `placeholder` prop；useId() 取代 Math.random()
+
+### 共用 Dialog 修正（components/）
+- **AlertDialog / ConfirmDialog**：gray-900/600/50/300/400 全部換成 neutral-*；取消鈕 border-2 → border border-neutral-200
+
+### 全站 emerald-* → green-*（24 個頁面）
+- emerald-50/100/200/600/700/800 統一改為 green-*，success 色系統一
+
+### 偏離頁面修正
+- **settings/modules**：gray-300/blue-500/rounded-md → neutral-200/primary/rounded-lg；bg-blue-600 → bg-primary
+- **analytics**：gray-300/blue-500/blue-600 → neutral-200/primary
+- **settings/rates**：border-blue-300/disabled:bg-gray-300 → primary 系列
+- **orders、users/[id]、reports/logistics**：status getStatusColor 中的 gray-100/gray-700 → neutral-100/neutral-600
+
+### Design System 頁面（/design-system）
+- 新增 `backend/app/design-system/page.tsx`，展示所有 token、組件、間距、陰影、狀態色規範
+- 包含「禁止使用」清單：gray-*、emerald-*、自定義 getStatusColor、border-2（inputs）等
+- 加入 AdminLayout 側邊欄導覽（IconTools 圖示）
+
+---
+
 ## v2026.07.5｜2026-07-16｜Design System 批次 1 — Tailwind Token 地基
 
 ### 設計系統

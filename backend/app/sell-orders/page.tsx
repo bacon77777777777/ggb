@@ -279,7 +279,7 @@ export default function SellOrdersAdminPage() {
                     const statusClass = o.cancelled
                       ? 'bg-neutral-100 text-neutral-700'
                       : isCompleted
-                      ? 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-green-50 text-green-700'
                       : 'bg-amber-50 text-amber-700'
 
                     return (

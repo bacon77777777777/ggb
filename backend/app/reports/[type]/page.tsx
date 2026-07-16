@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<string, string> = {
   listing: '上架中', cancelled: '已取消',
 }
 const STATUS_COLOR: Record<string, string> = {
-  completed: 'bg-emerald-100 text-emerald-700', success: 'bg-emerald-100 text-emerald-700',
+  completed: 'bg-green-100 text-green-700', success: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700', pending_delivery: 'bg-yellow-100 text-yellow-700',
   failed: 'bg-red-100 text-red-700', refunded: 'bg-red-100 text-red-700',
   cancelled: 'bg-red-100 text-red-700', shipped: 'bg-blue-100 text-blue-700',
@@ -67,7 +67,7 @@ function CompletionBar({ pct }: { pct: number }) {
     <div className="flex items-center gap-2">
       <div className="flex-1 bg-neutral-100 rounded-full h-1.5 min-w-[60px]">
         <div
-          className={`h-1.5 rounded-full ${pct >= 90 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-neutral-300'}`}
+          className={`h-1.5 rounded-full ${pct >= 90 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-neutral-300'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -254,7 +254,7 @@ export default function ReportPage() {
               <>
                 {/* 摘要數據（儀表板未重複的） */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-emerald-600" />
+                  <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-green-600" />
                   <KpiCard label="折價券折損" value={`NT$ ${overview.couponDiscountFixed.toLocaleString()}`} sub={overview.couponDiscountPercentageCount > 0 ? `另有 ${overview.couponDiscountPercentageCount} 張折扣%券` : '固定金額券'} color="text-orange-500" />
                   <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
                   <KpiCard label="首次付費用戶佔比" value={funnel ? `${funnel.newUserConversionRate}%` : '—'} sub="新用戶→首儲轉化" color="text-indigo-600" />
@@ -298,7 +298,7 @@ export default function ReportPage() {
                             value: funnel.repeatPayersInPeriod,
                             unit: '人',
                             rate: funnel.repurchaseRateInPeriod,
-                            color: 'bg-emerald-500',
+                            color: 'bg-green-500',
                             width: funnel.uniquePayers > 0 ? Math.round(funnel.repeatPayersInPeriod / funnel.uniquePayers * 100) : 0,
                           },
                         ].map((step, i) => (
@@ -307,7 +307,7 @@ export default function ReportPage() {
                               <span className="text-xs text-neutral-500">{step.label}</span>
                               <div className="flex items-center gap-2">
                                 {step.rate !== null && (
-                                  <span className="text-xs font-semibold text-emerald-600">{step.rate}%</span>
+                                  <span className="text-xs font-semibold text-green-600">{step.rate}%</span>
                                 )}
                                 <span className="text-sm font-bold text-neutral-800 tabular-nums">
                                   {step.value.toLocaleString()} {step.unit}
@@ -333,7 +333,7 @@ export default function ReportPage() {
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { label: '首次付費用戶', value: funnel.firstTimePayers, sub: '生命週期首次', color: 'text-indigo-600' },
-                          { label: '本期回購率', value: `${funnel.repurchaseRateInPeriod}%`, sub: `${funnel.repeatPayersInPeriod} 人 2 次以上`, color: 'text-emerald-600' },
+                          { label: '本期回購率', value: `${funnel.repurchaseRateInPeriod}%`, sub: `${funnel.repeatPayersInPeriod} 人 2 次以上`, color: 'text-green-600' },
                           { label: '平均儲值次數 / 人', value: `${funnel.avgRechargesPerPayer} 次`, sub: '本期付費用戶', color: 'text-violet-600' },
                           { label: '首購平均等待天數', value: funnel.avgDaysToFirstPurchase !== null ? `${funnel.avgDaysToFirstPurchase} 天` : '—', sub: '新用戶 → 首儲', color: 'text-orange-500' },
                         ].map(k => (
@@ -351,7 +351,7 @@ export default function ReportPage() {
                           <p className="text-xs font-semibold text-neutral-400 mb-2">新用戶首購時間分佈</p>
                           <div className="space-y-1.5">
                             {[
-                              { label: '當天', value: funnel.purchaseTimingDist.sameDay, color: 'bg-emerald-500' },
+                              { label: '當天', value: funnel.purchaseTimingDist.sameDay, color: 'bg-green-500' },
                               { label: '1–2 天', value: funnel.purchaseTimingDist.within3Days, color: 'bg-blue-400' },
                               { label: '3–6 天', value: funnel.purchaseTimingDist.within7Days, color: 'bg-indigo-400' },
                               { label: '7–29 天', value: funnel.purchaseTimingDist.within30Days, color: 'bg-violet-400' },
@@ -425,7 +425,7 @@ export default function ReportPage() {
           <div className={`grid gap-3 ${filterCurrency === 'all' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
             <KpiCard label="商品數" value={filteredProducts.length.toLocaleString()} />
             {filterCurrency !== 'points' && (
-              <KpiCard label="總消費代幣" value={`${filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G`} color="text-emerald-600" />
+              <KpiCard label="總消費代幣" value={`${filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G`} color="text-green-600" />
             )}
             {filterCurrency !== 'tokens' && (() => {
               const totalPts = filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0)
@@ -478,7 +478,7 @@ export default function ReportPage() {
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
                           <td className="px-4 py-3 text-right font-semibold">{p.drawCount.toLocaleString()}</td>
                           {filterCurrency !== 'points' && (
-                            <td className="px-4 py-3 text-right font-semibold text-emerald-700">{tokenRev.toLocaleString()} G</td>
+                            <td className="px-4 py-3 text-right font-semibold text-green-700">{tokenRev.toLocaleString()} G</td>
                           )}
                           {filterCurrency !== 'tokens' && (
                             <td className="px-4 py-3 text-right font-semibold text-indigo-600">
@@ -501,7 +501,7 @@ export default function ReportPage() {
                         <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
                         <td className="px-4 py-2 text-right font-bold">{filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
                         {filterCurrency !== 'points' && (
-                          <td className="px-4 py-2 text-right font-bold text-emerald-700">
+                          <td className="px-4 py-2 text-right font-bold text-green-700">
                             {filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G
                           </td>
                         )}
@@ -524,7 +524,7 @@ export default function ReportPage() {
         {reportType === 'recharge' && !loading && rechargeData.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="儲值筆數" value={rechargeData.length.toLocaleString()} />
-            <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-emerald-600" sub="已完成筆數" />
+            <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-green-600" sub="已完成筆數" />
             <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-blue-600" />
           </div>
         )}
@@ -583,7 +583,7 @@ export default function ReportPage() {
         {reportType === 'consumption' && !loading && consumptionData.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="消費筆數" value={consumptionData.length.toLocaleString()} />
-            <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-emerald-600" />
+            <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-green-600" />
             <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-blue-600" />
           </div>
         )}
@@ -651,7 +651,7 @@ export default function ReportPage() {
                 {/* KPI */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-blue-600" />
-                  <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-emerald-600" />
+                  <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-green-600" />
                   <KpiCard label="點擊 → 抽轉化率" value={`${behaviorData.conversionRate}%`} color="text-amber-600" />
                 </div>
 

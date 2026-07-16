@@ -102,10 +102,10 @@ export default function AlertDialog({
             
             {/* 文字內容 */}
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                 {title}
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 {message}
               </p>
             </div>
@@ -113,7 +113,7 @@ export default function AlertDialog({
         </div>
 
         {/* 底部按鈕 */}
-        <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end">
+        <div className="px-6 py-4 bg-neutral-50 rounded-b-xl flex items-center justify-end">
           <button
             onClick={onClose}
             className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${

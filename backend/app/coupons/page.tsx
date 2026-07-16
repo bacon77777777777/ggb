@@ -220,7 +220,7 @@ export default function CouponsPage() {
       render: (item) => (
         <span
           className={`px-2 py-1 rounded text-xs font-semibold ${
-            item.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'
+            item.is_active ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'
           }`}
         >
           {item.is_active ? '啟用中' : '已停用'}

@@ -650,6 +650,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconNews },
           { name: '工具', path: '/tools', icon: IconTools },
           { name: '殺率調整', path: '/settings/rates', icon: IconSettings },
+          { name: 'Design System', path: '/design-system', icon: IconTools },
         ],
       },
     ],

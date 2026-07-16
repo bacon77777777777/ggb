@@ -24,7 +24,7 @@ interface Snapshot {
 const STATUS_META = {
   draft:     { label: '草稿',   cls: 'bg-neutral-100 text-neutral-600' },
   confirmed: { label: '已確認', cls: 'bg-blue-50 text-blue-700' },
-  paid:      { label: '已付款', cls: 'bg-emerald-50 text-emerald-700' },
+  paid:      { label: '已付款', cls: 'bg-green-50 text-green-700' },
 }
 
 function fmt(n: number) {
@@ -166,7 +166,7 @@ export default function SettlementSnapshotsPage() {
                     <span className="font-semibold text-neutral-800">{month.replace('-', '年')}月</span>
                     <span className="ml-3 text-sm text-neutral-500">{rows.length} 家廠商｜合計 {fmt(totalNet)}</span>
                   </div>
-                  {allPaid && <span className="text-xs text-emerald-600 font-medium">✓ 全部已付款</span>}
+                  {allPaid && <span className="text-xs text-green-600 font-medium">✓ 全部已付款</span>}
                 </div>
                 <table className="w-full text-sm">
                   <thead className="border-b border-neutral-100">
@@ -211,7 +211,7 @@ export default function SettlementSnapshotsPage() {
                                 <button onClick={() => updateStatus(row.id, 'confirmed')} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100">確認</button>
                               )}
                               {row.status === 'confirmed' && (
-                                <button onClick={() => updateStatus(row.id, 'paid')} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100">標記已付款</button>
+                                <button onClick={() => updateStatus(row.id, 'paid')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">標記已付款</button>
                               )}
                               {row.status === 'paid' && row.paid_at && (
                                 <span className="text-xs text-neutral-400">{new Date(row.paid_at).toLocaleDateString('zh-TW')}</span>

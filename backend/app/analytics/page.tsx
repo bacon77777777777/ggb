@@ -264,7 +264,7 @@ export default function AdminsPage() {
       key: 'id',
       label: 'ID',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono">MNG{admin.id.toString().padStart(3, '0')}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono">MNG{admin.id.toString().padStart(3, '0')}</span>
     },
     {
       key: 'username',
@@ -310,13 +310,13 @@ export default function AdminsPage() {
       key: 'created_at',
       label: '建立時間',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono whitespace-nowrap">{formatDateTime(admin.created_at)}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.created_at)}</span>
     },
     {
       key: 'last_login_at',
       label: '最後登入',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono whitespace-nowrap">{formatDateTime(admin.last_login_at)}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.last_login_at)}</span>
     },
     {
       key: 'actions',
@@ -443,7 +443,7 @@ export default function AdminsPage() {
            <div className="space-y-4">
              <div>
                <label className="block text-sm font-medium text-gray-700 mb-1">
-                 帳號 <span className="text-xs text-gray-500">(僅限英文數字)</span>
+                 帳號 <span className="text-xs text-neutral-500">(僅限英文數字)</span>
                </label>
                <input
                  type="text"
@@ -454,7 +454,7 @@ export default function AdminsPage() {
                      setFormData({ ...formData, username: value })
                    }
                  }}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                  placeholder="請輸入帳號"
                />
              </div>
@@ -466,7 +466,7 @@ export default function AdminsPage() {
                 type="text"
                 value={formData.nickname}
                 onChange={e => setFormData({ ...formData, nickname: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="請輸入暱稱"
               />
             </div>
@@ -478,7 +478,7 @@ export default function AdminsPage() {
                  type="password"
                  value={formData.password}
                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                  placeholder={isEditModalOpen ? "不修改請留空" : "請設定密碼"}
                />
              </div>
@@ -489,7 +489,7 @@ export default function AdminsPage() {
                <select
                  value={formData.role_id}
                  onChange={e => setFormData({ ...formData, role_id: Number(e.target.value) })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                >
                  <option value={0} disabled>請選擇角色</option>
                  {roles.map(role => (
@@ -506,7 +506,7 @@ export default function AdminsPage() {
                <select
                  value={formData.status}
                  onChange={e => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                >
                  <option value="active">啟用</option>
                  <option value="inactive">停用</option>
@@ -526,7 +526,7 @@ export default function AdminsPage() {
                </button>
                <button
                  onClick={handleSubmit}
-                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                >
                  儲存
                </button>

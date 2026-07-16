@@ -98,7 +98,7 @@ export default function ModuleSettingsPage() {
     <AdminLayout>
       <PageCard title="抽獎模組設定">
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-gray-500">載入中...</div>
+          <div className="py-12 text-center text-sm text-neutral-500">載入中...</div>
         ) : (
           <div className="space-y-4">
             {PRODUCT_TYPES.map(({ type, label, themes }) => (
@@ -113,7 +113,7 @@ export default function ModuleSettingsPage() {
                     <select
                       value={settings[type] || themes[0].value}
                       onChange={e => handleChange(type, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       {themes.map(({ value, label: themeLabel, desc }) => (
                         <option key={value} value={value}>
@@ -122,7 +122,7 @@ export default function ModuleSettingsPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="w-32 shrink-0 text-xs text-gray-400 text-right">
+                  <div className="w-32 shrink-0 text-xs text-neutral-400 text-right">
                     {themes.find(t => t.value === (settings[type] || themes[0].value))?.label}
                   </div>
                 </div>
@@ -130,7 +130,7 @@ export default function ModuleSettingsPage() {
             ))}
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-neutral-400">
                 ※ 各類別未自訂的商品會套用此設定；已在商品頁個別設定的不受影響
               </p>
               <div className="flex items-center gap-3">
@@ -138,7 +138,7 @@ export default function ModuleSettingsPage() {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="px-5 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors"
                 >
                   {isSaving ? '儲存中...' : '儲存設定'}
                 </button>

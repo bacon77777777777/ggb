@@ -398,7 +398,7 @@ export default function RechargesPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值金額</p>
-                  <p className="text-2xl font-black text-emerald-600">NT$ {totalAmount.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-green-600">NT$ {totalAmount.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">含贈送 {totalBonus.toLocaleString()} G</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
@@ -456,7 +456,7 @@ export default function RechargesPage() {
                           <td className="py-2 px-3 font-medium whitespace-nowrap pl-6">{info.name}</td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                          <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-green-600">NT$ {stat.amount.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
                         </tr>
@@ -480,7 +480,7 @@ export default function RechargesPage() {
                           </td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-neutral-400' : 'text-emerald-600'}`}>
+                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-neutral-400' : 'text-green-600'}`}>
                             {isMarketing ? '—' : `NT$ ${stat.amount.toLocaleString()}`}
                           </td>
                           <td className="py-2 px-3 tabular-nums text-neutral-400">—</td>

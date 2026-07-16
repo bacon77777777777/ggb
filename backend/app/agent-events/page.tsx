@@ -152,7 +152,7 @@ export default function AgentEventsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => handleAll('processed')}
-                className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                className="px-3 py-1.5 text-xs border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors"
               >
                 全部標為已處理
               </button>
@@ -238,7 +238,7 @@ export default function AgentEventsPage() {
                       <button
                         disabled={isUpdating}
                         onClick={() => updateStatus([ev.id], 'processed')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                       >
                         {isUpdating ? '處理中…' : '✓ 已處理'}
                       </button>

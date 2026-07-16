@@ -170,7 +170,7 @@ export default function SuppliersPage() {
                       <td className="px-4 py-3 text-neutral-600">{s.contact_phone ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-500 text-xs">{s.contact_email ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
                           {s.is_active ? '啟用' : '停用'}
                         </span>
                       </td>

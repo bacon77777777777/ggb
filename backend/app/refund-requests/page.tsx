@@ -21,7 +21,7 @@ const STATUS_META = {
   pending:   { label: '待審核', cls: 'bg-yellow-50 text-yellow-700' },
   approved:  { label: '已核准', cls: 'bg-blue-50 text-blue-700' },
   rejected:  { label: '已拒絕', cls: 'bg-red-50 text-red-600' },
-  processed: { label: '已處理', cls: 'bg-emerald-50 text-emerald-700' },
+  processed: { label: '已處理', cls: 'bg-green-50 text-green-700' },
 }
 
 export default function RefundRequestsPage() {
@@ -190,7 +190,7 @@ export default function RefundRequestsPage() {
                         </>
                       )}
                       {r.status === 'approved' && (
-                        <button onClick={() => act(r.id, 'process')} className="px-3 py-1.5 text-sm bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 font-medium">
+                        <button onClick={() => act(r.id, 'process')} className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium">
                           執行退款（扣代幣）
                         </button>
                       )}

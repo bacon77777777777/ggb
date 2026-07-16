@@ -54,7 +54,7 @@ function Row({ label, value, bold, red, green, muted, indigo, indent }: {
   return (
     <div className={`flex items-center justify-between py-1 ${indent ? 'pl-3' : ''}`}>
       <div className="text-sm">{label}</div>
-      <span className={`text-sm tabular-nums ${bold ? 'font-semibold text-neutral-800' : red ? 'text-red-500' : green ? 'text-emerald-600' : muted ? 'text-neutral-400' : indigo ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
+      <span className={`text-sm tabular-nums ${bold ? 'font-semibold text-neutral-800' : red ? 'text-red-500' : green ? 'text-green-600' : muted ? 'text-neutral-400' : indigo ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
         {value}
       </span>
     </div>
@@ -287,7 +287,7 @@ export default function SettlementPage() {
                       <div className="flex items-center justify-between gap-3">
                         <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
                         {data?.hasActualFee ? (
-                          <span className="text-sm font-medium text-emerald-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
+                          <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
                         ) : (
                           <div className="flex items-center gap-1">
                             <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
@@ -465,7 +465,7 @@ export default function SettlementPage() {
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
                     <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
                   </div>
-                  <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
+                  <span className="text-xl font-bold text-green-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>

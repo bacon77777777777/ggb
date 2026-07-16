@@ -158,7 +158,7 @@ export default function UserEditPage() {
       <div className="max-w-2xl space-y-5">
 
         {msg && (
-          <div className={`px-4 py-3 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          <div className={`px-4 py-3 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             {msg.text}
           </div>
         )}
