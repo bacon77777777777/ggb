@@ -557,6 +557,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '營運總覽',
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
+          { name: '分析頁', path: '/analytics-overview', icon: IconReports },
           { name: '轉換分析', path: '/reports/overview', icon: IconReports },
           { name: '點擊分析', path: '/reports/behavior', icon: IconReports },
         ],

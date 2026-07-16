@@ -4,6 +4,43 @@
 
 ---
 
+## v2026.07.13｜2026-07-16｜分析頁 — Ant Design Pro 風格營運儀表板
+
+### 新頁面：`/analytics-overview`（營運總覽 → 分析頁）
+
+**4 層資料視覺化**，右上角時間切換（今日/本週/本月/本年/自訂）統一控制所有層：
+
+**第 1 層 — KPI 卡片**（4 格橫排，白底 + 分隔線）
+- 總銷售額、訪問量、消費筆數（抽獎）、總儲值金額
+- 每卡片：大字值 + 周同比 % + 日同比 % + 迷你 Sparkline
+- 轉化率 = totalDrawCount / totalVisits × 100%
+- 客單價 = totalSales / totalDrawCount
+
+**第 2 層 — 線上熱門搜尋 + 銷售類別佔比**
+- 熱門搜尋：`search_logs` GROUP BY keyword，顯示搜尋次數 + 同比成長%
+- 類別佔比：`draw_records → products.type`，SVG 甜甜圈圖（純 stroke-dasharray 不依賴外部套件）
+
+**第 3 層 — 廠商銷售概覽**
+- Tab 切換：銷售額 / 消費筆數
+- 左側：時間序列 SVG 柱狀圖（日或月 breakdown）
+- 右側：廠商銷售排行榜（mini progress bar）
+
+**第 4 層 — 廠商轉化率**
+- 各廠商 SVG 環形進度圓（銷售佔比 %）
+- 60%+ 藍、30%+ 綠、<30% 琥珀
+
+### 新 API：`/api/admin/analytics-overview`
+- 支援 `period` + `start/end` 參數
+- 同時查 current + previous period，計算周同比
+- 另查今日/昨日 → 日同比
+- Bot 排除（同財務 query 慣例）
+- 返回：totalSales, totalVisits, totalDrawCount, totalRecharges, bars[], keywords[], categories[], suppliers[]
+- `bars` 本年模式按月分組（12 根），其他模式按日分組
+
+### 所有圖表純 SVG / CSS，無外部圖表套件
+
+---
+
 ## v2026.07.12｜2026-07-16｜Design System — 商品品項 form + Toolbar 高度統一
 
 ### 商品品項卡片重設計（products/[id]/page.tsx）
