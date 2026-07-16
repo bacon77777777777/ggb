@@ -56,7 +56,7 @@ export default function AlertDialog({
     },
     info: {
       iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
+      iconColor: 'text-primary',
       borderColor: 'border-blue-200'
     },
     warning: {
@@ -120,7 +120,7 @@ export default function AlertDialog({
               type === 'success' ? 'bg-green-600 hover:bg-green-700 text-white' :
               type === 'error' ? 'bg-red-600 hover:bg-red-700 text-white' :
               type === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' :
-              'bg-blue-600 hover:bg-blue-700 text-white'
+              'bg-primary hover:bg-primary-dark text-white'
             }`}
           >
             {buttonText}

@@ -49,7 +49,7 @@ interface MeetingLog {
 }
 
 const TYPE_META: Record<LogType, { label: string; color: string }> = {
-  feature:     { label: '新功能', color: 'bg-blue-100 text-blue-700' },
+  feature:     { label: '新功能', color: 'bg-blue-100 text-primary' },
   fix:         { label: '修復',   color: 'bg-red-100 text-red-700' },
   improvement: { label: '優化',   color: 'bg-amber-100 text-amber-700' },
   issue:       { label: '問題',   color: 'bg-purple-100 text-purple-700' },
@@ -59,7 +59,7 @@ const STATUS_META: Record<LogStatus, { label: string; color: string }> = {
   released:   { label: '已發布', color: 'bg-green-100 text-green-700' },
   planned:    { label: '計劃中', color: 'bg-neutral-100 text-neutral-500' },
   open:       { label: '待處理', color: 'bg-red-100 text-red-600' },
-  in_progress:{ label: '進行中', color: 'bg-blue-100 text-blue-600' },
+  in_progress:{ label: '進行中', color: 'bg-blue-100 text-primary' },
   resolved:   { label: '已解決', color: 'bg-green-100 text-green-700' },
 }
 
@@ -230,7 +230,7 @@ export default function DevLogsPage() {
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setShowForm(false) }}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
@@ -284,14 +284,14 @@ export default function DevLogsPage() {
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">類型</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(TYPE_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                 </select>
               </div>
@@ -299,13 +299,13 @@ export default function DevLogsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
                 <input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
                   placeholder="e.g. v1.2.0"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               {form.type === 'issue' && (
                 <div>
                   <label className="text-xs text-neutral-500 mb-1 block">優先級</label>
                   <select value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                     <option value="">不設定</option>
                     {Object.entries(PRIORITY_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
                   </select>
@@ -316,13 +316,13 @@ export default function DevLogsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
               <input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 placeholder="簡短描述這筆紀錄"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">說明</label>
               <textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={3} placeholder="詳細說明、重現步驟、解決方案…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setForm(BLANK) }}
@@ -347,25 +347,25 @@ export default function DevLogsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
                 <input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="會議名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">時間 *</label>
                 <input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">參與人</label>
               <input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
                 placeholder="e.g. 王小明、李大華"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">會議內容</label>
               <textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
                 rows={6} placeholder="討論事項、決議結論、待辦事項…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setMeetingForm(MEETING_BLANK) }}

@@ -244,7 +244,7 @@ export default function CouponsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(item)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+            className="text-primary hover:text-primary text-sm font-medium"
           >
             編輯
           </button>

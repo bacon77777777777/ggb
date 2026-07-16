@@ -35,7 +35,7 @@ const EVENT_LABEL: Record<string, string> = {
 }
 
 const EVENT_COLOR: Record<string, string> = {
-  login: 'bg-blue-100 text-blue-700',
+  login: 'bg-blue-100 text-primary',
   draw: 'bg-purple-100 text-purple-700',
   topup: 'bg-green-100 text-green-700',
 }
@@ -380,7 +380,7 @@ export default function LogsPage() {
                   placeholder="搜尋用戶名稱、IP..."
                   value={ueSearch}
                   onChange={e => setUeSearch(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-1 focus:ring-primary/20"
                 />
                 <select
                   value={ueEventType}

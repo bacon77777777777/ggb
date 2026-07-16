@@ -94,7 +94,7 @@ export default function DismantledReportPage() {
           <select
             value={selectedSupplierId}
             onChange={e => setSelectedSupplierId(e.target.value)}
-            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
           >
             <option value="">所有廠商</option>
             {suppliers.map(s => (
@@ -178,7 +178,7 @@ export default function DismantledReportPage() {
                       {new Date(row.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Link href={`/users/${row.user_id}`} className="text-blue-600 hover:underline font-medium text-xs">
+                      <Link href={`/users/${row.user_id}`} className="text-primary hover:underline font-medium text-xs">
                         {row.userName}
                       </Link>
                     </td>

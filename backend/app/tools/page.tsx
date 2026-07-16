@@ -554,7 +554,7 @@ export default function ToolsPage() {
                       value={batchListUrl}
                       onChange={(e) => setBatchListUrl(e.target.value)}
                       placeholder="https://slimetoy.com.tw/ 或 https://oripa.clove.jp/zh-TW/oripa/All"
-                      className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <button
                       onClick={() => void loadListUrlToBatch()}
@@ -697,7 +697,7 @@ export default function ToolsPage() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
                 <div className="flex items-center gap-2">

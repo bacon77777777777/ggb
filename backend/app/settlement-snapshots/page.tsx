@@ -23,7 +23,7 @@ interface Snapshot {
 
 const STATUS_META = {
   draft:     { label: '草稿',   cls: 'bg-neutral-100 text-neutral-600' },
-  confirmed: { label: '已確認', cls: 'bg-blue-50 text-blue-700' },
+  confirmed: { label: '已確認', cls: 'bg-primary text-primary' },
   paid:      { label: '已付款', cls: 'bg-green-50 text-green-700' },
 }
 
@@ -208,7 +208,7 @@ export default function SettlementSnapshotsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1 justify-end">
                               {row.status === 'draft' && (
-                                <button onClick={() => updateStatus(row.id, 'confirmed')} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100">確認</button>
+                                <button onClick={() => updateStatus(row.id, 'confirmed')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100">確認</button>
                               )}
                               {row.status === 'confirmed' && (
                                 <button onClick={() => updateStatus(row.id, 'paid')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">標記已付款</button>

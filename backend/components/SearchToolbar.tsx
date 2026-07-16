@@ -182,7 +182,7 @@ export default function SearchToolbar({
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm placeholder:text-neutral-400 hover:border-neutral-300 shadow-sm hover:shadow-md"
+              className="w-full px-4 py-1.5 pl-10 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-sm placeholder:text-neutral-400 hover:border-neutral-300"
             />
             {searchValue && (
               <button
@@ -248,7 +248,7 @@ export default function SearchToolbar({
                           <select
                             value={filter.value || 'all'}
                             onChange={(e) => filter.onChange?.(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary appearance-none cursor-pointer"
+                            className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none cursor-pointer"
                           >
                             {filter.options.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>

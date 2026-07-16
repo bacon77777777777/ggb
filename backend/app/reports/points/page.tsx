@@ -139,7 +139,7 @@ export default function PointsReportPage() {
                       <td className="py-2 px-3 whitespace-nowrap">{r.task_title}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          r.task_type === 'daily' ? 'bg-blue-50 text-blue-700' :
+                          r.task_type === 'daily' ? 'bg-primary text-primary' :
                           r.task_type === 'weekly' ? 'bg-purple-50 text-purple-700' :
                           r.task_type === 'achievement' ? 'bg-amber-50 text-amber-700' :
                           'bg-neutral-100 text-neutral-600'

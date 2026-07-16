@@ -396,7 +396,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="請輸入商品名稱"
                   required
                 />
@@ -444,7 +444,7 @@ export default function NewProductPage() {
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
                 >
                   <option value="ichiban">一番賞</option>
                   <option value="blindbox">盒玩 (盲盒)</option>
@@ -470,7 +470,7 @@ export default function NewProductPage() {
                   type="number"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="0"
                   required
                   min="1"
@@ -484,7 +484,7 @@ export default function NewProductPage() {
                   type="number"
                   value={formData.cost}
                   onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="0"
                   min="0"
                   step="0.01"
@@ -511,7 +511,7 @@ export default function NewProductPage() {
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
+                    className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
                   >
                     <option value="active">進行中</option>
                     <option value="pending">待上架</option>
@@ -545,7 +545,7 @@ export default function NewProductPage() {
                 <select
                   value={formData.rarity}
                   onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
                 >
                   <option value="1">1 星</option>
                   <option value="2">2 星</option>
@@ -584,7 +584,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.distributor}
                   onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="例如：萬代南夢宮"
                 />
               </div>
@@ -596,7 +596,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm font-mono"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 font-mono"
                   placeholder="4549660718956"
                   maxLength={50}
                 />
@@ -609,7 +609,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.series ?? ''}
                   onChange={(e) => setFormData({ ...formData, series: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="寶可夢、鬼滅之刃..."
                 />
               </div>
@@ -620,7 +620,7 @@ export default function NewProductPage() {
                 <select
                   value={formData.supplierId}
                   onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                 >
                   <option value="">— 未指定 —</option>
                   {suppliers.map((s) => (
@@ -641,7 +641,7 @@ export default function NewProductPage() {
                 <select
                   value={formData.machineTheme}
                   onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                 >
                   <option value="">— 類別預設 —</option>
                   {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
@@ -826,10 +826,10 @@ export default function NewProductPage() {
                               min="0"
                               placeholder="數量"
                             />
-                            <div className="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-700">
+                            <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-700">
                               {prize.remaining === 0 ? '0' : prize.remaining}
                             </div>
-                            <div className="px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-600 flex items-center justify-center">
+                            <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
                               {isLastOneLevel(prize.level)
                                 ? '最後賞'
                                 : (calculatedTotalCount > 0 && prize.total > 0
@@ -912,12 +912,12 @@ export default function NewProductPage() {
                 value={librarySearchQuery}
                 onChange={(e) => setLibrarySearchQuery(e.target.value)}
                 placeholder="搜尋小物名稱、分類..."
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
               <select
                 value={librarySelectedCategory}
                 onChange={(e) => setLibrarySelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               >
                 <option value="all">全部分類</option>
                 {Array.from(new Set(libraryItems.map(item => item.category))).map(cat => (

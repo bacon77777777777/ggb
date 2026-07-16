@@ -608,7 +608,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 )}
                 <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />
               </div>
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 space-y-1">
+              <div className="bg-primary border border-blue-100 rounded-xl p-4 text-xs text-primary space-y-1">
                 <p className="font-semibold text-blue-800">智能欄位識別</p>
                 <p>• 支援任意廠商格式，欄位名稱不同也能自動對應</p>
                 <p>• 可識別：名稱、條碼、類型、系列、代理商、日幣/售價/成本/特價、發售時間、品項清單+圖片</p>
@@ -626,7 +626,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-violet-50 border border-violet-200 rounded-xl text-sm">
                   <span className="text-violet-700 font-semibold shrink-0">AI 補全完成</span>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                    <span className="text-emerald-700 font-medium">完成：{enrichSummary.done} 件</span>
+                    <span className="text-green-700 font-medium">完成：{enrichSummary.done} 件</span>
                     {enrichSummary.partial > 0 && <span className="text-amber-600 font-medium">未完整：{enrichSummary.partial} 件</span>}
                     {enrichSummary.error > 0 && <span className="text-red-600 font-medium">失敗：{enrichSummary.error} 件</span>}
                   </div>
@@ -742,7 +742,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
                         <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                           {p.aiStatus === 'loading' && <span className="text-xs text-violet-500 animate-pulse">搜尋中…</span>}
-                          {p.aiStatus === 'done'    && <span className="text-xs text-emerald-600 font-medium">✓ 已補全</span>}
+                          {p.aiStatus === 'done'    && <span className="text-xs text-green-600 font-medium">✓ 已補全</span>}
                           {p.aiStatus === 'partial' && <button onClick={() => enrichOne(i)} className="text-xs text-amber-600 hover:underline" title="可重試">⚠ 未完整</button>}
                           {p.aiStatus === 'error'   && <button onClick={() => enrichOne(i)} className="text-xs text-red-500 hover:underline" title={p.aiError}>重試</button>}
                           {p.aiStatus === 'idle'    && <button onClick={() => enrichOne(i)} className="text-xs px-2 py-1 bg-violet-100 text-violet-700 rounded hover:bg-violet-200">補全</button>}
@@ -764,7 +764,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                               {variantList.map((v, vi) => (
                                 <div key={vi} className="flex items-center gap-2 bg-white border border-neutral-100 rounded-lg p-2 shadow-sm">
-                                  <div className="w-10 h-10 rounded-md bg-neutral-100 flex-shrink-0 relative overflow-hidden">
+                                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 relative overflow-hidden">
                                     {v.image_url && (
                                       <img
                                         src={v.image_url}

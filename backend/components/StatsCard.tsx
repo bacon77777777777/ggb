@@ -41,8 +41,8 @@ export default function StatsCard({
       border: 'border-green-500',
     },
     blue: {
-      ring: 'ring-blue-500',
-      border: 'border-blue-500',
+      ring: 'ring-primary',
+      border: 'border-primary',
     },
     yellow: {
       ring: 'ring-yellow-500',
@@ -56,7 +56,7 @@ export default function StatsCard({
   const baseClasses = `bg-white rounded-lg shadow-sm border border-neutral-200 p-4 text-left hover:bg-neutral-50 transition-all h-full min-h-[100px] flex flex-col justify-between`
   // 統一選中樣式：使用單一藍色邊框和 ring，避免多種顏色混在一起
   const activeClasses = isActive ? `ring-2 ring-primary border-primary` : ''
-  const clickableClasses = onClick ? `cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary` : ''
+  const clickableClasses = onClick ? `cursor-pointer focus:outline-none focus:ring-1 focus:ring-offset-2 focus:ring-primary` : ''
 
   const content = (
     <div className="flex flex-col h-full">

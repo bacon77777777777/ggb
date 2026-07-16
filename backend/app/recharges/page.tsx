@@ -224,29 +224,29 @@ export default function RechargesPage() {
   const columns: Column<RechargeRecord>[] = [
     {
       key: 'created_at', label: '時間', sortable: true,
-      render: (record) => <span className="text-gray-500">{formatDateTime(record.created_at)}</span>
+      render: (record) => <span className="text-neutral-500">{formatDateTime(record.created_at)}</span>
     },
-    { key: 'order_number', label: '訂單編號', className: 'font-mono text-gray-600' },
+    { key: 'order_number', label: '訂單編號', className: 'font-mono text-neutral-600' },
     {
       key: 'trade_no', label: '金流序號',
-      render: (record) => <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
+      render: (record) => <span className="font-mono text-xs text-neutral-500">{record.trade_no || '—'}</span>
     },
     {
       key: 'user', label: '用戶', sortable: true,
       render: (record) => (
         <div>
-          <div className="font-medium text-gray-900">{record.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-gray-500">{record.user?.email}</div>
+          <div className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</div>
+          <div className="text-xs text-neutral-500">{record.user?.email}</div>
         </div>
       )
     },
     {
       key: 'amount', label: '儲值金額(TWD)', sortable: true,
-      render: (record) => <span className="font-medium text-gray-900">{record.amount.toLocaleString()}</span>
+      render: (record) => <span className="font-medium text-neutral-900">{record.amount.toLocaleString()}</span>
     },
     {
       key: 'bonus', label: '贈送代幣(G)', sortable: true,
-      render: (record) => <span className="text-gray-500">{record.bonus.toLocaleString()}</span>
+      render: (record) => <span className="text-neutral-500">{record.bonus.toLocaleString()}</span>
     },
     {
       key: 'payment_method', label: '付款方式', sortable: true,
@@ -255,7 +255,7 @@ export default function RechargesPage() {
         const isManual = getMethodChannel(normalized) === 'manual'
         const isMarketing = (MARKETING_KEYS as readonly string[]).includes(normalized)
         return (
-          <span className={`text-sm ${isMarketing ? 'text-amber-600' : isManual ? 'text-teal-700' : 'text-gray-600'}`}>
+          <span className={`text-sm ${isMarketing ? 'text-amber-600' : isManual ? 'text-teal-700' : 'text-neutral-600'}`}>
             {getPaymentMethodLabel(record.payment_method)}
           </span>
         )
@@ -413,7 +413,7 @@ export default function RechargesPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
-                  <p className="text-2xl font-black text-blue-600">NT$ {totalNet.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-primary">NT$ {totalNet.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">扣除手續費</p>
                 </div>
               </div>
@@ -458,7 +458,7 @@ export default function RechargesPage() {
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-green-600">NT$ {stat.amount.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
-                          <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-primary font-semibold">NT$ {net.toLocaleString()}</td>
                         </tr>
                       )
                     })}

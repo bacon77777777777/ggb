@@ -32,7 +32,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   ichiban: 'bg-red-50 text-red-700',
   gacha:   'bg-orange-50 text-orange-700',
   blindbox:'bg-purple-50 text-purple-700',
-  tcg:     'bg-blue-50 text-blue-700',
+  tcg:     'bg-primary text-primary',
   general: 'bg-neutral-100 text-neutral-600',
 }
 

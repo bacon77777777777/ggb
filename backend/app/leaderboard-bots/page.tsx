@@ -25,7 +25,7 @@ const COLOR_STYLES: Record<string, string> = {
   gold: 'bg-yellow-100 text-yellow-700',
   red: 'bg-red-100 text-red-700',
   purple: 'bg-purple-100 text-purple-700',
-  blue: 'bg-blue-100 text-blue-700',
+  blue: 'bg-blue-100 text-primary',
   green: 'bg-green-100 text-green-700',
 }
 
@@ -128,22 +128,22 @@ export default function LeaderboardBotsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">名稱 *</label>
                 <input value={form.nickname ?? ''} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                   placeholder="機器人名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div className="col-span-2 md:col-span-1">
                 <label className="text-xs text-neutral-500 mb-1 block">排序</label>
                 <input type="number" value={form.sort_order ?? 99} onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">賞金榜分數</label>
                 <input type="number" value={form.whale_score ?? 0} onChange={e => setForm(f => ({ ...f, whale_score: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">轉蛋榜分數</label>
                 <input type="number" value={form.draws_score ?? 0} onChange={e => setForm(f => ({ ...f, draws_score: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
 
@@ -151,7 +151,7 @@ export default function LeaderboardBotsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">頭像 URL</label>
               <input value={form.avatar_url ?? ''} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))}
                 placeholder="/images/avatar/01.png"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -159,12 +159,12 @@ export default function LeaderboardBotsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">稱號（選填）</label>
                 <input value={form.title_name ?? ''} onChange={e => setForm(f => ({ ...f, title_name: e.target.value }))}
                   placeholder="e.g. 抽蛋之神"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">稱號顏色</label>
                 <select value={form.title_color ?? 'gold'} onChange={e => setForm(f => ({ ...f, title_color: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {TITLE_COLORS.map(c => <option key={c} value={c}>{COLOR_LABELS[c]}</option>)}
                 </select>
               </div>
@@ -174,7 +174,7 @@ export default function LeaderboardBotsPage() {
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">性別</label>
                 <select value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   <option value="">未設定</option>
                   <option value="male">男</option>
                   <option value="female">女</option>
@@ -183,7 +183,7 @@ export default function LeaderboardBotsPage() {
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">生日</label>
                 <input type="date" value={form.birthday ?? ''} onChange={e => setForm(f => ({ ...f, birthday: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
 
@@ -191,7 +191,7 @@ export default function LeaderboardBotsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">備注</label>
               <input value={form.bio ?? ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                 placeholder="機器人備注（僅後台可見）"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
 
             <div className="flex items-center gap-2">

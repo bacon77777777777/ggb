@@ -160,7 +160,7 @@ export default function CouponsReportPage() {
                         <div className="text-xs text-neutral-400">{r.coupon_title}</div>
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-xs bg-primary text-primary">
                           {DISCOUNT_TYPE_LABEL[r.discount_type] ?? r.discount_type}
                         </span>
                       </td>

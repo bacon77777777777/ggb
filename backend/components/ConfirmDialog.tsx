@@ -64,8 +64,8 @@ export default function ConfirmDialog({
     },
     info: {
       iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
-      confirmBg: 'bg-blue-600 hover:bg-blue-700',
+      iconColor: 'text-primary',
+      confirmBg: 'bg-primary hover:bg-primary-dark',
       confirmText: 'text-white'
     }
   }

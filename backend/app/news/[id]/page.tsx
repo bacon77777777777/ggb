@@ -101,7 +101,7 @@ export default function NewsEditPage() {
     )
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+  const inputCls = "w-full px-3 py-2.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-sm"
   const labelCls = "block text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5"
 
   return (

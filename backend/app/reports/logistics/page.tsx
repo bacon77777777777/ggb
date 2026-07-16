@@ -120,8 +120,8 @@ export default function LogisticsReportPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'submitted': return 'bg-yellow-50 text-yellow-700'
-      case 'processing': return 'bg-blue-50 text-blue-700'
-      case 'picked_up': return 'bg-blue-50 text-blue-600'
+      case 'processing': return 'bg-primary text-primary'
+      case 'picked_up': return 'bg-primary text-primary'
       case 'shipping': return 'bg-indigo-50 text-indigo-700'
       case 'delivered': return 'bg-green-50 text-green-700'
       case 'cancelled': return 'bg-neutral-100 text-neutral-500'
@@ -164,7 +164,7 @@ export default function LogisticsReportPage() {
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-500 mb-1">已送達</p>
-              <p className="text-2xl font-black text-blue-600">{filtered.filter(r => r.status === 'delivered').length.toLocaleString()}</p>
+              <p className="text-2xl font-black text-primary">{filtered.filter(r => r.status === 'delivered').length.toLocaleString()}</p>
               <p className="text-xs text-neutral-400 mt-0.5">筆</p>
             </div>
           </div>

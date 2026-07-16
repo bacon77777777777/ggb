@@ -30,8 +30,8 @@ const TYPE_LABEL: Record<string, { label: string; color: string }> = {
   draw:      { label: '抽獎',    color: 'text-rose-600 bg-rose-50' },
   dismantle: { label: '拆解退',  color: 'text-amber-600 bg-amber-50' },
   manual:    { label: '手動調整', color: 'text-purple-600 bg-purple-50' },
-  marketing: { label: '行銷贈點', color: 'text-blue-600 bg-blue-50' },
-  test:      { label: '測試',    color: 'text-gray-500 bg-gray-100' },
+  marketing: { label: '行銷贈點', color: 'text-primary bg-primary' },
+  test:      { label: '測試',    color: 'text-neutral-500 bg-neutral-100' },
 }
 
 export default function TokenLedgerPage() {
@@ -71,12 +71,12 @@ export default function TokenLedgerPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">代幣帳本</h1>
+      <h1 className="text-2xl font-bold text-neutral-900">代幣帳本</h1>
 
       {/* 搜尋 */}
       <div className="flex gap-2">
         <input
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="flex-1 border border-neutral-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
           placeholder="輸入用戶 Email 或名稱搜尋..."
           value={searchQ}
           onChange={e => setSearchQ(e.target.value)}
@@ -94,16 +94,16 @@ export default function TokenLedgerPage() {
 
       {/* 搜尋結果 */}
       {userResults.length > 0 && (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-neutral-200 rounded-lg overflow-hidden">
           {userResults.map(u => (
             <button
               key={u.id}
               onClick={() => loadLedger(u)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left border-b last:border-b-0"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 text-left border-b last:border-b-0"
             >
               <div>
-                <p className="text-sm font-medium text-gray-900">{u.name || '（未命名）'}</p>
-                <p className="text-xs text-gray-500">{u.email}</p>
+                <p className="text-sm font-medium text-neutral-900">{u.name || '（未命名）'}</p>
+                <p className="text-xs text-neutral-500">{u.email}</p>
               </div>
               <div className="flex items-center gap-1 text-sm font-semibold text-violet-700">
                 <IconCoin size={14} />
@@ -120,11 +120,11 @@ export default function TokenLedgerPage() {
           {/* 用戶資訊列 */}
           <div className="flex items-center justify-between bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
             <div>
-              <p className="font-semibold text-gray-900">{selectedUser.name || '（未命名）'}</p>
-              <p className="text-sm text-gray-500">{selectedUser.email}</p>
+              <p className="font-semibold text-neutral-900">{selectedUser.name || '（未命名）'}</p>
+              <p className="text-sm text-neutral-500">{selectedUser.email}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">目前餘額</p>
+              <p className="text-xs text-neutral-500">目前餘額</p>
               <p className="text-xl font-bold text-violet-700 flex items-center gap-1">
                 <IconCoin size={18} />
                 {(selectedUser.tokens ?? 0).toLocaleString()}
@@ -133,33 +133,33 @@ export default function TokenLedgerPage() {
           </div>
 
           {/* 明細表 */}
-          <div className="border border-gray-200 rounded-lg overflow-x-auto">
+          <div className="border border-neutral-200 rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">時間</th>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">類型</th>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">說明</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">異動</th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">累計餘額</th>
+                  <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500">時間</th>
+                  <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500">類型</th>
+                  <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500">說明</th>
+                  <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500">異動</th>
+                  <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingLedger ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400">載入中...</td>
+                    <td colSpan={5} className="text-center py-8 text-neutral-400">載入中...</td>
                   </tr>
                 ) : ledger.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400">無代幣異動紀錄</td>
+                    <td colSpan={5} className="text-center py-8 text-neutral-400">無代幣異動紀錄</td>
                   </tr>
                 ) : (
                   ledger.map((row, i) => {
                     const isPositive = row.delta > 0
-                    const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-gray-600 bg-gray-100' }
+                    const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
                     return (
-                      <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                      <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="px-4 py-2 text-neutral-500 whitespace-nowrap">
                           {new Date(row.created_at).toLocaleString('zh-TW', {
                             month: '2-digit', day: '2-digit',
                             hour: '2-digit', minute: '2-digit',
@@ -170,14 +170,14 @@ export default function TokenLedgerPage() {
                             {meta.label}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-gray-700 max-w-xs truncate">{row.description}</td>
+                        <td className="px-4 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
                         <td className={`px-4 py-2 text-right font-semibold whitespace-nowrap ${isPositive ? 'text-green-600' : 'text-rose-600'}`}>
                           <span className="inline-flex items-center gap-0.5">
                             {isPositive ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />}
                             {isPositive ? '+' : ''}{row.delta.toLocaleString()}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-right text-gray-700 font-mono">
+                        <td className="px-4 py-2 text-right text-neutral-700 font-mono">
                           {row.balance_after !== null ? row.balance_after.toLocaleString() : '—'}
                         </td>
                       </tr>
@@ -189,13 +189,13 @@ export default function TokenLedgerPage() {
           </div>
 
           {/* 分頁 + 合計 */}
-          <div className="flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center justify-between text-sm text-neutral-500">
             <span>共 {total.toLocaleString()} 筆</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => loadLedger(selectedUser, page - 1)}
                 disabled={page <= 1 || loadingLedger}
-                className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-50"
+                className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50"
               >
                 上一頁
               </button>
@@ -203,13 +203,13 @@ export default function TokenLedgerPage() {
               <button
                 onClick={() => loadLedger(selectedUser, page + 1)}
                 disabled={page >= pages || loadingLedger}
-                className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-50"
+                className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-neutral-50"
               >
                 下一頁
               </button>
               <button
                 onClick={() => loadLedger(selectedUser, 1)}
-                className="px-3 py-1 flex items-center gap-1 border rounded hover:bg-gray-50"
+                className="px-3 py-1 flex items-center gap-1 border rounded hover:bg-neutral-50"
               >
                 <IconRefresh size={14} />
                 重整

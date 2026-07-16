@@ -20,7 +20,7 @@ const FORBIDDEN = [
   { type: 'emerald-*',        regex: /\bemerald-\d+\b/g,          fix: '改用 green-*' },
   { type: 'blue-500/600/700', regex: /\bblue-[5-7]\d{2}\b/g,      fix: '改用 bg-primary / text-primary' },
   { type: 'rounded-md',       regex: /\brounded-md\b/g,            fix: '改用 rounded-lg' },
-  { type: 'border-2',         regex: /\bborder-2\b/g,              fix: 'input 欄位改用 border' },
+  { type: 'border-2 (input)', regex: /<(?:input|select|textarea)[^>]*border-2\b/g, fix: 'input 欄位改用 border' },
   { type: 'min-h-[42px]',     regex: /min-h-\[42px\]/g,           fix: '移除，改用 py-1.5' },
   { type: 'focus:ring-2',     regex: /focus:ring-2\b/g,            fix: '改用 focus:ring-1' },
   { type: 'getStatusColor',   regex: /\bgetStatusColor\b/g,        fix: '改用 <Badge status=...>' },

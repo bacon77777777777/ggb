@@ -217,7 +217,7 @@ export default function DateTimePicker({
       <div
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm cursor-pointer hover:border-neutral-300 transition-colors flex items-center justify-between min-h-[42px]"
+        className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm cursor-pointer hover:border-neutral-300 transition-colors flex items-center justify-between"
       >
         <span className={value ? 'text-neutral-900 font-mono' : 'text-neutral-400'}>
           {formatDisplayDateTime()}
@@ -312,7 +312,7 @@ export default function DateTimePicker({
                 <select
                   value={selectedTime.hour}
                   onChange={(e) => handleTimeChange('hour', e.target.value)}
-                  className="px-2 py-1.5 border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="px-2 py-1.5 border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
                   {hours.map(h => (
                     <option key={h} value={h}>{h}</option>
@@ -325,7 +325,7 @@ export default function DateTimePicker({
                 <select
                   value={selectedTime.minute}
                   onChange={(e) => handleTimeChange('minute', e.target.value)}
-                  className="px-2 py-1.5 border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="px-2 py-1.5 border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
                   {minutes.map(m => (
                     <option key={m} value={m}>{m}</option>

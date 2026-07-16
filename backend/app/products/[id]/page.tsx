@@ -921,7 +921,7 @@ export default function EditProductPage() {
                             {prize.remaining}
                           </div>
                           {/* 機率 */}
-                          <div className="px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-600 flex items-center justify-center">
+                          <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
                             {isLastOneLevel(prize.level)
                               ? '最後賞'
                               : (calculatedTotalCount > 0 && prize.total > 0
@@ -1084,12 +1084,12 @@ export default function EditProductPage() {
                 value={librarySearchQuery}
                 onChange={(e) => setLibrarySearchQuery(e.target.value)}
                 placeholder="搜尋小物名稱、分類..."
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
               <select
                 value={librarySelectedCategory}
                 onChange={(e) => setLibrarySelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               >
                 <option value="all">全部分類</option>
                 {Array.from(new Set(libraryItems.map(item => item.category))).map(cat => (

@@ -145,7 +145,7 @@ export default function ProductsPage() {
   const prizeStatusLabel = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
       success:          { label: '未申請', cls: 'bg-neutral-100 text-neutral-500' },
-      in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-blue-600' },
+      in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-primary' },
       pending_delivery: { label: '待出貨', cls: 'bg-yellow-100 text-yellow-700' },
       shipped:          { label: '已出貨', cls: 'bg-green-100 text-green-700' },
       dismantled:       { label: '已拆解', cls: 'bg-red-100 text-red-500' },
@@ -1049,7 +1049,7 @@ export default function ProductsPage() {
                               const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
                               const isSoldOut = remaining === 0 && product.status !== 'pending'
                               return isSoldOut && (
-                                <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 whitespace-nowrap flex-shrink-0">
+                                <span className="px-2 py-0.5 text-xs rounded-full bg-neutral-100 text-neutral-700 whitespace-nowrap flex-shrink-0">
                                   已完抽
                                 </span>
                               )
@@ -1061,14 +1061,14 @@ export default function ProductsPage() {
                         <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             product.type === 'ichiban'
-                              ? 'bg-blue-100 text-blue-700'
+                              ? 'bg-blue-100 text-primary'
                               : product.type === 'blindbox'
                               ? 'bg-purple-100 text-purple-700'
                               : product.type === 'gacha'
                               ? 'bg-orange-100 text-orange-700'
                               : product.type === 'card'
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
+                              : 'bg-neutral-100 text-neutral-700'
                           }`}>
                             {{
                               ichiban: '一番賞',
@@ -1206,7 +1206,7 @@ export default function ProductsPage() {
                           expandedProducts.has(product.id) ? 'bg-neutral-50' : 'bg-white group-hover:bg-neutral-50'
                         }`} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
-                            <Link href={`/products/${product.id}`} className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap">編輯</Link>
+                            <Link href={`/products/${product.id}`} className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap">編輯</Link>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1219,7 +1219,7 @@ export default function ProductsPage() {
                             {product.txidHash && (
                               <Link 
                                 href={`/products/${product.id}/verify`} 
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 驗證
@@ -1256,7 +1256,7 @@ export default function ProductsPage() {
                                 return (
                                   <div key={idx}>
                                     <div
-                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-neutral-100'}`}
+                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-primary' : 'hover:bg-neutral-100'}`}
                                       onClick={() => prize.id && togglePrize(prize.id, drawn)}
                                     >
                                       <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>
@@ -1265,7 +1265,7 @@ export default function ProductsPage() {
                                       <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
                                       <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
-                                      <span className="text-blue-500 font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
+                                      <span className="text-primary font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
                                       {drawn > 0 && <span className="text-xs text-neutral-400">已抽 {drawn}</span>}
                                     </div>
                                     {isExpanded && (
@@ -1297,7 +1297,7 @@ export default function ProductsPage() {
                                                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{label}</span>
                                                   <Link
                                                     href={`/users/${dr.user_id}`}
-                                                    className="text-blue-600 hover:underline font-medium"
+                                                    className="text-primary hover:underline font-medium"
                                                     onClick={(e) => e.stopPropagation()}
                                                   >
                                                     {dr.userName}
@@ -1305,7 +1305,7 @@ export default function ProductsPage() {
                                                   {dr.orderNumber && (
                                                     <Link
                                                       href={`/orders/${dr.order_id}`}
-                                                      className="text-neutral-500 hover:text-blue-600 hover:underline font-mono"
+                                                      className="text-neutral-500 hover:text-primary hover:underline font-mono"
                                                       onClick={(e) => e.stopPropagation()}
                                                     >
                                                       {dr.orderNumber}

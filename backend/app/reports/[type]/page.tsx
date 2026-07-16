@@ -34,7 +34,7 @@ const STATUS_COLOR: Record<string, string> = {
   completed: 'bg-green-100 text-green-700', success: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700', pending_delivery: 'bg-yellow-100 text-yellow-700',
   failed: 'bg-red-100 text-red-700', refunded: 'bg-red-100 text-red-700',
-  cancelled: 'bg-red-100 text-red-700', shipped: 'bg-blue-100 text-blue-700',
+  cancelled: 'bg-red-100 text-red-700', shipped: 'bg-blue-100 text-primary',
   in_warehouse: 'bg-purple-100 text-purple-700', exchanged: 'bg-neutral-100 text-neutral-600',
   dismantled: 'bg-neutral-100 text-neutral-600', listing: 'bg-indigo-100 text-indigo-700',
 }
@@ -214,17 +214,17 @@ export default function ReportPage() {
           {reportType === 'products' && (
             <>
               <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有廠商</option>
                 {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
               </select>
               <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有種類</option>
                 {productTypes.map(t => <option key={t} value={t}>{PRODUCT_TYPE_LABEL[t] || t}</option>)}
               </select>
               <select value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="all">全幣種</option>
                 <option value="tokens">代幣</option>
                 <option value="points">積分</option>
@@ -256,7 +256,7 @@ export default function ReportPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-green-600" />
                   <KpiCard label="折價券折損" value={`NT$ ${overview.couponDiscountFixed.toLocaleString()}`} sub={overview.couponDiscountPercentageCount > 0 ? `另有 ${overview.couponDiscountPercentageCount} 張折扣%券` : '固定金額券'} color="text-orange-500" />
-                  <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
+                  <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-primary" />
                   <KpiCard label="首次付費用戶佔比" value={funnel ? `${funnel.newUserConversionRate}%` : '—'} sub="新用戶→首儲轉化" color="text-indigo-600" />
                 </div>
 
@@ -274,7 +274,7 @@ export default function ReportPage() {
                             value: funnel.newUsers,
                             unit: '人',
                             rate: null,
-                            color: 'bg-blue-500',
+                            color: 'bg-primary',
                             width: 100,
                           },
                           {
@@ -431,7 +431,7 @@ export default function ReportPage() {
               const totalPts = filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0)
               return <KpiCard label="總消費積分" value={`${totalPts.toLocaleString()} G`} color={totalPts > 0 ? 'text-indigo-600' : 'text-orange-400'} />
             })()}
-            <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-blue-600" />
+            <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-primary" />
           </div>
         )}
         {reportType === 'products' && (
@@ -472,7 +472,7 @@ export default function ReportPage() {
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
                             {p.supplierName ? (
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">{p.supplierName}</span>
+                              <span className="px-2 py-0.5 bg-primary text-primary rounded text-xs">{p.supplierName}</span>
                             ) : '—'}
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
@@ -525,7 +525,7 @@ export default function ReportPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="儲值筆數" value={rechargeData.length.toLocaleString()} />
             <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-green-600" sub="已完成筆數" />
-            <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-blue-600" />
+            <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-primary" />
           </div>
         )}
         {reportType === 'recharge' && (
@@ -584,7 +584,7 @@ export default function ReportPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="消費筆數" value={consumptionData.length.toLocaleString()} />
             <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-green-600" />
-            <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-blue-600" />
+            <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-primary" />
           </div>
         )}
         {reportType === 'consumption' && (
@@ -650,7 +650,7 @@ export default function ReportPage() {
               <>
                 {/* KPI */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-blue-600" />
+                  <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-primary" />
                   <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-green-600" />
                   <KpiCard label="點擊 → 抽轉化率" value={`${behaviorData.conversionRate}%`} color="text-amber-600" />
                 </div>
@@ -676,7 +676,7 @@ export default function ReportPage() {
                             return behaviorData.dailyActiveUsers.map(d => (
                               <tr key={d.date} className="border-b border-neutral-50 hover:bg-neutral-50">
                                 <td className="py-2 px-3 font-mono text-xs text-neutral-600">{d.date}</td>
-                                <td className="py-2 px-3 text-right font-semibold text-blue-600">{d.count}</td>
+                                <td className="py-2 px-3 text-right font-semibold text-primary">{d.count}</td>
                                 <td className="py-2 px-3">
                                   <div className="bg-neutral-100 rounded-full h-1.5">
                                     <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${Math.round(d.count / max * 100)}%` }} />

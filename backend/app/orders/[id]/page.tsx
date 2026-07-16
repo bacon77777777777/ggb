@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import CopyableID from '@/components/CopyableID'
 import ShippingProgress from '@/components/ShippingProgress'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -174,25 +175,6 @@ export default function OrderDetailPage() {
     )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-700'
-      case 'processing':
-        return 'bg-blue-100 text-blue-700'
-      case 'picked_up':
-        return 'bg-blue-100 text-blue-700'
-      case 'shipping':
-        return 'bg-blue-100 text-blue-700'
-      case 'delivered':
-        return 'bg-green-100 text-green-700'
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-700'
-      default:
-        return 'bg-neutral-100 text-neutral-700'
-    }
-  }
-
   const getStatusText = (status: string) => {
     switch (status) {
       case 'submitted':
@@ -256,7 +238,7 @@ export default function OrderDetailPage() {
                     updateStatus(newStatus)
                   }
                 }}
-                className="px-4 py-2.5 pr-10 bg-white border-2 border-neutral-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all hover:border-neutral-300 shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                className="px-4 py-2.5 pr-10 bg-white border-2 border-neutral-200 rounded-full text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all hover:border-neutral-300 shadow-sm hover:shadow-md appearance-none cursor-pointer"
               >
                 <option value="submitted">已提交</option>
                 <option value="processing">處理中</option>
@@ -294,9 +276,7 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500">配送狀態</span>
-                  <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(shipment.status)}`}>
-                    {getStatusText(shipment.status)}
-                  </span>
+                  <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500">建立時間</span>
@@ -362,7 +342,7 @@ export default function OrderDetailPage() {
                   <select 
                     value={shippingMethod}
                     onChange={(e) => setShippingMethod(e.target.value)}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option>宅配</option>
                     <option>超商取貨</option>
@@ -378,7 +358,7 @@ export default function OrderDetailPage() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="配送備註..."
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <div className="flex items-center gap-3 pt-2">

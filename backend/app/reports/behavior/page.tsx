@@ -323,8 +323,8 @@ export default function BehaviorPage() {
                       ins.level === 'warn'
                         ? 'bg-amber-50 text-amber-900 border border-amber-200'
                         : ins.level === 'ok'
-                        ? 'bg-green-50 text-emerald-900 border border-green-200'
-                        : 'bg-blue-50 text-blue-900 border border-blue-200'
+                        ? 'bg-green-50 text-green-900 border border-green-200'
+                        : 'bg-primary text-blue-900 border border-blue-200'
                     }`}
                   >
                     <span className="mt-0.5 flex-shrink-0">{ins.level === 'warn' ? '⚠' : ins.level === 'ok' ? '✓' : 'ℹ'}</span>

@@ -441,7 +441,7 @@ export default function RatesPage() {
       case 'A賞':
         return 'bg-yellow-100 text-yellow-700 border border-yellow-200'
       case 'B賞':
-        return 'bg-blue-100 text-blue-700 border border-blue-200'
+        return 'bg-blue-100 text-primary border border-blue-200'
       case 'C賞':
         return 'bg-green-100 text-green-700 border border-green-200'
       case 'D賞':
@@ -563,17 +563,17 @@ export default function RatesPage() {
     >
       <div className="space-y-6">
         {/* 簡化說明 + 殺率演示入口 */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 mb-1">殺率調整功能</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-neutral-900 mb-1">殺率調整功能</h3>
+                <p className="text-sm text-neutral-600">
                   調整商品的殺率參數，僅針對大獎項進行調整，小獎項會自動補足至100%。調整後不影響 TXID 哈希驗證結果。
                 </p>
               </div>
@@ -581,7 +581,7 @@ export default function RatesPage() {
             <div className="flex sm:flex-col gap-2 sm:gap-3 sm:items-end">
               <a
                 href="/test/verify-demo"
-                className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-white text-sm font-semibold text-blue-600 border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors"
+                className="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-white text-sm font-semibold text-primary border border-blue-200 shadow-sm hover:bg-primary transition-colors"
               >
                 <span className="mr-1.5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -684,10 +684,10 @@ export default function RatesPage() {
                 </button>
               )}
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-neutral-500">
               共 {filteredProducts.length} 個商品
               {Object.keys(profitRates).length > 0 && (
-                <span className="ml-2 text-blue-500 font-medium">
+                <span className="ml-2 text-primary font-medium">
                   · {Object.keys(profitRates).length} 個已調整
                 </span>
               )}
@@ -709,10 +709,10 @@ export default function RatesPage() {
                   key={product.id}
                   className={`border-2 rounded-lg transition-all ${
                     isEnded && !isExpanded
-                      ? 'opacity-50 border-gray-200 bg-gray-50'
+                      ? 'opacity-50 border-neutral-200 bg-neutral-50'
                       : hasAdjustment
-                        ? 'border-primary/40 bg-blue-50/30'
-                        : 'border-gray-200 bg-white'
+                        ? 'border-primary/40 bg-primary/30'
+                        : 'border-neutral-200 bg-white'
                   } ${isExpanded ? 'shadow-md' : 'hover:shadow-sm'}`}
                 >
                   {/* 商品標題行 */}
@@ -723,12 +723,12 @@ export default function RatesPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className={`font-mono text-xs ${isEnded && !isExpanded ? 'text-gray-400' : 'text-gray-500'}`}>{product.productCode}</span>
-                          <h3 className={`text-sm font-semibold ${isEnded && !isExpanded ? 'text-gray-500' : 'text-gray-900'}`}>{product.name}</h3>
+                          <span className={`font-mono text-xs ${isEnded && !isExpanded ? 'text-neutral-400' : 'text-neutral-500'}`}>{product.productCode}</span>
+                          <h3 className={`text-sm font-semibold ${isEnded && !isExpanded ? 'text-neutral-500' : 'text-neutral-900'}`}>{product.name}</h3>
                           <span className={`px-2 py-1 text-xs rounded-full font-medium ${
                             product.status === 'active' ? 'bg-green-100 text-green-700 border border-green-200' :
                             product.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                            'bg-gray-100 text-gray-700 border border-gray-200'
+                            'bg-neutral-100 text-neutral-700 border border-neutral-200'
                           }`}>
                             {product.status === 'active' ? '進行中' : product.status === 'pending' ? '待上架' : '已完抽'}
                           </span>
@@ -738,12 +738,12 @@ export default function RatesPage() {
                             </span>
                           )}
                           {!isRateLocked && hasAdjustment && (
-                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                            <span className="px-2.5 py-1 text-xs rounded-full font-semibold bg-blue-100 text-primary border border-blue-200">
                               殺率: {(profitRate * 100).toFixed(0)}%
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 text-xs text-neutral-500">
                           <span>{product.category}</span>
                           <span>{product.price.toLocaleString()} (G)</span>
                           <span>{product.prizes.length} 個賞項</span>
@@ -753,7 +753,7 @@ export default function RatesPage() {
                         <Link
                           href={`/products/${product.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-blue-500 hover:text-blue-700 text-xs font-medium"
+                          className="text-primary hover:text-primary text-xs font-medium"
                         >
                           詳情
                         </Link>
@@ -769,7 +769,7 @@ export default function RatesPage() {
                           </button>
                         )}
                         <svg
-                          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`w-5 h-5 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -782,26 +782,26 @@ export default function RatesPage() {
 
                   {/* 展開的殺率調整區域 */}
                   {isExpanded && (
-                    <div className="border-t border-gray-200 p-4 bg-white">
+                    <div className="border-t border-neutral-200 p-4 bg-white">
                       {isRateLocked && (
                         <div className="mb-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-[12px] text-neutral-500">
                           此商品類型（盒玩/轉蛋）不適用殺率調整，機率由商品設定直接決定，profit_rate 固定為 1.0。
                         </div>
                       )}
                       {/* 殺率調整主控區 */}
-                      <div className={`mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 ${isRateLocked ? 'opacity-40 pointer-events-none' : ''}`}>
+                      <div className={`mb-4 p-4 bg-gradient-to-r from-primary to-indigo-50 rounded-lg border-2 border-blue-200 ${isRateLocked ? 'opacity-40 pointer-events-none' : ''}`}>
                         <div className="flex items-center justify-between mb-3">
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-900 mb-0.5">殺率參數調整</h4>
-                            <p className="text-xs text-gray-600">
+                            <h4 className="text-sm font-semibold text-neutral-900 mb-0.5">殺率參數調整</h4>
+                            <p className="text-xs text-neutral-600">
                               調整此參數僅影響大獎項的機率，小獎項會自動補足至100%
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-xl font-bold text-blue-500">
+                            <div className="text-xl font-bold text-primary">
                               {(profitRate * 100).toFixed(0)}%
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-neutral-500">
                               {profitRate === 1.0 ? '預設值' : profitRate > 1.0 ? '提高' : '降低'}
                             </div>
                           </div>
@@ -819,13 +819,13 @@ export default function RatesPage() {
                                 handleProfitRateChange(product.id, value)
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                              className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-primary"
                             />
                             {/* 標記位置計算：((value - min) / (max - min)) * 100% */}
                             <div className="relative mt-0.5" style={{ height: '16px' }}>
-                              <span className="absolute text-xs text-gray-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
-                              <span className="absolute text-xs text-gray-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
-                              <span className="absolute text-xs text-gray-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
+                              <span className="absolute text-xs text-neutral-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
+                              <span className="absolute text-xs text-neutral-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
+                              <span className="absolute text-xs text-neutral-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
                             </div>
                           </div>
                           <div className="w-28">
@@ -840,19 +840,19 @@ export default function RatesPage() {
                                 handleProfitRateChange(product.id, value)
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full px-2 py-1.5 border-2 border-primary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-mono text-center"
+                              className="w-full px-2 py-1.5 border border-primary/40 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm font-mono text-center"
                             />
                           </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-blue-200">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-600">原始機率總和</span>
-                            <span className="font-mono font-medium text-gray-900">
+                            <span className="text-neutral-600">原始機率總和</span>
+                            <span className="font-mono font-medium text-neutral-900">
                               {product.prizes.reduce((sum, p) => sum + p.probability, 0).toFixed(2)}%
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-xs mt-1.5">
-                            <span className="text-gray-600">調整後機率總和</span>
+                            <span className="text-neutral-600">調整後機率總和</span>
                             <span className={`font-mono font-semibold ${
                               Math.abs(displayTotalRate - 100) < 0.01
                                 ? 'text-green-600'
@@ -868,11 +868,11 @@ export default function RatesPage() {
 
                         {/* 賞項列表 */}
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">賞項機率預覽</h4>
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-3">賞項機率預覽</h4>
                         {/* 大獎項區域 */}
                         {(product.majorPrizes || ['A賞']).length > 0 && (
                           <div className="mb-4">
-                            <div className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
+                            <div className="text-xs font-semibold text-primary mb-2 flex items-center gap-1.5">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                               </svg>
@@ -888,44 +888,44 @@ export default function RatesPage() {
                                   return (
                                     <div
                                       key={index}
-                                      className="p-3 rounded-lg border-2 border-blue-200 bg-blue-50/50"
+                                      className="p-3 rounded-lg border-2 border-blue-200 bg-primary/50"
                                     >
                                       <div className="flex items-center gap-2 mb-2">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                           {prize.level}
                                         </span>
-                                        <span className="text-sm font-medium text-gray-900 flex-1 truncate">{prize.name}</span>
-                                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        <span className="text-sm font-medium text-neutral-900 flex-1 truncate">{prize.name}</span>
+                                        <span className="text-xs text-neutral-500 whitespace-nowrap">
                                           {prize.remaining}/{prize.total}
                                         </span>
                                       </div>
                                       <div className="grid grid-cols-3 gap-2">
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">原始</label>
-                                          <div className="text-xs font-mono text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                                          <label className="block text-xs text-neutral-500 mb-1">原始</label>
+                                          <div className="text-xs font-mono text-neutral-700 bg-white px-2 py-1 rounded border border-neutral-200">
                                             {prize.probability.toFixed(2)}%
                                           </div>
                                         </div>
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">調整後</label>
+                                          <label className="block text-xs text-neutral-500 mb-1">調整後</label>
                                           <div className={`text-xs font-mono px-2 py-1 rounded border ${
                                             change > 0
                                               ? 'text-green-700 bg-green-50 border-green-200'
                                               : change < 0
                                                 ? 'text-red-700 bg-red-50 border-red-200'
-                                                : 'text-gray-700 bg-white border-gray-200'
+                                                : 'text-neutral-700 bg-white border-neutral-200'
                                           }`}>
                                             {displayProbability.toFixed(2)}%
                                           </div>
                                         </div>
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">變化</label>
+                                          <label className="block text-xs text-neutral-500 mb-1">變化</label>
                                           <div className={`text-xs font-mono px-2 py-1 rounded border ${
                                             change > 0
                                               ? 'text-green-700 bg-green-50 border-green-200'
                                               : change < 0
                                                 ? 'text-red-700 bg-red-50 border-red-200'
-                                                : 'text-gray-400 bg-gray-50 border-gray-200'
+                                                : 'text-neutral-400 bg-neutral-50 border-neutral-200'
                                           }`}>
                                             {change > 0 ? '+' : ''}{change.toFixed(2)}%
                                           </div>
@@ -941,7 +941,7 @@ export default function RatesPage() {
                         {/* 小獎項區域 */}
                         {product.adjustedPrizes.filter(p => !(product.majorPrizes || ['A賞']).includes(p.level)).length > 0 && (
                           <div>
-                            <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                            <div className="text-xs font-semibold text-neutral-600 mb-2 flex items-center gap-1.5">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                               </svg>
@@ -957,44 +957,44 @@ export default function RatesPage() {
                                   return (
                                     <div
                                       key={index}
-                                      className="p-3 rounded-lg border border-gray-200 bg-gray-50"
+                                      className="p-3 rounded-lg border border-neutral-200 bg-neutral-50"
                                     >
                                       <div className="flex items-center gap-2 mb-2">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                           {prize.level}
                                         </span>
-                                        <span className="text-sm font-medium text-gray-900 flex-1 truncate">{prize.name}</span>
-                                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        <span className="text-sm font-medium text-neutral-900 flex-1 truncate">{prize.name}</span>
+                                        <span className="text-xs text-neutral-500 whitespace-nowrap">
                                           {prize.remaining}/{prize.total}
                                         </span>
                                       </div>
                                       <div className="grid grid-cols-3 gap-2">
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">原始</label>
-                                          <div className="text-xs font-mono text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                                          <label className="block text-xs text-neutral-500 mb-1">原始</label>
+                                          <div className="text-xs font-mono text-neutral-700 bg-white px-2 py-1 rounded border border-neutral-200">
                                             {prize.probability.toFixed(2)}%
                                           </div>
                                         </div>
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">調整後</label>
+                                          <label className="block text-xs text-neutral-500 mb-1">調整後</label>
                                           <div className={`text-xs font-mono px-2 py-1 rounded border ${
                                             change > 0
                                               ? 'text-green-700 bg-green-50 border-green-200'
                                               : change < 0
                                                 ? 'text-red-700 bg-red-50 border-red-200'
-                                                : 'text-gray-700 bg-white border-gray-200'
+                                                : 'text-neutral-700 bg-white border-neutral-200'
                                           }`}>
                                             {displayProbability.toFixed(2)}%
                                           </div>
                                         </div>
                                         <div>
-                                          <label className="block text-xs text-gray-500 mb-1">變化</label>
+                                          <label className="block text-xs text-neutral-500 mb-1">變化</label>
                                           <div className={`text-xs font-mono px-2 py-1 rounded border ${
                                             change > 0
                                               ? 'text-green-700 bg-green-50 border-green-200'
                                               : change < 0
                                                 ? 'text-red-700 bg-red-50 border-red-200'
-                                                : 'text-gray-400 bg-gray-50 border-gray-200'
+                                                : 'text-neutral-400 bg-neutral-50 border-neutral-200'
                                           }`}>
                                             {change > 0 ? '+' : ''}{change.toFixed(2)}%
                                           </div>
@@ -1009,11 +1009,11 @@ export default function RatesPage() {
                       </div>
 
                       {/* 哈希驗證區塊 */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="mt-4 pt-4 border-t border-neutral-200">
                         <div className="flex items-center justify-between mb-3">
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-1.5">哈希驗證測試</h4>
-                            <p className="text-xs text-gray-500">
+                            <h4 className="text-sm font-semibold text-neutral-700 mb-1.5">哈希驗證測試</h4>
+                            <p className="text-xs text-neutral-500">
                               前往驗證演示頁面進行完整的哈希驗證測試
                             </p>
                           </div>

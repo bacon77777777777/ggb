@@ -80,7 +80,7 @@ export default function ShippingSettingsPage() {
                         min="0"
                         value={feeHome}
                         onChange={e => setFeeHome(e.target.value)}
-                        className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                        className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono"
                       />
                     </div>
                   </div>
@@ -104,7 +104,7 @@ export default function ShippingSettingsPage() {
                             min="0"
                             value={val}
                             onChange={e => setter(e.target.value)}
-                            className="w-28 px-3 py-1.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                            className="w-28 px-3 py-1.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono text-sm"
                           />
                         </div>
                       ))}
@@ -128,7 +128,7 @@ export default function ShippingSettingsPage() {
                       min="1"
                       value={freeShippingThreshold}
                       onChange={e => setFreeShippingThreshold(e.target.value)}
-                      className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                      className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono"
                     />
                     <span className="text-sm text-neutral-500">件以上免運</span>
                   </div>

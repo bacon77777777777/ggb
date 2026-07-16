@@ -132,7 +132,7 @@ export default function AgentEventsPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab.value
                     ? 'bg-white text-neutral-800 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-700'

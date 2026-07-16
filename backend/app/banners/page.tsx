@@ -208,7 +208,7 @@ export default function BannersPage() {
       key: 'image_url',
       label: '圖片',
       render: (item) => (
-        <div className="relative w-32 h-16 bg-gray-100 rounded overflow-hidden border border-gray-200">
+        <div className="relative w-32 h-16 bg-neutral-100 rounded overflow-hidden border border-neutral-200">
           <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
         </div>
       )
@@ -218,10 +218,10 @@ export default function BannersPage() {
       label: '連結',
       render: (item) => (
         item.link_url ? (
-          <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate max-w-[200px] block">
+          <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px] block">
             {item.link_url}
           </a>
-        ) : <span className="text-gray-400">-</span>
+        ) : <span className="text-neutral-400">-</span>
       )
     },
     {
@@ -267,7 +267,7 @@ export default function BannersPage() {
     {
       key: 'created_at',
       label: '建立時間',
-      render: (item) => <span className="text-gray-500 text-sm">{formatDateTime(item.created_at)}</span>
+      render: (item) => <span className="text-neutral-500 text-sm">{formatDateTime(item.created_at)}</span>
     },
     {
       key: 'actions',
@@ -276,7 +276,7 @@ export default function BannersPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(item)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+            className="text-primary hover:text-primary text-sm font-medium"
           >
             編輯
           </button>
@@ -319,27 +319,27 @@ export default function BannersPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">名稱 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">名稱 <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 placeholder="請輸入輪播圖名稱"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">圖片 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">圖片 <span className="text-red-500">*</span></label>
               <div className="space-y-2">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 />
                 {formData.imagePreview && (
-                  <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                  <div className="relative w-full h-40 bg-neutral-100 rounded-lg overflow-hidden border border-neutral-200">
                     <img 
                       src={formData.imagePreview} 
                       alt="Preview" 
@@ -352,31 +352,31 @@ export default function BannersPage() {
                   type="text"
                   value={formData.image_url}
                   onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm text-neutral-500"
                   placeholder="或輸入圖片網址..."
                 /> */}
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">連結網址 (選填)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">連結網址 (選填)</label>
               <input
                 type="text"
                 value={formData.link_url}
                 onChange={e => setFormData({ ...formData, link_url: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 placeholder="https://..."
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">排序 (數字越小越前面)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">排序 (數字越小越前面)</label>
                 <input
                   type="number"
                   value={formData.sort_order}
                   onChange={e => setFormData({ ...formData, sort_order: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 />
               </div>
               
@@ -388,7 +388,7 @@ export default function BannersPage() {
                     onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
                     className="rounded text-primary focus:ring-primary"
                   />
-                  <span className="text-sm font-medium text-gray-700">啟用狀態</span>
+                  <span className="text-sm font-medium text-neutral-700">啟用狀態</span>
                 </label>
               </div>
             </div>
@@ -396,7 +396,7 @@ export default function BannersPage() {
             <div className="flex justify-end gap-3 pt-4 border-t mt-6">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border rounded-lg hover:bg-neutral-50"
               >
                 取消
               </button>

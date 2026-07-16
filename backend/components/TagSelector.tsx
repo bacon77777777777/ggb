@@ -136,7 +136,7 @@ export default function TagSelector({ value, onChange, label = '標籤' }: TagSe
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 h-10 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="flex-1 h-10 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20"
                 placeholder="搜尋或新增標籤（最多 5 字）"
               />
               <button

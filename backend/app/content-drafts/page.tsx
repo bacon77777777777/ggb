@@ -20,7 +20,7 @@ interface ContentDraft {
 
 const STATUS_LABEL: Record<DraftStatus, { label: string; cls: string }> = {
   pending:   { label: '待確認', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-  approved:  { label: '已確認', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  approved:  { label: '已確認', cls: 'bg-blue-100 text-primary border-blue-200' },
   published: { label: '已發布', cls: 'bg-green-100 text-green-700 border-green-200' },
   archived:  { label: '已棄用', cls: 'bg-neutral-100 text-neutral-500 border-neutral-200' },
 }
@@ -106,7 +106,7 @@ export default function ContentDraftsPage() {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">全部（{total}）</option>
               {STATUS_OPTIONS.map(s => (
@@ -194,7 +194,7 @@ export default function ContentDraftsPage() {
                             value={draft.status}
                             disabled={updating === draft.id}
                             onChange={e => updateStatus(draft.id, e.target.value as DraftStatus)}
-                            className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                           >
                             {STATUS_OPTIONS.map(s => (
                               <option key={s} value={s}>{STATUS_LABEL[s].label}</option>

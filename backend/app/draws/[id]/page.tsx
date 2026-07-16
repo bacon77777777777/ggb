@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import CopyableID from '@/components/CopyableID'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
@@ -258,12 +259,6 @@ export default function DrawDetailPage() {
     )
   }
 
-  const getStatusColor = (status: string) => {
-    return status === 'success' 
-      ? 'bg-green-100 text-green-700 border border-green-200' 
-      : 'bg-red-100 text-red-700 border border-red-200'
-  }
-
   const getStatusText = (status: string) => {
     return status === 'success' ? '成功' : '失敗'
   }
@@ -273,7 +268,7 @@ export default function DrawDetailPage() {
       case 'A賞':
         return 'bg-yellow-100 text-yellow-700 border border-yellow-200'
       case 'B賞':
-        return 'bg-blue-100 text-blue-700 border border-blue-200'
+        return 'bg-blue-100 text-primary border border-blue-200'
       case 'C賞':
         return 'bg-green-100 text-green-700 border border-green-200'
       case 'D賞':
@@ -314,9 +309,7 @@ export default function DrawDetailPage() {
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 relative">
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-lg font-bold text-neutral-900">抽獎資訊</h2>
-              <span className={`px-4 py-1.5 rounded-full text-base font-medium ${getStatusColor(draw.status)}`}>
-                {getStatusText(draw.status)}
-              </span>
+              <Badge status={draw.status} size="lg">{getStatusText(draw.status)}</Badge>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -362,7 +355,7 @@ export default function DrawDetailPage() {
                 <div>
                   <p className="text-sm text-neutral-500 mb-1">籤號</p>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-neutral-900 font-mono bg-blue-50 px-3 py-1 rounded">
+                    <p className="font-medium text-neutral-900 font-mono bg-primary px-3 py-1 rounded">
                       {(draw.ticketNumber || draw.nonce).toString().padStart(3, '0')}
                     </p>
                     <button
@@ -608,7 +601,7 @@ export default function DrawDetailPage() {
                             <span className="font-mono">{formatDateTime(otherDraw.time)}</span>
                             <span className="font-mono">{otherDraw.amount.toLocaleString()} 代幣</span>
                             {(otherDraw.ticketNumber || otherDraw.nonce) && (
-                              <span className="font-mono text-xs bg-blue-50 px-2 py-0.5 rounded">
+                              <span className="font-mono text-xs bg-primary px-2 py-0.5 rounded">
                                 籤號：{((otherDraw.ticketNumber || otherDraw.nonce)).toString().padStart(3, '0')}
                               </span>
                             )}
@@ -662,7 +655,7 @@ export default function DrawDetailPage() {
                             <span className="font-mono">{formatDateTime(otherDraw.time)}</span>
                             <span className="font-mono">{otherDraw.amount.toLocaleString()} 代幣</span>
                             {(otherDraw.ticketNumber || otherDraw.nonce) && (
-                              <span className="font-mono text-xs bg-blue-50 px-2 py-0.5 rounded">
+                              <span className="font-mono text-xs bg-primary px-2 py-0.5 rounded">
                                 籤號：{((otherDraw.ticketNumber || otherDraw.nonce)).toString().padStart(3, '0')}
                               </span>
                             )}

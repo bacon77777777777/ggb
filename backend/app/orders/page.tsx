@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useLog } from '@/contexts/LogContext'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -192,26 +193,7 @@ export default function OrdersPage() {
     setExpandedOrders(newExpanded)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-700'
-      case 'processing':
-        return 'bg-blue-100 text-blue-700'
-      case 'picked_up':
-        return 'bg-blue-100 text-blue-700'
-      case 'shipping':
-        return 'bg-blue-100 text-blue-700'
-      case 'delivered':
-        return 'bg-green-100 text-green-700'
-      case 'cancelled':
-        return 'bg-neutral-100 text-neutral-600'
-      default:
-        return 'bg-neutral-100 text-neutral-700'
-    }
-  }
-
-  const getStatusText = (status: string) => {
+    const getStatusText = (status: string) => {
     switch (status) {
       case 'submitted':
         return '已提交'
@@ -579,17 +561,17 @@ export default function OrdersPage() {
           {sameDeliveryOrders.length > 0 && (
             <div className="border-t border-neutral-200 pt-4">
               <div className="flex items-start gap-2 mb-3">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-900 mb-1">發現相同配送資料的訂單</p>
                   <p className="text-xs text-neutral-600 mb-2">以下訂單的配送資料與選中訂單相同，可合併配送：</p>
-                  <div className="bg-blue-50 rounded-lg p-2 space-y-1">
+                  <div className="bg-primary rounded-lg p-2 space-y-1">
                     {sameDeliveryOrders.map((order) => (
                       <div key={order.id} className="flex items-center justify-between text-xs">
-                        <span className="text-blue-700 font-medium">{order.orderId}</span>
-                        <span className="text-blue-500">{order.items.length} 個商品</span>
+                        <span className="text-primary font-medium">{order.orderId}</span>
+                        <span className="text-primary">{order.items.length} 個商品</span>
                       </div>
                     ))}
                   </div>
@@ -609,16 +591,16 @@ export default function OrdersPage() {
             </div>
           )}
           
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                <p className="text-sm text-neutral-600">
                   生成配送單後，系統將自動發送出貨通知郵件至用戶信箱
                 </p>
               </div>
@@ -855,16 +837,16 @@ export default function OrdersPage() {
           <p className="text-neutral-700">
             確定要取消 <span className="font-medium text-red-500">{cancellableOrders.length}</span> 筆訂單嗎？
           </p>
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                <p className="text-sm text-neutral-600">
                   取消後將無法恢復，請確認操作。
                 </p>
               </div>
@@ -986,7 +968,7 @@ export default function OrdersPage() {
               value={shipModal.trackingNumber}
               onChange={(e) => setShipModal({ ...shipModal, trackingNumber: e.target.value })}
               placeholder="請輸入物流單號"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
               autoFocus
             />
           </div>
@@ -1438,9 +1420,7 @@ export default function OrdersPage() {
                         )}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <span className={`px-2 py-1 text-sm rounded-full whitespace-nowrap inline-block ${getStatusColor(shipment.status)}`}>
-                              {getStatusText(shipment.status)}
-                            </span>
+                            <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
                           </td>
                         )}
                         {visibleColumns.userName && (
@@ -1500,7 +1480,7 @@ export default function OrdersPage() {
                             {/* 詳情 - 所有狀態都有 */}
                             <Link 
                               href={`/orders/${shipment.orderId}`}
-                              className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                              className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                             >
                               詳情
                             </Link>
@@ -1531,7 +1511,7 @@ export default function OrdersPage() {
                                   e.stopPropagation()
                                   handleGenerateShippingLabel([shipment.id])
                                 }}
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                             >
                               生成配送單
                             </button>
@@ -1544,7 +1524,7 @@ export default function OrdersPage() {
                                   e.stopPropagation()
                                   window.print()
                                 }}
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >
                                 列印物流單
                               </button>
@@ -1587,16 +1567,16 @@ export default function OrdersPage() {
                                         <p className="text-sm text-neutral-600">
                                           確定要取消 <span className="font-medium text-neutral-900">{shipment.orderId}</span> 嗎？
                                         </p>
-                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
                                           <div className="flex items-start gap-3">
                                             <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                               </svg>
                                             </div>
                                             <div className="flex-1">
-                                              <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                                              <p className="text-sm text-gray-600">
+                                              <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                                              <p className="text-sm text-neutral-600">
                                                 取消後將無法恢復，請確認操作。
                                               </p>
                                             </div>
@@ -1678,7 +1658,7 @@ export default function OrdersPage() {
                                                 prizeName: item.prize
                                               })
                                             }}
-                                            className="text-blue-500 hover:text-blue-700 text-sm whitespace-nowrap w-20 text-left flex-shrink-0"
+                                            className="text-primary hover:text-primary text-sm whitespace-nowrap w-20 text-left flex-shrink-0"
                                           >
                                             查看商品
                                           </button>

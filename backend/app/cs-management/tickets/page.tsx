@@ -17,7 +17,7 @@ interface CsTicket {
 
 const STATUS_META = {
   open:        { label: '待處理', cls: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
-  in_progress: { label: '處理中', cls: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  in_progress: { label: '處理中', cls: 'bg-primary text-primary border border-blue-200' },
   resolved:    { label: '已解決', cls: 'bg-green-50 text-green-700 border border-green-200' },
   closed:      { label: '已關閉', cls: 'bg-neutral-100 text-neutral-500 border border-neutral-200' },
 }
@@ -175,7 +175,7 @@ export default function CsTicketsPage() {
                                 value={notes[t.id] ?? (t.admin_note || '')}
                                 onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
                                 placeholder="填寫處理記錄…"
-                                className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 bg-white text-neutral-800 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 bg-white text-neutral-800 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
                                 onClick={e => e.stopPropagation()}
                               />
                             </div>
@@ -185,7 +185,7 @@ export default function CsTicketsPage() {
                                 <button
                                   onClick={e => { e.stopPropagation(); update(t.id, { status: 'in_progress', admin_note: notes[t.id] ?? t.admin_note }) }}
                                   disabled={saving === t.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary disabled:opacity-50 transition-colors"
                                 >
                                   標為處理中
                                 </button>

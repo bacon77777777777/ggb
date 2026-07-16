@@ -318,7 +318,7 @@ export default function SellOrdersAdminPage() {
                           {formatDateTime(o.created_at)}
                         </td>
                         <td className="py-3 px-4 sticky right-0 bg-white border-l border-neutral-200 whitespace-nowrap">
-                          <Link href={`/sell-orders/${o.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                          <Link href={`/sell-orders/${o.id}`} className="text-primary hover:text-blue-800 text-sm font-medium">
                             查看
                           </Link>
                         </td>

@@ -439,7 +439,7 @@ export default function SellAdminPage() {
                               item.status === 'active'
                                 ? 'bg-green-50 text-green-700'
                                 : item.status === 'sold'
-                                ? 'bg-blue-50 text-blue-700'
+                                ? 'bg-primary text-primary'
                                 : item.status === 'draft'
                                 ? 'bg-neutral-100 text-neutral-700'
                                 : 'bg-neutral-100 text-neutral-600'
@@ -486,7 +486,7 @@ export default function SellAdminPage() {
                               href={`${FRONTEND_URL}/sell/${item.id}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap"
+                              className="text-primary hover:text-blue-800 text-sm font-medium whitespace-nowrap"
                             >
                               前台
                             </Link>

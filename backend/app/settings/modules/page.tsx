@@ -102,10 +102,10 @@ export default function ModuleSettingsPage() {
         ) : (
           <div className="space-y-4">
             {PRODUCT_TYPES.map(({ type, label, themes }) => (
-              <div key={type} className="p-4 border border-gray-200 rounded-lg bg-white">
+              <div key={type} className="p-4 border border-neutral-200 rounded-lg bg-white">
                 <div className="flex items-center gap-4">
                   <div className="w-20 shrink-0">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
                       {label}
                     </span>
                   </div>
@@ -129,7 +129,7 @@ export default function ModuleSettingsPage() {
               </div>
             ))}
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
               <p className="text-xs text-neutral-400">
                 ※ 各類別未自訂的商品會套用此設定；已在商品頁個別設定的不受影響
               </p>

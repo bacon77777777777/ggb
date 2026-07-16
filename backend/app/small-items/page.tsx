@@ -249,7 +249,7 @@ export default function SmallItemsPage() {
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/small-items/${item.id}`}
-                          className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+                          className="text-primary hover:text-primary text-sm font-medium"
                         >
                           編輯
                         </Link>

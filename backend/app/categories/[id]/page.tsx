@@ -191,7 +191,7 @@ export default function MenuProductsPage() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full h-11 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20"
                 placeholder="輸入商品名稱或商品編號"
               />
               <div className="mt-3 space-y-2">

@@ -846,7 +846,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                   })?.name || pageTitle || '後台管理'}
                   {PAGE_INFO[pathname] && (
                     <span className="relative group inline-flex items-center">
-                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
+                      <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
                         !
                       </span>
                       <span className="pointer-events-none absolute left-0 top-full mt-2 z-50 w-80 rounded-lg bg-neutral-900 text-white text-xs font-normal leading-relaxed px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-normal">
@@ -893,7 +893,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {canAccess('/header-members') && (
                   <div className="hidden lg:flex items-center gap-4 text-sm text-neutral-500 mr-2 pr-4 border-r border-neutral-200">
                     <span>總會員數 <span className="font-semibold text-neutral-800">{memberCount.toLocaleString()}</span></span>
-                    <span>在線人數 <span className="font-semibold text-emerald-600">{onlineCount.toLocaleString()}</span></span>
+                    <span>在線人數 <span className="font-semibold text-green-600">{onlineCount.toLocaleString()}</span></span>
                   </div>
                 )}
 
@@ -1018,7 +1018,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
                     {totalPendingCount > 0 && (
-                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-500 rounded-full">
+                      <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-primary rounded-full">
                         {totalPendingCount > 9 ? '9+' : totalPendingCount}
                       </span>
                     )}
@@ -1033,7 +1033,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
                             待配送訂單
-                            {totalPendingCount > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">{totalPendingCount}</span>}
+                            {totalPendingCount > 0 && <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-primary rounded-full">{totalPendingCount}</span>}
                           </h3>
                           <button onClick={() => setIsShipmentOpen(false)} className="p-1 hover:bg-neutral-200 rounded transition-colors">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1046,7 +1046,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                                 <button key={order.id || index} onClick={() => handleShipmentClick(order.orderId)} className="w-full text-left p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 hover:shadow-md transition-all duration-200 border border-neutral-200 hover:border-primary/50 active:scale-[0.98]">
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-semibold text-neutral-900 font-mono">{order.orderId}</span>
-                                    <span className={`px-2 py-1 text-xs rounded-full flex-shrink-0 ml-2 ${order.days > 3 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{order.days} 天</span>
+                                    <span className={`px-2 py-1 text-xs rounded-full flex-shrink-0 ml-2 ${order.days > 3 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-primary'}`}>{order.days} 天</span>
                                   </div>
                                   <div className="mb-2">
                                     <p className="text-xs text-neutral-600 mb-1">商品 ({order.quantity} 件)：</p>

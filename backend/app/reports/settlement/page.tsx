@@ -35,7 +35,7 @@ function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
+      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
         !
       </div>
       {show && (
@@ -239,7 +239,7 @@ export default function SettlementPage() {
               <select
                 value={selectedSupplierId}
                 onChange={e => setSelectedSupplierId(e.target.value)}
-                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[140px]"
+                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px]"
               >
                 {suppliers.map(s => (
                   <option key={s.id} value={String(s.id)}>{s.name}</option>
@@ -292,7 +292,7 @@ export default function SettlementPage() {
                           <div className="flex items-center gap-1">
                             <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
                               onChange={e => setEcpayRate(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">% 估算</span>
                           </div>
                         )}
@@ -306,7 +306,7 @@ export default function SettlementPage() {
                           <div className="flex items-center gap-1">
                             <input type="number" value={f.value} min={f.min} max={f.max}
                               onChange={e => f.setter(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>

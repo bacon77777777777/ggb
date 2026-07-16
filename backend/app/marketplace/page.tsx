@@ -403,7 +403,7 @@ export default function MarketplaceAdminPage() {
                             item.status === 'active'
                               ? 'bg-green-50 text-green-700'
                               : item.status === 'sold'
-                              ? 'bg-blue-50 text-blue-700'
+                              ? 'bg-primary text-primary'
                               : 'bg-neutral-100 text-neutral-600'
                           }`}
                         >

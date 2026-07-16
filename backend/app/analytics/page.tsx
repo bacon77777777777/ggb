@@ -270,13 +270,13 @@ export default function AdminsPage() {
       key: 'username',
       label: '帳號',
       sortable: true,
-      className: 'font-medium text-gray-900'
+      className: 'font-medium text-neutral-900'
     },
     {
       key: 'nickname',
       label: '暱稱',
       sortable: true,
-      className: 'text-gray-700'
+      className: 'text-neutral-700'
     },
     {
       key: 'role',
@@ -285,8 +285,8 @@ export default function AdminsPage() {
       render: (admin) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
           ${admin.role?.name === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-            admin.role?.name === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-            'bg-gray-50 text-gray-700 border-gray-100'
+            admin.role?.name === 'admin' ? 'bg-primary text-primary border-blue-100' :
+            'bg-neutral-50 text-neutral-700 border-neutral-100'
           }`}>
           {admin.role?.display_name || '未知角色'}
         </span>
@@ -324,7 +324,7 @@ export default function AdminsPage() {
       render: (admin) => (
         <button
           onClick={() => handleEdit(admin)}
-          className="text-blue-500 hover:text-blue-700 font-medium text-sm"
+          className="text-primary hover:text-primary font-medium text-sm"
         >
           編輯
         </button>
@@ -442,7 +442,7 @@ export default function AdminsPage() {
         >
            <div className="space-y-4">
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
                  帳號 <span className="text-xs text-neutral-500">(僅限英文數字)</span>
                </label>
                <input
@@ -454,42 +454,42 @@ export default function AdminsPage() {
                      setFormData({ ...formData, username: value })
                    }
                  }}
-                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                  placeholder="請輸入帳號"
                />
              </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 暱稱
               </label>
               <input
                 type="text"
                 value={formData.nickname}
                 onChange={e => setFormData({ ...formData, nickname: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                 placeholder="請輸入暱稱"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 密碼
               </label>
                <input
                  type="password"
                  value={formData.password}
                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                  placeholder={isEditModalOpen ? "不修改請留空" : "請設定密碼"}
                />
              </div>
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
                  角色
                </label>
                <select
                  value={formData.role_id}
                  onChange={e => setFormData({ ...formData, role_id: Number(e.target.value) })}
-                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                >
                  <option value={0} disabled>請選擇角色</option>
                  {roles.map(role => (
@@ -500,13 +500,13 @@ export default function AdminsPage() {
                </select>
              </div>
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
                  狀態
                </label>
                <select
                  value={formData.status}
                  onChange={e => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                >
                  <option value="active">啟用</option>
                  <option value="inactive">停用</option>
@@ -520,7 +520,7 @@ export default function AdminsPage() {
                    setIsEditModalOpen(false)
                    setEditingAdmin(null)
                  }}
-                 className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                 className="px-4 py-2 text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
                >
                  取消
                </button>

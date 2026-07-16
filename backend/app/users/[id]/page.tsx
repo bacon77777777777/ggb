@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import Modal from '@/components/Modal'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
@@ -334,12 +335,6 @@ export default function UserDetailPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    if (status === 'active')   return 'bg-green-100 text-green-700 border border-green-200'
-    if (status === 'frozen')   return 'bg-blue-100 text-blue-700 border border-blue-200'
-    return 'bg-neutral-100 text-neutral-600 border border-neutral-200'
-  }
-
   const getStatusText = (status: string) => {
     if (status === 'active') return '啟用'
     if (status === 'frozen') return '凍結'
@@ -426,7 +421,7 @@ export default function UserDetailPage() {
       ]}
       >
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </AdminLayout>
     )
@@ -594,9 +589,7 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 relative">
               <div className="flex items-start justify-between mb-6">
                 <h2 className="text-lg font-bold text-neutral-900">會員資訊</h2>
-                <span className={`px-4 py-1.5 rounded-full text-base font-medium ${getStatusColor(userStatus)}`}>
-                  {getStatusText(userStatus)}
-                </span>
+                <Badge status={userStatus} size="lg">{getStatusText(userStatus)}</Badge>
               </div>
               <div className="space-y-4">
                 <div className="mb-4">
@@ -791,7 +784,7 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <h2 className="text-lg font-bold text-neutral-900 mb-6">統計數據</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-5 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg border border-blue-200/50 hover:shadow-md transition-shadow">
+                <div className="text-center p-5 bg-gradient-to-br from-primary to-blue-100/50 rounded-lg border border-blue-200/50 hover:shadow-md transition-shadow">
                   <p className="text-sm text-neutral-600 mb-2 font-medium">代幣餘額<span className="text-neutral-500">(G)</span></p>
                   <p className="text-2xl font-bold text-neutral-900 font-mono">{user.tokens.toLocaleString()}</p>
                 </div>
@@ -926,7 +919,7 @@ export default function UserDetailPage() {
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                   order.status === 'submitted' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
                                   order.status === 'delivered' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                  order.status === 'processing' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                  order.status === 'processing' ? 'bg-blue-100 text-primary border border-blue-200' :
                                   order.status === 'shipping' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
                                   'bg-neutral-100 text-neutral-600 border border-neutral-200'
                                 }`}>
@@ -974,7 +967,7 @@ export default function UserDetailPage() {
                                   {draw.prize}
                                 </span>
                                 {draw.ticketNumber && (
-                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 font-mono">
+                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-primary border border-blue-200 font-mono">
                                     籤號：{(draw.ticketNumber).toString().padStart(3, '0')}
                                   </span>
                                 )}
@@ -1126,7 +1119,7 @@ export default function UserDetailPage() {
                                 <p className="font-semibold text-neutral-900">{item.product}</p>
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                   item.prize === 'A賞' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                                  item.prize === 'B賞' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                  item.prize === 'B賞' ? 'bg-blue-100 text-primary border border-blue-200' :
                                   item.prize === 'C賞' ? 'bg-green-100 text-green-700 border border-green-200' :
                                   item.prize === 'D賞' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
                                   'bg-red-100 text-red-700 border border-red-200'
@@ -1328,7 +1321,7 @@ export default function UserDetailPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="請輸入新密碼"
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               ) : (
@@ -1387,7 +1380,7 @@ export default function UserDetailPage() {
               value={manualRechargeAmount}
               onChange={(e) => setManualRechargeAmount(e.target.value)}
               placeholder="請輸入 G幣數量"
-              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
             />
           </div>
 
@@ -1396,7 +1389,7 @@ export default function UserDetailPage() {
             <select
               value={manualRechargeMethod}
               onChange={(e) => setManualRechargeMethod(e.target.value as typeof manualRechargeMethod)}
-              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent bg-white"
             >
               <option value="manual_transfer">銀行轉帳</option>
               <option value="cash">現金</option>
@@ -1414,7 +1407,7 @@ export default function UserDetailPage() {
               value={manualRechargeNote}
               onChange={(e) => setManualRechargeNote(e.target.value)}
               placeholder="例：LINE 轉帳確認截圖 #001"
-              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
             />
           </div>
         </div>
