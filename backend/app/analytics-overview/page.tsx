@@ -85,7 +85,7 @@ interface AnalyticsData {
     todaySales: number; todayDrawCount: number; todayVisits: number; todayRecharges: number
     yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number; yesterdayRecharges: number
     convRate: number
-    bars: { label: string; sales: number; draws: number }[]
+    bars: { label: string; sales: number; draws: number; visits: number }[]
     spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
@@ -127,7 +127,7 @@ export default function AnalyticsOverviewPage() {
   )
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [chartMode, setChartMode] = useState<'sales' | 'draws'>('sales')
+  const [chartMode, setChartMode] = useState<'sales' | 'visits'>('sales')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -414,115 +414,117 @@ export default function AnalyticsOverviewPage() {
           </div>
         </div>
 
-        {/* ── Supplier bar + ranking ────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-neutral-800">廠商銷售概覽</h3>
-            <div className="flex items-center gap-1">
-              {(['sales', 'draws'] as const).map(m => (
+        {/* ── 銷售額 & 訪問量（pixel-matched AntD Pro）────────────────────── */}
+        <div className="bg-white rounded-lg border border-[#f0f0f0] overflow-hidden">
+
+          {/* AntD-style large tabs */}
+          <div className="border-b border-[#f0f0f0]" style={{ padding: '0 16px' }}>
+            <div className="flex" style={{ marginBottom: -1 }}>
+              {(['sales', 'visits'] as const).map(m => (
                 <button key={m} onClick={() => setChartMode(m)}
-                  className={`h-7 px-3 text-xs rounded-md border transition-colors ${
-                    chartMode === m
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
-                  }`}>
-                  {m === 'sales' ? '銷售額' : '消費筆數'}
+                  style={{
+                    padding: '12px 0',
+                    marginRight: 32,
+                    fontSize: 16,
+                    fontWeight: chartMode === m ? 600 : 400,
+                    color: chartMode === m ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.45)',
+                    borderBottom: chartMode === m ? '2px solid #1677ff' : '2px solid transparent',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: chartMode === m ? '2px solid #1677ff' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s',
+                  } as React.CSSProperties}>
+                  {m === 'sales' ? '銷售額' : '訪問量'}
                 </button>
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-[1fr_260px] gap-6">
-            <div>
+
+          {/* Body: chart (2/3) + ranking (1/3) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr' }}>
+
+            {/* Chart */}
+            <div style={{ padding: '0 0 32px 32px', borderRight: '1px solid #f0f0f0' }}>
               {loading ? (
-                <div className="h-[200px] flex items-end gap-1 px-4">
-                  {[40, 70, 55, 80, 45, 60, 35, 75, 50, 65, 45, 30].map((h, i) => (
+                <div className="flex items-end gap-1.5 mt-6" style={{ height: 300 }}>
+                  {[60, 85, 30, 25, 95, 70, 80, 55, 45, 75, 40, 88].map((h, i) => (
                     <div key={i} className="flex-1 bg-neutral-100 rounded-t animate-pulse" style={{ height: `${h}%` }} />
                   ))}
                 </div>
               ) : !c?.bars.length ? (
-                <div className="flex items-center justify-center h-[200px] text-sm text-neutral-400">暫無資料</div>
+                <div className="flex items-center justify-center text-sm text-neutral-400" style={{ height: 300 }}>暫無資料</div>
               ) : (
                 <ColumnChart
                   data={c.bars}
                   xField="label"
-                  yField={chartMode === 'sales' ? 'sales' : 'draws'}
-                  height={200}
+                  yField={chartMode}
+                  height={300}
                   autoFit
-                  style={{ fill: chartMode === 'sales' ? '#1677ff' : '#10b981', radius: [3, 3, 0, 0], opacity: 0.85 } as any}
+                  style={{ fill: '#1783ff', radius: [4, 4, 0, 0] } as any}
                   axis={{
-                    x: { label: { style: { fontSize: 9, fill: '#9ca3af' } }, tick: false, line: false },
+                    x: { tick: false, line: false, label: { style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' } } },
                     y: {
                       grid: true,
-                      gridLine: { style: { stroke: '#f3f4f6', lineDash: [0] } },
                       label: {
-                        style: { fontSize: 9, fill: '#9ca3af' },
-                        formatter: (v: any) => chartMode === 'sales' && Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v),
+                        style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' },
+                        formatter: (v: any) => Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v),
                       },
                       tick: false,
                       line: false,
                     },
                   } as any}
                   label={false}
+                  tooltip={{
+                    title: (d: any) => d.label,
+                    items: [{ channel: 'y', name: chartMode === 'sales' ? '銷售額' : '訪問量' }],
+                  } as any}
                 />
               )}
             </div>
-            <div>
-              <p className="text-xs font-medium text-neutral-500 mb-3">廠商銷售排行</p>
-              <div className="space-y-2">
-                {loading ? (
-                  [1,2,3,4,5].map(i => <div key={i} className="h-8 bg-neutral-100 rounded animate-pulse" />)
-                ) : !c?.suppliers.length ? (
-                  <p className="text-xs text-neutral-400">暫無資料</p>
-                ) : (
-                  c.suppliers.slice(0, 7).map(sup => (
-                    <div key={sup.id}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-4 text-center font-bold ${sup.rank <= 3 ? 'text-primary' : 'text-neutral-300'}`}>{sup.rank}</span>
-                          <span className="text-neutral-700 truncate max-w-[120px]">{sup.name}</span>
-                        </div>
-                        <span className="font-mono text-neutral-600">
-                          {chartMode === 'sales'
-                            ? (sup.sales >= 10000 ? `${(sup.sales / 1000).toFixed(1)}k` : sup.sales.toLocaleString())
-                            : sup.draws.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${chartMode === 'sales' ? sup.salesPct : sup.drawsPct}%` }} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* ── Supplier conversion rings ─────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-neutral-800">廠商轉化率</h3>
-            <p className="text-xs text-neutral-400 mt-0.5">各廠商銷售佔比</p>
-          </div>
-          {loading ? (
-            <div className="flex gap-6 flex-wrap">
-              {[1,2,3,4,5,6].map(i => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <div className="w-[76px] h-[76px] rounded-full bg-neutral-100 animate-pulse" />
-                  <div className="w-16 h-3 bg-neutral-100 rounded animate-pulse" />
+            {/* Ranking */}
+            <div style={{ padding: '0 32px 32px 32px' }}>
+              <h4 style={{ margin: '24px 0 0', fontSize: 14, fontWeight: 500, color: 'rgba(0,0,0,0.85)' }}>
+                廠商銷售額排名
+              </h4>
+              {loading ? (
+                <div style={{ marginTop: 25 }} className="space-y-4">
+                  {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-5 bg-neutral-100 rounded animate-pulse" />)}
                 </div>
-              ))}
+              ) : !c?.suppliers.length ? (
+                <div className="flex items-center justify-center text-sm text-neutral-400" style={{ marginTop: 40 }}>暫無資料</div>
+              ) : (
+                <ul style={{ margin: '25px 0 0', padding: 0, listStyle: 'none' }}>
+                  {c.suppliers.slice(0, 7).map((sup, i) => (
+                    <li key={sup.id} style={{ display: 'flex', alignItems: 'center', marginTop: 16 }}>
+                      <span style={{
+                        display: 'inline-block',
+                        width: 20, height: 20,
+                        marginTop: 1.5, marginRight: 16,
+                        fontWeight: 600, fontSize: 12, lineHeight: '20px',
+                        textAlign: 'center', borderRadius: 20,
+                        flexShrink: 0,
+                        ...(i < 3
+                          ? { background: 'rgba(0,0,0,0.85)', color: '#fff' }
+                          : { background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.65)' }),
+                      }}>
+                        {i + 1}
+                      </span>
+                      <span style={{ flex: 1, marginRight: 8, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: 14, color: 'rgba(0,0,0,0.85)' }}
+                        title={sup.name}>
+                        {sup.name}
+                      </span>
+                      <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.85)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                        {sup.sales.toLocaleString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          ) : !c?.suppliers.length ? (
-            <div className="flex items-center justify-center h-24 text-sm text-neutral-400">暫無廠商資料</div>
-          ) : (
-            <div className="flex gap-6 flex-wrap">
-              {c.suppliers.map(sup => (
-                <RingProgress key={sup.id} pct={sup.convRate} name={sup.name} draws={sup.draws} />
-              ))}
-            </div>
-          )}
+
+          </div>
         </div>
 
       </div>

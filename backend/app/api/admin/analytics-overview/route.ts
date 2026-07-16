@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
     })
 
     // Build bars with date keys for spark join
-    const barsWithKey: { key: string; label: string; sales: number; draws: number }[] = []
+    const barsWithKey: { key: string; label: string; sales: number; draws: number; visits: number }[] = []
     if (isMonthly) {
       const cur = new Date(curStart)
       while (cur < curEnd) {
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
         const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
         const label = `${dt.getUTCMonth() + 1}月`
         if (!barsWithKey.find(b => b.label === label)) {
-          barsWithKey.push({ key, label, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+          barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0 })
         }
         cur.setDate(cur.getDate() + 28)
       }
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
         const dt = new Date(cur.getTime() + TW)
         const key = dt.toISOString().split('T')[0]
         const mm = dt.getUTCMonth() + 1, dd = dt.getUTCDate()
-        barsWithKey.push({ key, label: `${mm}/${dd}`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+        barsWithKey.push({ key, label: `${mm}/${dd}`, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0 })
         cur.setDate(cur.getDate() + 1)
       }
     }
