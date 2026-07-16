@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 const PRODUCT_TYPES: {
   type: string
@@ -98,7 +99,7 @@ export default function ModuleSettingsPage() {
     <AdminLayout>
       <PageCard title="抽獎模組設定">
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-neutral-500">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : (
           <div className="space-y-4">
             {PRODUCT_TYPES.map(({ type, label, themes }) => (

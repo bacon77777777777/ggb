@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface DismantledItem {
   id: string
@@ -253,7 +254,7 @@ export default function DismantledPage() {
                   </tr>
                 ) : sortedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-neutral-500">無資料</td>
+                    <TableEmpty colSpan={6} />
                   </tr>
                 ) : (
                   sortedItems.map((item) => (

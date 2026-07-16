@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface UserProfile {
   id: string
@@ -146,7 +147,7 @@ export default function UserEditPage() {
 
   if (loading) return (
     <AdminLayout pageTitle="編輯會員" breadcrumbs={[{ label: '會員管理', href: '/users' }, { label: '編輯' }]}>
-      <div className="py-20 text-center text-sm text-neutral-400">載入中…</div>
+      <CardSkeleton rows={3} />
     </AdminLayout>
   )
 

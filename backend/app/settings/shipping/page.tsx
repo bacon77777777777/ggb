@@ -2,8 +2,11 @@
 
 import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 export default function ShippingSettingsPage() {
+  const { toast } = useToast()
   const [feeHome, setFeeHome] = useState('130')
   const [feeCvs711, setFeeCvs711] = useState('65')
   const [feeCvsFamily, setFeeCvsFamily] = useState('65')
@@ -48,7 +51,7 @@ export default function ShippingSettingsPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (e) {
-      alert('儲存失敗，請重試')
+      toast('儲存失敗，請重試', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -59,7 +62,7 @@ export default function ShippingSettingsPage() {
       <div className="max-w-lg">
         <PageCard>
           {isLoading ? (
-            <div className="py-8 text-center text-neutral-400">載入中...</div>
+            <CardSkeleton rows={3} />
           ) : (
             <div className="space-y-6">
               <div>

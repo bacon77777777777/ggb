@@ -4,6 +4,8 @@ import { AdminLayout, PageCard } from '@/components'
 import { supabase } from '@/lib/supabaseClient'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 type ProductRow = {
   id: number
@@ -16,6 +18,7 @@ type ProductRow = {
 }
 
 export default function MenuProductsPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const menuId = params.id as string
@@ -114,7 +117,7 @@ export default function MenuProductsPage() {
       if (!res.ok) throw new Error(json?.error || '儲存失敗')
       router.push('/categories')
     } catch (e: any) {
-      alert(e?.message || '儲存失敗')
+      toast(e?.message || '儲存失敗', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -158,7 +161,7 @@ export default function MenuProductsPage() {
             <div>
               <div className="text-sm font-bold text-neutral-800 mb-2">已選商品（{selectedIds.length}）</div>
               {isLoading ? (
-                <div className="text-sm text-neutral-500">載入中...</div>
+                <CardSkeleton rows={3} />
               ) : selectedProducts.length === 0 ? (
                 <div className="text-sm text-neutral-500">尚未綁定商品</div>
               ) : (

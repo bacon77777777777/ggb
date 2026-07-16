@@ -5,6 +5,8 @@ import { PageCard } from '@/components'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 const CATEGORY_LABELS: Record<string, string> = {
   ichiban:  '一番賞',
@@ -15,6 +17,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 export default function NewsEditPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const id     = params.id as string
@@ -38,7 +41,7 @@ export default function NewsEditPage() {
   useEffect(() => {
     if (isNew) return
     supabase.from('news').select('*').eq('id', id).single().then(({ data, error }) => {
-      if (error || !data) { alert('找不到此文章'); router.push('/news'); return }
+      if (error || !data) { toast('找不到此文章', 'error'); router.push('/news'); return }
       setForm({
         title:      data.title ?? '',
         summary:    data.summary ?? '',
@@ -62,13 +65,13 @@ export default function NewsEditPage() {
       fd.append('path', `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
       const res  = await fetch('/api/admin/upload', { method: 'POST', body: fd, credentials: 'include' })
       const data = await res.json()
-      if (!res.ok) { alert(data?.error ?? '上傳失敗'); return }
+      if (!res.ok) { toast(data?.error ?? '上傳失敗', 'error'); return }
       setForm(f => ({ ...f, image_url: data.publicUrl }))
-    } catch { alert('上傳失敗') } finally { setIsUploading(false) }
+    } catch { toast('上傳失敗', 'error') } finally { setIsUploading(false) }
   }
 
   const handleSave = async () => {
-    if (!form.title.trim()) { alert('請輸入標題'); return }
+    if (!form.title.trim()) { toast('請輸入標題', 'warning'); return }
     setIsSaving(true)
     try {
       const payload = {
@@ -84,10 +87,10 @@ export default function NewsEditPage() {
       if (isNew) {
         const newId = Math.floor(10000000 + Math.random() * 90000000).toString()
         const { error } = await supabase.from('news').insert([{ ...payload, id: newId }])
-        if (error) { alert('儲存失敗：' + error.message); return }
+        if (error) { toast('儲存失敗：' + error.message, 'error'); return }
       } else {
         const { error } = await supabase.from('news').update(payload).eq('id', id)
-        if (error) { alert('儲存失敗：' + error.message); return }
+        if (error) { toast('儲存失敗：' + error.message, 'error'); return }
       }
       router.push('/news')
     } finally { setIsSaving(false) }
@@ -96,7 +99,7 @@ export default function NewsEditPage() {
   if (isLoading) {
     return (
       <AdminLayout pageTitle={isNew ? '新增文章' : '編輯文章'}>
-        <div className="flex items-center justify-center h-48 text-neutral-400">載入中...</div>
+        <CardSkeleton rows={3} />
       </AdminLayout>
     )
   }

@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface CouponRow {
   id: string
@@ -127,7 +128,7 @@ export default function CouponsReportPage() {
         {/* 資料表 */}
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           {loading ? (
-            <div className="py-16 text-center text-sm text-neutral-400">載入中…</div>
+            <CardSkeleton rows={3} />
           ) : rows.length === 0 ? (
             <div className="py-16 text-center text-sm text-neutral-400">本期無折價券紀錄</div>
           ) : (

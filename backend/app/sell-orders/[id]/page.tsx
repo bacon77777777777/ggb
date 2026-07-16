@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout, PageCard, Button, Input, CopyableID } from '@/components'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 type OrderPayload = {
   id: number
@@ -52,6 +54,7 @@ const stepLabel = (step: number) => {
 }
 
 export default function SellOrderDetailPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = String(params?.id || '')
@@ -134,7 +137,7 @@ export default function SellOrderDetailPage() {
       await load()
     } catch (e) {
       console.error('Failed to patch sell order:', e)
-      alert('更新失敗')
+      toast('更新失敗', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -143,7 +146,7 @@ export default function SellOrderDetailPage() {
   if (isLoading && !order) {
     return (
       <AdminLayout pageTitle="販售訂單">
-        <div className="p-6 text-sm text-neutral-500">載入中…</div>
+        <CardSkeleton rows={4} />
       </AdminLayout>
     )
   }

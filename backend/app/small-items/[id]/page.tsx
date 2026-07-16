@@ -4,8 +4,10 @@ import AdminLayout from '@/components/AdminLayout'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function EditSmallItemPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const { addLog } = useLog()
@@ -103,7 +105,7 @@ export default function EditSmallItemPage() {
       router.push('/small-items')
     } catch (error) {
       console.error('Error updating small item:', error)
-      alert('更新失敗，請重試')
+      toast('更新失敗，請重試', 'error')
     } finally {
       setLoading(false)
     }

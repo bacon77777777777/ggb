@@ -5,6 +5,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface LogEntry {
   id: number
@@ -396,7 +397,7 @@ export default function LogsPage() {
               </div>
 
               {userEventsLoading ? (
-                <div className="py-12 text-center text-neutral-400 text-sm">載入中...</div>
+                <CardSkeleton rows={4} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">

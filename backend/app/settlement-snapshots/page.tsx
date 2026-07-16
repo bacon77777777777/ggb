@@ -2,6 +2,9 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect, useCallback } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface Snapshot {
   id: number
@@ -42,6 +45,7 @@ function periodMonths(count = 12) {
 }
 
 export default function SettlementSnapshotsPage() {
+  const { toast } = useToast()
   const [snapshots, setSnapshots]   = useState<Snapshot[]>([])
   const [filterMonth, setFilterMonth] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -92,10 +96,10 @@ export default function SettlementSnapshotsPage() {
     const data = await res.json()
     setGenerating(false)
     if (data.ok) {
-      alert(`完成！共建立 ${data.created} 筆`)
+      toast(`完成！共建立 ${data.created} 筆`, 'success')
       load()
     } else {
-      alert(`錯誤：${data.error}`)
+      toast(`錯誤：${data.error}`, 'error')
     }
   }
 
@@ -152,9 +156,9 @@ export default function SettlementSnapshotsPage() {
 
         {/* 結算列表 */}
         {loading ? (
-          <div className="text-center py-12 text-neutral-400">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : Object.keys(byMonth).length === 0 ? (
-          <div className="text-center py-12 text-neutral-400">無結算紀錄，點「立即生成快照」產生本月資料。</div>
+          <EmptyState message="無結算紀錄，點「立即生成快照」產生本月資料。" />
         ) : (
           Object.entries(byMonth).sort(([a], [b]) => b.localeCompare(a)).map(([month, rows]) => {
             const totalNet = rows.reduce((s, r) => s + Number(r.supplier_net), 0)

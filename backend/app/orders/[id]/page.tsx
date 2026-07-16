@@ -7,8 +7,10 @@ import ShippingProgress from '@/components/ShippingProgress'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function OrderDetailPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const idParam = params.id as string
@@ -120,7 +122,7 @@ export default function OrderDetailPage() {
       setShipment({ ...shipment, status: newStatus })
     } catch (err) {
       console.error('Error updating status:', err)
-      alert('更新狀態失敗')
+      toast('更新狀態失敗', 'error')
     }
   }
 
@@ -383,13 +385,13 @@ export default function OrderDetailPage() {
                               throw new Error(result.error || '建立物流單失敗');
                             }
 
-                            alert('物流單建立成功！');
+                            toast('物流單建立成功！', 'success');
                             // Refresh order data
                             window.location.reload();
                             
                           } catch (err: any) {
                             console.error('Error creating logistics order:', err);
-                            alert(`建立物流單失敗: ${err.message}`);
+                            toast(`建立物流單失敗: ${err.message}`, 'error');
                           }
                         }
                       }}
@@ -456,7 +458,7 @@ export default function OrderDetailPage() {
                             setShipment({ ...shipment, status: 'cancelled' })
                           } catch (err) {
                             console.error('Error cancelling order:', err)
-                            alert('取消訂單失敗')
+                            toast('取消訂單失敗', 'error')
                           }
                         }
                       }}

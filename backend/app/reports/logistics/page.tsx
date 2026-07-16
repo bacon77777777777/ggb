@@ -3,6 +3,7 @@
 import { AdminLayout, PageCard, SearchToolbar, DateRangePicker } from '@/components'
 import { useState, useEffect, useMemo } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface LogisticsRecord {
   id: number
@@ -197,7 +198,7 @@ export default function LogisticsReportPage() {
 
           <div className="mt-4 overflow-x-auto">
             {isLoading ? (
-              <div className="py-12 text-center text-neutral-400">載入中...</div>
+              <CardSkeleton rows={3} />
             ) : filtered.length === 0 ? (
               <div className="py-12 text-center text-neutral-400">無資料</div>
             ) : (

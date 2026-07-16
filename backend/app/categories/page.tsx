@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/contexts/ToastContext'
 
 interface Category {
   id: string
@@ -16,6 +17,7 @@ interface Category {
 }
 
 export default function CategoriesPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -43,7 +45,7 @@ export default function CategoriesPage() {
       setCategories(data || [])
     } catch (error: any) {
       console.error('Error fetching categories:', error)
-      alert(`載入菜單失敗: ${error.message}`)
+      toast(`載入菜單失敗: ${error.message}`, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -127,7 +129,7 @@ export default function CategoriesPage() {
       .eq('menu_id', category.id)
     const productCount = error ? 0 : (count || 0)
     if (productCount > 0) {
-      alert(`此菜單下仍有 ${productCount} 個商品，無法刪除。\n請先移除或轉移該菜單下的商品。`)
+      toast(`此菜單下仍有 ${productCount} 個商品，無法刪除。\n請先移除或轉移該菜單下的商品。`, 'error')
       return
     }
 
@@ -143,14 +145,14 @@ export default function CategoriesPage() {
       fetchData()
     } catch (error) {
       console.error('Error deleting category:', error)
-      alert('刪除失敗')
+      toast('刪除失敗', 'error')
     }
   }
 
   const handleSubmit = async () => {
     try {
       if (!formData.name) {
-        alert('請輸入分類名稱')
+        toast('請輸入分類名稱', 'warning')
         return
       }
 
@@ -179,7 +181,7 @@ export default function CategoriesPage() {
       fetchData()
     } catch (error) {
       console.error('Error saving category:', error)
-      alert('儲存失敗')
+      toast('儲存失敗', 'error')
     }
   }
 

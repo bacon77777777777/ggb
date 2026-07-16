@@ -14,8 +14,10 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function ProductsPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
   const { highlightedProductId, setHighlightedProductId } = useProduct()
@@ -425,7 +427,7 @@ export default function ProductsPage() {
           setSelectedProducts(new Set())
         } catch (e) {
           console.error('Error batch updating products:', e)
-          alert('批量上架失敗')
+          toast('批量上架失敗', 'error')
         }
       }
     })
@@ -469,7 +471,7 @@ export default function ProductsPage() {
           setSelectedProducts(new Set())
         } catch (e) {
           console.error('Error batch updating products:', e)
-          alert('批量下架失敗')
+          toast('批量下架失敗', 'error')
         }
       }
     })
@@ -505,7 +507,7 @@ export default function ProductsPage() {
           })
         } catch (e) {
           console.error('Error deleting product:', e)
-          alert('刪除商品失敗')
+          toast('刪除商品失敗', 'error')
         }
       }
     })
@@ -1176,7 +1178,7 @@ export default function ProductsPage() {
                                 )
                               } catch (error) {
                                 console.error('更新狀態失敗:', error)
-                                alert('更新狀態失敗')
+                                toast('更新狀態失敗', 'error')
                               }
                             }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all flex-shrink-0 ${

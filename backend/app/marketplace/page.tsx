@@ -5,6 +5,8 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface MarketplaceListing {
   id: number
@@ -327,17 +329,9 @@ export default function MarketplaceAdminPage() {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
+                  <TableSkeleton rows={5} cols={6} />
                 ) : sortedListings.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-neutral-500">
-                      目前沒有符合條件的市集上架資料
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={6} message="目前沒有符合條件的市集上架資料" />
                 ) : (
                   sortedListings.map((item) => (
                     <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">

@@ -21,10 +21,15 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   shipping: 'info',
   delivered: 'success',
   cancelled: 'default',
-  // 商品狀態
+  // 商品/上架狀態
   active: 'success',
   inactive: 'default',
   soldout: 'danger',
+  paused: 'warning',
+  deleted: 'default',
+  sold: 'info',
+  draft: 'default',
+  hidden: 'default',
   // 用戶狀態
   frozen: 'danger',
   // 付款/結算
@@ -45,8 +50,12 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   '已完成': 'success',
   '已出貨': 'info',
   '已付款': 'success',
+  '進行中': 'warning',
   '凍結': 'danger',
   '正常': 'success',
+  '審核中': 'warning',
+  '已退款': 'default',
+  '已拒絕': 'danger',
 }
 
 const variantStyles: Record<BadgeVariant, string> = {

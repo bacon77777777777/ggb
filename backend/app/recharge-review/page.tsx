@@ -2,6 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface RechargeRecord {
   id: number
@@ -68,7 +69,7 @@ export default function RechargeReviewPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-neutral-400">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : records.length === 0 ? (
           <div className="text-center py-16 text-neutral-400">
             <p className="text-4xl mb-3">✅</p>

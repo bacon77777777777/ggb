@@ -3,6 +3,9 @@
 import { AdminLayout, Modal } from '@/components'
 import { useState, useEffect } from 'react'
 import { useLog } from '@/contexts/LogContext'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface Role {
   id: number
@@ -162,6 +165,7 @@ function normalizePermissions(perms: string[]): string[] {
 }
 
 export default function PermissionsPage() {
+  const { toast } = useToast()
   const [roles, setRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -185,7 +189,7 @@ export default function PermissionsPage() {
       setRoles(data || [])
     } catch (error) {
       console.error('Error fetching roles:', error)
-      alert('載入角色失敗')
+      toast('載入角色失敗', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -233,7 +237,7 @@ export default function PermissionsPage() {
   const handleSubmit = async () => {
     try {
       if (!formData.name || !formData.display_name) {
-        alert('請填寫完整資料')
+        toast('請填寫完整資料', 'warning')
         return
       }
 
@@ -281,7 +285,7 @@ export default function PermissionsPage() {
 
       setIsModalOpen(false)
       fetchData()
-      alert(editingRole ? '更新成功' : '新增成功')
+      toast(editingRole ? '更新成功' : '新增成功', 'success')
     } catch (error) {
       console.error('Error saving role:', error)
       await addLog(
@@ -290,7 +294,7 @@ export default function PermissionsPage() {
         String(error),
         'failed'
       )
-      alert('儲存失敗')
+      toast('儲存失敗', 'error')
     }
   }
 
@@ -308,9 +312,9 @@ export default function PermissionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12 text-neutral-500">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : roles.length === 0 ? (
-          <div className="text-center py-12 text-neutral-500">尚無角色資料</div>
+          <EmptyState message="尚無角色資料" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {roles.map(role => {

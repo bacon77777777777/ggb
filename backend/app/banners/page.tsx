@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface Banner {
   id: number
@@ -17,6 +18,7 @@ interface Banner {
 }
 
 export default function BannersPage() {
+  const { toast } = useToast()
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -47,7 +49,7 @@ export default function BannersPage() {
     } catch (error) {
       console.error('Error fetching banners:', error)
       // For development without actual table, we might want to show empty or mock
-      // alert('載入輪播圖失敗') 
+      // toast('載入輪播圖失敗', 'error') 
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +103,7 @@ export default function BannersPage() {
       fetchData()
     } catch (error: any) {
       console.error('Error deleting banner:', error)
-      alert(error.message || '刪除失敗')
+      toast(error.message || '刪除失敗', 'error')
     }
   }
 
@@ -120,7 +122,7 @@ export default function BannersPage() {
   const handleSubmit = async () => {
     if (savingLock.current) return
     if (!formData.name) {
-      alert('請輸入輪播圖名稱')
+      toast('請輸入輪播圖名稱', 'warning')
       return
     }
     savingLock.current = true
@@ -150,7 +152,7 @@ export default function BannersPage() {
         }
         finalImageUrl = String(uploadJson?.publicUrl || '')
       } else if (!finalImageUrl && !formData.imagePreview) {
-        alert('請上傳圖片')
+        toast('請上傳圖片', 'warning')
         return
       }
 
@@ -190,7 +192,7 @@ export default function BannersPage() {
       fetchData()
     } catch (error: any) {
       console.error('Error saving banner:', error)
-      alert(error.message || '儲存失敗')
+      toast(error.message || '儲存失敗', 'error')
     } finally {
       savingLock.current = false
       setIsSaving(false)
@@ -254,7 +256,7 @@ export default function BannersPage() {
               }
             } catch (error) {
               console.error('Error updating banner status:', error)
-              alert('更新狀態失敗')
+              toast('更新狀態失敗', 'error')
               // Revert on error
               setBanners(prev => prev.map(b => 
                 b.id === item.id ? { ...b, is_active: !checked } : b

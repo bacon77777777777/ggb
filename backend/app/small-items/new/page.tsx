@@ -4,8 +4,10 @@ import AdminLayout from '@/components/AdminLayout'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function NewSmallItemPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
   const [loading, setLoading] = useState(false)
@@ -79,7 +81,7 @@ export default function NewSmallItemPage() {
       router.push('/small-items')
     } catch (error: any) {
       console.error('Error creating small item:', error)
-      alert(`新增失敗：${error.message || '請稍後再試'}`)
+      toast(`新增失敗：${error.message || '請稍後再試'}`, 'error')
     } finally {
       setLoading(false)
     }

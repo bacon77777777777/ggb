@@ -7,6 +7,8 @@ import { generateTXID, calculateTXIDHash, generateRandomValue, determinePrize } 
 import { useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface DrawRecord {
   id: number
@@ -121,6 +123,7 @@ function calculateAdjustedPrizes(product: Product, profitRate: number) {
 }
 
 export default function ProductVerifyPage() {
+  const { toast } = useToast()
   const params = useParams()
   const productId = params.id as string
   
@@ -349,13 +352,13 @@ verifyDraws().then(results => {
   // 驗證 TXID Hash 與 TXID 是否一致
   const handleVerifyHash = async () => {
     if (!product) {
-      alert('商品資料不完整，無法驗證')
+      toast('商品資料不完整，無法驗證', 'error')
       return
     }
 
     const seed = getProductSeed(product)
     if (!seed) {
-      alert('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。')
+      toast('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。', 'error')
       return
     }
 
@@ -365,7 +368,7 @@ verifyDraws().then(results => {
     const expectedHash = firstDraw?.txidHash || product.txidHash
     
     if (!expectedHash) {
-      alert('沒有可用的 TXID Hash 進行驗證')
+      toast('沒有可用的 TXID Hash 進行驗證', 'error')
       return
     }
 
@@ -382,20 +385,20 @@ verifyDraws().then(results => {
         : '✗ 驗證失敗：TXID Hash 與 TXID 不一致，請檢查資料')
     } catch (error) {
       console.error('驗證錯誤:', error)
-      alert('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+      toast('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error')
     }
   }
 
   // 驗證所有抽獎記錄
   const handleVerifyAllDraws = async () => {
     if (!product || draws.length === 0) {
-      alert('沒有抽獎記錄可驗證')
+      toast('沒有抽獎記錄可驗證', 'error')
       return
     }
 
     const seed = getProductSeed(product)
     if (!seed) {
-      alert('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。')
+      toast('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。', 'error')
       return
     }
 
@@ -498,7 +501,7 @@ verifyDraws().then(results => {
       }
     } catch (error) {
       console.error('驗證錯誤:', error)
-      alert('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+      toast('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error')
     } finally {
       setIsVerifying(false)
     }
@@ -531,7 +534,7 @@ verifyDraws().then(results => {
         ]}
       >
         <div className="flex items-center justify-center h-64">
-          <p className="text-neutral-500">載入中...</p>
+          <CardSkeleton rows={3} />
         </div>
       </AdminLayout>
     )
@@ -610,7 +613,7 @@ verifyDraws().then(results => {
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(seed)
-                          alert('Seed 已複製到剪貼板')
+                          toast('Seed 已複製到剪貼板', 'success')
                         } catch (e) {
                           console.error('複製失敗:', e)
                         }
@@ -645,7 +648,7 @@ verifyDraws().then(results => {
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(product.txidHash || '')
-                      alert('TXID Hash 已複製到剪貼板')
+                      toast('TXID Hash 已複製到剪貼板', 'success')
                     } catch (e) {
                       console.error('複製失敗:', e)
                     }
@@ -796,7 +799,7 @@ verifyDraws().then(results => {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(verificationCode)
-                    alert('程式碼已複製到剪貼板')
+                    toast('程式碼已複製到剪貼板', 'success')
                   }}
                   className="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
                 >

@@ -7,6 +7,8 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 // Define interfaces for local state
 interface User {
@@ -80,6 +82,7 @@ interface WarehouseItem {
 }
 
 export default function UserDetailPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const userId = params.id as string
@@ -379,13 +382,13 @@ export default function UserDetailPage() {
       if (action === 'unflag')   setUser({ ...user, isSuspicious: false, suspiciousReason: null })
       if (action === 'freeze' || action === 'unfreeze') setUserStatus(action === 'freeze' ? 'frozen' : 'active')
     } else {
-      alert('操作失敗，請重試')
+      toast('操作失敗，請重試', 'error')
     }
   }
 
   const handleManualRecharge = async () => {
     const amount = parseInt(manualRechargeAmount)
-    if (!amount || amount <= 0) { alert('請輸入有效金額'); return }
+    if (!amount || amount <= 0) { toast('請輸入有效金額', 'warning'); return }
     setManualRechargeLoading(true)
     try {
       const res = await fetch('/api/admin/recharges', {
@@ -399,13 +402,13 @@ export default function UserDetailPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) { alert(data.error || '儲值失敗'); return }
+      if (!res.ok) { toast(data.error || '儲值失敗', 'error'); return }
       setUser(prev => prev ? { ...prev, tokens: prev.tokens + amount } : prev)
       setShowManualRechargeModal(false)
       setManualRechargeAmount('')
       setManualRechargeNote('')
       setManualRechargeMethod('manual_transfer')
-      alert(`已成功儲值 ${amount} G幣`)
+      toast(`已成功儲值 ${amount} G幣`, 'success')
     } finally {
       setManualRechargeLoading(false)
     }
@@ -999,7 +1002,7 @@ export default function UserDetailPage() {
               {activeTab === 'recharges' && (
                 <div>
                   {ledgerLoading ? (
-                    <p className="text-sm text-neutral-400 py-8 text-center">載入中...</p>
+                    <CardSkeleton rows={3} />
                   ) : ledger.length === 0 ? (
                     <div className="text-center py-12">
                       <svg className="w-12 h-12 text-neutral-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1202,7 +1205,7 @@ export default function UserDetailPage() {
               <button
                 onClick={async () => {
                   if (resetPasswordMode === 'manual' && !newPassword.trim()) {
-                    alert('請輸入新密碼')
+                    toast('請輸入新密碼', 'warning')
                     return
                   }
 
@@ -1231,7 +1234,7 @@ export default function UserDetailPage() {
                     return
                   } catch (err) {
                     console.error('Error resetting password:', err)
-                    alert('重置密碼失敗，請稍後再試')
+                    toast('重置密碼失敗，請稍後再試', 'error')
                   }
                 }}
                 className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"

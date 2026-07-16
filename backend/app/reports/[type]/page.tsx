@@ -5,6 +5,9 @@ import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -77,6 +80,7 @@ function CompletionBar({ pct }: { pct: number }) {
 }
 
 export default function ReportPage() {
+  const { toast } = useToast()
   const { type } = useParams<{ type: string }>()
   const reportType = (type as ReportType) || 'overview'
   const meta = TYPE_META[reportType] ?? TYPE_META.overview
@@ -145,7 +149,7 @@ export default function ReportPage() {
       else if (reportType === 'overview') { setOverview(json.overview ?? null); setFunnel(json.funnel ?? null); setDailyBreakdown(json.dailyBreakdown ?? []) }
       else if (reportType === 'products') setProductsData(json.data ?? [])
       else if (reportType === 'behavior') setBehaviorData(json)
-    } catch (e: any) { alert(e.message || '載入失敗') }
+    } catch (e: any) { toast(e.message || '載入失敗', 'error') }
     finally { setLoading(false) }
   }, [reportType, start, end, filterSupplier, filterType])
 
@@ -247,7 +251,7 @@ export default function ReportPage() {
         {reportType === 'overview' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : !overview ? (
               <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
             ) : (
@@ -441,7 +445,7 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {filteredProducts.length} 項商品</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -460,7 +464,7 @@ export default function ReportPage() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {filteredProducts.length === 0 ? (
-                      <tr><td colSpan={9} className="py-16 text-center text-sm text-neutral-400">此條件無商品資料</td></tr>
+                      <TableEmpty colSpan={9} message="此條件無商品資料" />
                     ) : filteredProducts.map((p, i) => {
                       const tokenRev = p.revenue - (p.pointsUsed ?? 0)
                       const pts = p.pointsUsed ?? 0
@@ -535,7 +539,7 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {rechargeData.length} 筆</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : rechargeData.length === 0 ? (
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無儲值紀錄</div>
             ) : (
@@ -594,7 +598,7 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {consumptionData.length} 筆</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : consumptionData.length === 0 ? (
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無消費紀錄</div>
             ) : (
@@ -643,9 +647,9 @@ export default function ReportPage() {
         {reportType === 'behavior' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : !behaviorData ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
+              <EmptyState message="無資料" />
             ) : (
               <>
                 {/* KPI */}

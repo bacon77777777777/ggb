@@ -1,11 +1,15 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useToast } from '@/contexts/ToastContext'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface SellListing {
   id: number
@@ -32,6 +36,7 @@ interface SellListing {
 type StatusFilter = 'all' | 'draft' | 'active' | 'sold' | 'hidden'
 
 export default function SellAdminPage() {
+  const { toast } = useToast()
   const { confirm, dialogProps } = useConfirmDialog()
   const [listings, setListings] = useState<SellListing[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -57,12 +62,12 @@ export default function SellAdminPage() {
     const bootstrapRes = await fetch('/api/admin/sell/bootstrap', { method: 'POST', credentials: 'include' })
     if (!bootstrapRes.ok) {
       const data = await bootstrapRes.json().catch(() => null)
-      alert(data?.error || '初始化販售資料表失敗')
+      toast(data?.error || '初始化販售資料表失敗', 'error')
       return false
     }
     const data = await bootstrapRes.json().catch(() => null)
     if (!data?.success) {
-      alert(data?.error || '初始化販售資料表失敗')
+      toast(data?.error || '初始化販售資料表失敗', 'error')
       return false
     }
     return true
@@ -371,17 +376,9 @@ export default function SellAdminPage() {
             </thead>
             <tbody className="divide-y divide-neutral-200">
               {isLoading ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-neutral-500">
-                    載入中…
-                  </td>
-                </tr>
+                <TableSkeleton rows={5} cols={9} />
               ) : sortedListings.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-neutral-500">
-                    目前沒有符合條件的販售上架資料
-                  </td>
-                </tr>
+                <TableEmpty colSpan={9} message="目前沒有符合條件的販售上架資料" />
               ) : (
                 sortedListings.map((item) => {
                   const items = Array.isArray(item.items) ? item.items : []
@@ -431,19 +428,7 @@ export default function SellAdminPage() {
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{item.seller_name}</td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                              item.status === 'active'
-                                ? 'bg-green-50 text-green-700'
-                                : item.status === 'sold'
-                                ? 'bg-primary text-primary'
-                                : item.status === 'draft'
-                                ? 'bg-neutral-100 text-neutral-700'
-                                : 'bg-neutral-100 text-neutral-600'
-                            }`}
-                          >
-                            {statusLabel}
-                          </span>
+                          <Badge status={item.status}>{statusLabel}</Badge>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -457,7 +442,7 @@ export default function SellAdminPage() {
                                 setListings((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: nextStatus } : x)))
                               } catch (e) {
                                 console.error('Failed to update sell listing status:', e)
-                                alert('更新狀態失敗')
+                                toast('更新狀態失敗', 'error')
                               }
                             }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all flex-shrink-0 disabled:opacity-50 ${
@@ -494,7 +479,7 @@ export default function SellAdminPage() {
                                   await deleteListing(item.id, item.title)
                                 } catch (e) {
                                   console.error('Failed to delete sell listing:', e)
-                                  alert('刪除失敗')
+                                  toast('刪除失敗', 'error')
                                 }
                               }}
                               className="text-red-600 hover:text-red-800 text-sm font-medium whitespace-nowrap"

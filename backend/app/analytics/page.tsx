@@ -4,6 +4,7 @@ import { AdminLayout, StatsCard, SearchToolbar, PageCard, Modal, DataTable, type
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
+import { useToast } from '@/contexts/ToastContext'
 
 interface Role {
   id: number
@@ -24,6 +25,7 @@ interface Admin {
 }
 
 export default function AdminsPage() {
+  const { toast } = useToast()
   const [sortField, setSortField] = useState<string>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [displayCount, setDisplayCount] = useState(20)
@@ -73,7 +75,7 @@ export default function AdminsPage() {
 
     } catch (error) {
       console.error('Error fetching data:', error)
-      alert('載入資料失敗')
+      toast('載入資料失敗', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -184,7 +186,7 @@ export default function AdminsPage() {
   const handleSubmit = async () => {
     try {
       if (!formData.username || !formData.role_id) {
-        alert('請填寫完整資料')
+        toast('請填寫完整資料', 'warning')
         return
       }
 
@@ -214,14 +216,14 @@ export default function AdminsPage() {
         throw new Error(errMsg)
       }
 
-      alert(editingAdmin ? '更新成功' : '新增成功')
+      toast(editingAdmin ? '更新成功' : '新增成功', 'success')
 
       setIsAddModalOpen(false)
       setIsEditModalOpen(false)
       fetchData()
     } catch (error: any) {
       console.error('Error saving admin:', error)
-      alert('儲存失敗：' + (error?.message || '未知錯誤'))
+      toast('儲存失敗：' + (error?.message || '未知錯誤', 'error'))
     }
   }
 

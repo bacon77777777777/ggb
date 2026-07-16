@@ -35,8 +35,10 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
 import { sanitizeImageUrl } from '@/lib/image-utils'
 import { SmallItem } from '@/types/product'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function NewProductPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
@@ -233,7 +235,7 @@ export default function NewProductPage() {
     
     // 驗證必填欄位
     if (!formData.name || !formData.price || prizes.length === 0) {
-      alert('請填寫所有必填欄位並至少添加一個獎項')
+      toast('請填寫所有必填欄位並至少添加一個獎項', 'warning')
       return
     }
     setIsSubmitting(true)
@@ -346,7 +348,7 @@ export default function NewProductPage() {
         error?.error_description ||
         (typeof error === 'string' ? error : '')
       console.error('Error creating product:', error)
-      alert(`新增商品失敗：${msg || '請稍後再試'}`)
+      toast(`新增商品失敗：${msg || '請稍後再試'}`, 'error')
     } finally {
       setIsSubmitting(false)
     }

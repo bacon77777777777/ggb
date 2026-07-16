@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.7｜2026-07-16｜Design System 全站 UX 掃蕩 — Toast / 骨架屏 / Badge / Empty State
+
+### Toast 通知系統（`backend/contexts/ToastContext.tsx`）
+- 新增全域 Toast Provider，4 種類型：success / error / warning / info，右上角滑入動畫
+- 所有頁面 `alert()` 呼叫（共 42 個檔案、100+ 處）全部替換為 `toast(msg, type)`，type 依訊息語意自動判斷（失敗→error、成功→success、請填→warning）
+- `globals.css` 補 `toast-in` keyframe 動畫
+
+### Loading 骨架屏全站覆蓋
+- 43 個頁面的「載入中…」文字 → `CardSkeleton` / `TableSkeleton` 動畫佔位
+- `TableSkeleton` 整合進 `DataTable.isLoading` prop；`CardSkeleton` 用於卡片/區塊型內容
+- 涵蓋：settings/*, reports/*, settlement-snapshots, refund-requests, permissions, news, users 等
+
+### Badge 組件擴充
+- `statusVariantMap` 新增 10 個狀態：`paused`, `deleted`, `sold`, `draft`, `hidden`, `進行中`, `審核中`, `已退款`, `已拒絕`, `已拒絕`
+- 替換 `exchange/page.tsx`、`sell-orders/page.tsx`、`sell/page.tsx` 的 inline status span → `<Badge status=...>`
+- 移除 `exchange/page.tsx` 的 `statusBadgeClass` helper function
+
+### Empty State 統一
+- `TableEmpty` 覆蓋：sell, exchange, marketplace, cs-management/tickets, reports/[type], dismantled 等 table empty row
+- `EmptyState` 覆蓋：suppliers, settlement-snapshots, refund-requests, permissions 等卡片型空狀態
+
+---
+
 ## v2026.07.6｜2026-07-16｜Design System 批次 2–7 — UI Kit 全站統一
 
 ### 組件統一（components/ui/）

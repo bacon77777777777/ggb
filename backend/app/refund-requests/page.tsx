@@ -2,6 +2,8 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface RefundRequest {
   id: number
@@ -138,9 +140,9 @@ export default function RefundRequestsPage() {
 
         {/* 申請列表 */}
         {loading ? (
-          <div className="text-center py-12 text-neutral-400">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : requests.length === 0 ? (
-          <div className="text-center py-12 text-neutral-400">無退款申請</div>
+          <EmptyState message="無退款申請" />
         ) : (
           <div className="space-y-3">
             {requests.map(r => {

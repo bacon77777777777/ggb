@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 interface Supplier { id: number; name: string }
@@ -374,11 +375,7 @@ export default function SettlementPage() {
           </div>
         )}
 
-        {loading && (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
-            載入中…
-          </div>
-        )}
+        {loading && <CardSkeleton rows={5} />}
 
         {!loading && data && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

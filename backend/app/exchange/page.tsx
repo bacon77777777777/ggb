@@ -3,8 +3,11 @@
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 type OfferStatus = 'active' | 'paused' | 'deleted'
 
@@ -39,11 +42,6 @@ const statusLabel = (status: OfferStatus) => {
   return '已刪除'
 }
 
-const statusBadgeClass = (status: OfferStatus) => {
-  if (status === 'active') return 'bg-green-50 text-green-700 border-green-200'
-  if (status === 'paused') return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-neutral-100 text-neutral-600 border-neutral-200'
-}
 
 export default function ExchangeOffersAdminPage() {
   const { confirm, dialogProps } = useConfirmDialog()
@@ -325,20 +323,8 @@ export default function ExchangeOffersAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && sortedOffers.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-neutral-500">
-                      沒有資料
-                    </td>
-                  </tr>
-                )}
+                {isLoading && <TableSkeleton rows={5} cols={7} />}
+                {!isLoading && sortedOffers.length === 0 && <TableEmpty colSpan={7} />}
                 {!isLoading &&
                   sortedOffers.map((offer) => {
                     const want = offer.cards.filter((c) => c.side === 'want')
@@ -351,9 +337,7 @@ export default function ExchangeOffersAdminPage() {
                           {offer.created_at ? formatDateTime(offer.created_at) : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">
-                          <span className={`inline-flex items-center px-2 py-1 rounded border text-xs font-medium ${statusBadgeClass(offer.status)}`}>
-                            {statusLabel(offer.status)}
-                          </span>
+                          <Badge status={offer.status}>{statusLabel(offer.status)}</Badge>
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">
                           <CopyableID id={offer.id} />

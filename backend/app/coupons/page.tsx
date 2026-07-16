@@ -4,6 +4,7 @@ import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/componen
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 type DiscountType = 'fixed' | 'percentage'
 
@@ -30,6 +31,7 @@ interface CouponFormState {
 }
 
 export default function CouponsPage() {
+  const { toast } = useToast()
   const [coupons, setCoupons] = useState<CouponRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -109,26 +111,26 @@ export default function CouponsPage() {
       await fetchCoupons()
     } catch (error) {
       console.error('Error deleting coupon:', error)
-      alert('刪除折價券失敗')
+      toast('刪除折價券失敗', 'error')
     }
   }
 
   const handleSubmit = async () => {
     const trimmedTitle = formData.title.trim()
     if (!trimmedTitle) {
-      alert('請輸入折價券名稱')
+      toast('請輸入折價券名稱', 'warning')
       return
     }
 
     const discountValue = Number(formData.discount_value)
     if (!Number.isFinite(discountValue) || discountValue <= 0) {
-      alert('請輸入有效的折扣數值')
+      toast('請輸入有效的折扣數值', 'warning')
       return
     }
 
     const minSpend = formData.min_spend ? Number(formData.min_spend) : 0
     if (!Number.isFinite(minSpend) || minSpend < 0) {
-      alert('請輸入有效的最低消費金額(TWD)')
+      toast('請輸入有效的最低消費金額(TWD)', 'warning')
       return
     }
 
@@ -163,7 +165,7 @@ export default function CouponsPage() {
       await fetchCoupons()
     } catch (error) {
       console.error('Error saving coupon:', error)
-      alert('儲存折價券失敗')
+      toast('儲存折價券失敗', 'error')
     }
   }
 

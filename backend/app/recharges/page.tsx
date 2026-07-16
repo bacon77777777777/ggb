@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface RechargeRecord {
   id: number
@@ -85,6 +86,7 @@ function getMethodChannel(normalized: string): 'ecpay' | 'manual' {
 }
 
 export default function RechargesPage() {
+  const { toast } = useToast()
   const [records, setRecords] = useState<RechargeRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [methodDetailOpen, setMethodDetailOpen] = useState(true)
@@ -118,7 +120,7 @@ export default function RechargesPage() {
       setRecords((result as RechargeRecord[]) || [])
     } catch (error) {
       console.error('Error fetching recharge records:', error)
-      alert('載入儲值紀錄失敗')
+      toast('載入儲值紀錄失敗', 'error')
     } finally {
       setIsLoading(false)
     }

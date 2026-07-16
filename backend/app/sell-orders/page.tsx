@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -270,11 +271,6 @@ export default function SellOrdersAdminPage() {
                   sortedOrders.map((o) => {
                     const isCompleted = Boolean(o.completed_at) && !o.cancelled
                     const statusText = o.cancelled ? '已取消' : isCompleted ? '已完成' : '進行中'
-                    const statusClass = o.cancelled
-                      ? 'bg-neutral-100 text-neutral-700'
-                      : isCompleted
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-amber-50 text-amber-700'
 
                     return (
                       <tr key={o.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
@@ -302,7 +298,7 @@ export default function SellOrdersAdminPage() {
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${statusClass}`}>{statusText}</span>
+                            <Badge status={statusText}>{statusText}</Badge>
                             <span className="text-xs text-neutral-500">{stepLabel(o.step)}</span>
                           </div>
                         </td>

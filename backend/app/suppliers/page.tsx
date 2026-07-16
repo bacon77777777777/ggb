@@ -6,6 +6,8 @@ import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useState, useEffect } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface Supplier {
   id: number
@@ -39,6 +41,7 @@ const EMPTY_FORM = {
 }
 
 export default function SuppliersPage() {
+  const { toast } = useToast()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -54,7 +57,7 @@ export default function SuppliersPage() {
       if (!res.ok) throw new Error((await res.json()).error || '載入失敗')
       setSuppliers(await res.json())
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -87,7 +90,7 @@ export default function SuppliersPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert('廠商名稱為必填'); return }
+    if (!form.name.trim()) { toast('廠商名稱為必填', 'error'); return }
     setSaving(true)
     try {
       const payload = {
@@ -111,7 +114,7 @@ export default function SuppliersPage() {
       setIsModalOpen(false)
       fetchSuppliers()
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -125,7 +128,7 @@ export default function SuppliersPage() {
       setDeleteTarget(null)
       fetchSuppliers()
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     }
   }
 
@@ -151,7 +154,7 @@ export default function SuppliersPage() {
           {loading ? (
             <CardSkeleton rows={5} />
           ) : suppliers.length === 0 ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">尚無廠商資料，點擊「新增廠商」開始建立</div>
+            <EmptyState message="尚無廠商資料，點擊「新增廠商」開始建立" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

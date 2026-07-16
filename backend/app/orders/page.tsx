@@ -10,8 +10,10 @@ import Link from 'next/link'
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function OrdersPage() {
+  const { toast } = useToast()
   const { setShipments, highlightedOrderId, setHighlightedOrderId } = useShipment()
   const { addLog } = useLog()
   const [isLoading, setIsLoading] = useState(true)
@@ -159,7 +161,7 @@ export default function OrdersPage() {
       setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' })
     } catch (error) {
       console.error('Error shipping order:', error)
-      alert('出貨失敗')
+      toast('出貨失敗', 'error')
     }
   }
 
@@ -759,7 +761,7 @@ export default function OrdersPage() {
           })
         } catch (error: any) {
           console.error('Error generating shipping labels:', error)
-          alert(`生成配送單失敗: ${error.message}`)
+          toast(`生成配送單失敗: ${error.message}`, 'error')
         }
       },
       onCancel: () => {
@@ -771,7 +773,7 @@ export default function OrdersPage() {
   const handleBatchGenerate = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要生成配送單的訂單')
+      toast('請先選擇要生成配送單的訂單', 'warning')
       return
     }
     
@@ -784,7 +786,7 @@ export default function OrdersPage() {
     })
 
     if (submittedOrders.length === 0) {
-      alert('選中的訂單中沒有可生成配送單的訂單')
+      toast('選中的訂單中沒有可生成配送單的訂單', 'error')
       return
     }
     
@@ -794,7 +796,7 @@ export default function OrdersPage() {
   const handleBatchPrint = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要列印的訂單')
+      toast('請先選擇要列印的訂單', 'warning')
       return
     }
     
@@ -805,7 +807,7 @@ export default function OrdersPage() {
     })
     
     if (printableOrders.length === 0) {
-      alert('選中的訂單中沒有可列印的訂單')
+      toast('選中的訂單中沒有可列印的訂單', 'error')
       return
     }
     
@@ -819,7 +821,7 @@ export default function OrdersPage() {
   const handleBatchCancel = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要取消的訂單')
+      toast('請先選擇要取消的訂單', 'warning')
       return
     }
     
@@ -830,7 +832,7 @@ export default function OrdersPage() {
     })
     
     if (cancellableOrders.length === 0) {
-      alert('選中的訂單中沒有可取消的訂單')
+      toast('選中的訂單中沒有可取消的訂單', 'error')
       return
     }
     
@@ -879,7 +881,7 @@ export default function OrdersPage() {
           setSelectedOrders(new Set())
         } catch (error) {
           console.error('Error cancelling orders:', error)
-          alert('取消訂單失敗')
+          toast('取消訂單失敗', 'error')
         }
       },
       confirmText: '確定取消',
@@ -1612,7 +1614,7 @@ export default function OrdersPage() {
                                         setConfirmModal({ ...confirmModal, isOpen: false })
                                       } catch (error) {
                                         console.error('Error cancelling order:', error)
-                                        alert('取消訂單失敗')
+                                        toast('取消訂單失敗', 'error')
                                       }
                                     },
                                     onCancel: () => {

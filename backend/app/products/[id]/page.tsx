@@ -35,8 +35,10 @@ import Link from 'next/link'
 import { generateTXID, calculateTXIDHash } from '@/utils/drawLogicClient'
 import { supabase } from '@/lib/supabaseClient'
 import { SmallItem } from '@/types/product'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function EditProductPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const { addLog } = useLog()
@@ -357,7 +359,7 @@ export default function EditProductPage() {
         if (saved) {
           const drawn = saved.total - saved.remaining
           if (prize.total < drawn) {
-            alert(`品項「${prize.name || '未命名'}」已抽出 ${drawn} 個，總數量不能低於 ${drawn}`)
+            toast(`品項「${prize.name || '未命名'}」已抽出 ${drawn} 個，總數量不能低於 ${drawn}`, 'success')
             return
           }
         }
@@ -490,7 +492,7 @@ export default function EditProductPage() {
     } catch (e: any) {
       const msg = e?.message || e?.error_description || JSON.stringify(e || {})
       console.error('Failed to update product:', msg)
-      alert(`更新商品失敗：${msg || '請稍後再試'}`)
+      toast(`更新商品失敗：${msg || '請稍後再試'}`, 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -627,7 +629,7 @@ export default function EditProductPage() {
                     <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
                     <div className="flex gap-1">
                       <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
-                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); alert('已複製') } catch(_e){ /* clipboard unavailable */ } }}
+                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); toast('已複製', 'success') } catch(_e){ /* clipboard unavailable */ } }}
                         className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
                     </div>
                   </div>

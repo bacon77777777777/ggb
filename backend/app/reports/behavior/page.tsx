@@ -3,6 +3,7 @@
 import { AdminLayout } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface ProductView { product_id: number; product_name: string; count: number }
 interface ButtonClick { event_type: string; label: string; count: number }
@@ -196,7 +197,7 @@ export default function BehaviorPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-20 text-center text-neutral-400 text-sm">載入中...</div>
+        <CardSkeleton rows={3} />
       ) : !data ? (
         <div className="py-20 text-center text-neutral-400 text-sm">載入失敗</div>
       ) : (

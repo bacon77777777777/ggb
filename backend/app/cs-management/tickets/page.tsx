@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { useState, useEffect, useCallback } from 'react'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface CsTicket {
   id: string
@@ -110,11 +111,7 @@ export default function CsTicketsPage() {
             <tbody className="divide-y divide-neutral-100">
               {loading && <TableSkeleton rows={5} cols={6} />}
               {!loading && tickets.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-neutral-400">
-                    目前沒有{filterStatus !== 'all' ? STATUS_META[filterStatus as keyof typeof STATUS_META]?.label : ''}工單
-                  </td>
-                </tr>
+                <TableEmpty colSpan={6} message={`目前沒有${filterStatus !== 'all' ? STATUS_META[filterStatus as keyof typeof STATUS_META]?.label : ''}工單`} />
               )}
               {tickets.map(t => {
                 const meta = STATUS_META[t.status]

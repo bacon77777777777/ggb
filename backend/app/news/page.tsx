@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface NewsArticle {
   id: string
@@ -51,6 +52,7 @@ function savePrefs(patch: Record<string, unknown>) {
 }
 
 export default function NewsPage() {
+  const { toast } = useToast()
   const prefs  = loadPrefs()
   const router = useRouter()
 
@@ -63,7 +65,7 @@ export default function NewsPage() {
     try {
       const res = await fetch('/api/admin/trigger/news-agent', { method: 'POST', credentials: 'include' })
       const data = await res.json()
-      if (!res.ok) { alert(data?.error ?? '生成失敗'); return }
+      if (!res.ok) { toast(data?.error ?? '生成失敗', 'error'); return }
       const r = data.skipReasons ?? {}
       const detail = [
         r.duplicate  ? `重複${r.duplicate}` : '',
@@ -72,9 +74,9 @@ export default function NewsPage() {
         r.titleDup   ? `標題重複${r.titleDup}` : '',
         r.insertErr  ? `寫入錯誤${r.insertErr}` : '',
       ].filter(Boolean).join('、')
-      alert(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇\n${detail || '（重複或無圖）'}`)
+      toast(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇\n${detail || '（重複或無圖）'}`, 'success')
       fetchData()
-    } catch { alert('生成失敗') } finally { setIsGenerating(false) }
+    } catch { toast('生成失敗', 'error') } finally { setIsGenerating(false) }
   }
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -174,7 +176,7 @@ export default function NewsPage() {
     const next = !article.is_active
     setNews(prev => prev.map(n => n.id === article.id ? { ...n, is_active: next } : n))
     const { error } = await supabase.from('news').update({ is_active: next }).eq('id', article.id)
-    if (error) { fetchData(); alert('更新失敗') }
+    if (error) { fetchData(); toast('更新失敗', 'error') }
   }
 
   // ─── 刪除 ────────────────────────────────────────────────────────────────
@@ -182,7 +184,7 @@ export default function NewsPage() {
     if (!confirm('確定要刪除此文章嗎？')) return
     const { error } = await supabase.from('news').delete().eq('id', id)
     if (!error) setNews(prev => prev.filter(n => n.id !== id))
-    else alert('刪除失敗')
+    else toast('刪除失敗', 'error')
   }
 
   // ─── 編輯 / 新增 ──────────────────────────────────────────────────────────
