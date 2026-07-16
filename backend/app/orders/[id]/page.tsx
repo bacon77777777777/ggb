@@ -2,6 +2,7 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import Badge from '@/components/ui/Badge'
+import SelectField from '@/components/ui/SelectField'
 import CopyableID from '@/components/CopyableID'
 import ShippingProgress from '@/components/ShippingProgress'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -231,30 +232,23 @@ export default function OrderDetailPage() {
           {/* 狀態切換下拉選單 */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-neutral-500">切換狀態：</span>
-            <div className="relative">
-              <select
-                value={shipment.status}
-                onChange={(e) => {
-                  const newStatus = e.target.value as typeof shipment.status
-                  if (confirm(`確定要將狀態從「${getStatusText(shipment.status)}」改為「${getStatusText(newStatus)}」嗎？`)) {
-                    updateStatus(newStatus)
-                  }
-                }}
-                className="px-4 py-2.5 pr-10 bg-white border-2 border-neutral-200 rounded-full text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all hover:border-neutral-300 shadow-sm hover:shadow-md appearance-none cursor-pointer"
-              >
-                <option value="submitted">已提交</option>
-                <option value="processing">處理中</option>
-                <option value="picked_up">物流已收取</option>
-                <option value="shipping">配送中</option>
-                <option value="delivered">已送達</option>
-                <option value="cancelled">已取消</option>
-              </select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <SelectField
+              value={shipment.status}
+              className="px-4 pr-8 border-2 rounded-full font-medium shadow-sm hover:shadow-md"
+              onChange={(e) => {
+                const newStatus = e.target.value as typeof shipment.status
+                if (confirm(`確定要將狀態從「${getStatusText(shipment.status)}」改為「${getStatusText(newStatus)}」嗎？`)) {
+                  updateStatus(newStatus)
+                }
+              }}
+            >
+              <option value="submitted">已提交</option>
+              <option value="processing">處理中</option>
+              <option value="picked_up">物流已收取</option>
+              <option value="shipping">配送中</option>
+              <option value="delivered">已送達</option>
+              <option value="cancelled">已取消</option>
+            </SelectField>
           </div>
         </div>
 

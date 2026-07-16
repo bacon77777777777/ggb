@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -237,7 +238,7 @@ export default function SettlementPage() {
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
-              <select
+              <SelectField
                 value={selectedSupplierId}
                 onChange={e => setSelectedSupplierId(e.target.value)}
                 className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px]"
@@ -246,7 +247,7 @@ export default function SettlementPage() {
                   <option key={s.id} value={String(s.id)}>{s.name}</option>
                 ))}
                 {suppliers.length === 0 && <option value="">載入中…</option>}
-              </select>
+              </SelectField>
             </div>
 
             {/* 匯出 + 費率設定 */}

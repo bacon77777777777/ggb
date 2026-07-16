@@ -1,11 +1,13 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 interface LogEntry {
   id: number
@@ -336,9 +338,9 @@ export default function LogsPage() {
                         {visibleColumns.ip && <td className={`${getDensityClasses()} text-sm text-neutral-500 font-mono whitespace-nowrap`}>{log.ip}</td>}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <span className={`px-2 py-1 text-xs rounded-full ${log.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <Badge variant={log.status === 'success' ? 'success' : 'danger'}>
                               {log.status === 'success' ? '成功' : '失敗'}
-                            </span>
+                            </Badge>
                           </td>
                         )}
                       </tr>
@@ -383,7 +385,7 @@ export default function LogsPage() {
                   onChange={e => setUeSearch(e.target.value)}
                   className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-1 focus:ring-primary/20"
                 />
-                <select
+                <SelectField
                   value={ueEventType}
                   onChange={e => setUeEventType(e.target.value)}
                   className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -392,7 +394,7 @@ export default function LogsPage() {
                   <option value="login">登入</option>
                   <option value="draw">抽獎</option>
                   <option value="topup">儲值</option>
-                </select>
+                </SelectField>
                 <span className="text-sm text-neutral-500">{filteredUserEvents.length} 筆</span>
               </div>
 

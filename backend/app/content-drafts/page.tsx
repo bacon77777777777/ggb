@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 type DraftStatus = 'pending' | 'approved' | 'published' | 'archived'
 type DraftStyle  = 'promotional' | 'story' | 'urgency'
@@ -105,7 +106,7 @@ export default function ContentDraftsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">狀態篩選：</span>
-            <select
+            <SelectField
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
               className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
@@ -114,7 +115,7 @@ export default function ContentDraftsPage() {
               {STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div className="flex items-center gap-3">
             {generateMsg && (
@@ -192,7 +193,7 @@ export default function ContentDraftsPage() {
                             )}
                           </button>
                           {/* 狀態切換 */}
-                          <select
+                          <SelectField
                             value={draft.status}
                             disabled={updating === draft.id}
                             onChange={e => updateStatus(draft.id, e.target.value as DraftStatus)}
@@ -201,7 +202,7 @@ export default function ContentDraftsPage() {
                             {STATUS_OPTIONS.map(s => (
                               <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                       </div>
                     )

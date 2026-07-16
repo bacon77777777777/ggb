@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 interface Analysis {
   id: number
@@ -261,14 +262,11 @@ export default function CompetitorIntelPage() {
                   </div>
                   <div>
                     <label className="text-xs text-neutral-500 block mb-1">來源平台</label>
-                    <select
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none bg-white"
-                      value={form.platform}
-                      onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+                    <SelectField value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
                     >
                       <option value="">選擇平台</option>
                       {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 </div>
                 <div>

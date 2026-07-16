@@ -26,6 +26,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
 
 import AdminLayout from '@/components/AdminLayout'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
+import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import { useRouter, useParams } from 'next/navigation'
@@ -569,17 +570,11 @@ export default function EditProductPage() {
             <div className="grid grid-cols-5 gap-3">
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">狀態</label>
-                <div className="relative">
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-2.5 py-1.5 pr-7 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
-                    <option value="active">進行中</option>
-                    <option value="pending">待上架</option>
-                    <option value="ended">已完抽</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </div>
-                </div>
+                <SelectField value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                  <option value="active">進行中</option>
+                  <option value="pending">待上架</option>
+                  <option value="ended">已完抽</option>
+                </SelectField>
               </div>
               <div>
                 <DatePicker label="開賣時間" value={formData.startedAt}
@@ -600,19 +595,13 @@ export default function EditProductPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">稀有度</label>
-                <div className="relative">
-                  <select value={formData.rarity} onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 pr-7 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:border-neutral-300 transition-colors">
-                    <option value="1">1★</option>
-                    <option value="2">2★</option>
-                    <option value="3">3★</option>
-                    <option value="4">4★</option>
-                    <option value="5">5★</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </div>
-                </div>
+                <SelectField value={formData.rarity} onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}>
+                  <option value="1">1★</option>
+                  <option value="2">2★</option>
+                  <option value="3">3★</option>
+                  <option value="4">4★</option>
+                  <option value="5">5★</option>
+                </SelectField>
               </div>
             </div>
             {/* 完抽時間 / Seed（條件顯示） */}
@@ -675,39 +664,31 @@ export default function EditProductPage() {
               <div className="grid grid-cols-5 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">類別 <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <select value={formData.type} disabled
-                      className="w-full px-2 py-1.5 pr-6 bg-neutral-50 border border-neutral-200 rounded-lg text-sm appearance-none cursor-not-allowed text-neutral-500">
-                      <option value="ichiban">一番賞</option>
-                      <option value="blindbox">盒玩</option>
-                      <option value="gacha">轉蛋</option>
-                      <option value="card">抽卡</option>
-                      <option value="custom">自製賞</option>
-                    </select>
-                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg className="w-3.5 h-3.5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </div>
-                  </div>
+                  <SelectField value={formData.type} disabled>
+                    <option value="ichiban">一番賞</option>
+                    <option value="blindbox">盒玩</option>
+                    <option value="gacha">轉蛋</option>
+                    <option value="card">抽卡</option>
+                    <option value="custom">自製賞</option>
+                  </SelectField>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
-                  <select value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                  <SelectField value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}>
                     <option value="">— 未指定 —</option>
                     {suppliers.map((s) => (
                       <option key={s.id} value={String(s.id)}>{s.name}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">抽獎模組</label>
-                  <select value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                  <SelectField value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
                     <option value="">— 類別預設 —</option>
                     {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
@@ -869,7 +850,7 @@ export default function EditProductPage() {
                               普通
                             </div>
                           ) : (
-                            <select
+                            <SelectField
                               value={prize.level}
                               onChange={(e) => {
                                 const updated = [...prizes]
@@ -884,13 +865,12 @@ export default function EditProductPage() {
                                 }
                                 setPrizes(updated)
                               }}
-                              className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                             >
                               <option value="">等級</option>
                               {(formData.type === 'card' ? cardLevels : ichibanLevels).map(level => (
                                 <option key={level.value} value={level.value}>{level.label}</option>
                               ))}
-                            </select>
+                            </SelectField>
                           )}
                         </div>
 
@@ -960,7 +940,8 @@ export default function EditProductPage() {
                       <div className="mt-2 pt-2 border-t border-neutral-100">
                         <div className="flex gap-2 items-start">
                           <div className="w-28 flex-shrink-0">
-                            <select
+                            <SelectField
+                              compact
                               value={prize.decompose_type}
                               onChange={(e) => {
                                 const updated = [...prizes]
@@ -968,12 +949,11 @@ export default function EditProductPage() {
                                 updated[index].decompose_value = null
                                 setPrizes(updated)
                               }}
-                              className="w-full px-2 py-1 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
                             >
                               <option value="auto">智能分解</option>
                               <option value="percent">百分比 (%)</option>
                               <option value="fixed">固定代幣</option>
-                            </select>
+                            </SelectField>
                           </div>
                           {prize.decompose_type === 'auto' ? (
                             <div className="flex-1 px-2 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-xs text-neutral-500">
@@ -1088,16 +1068,15 @@ export default function EditProductPage() {
                 placeholder="搜尋小物名稱、分類..."
                 className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
-              <select
+              <SelectField
                 value={librarySelectedCategory}
                 onChange={(e) => setLibrarySelectedCategory(e.target.value)}
-                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               >
                 <option value="all">全部分類</option>
                 {Array.from(new Set(libraryItems.map(item => item.category))).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
 
             {/* 小物列表 */}

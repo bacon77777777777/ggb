@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
+import SelectField from '@/components/ui/SelectField'
 
 interface Snapshot {
   id: number
@@ -119,15 +120,15 @@ export default function SettlementSnapshotsPage() {
 
         {/* 控制列 */}
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <select
+          <SelectField
             value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
             className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none"
           >
             <option value="">所有月份</option>
             {months.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <select
+          </SelectField>
+          <SelectField
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
             className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none"
@@ -136,15 +137,15 @@ export default function SettlementSnapshotsPage() {
             <option value="draft">草稿</option>
             <option value="confirmed">已確認</option>
             <option value="paid">已付款</option>
-          </select>
-          <select
+          </SelectField>
+          <SelectField
             value={genMonth}
             onChange={e => setGenMonth(e.target.value)}
             className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none"
           >
             <option value="">上個月</option>
             {months.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+          </SelectField>
           <input
             type="password"
             value={cronSecretInput}
@@ -205,7 +206,7 @@ export default function SettlementSnapshotsPage() {
                           <td className="px-4 py-3 max-w-[160px]">
                             <div className="flex items-center gap-1">
                               <input
-                                className="text-xs border border-neutral-200 rounded px-2 py-0.5 w-full focus:outline-none"
+                                className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
                                 placeholder="備註..."
                                 value={editNote[row.id] ?? (row.note ?? '')}
                                 onChange={e => setEditNote(prev => ({ ...prev, [row.id]: e.target.value }))}

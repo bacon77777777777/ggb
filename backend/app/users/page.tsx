@@ -18,6 +18,7 @@ import {
 } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { supabase } from '@/lib/supabaseClient'
+import SelectField from '@/components/ui/SelectField'
 
 interface User {
   id: string
@@ -853,14 +854,14 @@ function UsersPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">狀態</label>
-            <select
+            <SelectField
               value={createUserForm.status}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }))}
               className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="active">啟用</option>
               <option value="inactive">停用</option>
-            </select>
+            </SelectField>
           </div>
           {createUserError && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">

@@ -6,6 +6,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import SelectField from '@/components/ui/SelectField'
 
 interface Supplier { id: number; name: string }
 interface DismantleRow {
@@ -93,7 +94,7 @@ export default function DismantledReportPage() {
 
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
-          <select
+          <SelectField
             value={selectedSupplierId}
             onChange={e => setSelectedSupplierId(e.target.value)}
             className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -102,7 +103,7 @@ export default function DismantledReportPage() {
             {suppliers.map(s => (
               <option key={s.id} value={String(s.id)}>{s.name}</option>
             ))}
-          </select>
+          </SelectField>
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}

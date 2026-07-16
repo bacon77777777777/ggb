@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import SelectField from '@/components/ui/SelectField'
 
 interface Bot {
   id: number
@@ -164,22 +165,22 @@ export default function LeaderboardBotsPage() {
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">稱號顏色</label>
-                <select value={form.title_color ?? 'gold'} onChange={e => setForm(f => ({ ...f, title_color: e.target.value }))}
+                <SelectField value={form.title_color ?? 'gold'} onChange={e => setForm(f => ({ ...f, title_color: e.target.value }))}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {TITLE_COLORS.map(c => <option key={c} value={c}>{COLOR_LABELS[c]}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">性別</label>
-                <select value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                <SelectField value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   <option value="">未設定</option>
                   <option value="male">男</option>
                   <option value="female">女</option>
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">生日</label>

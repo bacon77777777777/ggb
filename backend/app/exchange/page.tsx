@@ -8,6 +8,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import SelectField from '@/components/ui/SelectField'
 
 type OfferStatus = 'active' | 'paused' | 'deleted'
 
@@ -370,7 +371,7 @@ export default function ExchangeOffersAdminPage() {
                           {offer.updated_at ? formatDateTime(offer.updated_at) : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700 text-right">
-                          <select
+                          <SelectField
                             value={offer.status}
                             onChange={(e) => handleUpdateStatus(offer, e.target.value as OfferStatus)}
                             className="border border-neutral-200 rounded-lg px-2 py-1 text-sm bg-white"
@@ -378,7 +379,7 @@ export default function ExchangeOffersAdminPage() {
                             <option value="active">上架中</option>
                             <option value="paused">暫停</option>
                             <option value="deleted">已刪除</option>
-                          </select>
+                          </SelectField>
                         </td>
                       </tr>
                     )

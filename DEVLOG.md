@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.10｜2026-07-16｜Design System — SelectField 元件統一全站表單欄位
+
+### 新元件：`SelectField`（`components/ui/SelectField.tsx`）
+- 統一封裝 `appearance-none + 自訂 chevron + py-1.5 px-3 text-sm border rounded-lg`
+- `compact` prop 提供 text-xs 緊湊模式（用於品項行內編輯）
+- disabled 狀態自動套用 bg-neutral-50
+
+### 全站 `<select>` 替換（48 個 → SelectField）
+- **批量腳本**：20 個頁面（settlement-snapshots, reports, analytics, competitor-intel, logs, content-drafts, exchange, users, news, dev-logs 等）
+- **手動修**：products/[id]（8 個，含 div.relative+svg wrapper 全部拆除）、products/new（7 個）、orders/[id]（pill 樣式 select 保留特殊 className）
+- 根本解決：所有 select 現在 `appearance-none`，跨瀏覽器高度一致，加上統一 chevron 圖示
+
+### 自訂 picker 高度統一
+- `DatePicker` / `YearMonthPicker` 觸發器加入 `text-sm px-3`，與 input/select 高度對齊
+
+### Badge 補完
+- exchange-orders: done 狀態 span → Badge
+- logs: success/失敗 status span → Badge
+- reports/coupons: 已使用/未使用 span → Badge
+- users/[id]: isPending + failed overlay span → Badge
+
+---
+
 ## v2026.07.9｜2026-07-16｜Design System 收尾 — 最後 6 處 inline span 換 Badge
 
 ### Badge 組件擴充 + 最後一批覆蓋

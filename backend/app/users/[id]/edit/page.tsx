@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 interface UserProfile {
   id: string
@@ -238,13 +239,13 @@ export default function UserEditPage() {
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">性別</label>
-              <select value={form.gender || ''} onChange={e => set('gender', e.target.value)}
+              <SelectField value={form.gender || ''} onChange={e => set('gender', e.target.value)}
                 className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                 <option value="">未設定</option>
                 <option value="male">男</option>
                 <option value="female">女</option>
                 <option value="other">其他</option>
-              </select>
+              </SelectField>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">生日</label>
@@ -259,11 +260,11 @@ export default function UserEditPage() {
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
-              <select value={form.status || 'active'} onChange={e => set('status', e.target.value as 'active' | 'inactive')}
+              <SelectField value={form.status || 'active'} onChange={e => set('status', e.target.value as 'active' | 'inactive')}
                 className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                 <option value="active">啟用</option>
                 <option value="inactive">停用</option>
-              </select>
+              </SelectField>
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 // Define interfaces for local state
 interface User {
@@ -1047,10 +1048,10 @@ export default function UserDetailPage() {
                                   <td className="px-3 py-2">
                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
                                     {isPending && (
-                                      <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">{statusMap[row.status] ?? row.status}</span>
+                                      <Badge variant="warning" className="ml-1">{statusMap[row.status] ?? row.status}</Badge>
                                     )}
                                     {row.status === 'failed' && (
-                                      <span className="ml-1 inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">失敗</span>
+                                      <Badge variant="danger" className="ml-1">失敗</Badge>
                                     )}
                                   </td>
                                   <td className="px-3 py-2 text-neutral-700 max-w-[180px] truncate">{row.description}</td>
@@ -1389,7 +1390,7 @@ export default function UserDetailPage() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">付款方式</label>
-            <select
+            <SelectField
               value={manualRechargeMethod}
               onChange={(e) => setManualRechargeMethod(e.target.value as typeof manualRechargeMethod)}
               className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent bg-white"
@@ -1400,7 +1401,7 @@ export default function UserDetailPage() {
               <option value="promotion">行銷贈點</option>
               <option value="compensation">補償</option>
               <option value="test">測試</option>
-            </select>
+            </SelectField>
           </div>
 
           <div>

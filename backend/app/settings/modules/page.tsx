@@ -4,6 +4,7 @@ import { AdminLayout, PageCard } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 const PRODUCT_TYPES: {
   type: string
@@ -110,7 +111,7 @@ export default function ModuleSettingsPage() {
                     <Badge variant="default">{label}</Badge>
                   </div>
                   <div className="flex-1">
-                    <select
+                    <SelectField
                       value={settings[type] || themes[0].value}
                       onChange={e => handleChange(type, e.target.value)}
                       className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
@@ -120,7 +121,7 @@ export default function ModuleSettingsPage() {
                           {themeLabel}（{desc}）
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
                   <div className="w-32 shrink-0 text-xs text-neutral-400 text-right">
                     {themes.find(t => t.value === (settings[type] || themes[0].value))?.label}

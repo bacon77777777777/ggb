@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
 interface MonitorLog {
@@ -284,17 +285,17 @@ export default function DevLogsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">類型</label>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
+                <SelectField value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(TYPE_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
-                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
+                <SelectField value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
@@ -305,11 +306,11 @@ export default function DevLogsPage() {
               {form.type === 'issue' && (
                 <div>
                   <label className="text-xs text-neutral-500 mb-1 block">優先級</label>
-                  <select value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
+                  <SelectField value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
                     className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                     <option value="">不設定</option>
                     {Object.entries(PRIORITY_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               )}
             </div>

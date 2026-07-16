@@ -5,6 +5,7 @@ import { useLog } from '@/contexts/LogContext'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
+import SelectField from '@/components/ui/SelectField'
 
 export default function EditSmallItemPage() {
   const { toast } = useToast()
@@ -153,7 +154,7 @@ export default function EditSmallItemPage() {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               分類 <span className="text-red-500">*</span>
             </label>
-            <select
+            <SelectField
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
@@ -162,7 +163,7 @@ export default function EditSmallItemPage() {
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
 
           <div>

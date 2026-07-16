@@ -26,6 +26,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
 
 import AdminLayout from '@/components/AdminLayout'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
+import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -442,24 +443,16 @@ export default function NewProductPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 類型 <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
-                >
-                  <option value="ichiban">一番賞</option>
-                  <option value="blindbox">盒玩 (盲盒)</option>
-                  <option value="gacha">轉蛋</option>
-                  <option value="card">抽卡</option>
-                  <option value="custom">自製賞</option>
-                </select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <SelectField
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              >
+                <option value="ichiban">一番賞</option>
+                <option value="blindbox">盒玩 (盲盒)</option>
+                <option value="gacha">轉蛋</option>
+                <option value="card">抽卡</option>
+                <option value="custom">自製賞</option>
+              </SelectField>
             </div>
 
             {/* 售價 / 成本 */}
@@ -509,22 +502,14 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   狀態
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
-                  >
-                    <option value="active">進行中</option>
-                    <option value="pending">待上架</option>
-                    <option value="ended">已完抽</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+                <SelectField
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="active">進行中</option>
+                  <option value="pending">待上架</option>
+                  <option value="ended">已完抽</option>
+                </SelectField>
               </div>
               <div>
                 <DatePicker
@@ -543,24 +528,16 @@ export default function NewProductPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 稀有度
               </label>
-              <div className="relative">
-                <select
-                  value={formData.rarity}
-                  onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
-                  className="w-full px-3 py-1.5 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 appearance-none cursor-pointer"
-                >
-                  <option value="1">1 星</option>
-                  <option value="2">2 星</option>
-                  <option value="3">3 星</option>
-                  <option value="4">4 星</option>
-                  <option value="5">5 星</option>
-                </select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <SelectField
+                value={formData.rarity}
+                onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
+              >
+                <option value="1">1 星</option>
+                <option value="2">2 星</option>
+                <option value="3">3 星</option>
+                <option value="4">4 星</option>
+                <option value="5">5 星</option>
+              </SelectField>
             </div>
 
             {/* 上市時間與代理商 */}
@@ -619,16 +596,15 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   廠商
                 </label>
-                <select
+                <SelectField
                   value={formData.supplierId}
                   onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                 >
                   <option value="">— 未指定 —</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
                   ))}
-                </select>
+                </SelectField>
                 {formData.supplierId && (() => {
                   const sup = suppliers.find(s => String(s.id) === formData.supplierId)
                   return sup?.tax_id ? (
@@ -640,16 +616,15 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   抽獎模組
                 </label>
-                <select
+                <SelectField
                   value={formData.machineTheme}
                   onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
-                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                 >
                   <option value="">— 類別預設 —</option>
                   {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             </div>
 
@@ -784,7 +759,7 @@ export default function NewProductPage() {
                               className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                               placeholder="名稱"
                             />
-                            <select
+                            <SelectField
                               value={prize.level}
                               onChange={(e) => {
                                 const updated = [...prizes]
@@ -799,7 +774,6 @@ export default function NewProductPage() {
                                 }
                                 setPrizes(updated)
                               }}
-                              className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                             >
                               <option value="">等級</option>
                               {(formData.type === 'gacha' ? gachaLevels
@@ -808,7 +782,7 @@ export default function NewProductPage() {
                                 : ichibanLevels).map(level => (
                                   <option key={level.value} value={level.value}>{level.label}</option>
                               ))}
-                            </select>
+                            </SelectField>
                           </div>
 
                           {/* 數量 + 剩餘 + 機率 */}
@@ -916,16 +890,15 @@ export default function NewProductPage() {
                 placeholder="搜尋小物名稱、分類..."
                 className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
-              <select
+              <SelectField
                 value={librarySelectedCategory}
                 onChange={(e) => setLibrarySelectedCategory(e.target.value)}
-                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               >
                 <option value="all">全部分類</option>
                 {Array.from(new Set(libraryItems.map(item => item.category))).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
 
             {/* 小物列表 */}

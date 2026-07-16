@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
@@ -171,9 +172,9 @@ export default function CouponsReportPage() {
                           : `NT$ ${fmt(r.discount_value)}`}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-xs ${r.used_at ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                        <Badge variant={r.used_at ? 'success' : 'default'}>
                           {r.used_at ? '已使用' : '未使用'}
-                        </span>
+                        </Badge>
                       </td>
                     </tr>
                   ))}

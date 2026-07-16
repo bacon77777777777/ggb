@@ -1,12 +1,14 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 type DoneFilter = 'all' | 'in_progress' | 'done'
 
@@ -279,7 +281,7 @@ export default function ExchangeOrdersAdminPage() {
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <select
+                          <SelectField
                             value={order.step}
                             onChange={(e) => handlePatch(order, { step: Number(e.target.value) })}
                             className="border border-neutral-200 rounded-lg px-2 py-1 text-sm bg-white"
@@ -289,7 +291,7 @@ export default function ExchangeOrdersAdminPage() {
                                 {s}. {stepLabel(s)}
                               </option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
@@ -300,9 +302,9 @@ export default function ExchangeOrdersAdminPage() {
                             checked={order.done}
                             onChange={(e) => handlePatch(order, { done: e.target.checked })}
                           />
-                          <span className={`text-xs px-2 py-1 rounded border ${order.done ? 'bg-green-50 text-green-700 border-green-200' : 'bg-neutral-50 text-neutral-600 border-neutral-200'}`}>
+                          <Badge variant={order.done ? 'success' : 'default'}>
                             {order.done ? '已完成' : '進行中'}
-                          </span>
+                          </Badge>
                         </label>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700">

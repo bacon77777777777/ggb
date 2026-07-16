@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import SelectField from '@/components/ui/SelectField'
 
 type DiscountType = 'fixed' | 'percentage'
 
@@ -327,7 +328,7 @@ export default function CouponsPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   折扣類型
                 </label>
-                <select
+                <SelectField
                   value={formData.discount_type}
                   onChange={(e) =>
                     setFormData({ ...formData, discount_type: e.target.value as DiscountType })
@@ -336,7 +337,7 @@ export default function CouponsPage() {
                 >
                   <option value="fixed">固定金額(TWD)</option>
                   <option value="percentage">百分比</option>
-                </select>
+                </SelectField>
               </div>
 
               <div>

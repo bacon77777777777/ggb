@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 const CATEGORY_LABELS: Record<string, string> = {
   ichiban:  '一番賞',
@@ -208,13 +209,13 @@ export default function NewsEditPage() {
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>分類</label>
-                <select value={form.category}
+                <SelectField value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                   className={inputCls}>
                   {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className={labelCls}>標籤（逗號分隔）</label>

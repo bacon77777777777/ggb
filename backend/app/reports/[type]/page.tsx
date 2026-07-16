@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
+import SelectField from '@/components/ui/SelectField'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -218,22 +219,22 @@ export default function ReportPage() {
         <div className="flex items-center justify-end gap-2 flex-wrap">
           {reportType === 'products' && (
             <>
-              <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
+              <SelectField value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
                 className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有廠商</option>
                 {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-              </select>
-              <select value={filterType} onChange={e => setFilterType(e.target.value)}
+              </SelectField>
+              <SelectField value={filterType} onChange={e => setFilterType(e.target.value)}
                 className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有種類</option>
                 {productTypes.map(t => <option key={t} value={t}>{PRODUCT_TYPE_LABEL[t] || t}</option>)}
-              </select>
-              <select value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
+              </SelectField>
+              <SelectField value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
                 className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="all">全幣種</option>
                 <option value="tokens">代幣</option>
                 <option value="points">積分</option>
-              </select>
+              </SelectField>
             </>
           )}
           <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
