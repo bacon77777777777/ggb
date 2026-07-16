@@ -37,8 +37,8 @@ export default function SortableTableHeader({
   
   return (
     <th
-      className={`${textAlignClass} ${defaultPadding} text-sm font-semibold text-neutral-700 ${
-        isSortable ? 'cursor-pointer hover:bg-neutral-50 select-none' : ''
+      className={`${textAlignClass} ${defaultPadding} text-xs font-semibold text-neutral-500 ${
+        isSortable ? 'cursor-pointer hover:bg-neutral-100 select-none' : ''
       } ${className}`}
       onClick={handleClick}
     >

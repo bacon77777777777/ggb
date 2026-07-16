@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
@@ -379,7 +380,7 @@ export default function DevLogsPage() {
         )}
 
         {loading ? (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+          <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={5} /></div>
         ) : (
           <>
             {/* ── 版本紀錄 Tab ── */}
@@ -572,7 +573,7 @@ export default function DevLogsPage() {
             {activeTab === 'monitor' && (
               <div className="space-y-4">
                 {monitorLoading ? (
-                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+                  <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={5} /></div>
                 ) : monitorLogs.length === 0 ? (
                   <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
                     尚無監控資料，點「立即檢查」執行第一次快照

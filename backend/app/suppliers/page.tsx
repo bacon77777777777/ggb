@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useState, useEffect } from 'react'
@@ -148,7 +149,7 @@ export default function SuppliersPage() {
         {/* Table */}
         <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
           {loading ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">載入中…</div>
+            <CardSkeleton rows={5} />
           ) : suppliers.length === 0 ? (
             <div className="py-16 text-center text-neutral-400 text-sm">尚無廠商資料，點擊「新增廠商」開始建立</div>
           ) : (

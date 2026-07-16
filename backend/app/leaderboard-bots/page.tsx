@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 
@@ -214,7 +215,7 @@ export default function LeaderboardBotsPage() {
 
         {/* 機器人列表 */}
         {loading ? (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+          <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={6} /></div>
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <table className="w-full text-sm">

@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { useState, useEffect, useCallback } from 'react'
 
 interface CsTicket {
@@ -107,11 +108,7 @@ export default function CsTicketsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {loading && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-neutral-400">載入中…</td>
-                </tr>
-              )}
+              {loading && <TableSkeleton rows={5} cols={6} />}
               {!loading && tickets.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-sm text-neutral-400">

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -262,7 +263,7 @@ export default function SellOrdersAdminPage() {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {isLoading ? (
-                  <TableEmpty colSpan={9} message="載入中…" />
+                  <TableSkeleton rows={6} cols={9} />
                 ) : sortedOrders.length === 0 ? (
                   <TableEmpty colSpan={9} message="目前沒有符合條件的販售訂單" />
                 ) : (

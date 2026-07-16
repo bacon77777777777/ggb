@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
 type EventStatus = 'pending' | 'processed' | 'dismissed'
@@ -175,7 +176,7 @@ export default function AgentEventsPage() {
 
         {/* 事件列表 */}
         {loading ? (
-          <div className="flex justify-center py-16 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-neutral-400 gap-2">
             <span className="text-3xl">

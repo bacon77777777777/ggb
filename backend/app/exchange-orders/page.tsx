@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -260,7 +261,7 @@ export default function ExchangeOrdersAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading && <TableEmpty colSpan={8} message="載入中…" />}
+                {isLoading && <TableSkeleton rows={6} cols={8} />}
                 {!isLoading && sortedOrders.length === 0 && <TableEmpty colSpan={8} message="沒有資料" />}
                 {!isLoading &&
                   sortedOrders.map((order) => (
