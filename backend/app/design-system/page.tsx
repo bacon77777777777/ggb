@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -56,6 +56,126 @@ function TokenRow({ name, value, preview }: { name: string; value: string; previ
   )
 }
 
+// ─── Scan 資料型別 ──────────────────────────────────────────
+type ScanRun = {
+  ran_at: string
+  files_scanned: number
+  total_violations: number
+  files_with_violations: number
+}
+type FileViolation = { line_number: number; violation_type: string; violation_class: string; line_content: string; fix_hint: string }
+type ScanData = {
+  run: ScanRun | null
+  byType: Record<string, number>
+  byFile: Record<string, FileViolation[]>
+}
+
+// ─── Compliance Scan Panel ──────────────────────────────────
+function CompliancePanel() {
+  const [data, setData] = useState<ScanData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expandedFile, setExpandedFile] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/design-scan')
+      .then(r => r.json())
+      .then(setData)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="text-xs text-neutral-400 py-4">載入掃描結果...</div>
+  if (!data?.run) return (
+    <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 text-xs text-neutral-500">
+      尚無掃描記錄。請在本地執行：<code className="font-mono ml-1 text-primary">npx tsx scripts/design-scan.ts</code>
+    </div>
+  )
+
+  const { run, byType, byFile } = data
+  const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1])
+  const maxCount = typeEntries[0]?.[1] || 1
+  const fileEntries = Object.entries(byFile).sort((a, b) => b[1].length - a[1].length)
+  const cleanPct = Math.round((1 - run.files_with_violations / run.files_scanned) * 100)
+
+  return (
+    <div className="space-y-4">
+      {/* 統計摘要 */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: '掃描檔案', value: run.files_scanned, color: 'text-neutral-700' },
+          { label: '總違規數', value: run.total_violations, color: run.total_violations > 0 ? 'text-red-600' : 'text-green-600' },
+          { label: '違規檔案', value: run.files_with_violations, color: run.files_with_violations > 0 ? 'text-orange-600' : 'text-green-600' },
+          { label: '合規率', value: `${cleanPct}%`, color: cleanPct >= 80 ? 'text-green-600' : cleanPct >= 50 ? 'text-orange-600' : 'text-red-600' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-white border border-neutral-200 rounded-lg p-3 text-center">
+            <div className={`text-xl font-bold font-mono ${color}`}>{value}</div>
+            <div className="text-[10px] text-neutral-400 mt-0.5">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 違規類型分布 */}
+      <div className="bg-white border border-neutral-200 rounded-lg p-4">
+        <div className="text-xs font-semibold text-neutral-500 mb-3">違規類型分布</div>
+        <div className="space-y-2">
+          {typeEntries.map(([type, count]) => (
+            <div key={type} className="flex items-center gap-3">
+              <code className="text-[10px] font-mono text-neutral-600 w-36 flex-shrink-0">{type}</code>
+              <div className="flex-1 bg-neutral-100 rounded-full h-1.5">
+                <div
+                  className="h-1.5 rounded-full bg-red-400"
+                  style={{ width: `${(count / maxCount) * 100}%` }}
+                />
+              </div>
+              <span className="text-xs font-mono text-neutral-500 w-8 text-right">{count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 違規檔案列表 */}
+      <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-neutral-100 text-xs font-semibold text-neutral-500">
+          違規檔案（{fileEntries.length} 個，依違規數排序）
+        </div>
+        <div className="divide-y divide-neutral-100 max-h-96 overflow-y-auto">
+          {fileEntries.map(([file, viols]) => (
+            <div key={file}>
+              <button
+                onClick={() => setExpandedFile(expandedFile === file ? null : file)}
+                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-neutral-50 transition-colors text-left"
+              >
+                <code className="text-[10px] font-mono text-neutral-600 truncate flex-1">{file}</code>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  <span className="text-[10px] text-red-500 font-mono">{viols.length} 處</span>
+                  <svg className={`w-3 h-3 text-neutral-400 transition-transform ${expandedFile === file ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+              {expandedFile === file && (
+                <div className="bg-neutral-50 px-4 py-2 space-y-1.5">
+                  {viols.map((v, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[10px]">
+                      <span className="text-neutral-400 font-mono w-8 flex-shrink-0">L{v.line_number}</span>
+                      <code className="text-red-500 font-mono flex-shrink-0">{v.violation_class}</code>
+                      <span className="text-neutral-400 truncate flex-1" title={v.line_content}>{v.line_content}</span>
+                      <span className="text-green-600 flex-shrink-0">→ {v.fix_hint}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-[10px] text-neutral-400">
+        上次掃描：{new Date(run.ran_at).toLocaleString('zh-TW')} ・ 更新請在本地執行 <code className="font-mono">npx tsx scripts/design-scan.ts</code>
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ───────────────────────────────────────────────────
 export default function DesignSystemPage() {
   const [switchOn, setSwitchOn] = useState(false)
@@ -72,6 +192,11 @@ export default function DesignSystemPage() {
           </div>
           <p className="text-sm text-neutral-500">所有組件的標準樣式與使用規範。新頁面請以此為基準，禁止自行發明 className。</p>
         </div>
+
+        {/* ── Compliance Scan ── */}
+        <Section title="Design Compliance Scan" id="scan">
+          <CompliancePanel />
+        </Section>
 
         {/* ── 顏色 tokens ── */}
         <Section title="Color Tokens" id="colors">
