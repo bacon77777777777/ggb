@@ -668,7 +668,7 @@ export default function DevLogsPage() {
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
-                            <thead className="bg-neutral-50 border-b border-neutral-100">
+                            <thead className="bg-neutral-50 border-b border-neutral-200">
                               <tr>
                                 {['時間', 'DB (MB)', 'R2 (MB)', 'R2 檔數', 'Vercel', 'GitHub CI', '整體'].map(h => (
                                   <th key={h} className="px-4 py-2 text-left text-neutral-500 font-medium whitespace-nowrap">{h}</th>

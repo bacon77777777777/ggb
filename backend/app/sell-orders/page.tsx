@@ -243,18 +243,18 @@ export default function SellOrdersAdminPage() {
                   <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     訂單
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">上架單</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架單</th>
                   <SortableTableHeader sortKey="total_price" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     金額(G)
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">付款</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">進度</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">買家</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">賣家</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">付款</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">進度</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">買家</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">賣家</th>
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     建立時間
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
                     操作
                   </th>
                 </tr>
@@ -283,7 +283,7 @@ export default function SellOrdersAdminPage() {
                       : 'bg-amber-50 text-amber-700'
 
                     return (
-                      <tr key={o.id} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={o.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-neutral-900">#{o.id}</span>

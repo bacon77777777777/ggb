@@ -392,7 +392,7 @@ export default function SettlementPage() {
                 <div className="py-12 text-center text-sm text-neutral-400">本期無消費紀錄</div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr className="text-xs text-neutral-400 border-b border-neutral-100">
                       <th className="text-left px-4 py-2">商品</th>
                       <th className="text-right px-4 py-2">單價</th>

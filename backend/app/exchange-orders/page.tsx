@@ -238,7 +238,7 @@ export default function ExchangeOrdersAdminPage() {
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-y border-neutral-200">
                   <SortableTableHeader sortKey="updated_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     更新時間
@@ -249,10 +249,10 @@ export default function ExchangeOrdersAdminPage() {
                   <SortableTableHeader sortKey="done" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     完成
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Order</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Offer</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">創建者</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">發起者</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Order</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Offer</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">創建者</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">發起者</th>
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
                   </SortableTableHeader>

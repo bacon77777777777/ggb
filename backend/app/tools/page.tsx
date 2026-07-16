@@ -631,11 +631,11 @@ export default function ToolsPage() {
                         <table className="min-w-full text-sm">
                           <thead className="bg-white">
                             <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">URL</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">狀態</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">商品名稱</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">價格</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">獎項</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">URL</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">狀態</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">商品名稱</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">價格</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">獎項</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
@@ -751,9 +751,9 @@ export default function ToolsPage() {
                         <table className="min-w-full text-sm">
                           <thead className="bg-white">
                             <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">名稱</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">等級</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">數量</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">名稱</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">等級</th>
+                              <th className="text-left px-3 py-2 font-semibold text-neutral-500">數量</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">

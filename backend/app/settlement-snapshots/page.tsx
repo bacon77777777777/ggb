@@ -169,15 +169,15 @@ export default function SettlementSnapshotsPage() {
                   {allPaid && <span className="text-xs text-green-600 font-medium">✓ 全部已付款</span>}
                 </div>
                 <table className="w-full text-sm">
-                  <thead className="border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500">廠商</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500">商品消費 (G)</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500">ECPay</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500">分解退</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium text-neutral-500 font-semibold">應付 (TWD)</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500">備註</th>
-                      <th className="text-center px-4 py-2 text-xs font-medium text-neutral-500">狀態</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">廠商</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">商品消費 (G)</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">ECPay</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">分解退</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500 font-semibold">應付 (TWD)</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">備註</th>
+                      <th className="text-center px-4 py-2 text-xs font-semibold text-neutral-500">狀態</th>
                       <th className="px-4 py-2"></th>
                     </tr>
                   </thead>
@@ -185,7 +185,7 @@ export default function SettlementSnapshotsPage() {
                     {rows.map(row => {
                       const sm = STATUS_META[row.status]
                       return (
-                        <tr key={row.id} className="border-b border-neutral-50 hover:bg-neutral-50">
+                        <tr key={row.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                           <td className="px-4 py-3 font-medium text-neutral-800">{row.supplier_name}</td>
                           <td className="px-4 py-3 text-right font-mono text-neutral-600">{Number(row.total_g).toLocaleString()}</td>
                           <td className="px-4 py-3 text-right font-mono text-rose-500">-{Number(row.ecpay_fee).toLocaleString()}</td>

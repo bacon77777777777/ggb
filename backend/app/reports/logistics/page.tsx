@@ -202,10 +202,10 @@ export default function LogisticsReportPage() {
               <div className="py-12 text-center text-neutral-400">無資料</div>
             ) : (
               <table className="w-full text-sm">
-                <thead>
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr className="border-b border-neutral-200 text-left">
                     {['提交時間', '訂單編號', '用戶', '物流類型', '物流單號', '運費', '獎品數', '狀態', '出貨時間'].map(h => (
-                      <th key={h} className="py-2 px-3 font-semibold text-neutral-700 whitespace-nowrap">{h}</th>
+                      <th key={h} className="py-2 px-3 font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>

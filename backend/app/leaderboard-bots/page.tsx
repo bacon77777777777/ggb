@@ -218,20 +218,20 @@ export default function LeaderboardBotsPage() {
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-b border-neutral-100">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 w-10">排序</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500">機器人</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500">稱號</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">賞金榜</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">轉蛋榜</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500">狀態</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">操作</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 w-10">排序</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">機器人</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">稱號</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">賞金榜</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">轉蛋榜</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500">狀態</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50">
                 {bots.map(bot => (
-                  <tr key={bot.id} className={`hover:bg-neutral-50 ${!bot.is_active ? 'opacity-40' : ''}`}>
+                  <tr key={bot.id} className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${!bot.is_active ? 'opacity-40' : ''}`}>
                     <td className="px-4 py-3 text-neutral-400 font-mono text-xs">{bot.sort_order}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">

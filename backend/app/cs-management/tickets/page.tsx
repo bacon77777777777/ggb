@@ -96,7 +96,7 @@ export default function CsTicketsPage() {
         {/* Table */}
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr className="border-b border-neutral-100 bg-neutral-50">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">狀態</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">類型</th>

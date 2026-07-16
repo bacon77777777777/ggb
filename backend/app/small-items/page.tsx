@@ -196,23 +196,23 @@ export default function SmallItemsPage() {
           {/* 表格 */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     ID
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700`}>圖片</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>圖片</th>
                   <SortableTableHeader sortKey="name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     名稱
                   </SortableTableHeader>
                   <SortableTableHeader sortKey="category" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     分類
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700`}>描述</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>描述</th>
                   <SortableTableHeader sortKey="createdAt" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
                 </tr>
               </thead>
               <tbody>

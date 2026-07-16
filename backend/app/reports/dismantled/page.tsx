@@ -145,7 +145,7 @@ export default function DismantledReportPage() {
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200 bg-neutral-50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">時間</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">用戶</th>

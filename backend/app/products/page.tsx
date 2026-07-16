@@ -917,7 +917,7 @@ export default function ProductsPage() {
           {/* 表格 */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <th className={`${getDensityClasses()} text-left`}>
                     <input
@@ -927,7 +927,7 @@ export default function ProductsPage() {
                       className="w-4 h-4 text-primary focus:ring-primary rounded"
                     />
                   </th>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 whitespace-nowrap`}>主圖</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>主圖</th>
                   {visibleColumns.productCode && (
                     <SortableTableHeader sortKey="productCode" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                       編號
@@ -984,7 +984,7 @@ export default function ProductsPage() {
                     </SortableTableHeader>
                   )}
                   {visibleColumns.operations && (
-                    <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>操作</th>
+                    <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>操作</th>
                   )}
                 </tr>
               </thead>
@@ -1036,7 +1036,7 @@ export default function ProductsPage() {
                         </td>
                       )}
                       {visibleColumns.name && (
-                        <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                           <div className="flex items-center gap-2">
                             <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${expandedProducts.has(product.id) ? 'rotate-180 text-primary' : 'text-neutral-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -1049,7 +1049,7 @@ export default function ProductsPage() {
                               const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
                               const isSoldOut = remaining === 0 && product.status !== 'pending'
                               return isSoldOut && (
-                                <span className="px-2 py-0.5 text-xs rounded-full bg-neutral-100 text-neutral-700 whitespace-nowrap flex-shrink-0">
+                                <span className="px-2 py-0.5 text-xs rounded-full bg-neutral-100 text-neutral-500 whitespace-nowrap flex-shrink-0">
                                   已完抽
                                 </span>
                               )
@@ -1058,7 +1058,7 @@ export default function ProductsPage() {
                         </td>
                       )}
                       {visibleColumns.type && (
-                        <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             product.type === 'ichiban'
                               ? 'bg-blue-100 text-primary'

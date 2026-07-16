@@ -386,10 +386,10 @@ export default function ReportPage() {
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 border-b border-neutral-100">
+                        <thead className="bg-neutral-50 border-b border-neutral-200">
                           <tr>
                             {['日期', '儲值金額(TWD)', '抽獎次數', '新用戶數'].map(h => (
-                              <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500">{h}</th>
+                              <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -445,17 +445,17 @@ export default function ReportPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">#</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">商品名稱</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">廠商</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">種類</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">抽獎次數</th>
-                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
-                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">積分</th>}
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">完抽率</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">#</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">商品名稱</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">廠商</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">種類</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">抽獎次數</th>
+                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
+                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">積分</th>}
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">完抽率</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
@@ -541,10 +541,10 @@ export default function ReportPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       {['日期', '訂單編號', '用戶', 'Email', '金額(TWD)', '贈點', '付款方式', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -600,10 +600,10 @@ export default function ReportPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       {['日期', '用戶', 'Email', '商品', '消耗代幣(G)', '獎品等級', '獎品名稱', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -663,7 +663,7 @@ export default function ReportPage() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead>
+                        <thead className="bg-neutral-50 border-b border-neutral-200">
                           <tr className="border-b border-neutral-100">
                             <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">日期</th>
                             <th className="text-right py-2 px-3 text-xs font-semibold text-neutral-500">活躍用戶數</th>

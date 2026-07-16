@@ -368,7 +368,7 @@ export default function MarketplaceAdminPage() {
                   </tr>
                 ) : (
                   sortedListings.map((item) => (
-                    <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className="py-3 px-4 text-sm text-neutral-600 whitespace-nowrap">
                         {formatDateTime(item.created_at)}
                       </td>

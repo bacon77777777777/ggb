@@ -1236,9 +1236,9 @@ export default function OrdersPage() {
 
           <div className="overflow-x-auto">
               <table className="w-full">
-                <thead>
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr className="border-b border-neutral-200">
-                    <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 w-12`}>
+                    <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 w-12`}>
                       <input
                         type="checkbox"
                         checked={filteredShipments.slice(0, displayCount).filter(s => s.status !== 'cancelled').length > 0 && 
@@ -1357,7 +1357,7 @@ export default function OrdersPage() {
                         出貨時間
                       </SortableTableHeader>
                     )}
-                    <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
+                    <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1414,7 +1414,7 @@ export default function OrdersPage() {
                           </td>
                         )}
                         {visibleColumns.submittedAt && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{formatDateTime(shipment.submittedAt)}</span>
                           </td>
                         )}
@@ -1424,41 +1424,41 @@ export default function OrdersPage() {
                           </td>
                         )}
                         {visibleColumns.userName && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="whitespace-nowrap">{shipment.userName || '-'}</span>
                           </td>
                         )}
                         {visibleColumns.userId && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="whitespace-nowrap"><CopyableID id={shipment.userId} /></span>
                           </td>
                         )}
                         {visibleColumns.quantity && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{shipment.items.length}</span>
                           </td>
                         )}
                         {visibleColumns.recipientName && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
                             <div className="space-y-0 leading-tight">
-                              <p className="text-sm text-neutral-700 whitespace-nowrap">{shipment.recipientName}</p>
+                              <p className="text-sm text-neutral-500 whitespace-nowrap">{shipment.recipientName}</p>
                               <p className="text-xs text-neutral-400 whitespace-nowrap font-mono">{shipment.recipientPhone}</p>
                               <p className="text-xs text-neutral-400 whitespace-nowrap">{shipment.address}</p>
                             </div>
                           </td>
                         )}
                         {visibleColumns.trackingNumber && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{shipment.trackingNumber || '-'}</span>
                           </td>
                         )}
                         {visibleColumns.shippingFee && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono">{shipment.shippingFee > 0 ? `$${shipment.shippingFee}` : '—'}</span>
                           </td>
                         )}
                         {visibleColumns.shippedAt && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">
                               {formatDateTime(shipment.shippedAt)}
                             </span>
@@ -1639,7 +1639,7 @@ export default function OrdersPage() {
                                           <span className="text-neutral-500 font-mono text-xs whitespace-nowrap min-w-[80px] flex-shrink-0">
                                             #{String(idx + 1).padStart(2, '0')}
                                           </span>
-                                          <span className="text-neutral-700 whitespace-nowrap w-[240px] flex-shrink-0 overflow-hidden text-ellipsis">
+                                          <span className="text-neutral-500 whitespace-nowrap w-[240px] flex-shrink-0 overflow-hidden text-ellipsis">
                                             {item.product}
                                           </span>
                                           <span 

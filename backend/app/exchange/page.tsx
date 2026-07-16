@@ -303,7 +303,7 @@ export default function ExchangeOffersAdminPage() {
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-y border-neutral-200">
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
@@ -311,13 +311,13 @@ export default function ExchangeOffersAdminPage() {
                   <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     狀態
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Offer</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">會員</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">內容</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Offer</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">會員</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">內容</th>
                   <SortableTableHeader sortKey="updated_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     更新時間
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-right text-sm font-semibold text-neutral-700">操作</th>
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody>

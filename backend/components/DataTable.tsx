@@ -173,10 +173,10 @@ export default function DataTable<T extends { id: number | string }>({
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead>
+        <thead className="bg-neutral-50 border-b border-neutral-200">
           <tr className="border-b border-neutral-200">
             {selectable && (
-              <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 w-12`}>
+              <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 w-12`}>
                 <input
                   type="checkbox"
                   checked={isAllSelected}
@@ -207,7 +207,7 @@ export default function DataTable<T extends { id: number | string }>({
               return (
                 <th
                   key={column.key}
-                  className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
+                  className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
                 >
                   <span className="whitespace-nowrap">{column.label}</span>
                 </th>
@@ -276,7 +276,7 @@ export default function DataTable<T extends { id: number | string }>({
                       return (
                         <td
                           key={column.key}
-                          className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
+                          className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
                           onClick={column.sticky ? (e) => e.stopPropagation() : undefined}
                         >
                           <span className="whitespace-nowrap">{column.render ? column.render(item, index) : String((item as any)[column.key] || '')}</span>

@@ -1013,13 +1013,13 @@ export default function UserDetailPage() {
                         <table className="w-full text-sm">
                           <thead className="bg-neutral-50 border-b border-neutral-200">
                             <tr>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">時間</th>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">類型</th>
-                              <th className="text-left px-3 py-2 text-xs font-medium text-neutral-500">說明</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">面額</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">贈送</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">異動 (G)</th>
-                              <th className="text-right px-3 py-2 text-xs font-medium text-neutral-500">累計餘額</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">時間</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">類型</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">說明</th>
+                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">面額</th>
+                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">贈送</th>
+                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">異動 (G)</th>
+                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">累計餘額</th>
                             </tr>
                           </thead>
                           <tbody>

@@ -285,7 +285,7 @@ export default function NewsPage() {
           {/* ── 表格 ── */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <th className="px-4 py-2.5 text-left w-10">
                     <input

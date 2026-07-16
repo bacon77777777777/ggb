@@ -154,16 +154,16 @@ export default function SuppliersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-100">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
                     {['廠商名稱', '統編', '聯絡人', '電話', 'Email', '狀態', '備註', '建立時間', '操作'].map((h) => (
-                      <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {suppliers.map((s) => (
-                    <tr key={s.id} className="hover:bg-neutral-50">
+                    <tr key={s.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-neutral-900">{s.name}</td>
                       <td className="px-4 py-3 text-neutral-600 font-mono text-xs">{s.tax_id ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-600">{s.contact_name ?? '—'}</td>

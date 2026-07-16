@@ -353,7 +353,7 @@ export default function SellAdminPage() {
                 <SortableTableHeader sortKey="title" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   標題
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">規格</th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">規格</th>
                 <SortableTableHeader sortKey="view_count" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   瀏覽
                 </SortableTableHeader>
@@ -363,11 +363,11 @@ export default function SellAdminPage() {
                 <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   狀態
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">上架</th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架</th>
                 <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   建立時間
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
                   操作
                 </th>
               </tr>

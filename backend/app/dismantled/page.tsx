@@ -257,7 +257,7 @@ export default function DismantledPage() {
                   </tr>
                 ) : (
                   sortedItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className={`${getDensityClasses()} text-neutral-600 whitespace-nowrap`}>
                         {formatDateTime(item.created_at)}
                       </td>
