@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 
@@ -88,9 +89,7 @@ export default function RechargeReviewPage() {
                         <span className="font-mono text-sm font-semibold text-neutral-800">
                           {r.order_number ?? `#${r.id}`}
                         </span>
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
-                          待複核
-                        </span>
+                        <Badge variant="warning">待複核</Badge>
                         <span className="text-xs text-neutral-400">{age} 建立</span>
                         {flaggedAge && (
                           <span className="text-xs text-rose-400">• {flaggedAge} 標記</span>

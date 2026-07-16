@@ -8,6 +8,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -476,7 +477,7 @@ export default function ReportPage() {
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
                             {p.supplierName ? (
-                              <span className="px-2 py-0.5 bg-primary text-primary rounded text-xs">{p.supplierName}</span>
+                              <Badge variant="primary">{p.supplierName}</Badge>
                             ) : '—'}
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
@@ -563,9 +564,7 @@ export default function ReportPage() {
                         <td className="px-4 py-2 text-right">{r.bonus ?? 0}</td>
                         <td className="px-4 py-2 text-neutral-500">{r.payment_method ?? '—'}</td>
                         <td className="px-4 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                            {STATUS_LABEL[r.status] ?? r.status}
-                          </span>
+                          <Badge status={r.status}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
                         </td>
                       </tr>
                     ))}
@@ -624,9 +623,7 @@ export default function ReportPage() {
                         </td>
                         <td className="px-4 py-2 text-neutral-700">{d.prize_name ?? '—'}</td>
                         <td className="px-4 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[d.status] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                            {STATUS_LABEL[d.status] ?? d.status}
-                          </span>
+                          <Badge status={d.status}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
                         </td>
                       </tr>
                     ))}

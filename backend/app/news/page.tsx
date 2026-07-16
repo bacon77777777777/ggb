@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -274,12 +275,8 @@ export default function NewsPage() {
           {/* ── 統計列 ── */}
           <div className="flex items-center gap-3 px-4 py-2 text-sm border-b border-neutral-100">
             <span className="text-neutral-500">共 {news.length} 篇</span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-              已上架 {activeCount}
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200">
-              下架草稿 {draftCount}
-            </span>
+            <Badge variant="success">已上架 {activeCount}</Badge>
+            <Badge variant="default">下架草稿 {draftCount}</Badge>
             {sorted.length !== news.length && (
               <span className="text-neutral-400 text-xs">篩選後顯示 {sorted.length} 篇</span>
             )}

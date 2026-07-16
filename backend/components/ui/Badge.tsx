@@ -73,6 +73,15 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   '已棄用': 'default',
   '已解決': 'success',
   '已關閉': 'default',
+  // 報表 / 消費狀態
+  success: 'success',
+  shipped: 'info',
+  in_warehouse: 'info',
+  pending_delivery: 'warning',
+  refunded: 'danger',
+  exchanged: 'default',
+  dismantled: 'default',
+  listing: 'info',
 }
 
 const variantStyles: Record<BadgeVariant, string> = {

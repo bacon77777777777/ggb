@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
@@ -316,7 +317,7 @@ export default function CompetitorIntelPage() {
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700">{p.platform}</span>
                       )}
                       {p.added_by === 'market_intel_v2' && (
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-primary text-primary">AI 爬取</span>
+                        <Badge variant="primary">AI 爬取</Badge>
                       )}
                       <span className="text-xs text-neutral-400">
                         {new Date(p.created_at).toLocaleDateString('zh-TW')}

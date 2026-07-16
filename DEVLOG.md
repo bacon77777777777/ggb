@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.9｜2026-07-16｜Design System 收尾 — 最後 6 處 inline span 換 Badge
+
+### Badge 組件擴充 + 最後一批覆蓋
+- statusVariantMap 新增報表用狀態：`success / shipped / in_warehouse / pending_delivery / refunded / exchanged / dismantled / listing`
+- `reports/[type]/page.tsx`：STATUS_COLOR span（recharge/消費兩個資料表）→ Badge；供應商名稱 span → `<Badge variant="primary">`
+- `recharge-review/page.tsx`：待複核 amber span → `<Badge variant="warning">`
+- `competitor-intel/page.tsx`：AI 爬取 span → `<Badge variant="primary">`
+- `news/page.tsx`：已上架/下架草稿計數 span → `<Badge variant="success">` / `<Badge variant="default">`
+
+---
+
 ## v2026.07.8｜2026-07-16｜Design System 深掃第二輪 — Badge 全覆蓋 / TableEmpty / th 排版統一
 
 ### Badge 組件擴充 + 全站覆蓋
