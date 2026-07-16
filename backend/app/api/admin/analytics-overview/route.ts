@@ -44,8 +44,11 @@ export async function GET(req: NextRequest) {
   const ys = twDate(y, mo, d - 1)
   const ye = ts
 
-  // monthly bars when range > 90 days
-  const isMonthly = dur / 86400000 > 90
+  const days = dur / 86400000
+  const isHourly = days <= 1           // 今日: hourly labels 0-23
+  const isShortRange = !isHourly && days <= 7   // 本週: daily MM-DD
+  const isMonthly = days > 90          // 本年: monthly labels
+  const isWeekly = !isHourly && !isShortRange && !isMonthly  // 8-90天: 週為區間
 
   const db = getSupabaseAdmin()
   const { data: bots } = await db.from('users').select('id').eq('is_bot', true)
@@ -59,7 +62,7 @@ export async function GET(req: NextRequest) {
       await Promise.all([
         inR(noBot(db.from('draw_records').select('id, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
         inR(noBot(db.from('draw_records').select('id, product:products(price)')), prevStart, prevEnd),
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), curStart, curEnd),
+        inR(noBot(db.from('recharge_records').select('amount, created_at').eq('status', 'success')), curStart, curEnd),
         inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd),
         inR(noBot(db.from('draw_records').select('id, product:products(price)')), ts, te),
         inR(noBot(db.from('draw_records').select('id, product:products(price)')), ys, ye),
@@ -96,58 +99,99 @@ export async function GET(req: NextRequest) {
     const todayVisits = (visToday as any).count ?? 0
     const yesterdayVisits = (visYest as any).count ?? 0
 
+    // Key function: hour / week-Monday / date / month bucket
+    const dtKey = (createdAt: string) => {
+      const dt = new Date(new Date(createdAt).getTime() + TW)
+      if (isHourly) return `${dt.toISOString().split('T')[0]} ${String(dt.getUTCHours()).padStart(2, '0')}`
+      if (isMonthly) return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+      if (isWeekly) {
+        // Round down to Monday (TW time)
+        const day = dt.getUTCDay()
+        const daysBack = day === 0 ? 6 : day - 1
+        const mon = new Date(dt.getTime() - daysBack * 86400_000)
+        return mon.toISOString().split('T')[0]
+      }
+      return dt.toISOString().split('T')[0]
+    }
+
     // Bar chart grouping
     const barMap: Record<string, { sales: number; draws: number }> = {}
     draws.forEach((d: any) => {
-      const dt = new Date(new Date(d.created_at).getTime() + TW)
-      const key = isMonthly
-        ? `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
-        : dt.toISOString().split('T')[0]
+      const key = dtKey(d.created_at)
       if (!barMap[key]) barMap[key] = { sales: 0, draws: 0 }
       barMap[key].sales += price(d)
       barMap[key].draws++
     })
 
-    // Daily visit breakdown for sparkline
+    // Visit breakdown for sparkline
     const { data: visitRows } = await inR(db.from('visit_logs').select('created_at'), curStart, curEnd)
     const visitByKey: Record<string, number> = {}
     ;(visitRows ?? []).forEach((v: any) => {
-      const dt = new Date(new Date(v.created_at).getTime() + TW)
-      const key = isMonthly
-        ? `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
-        : dt.toISOString().split('T')[0]
+      const key = dtKey(v.created_at)
       visitByKey[key] = (visitByKey[key] ?? 0) + 1
     })
 
-    // Build bars with date keys for spark join
-    const barsWithKey: { key: string; label: string; sales: number; draws: number; visits: number }[] = []
-    if (isMonthly) {
+    // Recharge breakdown for 儲值與消耗對比 chart
+    const rechargeByKey: Record<string, number> = {}
+    ;(rcCur.data ?? []).forEach((r: any) => {
+      const key = dtKey(r.created_at)
+      rechargeByKey[key] = (rechargeByKey[key] ?? 0) + Number(r.amount ?? 0)
+    })
+
+    // Build bars
+    const barsWithKey: { key: string; label: string; sales: number; draws: number; visits: number; recharges: number }[] = []
+    if (isHourly) {
+      const dayStr = startStr
+      for (let h = 0; h <= 23; h++) {
+        const key = `${dayStr} ${String(h).padStart(2, '0')}`
+        barsWithKey.push({ key, label: String(h), sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0, recharges: rechargeByKey[key] ?? 0 })
+      }
+    } else if (isMonthly) {
       const cur = new Date(curStart)
       while (cur < curEnd) {
         const dt = new Date(cur.getTime() + TW)
         const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
         const label = `${dt.getUTCMonth() + 1}月`
         if (!barsWithKey.find(b => b.label === label)) {
-          barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0 })
+          barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0, recharges: rechargeByKey[key] ?? 0 })
         }
         cur.setDate(cur.getDate() + 28)
       }
-    } else {
-      const cur = new Date(curStart)
-      const today = new Date()
-      while (cur < curEnd && cur <= today) {
+    } else if (isWeekly) {
+      // 8-90天: 以週（週一）為區間
+      const curStartDt = new Date(curStart.getTime() + TW)
+      const startDay = curStartDt.getUTCDay()
+      const daysBack = startDay === 0 ? 6 : startDay - 1
+      const firstMon = new Date(curStart.getTime() - daysBack * 86400_000)
+      const cur = new Date(firstMon)
+      while (cur < curEnd) {
         const dt = new Date(cur.getTime() + TW)
         const key = dt.toISOString().split('T')[0]
         const mm = dt.getUTCMonth() + 1, dd = dt.getUTCDate()
-        barsWithKey.push({ key, label: `${mm}/${dd}`, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0 })
+        const label = `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
+        barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0, recharges: rechargeByKey[key] ?? 0 })
+        cur.setUTCDate(cur.getUTCDate() + 7)
+      }
+    } else {
+      // isShortRange: 1-7天，每日 MM-DD
+      const cur = new Date(curStart)
+      while (cur < curEnd) {
+        const dt = new Date(cur.getTime() + TW)
+        const key = dt.toISOString().split('T')[0]
+        const mm = dt.getUTCMonth() + 1, dd = dt.getUTCDate()
+        const label = `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
+        barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0, visits: visitByKey[key] ?? 0, recharges: rechargeByKey[key] ?? 0 })
         cur.setDate(cur.getDate() + 1)
       }
     }
     const bars = barsWithKey.map(({ key: _k, ...rest }) => rest)
 
-    // Spark: last 14 points with visit counts
-    const spark = barsWithKey.slice(-14).map((b, i) => ({
-      x: i, date: b.key, sales: b.sales, draws: b.draws, visits: visitByKey[b.key] ?? 0,
+    // Spark: hourly → all 24 points; others → last 14
+    const sparkSrc = isHourly ? barsWithKey : barsWithKey.slice(-14)
+    const spark = sparkSrc.map((b, i) => ({
+      x: i,
+      date: isHourly ? `${b.label}:00` : b.key,
+      sales: b.sales, draws: b.draws, visits: b.visits,
     }))
 
     // Keywords
