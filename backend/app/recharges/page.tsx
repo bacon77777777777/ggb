@@ -314,7 +314,7 @@ export default function RechargesPage() {
 
   return (
     <AdminLayout pageTitle="儲值明細">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
           {/* 近三個月快選 */}

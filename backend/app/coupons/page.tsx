@@ -264,17 +264,11 @@ export default function CouponsPage() {
 
   return (
     <AdminLayout pageTitle="折價券管理">
-      <div className="space-y-6 p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-neutral-900">折價券列表</h2>
-            <p className="text-sm text-neutral-500 mt-1">
-              管理折價券代碼、折扣內容與使用條件
-            </p>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-end">
           <button
             onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
           >
             + 新增折價券
           </button>

@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import PageCard from '@/components/PageCard'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import Modal from '@/components/Modal'
@@ -135,7 +136,7 @@ export default function SuppliersPage() {
 
   return (
     <AdminLayout pageTitle="廠商管理">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-neutral-500">管理商品供應廠商資訊</p>
@@ -151,7 +152,7 @@ export default function SuppliersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+        <PageCard noPadding>
           {loading ? (
             <CardSkeleton rows={5} />
           ) : suppliers.length === 0 ? (
@@ -201,7 +202,7 @@ export default function SuppliersPage() {
               </table>
             </div>
           )}
-        </div>
+        </PageCard>
       </div>
 
       {/* Create / Edit Modal */}

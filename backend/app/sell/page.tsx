@@ -278,7 +278,8 @@ export default function SellAdminPage() {
 
   return (
     <AdminLayout pageTitle="販售管理" pageSubtitle="自由上架寶可夢實體卡（與市集分開）">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+      <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatsCard title="總上架" value={stats.total} />
         <StatsCard title="上架中" value={stats.active} />
         <StatsCard title="已售出" value={stats.sold} />
@@ -559,6 +560,7 @@ export default function SellAdminPage() {
           </table>
         </div>
       </PageCard>
+      </div>
           {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )

@@ -219,7 +219,7 @@ export default function ExchangeOffersAdminPage() {
 
   return (
     <AdminLayout pageTitle="交換管理">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"

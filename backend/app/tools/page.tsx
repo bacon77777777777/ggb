@@ -527,7 +527,7 @@ export default function ToolsPage() {
 
   return (
     <AdminLayout pageTitle="工具" pageSubtitle="貼上 URL 或上傳 CSV 批量抓取並匯出">
-      <div className="p-6 space-y-4">
+      <div className="space-y-6">
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">

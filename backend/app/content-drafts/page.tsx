@@ -101,7 +101,7 @@ export default function ContentDraftsPage() {
 
   return (
     <AdminLayout pageTitle="AI 文案草稿">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 操作列 */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">

@@ -217,7 +217,7 @@ export default function DevLogsPage() {
     <AdminLayout
       pageTitle="開發日誌"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         {/* Tab + 新增按鈕 */}
         <div className="flex items-center justify-between">

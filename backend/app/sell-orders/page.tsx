@@ -183,7 +183,7 @@ export default function SellOrdersAdminPage() {
 
   return (
     <AdminLayout pageTitle="販售訂單">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard title="全部" value={counts.total} />
           <StatsCard title="進行中" value={counts.inProgress} />

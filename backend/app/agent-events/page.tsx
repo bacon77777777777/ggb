@@ -125,7 +125,7 @@ export default function AgentEventsPage() {
 
   return (
     <AdminLayout pageTitle="事件中心">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex gap-1 bg-neutral-100 rounded-lg p-1">

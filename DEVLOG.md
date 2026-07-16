@@ -4,6 +4,30 @@
 
 ---
 
+## v2026.07.11｜2026-07-16｜Design System — 頁面佈局標準化
+
+### 根本問題修正：雙層 padding
+- AdminLayout `<main>` 已有 `p-6`，多頁頁面根 div 又加 `p-6` 造成雙層 padding
+- 受影響頁面（移除根 div 的 `p-6`）：categories, coupons, exchange, marketplace, exchange-orders, sell-orders, sell-orders/[id], categories/[id], tools
+
+### 根 spacing 統一：`space-y-4` → `space-y-6`
+- 修正：agent-events, content-drafts, dev-logs, leaderboard-bots, news, recharge-review, recharges
+
+### suppliers 結構升級
+- 原本用 raw `<div className="bg-white rounded-lg border...">` 包裹 table
+- 改用 `<PageCard noPadding>`，與其他列表頁一致
+- 新增 `import PageCard`
+
+### sell 頁加 `space-y-6` wrapper
+- StatsCard grid + PageCard 原本直接在 AdminLayout 下（無間距 wrapper）
+- 包上 `<div className="space-y-6">`；grid gap `gap-3 → gap-4`
+
+### coupons 頁移除冗餘標題
+- `<h2>折價券列表</h2>` 與 AdminLayout pageTitle 重複，移除
+- `hover:bg-primary-dark` 修正為 `hover:bg-primary/90`
+
+---
+
 ## v2026.07.10｜2026-07-16｜Design System — SelectField 元件統一全站表單欄位
 
 ### 新元件：`SelectField`（`components/ui/SelectField.tsx`）

@@ -199,7 +199,7 @@ export default function NewsPage() {
 
   return (
     <AdminLayout pageTitle="文章管理">
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         <PageCard>
           <SearchToolbar

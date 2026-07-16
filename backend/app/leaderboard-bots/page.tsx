@@ -99,7 +99,7 @@ export default function LeaderboardBotsPage() {
     <AdminLayout
       pageTitle="機器人管理"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

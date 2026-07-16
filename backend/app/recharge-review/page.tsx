@@ -62,7 +62,7 @@ export default function RechargeReviewPage() {
 
   return (
     <AdminLayout pageTitle="待複核儲值">
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800">
           以下為 <strong>pending 超過 30 分鐘</strong>、尚未收到 ECPay callback 的儲值訂單。

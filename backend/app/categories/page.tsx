@@ -255,7 +255,7 @@ export default function CategoriesPage() {
     <AdminLayout
       pageTitle="菜單管理"
     >
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-neutral-800">菜單列表</h2>
           <button
