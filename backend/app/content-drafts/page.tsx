@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
 type DraftStatus = 'pending' | 'approved' | 'published' | 'archived'
@@ -140,7 +141,7 @@ export default function ContentDraftsPage() {
 
         {/* 草稿列表（依日期分組） */}
         {loading ? (
-          <div className="flex justify-center py-16 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : Object.keys(grouped).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-neutral-400 gap-2">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
 interface Analysis {
@@ -160,7 +161,7 @@ export default function CompetitorIntelPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : tab === 'report' ? (
           <div className="space-y-4">
             {analyses.length === 0 ? (

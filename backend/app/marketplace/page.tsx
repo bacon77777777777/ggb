@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -21,6 +23,7 @@ interface MarketplaceListing {
 type StatusFilter = 'all' | 'active' | 'sold' | 'cancelled'
 
 export default function MarketplaceAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [listings, setListings] = useState<MarketplaceListing[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -75,100 +78,69 @@ export default function MarketplaceAdminPage() {
     }
   }
 
-  const handleForceCancel = async (listing: MarketplaceListing) => {
-    if (!window.confirm(`確定要強制下架這筆上架嗎？\n\n${listing.prize_level}賞 ${listing.prize_name}\n售價：${listing.price} G`)) {
-      return
-    }
-
-    try {
-      const res = await fetch('/api/admin/marketplace/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ listingId: listing.id, sellerId: listing.seller_id }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '下架失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '下架失敗')
-        return
-      }
-
-      setListings((prev) =>
-        prev.map((item) =>
-          item.id === listing.id ? { ...item, status: 'cancelled' } : item
-        )
-      )
-    } catch (e) {
-      console.error('Unexpected error cancelling listing:', e)
-      alert('下架失敗')
-    }
+  const handleForceCancel = (listing: MarketplaceListing) => {
+    confirm({
+      title: '強制下架',
+      message: `確定要強制下架這筆上架嗎？\n${listing.prize_level}賞 ${listing.prize_name}｜售價：${listing.price} G`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/admin/marketplace/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ listingId: listing.id, sellerId: listing.seller_id }),
+          })
+          if (!res.ok) { console.error('下架失敗'); return }
+          const data = await res.json().catch(() => null)
+          if (data?.success) {
+            setListings((prev) => prev.map((item) => item.id === listing.id ? { ...item, status: 'cancelled' } : item))
+          }
+        } catch (e) {
+          console.error('Unexpected error cancelling listing:', e)
+        }
+      },
+    })
   }
 
-  const handleClearTestData = async () => {
-    if (!window.confirm('此操作會清空所有市集上架、交易紀錄與回收池資料，僅建議在測試環境使用，確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsClearing(true)
-      const res = await fetch('/api/admin/marketplace/clear', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '清除測試資料失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert('清除測試資料失敗')
-        return
-      }
-
-      await fetchListings()
-      alert('已清除市集與回收池測試資料')
-    } catch (e) {
-      console.error('Unexpected error clearing test data:', e)
-      alert('清除測試資料失敗')
-    } finally {
-      setIsClearing(false)
-    }
+  const handleClearTestData = () => {
+    confirm({
+      title: '清空市集資料',
+      message: '此操作會清空所有市集上架、交易紀錄與回收池資料，僅建議在測試環境使用，確定要繼續嗎？',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setIsClearing(true)
+          const res = await fetch('/api/admin/marketplace/clear', { method: 'POST', credentials: 'include' })
+          if (!res.ok) { console.error('清除測試資料失敗'); return }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error clearing test data:', e)
+        } finally {
+          setIsClearing(false)
+        }
+      },
+    })
   }
 
-  const handleSeedTestData = async () => {
-    if (
-      !window.confirm(
-        '此操作會從倉庫挑選可上架的賞項（status=in_warehouse、可交易、且有圖片），建立市集上架測試資料。確定要繼續嗎？'
-      )
-    ) {
-      return
-    }
-
-    try {
-      setIsSeeding(true)
-      const res = await fetch('/api/admin/marketplace/seed', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '建立假資料失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '建立假資料失敗')
-        return
-      }
-
-      await fetchListings()
-      alert(`已建立 ${data.created || 0} 筆市集上架測試資料`)
-    } catch (e) {
-      console.error('Unexpected error seeding marketplace listings:', e)
-      alert('建立假資料失敗')
-    } finally {
-      setIsSeeding(false)
-    }
+  const handleSeedTestData = () => {
+    confirm({
+      title: '建立假資料',
+      message: '此操作會從倉庫挑選可上架的賞項（status=in_warehouse、可交易、且有圖片），建立市集上架測試資料。確定要繼續嗎？',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setIsSeeding(true)
+          const res = await fetch('/api/admin/marketplace/seed', { method: 'POST', credentials: 'include' })
+          if (!res.ok) { console.error('建立假資料失敗'); return }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error seeding marketplace listings:', e)
+        } finally {
+          setIsSeeding(false)
+        }
+      },
+    })
   }
 
   const filteredListings = useMemo(() => {
@@ -431,6 +403,7 @@ export default function MarketplaceAdminPage() {
           </div>
         </PageCard>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

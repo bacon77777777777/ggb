@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
@@ -11,6 +13,7 @@ import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 
 export default function SmallItemsPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const router = useRouter()
   const { addLog } = useLog()
   const [smallItems, setSmallItems] = useState<SmallItem[]>([])
@@ -129,13 +132,18 @@ export default function SmallItemsPage() {
     }
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    const confirmed = window.confirm(`確定刪除「${name}」嗎？`)
-    if (!confirmed) return
-    const res = await fetch(`/api/admin/small-items/${id}`, { method: 'DELETE' })
-    if (!res.ok) return
-    setSmallItems(prev => prev.filter(item => item.id !== id))
-    await addLog('delete', name, `刪除小物 ID=${id}`, 'success')
+  const handleDelete = (id: string, name: string) => {
+    confirm({
+      title: '刪除小物',
+      message: `確定刪除「${name}」嗎？`,
+      type: 'danger',
+      onConfirm: async () => {
+        const res = await fetch(`/api/admin/small-items/${id}`, { method: 'DELETE' })
+        if (!res.ok) return
+        setSmallItems(prev => prev.filter(item => item.id !== id))
+        await addLog('delete', name, `刪除小物 ID=${id}`, 'success')
+      },
+    })
   }
 
   // 密度樣式
@@ -269,6 +277,7 @@ export default function SmallItemsPage() {
         </PageCard>
         </div>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

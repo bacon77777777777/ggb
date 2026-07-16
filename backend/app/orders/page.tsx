@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useLog } from '@/contexts/LogContext'
@@ -13,6 +14,7 @@ import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
 export default function OrdersPage() {
   const { setShipments, highlightedOrderId, setHighlightedOrderId } = useShipment()
   const { addLog } = useLog()
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
@@ -75,6 +77,7 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
+      setIsLoading(true)
       const res = await fetch('/api/admin/orders', { method: 'GET' })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
@@ -111,6 +114,8 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error('Error in fetchOrders:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -1361,7 +1366,9 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredShipments.length === 0 ? (
+                  {isLoading ? (
+                    <TableSkeleton rows={8} cols={2 + Object.values(visibleColumns).filter(Boolean).length} />
+                  ) : filteredShipments.length === 0 ? (
                     <tr>
                       <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} className="py-12 text-center text-neutral-500">
                         沒有找到符合條件的訂單

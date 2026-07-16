@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -30,6 +32,7 @@ interface SellListing {
 type StatusFilter = 'all' | 'draft' | 'active' | 'sold' | 'hidden'
 
 export default function SellAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [listings, setListings] = useState<SellListing[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -118,69 +121,64 @@ export default function SellAdminPage() {
     }
   }
 
-  const handleClear = async () => {
-    if (!window.confirm('此操作會清空所有販售上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsClearing(true)
-      let res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        const didBootstrap = await maybeBootstrap(String(data?.error || ''))
-        if (didBootstrap) {
-          res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+  const handleClear = () => {
+    confirm({
+      title: '清空販售資料',
+      message: '此操作會清空所有販售上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setIsClearing(true)
+          let res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+          if (!res.ok) {
+            const data = await res.json().catch(() => null)
+            const didBootstrap = await maybeBootstrap(String(data?.error || ''))
+            if (didBootstrap) {
+              res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+            }
+            if (!res.ok) {
+              console.error('清除失敗')
+              return
+            }
+          }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error clearing sell listings:', e)
+        } finally {
+          setIsClearing(false)
         }
-        if (!res.ok) {
-          const data2 = await res.json().catch(() => null)
-          alert(data2?.error || data?.error || '清除失敗')
-          return
-        }
-      }
-      await fetchListings()
-      alert('已清除販售測試資料')
-    } catch (e) {
-      console.error('Unexpected error clearing sell listings:', e)
-      alert('清除失敗')
-    } finally {
-      setIsClearing(false)
-    }
+      },
+    })
   }
 
-  const handleSeed = async () => {
-    if (!window.confirm('此操作會新增「寶可夢實體卡」販售假資料（含多規格/多圖），確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsSeeding(true)
-      let res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        const didBootstrap = await maybeBootstrap(String(data?.error || ''))
-        if (didBootstrap) {
-          res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+  const handleSeed = () => {
+    confirm({
+      title: '建立假資料',
+      message: '此操作會新增「寶可夢實體卡」販售假資料（含多規格/多圖），確定要繼續嗎？',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setIsSeeding(true)
+          let res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+          if (!res.ok) {
+            const data = await res.json().catch(() => null)
+            const didBootstrap = await maybeBootstrap(String(data?.error || ''))
+            if (didBootstrap) {
+              res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+            }
+            if (!res.ok) {
+              console.error('建立假資料失敗')
+              return
+            }
+          }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error seeding sell listings:', e)
+        } finally {
+          setIsSeeding(false)
         }
-        if (!res.ok) {
-          const data2 = await res.json().catch(() => null)
-          alert(data2?.error || data?.error || '建立假資料失敗')
-          return
-        }
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '建立假資料失敗')
-        return
-      }
-      await fetchListings()
-      alert(`已建立 ${data.created || 0} 筆販售假資料`)
-    } catch (e) {
-      console.error('Unexpected error seeding sell listings:', e)
-      alert('建立假資料失敗')
-    } finally {
-      setIsSeeding(false)
-    }
+      },
+    })
   }
 
   const filteredListings = useMemo(() => {
@@ -244,26 +242,25 @@ export default function SellAdminPage() {
     }
   }
 
-  const deleteListing = async (id: number, title: string) => {
-    if (!window.confirm(`確定要刪除販售上架「${title || id}」嗎？此動作無法復原。`)) return
-    const res = await fetch(`/api/admin/sell/listings?id=${encodeURIComponent(String(id))}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => null)
-      throw new Error(data?.error || '刪除失敗')
-    }
-    setListings((prev) => prev.filter((x) => x.id !== id))
-    setExpandedListings((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-    setSelectedListings((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
+  const deleteListing = (id: number, title: string) => {
+    confirm({
+      title: '刪除上架',
+      message: `確定要刪除販售上架「${title || id}」嗎？此動作無法復原。`,
+      type: 'danger',
+      onConfirm: async () => {
+        const res = await fetch(`/api/admin/sell/listings?id=${encodeURIComponent(String(id))}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => null)
+          console.error(data?.error || '刪除失敗')
+          return
+        }
+        setListings((prev) => prev.filter((x) => x.id !== id))
+        setExpandedListings((prev) => { const next = new Set(prev); next.delete(id); return next })
+        setSelectedListings((prev) => { const next = new Set(prev); next.delete(id); return next })
+      },
     })
   }
 
@@ -577,6 +574,7 @@ export default function SellAdminPage() {
           </table>
         </div>
       </PageCard>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

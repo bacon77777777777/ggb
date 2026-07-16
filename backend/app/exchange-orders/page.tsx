@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -33,6 +35,7 @@ const stepLabel = (step: number) => {
 }
 
 export default function ExchangeOrdersAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -87,13 +90,7 @@ export default function ExchangeOrdersAdminPage() {
     }
   }
 
-  const handlePatch = async (order: OrderRow, patch: { step?: number; done?: boolean }) => {
-    const nextDone = typeof patch.done === 'boolean' ? patch.done : order.done
-    if (nextDone && !order.done) {
-      const ok = window.confirm(`確定要將此交換紀錄標記為已完成嗎？\n\nOrder：${order.id}`)
-      if (!ok) return
-    }
-
+  const doPatch = async (order: OrderRow, patch: { step?: number; done?: boolean }) => {
     const prev = order
     const next: OrderRow = {
       ...order,
@@ -102,7 +99,6 @@ export default function ExchangeOrdersAdminPage() {
       updated_at: new Date().toISOString(),
     }
     setOrders((rows) => rows.map((r) => (r.id === order.id ? next : r)))
-
     try {
       const res = await fetch('/api/admin/exchange/orders', {
         method: 'PATCH',
@@ -111,13 +107,25 @@ export default function ExchangeOrdersAdminPage() {
         body: JSON.stringify({ id: order.id, ...patch }),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || '更新失敗')
+        setOrders((rows) => rows.map((r) => (r.id === prev.id ? prev : r)))
       }
     } catch (e) {
       console.error('Unexpected error updating exchange order:', e)
       setOrders((rows) => rows.map((r) => (r.id === prev.id ? prev : r)))
-      alert('更新失敗')
+    }
+  }
+
+  const handlePatch = (order: OrderRow, patch: { step?: number; done?: boolean }) => {
+    const nextDone = typeof patch.done === 'boolean' ? patch.done : order.done
+    if (nextDone && !order.done) {
+      confirm({
+        title: '標記完成',
+        message: `確定要將此交換紀錄標記為已完成嗎？\n\nOrder：${order.id}`,
+        type: 'info',
+        onConfirm: () => doPatch(order, patch),
+      })
+    } else {
+      doPatch(order, patch)
     }
   }
 
@@ -330,6 +338,7 @@ export default function ExchangeOrdersAdminPage() {
           </div>
         </PageCard>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }
