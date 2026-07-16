@@ -748,6 +748,7 @@ function UsersPage() {
             totalCount={sortedUsers.length}
             visibleColumns={visibleColumns}
             emptyMessage="沒有找到符合條件的用戶"
+            isLoading={isLoading}
           />
         </PageCard>
       </div>

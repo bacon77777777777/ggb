@@ -386,6 +386,7 @@ export default function DrawsPage() {
               totalCount={sortedRecords.length}
               visibleColumns={visibleColumns}
               emptyMessage="無相關紀錄"
+              isLoading={isLoading}
             />
           </div>
         </PageCard>

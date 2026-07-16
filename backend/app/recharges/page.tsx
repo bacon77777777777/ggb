@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, DateRangePicker, type Column } from '@/components'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
@@ -359,7 +360,7 @@ export default function RechargesPage() {
           </button>
         </div>
 
-        {!isLoading && (() => {
+        {isLoading ? <CardSkeleton rows={6} /> : (() => {
           const successRecs = sortedRecords.filter(r => r.status === 'success')
 
           // 各方式統計

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment, ReactNode } from 'react'
 import SortableTableHeader from './SortableTableHeader'
+import { TableSkeleton } from './ui/TableSkeleton'
 
 export interface Column<T> {
   key: string
@@ -53,6 +54,9 @@ interface DataTableProps<T> {
   
   // 空狀態
   emptyMessage?: string
+
+  // 初始載入中（顯示骨架，避免閃爍「沒有資料」）
+  isLoading?: boolean
   
   // 可見欄位
   visibleColumns?: { [key: string]: boolean }
@@ -83,7 +87,8 @@ export default function DataTable<T extends { id: number | string }>({
   isLoadingMore = false,
   totalCount,
   emptyMessage = '沒有資料',
-  visibleColumns
+  visibleColumns,
+  isLoading = false
 }: DataTableProps<T>) {
   const observerTarget = useRef<HTMLDivElement>(null)
 
@@ -216,7 +221,9 @@ export default function DataTable<T extends { id: number | string }>({
           </tr>
         </thead>
         <tbody>
-          {displayData.length === 0 ? (
+          {isLoading ? (
+            <TableSkeleton rows={8} cols={filteredColumns.length + (selectable ? 1 : 0)} />
+          ) : displayData.length === 0 ? (
             <tr>
               <td
                 colSpan={filteredColumns.length + (selectable ? 1 : 0)}

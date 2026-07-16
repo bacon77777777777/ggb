@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal, FileInput } from '@/components'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
@@ -989,11 +990,13 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedProducts.length === 0 ? (
+                {isLoading ? (
+                  <TableSkeleton rows={8} cols={10} />
+                ) : sortedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={20} className="text-center">
                       <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
-                        <span>{isLoading ? '載入中...' : '沒有找到符合條件的商品'}</span>
+                        <span>沒有找到符合條件的商品</span>
                       </div>
                     </td>
                   </tr>
