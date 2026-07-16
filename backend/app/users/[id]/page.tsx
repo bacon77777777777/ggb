@@ -33,11 +33,12 @@ interface User {
 
 interface OrderItem {
   id: number
-  product_name: string
-  prize_name: string
-  prize_level: string
   quantity: number
+  price: number
   product_id: number
+  product_prize_id: number
+  product: { name: string } | null
+  prize: { name: string; level: string } | null
 }
 
 interface Order {
@@ -238,7 +239,7 @@ export default function UserDetailPage() {
           if (['submitted', 'processing', 'picked_up', 'shipping', 'delivered'].includes(order.status)) {
             order.items.forEach(item => {
               // Key: product_id-prize_level. Fallback to name if id missing (legacy compat)
-              const key = item.product_id ? `${item.product_id}-${item.prize_level}` : `${item.product_name}-${item.prize_level}`
+              const key = item.product_id ? `${item.product_id}-${item.prize?.level ?? ''}` : `${item.product?.name ?? ''}-${item.prize?.level ?? ''}`
               submittedItemsCount.set(key, (submittedItemsCount.get(key) || 0) + (item.quantity || 1))
             })
           }
