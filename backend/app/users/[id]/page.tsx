@@ -33,7 +33,6 @@ interface User {
 
 interface OrderItem {
   id: number
-  quantity: number
   price: number
   product_id: number
   product_prize_id: number
@@ -240,7 +239,7 @@ export default function UserDetailPage() {
             order.items.forEach(item => {
               // Key: product_id-prize_level. Fallback to name if id missing (legacy compat)
               const key = item.product_id ? `${item.product_id}-${item.prize?.level ?? ''}` : `${item.product?.name ?? ''}-${item.prize?.level ?? ''}`
-              submittedItemsCount.set(key, (submittedItemsCount.get(key) || 0) + (item.quantity || 1))
+              submittedItemsCount.set(key, (submittedItemsCount.get(key) || 0) + 1)
             })
           }
         })

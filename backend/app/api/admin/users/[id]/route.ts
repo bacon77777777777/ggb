@@ -44,11 +44,11 @@ export async function GET(
             *,
             items:order_items (
               id,
-              product_name,
-              prize_name,
-              prize_level,
-              quantity,
-              product_id
+              price,
+              product_id,
+              product_prize_id,
+              product:products ( name ),
+              prize:product_prizes ( name, level )
             )
           `
         )
