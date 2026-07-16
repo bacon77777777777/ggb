@@ -4,6 +4,35 @@
 
 ---
 
+## v2026.07.12｜2026-07-16｜Design System — 商品品項 form + Toolbar 高度統一
+
+### 商品品項卡片重設計（products/[id]/page.tsx）
+- 每個欄位加上明確 `<label>`：品項名稱、等級、總數量、剩餘庫存、抽中機率、分解設定
+- 卡片結構：標頭（品項N + 剩餘/總計 + 刪除）+ 主體（圖片+名稱橫排、等級、3欄數量、分解設定）
+- 卡片改用 `bg-white rounded-xl`，標頭 `bg-neutral-50 border-b`
+- 轉蛋／盒玩分解設定改為禁用表單（SelectField disabled + input disabled），而非純文字
+
+### Toolbar 高度統一 — 全站三種高度收斂為 `h-9`（36px）
+**根本原因**：
+- text 按鈕 `py-2 border`（38px）≠ 匯出CSV `py-2 border-2`（40px）≠ icon 按鈕 `w-10 h-10`（40px）≠ 搜尋框 `py-1.5`（34px）
+
+**SearchToolbar 修正**：
+- 新增按鈕：`py-2` → `h-9`
+- 匯出CSV：`py-2 border-2` → `h-9 border`
+- 搜尋框：`py-1.5` → `h-9`
+- icon 按鈕（密度/篩選/欄位）：`w-10 h-10 border-2` → `w-9 h-9 border`
+- 批量操作按鈕：`py-1.5` → `h-9`
+
+**Picker 觸發器修正**（DatePicker、DateRangePicker、YearMonthPicker）：
+- 全部由 `py-1.5 / py-2` → `h-9`
+
+**頁面自訂按鈕修正**：
+- products/page.tsx：智能批量匯入、上傳圖片 `py-2` → `h-9`
+- recharges/page.tsx：近三個月快選月份按鈕 + 匯出CSV
+- reports 8 個子頁面：匯出CSV `py-2 border-2` → `h-9 border`
+
+---
+
 ## v2026.07.11｜2026-07-16｜Design System — 頁面佈局標準化
 
 ### 根本問題修正：雙層 padding

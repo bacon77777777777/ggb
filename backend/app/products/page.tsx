@@ -756,14 +756,14 @@ export default function ProductsPage() {
               <>
                 <button
                   onClick={() => setIsXlsxOpen(true)}
-                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   智能批量匯入
                 </button>
                 <button
                   onClick={() => zipRef.current?.click()}
                   disabled={zipUploading}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="h-9 px-4 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium whitespace-nowrap"
                   title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
                 >
                   {zipUploading ? '上傳中...' : '上傳圖片'}

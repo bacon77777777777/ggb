@@ -79,7 +79,7 @@ export default function YearMonthPicker({
       <div
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 cursor-pointer flex items-center justify-between"
+        className="w-full h-9 px-3 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 cursor-pointer flex items-center justify-between"
       >
         <span className={year && month ? 'text-neutral-900' : 'text-neutral-400'}>
           {getDisplayText()}

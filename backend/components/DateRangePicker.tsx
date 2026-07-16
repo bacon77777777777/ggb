@@ -188,7 +188,7 @@ export default function DateRangePicker({
       <div
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm cursor-pointer hover:border-neutral-300 transition-colors flex items-center justify-between"
+        className="w-full h-9 px-3 bg-white border border-neutral-200 rounded-lg text-sm cursor-pointer hover:border-neutral-300 transition-colors flex items-center justify-between"
       >
         <span className={startDate || endDate ? 'text-neutral-900' : 'text-neutral-400'}>
           {getDisplayText()}

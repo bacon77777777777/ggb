@@ -751,13 +751,16 @@ export default function EditProductPage() {
             <div className="space-y-2">
               <div className="grid grid-cols-3 gap-3">
                 {prizes.map((prize, index) => (
-                  <div key={prize.id} className="border border-neutral-200 rounded-lg p-3 bg-neutral-50 hover:border-primary/50 transition-colors">
-                    {/* 品項標頭 */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-neutral-500">品項 {index + 1}</span>
+                  <div key={prize.id} className="border border-neutral-200 rounded-xl bg-white hover:border-primary/40 hover:shadow-sm transition-all">
+
+                    {/* ── 卡片標頭 ── */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-neutral-50 border-b border-neutral-100 rounded-t-xl">
+                      <span className="text-xs font-semibold text-neutral-600">品項 {index + 1}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-neutral-400">
-                          {prize.remaining}<span className="text-neutral-300">/</span>{prize.total}
+                        <span className="text-xs text-neutral-400">
+                          剩 <span className="font-semibold text-neutral-700 font-mono">{prize.remaining}</span>
+                          <span className="mx-0.5 text-neutral-300">/</span>
+                          <span className="font-semibold text-neutral-700 font-mono">{prize.total}</span>
                         </span>
                         {!isVerifiable && (
                           <button
@@ -769,10 +772,10 @@ export default function EditProductPage() {
                               }
                               setPrizes(prizes.filter((_, i) => i !== index))
                             }}
-                            className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
+                            className="w-5 h-5 flex items-center justify-center rounded text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="刪除此品項"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
@@ -780,59 +783,57 @@ export default function EditProductPage() {
                       </div>
                     </div>
 
-                    {/* 主內容：縮圖 + 欄位 */}
-                    <div className="flex gap-2">
-                      {/* 可點擊圖片縮圖 */}
-                      <label className="flex-shrink-0 cursor-pointer group relative">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              const updated = [...prizes]
-                              updated[index].imageFile = file
-                              updated[index].imagePreview = URL.createObjectURL(file)
-                              updated[index].image = ''
-                              setPrizes(updated)
-                            }
-                          }}
-                        />
-                        <div className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
-                          {prize.imagePreview ? (
-                            <img src={prize.imagePreview} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                          )}
-                        </div>
-                        {prize.imagePreview && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              const updated = [...prizes]
-                              updated[index].imageFile = null
-                              updated[index].imagePreview = ''
-                              updated[index].image = ''
-                              setPrizes(updated)
-                            }}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
-                          >
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                      </label>
+                    {/* ── 卡片主體 ── */}
+                    <div className="p-3 space-y-3">
 
-                      {/* 欄位 */}
-                      <div className="flex-1 space-y-1.5 min-w-0">
-                        {/* 名稱 + 等級 */}
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {/* 名稱：全類型可改 */}
+                      {/* 圖片 + 品項名稱 */}
+                      <div className="flex items-start gap-2.5">
+                        <label className="flex-shrink-0 cursor-pointer group relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                const updated = [...prizes]
+                                updated[index].imageFile = file
+                                updated[index].imagePreview = URL.createObjectURL(file)
+                                updated[index].image = ''
+                                setPrizes(updated)
+                              }
+                            }}
+                          />
+                          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-neutral-50 flex items-center justify-center group-hover:border-primary transition-colors">
+                            {prize.imagePreview ? (
+                              <img src={prize.imagePreview} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </div>
+                          {prize.imagePreview && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                const updated = [...prizes]
+                                updated[index].imageFile = null
+                                updated[index].imagePreview = ''
+                                updated[index].image = ''
+                                setPrizes(updated)
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                            >
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </label>
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">品項名稱</label>
                           <input
                             type="text"
                             value={prize.name}
@@ -841,44 +842,50 @@ export default function EditProductPage() {
                               updated[index].name = e.target.value
                               setPrizes(updated)
                             }}
-                            className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                            placeholder="名稱"
+                            className="w-full px-2.5 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                            placeholder="例：A賞 草莓大耳狗吊飾"
                           />
-                          {/* 等級：盒玩/轉蛋固定普通；一番賞/抽卡/自製賞可選 */}
-                          {isGachaType ? (
-                            <div className="w-full px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400">
-                              普通
-                            </div>
-                          ) : (
-                            <SelectField
-                              value={prize.level}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                const newLevel = e.target.value
-                                updated[index].level = newLevel
-                                if (isLastOneLevel(newLevel)) {
-                                  const fixed = updated[index]
-                                  const ensureOne = (v: number) => (v && v > 0 ? Math.min(v, 1) : 1)
-                                  fixed.total = ensureOne(fixed.total)
-                                  fixed.remaining = Math.max(0, Math.min(fixed.remaining, 1))
-                                  fixed.probability = 0
-                                }
-                                setPrizes(updated)
-                              }}
-                            >
-                              <option value="">等級</option>
-                              {(formData.type === 'card' ? cardLevels : ichibanLevels).map(level => (
-                                <option key={level.value} value={level.value}>{level.label}</option>
-                              ))}
-                            </SelectField>
-                          )}
                         </div>
+                      </div>
 
-                        {/* 數量 + 剩餘 + 機率 */}
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {/* 數量：一番賞/抽卡/自製賞唯讀；盒玩/轉蛋可疊加 */}
+                      {/* 等級 */}
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-500 mb-1">等級</label>
+                        {isGachaType ? (
+                          <div className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400">
+                            普通
+                          </div>
+                        ) : (
+                          <SelectField
+                            value={prize.level}
+                            onChange={(e) => {
+                              const updated = [...prizes]
+                              const newLevel = e.target.value
+                              updated[index].level = newLevel
+                              if (isLastOneLevel(newLevel)) {
+                                const fixed = updated[index]
+                                const ensureOne = (v: number) => (v && v > 0 ? Math.min(v, 1) : 1)
+                                fixed.total = ensureOne(fixed.total)
+                                fixed.remaining = Math.max(0, Math.min(fixed.remaining, 1))
+                                fixed.probability = 0
+                              }
+                              setPrizes(updated)
+                            }}
+                          >
+                            <option value="">— 選擇等級 —</option>
+                            {(formData.type === 'card' ? cardLevels : ichibanLevels).map(level => (
+                              <option key={level.value} value={level.value}>{level.label}</option>
+                            ))}
+                          </SelectField>
+                        )}
+                      </div>
+
+                      {/* 數量資訊：3 欄 */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
                           {isVerifiable ? (
-                            <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500">
+                            <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500 text-center">
                               {prize.total || 0}
                             </div>
                           ) : (
@@ -893,17 +900,21 @@ export default function EditProductPage() {
                                 updated[index].remaining = Math.max(0, prize.remaining + delta)
                                 setPrizes(updated)
                               }}
-                              className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                              className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
                               min="0"
-                              placeholder="數量"
+                              placeholder="0"
                             />
                           )}
-                          {/* 剩餘：全類型唯讀 */}
-                          <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500">
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">剩餘庫存</label>
+                          <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-500 text-center">
                             {prize.remaining}
                           </div>
-                          {/* 機率 */}
-                          <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">抽中機率</label>
+                          <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 text-center">
                             {isLastOneLevel(prize.level)
                               ? '最後賞'
                               : (calculatedTotalCount > 0 && prize.total > 0
@@ -914,84 +925,100 @@ export default function EditProductPage() {
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 低階賞資源庫按鈕 */}
-                    {['E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞'].includes(prize.level) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedPrizeIndex(index)
-                          setShowSmallItemLibrary(true)
-                          setLibrarySearchQuery('')
-                          setLibrarySelectedCategory('all')
-                        }}
-                        className="mt-2 w-full px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        從資源庫選擇
-                      </button>
-                    )}
+                      {/* 低階賞資源庫按鈕 */}
+                      {['E賞', 'F賞', 'G賞', 'H賞', 'I賞', 'J賞'].includes(prize.level) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPrizeIndex(index)
+                            setShowSmallItemLibrary(true)
+                            setLibrarySearchQuery('')
+                            setLibrarySelectedCategory('all')
+                          }}
+                          className="w-full px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                          從資源庫選擇
+                        </button>
+                      )}
 
-                    {/* 分解設定 */}
-                    {formData.type !== 'gacha' && formData.type !== 'blindbox' ? (
-                      <div className="mt-2 pt-2 border-t border-neutral-100">
-                        <div className="flex gap-2 items-start">
-                          <div className="w-28 flex-shrink-0">
-                            <SelectField
-                              compact
-                              value={prize.decompose_type}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                updated[index].decompose_type = e.target.value as 'auto' | 'percent' | 'fixed'
-                                updated[index].decompose_value = null
-                                setPrizes(updated)
-                              }}
-                            >
-                              <option value="auto">智能分解</option>
-                              <option value="percent">百分比 (%)</option>
-                              <option value="fixed">固定代幣</option>
-                            </SelectField>
-                          </div>
-                          {prize.decompose_type === 'auto' ? (
-                            <div className="flex-1 px-2 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-xs text-neutral-500">
-                              庫存≤3 → 抽價20%；庫存≥4 → 10代幣
+                      {/* 分解設定 */}
+                      <div className="pt-2.5 border-t border-neutral-100">
+                        <label className="block text-xs font-medium text-neutral-500 mb-1.5">分解設定</label>
+                        {formData.type !== 'gacha' && formData.type !== 'blindbox' ? (
+                          <div className="flex gap-2 items-start">
+                            <div className="w-28 flex-shrink-0">
+                              <SelectField
+                                compact
+                                value={prize.decompose_type}
+                                onChange={(e) => {
+                                  const updated = [...prizes]
+                                  updated[index].decompose_type = e.target.value as 'auto' | 'percent' | 'fixed'
+                                  updated[index].decompose_value = null
+                                  setPrizes(updated)
+                                }}
+                              >
+                                <option value="auto">智能分解</option>
+                                <option value="percent">百分比 (%)</option>
+                                <option value="fixed">固定代幣</option>
+                              </SelectField>
                             </div>
-                          ) : (
-                            <div className="flex-1">
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={prize.decompose_value ?? ''}
-                                  onChange={(e) => {
-                                    const updated = [...prizes]
-                                    updated[index].decompose_value = e.target.value === '' ? null : parseInt(e.target.value) || null
-                                    setPrizes(updated)
-                                  }}
-                                  className="w-full px-2 py-1 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                                  placeholder={prize.decompose_type === 'percent' ? '例如 20' : '例如 50'}
-                                />
-                                {prize.decompose_type === 'percent' && (
-                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">%</span>
+                            {prize.decompose_type === 'auto' ? (
+                              <div className="flex-1 px-2 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-xs text-neutral-500 leading-relaxed">
+                                庫存 ≤ 3 → 抽價 20%；庫存 ≥ 4 → 10 代幣
+                              </div>
+                            ) : (
+                              <div className="flex-1">
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={prize.decompose_value ?? ''}
+                                    onChange={(e) => {
+                                      const updated = [...prizes]
+                                      updated[index].decompose_value = e.target.value === '' ? null : parseInt(e.target.value) || null
+                                      setPrizes(updated)
+                                    }}
+                                    className="w-full px-2 py-1 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                                    placeholder={prize.decompose_type === 'percent' ? '例如 20' : '例如 50'}
+                                  />
+                                  {prize.decompose_type === 'percent' && (
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">%</span>
+                                  )}
+                                </div>
+                                {prize.decompose_type === 'percent' && prize.decompose_value && (
+                                  <p className="text-xs text-neutral-400 mt-0.5">
+                                    預估：{Math.max(1, Math.floor(parseInt(formData.price || '0') * prize.decompose_value / 100))} 代幣
+                                  </p>
                                 )}
                               </div>
-                              {prize.decompose_type === 'percent' && prize.decompose_value && (
-                                <p className="text-xs text-neutral-400 mt-0.5">
-                                  預估：{Math.max(1, Math.floor(parseInt(formData.price || '0') * prize.decompose_value / 100))} 代幣
-                                </p>
-                              )}
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex gap-2 items-center">
+                            <div className="w-28 flex-shrink-0">
+                              <SelectField compact value="fixed" disabled>
+                                <option value="fixed">固定代幣</option>
+                              </SelectField>
                             </div>
-                          )}
-                        </div>
+                            <div className="flex-1 relative">
+                              <input
+                                type="number"
+                                value={10}
+                                disabled
+                                readOnly
+                                className="w-full px-2 py-0.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400 cursor-not-allowed font-mono"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">幣</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="mt-2 pt-2 border-t border-neutral-100">
-                        <p className="text-xs text-neutral-400">轉蛋／盒玩固定分解 10 代幣</p>
-                      </div>
-                    )}
+
+                    </div>
                   </div>
                 ))}
               </div>

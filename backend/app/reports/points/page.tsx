@@ -88,7 +88,7 @@ export default function PointsReportPage() {
           <button
             onClick={handleExport}
             disabled={!rows.length}
-            className="ml-auto px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
+            className="ml-auto h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
           >
             匯出 CSV
           </button>
