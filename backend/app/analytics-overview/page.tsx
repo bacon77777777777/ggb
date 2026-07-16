@@ -391,7 +391,7 @@ export default function AnalyticsOverviewPage() {
               ) : !c?.bars.length ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-neutral-400">暫無資料</div>
               ) : (
-                <div ref={lineChartContainerRef} style={{ flex: 1, minHeight: 200 }}>
+                <div ref={lineChartContainerRef} style={{ flex: 1, minHeight: 200, maxHeight: 360 }}>
                   <LineChart
                     data={[
                       ...c.bars.map(b => ({ label: b.label, value: b.recharges, type: '儲值金額（元）' })),
@@ -403,9 +403,8 @@ export default function AnalyticsOverviewPage() {
                     scale={{ color: { range: ['#9333ea', '#10b981'] } } as any}
                     height={lineChartH}
                     autoFit
-                    padding={[8, 8, 28, 52]}
+                    padding={[8, 8, 8, 52]}
                     insetTop={8}
-                    insetBottom={0}
                     axis={{
                       x: { tick: false, line: false, label: { autoRotate: false, style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => { const n = c.bars.length; if (n === 24) { const h = parseInt(v); return h % 3 === 0 ? String(h) : '' } return v } } },
                       y: { grid: true, tick: false, line: false, label: { style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: any) => Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v) } },
