@@ -1,165 +1,65 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
-import DatePicker from '@/components/DatePicker'
+import DateRangePicker from '@/components/DateRangePicker'
 
-// ── Chart helpers ─────────────────────────────────────────────────────────────
+// ── Dynamic chart imports (Canvas, no SSR) ────────────────────────────────────
 
-function sparkPath(data: number[], w: number, h: number) {
-  if (data.length < 2) return { line: '', area: '' }
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const range = max - min || 1
-  const step = w / (data.length - 1)
-  const pts = data.map((v, i) => {
-    const x = i * step
-    const y = h - 4 - ((v - min) / range) * (h - 8)
-    return [+(x.toFixed(1)), +(y.toFixed(1))]
-  })
-  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
-  const area = [
-    ...pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`),
-    `L${pts[pts.length - 1][0]},${h}`,
-    `L0,${h}`,
-    'Z',
-  ].join(' ')
-  return { line, area }
-}
+const TinyArea = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Tiny.Area })),
+  { ssr: false }
+)
 
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
+const PieChart = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Pie })),
+  { ssr: false, loading: () => <div className="w-40 h-40 rounded-full border-[14px] border-neutral-100 animate-pulse mx-auto" /> }
+)
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+const ColumnChart = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Column })),
+  { ssr: false, loading: () => <div className="h-[200px] bg-neutral-50 rounded animate-pulse" /> }
+)
 
-let _sparkId = 0
-function Sparkline({ data, color = '#3b82f6', h = 40, w = 100 }: { data: number[]; color?: string; h?: number; w?: number }) {
-  const [uid] = useState(() => `sg-${++_sparkId}`)
-  if (!data.length) return <svg width={w} height={h} />
-  const { line, area } = sparkPath(data, w, h)
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const COLORS = ['#1677ff', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
+
+// ── Tiny sparkline wrapper ────────────────────────────────────────────────────
+
+function Spark({ data, yField, stroke, fill }: { data: any[]; yField: string; stroke: string; fill: string }) {
+  if (data.length < 2) return <div style={{ width: 80, height: 36 }} />
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
-      <defs>
-        <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {area && <path d={area} fill={`url(#${uid})`} />}
-      {line && <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />}
-    </svg>
-  )
-}
-
-function DonutChart({ categories }: { categories: { label: string; amount: number }[] }) {
-  const total = categories.reduce((s, c) => s + c.amount, 0)
-  const R = 50, CX = 60, CY = 60, circ = 2 * Math.PI * R
-  let cum = 0
-  return (
-    <div className="flex items-center gap-5">
-      <div style={{ minWidth: 120 }}>
-        <svg width={120} height={120} viewBox="0 0 120 120">
-          {total === 0 ? (
-            <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f0f0f0" strokeWidth="14" />
-          ) : (
-            categories.map((c, i) => {
-              const frac = c.amount / total
-              const dashLen = frac * circ
-              const dashOffset = -cum * circ
-              cum += frac
-              return (
-                <circle key={i}
-                  cx={CX} cy={CY} r={R}
-                  fill="none"
-                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                  strokeWidth="14"
-                  strokeDasharray={`${dashLen} ${circ}`}
-                  strokeDashoffset={dashOffset}
-                  style={{ transform: 'rotate(-90deg)', transformOrigin: `${CX}px ${CY}px` }}
-                />
-              )
-            })
-          )}
-          <text x={CX} y={CY - 5} textAnchor="middle" fontSize="10" fill="#9ca3af">總計</text>
-          <text x={CX} y={CY + 10} textAnchor="middle" fontSize="13" fontWeight="700" fill="#111827">{total.toLocaleString()}</text>
-        </svg>
-      </div>
-      <div className="space-y-2 flex-1 min-w-0">
-        {categories.map((c, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm">
-            <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-            <span className="text-neutral-500 truncate flex-1">{c.label}</span>
-            <span className="font-medium text-neutral-800 font-mono">{c.amount.toLocaleString()}</span>
-          </div>
-        ))}
-        {categories.length === 0 && (
-          <p className="text-xs text-neutral-400">暫無資料</p>
-        )}
-      </div>
+    <div style={{ width: 80, height: 36 }}>
+      <TinyArea
+        data={data}
+        xField="x"
+        yField={yField}
+        height={36}
+        autoFit={false}
+        width={80}
+        style={{ fill, stroke, lineWidth: 1.5, shape: 'smooth' } as any}
+        axis={false}
+        tooltip={false}
+        padding={[2, 2, 2, 2]}
+      />
     </div>
   )
 }
 
-function BarChart({ bars, mode }: { bars: { label: string; sales: number; draws: number }[]; mode: 'sales' | 'draws' }) {
-  if (!bars.length) return <div className="flex items-center justify-center h-48 text-sm text-neutral-400">暫無資料</div>
-  const values = bars.map(b => mode === 'sales' ? b.sales : b.draws)
-  const max = Math.max(...values, 1)
-  const W = 560, H = 160, barW = Math.max(6, Math.min(32, (W / bars.length) - 4))
-  const colW = W / bars.length
-  const color = mode === 'sales' ? '#3b82f6' : '#10b981'
-  return (
-    <div className="overflow-x-auto">
-      <svg width={W} height={H + 28} viewBox={`0 0 ${W} ${H + 28}`} style={{ minWidth: W }}>
-        {[0, 0.25, 0.5, 0.75, 1].map(p => {
-          const y = H - p * H
-          return (
-            <g key={p}>
-              <line x1={0} y1={y} x2={W} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-              {p > 0 && (
-                <text x={-4} y={y + 4} textAnchor="end" fontSize="9" fill="#9ca3af">
-                  {mode === 'sales'
-                    ? (max * p >= 10000 ? `${Math.round(max * p / 1000)}k` : Math.round(max * p))
-                    : Math.round(max * p)}
-                </text>
-              )}
-            </g>
-          )
-        })}
-        {bars.map((b, i) => {
-          const v = mode === 'sales' ? b.sales : b.draws
-          const barH = (v / max) * H
-          const x = i * colW + (colW - barW) / 2
-          const y = H - barH
-          return (
-            <g key={i}>
-              <rect x={x} y={y} width={barW} height={barH} fill={color} rx="2" opacity="0.85" />
-              {bars.length <= 20 && (
-                <text x={x + barW / 2} y={H + 14} textAnchor="middle" fontSize="9" fill="#9ca3af">
-                  {b.label}
-                </text>
-              )}
-              {bars.length > 20 && i % 5 === 0 && (
-                <text x={x + barW / 2} y={H + 14} textAnchor="middle" fontSize="9" fill="#9ca3af">
-                  {b.label}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
+// ── Ring progress (SVG) ───────────────────────────────────────────────────────
 
 function RingProgress({ pct, name, draws }: { pct: number; name: string; draws: number }) {
   const R = 30, circ = 2 * Math.PI * R
   const dash = Math.min(pct / 100, 1) * circ
-  const colors = pct >= 60 ? '#3b82f6' : pct >= 30 ? '#10b981' : '#f59e0b'
+  const color = pct >= 60 ? '#1677ff' : pct >= 30 ? '#10b981' : '#f59e0b'
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-[76px] h-[76px]">
         <svg width={76} height={76} viewBox="0 0 76 76">
           <circle cx={38} cy={38} r={R} fill="none" stroke="#f3f4f6" strokeWidth="8" />
-          <circle cx={38} cy={38} r={R} fill="none" stroke={colors} strokeWidth="8"
+          <circle cx={38} cy={38} r={R} fill="none" stroke={color} strokeWidth="8"
             strokeDasharray={`${dash} ${circ}`}
             strokeDashoffset={0}
             style={{ transform: 'rotate(-90deg)', transformOrigin: '38px 38px', transition: 'stroke-dasharray 0.5s' }}
@@ -177,7 +77,7 @@ function RingProgress({ pct, name, draws }: { pct: number; name: string; draws: 
   )
 }
 
-// ── Growth indicator ──────────────────────────────────────────────────────────
+// ── Growth tag ────────────────────────────────────────────────────────────────
 
 function GrowthTag({ value, label }: { value: number; label?: string }) {
   const up = value >= 0
@@ -195,42 +95,41 @@ function GrowthTag({ value, label }: { value: number; label?: string }) {
 
 interface AnalyticsData {
   current: {
-    totalSales: number
-    totalDrawCount: number
-    totalRecharges: number
-    totalVisits: number
-    todaySales: number
-    todayDrawCount: number
-    todayVisits: number
-    yesterdaySales: number
-    yesterdayDrawCount: number
-    yesterdayVisits: number
+    totalSales: number; totalDrawCount: number; totalRecharges: number; totalVisits: number
+    todaySales: number; todayDrawCount: number; todayVisits: number
+    yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number
     convRate: number
     bars: { label: string; sales: number; draws: number }[]
+    spark: { x: number; sales: number; draws: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; salesPct: number; drawsPct: number; convRate: number }[]
   }
   growth: {
-    sales: number
-    draws: number
-    recharges: number
-    visits: number
-    salesToday: number
-    drawsToday: number
-    visitsToday: number
-    convRate: number
+    sales: number; draws: number; recharges: number; visits: number
+    salesToday: number; drawsToday: number; visitsToday: number; convRate: number
   }
 }
 
-type Period = 'today' | 'week' | 'month' | 'year' | 'custom'
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function toDS(d: Date) { return d.toLocaleDateString('sv') }
+
+function mondayOf(d: Date) {
+  const r = new Date(d)
+  const day = d.getDay()
+  r.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  return r
+}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AnalyticsOverviewPage() {
-  const [period, setPeriod] = useState<Period>('month')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
+  const today = useMemo(() => new Date(), [])
+  const [startDate, setStartDate] = useState(() =>
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+  )
+  const [endDate, setEndDate] = useState(() => toDS(today))
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [chartMode, setChartMode] = useState<'sales' | 'draws'>('sales')
@@ -238,54 +137,43 @@ export default function AnalyticsOverviewPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ period })
-      if (period === 'custom' && customStart && customEnd) {
-        params.set('start', customStart)
-        params.set('end', customEnd)
-      }
-      const res = await fetch(`/api/admin/analytics-overview?${params}`)
+      const p = new URLSearchParams()
+      if (startDate) p.set('start', startDate)
+      if (endDate) p.set('end', endDate)
+      const res = await fetch(`/api/admin/analytics-overview?${p}`)
       if (res.ok) setData(await res.json())
     } finally {
       setLoading(false)
     }
-  }, [period, customStart, customEnd])
+  }, [startDate, endDate])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const c = data?.current
   const g = data?.growth
 
-  const salesSpark = c?.bars.map(b => b.sales) ?? []
-  const drawsSpark = c?.bars.map(b => b.draws) ?? []
+  const PRESETS = useMemo(() => [
+    { label: '今日', start: toDS(today), end: toDS(today) },
+    { label: '本週', start: toDS(mondayOf(today)), end: toDS(today) },
+    { label: '本月', start: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, end: toDS(today) },
+    { label: '本年', start: `${today.getFullYear()}-01-01`, end: toDS(today) },
+  ], [today])
 
-  const PERIODS: { id: Period; label: string }[] = [
-    { id: 'today', label: '今日' },
-    { id: 'week', label: '本週' },
-    { id: 'month', label: '本月' },
-    { id: 'year', label: '本年' },
-  ]
+  const activePreset = PRESETS.find(p => p.start === startDate && p.end === endDate)?.label
 
-  const PERIOD_LABELS: Record<Period, string> = {
-    today: '昨日',
-    week: '上週',
-    month: '上月',
-    year: '去年',
-    custom: '上期',
-  }
-  const prevLabel = PERIOD_LABELS[period]
+  const spark = c?.spark ?? []
 
   return (
     <AdminLayout pageTitle="分析頁">
       <div className="space-y-5">
 
-        {/* ── Period selector ─────────────────────────────────────────────── */}
+        {/* ── Toolbar ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-2">
-          {PERIODS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className={`h-8 px-3 text-sm rounded-lg border transition-colors ${
-                period === p.id
+          {PRESETS.map(p => (
+            <button key={p.label}
+              onClick={() => { setStartDate(p.start); setEndDate(p.end) }}
+              className={`h-9 px-3 text-sm rounded-lg border transition-colors ${
+                activePreset === p.label
                   ? 'bg-primary text-white border-primary'
                   : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
               }`}
@@ -293,30 +181,16 @@ export default function AnalyticsOverviewPage() {
               {p.label}
             </button>
           ))}
-          <button
-            onClick={() => setPeriod('custom')}
-            className={`h-8 px-3 text-sm rounded-lg border transition-colors ${
-              period === 'custom'
-                ? 'bg-primary text-white border-primary'
-                : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
-            }`}
-          >
-            自訂
-          </button>
-          {period === 'custom' && (
-            <>
-              <div className="w-32">
-                <DatePicker value={customStart} onChange={setCustomStart} placeholder="開始日期" />
-              </div>
-              <span className="text-neutral-300 text-xs">—</span>
-              <div className="w-32">
-                <DatePicker value={customEnd} onChange={setCustomEnd} placeholder="結束日期" />
-              </div>
-            </>
-          )}
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            placeholder="自訂日期"
+          />
           <button
             onClick={fetchData}
-            className="h-8 w-8 flex items-center justify-center border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
+            className="h-9 w-9 flex items-center justify-center border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
             title="刷新"
           >
             <svg className={`w-4 h-4 text-neutral-500 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,8 +199,9 @@ export default function AnalyticsOverviewPage() {
           </button>
         </div>
 
-        {/* ── KPI Cards ───────────────────────────────────────────────────── */}
+        {/* ── KPI Cards ────────────────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-neutral-200 grid grid-cols-4 divide-x divide-neutral-100">
+
           {/* 總銷售額 */}
           <div className="p-5">
             <div className="flex items-start justify-between mb-3">
@@ -344,7 +219,7 @@ export default function AnalyticsOverviewPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.sales} label={prevLabel} />}
+              {g && <GrowthTag value={g.sales} label="上期" />}
               {g && <GrowthTag value={g.salesToday} label="日同比" />}
             </div>
             <div className="flex items-end justify-between">
@@ -352,7 +227,7 @@ export default function AnalyticsOverviewPage() {
                 <p className="text-xs text-neutral-400">日銷售額</p>
                 <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : (c?.todaySales ?? 0).toLocaleString()}</p>
               </div>
-              <Sparkline data={salesSpark} color="#3b82f6" w={80} h={36} />
+              {!loading && <Spark data={spark} yField="sales" stroke="#1677ff" fill="rgba(22,119,255,0.12)" />}
             </div>
           </div>
 
@@ -373,7 +248,7 @@ export default function AnalyticsOverviewPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.visits} label={prevLabel} />}
+              {g && <GrowthTag value={g.visits} label="上期" />}
               {g && <GrowthTag value={g.visitsToday} label="日同比" />}
             </div>
             <div className="flex items-end justify-between">
@@ -382,9 +257,9 @@ export default function AnalyticsOverviewPage() {
                 <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : (c?.todayVisits ?? 0).toLocaleString()}</p>
               </div>
               <div className="w-20 h-9 flex items-center justify-end">
-                <div className={`text-2xl font-bold font-mono ${(g?.visitsToday ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                <span className={`text-2xl font-bold ${(g?.visitsToday ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                   {(g?.visitsToday ?? 0) >= 0 ? '↑' : '↓'}
-                </div>
+                </span>
               </div>
             </div>
           </div>
@@ -405,7 +280,7 @@ export default function AnalyticsOverviewPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.draws} label={prevLabel} />}
+              {g && <GrowthTag value={g.draws} label="上期" />}
               {g && <GrowthTag value={g.drawsToday} label="日同比" />}
             </div>
             <div className="flex items-end justify-between">
@@ -413,7 +288,7 @@ export default function AnalyticsOverviewPage() {
                 <p className="text-xs text-neutral-400">轉化率</p>
                 <p className="text-sm font-medium text-neutral-700 font-mono">{loading ? '—' : `${c?.convRate ?? 0}%`}</p>
               </div>
-              <Sparkline data={drawsSpark} color="#8b5cf6" w={80} h={36} />
+              {!loading && <Spark data={spark} yField="draws" stroke="#8b5cf6" fill="rgba(139,92,246,0.12)" />}
             </div>
           </div>
 
@@ -433,7 +308,7 @@ export default function AnalyticsOverviewPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 text-xs mb-3">
-              {g && <GrowthTag value={g.recharges} label={prevLabel} />}
+              {g && <GrowthTag value={g.recharges} label="上期" />}
             </div>
             <div className="flex items-end justify-between">
               <div>
@@ -443,40 +318,42 @@ export default function AnalyticsOverviewPage() {
                   <span className="text-xs text-neutral-400 ml-1">幣/次</span>
                 </p>
               </div>
-              <Sparkline data={salesSpark.map(v => v * 0.4)} color="#f59e0b" w={80} h={36} />
+              {!loading && (
+                <Spark
+                  data={spark.map(d => ({ ...d, rev: Math.round(d.sales * 0.4) }))}
+                  yField="rev"
+                  stroke="#f59e0b"
+                  fill="rgba(245,158,11,0.12)"
+                />
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Keywords + Donut ─────────────────────────────────────────────── */}
+        {/* ── Keywords + Donut ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-5">
+
           {/* 線上熱門搜尋 */}
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <h3 className="text-sm font-semibold text-neutral-800 mb-4">線上熱門搜尋</h3>
             {loading ? (
               <div className="space-y-2">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="h-8 bg-neutral-100 rounded animate-pulse" />
-                ))}
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-neutral-100 rounded animate-pulse" />)}
               </div>
-            ) : c?.keywords.length === 0 ? (
+            ) : !c?.keywords.length ? (
               <div className="flex items-center justify-center h-32 text-sm text-neutral-400">暫無搜尋記錄</div>
             ) : (
-              <div className="space-y-0">
+              <div>
                 <div className="grid grid-cols-[24px_1fr_60px_60px] gap-2 text-xs text-neutral-400 pb-2 border-b border-neutral-100 mb-2">
-                  <span>#</span>
-                  <span>關鍵字</span>
-                  <span className="text-right">搜尋次數</span>
-                  <span className="text-right">同比</span>
+                  <span>#</span><span>關鍵字</span>
+                  <span className="text-right">次數</span><span className="text-right">同比</span>
                 </div>
-                {c?.keywords.map(kw => (
+                {c.keywords.map(kw => (
                   <div key={kw.rank} className="grid grid-cols-[24px_1fr_60px_60px] gap-2 items-center py-2 border-b border-neutral-50 last:border-0">
                     <span className={`text-xs font-mono font-bold ${kw.rank <= 3 ? 'text-primary' : 'text-neutral-300'}`}>{kw.rank}</span>
                     <span className="text-sm text-neutral-700 truncate">{kw.keyword}</span>
                     <span className="text-sm font-medium text-neutral-800 font-mono text-right">{kw.count.toLocaleString()}</span>
-                    <div className="text-right">
-                      <GrowthTag value={kw.growth} />
-                    </div>
+                    <div className="text-right"><GrowthTag value={kw.growth} /></div>
                   </div>
                 ))}
               </div>
@@ -487,13 +364,41 @@ export default function AnalyticsOverviewPage() {
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <h3 className="text-sm font-semibold text-neutral-800 mb-4">銷售類別佔比</h3>
             {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="w-24 h-24 rounded-full border-8 border-neutral-100 animate-pulse" />
+              <div className="flex items-center justify-center h-44">
+                <div className="w-32 h-32 rounded-full border-[14px] border-neutral-100 animate-pulse" />
               </div>
+            ) : !c?.categories.length ? (
+              <div className="flex items-center justify-center h-44 text-sm text-neutral-400">暫無資料</div>
             ) : (
-              <DonutChart categories={c?.categories ?? []} />
+              <div className="flex items-center gap-4">
+                <div style={{ width: 160, height: 160, flexShrink: 0 }}>
+                  <PieChart
+                    data={c.categories.map(cat => ({ label: cat.label, amount: cat.amount }))}
+                    angleField="amount"
+                    colorField="label"
+                    innerRadius={0.68}
+                    radius={0.9}
+                    height={160}
+                    autoFit={false}
+                    width={160}
+                    color={COLORS}
+                    label={false}
+                    legend={false}
+                    style={{ stroke: '#fff', lineWidth: 2 } as any}
+                  />
+                </div>
+                <div className="space-y-2.5 flex-1 min-w-0">
+                  {c.categories.map((cat, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="text-neutral-500 truncate flex-1">{cat.label}</span>
+                      <span className="font-medium text-neutral-800 font-mono">{cat.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            {!loading && c && c.categories.length > 0 && (
+            {!loading && !!c?.categories.length && (
               <div className="mt-4 pt-4 border-t border-neutral-100 grid grid-cols-2 gap-2">
                 {c.categories.map((cat, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
@@ -506,7 +411,7 @@ export default function AnalyticsOverviewPage() {
           </div>
         </div>
 
-        {/* ── Supplier Bar Chart + Ranking ─────────────────────────────────── */}
+        {/* ── Supplier bar + ranking ────────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-neutral-800">廠商銷售概覽</h3>
@@ -524,28 +429,49 @@ export default function AnalyticsOverviewPage() {
             </div>
           </div>
           <div className="grid grid-cols-[1fr_260px] gap-6">
-            {/* Bar chart */}
             <div>
               {loading ? (
-                <div className="h-48 flex items-end gap-2 px-4">
+                <div className="h-[200px] flex items-end gap-1 px-4">
                   {[40, 70, 55, 80, 45, 60, 35, 75, 50, 65, 45, 30].map((h, i) => (
                     <div key={i} className="flex-1 bg-neutral-100 rounded-t animate-pulse" style={{ height: `${h}%` }} />
                   ))}
                 </div>
+              ) : !c?.bars.length ? (
+                <div className="flex items-center justify-center h-[200px] text-sm text-neutral-400">暫無資料</div>
               ) : (
-                <BarChart bars={c?.bars ?? []} mode={chartMode} />
+                <ColumnChart
+                  data={c.bars}
+                  xField="label"
+                  yField={chartMode === 'sales' ? 'sales' : 'draws'}
+                  height={200}
+                  autoFit
+                  style={{ fill: chartMode === 'sales' ? '#1677ff' : '#10b981', radius: [3, 3, 0, 0], opacity: 0.85 } as any}
+                  axis={{
+                    x: { label: { style: { fontSize: 9, fill: '#9ca3af' } }, tick: false, line: false },
+                    y: {
+                      grid: true,
+                      gridLine: { style: { stroke: '#f3f4f6', lineDash: [0] } },
+                      label: {
+                        style: { fontSize: 9, fill: '#9ca3af' },
+                        formatter: (v: any) => chartMode === 'sales' && Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v),
+                      },
+                      tick: false,
+                      line: false,
+                    },
+                  } as any}
+                  label={false}
+                />
               )}
             </div>
-            {/* Ranking list */}
             <div>
               <p className="text-xs font-medium text-neutral-500 mb-3">廠商銷售排行</p>
               <div className="space-y-2">
                 {loading ? (
                   [1,2,3,4,5].map(i => <div key={i} className="h-8 bg-neutral-100 rounded animate-pulse" />)
-                ) : c?.suppliers.length === 0 ? (
+                ) : !c?.suppliers.length ? (
                   <p className="text-xs text-neutral-400">暫無資料</p>
                 ) : (
-                  c?.suppliers.slice(0, 7).map(sup => (
+                  c.suppliers.slice(0, 7).map(sup => (
                     <div key={sup.id}>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <div className="flex items-center gap-1.5">
@@ -559,10 +485,8 @@ export default function AnalyticsOverviewPage() {
                         </span>
                       </div>
                       <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${chartMode === 'sales' ? sup.salesPct : sup.drawsPct}%` }}
-                        />
+                        <div className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${chartMode === 'sales' ? sup.salesPct : sup.drawsPct}%` }} />
                       </div>
                     </div>
                   ))
@@ -572,13 +496,11 @@ export default function AnalyticsOverviewPage() {
           </div>
         </div>
 
-        {/* ── Supplier Conversion Rate ─────────────────────────────────────── */}
+        {/* ── Supplier conversion rings ─────────────────────────────────────── */}
         <div className="bg-white rounded-xl border border-neutral-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-neutral-800">廠商轉化率</h3>
-              <p className="text-xs text-neutral-400 mt-0.5">各廠商銷售佔比</p>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-neutral-800">廠商轉化率</h3>
+            <p className="text-xs text-neutral-400 mt-0.5">各廠商銷售佔比</p>
           </div>
           {loading ? (
             <div className="flex gap-6 flex-wrap">
@@ -589,11 +511,11 @@ export default function AnalyticsOverviewPage() {
                 </div>
               ))}
             </div>
-          ) : c?.suppliers.length === 0 ? (
+          ) : !c?.suppliers.length ? (
             <div className="flex items-center justify-center h-24 text-sm text-neutral-400">暫無廠商資料</div>
           ) : (
             <div className="flex gap-6 flex-wrap">
-              {c?.suppliers.map(sup => (
+              {c.suppliers.map(sup => (
                 <RingProgress key={sup.id} pct={sup.convRate} name={sup.name} draws={sup.draws} />
               ))}
             </div>

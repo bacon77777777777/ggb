@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.15｜2026-07-16｜分析頁 — 換用 @ant-design/charts 圖表 + DateRangePicker
+
+### 分析頁圖表升級（`/analytics-overview`）
+- 安裝 `@ant-design/charts` v2.6.7（G2 5.0）
+- `Sparkline` SVG → `Tiny.Area`（平滑曲線面積圖，dynamic import + ssr:false）
+- `DonutChart` SVG → `Pie`（innerRadius=0.68，真實 AntD 風格甜甜圈）
+- `BarChart` SVG → `Column`（自動調色，hover highlight）
+- 右上角時間選擇器換用已有的 `DateRangePicker` 組件（與儲值明細頁相同），搭配今日/本週/本月/本年快捷按鈕
+- API 改為只接 `start`/`end` 參數，去除 `period` 字串，前後期自動從時間長度推算
+- 新增 `spark` 欄位（最近 14 個日/月資料點）供 KPI sparkline 使用
+
+---
+
 ## v2026.07.13｜2026-07-16｜分析頁 — Ant Design Pro 風格營運儀表板
 
 ### 新頁面：`/analytics-overview`（營運總覽 → 分析頁）

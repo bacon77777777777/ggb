@@ -8,53 +8,9 @@ function twDate(y: number, m: number, d: number) {
   return new Date(Date.UTC(y, m, d) - TW)
 }
 
-function getPeriod(period: string, start?: string | null, end?: string | null) {
-  const n = new Date(Date.now() + TW)
-  const y = n.getUTCFullYear(), mo = n.getUTCMonth(), d = n.getUTCDate()
-  let s: Date, e: Date
-
-  switch (period) {
-    case 'today':
-      s = twDate(y, mo, d)
-      e = twDate(y, mo, d + 1)
-      break
-    case 'week': {
-      const dow = n.getUTCDay() || 7
-      s = twDate(y, mo, d - dow + 1)
-      e = twDate(y, mo, d - dow + 8)
-      break
-    }
-    case 'year':
-      s = twDate(y, 0, 1)
-      e = twDate(y + 1, 0, 1)
-      break
-    case 'custom':
-      if (start && end) {
-        const [sy, sm, sd] = start.split('-').map(Number)
-        const [ey, em, ed] = end.split('-').map(Number)
-        s = twDate(sy, sm - 1, sd)
-        e = twDate(ey, em - 1, ed + 1)
-        break
-      }
-    // fallthrough
-    default:
-      s = twDate(y, mo, 1)
-      e = twDate(y, mo + 1, 1)
-  }
-
-  const dur = e.getTime() - s.getTime()
-  const ps = new Date(s.getTime() - dur)
-  const pe = s
-  const ts = twDate(y, mo, d)
-  const te = twDate(y, mo, d + 1)
-  const ys = twDate(y, mo, d - 1)
-  const ye = ts
-  return { s, e, ps, pe, ts, te, ys, ye, isYear: period === 'year' }
-}
-
 function pct(cur: number, prev: number) {
   if (!prev) return cur > 0 ? 100 : 0
-  return Math.round((cur - prev) / prev * 100 * 10) / 10
+  return Math.round((cur - prev) / prev * 1000) / 10
 }
 
 export async function GET(req: NextRequest) {
@@ -62,11 +18,34 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const sp = req.nextUrl.searchParams
-  const { s, e, ps, pe, ts, te, ys, ye, isYear } = getPeriod(
-    sp.get('period') || 'month',
-    sp.get('start'),
-    sp.get('end')
-  )
+  const startParam = sp.get('start')
+  const endParam = sp.get('end')
+
+  const now = new Date(Date.now() + TW)
+  const y = now.getUTCFullYear(), mo = now.getUTCMonth(), d = now.getUTCDate()
+
+  // Default: current month 1st → today
+  const startStr = startParam || `${y}-${String(mo + 1).padStart(2, '0')}-01`
+  const endStr = endParam || `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+  const [sy, sm, sd] = startStr.split('-').map(Number)
+  const [ey, em, ed] = endStr.split('-').map(Number)
+
+  const curStart = twDate(sy, sm - 1, sd)
+  const curEnd = twDate(ey, em - 1, ed + 1) // inclusive → exclusive
+
+  const dur = curEnd.getTime() - curStart.getTime()
+  const prevStart = new Date(curStart.getTime() - dur)
+  const prevEnd = curStart
+
+  // today / yesterday for 日同比
+  const ts = twDate(y, mo, d)
+  const te = twDate(y, mo, d + 1)
+  const ys = twDate(y, mo, d - 1)
+  const ye = ts
+
+  // monthly bars when range > 90 days
+  const isMonthly = dur / 86400000 > 90
 
   const db = getSupabaseAdmin()
   const { data: bots } = await db.from('users').select('id').eq('is_bot', true)
@@ -78,30 +57,18 @@ export async function GET(req: NextRequest) {
   try {
     const [drCur, drPrev, rcCur, rcPrev, drToday, drYest, visCur, visPrev, visToday, visYest, kwCur, kwPrev] =
       await Promise.all([
-        // draws current (with product + supplier for categories/suppliers breakdown)
-        inR(noBot(db.from('draw_records').select('id, points_used, created_at, product:products(price, type, supplier:suppliers(id, name))')), s, e),
-        // draws previous (totals only)
-        inR(noBot(db.from('draw_records').select('id, points_used')), ps, pe),
-        // recharges current
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), s, e),
-        // recharges previous
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ps, pe),
-        // draws today
+        inR(noBot(db.from('draw_records').select('id, points_used, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
+        inR(noBot(db.from('draw_records').select('id, points_used')), prevStart, prevEnd),
+        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), curStart, curEnd),
+        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd),
         inR(noBot(db.from('draw_records').select('id, points_used')), ts, te),
-        // draws yesterday
         inR(noBot(db.from('draw_records').select('id, points_used')), ys, ye),
-        // visits current (count)
-        inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), s, e),
-        // visits previous (count)
-        inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ps, pe),
-        // visits today
+        inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), curStart, curEnd),
+        inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), prevStart, prevEnd),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ts, te),
-        // visits yesterday
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ys, ye),
-        // keywords current
-        inR(db.from('search_logs').select('keyword'), s, e),
-        // keywords previous
-        inR(db.from('search_logs').select('keyword'), ps, pe),
+        inR(db.from('search_logs').select('keyword'), curStart, curEnd),
+        inR(db.from('search_logs').select('keyword'), prevStart, prevEnd),
       ])
 
     const draws: any[] = drCur.data ?? []
@@ -109,7 +76,6 @@ export async function GET(req: NextRequest) {
     const todayDraws: any[] = drToday.data ?? []
     const yesterdayDraws: any[] = drYest.data ?? []
 
-    // Totals
     const totalSales = draws.reduce((acc: number, d: any) => acc + (d.product?.price ?? d.points_used ?? 0), 0)
     const prevSales = prevDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
     const totalDrawCount = draws.length
@@ -125,11 +91,11 @@ export async function GET(req: NextRequest) {
     const todayVisits = (visToday as any).count ?? 0
     const yesterdayVisits = (visYest as any).count ?? 0
 
-    // Bar chart data (daily or monthly)
+    // Bar chart grouping
     const barMap: Record<string, { sales: number; draws: number }> = {}
     draws.forEach((d: any) => {
       const dt = new Date(new Date(d.created_at).getTime() + TW)
-      const key = isYear
+      const key = isMonthly
         ? `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
         : dt.toISOString().split('T')[0]
       if (!barMap[key]) barMap[key] = { sales: 0, draws: 0 }
@@ -138,16 +104,21 @@ export async function GET(req: NextRequest) {
     })
 
     const bars: { label: string; sales: number; draws: number }[] = []
-    if (isYear) {
-      const y0 = new Date(s.getTime() + TW).getUTCFullYear()
-      for (let m = 0; m < 12; m++) {
-        const key = `${y0}-${String(m + 1).padStart(2, '0')}`
-        bars.push({ label: `${m + 1}月`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+    if (isMonthly) {
+      // monthly from curStart to curEnd
+      const cur = new Date(curStart)
+      while (cur < curEnd) {
+        const dt = new Date(cur.getTime() + TW)
+        const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+        if (!bars.find(b => b.label === `${dt.getUTCMonth() + 1}月`)) {
+          bars.push({ label: `${dt.getUTCMonth() + 1}月`, ...(barMap[key] ?? { sales: 0, draws: 0 }) })
+        }
+        cur.setDate(cur.getDate() + 28) // jump to next month-ish
       }
     } else {
-      const cur = new Date(s)
-      const now = new Date()
-      while (cur < e && cur <= now) {
+      const cur = new Date(curStart)
+      const today = new Date()
+      while (cur < curEnd && cur <= today) {
         const dt = new Date(cur.getTime() + TW)
         const key = dt.toISOString().split('T')[0]
         const mm = dt.getUTCMonth() + 1, dd = dt.getUTCDate()
@@ -156,18 +127,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Sparkline: daily last 14 data points within period
+    const spark = bars.slice(-14).map((b, i) => ({ x: i, sales: b.sales, draws: b.draws }))
+
     // Keywords
     const kwMap: Record<string, number> = {}
     const kwPrevMap: Record<string, number> = {}
     ;(kwCur.data ?? []).forEach((r: any) => { kwMap[r.keyword] = (kwMap[r.keyword] ?? 0) + 1 })
     ;(kwPrev.data ?? []).forEach((r: any) => { kwPrevMap[r.keyword] = (kwPrevMap[r.keyword] ?? 0) + 1 })
     const keywords = Object.entries(kwMap)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
+      .sort(([, a], [, b]) => b - a).slice(0, 8)
       .map(([keyword, count], i) => ({
-        rank: i + 1,
-        keyword,
-        count,
+        rank: i + 1, keyword, count,
         growth: pct(count, kwPrevMap[keyword] ?? 0),
       }))
 
@@ -194,40 +165,26 @@ export async function GET(req: NextRequest) {
       supMap[k].draws++
       supMap[k].sales += d.product?.price ?? d.points_used ?? 0
     })
-    const suppliers = Object.values(supMap)
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 10)
+    const suppliers = Object.values(supMap).sort((a, b) => b.sales - a.sales).slice(0, 10)
     const maxSales = suppliers[0]?.sales ?? 1
     const maxDraws = suppliers[0]?.draws ?? 1
 
-    // Conversion rate = draws / visits
     const convRate = totalVisits > 0 ? Math.round(totalDrawCount / totalVisits * 100) : 0
     const prevConvRate = prevVisits > 0 ? Math.round(prevDrawCount / prevVisits * 100) : 0
 
     return NextResponse.json({
       current: {
-        totalSales,
-        totalDrawCount,
-        totalRecharges,
-        totalVisits,
-        todaySales,
-        todayDrawCount,
-        todayVisits,
-        yesterdaySales,
-        yesterdayDrawCount,
-        yesterdayVisits,
-        convRate,
-        bars,
-        keywords,
-        categories,
+        totalSales, totalDrawCount, totalRecharges, totalVisits,
+        todaySales, todayDrawCount, todayVisits,
+        yesterdaySales, yesterdayDrawCount, yesterdayVisits,
+        convRate, bars, spark, keywords, categories,
         suppliers: suppliers.map((s, i) => ({
-          ...s,
-          rank: i + 1,
+          ...s, rank: i + 1,
           salesPct: Math.round(s.sales / maxSales * 100),
           drawsPct: Math.round(s.draws / maxDraws * 100),
-          convRate: totalVisits > 0
-            ? Math.min(99, Math.round((s.draws / (totalDrawCount || 1)) * Math.max(convRate, 5)))
-            : Math.round((s.draws / (totalDrawCount || 1)) * 100),
+          convRate: totalDrawCount > 0
+            ? Math.min(99, Math.round((s.draws / totalDrawCount) * Math.max(convRate, 10)))
+            : 0,
         })),
       },
       growth: {
