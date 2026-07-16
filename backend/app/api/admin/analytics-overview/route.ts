@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
 
     // Spark: last 14 points with visit counts
     const spark = barsWithKey.slice(-14).map((b, i) => ({
-      x: i, sales: b.sales, draws: b.draws, visits: visitByKey[b.key] ?? 0,
+      x: i, date: b.key, sales: b.sales, draws: b.draws, visits: visitByKey[b.key] ?? 0,
     }))
 
     // Keywords

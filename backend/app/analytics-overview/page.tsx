@@ -86,7 +86,7 @@ interface AnalyticsData {
     yesterdaySales: number; yesterdayDrawCount: number; yesterdayVisits: number; yesterdayRecharges: number
     convRate: number
     bars: { label: string; sales: number; draws: number }[]
-    spark: { x: number; sales: number; draws: number; visits: number }[]
+    spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; salesPct: number; drawsPct: number; convRate: number }[]
@@ -250,7 +250,8 @@ export default function AnalyticsOverviewPage() {
                     <TinyArea data={spark} xField="x" yField="visits"
                       height={46} autoFit
                       style={{ fill: 'rgba(114,46,209,0.25)', stroke: '#722ed1', lineWidth: 2, shape: 'smooth' } as any}
-                      axis={false} tooltip={false} padding={[2, 0, 0, 0]} />
+                      axis={false} padding={[2, 0, 0, 0]}
+                      tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '訪問量' }] } as any} />
                   ) : (
                     <div className="w-full h-full" />
                   )}
@@ -285,7 +286,8 @@ export default function AnalyticsOverviewPage() {
                     <TinyColumn data={spark} xField="x" yField="draws"
                       height={46} autoFit
                       style={{ fill: '#1677ff', opacity: 0.85 } as any}
-                      axis={false} tooltip={false} padding={0} />
+                      axis={false} padding={0}
+                      tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '消費筆數' }] } as any} />
                   ) : (
                     <div className="w-full h-full" />
                   )}
