@@ -148,6 +148,8 @@ export default function AnalyticsOverviewPage() {
   )
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lineChartH, setLineChartH] = useState(300)
+  const lineChartContainerRef = React.useRef<HTMLDivElement>(null)
   const [chartMode, setChartMode] = useState<'sales' | 'visits'>('sales')
 
   const fetchData = useCallback(async () => {
@@ -164,6 +166,17 @@ export default function AnalyticsOverviewPage() {
   }, [startDate, endDate])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    const el = lineChartContainerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const h = entries[0]?.contentRect.height
+      if (h > 80) setLineChartH(Math.floor(h))
+    })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   const c = data?.current
   const g = data?.growth
@@ -358,14 +371,14 @@ export default function AnalyticsOverviewPage() {
         <div className="grid grid-cols-2 gap-6">
 
           {/* 儲值與消耗對比 */}
-          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
-            <div style={{ minHeight: 56, padding: '0 24px', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
+            <div style={{ minHeight: 56, padding: '0 24px', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span>儲值與消耗對比</span>
               <InfoIcon text="同時展示儲值金額與代幣消耗量。儲值高於消耗代表用戶在囤幣；消耗高於儲值代表用戶在花存量。" />
             </div>
-            <div style={{ padding: '24px 0 0' }}>
+            <div style={{ padding: '24px 0 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
               {/* 圖例 */}
-              <div style={{ display: 'flex', gap: 24, marginBottom: 12, paddingLeft: 52 }}>
+              <div style={{ display: 'flex', gap: 24, marginBottom: 12, paddingLeft: 52, flexShrink: 0 }}>
                 {[{ color: '#9333ea', label: '儲值金額（元）' }, { color: '#10b981', label: '消耗代幣' }].map(({ color, label }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'rgba(0,0,0,0.65)' }}>
                     <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color }} />
@@ -374,32 +387,34 @@ export default function AnalyticsOverviewPage() {
                 ))}
               </div>
               {loading ? (
-                <div className="h-[300px] bg-neutral-50 rounded animate-pulse" style={{ margin: '0 8px' }} />
+                <div className="flex-1 bg-neutral-50 rounded animate-pulse" style={{ minHeight: 200, margin: '0 8px' }} />
               ) : !c?.bars.length ? (
-                <div className="flex items-center justify-center text-sm text-neutral-400" style={{ height: 300 }}>暫無資料</div>
+                <div className="flex-1 flex items-center justify-center text-sm text-neutral-400">暫無資料</div>
               ) : (
-                <LineChart
-                  data={[
-                    ...c.bars.map(b => ({ label: b.label, value: b.recharges, type: '儲值金額（元）' })),
-                    ...c.bars.map(b => ({ label: b.label, value: b.sales, type: '消耗代幣' })),
-                  ]}
-                  xField="label"
-                  yField="value"
-                  colorField="type"
-                  scale={{ color: { range: ['#9333ea', '#10b981'] } } as any}
-                  height={260}
-                  autoFit
-                  padding={[8, 8, 28, 52]}
-                  insetTop={8}
-                  insetBottom={0}
-                  axis={{
-                    x: { tick: false, line: false, label: { autoRotate: false, style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => { const n = c.bars.length; if (n === 24) { const h = parseInt(v); return h % 3 === 0 ? String(h) : '' } return v } } },
-                    y: { grid: true, tick: false, line: false, label: { style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: any) => Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v) } },
-                  } as any}
-                  legend={false}
-                  point={{ size: 3 } as any}
-                  tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: (d: any) => d.type }] } as any}
-                />
+                <div ref={lineChartContainerRef} style={{ flex: 1, minHeight: 200 }}>
+                  <LineChart
+                    data={[
+                      ...c.bars.map(b => ({ label: b.label, value: b.recharges, type: '儲值金額（元）' })),
+                      ...c.bars.map(b => ({ label: b.label, value: b.sales, type: '消耗代幣' })),
+                    ]}
+                    xField="label"
+                    yField="value"
+                    colorField="type"
+                    scale={{ color: { range: ['#9333ea', '#10b981'] } } as any}
+                    height={lineChartH}
+                    autoFit
+                    padding={[8, 8, 28, 52]}
+                    insetTop={8}
+                    insetBottom={0}
+                    axis={{
+                      x: { tick: false, line: false, label: { autoRotate: false, style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: string) => { const n = c.bars.length; if (n === 24) { const h = parseInt(v); return h % 3 === 0 ? String(h) : '' } return v } } },
+                      y: { grid: true, tick: false, line: false, label: { style: { fontSize: 12, fill: 'rgba(0,0,0,0.45)' }, formatter: (v: any) => Number(v) >= 10000 ? `${Math.round(Number(v) / 1000)}k` : String(v) } },
+                    } as any}
+                    legend={false}
+                    point={{ size: 3 } as any}
+                    tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: (d: any) => d.type }] } as any}
+                  />
+                </div>
               )}
             </div>
           </div>
