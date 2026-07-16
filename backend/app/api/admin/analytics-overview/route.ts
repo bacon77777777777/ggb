@@ -57,12 +57,12 @@ export async function GET(req: NextRequest) {
   try {
     const [drCur, drPrev, rcCur, rcPrev, drToday, drYest, visCur, visPrev, visToday, visYest, kwCur, kwPrev, rcToday, rcYest] =
       await Promise.all([
-        inR(noBot(db.from('draw_records').select('id, points_used, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
-        inR(noBot(db.from('draw_records').select('id, points_used')), prevStart, prevEnd),
+        inR(noBot(db.from('draw_records').select('id, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
+        inR(noBot(db.from('draw_records').select('id, product:products(price)')), prevStart, prevEnd),
         inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), curStart, curEnd),
         inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd),
-        inR(noBot(db.from('draw_records').select('id, points_used')), ts, te),
-        inR(noBot(db.from('draw_records').select('id, points_used')), ys, ye),
+        inR(noBot(db.from('draw_records').select('id, product:products(price)')), ts, te),
+        inR(noBot(db.from('draw_records').select('id, product:products(price)')), ys, ye),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), curStart, curEnd),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), prevStart, prevEnd),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ts, te),
@@ -78,16 +78,17 @@ export async function GET(req: NextRequest) {
     const todayDraws: any[] = drToday.data ?? []
     const yesterdayDraws: any[] = drYest.data ?? []
 
-    const totalSales = draws.reduce((acc: number, d: any) => acc + (d.product?.price ?? d.points_used ?? 0), 0)
-    const prevSales = prevDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
+    const price = (d: any) => d.product?.price ?? 0
+    const totalSales = draws.reduce((acc: number, d: any) => acc + price(d), 0)
+    const prevSales = prevDraws.reduce((acc: number, d: any) => acc + price(d), 0)
     const totalDrawCount = draws.length
     const prevDrawCount = prevDraws.length
     const totalRecharges = (rcCur.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const prevRecharges = (rcPrev.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const todayRecharges = (rcToday.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const yesterdayRecharges = (rcYest.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
-    const todaySales = todayDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
-    const yesterdaySales = yesterdayDraws.reduce((acc: number, d: any) => acc + (d.points_used ?? 0), 0)
+    const todaySales = todayDraws.reduce((acc: number, d: any) => acc + price(d), 0)
+    const yesterdaySales = yesterdayDraws.reduce((acc: number, d: any) => acc + price(d), 0)
     const todayDrawCount = todayDraws.length
     const yesterdayDrawCount = yesterdayDraws.length
     const totalVisits = (visCur as any).count ?? 0
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest) {
         ? `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
         : dt.toISOString().split('T')[0]
       if (!barMap[key]) barMap[key] = { sales: 0, draws: 0 }
-      barMap[key].sales += d.product?.price ?? d.points_used ?? 0
+      barMap[key].sales += price(d)
       barMap[key].draws++
     })
 
