@@ -4,6 +4,27 @@
 
 ---
 
+## v2026.07.17｜2026-07-18｜倉庫/分解/抽獎紀錄 UI 修正 + 超商選店 PWA 修正
+
+### 倉庫品項列表（`frontend/app/profile/page.tsx`）
+- 轉蛋、盒玩品項的賞等標籤固定顯示「普通」（不再顯示品項名稱）
+- 分解紀錄手機版從 2 欄格狀改為直式列表（同倉庫格式），顯示廠商名、賞等標籤、品項名、商品名、代幣回收數
+- 分解紀錄查詢新增 `suppliers` join，補入廠商名稱欄位
+
+### 抽獎紀錄（draw-history）
+- 轉蛋、盒玩品項展開後不顯示籤號（其他類型保留）
+- 賞等標籤同步顯示「普通」
+
+### 超商選店 PWA 修正
+- 選店表單改用 `form.target = '_blank'`，避免 PWA 畫面被 ECPay 頁面取代
+- 新增 `frontend/app/logistics/cvs-callback/page.tsx`：選店完成後用 `postMessage` 回傳門市資訊給 PWA opener；無 opener 時改寫 `localStorage` 待 PWA 下次 focus 讀取
+- `backend/app/api/logistics/map-callback/route.ts` 改導向 `/logistics/cvs-callback` 而非 `/profile`
+
+### 配送錯誤訊息改善
+- `handleConfirmDelivery` 錯誤 log 改為輸出 `.message`、`.code`、`.details` 欄位，方便排查
+
+---
+
 ## v2026.07.16｜2026-07-18｜新轉蛋機 mode2 + 後台 sidebar 調整 + 分析頁週區間圖表
 
 ### 新轉蛋機模組 `gacha_mode2`

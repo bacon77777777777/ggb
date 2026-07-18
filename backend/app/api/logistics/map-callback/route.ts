@@ -14,13 +14,12 @@ export async function POST(req: NextRequest) {
 
     const frontendUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000').replace('127.0.0.1', 'localhost')
 
-    const redirectUrl = new URL(`${frontendUrl}/profile`)
-    redirectUrl.searchParams.set('tab', 'warehouse')
+    // Redirect to a lightweight callback page that sends postMessage back to the PWA opener
+    const redirectUrl = new URL(`${frontendUrl}/logistics/cvs-callback`)
     redirectUrl.searchParams.set('store_id', storeId)
     redirectUrl.searchParams.set('store_name', storeName)
     redirectUrl.searchParams.set('store_address', storeAddress)
     redirectUrl.searchParams.set('logistics_subtype', logisticsSubType)
-    redirectUrl.searchParams.set('action', 'open_delivery_modal')
 
     return NextResponse.redirect(redirectUrl)
   } catch (error) {

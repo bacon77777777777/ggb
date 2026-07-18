@@ -95,6 +95,7 @@ interface DismantledItem {
   raw_dismantled_at?: Date;
   recycleValue: number;
   type?: string;
+  supplierName?: string;
 }
 
 interface WarehouseItem {
@@ -1228,7 +1229,8 @@ function ProfileContent() {
             const isPreorder = false;
             const preorderAvailableAt = null;
 
-            const grade = item.product_prizes?.level || item.prize_level || '?';
+            const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
+            const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             recycleValue = 10;
@@ -1263,18 +1265,19 @@ function ProfileContent() {
               prize_name,
               product_prizes ( level, name, image_url, recycle_value ),
               admin_recycle_pool ( recycle_value, created_at ),
-              products ( name, type )
+              products ( name, type, suppliers ( id, name ) )
             `)
             .eq('user_id', user.id)
             .eq('status', 'dismantled')
             .order('created_at', { ascending: false });
-            
+
           if (error) throw error;
 
           const items = (data as unknown as DbDrawRecord[]).map((item) => {
-            const grade = item.product_prizes?.level || item.prize_level || '?';
-            const name = item.product_prizes?.name || item.prize_name || '未知獎品';
             const productType = item.products?.type || 'unknown';
+            const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
+            const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
+            const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             return {
               id: item.id.toString(),
@@ -1285,7 +1288,8 @@ function ProfileContent() {
               dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at).toLocaleDateString('zh-TW'),
               raw_dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at),
               recycleValue: item.admin_recycle_pool?.[0]?.recycle_value ?? item.product_prizes?.recycle_value ?? 0,
-              type: productType
+              type: productType,
+              supplierName: (item.products?.suppliers as unknown as { name?: string } | null)?.name ?? '未知廠商',
             };
           });
           items.sort((a, b) => b.raw_dismantled_at.getTime() - a.raw_dismantled_at.getTime());
@@ -1470,8 +1474,9 @@ function ProfileContent() {
         records.forEach((item) => {
           const currentTimestamp = item.created_at;
           const lastGroup = groupedHistory.length > 0 ? groupedHistory[groupedHistory.length - 1] : null;
-          
-          const grade = item.product_prizes?.level || item.prize_level || '?';
+          const itemProductType = item.products?.type || 'unknown';
+          const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
+          const grade = (['gacha', 'blindbox'].includes(itemProductType)) ? '普通' : rawGrade;
           const name = item.product_prizes?.name || item.prize_name || '未知';
 
           if (lastGroup && lastGroup._rawDate === currentTimestamp && lastGroup.product === item.products?.name) {
@@ -1769,6 +1774,66 @@ function ProfileContent() {
     }
   }, [searchParams]);
 
+  // CVS store selection via popup postMessage (for PWA + desktop)
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== 'cvs_store_selected') return;
+      const { storeId: sId, storeName: sName, storeAddress: sAddr, logisticsSubType: lSub } = e.data;
+      if (!sId) return;
+      setStoreId(sId);
+      setStoreName(sName || '');
+      setStoreAddress(sAddr || '');
+      if (!hasLargePackage) setLogisticsType('CVS');
+      if (lSub) setLogisticsSubType(lSub as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
+      setShowDeliveryModal(true);
+      // Restore pending items if any
+      try {
+        const stored = sessionStorage.getItem('pending_delivery_items');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          if (Array.isArray(ids) && ids.length > 0) setSelectedForDelivery(ids);
+          sessionStorage.removeItem('pending_delivery_items');
+        }
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('message', handleMessage);
+
+    // Fallback: check localStorage for store selection (iOS PWA SFSafariViewController)
+    const checkLocalStorage = () => {
+      try {
+        const raw = localStorage.getItem('cvs_store_pending');
+        if (!raw) return;
+        const data = JSON.parse(raw) as { storeId?: string; storeName?: string; storeAddress?: string; logisticsSubType?: string; ts?: number };
+        // Only consume if fresh (within last 5 minutes)
+        if (!data.storeId || (Date.now() - (data.ts || 0)) > 300_000) { localStorage.removeItem('cvs_store_pending'); return; }
+        localStorage.removeItem('cvs_store_pending');
+        setStoreId(data.storeId);
+        setStoreName(data.storeName || '');
+        setStoreAddress(data.storeAddress || '');
+        if (!hasLargePackage) setLogisticsType('CVS');
+        if (data.logisticsSubType) setLogisticsSubType(data.logisticsSubType as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
+        setShowDeliveryModal(true);
+        try {
+          const stored = sessionStorage.getItem('pending_delivery_items');
+          if (stored) {
+            const ids = JSON.parse(stored);
+            if (Array.isArray(ids) && ids.length > 0) setSelectedForDelivery(ids);
+            sessionStorage.removeItem('pending_delivery_items');
+          }
+        } catch { /* ignore */ }
+      } catch { /* ignore */ }
+    };
+    const onFocus = () => checkLocalStorage();
+    window.addEventListener('focus', onFocus);
+    checkLocalStorage(); // also check on mount
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [hasLargePackage]);
+
   // Mobile warehouse lazy load
   useEffect(() => {
     setMobileWarehouseDisplayCount(10);
@@ -1857,12 +1922,13 @@ function ProfileContent() {
       handleTabChange('delivery');
       
     } catch (error) {
-      console.error('Delivery Error:', error);
-      const msg = (error as Error).message || '';
+      const supaErr = error as { message?: string; code?: string; details?: string; hint?: string };
+      console.error('Delivery Error:', supaErr.message || supaErr.code || supaErr.details, JSON.stringify(error));
+      const msg = supaErr.message || (error as Error).message || '';
       if (msg.includes('INSUFFICIENT_POINTS')) {
         toast.error('代幣餘額不足，無法支付運費');
       } else {
-        toast.error('申請失敗，請稍後再試');
+        toast.error(`申請失敗：${msg || '請稍後再試'}`);
       }
     } finally {
       setIsSubmittingDelivery(false);
@@ -2379,40 +2445,38 @@ function ProfileContent() {
           
                       <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                         {filteredDismantledItems.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3 pl-2 pr-4 py-1.5">
-                          <div className="flex-shrink-0 w-10 flex justify-center">
-                            <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 py-0.5 rounded-lg border border-primary/10 whitespace-nowrap">
-                              {item.grade}
-                            </span>
-                          </div>
-                          <div className="relative w-[60px] h-[60px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
-                            <Image 
-                              src={item.image || '/images/item.png'} 
-                              alt={item.name} 
-                              fill 
-                              className="object-cover" 
-                              unoptimized
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
-                            <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight line-clamp-2">{item.name}</h4>
-                            <div className="flex justify-between items-center">
-                              <span className="text-[11px] text-neutral-400 font-bold">{item.dismantled_at}</span>
+                          <div key={item.id} className="flex items-center gap-3 px-4 py-2">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                              <Image
+                                src={item.image || '/images/item.png'}
+                                alt={item.name}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
+                              <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                  {item.grade}
+                                </span>
+                                <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
+                                  {item.name}
+                                </h4>
+                              </div>
+                              <p className="text-[11px] text-neutral-400 font-medium truncate">{item.series}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
+                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                              </div>
+                              <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 text-right flex items-center justify-end gap-1">
-                            <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                            <Image
-                              src="/images/gcoin.png"
-                              alt="G"
-                              width={14}
-                              height={14}
-                              className="object-contain"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
                     </>
                   )
                 )}
@@ -2854,37 +2918,37 @@ function ProfileContent() {
                         </div>
                       ) : (
                         <>
-                          {/* Mobile Grid for Dismantled */}
-                          <div className="md:hidden grid grid-cols-2 gap-3 p-3">
+                          {/* Mobile List for Dismantled */}
+                          <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                             {filteredDismantledItems.map((item) => (
-                              <div key={item.id} className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 p-3 space-y-3 shadow-sm relative overflow-hidden">
-                                <div className="aspect-square bg-[#28324E] rounded-xl overflow-hidden relative">
-                                  <Image 
-                                    src={item.image || '/images/item.png'} 
-                                    alt={item.name} 
-                                    fill 
-                                    className="object-cover" 
+                              <div key={item.id} className="flex items-center gap-3 px-4 py-2">
+                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                                  <Image
+                                    src={item.image || '/images/item.png'}
+                                    alt={item.name}
+                                    fill
+                                    className="object-cover"
                                     unoptimized
                                   />
-                                  <div className="absolute bottom-2 left-2">
-                                    <span className="px-2 py-0.5 bg-neutral-600 text-white text-[10px] font-black rounded-md uppercase">{item.grade}</span>
-                                  </div>
                                 </div>
-                                <div>
-                                  <h4 className="text-[13px] font-black text-neutral-900 dark:text-white leading-tight line-clamp-2 min-h-[2.5em] break-all">{item.name}</h4>
-                                  <div className="flex justify-between items-center mt-2">
-                                    <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
+                                <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
+                                  <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                      {item.grade}
+                                    </span>
+                                    <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
+                                      {item.name}
+                                    </h4>
+                                  </div>
+                                  <p className="text-[11px] text-neutral-400 font-medium truncate">{item.series}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                   <div className="flex items-center gap-1">
-                                    <span className="text-[11px] font-black text-accent-red">+{item.recycleValue}</span>
-                                    <Image
-                                      src="/images/gcoin.png"
-                                      alt="G"
-                                      width={12}
-                                      height={12}
-                                      className="object-contain"
-                                    />
+                                    <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
+                                    <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
                                   </div>
-                                  </div>
+                                  <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                                 </div>
                               </div>
                             ))}
@@ -3128,6 +3192,7 @@ function ProfileContent() {
 
                                     const form = document.createElement('form');
                                           form.method = 'POST';
+                                          form.target = '_blank';
                                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
                                           form.action = `${baseUrl}/api/logistics/map`;
                                           const input = document.createElement('input');
@@ -3160,6 +3225,7 @@ function ProfileContent() {
 
                                              const form = document.createElement('form');
                                           form.method = 'POST';
+                                          form.target = '_blank';
                                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
                                           form.action = `${baseUrl}/api/logistics/map`;
                                           const input = document.createElement('input');
@@ -4625,9 +4691,11 @@ function ProfileContent() {
                                   {item.items.map((result, idx) => (
                                     <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                       <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-                                        <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-md border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
-                                          {result.ticket_number}
-                                        </span>
+                                        {!['gacha', 'blindbox'].includes(item.productType || '') && (
+                                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-md border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
+                                            {result.ticket_number}
+                                          </span>
+                                        )}
                                         <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-md border border-accent-red/10 uppercase shrink-0">
                                           {result.grade}
                                         </span>
@@ -4635,7 +4703,7 @@ function ProfileContent() {
                                           {result.name}
                                         </span>
                                       </div>
-                                      
+
                                       {result.txid_hash && item.productType === 'ichiban' && (
                                       <button
                                         type="button"
@@ -4815,9 +4883,11 @@ function ProfileContent() {
                                 className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 px-2 py-2"
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
-                                    {result.ticket_number}
-                                  </span>
+                                  {!['gacha', 'blindbox'].includes(item.productType || '') && (
+                                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
+                                      {result.ticket_number}
+                                    </span>
+                                  )}
                                   <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
                                     {result.grade}
                                   </span>
@@ -7118,6 +7188,7 @@ function ProfileContent() {
                         onClick={() => {
                           const form = document.createElement('form');
                           form.method = 'POST';
+                          form.target = '_blank';
                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
                           form.action = `${baseUrl}/api/logistics/map`;
                           const input = document.createElement('input');
@@ -7151,6 +7222,7 @@ function ProfileContent() {
                         onClick={() => {
                           const form = document.createElement('form');
                           form.method = 'POST';
+                          form.target = '_blank';
                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
                           form.action = `${baseUrl}/api/logistics/map`;
                           const input = document.createElement('input');
