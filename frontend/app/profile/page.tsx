@@ -143,6 +143,7 @@ interface DrawHistoryItem {
   date: string;
   tickets: string[];
   cost: number;
+  pointsUsed: number;
   items: { grade: string; name: string; ticket_number: string; txid_hash?: string }[];
   rawDate?: string;
 }
@@ -331,6 +332,7 @@ interface GroupedDrawHistoryItem {
   date: string;
   tickets: string[];
   cost: number;
+  pointsUsed: number;
   items: { grade: string; name: string; ticket_number: string; txid_hash?: string }[];
 }
 
@@ -340,6 +342,7 @@ interface GroupedDrawHistoryItem {
     ticket_number: number;
     created_at: string;
     status: string;
+    points_used?: number | null;
     txid_hash?: string | null;
     prize_level?: string | null;
     prize_name?: string | null;
@@ -1466,6 +1469,7 @@ function ProfileContent() {
             prize_level,
             prize_name,
             txid_hash,
+            points_used,
             product_prizes ( level, name ),
             products ( name, price, status, remaining, type )
           `)
@@ -1486,9 +1490,11 @@ function ProfileContent() {
           const grade = (['gacha', 'blindbox'].includes(itemProductType)) ? '普通' : rawGrade;
           const name = item.product_prizes?.name || item.prize_name || '未知';
 
+          const itemPointsUsed = item.points_used || 0;
           if (lastGroup && lastGroup._rawDate === currentTimestamp && lastGroup.product === item.products?.name) {
             lastGroup.tickets.push(item.ticket_number?.toString());
             lastGroup.cost += (item.products?.price || 0);
+            lastGroup.pointsUsed += itemPointsUsed;
             lastGroup.items.push({ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined });
           } else {
             groupedHistory.push({
@@ -1503,6 +1509,7 @@ function ProfileContent() {
               date: new Date(item.created_at).toLocaleString('zh-TW'),
               tickets: [item.ticket_number?.toString()],
               cost: item.products?.price || 0,
+              pointsUsed: itemPointsUsed,
               items: [{ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined }]
             });
           }
@@ -4683,10 +4690,18 @@ function ProfileContent() {
 
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
-                                  <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
-                                    {item.cost.toLocaleString()}
-                                  </span>
+                                  {item.pointsUsed > 0 ? (
+                                    <span className="text-[14px] font-black text-indigo-500 dark:text-indigo-400 font-amount tracking-tighter">
+                                      {(item.pointsUsed * 4).toLocaleString()} 積分
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                      <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
+                                        {item.cost.toLocaleString()}
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
                                 <ChevronDown className={cn("w-4 h-4 text-neutral-400 transition-transform duration-200", isExpanded && "rotate-180")} />
                               </div>

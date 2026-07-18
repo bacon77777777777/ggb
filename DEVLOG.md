@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.07.18d｜2026-07-18｜積分消耗顯示修正（前台抽獎紀錄 + 後台消費報表）
+
+### 積分消耗顯示修正
+- **根本原因**：`draw_records.points_used` 存的是 G 等值（e.g. 150G），實際積分需 × 4（e.g. 600 積分）
+- `draw_records` 的 `points_used` 維持儲 G 等值（供廠商結算用），顯示層統一 × 4 換算
+- **前台抽獎紀錄**（`frontend/app/profile/page.tsx`）：
+  - select 補撈 `points_used`；累計至群組
+  - 有積分消耗時顯示「X 積分」（indigo 色），否則顯示 G 幣圖示 + 數字
+- **後台消費報表**（`backend/app/reports/[type]/page.tsx`）：
+  - 積分欄由 `N G` 改為 `N×4 積分`
+  - KPI 總積分卡、CSV 匯出同步修正
+
+---
+
 ## v2026.07.18c｜2026-07-18｜留言頭像修正 + DB 同步 + 機器人留言改短
 
 ### 留言頭像丟失修正（`frontend/app/news/[id]/page.tsx`, `frontend/app/api/news/[id]/comments/route.ts`）

@@ -171,8 +171,8 @@ export default function ReportPage() {
       )
     } else if (reportType === 'products') {
       exportCSV(`消費明細_${start}_${end}.csv`,
-        ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額G幣(G)', '消費積分(G)', '剩餘數量', '總數量', '完抽率(%)'],
-        filteredProducts.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue - (p.pointsUsed ?? 0)), String(p.pointsUsed ?? 0), String(p.remaining), String(p.totalCount), String(p.completionRate)])
+        ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額G幣(G)', '消費積分(積分)', '剩餘數量', '總數量', '完抽率(%)'],
+        filteredProducts.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue - (p.pointsUsed ?? 0)), String((p.pointsUsed ?? 0) * 4), String(p.remaining), String(p.totalCount), String(p.completionRate)])
       )
     } else if (reportType === 'overview' && overview) {
       const rows: string[][] = [
@@ -435,7 +435,7 @@ export default function ReportPage() {
             )}
             {filterCurrency !== 'tokens' && (() => {
               const totalPts = filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0)
-              return <KpiCard label="總消費積分" value={`${totalPts.toLocaleString()} G`} color={totalPts > 0 ? 'text-indigo-600' : 'text-orange-400'} />
+              return <KpiCard label="總消費積分" value={`${(totalPts * 4).toLocaleString()} 積分`} color={totalPts > 0 ? 'text-indigo-600' : 'text-orange-400'} />
             })()}
             <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-primary" />
           </div>
@@ -488,7 +488,7 @@ export default function ReportPage() {
                           )}
                           {filterCurrency !== 'tokens' && (
                             <td className="px-4 py-3 text-right font-semibold text-indigo-600">
-                              {pts > 0 ? `${pts.toLocaleString()} G` : <span className="text-neutral-300">—</span>}
+                              {pts > 0 ? `${(pts * 4).toLocaleString()} 積分` : <span className="text-neutral-300">—</span>}
                             </td>
                           )}
                           <td className="px-4 py-3 text-right text-neutral-600 whitespace-nowrap">
