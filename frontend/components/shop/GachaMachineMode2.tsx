@@ -305,15 +305,7 @@ export function GachaMachineMode2({
         />
       </div>
 
-      {/* Box white fill as background for glass dome area — (27,74), 707×386 on 750×932 */}
-      <div
-        className="absolute pointer-events-none"
-        style={{ left: '3.6%', top: '7.94%', width: '94.27%', height: '41.42%' }}
-      >
-        <Image src="/images/gacha/mode2/box.svg" alt="" fill className="object-fill" unoptimized />
-      </div>
-
-      {/* Egg physics — clipped to the exact box.svg blob shape via CSS mask */}
+      {/* Egg physics — clipped to box.svg blob shape via CSS mask (no white background) */}
       <div
         className="absolute"
         style={{
