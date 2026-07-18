@@ -884,14 +884,11 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
         {/* LOGO 區域 */}
         <div className={`h-[72px] px-3 border-b border-neutral-200 transition-all duration-300 flex items-center ${isSidebarOpen ? '' : 'justify-center'}`}>
-          <div className={`flex items-center ${isSidebarOpen ? 'gap-2' : 'justify-center'}`}>
-            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-              <img src="/images/favicon.png" alt="吉吉比" className="w-full h-full object-cover" />
-            </div>
-            <h1 className={`text-base font-bold text-primary whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-              吉吉比管理後台
-            </h1>
-          </div>
+          {isSidebarOpen ? (
+            <h1 className="text-base font-bold text-primary whitespace-nowrap">GGB管理後台</h1>
+          ) : (
+            <span className="text-base font-bold text-primary">G</span>
+          )}
         </div>
 
         <nav ref={navRef} onScroll={handleNavScroll} className={`px-2 py-2 space-y-1 transition-all duration-300 flex-1 overflow-y-auto overflow-x-hidden`}>
