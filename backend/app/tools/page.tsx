@@ -527,7 +527,7 @@ export default function ToolsPage() {
 
   return (
     <AdminLayout pageTitle="工具" pageSubtitle="貼上 URL 或上傳 CSV 批量抓取並匯出">
-      <div className="p-6 space-y-4">
+      <div className="space-y-6">
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -554,7 +554,7 @@ export default function ToolsPage() {
                       value={batchListUrl}
                       onChange={(e) => setBatchListUrl(e.target.value)}
                       placeholder="https://slimetoy.com.tw/ 或 https://oripa.clove.jp/zh-TW/oripa/All"
-                      className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <button
                       onClick={() => void loadListUrlToBatch()}
@@ -631,11 +631,11 @@ export default function ToolsPage() {
                         <table className="min-w-full text-sm">
                           <thead className="bg-white">
                             <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">URL</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">狀態</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">商品名稱</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">價格</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">獎項</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">URL</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">狀態</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">商品名稱</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">價格</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">獎項</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
@@ -697,7 +697,7 @@ export default function ToolsPage() {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -751,9 +751,9 @@ export default function ToolsPage() {
                         <table className="min-w-full text-sm">
                           <thead className="bg-white">
                             <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">名稱</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">等級</th>
-                              <th className="text-left px-3 py-2 font-medium text-neutral-700">數量</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">名稱</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">等級</th>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">數量</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">

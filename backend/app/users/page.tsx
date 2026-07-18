@@ -18,6 +18,7 @@ import {
 } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { supabase } from '@/lib/supabaseClient'
+import SelectField from '@/components/ui/SelectField'
 
 interface User {
   id: string
@@ -490,13 +491,13 @@ function UsersPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push(`/users/${user.id}`)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+            className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"
           >
             查看詳情
           </button>
           <button
             onClick={() => router.push(`/users/${user.id}/edit`)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+            className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"
           >
             編輯
           </button>
@@ -748,6 +749,7 @@ function UsersPage() {
             totalCount={sortedUsers.length}
             visibleColumns={visibleColumns}
             emptyMessage="沒有找到符合條件的用戶"
+            isLoading={isLoading}
           />
         </PageCard>
       </div>
@@ -794,7 +796,7 @@ function UsersPage() {
               type="text"
               value={createUserForm.name}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="請輸入會員名稱"
             />
           </div>
@@ -804,7 +806,7 @@ function UsersPage() {
               type="email"
               value={createUserForm.email}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="member@example.com"
             />
           </div>
@@ -814,7 +816,7 @@ function UsersPage() {
               type="text"
               value={createUserForm.password}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, password: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="至少 6 碼"
             />
           </div>
@@ -825,7 +827,7 @@ function UsersPage() {
                 type="text"
                 value={createUserForm.phone}
                 onChange={(e) => setCreateUserForm(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="09xxxxxxxx"
               />
             </div>
@@ -836,7 +838,7 @@ function UsersPage() {
                 min="0"
                 value={createUserForm.tokens}
                 onChange={(e) => setCreateUserForm(prev => ({ ...prev, tokens: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           </div>
@@ -846,20 +848,20 @@ function UsersPage() {
               type="text"
               value={createUserForm.address}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, address: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder="選填"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">狀態</label>
-            <select
+            <SelectField
               value={createUserForm.status}
               onChange={(e) => setCreateUserForm(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }))}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="active">啟用</option>
               <option value="inactive">停用</option>
-            </select>
+            </SelectField>
           </div>
           {createUserError && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">

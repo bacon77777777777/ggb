@@ -3,6 +3,7 @@
 import { AdminLayout } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface ProductView { product_id: number; product_name: string; count: number }
 interface ButtonClick { event_type: string; label: string; count: number }
@@ -167,7 +168,7 @@ export default function BehaviorPage() {
         {data && (
           <button
             onClick={() => exportCSV(data, start, end)}
-            className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+            className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -196,7 +197,7 @@ export default function BehaviorPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-20 text-center text-neutral-400 text-sm">載入中...</div>
+        <CardSkeleton rows={3} />
       ) : !data ? (
         <div className="py-20 text-center text-neutral-400 text-sm">載入失敗</div>
       ) : (
@@ -323,8 +324,8 @@ export default function BehaviorPage() {
                       ins.level === 'warn'
                         ? 'bg-amber-50 text-amber-900 border border-amber-200'
                         : ins.level === 'ok'
-                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                        : 'bg-blue-50 text-blue-900 border border-blue-200'
+                        ? 'bg-green-50 text-green-900 border border-green-200'
+                        : 'bg-primary text-blue-900 border border-blue-200'
                     }`}
                   >
                     <span className="mt-0.5 flex-shrink-0">{ins.level === 'warn' ? '⚠' : ins.level === 'ok' ? '✓' : 'ℹ'}</span>

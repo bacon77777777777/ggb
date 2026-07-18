@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import CopyableID from '@/components/CopyableID'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
@@ -130,7 +131,7 @@ export default function RechargeDetailPage() {
         ]}
       >
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </AdminLayout>
     )
@@ -150,19 +151,6 @@ export default function RechargeDetailPage() {
         </div>
       </AdminLayout>
     )
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case '成功':
-        return 'bg-green-100 text-green-700 border border-green-200'
-      case '處理中':
-        return 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-      case '失敗':
-        return 'bg-red-100 text-red-700 border border-red-200'
-      default:
-        return 'bg-neutral-100 text-neutral-700 border border-neutral-200'
-    }
   }
 
   return (
@@ -194,9 +182,7 @@ export default function RechargeDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-neutral-900">儲值資訊</h2>
-                <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(recharge.status)}`}>
-                  {recharge.status}
-                </span>
+                <Badge status={recharge.status}>{recharge.status}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
@@ -327,9 +313,7 @@ export default function RechargeDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-semibold text-neutral-900 font-mono text-sm">{otherRecharge.orderId}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(otherRecharge.status)}`}>
-                              {otherRecharge.status}
-                            </span>
+                            <Badge status={otherRecharge.status} size="sm">{otherRecharge.status}</Badge>
                           </div>
                           <div className="flex items-center gap-4 text-sm text-neutral-500">
                             <span className="font-mono">{otherRecharge.time}</span>

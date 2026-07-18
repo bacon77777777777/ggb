@@ -1,7 +1,10 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 interface Analysis {
   id: number
@@ -122,7 +125,7 @@ export default function CompetitorIntelPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-100"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                 {w.name}
               </a>
             ))}
@@ -160,7 +163,7 @@ export default function CompetitorIntelPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : tab === 'report' ? (
           <div className="space-y-4">
             {analyses.length === 0 ? (
@@ -201,8 +204,8 @@ export default function CompetitorIntelPage() {
                     {(a.facts_layer || a.insight_layer || a.suggest_layer) && (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {a.facts_layer && (
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-blue-700 mb-1">事實層</h5>
+                          <div className="bg-primary rounded-lg p-3">
+                            <h5 className="text-xs font-semibold text-primary mb-1">事實層</h5>
                             <p className="text-xs text-blue-800 leading-relaxed">{a.facts_layer}</p>
                           </div>
                         )}
@@ -213,9 +216,9 @@ export default function CompetitorIntelPage() {
                           </div>
                         )}
                         {a.suggest_layer && (
-                          <div className="bg-emerald-50 rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-emerald-700 mb-1">建議層</h5>
-                            <p className="text-xs text-emerald-800 leading-relaxed">{a.suggest_layer}</p>
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <h5 className="text-xs font-semibold text-green-700 mb-1">建議層</h5>
+                            <p className="text-xs text-green-800 leading-relaxed">{a.suggest_layer}</p>
                           </div>
                         )}
                       </div>
@@ -259,14 +262,11 @@ export default function CompetitorIntelPage() {
                   </div>
                   <div>
                     <label className="text-xs text-neutral-500 block mb-1">來源平台</label>
-                    <select
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none bg-white"
-                      value={form.platform}
-                      onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
+                    <SelectField value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
                     >
                       <option value="">選擇平台</option>
                       {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 </div>
                 <div>
@@ -315,7 +315,7 @@ export default function CompetitorIntelPage() {
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700">{p.platform}</span>
                       )}
                       {p.added_by === 'market_intel_v2' && (
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-600">AI 爬取</span>
+                        <Badge variant="primary">AI 爬取</Badge>
                       )}
                       <span className="text-xs text-neutral-400">
                         {new Date(p.created_at).toLocaleDateString('zh-TW')}
@@ -324,7 +324,7 @@ export default function CompetitorIntelPage() {
                     <p className="text-sm text-neutral-700 whitespace-pre-wrap line-clamp-4">{p.content}</p>
                     {p.url && (
                       <a href={p.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-blue-500 hover:underline break-all"
+                        className="text-xs text-primary hover:underline break-all"
                       >
                         {p.url}
                       </a>

@@ -1,8 +1,10 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import SelectField from '@/components/ui/SelectField'
 
 interface Bot {
   id: number
@@ -25,7 +27,7 @@ const COLOR_STYLES: Record<string, string> = {
   gold: 'bg-yellow-100 text-yellow-700',
   red: 'bg-red-100 text-red-700',
   purple: 'bg-purple-100 text-purple-700',
-  blue: 'bg-blue-100 text-blue-700',
+  blue: 'bg-blue-100 text-primary',
   green: 'bg-green-100 text-green-700',
 }
 
@@ -97,11 +99,11 @@ export default function LeaderboardBotsPage() {
     <AdminLayout
       pageTitle="機器人管理"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-neutral-500">共 <span className="font-semibold text-neutral-800">{bots.length}</span> 個機器人，啟用中 <span className="font-semibold text-emerald-600">{activeCount}</span> 個</span>
+            <span className="text-sm text-neutral-500">共 <span className="font-semibold text-neutral-800">{bots.length}</span> 個機器人，啟用中 <span className="font-semibold text-green-600">{activeCount}</span> 個</span>
             <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full">真實用戶優先，機器人填補剩餘名次至 20 名</span>
           </div>
           <button
@@ -128,22 +130,22 @@ export default function LeaderboardBotsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">名稱 *</label>
                 <input value={form.nickname ?? ''} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))}
                   placeholder="機器人名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div className="col-span-2 md:col-span-1">
                 <label className="text-xs text-neutral-500 mb-1 block">排序</label>
                 <input type="number" value={form.sort_order ?? 99} onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">賞金榜分數</label>
                 <input type="number" value={form.whale_score ?? 0} onChange={e => setForm(f => ({ ...f, whale_score: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">轉蛋榜分數</label>
                 <input type="number" value={form.draws_score ?? 0} onChange={e => setForm(f => ({ ...f, draws_score: Number(e.target.value) }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
 
@@ -151,7 +153,7 @@ export default function LeaderboardBotsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">頭像 URL</label>
               <input value={form.avatar_url ?? ''} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))}
                 placeholder="/images/avatar/01.png"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -159,31 +161,31 @@ export default function LeaderboardBotsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">稱號（選填）</label>
                 <input value={form.title_name ?? ''} onChange={e => setForm(f => ({ ...f, title_name: e.target.value }))}
                   placeholder="e.g. 抽蛋之神"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">稱號顏色</label>
-                <select value={form.title_color ?? 'gold'} onChange={e => setForm(f => ({ ...f, title_color: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <SelectField value={form.title_color ?? 'gold'} onChange={e => setForm(f => ({ ...f, title_color: e.target.value }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {TITLE_COLORS.map(c => <option key={c} value={c}>{COLOR_LABELS[c]}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">性別</label>
-                <select value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <SelectField value={form.gender ?? ''} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   <option value="">未設定</option>
                   <option value="male">男</option>
                   <option value="female">女</option>
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">生日</label>
                 <input type="date" value={form.birthday ?? ''} onChange={e => setForm(f => ({ ...f, birthday: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
 
@@ -191,7 +193,7 @@ export default function LeaderboardBotsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">備注</label>
               <input value={form.bio ?? ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                 placeholder="機器人備注（僅後台可見）"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
 
             <div className="flex items-center gap-2">
@@ -214,24 +216,24 @@ export default function LeaderboardBotsPage() {
 
         {/* 機器人列表 */}
         {loading ? (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+          <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={6} /></div>
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-b border-neutral-100">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 w-10">排序</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500">機器人</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500">稱號</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">賞金榜</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">轉蛋榜</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500">狀態</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500">操作</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 w-10">排序</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">機器人</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">稱號</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">賞金榜</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">轉蛋榜</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500">狀態</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-50">
                 {bots.map(bot => (
-                  <tr key={bot.id} className={`hover:bg-neutral-50 ${!bot.is_active ? 'opacity-40' : ''}`}>
+                  <tr key={bot.id} className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${!bot.is_active ? 'opacity-40' : ''}`}>
                     <td className="px-4 py-3 text-neutral-400 font-mono text-xs">{bot.sort_order}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -256,7 +258,7 @@ export default function LeaderboardBotsPage() {
                       <button
                         onClick={() => handleToggleActive(bot)}
                         className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                          bot.is_active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                          bot.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
                         }`}
                       >
                         {bot.is_active ? '啟用' : '停用'}

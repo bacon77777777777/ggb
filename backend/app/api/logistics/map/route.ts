@@ -5,13 +5,16 @@ export async function POST(req: NextRequest) {
   try {
     let logisticsSubType = 'UNIMARTC2C'
 
+    let requestId = ''
     const contentType = req.headers.get('content-type') || ''
     if (contentType.includes('application/json')) {
       const body = await req.json()
       logisticsSubType = body.logisticsSubType || 'UNIMARTC2C'
+      requestId = body.requestId || ''
     } else {
       const formData = await req.formData()
       logisticsSubType = (formData.get('logisticsSubType') as string) || 'UNIMARTC2C'
+      requestId = (formData.get('requestId') as string) || ''
     }
 
     const baseUrl =
@@ -28,7 +31,9 @@ export async function POST(req: NextRequest) {
     if (!MerchantID) return NextResponse.json({ error: '缺少 ECPAY_MERCHANT_ID' }, { status: 500 })
 
     const merchantTradeNo = 'M' + Date.now()
-    const callbackUrl = `${baseUrl}/api/logistics/map-callback`
+    const callbackUrl = requestId
+      ? `${baseUrl}/api/logistics/map-callback?request_id=${encodeURIComponent(requestId)}`
+      : `${baseUrl}/api/logistics/map-callback`
 
     const params = generateMapParams(merchantTradeNo, logisticsSubType, callbackUrl, MerchantID, HashKey, HashIV)
 

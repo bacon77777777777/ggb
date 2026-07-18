@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface Banner {
   id: number
@@ -17,6 +18,7 @@ interface Banner {
 }
 
 export default function BannersPage() {
+  const { toast } = useToast()
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -47,7 +49,7 @@ export default function BannersPage() {
     } catch (error) {
       console.error('Error fetching banners:', error)
       // For development without actual table, we might want to show empty or mock
-      // alert('載入輪播圖失敗') 
+      // toast('載入輪播圖失敗', 'error') 
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +103,7 @@ export default function BannersPage() {
       fetchData()
     } catch (error: any) {
       console.error('Error deleting banner:', error)
-      alert(error.message || '刪除失敗')
+      toast(error.message || '刪除失敗', 'error')
     }
   }
 
@@ -120,7 +122,7 @@ export default function BannersPage() {
   const handleSubmit = async () => {
     if (savingLock.current) return
     if (!formData.name) {
-      alert('請輸入輪播圖名稱')
+      toast('請輸入輪播圖名稱', 'warning')
       return
     }
     savingLock.current = true
@@ -150,7 +152,7 @@ export default function BannersPage() {
         }
         finalImageUrl = String(uploadJson?.publicUrl || '')
       } else if (!finalImageUrl && !formData.imagePreview) {
-        alert('請上傳圖片')
+        toast('請上傳圖片', 'warning')
         return
       }
 
@@ -190,7 +192,7 @@ export default function BannersPage() {
       fetchData()
     } catch (error: any) {
       console.error('Error saving banner:', error)
-      alert(error.message || '儲存失敗')
+      toast(error.message || '儲存失敗', 'error')
     } finally {
       savingLock.current = false
       setIsSaving(false)
@@ -208,7 +210,7 @@ export default function BannersPage() {
       key: 'image_url',
       label: '圖片',
       render: (item) => (
-        <div className="relative w-32 h-16 bg-gray-100 rounded overflow-hidden border border-gray-200">
+        <div className="relative w-32 h-16 bg-neutral-100 rounded overflow-hidden border border-neutral-200">
           <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
         </div>
       )
@@ -218,10 +220,10 @@ export default function BannersPage() {
       label: '連結',
       render: (item) => (
         item.link_url ? (
-          <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate max-w-[200px] block">
+          <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px] block">
             {item.link_url}
           </a>
-        ) : <span className="text-gray-400">-</span>
+        ) : <span className="text-neutral-400">-</span>
       )
     },
     {
@@ -254,7 +256,7 @@ export default function BannersPage() {
               }
             } catch (error) {
               console.error('Error updating banner status:', error)
-              alert('更新狀態失敗')
+              toast('更新狀態失敗', 'error')
               // Revert on error
               setBanners(prev => prev.map(b => 
                 b.id === item.id ? { ...b, is_active: !checked } : b
@@ -267,7 +269,7 @@ export default function BannersPage() {
     {
       key: 'created_at',
       label: '建立時間',
-      render: (item) => <span className="text-gray-500 text-sm">{formatDateTime(item.created_at)}</span>
+      render: (item) => <span className="text-neutral-500 text-sm">{formatDateTime(item.created_at)}</span>
     },
     {
       key: 'actions',
@@ -276,7 +278,7 @@ export default function BannersPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(item)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+            className="text-primary hover:text-primary text-sm font-medium"
           >
             編輯
           </button>
@@ -319,27 +321,27 @@ export default function BannersPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">名稱 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">名稱 <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 placeholder="請輸入輪播圖名稱"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">圖片 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">圖片 <span className="text-red-500">*</span></label>
               <div className="space-y-2">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 />
                 {formData.imagePreview && (
-                  <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                  <div className="relative w-full h-40 bg-neutral-100 rounded-lg overflow-hidden border border-neutral-200">
                     <img 
                       src={formData.imagePreview} 
                       alt="Preview" 
@@ -352,31 +354,31 @@ export default function BannersPage() {
                   type="text"
                   value={formData.image_url}
                   onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm text-neutral-500"
                   placeholder="或輸入圖片網址..."
                 /> */}
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">連結網址 (選填)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">連結網址 (選填)</label>
               <input
                 type="text"
                 value={formData.link_url}
                 onChange={e => setFormData({ ...formData, link_url: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 placeholder="https://..."
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">排序 (數字越小越前面)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">排序 (數字越小越前面)</label>
                 <input
                   type="number"
                   value={formData.sort_order}
                   onChange={e => setFormData({ ...formData, sort_order: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 />
               </div>
               
@@ -388,7 +390,7 @@ export default function BannersPage() {
                     onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
                     className="rounded text-primary focus:ring-primary"
                   />
-                  <span className="text-sm font-medium text-gray-700">啟用狀態</span>
+                  <span className="text-sm font-medium text-neutral-700">啟用狀態</span>
                 </label>
               </div>
             </div>
@@ -396,7 +398,7 @@ export default function BannersPage() {
             <div className="flex justify-end gap-3 pt-4 border-t mt-6">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border rounded-lg hover:bg-neutral-50"
               >
                 取消
               </button>

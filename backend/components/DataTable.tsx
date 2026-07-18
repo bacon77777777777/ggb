@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, Fragment, ReactNode } from 'react'
 import SortableTableHeader from './SortableTableHeader'
+import { TableSkeleton } from './ui/TableSkeleton'
+import { TableEmpty } from './ui/EmptyState'
 
 export interface Column<T> {
   key: string
@@ -53,6 +55,9 @@ interface DataTableProps<T> {
   
   // 空狀態
   emptyMessage?: string
+
+  // 初始載入中（顯示骨架，避免閃爍「沒有資料」）
+  isLoading?: boolean
   
   // 可見欄位
   visibleColumns?: { [key: string]: boolean }
@@ -83,7 +88,8 @@ export default function DataTable<T extends { id: number | string }>({
   isLoadingMore = false,
   totalCount,
   emptyMessage = '沒有資料',
-  visibleColumns
+  visibleColumns,
+  isLoading = false
 }: DataTableProps<T>) {
   const observerTarget = useRef<HTMLDivElement>(null)
 
@@ -173,10 +179,10 @@ export default function DataTable<T extends { id: number | string }>({
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead>
+        <thead className="bg-neutral-50 border-b border-neutral-200">
           <tr className="border-b border-neutral-200">
             {selectable && (
-              <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 w-12`}>
+              <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 w-12`}>
                 <input
                   type="checkbox"
                   checked={isAllSelected}
@@ -207,7 +213,7 @@ export default function DataTable<T extends { id: number | string }>({
               return (
                 <th
                   key={column.key}
-                  className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
+                  className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
                 >
                   <span className="whitespace-nowrap">{column.label}</span>
                 </th>
@@ -216,15 +222,10 @@ export default function DataTable<T extends { id: number | string }>({
           </tr>
         </thead>
         <tbody>
-          {displayData.length === 0 ? (
-            <tr>
-              <td
-                colSpan={filteredColumns.length + (selectable ? 1 : 0)}
-                className="py-12 text-center text-neutral-500"
-              >
-                {emptyMessage}
-              </td>
-            </tr>
+          {isLoading ? (
+            <TableSkeleton rows={8} cols={filteredColumns.length + (selectable ? 1 : 0)} />
+          ) : displayData.length === 0 ? (
+            <TableEmpty colSpan={filteredColumns.length + (selectable ? 1 : 0)} message={emptyMessage} />
           ) : (
             displayData.map((item, index) => {
               const itemId = item[keyField] as number | string
@@ -276,7 +277,7 @@ export default function DataTable<T extends { id: number | string }>({
                       return (
                         <td
                           key={column.key}
-                          className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
+                          className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap ${column.className || ''} ${stickyClass}`}
                           onClick={column.sticky ? (e) => e.stopPropagation() : undefined}
                         >
                           <span className="whitespace-nowrap">{column.render ? column.render(item, index) : String((item as any)[column.key] || '')}</span>

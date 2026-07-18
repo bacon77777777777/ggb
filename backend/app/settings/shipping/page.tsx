@@ -2,8 +2,11 @@
 
 import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 export default function ShippingSettingsPage() {
+  const { toast } = useToast()
   const [feeHome, setFeeHome] = useState('130')
   const [feeCvs711, setFeeCvs711] = useState('65')
   const [feeCvsFamily, setFeeCvsFamily] = useState('65')
@@ -48,7 +51,7 @@ export default function ShippingSettingsPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (e) {
-      alert('儲存失敗，請重試')
+      toast('儲存失敗，請重試', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -59,7 +62,7 @@ export default function ShippingSettingsPage() {
       <div className="max-w-lg">
         <PageCard>
           {isLoading ? (
-            <div className="py-8 text-center text-neutral-400">載入中...</div>
+            <CardSkeleton rows={3} />
           ) : (
             <div className="space-y-6">
               <div>
@@ -80,7 +83,7 @@ export default function ShippingSettingsPage() {
                         min="0"
                         value={feeHome}
                         onChange={e => setFeeHome(e.target.value)}
-                        className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                        className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono"
                       />
                     </div>
                   </div>
@@ -104,7 +107,7 @@ export default function ShippingSettingsPage() {
                             min="0"
                             value={val}
                             onChange={e => setter(e.target.value)}
-                            className="w-28 px-3 py-1.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+                            className="w-28 px-3 py-1.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono text-sm"
                           />
                         </div>
                       ))}
@@ -128,7 +131,7 @@ export default function ShippingSettingsPage() {
                       min="1"
                       value={freeShippingThreshold}
                       onChange={e => setFreeShippingThreshold(e.target.value)}
-                      className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
+                      className="w-32 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent font-mono"
                     />
                     <span className="text-sm text-neutral-500">件以上免運</span>
                   </div>

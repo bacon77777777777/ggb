@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal, FileInput } from '@/components'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import Badge from '@/components/ui/Badge'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
@@ -13,8 +15,10 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function ProductsPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
   const { highlightedProductId, setHighlightedProductId } = useProduct()
@@ -145,7 +149,7 @@ export default function ProductsPage() {
   const prizeStatusLabel = (status: string) => {
     const map: Record<string, { label: string; cls: string }> = {
       success:          { label: '未申請', cls: 'bg-neutral-100 text-neutral-500' },
-      in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-blue-600' },
+      in_warehouse:     { label: '倉庫中', cls: 'bg-blue-100 text-primary' },
       pending_delivery: { label: '待出貨', cls: 'bg-yellow-100 text-yellow-700' },
       shipped:          { label: '已出貨', cls: 'bg-green-100 text-green-700' },
       dismantled:       { label: '已拆解', cls: 'bg-red-100 text-red-500' },
@@ -424,7 +428,7 @@ export default function ProductsPage() {
           setSelectedProducts(new Set())
         } catch (e) {
           console.error('Error batch updating products:', e)
-          alert('批量上架失敗')
+          toast('批量上架失敗', 'error')
         }
       }
     })
@@ -468,7 +472,7 @@ export default function ProductsPage() {
           setSelectedProducts(new Set())
         } catch (e) {
           console.error('Error batch updating products:', e)
-          alert('批量下架失敗')
+          toast('批量下架失敗', 'error')
         }
       }
     })
@@ -504,7 +508,7 @@ export default function ProductsPage() {
           })
         } catch (e) {
           console.error('Error deleting product:', e)
-          alert('刪除商品失敗')
+          toast('刪除商品失敗', 'error')
         }
       }
     })
@@ -752,14 +756,14 @@ export default function ProductsPage() {
               <>
                 <button
                   onClick={() => setIsXlsxOpen(true)}
-                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   智能批量匯入
                 </button>
                 <button
                   onClick={() => zipRef.current?.click()}
                   disabled={zipUploading}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="h-9 px-4 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium whitespace-nowrap"
                   title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
                 >
                   {zipUploading ? '上傳中...' : '上傳圖片'}
@@ -917,7 +921,7 @@ export default function ProductsPage() {
           {/* 表格 */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <th className={`${getDensityClasses()} text-left`}>
                     <input
@@ -927,7 +931,7 @@ export default function ProductsPage() {
                       className="w-4 h-4 text-primary focus:ring-primary rounded"
                     />
                   </th>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 whitespace-nowrap`}>主圖</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>主圖</th>
                   {visibleColumns.productCode && (
                     <SortableTableHeader sortKey="productCode" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                       編號
@@ -984,16 +988,18 @@ export default function ProductsPage() {
                     </SortableTableHeader>
                   )}
                   {visibleColumns.operations && (
-                    <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>操作</th>
+                    <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>操作</th>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {sortedProducts.length === 0 ? (
+                {isLoading ? (
+                  <TableSkeleton rows={8} cols={10} />
+                ) : sortedProducts.length === 0 ? (
                   <tr>
                     <td colSpan={20} className="text-center">
                       <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
-                        <span>{isLoading ? '載入中...' : '沒有找到符合條件的商品'}</span>
+                        <span>沒有找到符合條件的商品</span>
                       </div>
                     </td>
                   </tr>
@@ -1036,39 +1042,35 @@ export default function ProductsPage() {
                         </td>
                       )}
                       {visibleColumns.name && (
-                        <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                           <div className="flex items-center gap-2">
                             <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${expandedProducts.has(product.id) ? 'rotate-180 text-primary' : 'text-neutral-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                             <span className="whitespace-nowrap">{product.name}</span>
-                            {product.isHot && <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 whitespace-nowrap flex-shrink-0">熱賣</span>}
+                            {product.isHot && <Badge variant="danger" size="sm">熱賣</Badge>}
                             {(() => {
                               const normalPrizes = product.prizes.filter(p => !isLastOneLevel(p.level))
                               const fallbackRemaining = normalPrizes.reduce((sum, s) => sum + s.remaining, 0)
                               const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
                               const isSoldOut = remaining === 0 && product.status !== 'pending'
-                              return isSoldOut && (
-                                <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 whitespace-nowrap flex-shrink-0">
-                                  已完抽
-                                </span>
-                              )
+                              return isSoldOut && <Badge variant="default" size="sm">已完抽</Badge>
                             })()}
                           </div>
                         </td>
                       )}
                       {visibleColumns.type && (
-                        <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             product.type === 'ichiban'
-                              ? 'bg-blue-100 text-blue-700'
+                              ? 'bg-blue-100 text-primary'
                               : product.type === 'blindbox'
                               ? 'bg-purple-100 text-purple-700'
                               : product.type === 'gacha'
                               ? 'bg-orange-100 text-orange-700'
                               : product.type === 'card'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-gray-100 text-gray-700'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-neutral-100 text-neutral-700'
                           }`}>
                             {{
                               ichiban: '一番賞',
@@ -1173,7 +1175,7 @@ export default function ProductsPage() {
                                 )
                               } catch (error) {
                                 console.error('更新狀態失敗:', error)
-                                alert('更新狀態失敗')
+                                toast('更新狀態失敗', 'error')
                               }
                             }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all flex-shrink-0 ${
@@ -1206,7 +1208,7 @@ export default function ProductsPage() {
                           expandedProducts.has(product.id) ? 'bg-neutral-50' : 'bg-white group-hover:bg-neutral-50'
                         }`} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
-                            <Link href={`/products/${product.id}`} className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap">編輯</Link>
+                            <Link href={`/products/${product.id}`} className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap">編輯</Link>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1219,7 +1221,7 @@ export default function ProductsPage() {
                             {product.txidHash && (
                               <Link 
                                 href={`/products/${product.id}/verify`} 
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 驗證
@@ -1256,7 +1258,7 @@ export default function ProductsPage() {
                                 return (
                                   <div key={idx}>
                                     <div
-                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-blue-50' : 'hover:bg-neutral-100'}`}
+                                      className={`flex items-center gap-3 text-sm rounded px-2 py-1 -mx-2 cursor-pointer select-none transition-colors ${isExpanded ? 'bg-primary' : 'hover:bg-neutral-100'}`}
                                       onClick={() => prize.id && togglePrize(prize.id, drawn)}
                                     >
                                       <span className="text-neutral-400 w-3 text-xs">{isExpanded ? '▾' : '▸'}</span>
@@ -1265,7 +1267,7 @@ export default function ProductsPage() {
                                       <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
                                       <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
-                                      <span className="text-blue-500 font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
+                                      <span className="text-primary font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
                                       {drawn > 0 && <span className="text-xs text-neutral-400">已抽 {drawn}</span>}
                                     </div>
                                     {isExpanded && (
@@ -1297,7 +1299,7 @@ export default function ProductsPage() {
                                                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${cls}`}>{label}</span>
                                                   <Link
                                                     href={`/users/${dr.user_id}`}
-                                                    className="text-blue-600 hover:underline font-medium"
+                                                    className="text-primary hover:underline font-medium"
                                                     onClick={(e) => e.stopPropagation()}
                                                   >
                                                     {dr.userName}
@@ -1305,7 +1307,7 @@ export default function ProductsPage() {
                                                   {dr.orderNumber && (
                                                     <Link
                                                       href={`/orders/${dr.order_id}`}
-                                                      className="text-neutral-500 hover:text-blue-600 hover:underline font-mono"
+                                                      className="text-neutral-500 hover:text-primary hover:underline font-mono"
                                                       onClick={(e) => e.stopPropagation()}
                                                     >
                                                       {dr.orderNumber}

@@ -3,8 +3,7 @@
 const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   gacha:    [
     { value: 'gacha_classic', label: '原始經典（物理蛋球掉落）' },
-    { value: 'gacha_modern',  label: '現代膠囊機（格列膠囊展示）' },
-    { value: 'gacha_retro',   label: '復古街頭機（日式扭蛋街機）' },
+    { value: 'gacha_mode2',   label: '新款機台（旋鈕式蛋口出蛋）' },
   ],
   ichiban:  [
     { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },
@@ -26,6 +25,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
 
 import AdminLayout from '@/components/AdminLayout'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
+import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -35,8 +35,10 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
 import { sanitizeImageUrl } from '@/lib/image-utils'
 import { SmallItem } from '@/types/product'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function NewProductPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
@@ -233,7 +235,7 @@ export default function NewProductPage() {
     
     // 驗證必填欄位
     if (!formData.name || !formData.price || prizes.length === 0) {
-      alert('請填寫所有必填欄位並至少添加一個獎項')
+      toast('請填寫所有必填欄位並至少添加一個獎項', 'warning')
       return
     }
     setIsSubmitting(true)
@@ -346,7 +348,7 @@ export default function NewProductPage() {
         error?.error_description ||
         (typeof error === 'string' ? error : '')
       console.error('Error creating product:', error)
-      alert(`新增商品失敗：${msg || '請稍後再試'}`)
+      toast(`新增商品失敗：${msg || '請稍後再試'}`, 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -362,7 +364,7 @@ export default function NewProductPage() {
     >
       <div className="space-y-4">
         {/* 頂部操作列 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => router.back()}
@@ -386,18 +388,53 @@ export default function NewProductPage() {
         <form id="new-product-form" onSubmit={handleSubmit} className="flex gap-4 items-start">
           {/* 左卡：商品設定 */}
           <div className="w-[440px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-neutral-200 p-4 space-y-3 overflow-y-auto h-[calc(100dvh-9rem)]">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                商品名稱 <span className="text-red-500">*</span>
+            {/* 商品名稱 + 商品圖 同一行 */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  商品名稱 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
+                  placeholder="請輸入商品名稱"
+                  required
+                />
+              </div>
+              {/* 商品圖 — 點擊上傳 */}
+              <label className="flex-shrink-0 cursor-pointer group relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
+                  }}
+                />
+                <div className="w-[100px] h-[100px] rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
+                  {formData.imagePreview ? (
+                    <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg className="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  )}
+                </div>
+                {formData.imagePreview && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                  >
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
-                placeholder="請輸入商品名稱"
-                required
-              />
             </div>
 
             {/* 類型 */}
@@ -405,24 +442,16 @@ export default function NewProductPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 類型 <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                >
-                  <option value="ichiban">一番賞</option>
-                  <option value="blindbox">盒玩 (盲盒)</option>
-                  <option value="gacha">轉蛋</option>
-                  <option value="card">抽卡</option>
-                  <option value="custom">自製賞</option>
-                </select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <SelectField
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              >
+                <option value="ichiban">一番賞</option>
+                <option value="blindbox">盒玩 (盲盒)</option>
+                <option value="gacha">轉蛋</option>
+                <option value="card">抽卡</option>
+                <option value="custom">自製賞</option>
+              </SelectField>
             </div>
 
             {/* 售價 / 成本 */}
@@ -435,7 +464,7 @@ export default function NewProductPage() {
                   type="number"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="0"
                   required
                   min="1"
@@ -449,7 +478,7 @@ export default function NewProductPage() {
                   type="number"
                   value={formData.cost}
                   onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="0"
                   min="0"
                   step="0.01"
@@ -472,22 +501,14 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   狀態
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option value="active">進行中</option>
-                    <option value="pending">待上架</option>
-                    <option value="ended">已完抽</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+                <SelectField
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="active">進行中</option>
+                  <option value="pending">待上架</option>
+                  <option value="ended">已完抽</option>
+                </SelectField>
               </div>
               <div>
                 <DatePicker
@@ -506,24 +527,16 @@ export default function NewProductPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 稀有度
               </label>
-              <div className="relative">
-                <select
-                  value={formData.rarity}
-                  onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm appearance-none cursor-pointer"
-                >
-                  <option value="1">1 星</option>
-                  <option value="2">2 星</option>
-                  <option value="3">3 星</option>
-                  <option value="4">4 星</option>
-                  <option value="5">5 星</option>
-                </select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <SelectField
+                value={formData.rarity}
+                onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}
+              >
+                <option value="1">1 星</option>
+                <option value="2">2 星</option>
+                <option value="3">3 星</option>
+                <option value="4">4 星</option>
+                <option value="5">5 星</option>
+              </SelectField>
             </div>
 
             {/* 上市時間與代理商 */}
@@ -537,6 +550,7 @@ export default function NewProductPage() {
                   month={formData.releaseMonth}
                   onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
                   onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
+                  onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
                   placeholder="選擇上市時間"
                 />
               </div>
@@ -548,7 +562,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.distributor}
                   onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="例如：萬代南夢宮"
                 />
               </div>
@@ -560,7 +574,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm font-mono"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 font-mono"
                   placeholder="4549660718956"
                   maxLength={50}
                 />
@@ -573,7 +587,7 @@ export default function NewProductPage() {
                   type="text"
                   value={formData.series ?? ''}
                   onChange={(e) => setFormData({ ...formData, series: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
+                  className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="寶可夢、鬼滅之刃..."
                 />
               </div>
@@ -581,16 +595,15 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   廠商
                 </label>
-                <select
+                <SelectField
                   value={formData.supplierId}
                   onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 >
                   <option value="">— 未指定 —</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
                   ))}
-                </select>
+                </SelectField>
                 {formData.supplierId && (() => {
                   const sup = suppliers.find(s => String(s.id) === formData.supplierId)
                   return sup?.tax_id ? (
@@ -602,16 +615,15 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   抽獎模組
                 </label>
-                <select
+                <SelectField
                   value={formData.machineTheme}
                   onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm"
                 >
                   <option value="">— 類別預設 —</option>
                   {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             </div>
 
@@ -658,51 +670,6 @@ export default function NewProductPage() {
               </label>
             </div>
 
-            {/* 商品圖 */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                商品圖
-              </label>
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        setFormData({
-                          ...formData,
-                          image: file,
-                          imagePreview: URL.createObjectURL(file)
-                        })
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white file:cursor-pointer hover:file:bg-primary-dark"
-                  />
-                </div>
-                {formData.imagePreview && (
-                  <div className="mt-4">
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.imagePreview}
-                        alt="預覽"
-                        className="w-40 h-40 object-cover rounded-lg border-2 border-neutral-200 shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, image: null, imagePreview: '' })}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* 右卡：品項設定 */}
@@ -791,7 +758,7 @@ export default function NewProductPage() {
                               className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                               placeholder="名稱"
                             />
-                            <select
+                            <SelectField
                               value={prize.level}
                               onChange={(e) => {
                                 const updated = [...prizes]
@@ -806,7 +773,6 @@ export default function NewProductPage() {
                                 }
                                 setPrizes(updated)
                               }}
-                              className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none"
                             >
                               <option value="">等級</option>
                               {(formData.type === 'gacha' ? gachaLevels
@@ -815,7 +781,7 @@ export default function NewProductPage() {
                                 : ichibanLevels).map(level => (
                                   <option key={level.value} value={level.value}>{level.label}</option>
                               ))}
-                            </select>
+                            </SelectField>
                           </div>
 
                           {/* 數量 + 剩餘 + 機率 */}
@@ -835,10 +801,10 @@ export default function NewProductPage() {
                               min="0"
                               placeholder="數量"
                             />
-                            <div className="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-700">
+                            <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-700">
                               {prize.remaining === 0 ? '0' : prize.remaining}
                             </div>
-                            <div className="px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-600 flex items-center justify-center">
+                            <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
                               {isLastOneLevel(prize.level)
                                 ? '最後賞'
                                 : (calculatedTotalCount > 0 && prize.total > 0
@@ -921,18 +887,17 @@ export default function NewProductPage() {
                 value={librarySearchQuery}
                 onChange={(e) => setLibrarySearchQuery(e.target.value)}
                 placeholder="搜尋小物名稱、分類..."
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
-              <select
+              <SelectField
                 value={librarySelectedCategory}
                 onChange={(e) => setLibrarySelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 <option value="all">全部分類</option>
                 {Array.from(new Set(libraryItems.map(item => item.category))).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
 
             {/* 小物列表 */}

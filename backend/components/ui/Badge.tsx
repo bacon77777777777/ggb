@@ -3,46 +3,123 @@
 import { HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
+export type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
+
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
+  variant?: BadgeVariant
+  status?: string
   size?: 'sm' | 'md' | 'lg'
-  rounded?: 'full' | 'lg' | 'md'
+  rounded?: 'full' | 'lg'
 }
 
-const variantStyles = {
-  default: 'bg-neutral-100 text-neutral-700 border-neutral-200',
-  primary: 'bg-primary/10 text-primary border-primary/20',
-  success: 'bg-green-100 text-green-700 border-green-200',
-  warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  danger: 'bg-red-100 text-red-700 border-red-200',
-  info: 'bg-blue-100 text-blue-700 border-blue-200'
+// 通用 status string → variant 對照表（供各頁面共用）
+export const statusVariantMap: Record<string, BadgeVariant> = {
+  // 訂單狀態
+  submitted: 'warning',
+  processing: 'info',
+  picked_up: 'info',
+  shipping: 'info',
+  delivered: 'success',
+  cancelled: 'default',
+  // 商品/上架狀態
+  active: 'success',
+  inactive: 'default',
+  soldout: 'danger',
+  paused: 'warning',
+  deleted: 'default',
+  sold: 'info',
+  draft: 'default',
+  hidden: 'default',
+  // 用戶狀態
+  frozen: 'danger',
+  // 付款/結算
+  paid: 'success',
+  pending: 'warning',
+  failed: 'danger',
+  completed: 'success',
+  // 系統狀態
+  ok: 'success',
+  error: 'danger',
+  warning: 'warning',
+  // 中文對應
+  '成功': 'success',
+  '失敗': 'danger',
+  '處理中': 'info',
+  '待處理': 'warning',
+  '已取消': 'default',
+  '已完成': 'success',
+  '已出貨': 'info',
+  '已付款': 'success',
+  '進行中': 'warning',
+  '凍結': 'danger',
+  '正常': 'success',
+  '審核中': 'warning',
+  '已退款': 'default',
+  '已拒絕': 'danger',
+  // CS 工單狀態
+  open: 'warning',
+  in_progress: 'info',
+  resolved: 'success',
+  closed: 'default',
+  // 內容草稿 / 月結狀態
+  approved: 'info',
+  published: 'success',
+  archived: 'default',
+  confirmed: 'info',
+  // 中文草稿 / 工單狀態
+  '待確認': 'warning',
+  '已確認': 'info',
+  '已發布': 'success',
+  '已棄用': 'default',
+  '已解決': 'success',
+  '已關閉': 'default',
+  // 報表 / 消費狀態
+  success: 'success',
+  shipped: 'info',
+  in_warehouse: 'info',
+  pending_delivery: 'warning',
+  refunded: 'danger',
+  exchanged: 'default',
+  dismantled: 'default',
+  listing: 'info',
+}
+
+const variantStyles: Record<BadgeVariant, string> = {
+  default:  'bg-neutral-100 text-neutral-600 border-neutral-200',
+  primary:  'bg-primary/10 text-primary border-primary/20',
+  success:  'bg-green-100 text-green-700 border-green-200',
+  warning:  'bg-yellow-100 text-yellow-700 border-yellow-200',
+  danger:   'bg-red-100 text-red-700 border-red-200',
+  info:     'bg-blue-100 text-primary border-blue-200',
 }
 
 const sizeStyles = {
   sm: 'px-1.5 py-0.5 text-xs',
   md: 'px-2 py-1 text-xs',
-  lg: 'px-3 py-1.5 text-sm'
+  lg: 'px-3 py-1.5 text-sm',
 }
 
 const roundedStyles = {
   full: 'rounded-full',
-  lg: 'rounded-lg',
-  md: 'rounded-md'
+  lg:   'rounded-lg',
 }
 
 export default function Badge({
   children,
-  variant = 'default',
+  variant,
+  status,
   size = 'md',
   rounded = 'full',
   className,
   ...props
 }: BadgeProps) {
+  const resolvedVariant = variant ?? (status ? (statusVariantMap[status] ?? 'default') : 'default')
+
   return (
     <span
       className={cn(
         'inline-flex items-center font-semibold border whitespace-nowrap',
-        variantStyles[variant],
+        variantStyles[resolvedVariant],
         sizeStyles[size],
         roundedStyles[rounded],
         className

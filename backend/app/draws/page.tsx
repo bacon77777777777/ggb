@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -154,13 +155,13 @@ export default function DrawsPage() {
     {
       key: 'id',
       label: '編號',
-      render: (record) => <span className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">{formatDrawId(record.id, record.created_at)}</span>
+      render: (record) => <span className="text-xs font-mono font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{formatDrawId(record.id, record.created_at)}</span>
     },
     {
       key: 'created_at',
       label: '時間',
       sortable: true,
-      render: (record) => <span className="text-gray-500 font-mono whitespace-nowrap">{formatDateTime(record.created_at)}</span>
+      render: (record) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(record.created_at)}</span>
     },
     {
       key: 'user',
@@ -168,8 +169,8 @@ export default function DrawsPage() {
       sortable: true,
       render: (record) => (
         <div>
-          <div className="font-medium text-gray-900">{record.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-gray-500">{record.user?.email}</div>
+          <div className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</div>
+          <div className="text-xs text-neutral-500">{record.user?.email}</div>
         </div>
       )
     },
@@ -195,9 +196,7 @@ export default function DrawsPage() {
         return (
           <div className="flex items-center gap-1.5">
             {hasGrade && record.prize_level && (
-              <span className="px-1.5 py-0.5 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 font-bold text-xs whitespace-nowrap">
-                {record.prize_level}
-              </span>
+              <Badge variant="warning" size="sm">{record.prize_level}</Badge>
             )}
             <span className="text-sm text-neutral-700">{record.prize_name || '—'}</span>
           </div>
@@ -223,7 +222,7 @@ export default function DrawsPage() {
       label: '狀態',
       render: (record) => (
         <span className={`px-2 py-1 rounded text-xs ${
-          record.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+          record.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'
         }`}>
           {record.status === 'success' ? '成功' : record.status}
         </span>
@@ -386,6 +385,7 @@ export default function DrawsPage() {
               totalCount={sortedRecords.length}
               visibleColumns={visibleColumns}
               emptyMessage="無相關紀錄"
+              isLoading={isLoading}
             />
           </div>
         </PageCard>

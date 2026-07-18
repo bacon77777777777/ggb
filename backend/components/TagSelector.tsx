@@ -109,12 +109,12 @@ export default function TagSelector({ value, onChange, label = '標籤' }: TagSe
   // Get selected names for display
   return (
     <div className="relative" ref={containerRef}>
-      <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+      <label className="block text-xs font-medium text-neutral-500 mb-1">
         {label}
       </label>
       <div
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full h-[44px] px-3 bg-white border-2 border-neutral-200 rounded-lg flex items-center justify-between cursor-pointer transition-all duration-200 hover:border-neutral-300 ${isOpen ? 'ring-2 ring-primary border-primary' : ''}`}
+        className={`w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg flex items-center justify-between cursor-pointer transition-colors hover:border-neutral-300 ${isOpen ? 'ring-1 ring-primary border-primary' : ''}`}
       >
         <div className="truncate text-neutral-700 pr-2 select-none">
           {selectedText || <span className="text-neutral-400">請選擇...</span>}
@@ -136,7 +136,7 @@ export default function TagSelector({ value, onChange, label = '標籤' }: TagSe
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 h-10 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="flex-1 h-10 px-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20"
                 placeholder="搜尋或新增標籤（最多 5 字）"
               />
               <button

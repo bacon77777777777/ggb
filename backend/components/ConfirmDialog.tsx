@@ -64,8 +64,8 @@ export default function ConfirmDialog({
     },
     info: {
       iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
-      confirmBg: 'bg-blue-600 hover:bg-blue-700',
+      iconColor: 'text-primary',
+      confirmBg: 'bg-primary hover:bg-primary-dark',
       confirmText: 'text-white'
     }
   }
@@ -109,10 +109,10 @@ export default function ConfirmDialog({
             
             {/* 文字內容 */}
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">
                 {title}
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 {message}
               </p>
             </div>
@@ -120,10 +120,10 @@ export default function ConfirmDialog({
         </div>
 
         {/* 底部按鈕 */}
-        <div className="px-6 py-4 bg-gray-50 rounded-b-xl flex items-center justify-end gap-3">
+        <div className="px-6 py-4 bg-neutral-50 rounded-b-xl flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 hover:border-neutral-300 transition-colors"
           >
             {cancelText}
           </button>

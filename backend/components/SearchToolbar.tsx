@@ -145,7 +145,7 @@ export default function SearchToolbar({
       {showAddButton && (
         <button
           onClick={onAddClick}
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap text-sm font-medium"
+          className="h-9 bg-primary text-white px-4 rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap text-sm font-medium"
         >
           {addButtonText}
         </button>
@@ -158,7 +158,7 @@ export default function SearchToolbar({
       {showExportCSV && (
         <button
           onClick={onExportCSV}
-          className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+          className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -182,7 +182,7 @@ export default function SearchToolbar({
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 pr-10 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm placeholder:text-neutral-400 hover:border-neutral-300 shadow-sm hover:shadow-md"
+              className="w-full h-9 px-4 pl-10 pr-10 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-sm placeholder:text-neutral-400 hover:border-neutral-300"
             />
             {searchValue && (
               <button
@@ -206,7 +206,7 @@ export default function SearchToolbar({
         {showDensity && (
           <button
             onClick={cycleDensity}
-            className="w-10 h-10 flex items-center justify-center rounded-lg border-2 transition-all duration-200 border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-200 border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
             title={`密度調整 (${getDensityTitle()})`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function SearchToolbar({
                 setShowFilterPanel(!showFilterPanel)
                 setShowColumnPanel(false)
               }}
-              className={`w-10 h-10 flex items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+              className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-200 ${
                 showFilterPanel || hasActiveFilters
                   ? 'border-primary bg-primary/5 text-primary'
                   : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 hover:text-neutral-700'
@@ -248,7 +248,7 @@ export default function SearchToolbar({
                           <select
                             value={filter.value || 'all'}
                             onChange={(e) => filter.onChange?.(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary appearance-none cursor-pointer"
+                            className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none cursor-pointer"
                           >
                             {filter.options.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -291,7 +291,7 @@ export default function SearchToolbar({
                 setShowColumnPanel(!showColumnPanel)
                 setShowFilterPanel(false)
               }}
-              className={`w-10 h-10 flex items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+              className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all duration-200 ${
                 showColumnPanel || hasHiddenColumns
                   ? 'border-primary bg-primary/5 text-primary'
                   : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300 hover:text-neutral-700'
@@ -344,7 +344,7 @@ export default function SearchToolbar({
               <button
                 key={index}
                 onClick={action.onClick}
-                className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${variantClasses[action.variant || 'primary']}`}
+                className={`h-9 px-3 rounded-lg transition-colors text-sm ${variantClasses[action.variant || 'primary']}`}
               >
                 {action.label} {action.count !== undefined && `(${action.count})`}
               </button>
@@ -353,7 +353,7 @@ export default function SearchToolbar({
           {onClearSelection && (
             <button
               onClick={onClearSelection}
-              className="px-3 py-1.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
+              className="h-9 px-3 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors text-sm"
             >
               清除選擇
             </button>

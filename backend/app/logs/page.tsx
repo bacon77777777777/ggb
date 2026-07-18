@@ -1,10 +1,13 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 interface LogEntry {
   id: number
@@ -35,7 +38,7 @@ const EVENT_LABEL: Record<string, string> = {
 }
 
 const EVENT_COLOR: Record<string, string> = {
-  login: 'bg-blue-100 text-blue-700',
+  login: 'bg-blue-100 text-primary',
   draw: 'bg-purple-100 text-purple-700',
   topup: 'bg-green-100 text-green-700',
 }
@@ -311,14 +314,14 @@ export default function LogsPage() {
               />
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr className="border-b border-neutral-200">
                       {visibleColumns.timestamp && <SortableTableHeader sortKey="timestamp" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>時間</SortableTableHeader>}
                       {visibleColumns.user && <SortableTableHeader sortKey="user" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>用戶</SortableTableHeader>}
                       {visibleColumns.role && <SortableTableHeader sortKey="role" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>角色</SortableTableHeader>}
                       {visibleColumns.action && <SortableTableHeader sortKey="action" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>操作</SortableTableHeader>}
                       {visibleColumns.target && <SortableTableHeader sortKey="target" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>目標</SortableTableHeader>}
-                      {visibleColumns.details && <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700`}>詳情</th>}
+                      {visibleColumns.details && <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>詳情</th>}
                       {visibleColumns.ip && <SortableTableHeader sortKey="ip" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>IP</SortableTableHeader>}
                       {visibleColumns.status && <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>狀態</SortableTableHeader>}
                     </tr>
@@ -327,17 +330,17 @@ export default function LogsPage() {
                     {sortedLogs.slice(0, displayCount).map((log) => (
                       <tr key={log.id} className="border-b border-neutral-100 hover:bg-neutral-50">
                         {visibleColumns.timestamp && <td className={`${getDensityClasses()} text-sm text-neutral-700 font-mono whitespace-nowrap`}>{formatDateTime(log.timestamp)}</td>}
-                        {visibleColumns.user && <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>{log.user}</td>}
+                        {visibleColumns.user && <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>{log.user}</td>}
                         {visibleColumns.role && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.role}</td>}
-                        {visibleColumns.action && <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>{log.action}</td>}
+                        {visibleColumns.action && <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>{log.action}</td>}
                         {visibleColumns.target && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.target}</td>}
                         {visibleColumns.details && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.details}</td>}
                         {visibleColumns.ip && <td className={`${getDensityClasses()} text-sm text-neutral-500 font-mono whitespace-nowrap`}>{log.ip}</td>}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <span className={`px-2 py-1 text-xs rounded-full ${log.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <Badge variant={log.status === 'success' ? 'success' : 'danger'}>
                               {log.status === 'success' ? '成功' : '失敗'}
-                            </span>
+                            </Badge>
                           </td>
                         )}
                       </tr>
@@ -380,9 +383,9 @@ export default function LogsPage() {
                   placeholder="搜尋用戶名稱、IP..."
                   value={ueSearch}
                   onChange={e => setUeSearch(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-1 focus:ring-primary/20"
                 />
-                <select
+                <SelectField
                   value={ueEventType}
                   onChange={e => setUeEventType(e.target.value)}
                   className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
@@ -391,22 +394,22 @@ export default function LogsPage() {
                   <option value="login">登入</option>
                   <option value="draw">抽獎</option>
                   <option value="topup">儲值</option>
-                </select>
+                </SelectField>
                 <span className="text-sm text-neutral-500">{filteredUserEvents.length} 筆</span>
               </div>
 
               {userEventsLoading ? (
-                <div className="py-12 text-center text-neutral-400 text-sm">載入中...</div>
+                <CardSkeleton rows={4} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead>
+                    <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr className="border-b border-neutral-200">
-                        <th className="py-2 px-2 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">時間</th>
-                        <th className="py-2 px-2 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">事件</th>
-                        <th className="py-2 px-2 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">用戶</th>
-                        <th className="py-2 px-2 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">詳情</th>
-                        <th className="py-2 px-2 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">IP</th>
+                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">時間</th>
+                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">事件</th>
+                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">用戶</th>
+                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">詳情</th>
+                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">IP</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -422,7 +425,7 @@ export default function LogsPage() {
                                 {EVENT_LABEL[event.eventType] || event.eventType}
                               </span>
                             </td>
-                            <td className="py-2 px-2 text-sm text-neutral-700 whitespace-nowrap">
+                            <td className="py-2 px-2 text-sm text-neutral-500 whitespace-nowrap">
                               {event.userId ? (
                                 <a href={`/users/${event.userId}`} className="text-primary hover:underline">
                                   {event.userName}

@@ -3,6 +3,7 @@
 import { AdminLayout, PageCard, SearchToolbar, DateRangePicker } from '@/components'
 import { useState, useEffect, useMemo } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface LogisticsRecord {
   id: number
@@ -120,11 +121,11 @@ export default function LogisticsReportPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'submitted': return 'bg-yellow-50 text-yellow-700'
-      case 'processing': return 'bg-blue-50 text-blue-700'
-      case 'picked_up': return 'bg-blue-50 text-blue-600'
+      case 'processing': return 'bg-primary text-primary'
+      case 'picked_up': return 'bg-primary text-primary'
       case 'shipping': return 'bg-indigo-50 text-indigo-700'
       case 'delivered': return 'bg-green-50 text-green-700'
-      case 'cancelled': return 'bg-gray-100 text-gray-500'
+      case 'cancelled': return 'bg-neutral-100 text-neutral-500'
       default: return 'bg-neutral-100 text-neutral-600'
     }
   }
@@ -143,7 +144,7 @@ export default function LogisticsReportPage() {
           />
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+            className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -164,7 +165,7 @@ export default function LogisticsReportPage() {
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-500 mb-1">已送達</p>
-              <p className="text-2xl font-black text-blue-600">{filtered.filter(r => r.status === 'delivered').length.toLocaleString()}</p>
+              <p className="text-2xl font-black text-primary">{filtered.filter(r => r.status === 'delivered').length.toLocaleString()}</p>
               <p className="text-xs text-neutral-400 mt-0.5">筆</p>
             </div>
           </div>
@@ -197,15 +198,15 @@ export default function LogisticsReportPage() {
 
           <div className="mt-4 overflow-x-auto">
             {isLoading ? (
-              <div className="py-12 text-center text-neutral-400">載入中...</div>
+              <CardSkeleton rows={3} />
             ) : filtered.length === 0 ? (
               <div className="py-12 text-center text-neutral-400">無資料</div>
             ) : (
               <table className="w-full text-sm">
-                <thead>
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr className="border-b border-neutral-200 text-left">
                     {['提交時間', '訂單編號', '用戶', '物流類型', '物流單號', '運費', '獎品數', '狀態', '出貨時間'].map(h => (
-                      <th key={h} className="py-2 px-3 font-semibold text-neutral-700 whitespace-nowrap">{h}</th>
+                      <th key={h} className="py-2 px-3 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>

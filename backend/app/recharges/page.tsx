@@ -1,10 +1,12 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, DateRangePicker, type Column } from '@/components'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface RechargeRecord {
   id: number
@@ -84,6 +86,7 @@ function getMethodChannel(normalized: string): 'ecpay' | 'manual' {
 }
 
 export default function RechargesPage() {
+  const { toast } = useToast()
   const [records, setRecords] = useState<RechargeRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [methodDetailOpen, setMethodDetailOpen] = useState(true)
@@ -117,7 +120,7 @@ export default function RechargesPage() {
       setRecords((result as RechargeRecord[]) || [])
     } catch (error) {
       console.error('Error fetching recharge records:', error)
-      alert('載入儲值紀錄失敗')
+      toast('載入儲值紀錄失敗', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -224,29 +227,29 @@ export default function RechargesPage() {
   const columns: Column<RechargeRecord>[] = [
     {
       key: 'created_at', label: '時間', sortable: true,
-      render: (record) => <span className="text-gray-500">{formatDateTime(record.created_at)}</span>
+      render: (record) => <span className="text-neutral-500">{formatDateTime(record.created_at)}</span>
     },
-    { key: 'order_number', label: '訂單編號', className: 'font-mono text-gray-600' },
+    { key: 'order_number', label: '訂單編號', className: 'font-mono text-neutral-600' },
     {
       key: 'trade_no', label: '金流序號',
-      render: (record) => <span className="font-mono text-xs text-gray-500">{record.trade_no || '—'}</span>
+      render: (record) => <span className="font-mono text-xs text-neutral-500">{record.trade_no || '—'}</span>
     },
     {
       key: 'user', label: '用戶', sortable: true,
       render: (record) => (
         <div>
-          <div className="font-medium text-gray-900">{record.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-gray-500">{record.user?.email}</div>
+          <div className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</div>
+          <div className="text-xs text-neutral-500">{record.user?.email}</div>
         </div>
       )
     },
     {
       key: 'amount', label: '儲值金額(TWD)', sortable: true,
-      render: (record) => <span className="font-medium text-gray-900">{record.amount.toLocaleString()}</span>
+      render: (record) => <span className="font-medium text-neutral-900">{record.amount.toLocaleString()}</span>
     },
     {
       key: 'bonus', label: '贈送代幣(G)', sortable: true,
-      render: (record) => <span className="text-gray-500">{record.bonus.toLocaleString()}</span>
+      render: (record) => <span className="text-neutral-500">{record.bonus.toLocaleString()}</span>
     },
     {
       key: 'payment_method', label: '付款方式', sortable: true,
@@ -255,7 +258,7 @@ export default function RechargesPage() {
         const isManual = getMethodChannel(normalized) === 'manual'
         const isMarketing = (MARKETING_KEYS as readonly string[]).includes(normalized)
         return (
-          <span className={`text-sm ${isMarketing ? 'text-amber-600' : isManual ? 'text-teal-700' : 'text-gray-600'}`}>
+          <span className={`text-sm ${isMarketing ? 'text-amber-600' : isManual ? 'text-teal-700' : 'text-neutral-600'}`}>
             {getPaymentMethodLabel(record.payment_method)}
           </span>
         )
@@ -311,7 +314,7 @@ export default function RechargesPage() {
 
   return (
     <AdminLayout pageTitle="儲值明細">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
           {/* 近三個月快選 */}
@@ -330,7 +333,7 @@ export default function RechargesPage() {
                 <button
                   key={label}
                   onClick={() => { setFilterStartDate(start); setFilterEndDate(end) }}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors whitespace-nowrap ${
+                  className={`h-9 px-3 text-sm rounded-lg border transition-colors whitespace-nowrap ${
                     active
                       ? 'bg-primary text-white border-primary'
                       : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
@@ -350,7 +353,7 @@ export default function RechargesPage() {
           />
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+            className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -359,7 +362,7 @@ export default function RechargesPage() {
           </button>
         </div>
 
-        {!isLoading && (() => {
+        {isLoading ? <CardSkeleton rows={6} /> : (() => {
           const successRecs = sortedRecords.filter(r => r.status === 'success')
 
           // 各方式統計
@@ -398,7 +401,7 @@ export default function RechargesPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">儲值金額</p>
-                  <p className="text-2xl font-black text-emerald-600">NT$ {totalAmount.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-green-600">NT$ {totalAmount.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">含贈送 {totalBonus.toLocaleString()} G</p>
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
@@ -413,7 +416,7 @@ export default function RechargesPage() {
                 </div>
                 <div className="bg-white rounded-xl border border-neutral-200 p-4">
                   <p className="text-xs text-neutral-500 mb-1">實拿金額</p>
-                  <p className="text-2xl font-black text-blue-600">NT$ {totalNet.toLocaleString()}</p>
+                  <p className="text-2xl font-black text-primary">NT$ {totalNet.toLocaleString()}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">扣除手續費</p>
                 </div>
               </div>
@@ -456,9 +459,9 @@ export default function RechargesPage() {
                           <td className="py-2 px-3 font-medium whitespace-nowrap pl-6">{info.name}</td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                          <td className="py-2 px-3 tabular-nums text-emerald-600">NT$ {stat.amount.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-green-600">NT$ {stat.amount.toLocaleString()}</td>
                           <td className="py-2 px-3 tabular-nums text-red-500">NT$ {stat.fee.toLocaleString()}</td>
-                          <td className="py-2 px-3 tabular-nums text-blue-600 font-semibold">NT$ {net.toLocaleString()}</td>
+                          <td className="py-2 px-3 tabular-nums text-primary font-semibold">NT$ {net.toLocaleString()}</td>
                         </tr>
                       )
                     })}
@@ -480,7 +483,7 @@ export default function RechargesPage() {
                           </td>
                           <td className="py-2 px-3 text-neutral-500 whitespace-nowrap font-mono text-xs">{info.formula}</td>
                           <td className="py-2 px-3 tabular-nums">{stat.count.toLocaleString()}</td>
-                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-neutral-400' : 'text-emerald-600'}`}>
+                          <td className={`py-2 px-3 tabular-nums ${isMarketing ? 'text-neutral-400' : 'text-green-600'}`}>
                             {isMarketing ? '—' : `NT$ ${stat.amount.toLocaleString()}`}
                           </td>
                           <td className="py-2 px-3 tabular-nums text-neutral-400">—</td>

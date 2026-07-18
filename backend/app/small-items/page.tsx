@@ -1,6 +1,8 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
@@ -11,6 +13,7 @@ import { useLog } from '@/contexts/LogContext'
 import { useRouter } from 'next/navigation'
 
 export default function SmallItemsPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const router = useRouter()
   const { addLog } = useLog()
   const [smallItems, setSmallItems] = useState<SmallItem[]>([])
@@ -129,13 +132,18 @@ export default function SmallItemsPage() {
     }
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    const confirmed = window.confirm(`確定刪除「${name}」嗎？`)
-    if (!confirmed) return
-    const res = await fetch(`/api/admin/small-items/${id}`, { method: 'DELETE' })
-    if (!res.ok) return
-    setSmallItems(prev => prev.filter(item => item.id !== id))
-    await addLog('delete', name, `刪除小物 ID=${id}`, 'success')
+  const handleDelete = (id: string, name: string) => {
+    confirm({
+      title: '刪除小物',
+      message: `確定刪除「${name}」嗎？`,
+      type: 'danger',
+      onConfirm: async () => {
+        const res = await fetch(`/api/admin/small-items/${id}`, { method: 'DELETE' })
+        if (!res.ok) return
+        setSmallItems(prev => prev.filter(item => item.id !== id))
+        await addLog('delete', name, `刪除小物 ID=${id}`, 'success')
+      },
+    })
   }
 
   // 密度樣式
@@ -196,23 +204,23 @@ export default function SmallItemsPage() {
           {/* 表格 */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     ID
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700`}>圖片</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>圖片</th>
                   <SortableTableHeader sortKey="name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     名稱
                   </SortableTableHeader>
                   <SortableTableHeader sortKey="category" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     分類
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700`}>描述</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>描述</th>
                   <SortableTableHeader sortKey="createdAt" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
                   </SortableTableHeader>
-                  <th className={`${getDensityClasses()} text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
+                  <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +257,7 @@ export default function SmallItemsPage() {
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/small-items/${item.id}`}
-                          className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+                          className="text-primary hover:text-primary text-sm font-medium"
                         >
                           編輯
                         </Link>
@@ -269,6 +277,7 @@ export default function SmallItemsPage() {
         </PageCard>
         </div>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

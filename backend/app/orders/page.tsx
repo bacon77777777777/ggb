@@ -1,6 +1,9 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useLog } from '@/contexts/LogContext'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -8,10 +11,13 @@ import Link from 'next/link'
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function OrdersPage() {
+  const { toast } = useToast()
   const { setShipments, highlightedOrderId, setHighlightedOrderId } = useShipment()
   const { addLog } = useLog()
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set())
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
@@ -74,6 +80,7 @@ export default function OrdersPage() {
 
   const fetchOrders = async () => {
     try {
+      setIsLoading(true)
       const res = await fetch('/api/admin/orders', { method: 'GET' })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
@@ -110,6 +117,8 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error('Error in fetchOrders:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -153,7 +162,7 @@ export default function OrdersPage() {
       setShipModal({ isOpen: false, orderId: null, orderNumber: '', trackingNumber: '' })
     } catch (error) {
       console.error('Error shipping order:', error)
-      alert('出貨失敗')
+      toast('出貨失敗', 'error')
     }
   }
 
@@ -192,26 +201,7 @@ export default function OrdersPage() {
     setExpandedOrders(newExpanded)
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-700'
-      case 'processing':
-        return 'bg-blue-100 text-blue-700'
-      case 'picked_up':
-        return 'bg-blue-100 text-blue-700'
-      case 'shipping':
-        return 'bg-blue-100 text-blue-700'
-      case 'delivered':
-        return 'bg-green-100 text-green-700'
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-700'
-      default:
-        return 'bg-neutral-100 text-neutral-700'
-    }
-  }
-
-  const getStatusText = (status: string) => {
+    const getStatusText = (status: string) => {
     switch (status) {
       case 'submitted':
         return '已提交'
@@ -579,17 +569,17 @@ export default function OrdersPage() {
           {sameDeliveryOrders.length > 0 && (
             <div className="border-t border-neutral-200 pt-4">
               <div className="flex items-start gap-2 mb-3">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-900 mb-1">發現相同配送資料的訂單</p>
                   <p className="text-xs text-neutral-600 mb-2">以下訂單的配送資料與選中訂單相同，可合併配送：</p>
-                  <div className="bg-blue-50 rounded-lg p-2 space-y-1">
+                  <div className="bg-primary rounded-lg p-2 space-y-1">
                     {sameDeliveryOrders.map((order) => (
                       <div key={order.id} className="flex items-center justify-between text-xs">
-                        <span className="text-blue-700 font-medium">{order.orderId}</span>
-                        <span className="text-blue-500">{order.items.length} 個商品</span>
+                        <span className="text-primary font-medium">{order.orderId}</span>
+                        <span className="text-primary">{order.items.length} 個商品</span>
                       </div>
                     ))}
                   </div>
@@ -609,16 +599,16 @@ export default function OrdersPage() {
             </div>
           )}
           
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                <p className="text-sm text-neutral-600">
                   生成配送單後，系統將自動發送出貨通知郵件至用戶信箱
                 </p>
               </div>
@@ -772,7 +762,7 @@ export default function OrdersPage() {
           })
         } catch (error: any) {
           console.error('Error generating shipping labels:', error)
-          alert(`生成配送單失敗: ${error.message}`)
+          toast(`生成配送單失敗: ${error.message}`, 'error')
         }
       },
       onCancel: () => {
@@ -784,7 +774,7 @@ export default function OrdersPage() {
   const handleBatchGenerate = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要生成配送單的訂單')
+      toast('請先選擇要生成配送單的訂單', 'warning')
       return
     }
     
@@ -797,7 +787,7 @@ export default function OrdersPage() {
     })
 
     if (submittedOrders.length === 0) {
-      alert('選中的訂單中沒有可生成配送單的訂單')
+      toast('選中的訂單中沒有可生成配送單的訂單', 'error')
       return
     }
     
@@ -807,7 +797,7 @@ export default function OrdersPage() {
   const handleBatchPrint = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要列印的訂單')
+      toast('請先選擇要列印的訂單', 'warning')
       return
     }
     
@@ -818,7 +808,7 @@ export default function OrdersPage() {
     })
     
     if (printableOrders.length === 0) {
-      alert('選中的訂單中沒有可列印的訂單')
+      toast('選中的訂單中沒有可列印的訂單', 'error')
       return
     }
     
@@ -832,7 +822,7 @@ export default function OrdersPage() {
   const handleBatchCancel = () => {
     const selectedOrdersList = Array.from(selectedOrders)
     if (selectedOrdersList.length === 0) {
-      alert('請先選擇要取消的訂單')
+      toast('請先選擇要取消的訂單', 'warning')
       return
     }
     
@@ -843,7 +833,7 @@ export default function OrdersPage() {
     })
     
     if (cancellableOrders.length === 0) {
-      alert('選中的訂單中沒有可取消的訂單')
+      toast('選中的訂單中沒有可取消的訂單', 'error')
       return
     }
     
@@ -855,16 +845,16 @@ export default function OrdersPage() {
           <p className="text-neutral-700">
             確定要取消 <span className="font-medium text-red-500">{cancellableOrders.length}</span> 筆訂單嗎？
           </p>
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                <p className="text-sm text-neutral-600">
                   取消後將無法恢復，請確認操作。
                 </p>
               </div>
@@ -892,7 +882,7 @@ export default function OrdersPage() {
           setSelectedOrders(new Set())
         } catch (error) {
           console.error('Error cancelling orders:', error)
-          alert('取消訂單失敗')
+          toast('取消訂單失敗', 'error')
         }
       },
       confirmText: '確定取消',
@@ -986,7 +976,7 @@ export default function OrdersPage() {
               value={shipModal.trackingNumber}
               onChange={(e) => setShipModal({ ...shipModal, trackingNumber: e.target.value })}
               placeholder="請輸入物流單號"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent"
               autoFocus
             />
           </div>
@@ -1254,9 +1244,9 @@ export default function OrdersPage() {
 
           <div className="overflow-x-auto">
               <table className="w-full">
-                <thead>
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr className="border-b border-neutral-200">
-                    <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 w-12`}>
+                    <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 w-12`}>
                       <input
                         type="checkbox"
                         checked={filteredShipments.slice(0, displayCount).filter(s => s.status !== 'cancelled').length > 0 && 
@@ -1375,16 +1365,14 @@ export default function OrdersPage() {
                         出貨時間
                       </SortableTableHeader>
                     )}
-                    <th className={`text-left ${getDensityClasses()} text-sm font-semibold text-neutral-700 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
+                    <th className={`text-left ${getDensityClasses()} text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200`}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredShipments.length === 0 ? (
-                    <tr>
-                      <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} className="py-12 text-center text-neutral-500">
-                        沒有找到符合條件的訂單
-                      </td>
-                    </tr>
+                  {isLoading ? (
+                    <TableSkeleton rows={8} cols={2 + Object.values(visibleColumns).filter(Boolean).length} />
+                  ) : filteredShipments.length === 0 ? (
+                    <TableEmpty colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} message="沒有找到符合條件的訂單" />
                   ) : (
                     filteredShipments.slice(0, displayCount).map((shipment, index) => {
                       const isHighlighted = highlightedOrderId === shipment.orderId
@@ -1432,53 +1420,51 @@ export default function OrdersPage() {
                           </td>
                         )}
                         {visibleColumns.submittedAt && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{formatDateTime(shipment.submittedAt)}</span>
                           </td>
                         )}
                         {visibleColumns.status && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <span className={`px-2 py-1 text-sm rounded-full whitespace-nowrap inline-block ${getStatusColor(shipment.status)}`}>
-                              {getStatusText(shipment.status)}
-                            </span>
+                            <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
                           </td>
                         )}
                         {visibleColumns.userName && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="whitespace-nowrap">{shipment.userName || '-'}</span>
                           </td>
                         )}
                         {visibleColumns.userId && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="whitespace-nowrap"><CopyableID id={shipment.userId} /></span>
                           </td>
                         )}
                         {visibleColumns.quantity && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{shipment.items.length}</span>
                           </td>
                         )}
                         {visibleColumns.recipientName && (
                           <td className={`${getDensityClasses()} whitespace-nowrap`}>
                             <div className="space-y-0 leading-tight">
-                              <p className="text-sm text-neutral-700 whitespace-nowrap">{shipment.recipientName}</p>
+                              <p className="text-sm text-neutral-500 whitespace-nowrap">{shipment.recipientName}</p>
                               <p className="text-xs text-neutral-400 whitespace-nowrap font-mono">{shipment.recipientPhone}</p>
                               <p className="text-xs text-neutral-400 whitespace-nowrap">{shipment.address}</p>
                             </div>
                           </td>
                         )}
                         {visibleColumns.trackingNumber && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">{shipment.trackingNumber || '-'}</span>
                           </td>
                         )}
                         {visibleColumns.shippingFee && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono">{shipment.shippingFee > 0 ? `$${shipment.shippingFee}` : '—'}</span>
                           </td>
                         )}
                         {visibleColumns.shippedAt && (
-                          <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
                             <span className="font-mono whitespace-nowrap">
                               {formatDateTime(shipment.shippedAt)}
                             </span>
@@ -1500,7 +1486,7 @@ export default function OrdersPage() {
                             {/* 詳情 - 所有狀態都有 */}
                             <Link 
                               href={`/orders/${shipment.orderId}`}
-                              className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                              className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                             >
                               詳情
                             </Link>
@@ -1531,7 +1517,7 @@ export default function OrdersPage() {
                                   e.stopPropagation()
                                   handleGenerateShippingLabel([shipment.id])
                                 }}
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                             >
                               生成配送單
                             </button>
@@ -1544,7 +1530,7 @@ export default function OrdersPage() {
                                   e.stopPropagation()
                                   window.print()
                                 }}
-                                className="text-blue-500 hover:text-blue-700 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >
                                 列印物流單
                               </button>
@@ -1568,7 +1554,7 @@ export default function OrdersPage() {
                                     addLog('確認送達', '配送管理', `訂單 ${shipment.orderId} 已標記為送達`, 'success')
                                   }
                                 }}
-                                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
+                                className="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap flex-shrink-0"
                               >
                                 確認送達
                               </button>
@@ -1587,16 +1573,16 @@ export default function OrdersPage() {
                                         <p className="text-sm text-neutral-600">
                                           確定要取消 <span className="font-medium text-neutral-900">{shipment.orderId}</span> 嗎？
                                         </p>
-                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4">
                                           <div className="flex items-start gap-3">
                                             <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                               </svg>
                                             </div>
                                             <div className="flex-1">
-                                              <h3 className="text-base font-semibold text-gray-900 mb-1">注意</h3>
-                                              <p className="text-sm text-gray-600">
+                                              <h3 className="text-base font-semibold text-neutral-900 mb-1">注意</h3>
+                                              <p className="text-sm text-neutral-600">
                                                 取消後將無法恢復，請確認操作。
                                               </p>
                                             </div>
@@ -1625,7 +1611,7 @@ export default function OrdersPage() {
                                         setConfirmModal({ ...confirmModal, isOpen: false })
                                       } catch (error) {
                                         console.error('Error cancelling order:', error)
-                                        alert('取消訂單失敗')
+                                        toast('取消訂單失敗', 'error')
                                       }
                                     },
                                     onCancel: () => {
@@ -1659,7 +1645,7 @@ export default function OrdersPage() {
                                           <span className="text-neutral-500 font-mono text-xs whitespace-nowrap min-w-[80px] flex-shrink-0">
                                             #{String(idx + 1).padStart(2, '0')}
                                           </span>
-                                          <span className="text-neutral-700 whitespace-nowrap w-[240px] flex-shrink-0 overflow-hidden text-ellipsis">
+                                          <span className="text-neutral-500 whitespace-nowrap w-[240px] flex-shrink-0 overflow-hidden text-ellipsis">
                                             {item.product}
                                           </span>
                                           <span 
@@ -1678,7 +1664,7 @@ export default function OrdersPage() {
                                                 prizeName: item.prize
                                               })
                                             }}
-                                            className="text-blue-500 hover:text-blue-700 text-sm whitespace-nowrap w-20 text-left flex-shrink-0"
+                                            className="text-primary hover:text-primary text-sm whitespace-nowrap w-20 text-left flex-shrink-0"
                                           >
                                             查看商品
                                           </button>

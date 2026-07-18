@@ -7,6 +7,8 @@ import { generateTXID, calculateTXIDHash, generateRandomValue, determinePrize } 
 import { useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface DrawRecord {
   id: number
@@ -121,6 +123,7 @@ function calculateAdjustedPrizes(product: Product, profitRate: number) {
 }
 
 export default function ProductVerifyPage() {
+  const { toast } = useToast()
   const params = useParams()
   const productId = params.id as string
   
@@ -349,13 +352,13 @@ verifyDraws().then(results => {
   // 驗證 TXID Hash 與 TXID 是否一致
   const handleVerifyHash = async () => {
     if (!product) {
-      alert('商品資料不完整，無法驗證')
+      toast('商品資料不完整，無法驗證', 'error')
       return
     }
 
     const seed = getProductSeed(product)
     if (!seed) {
-      alert('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。')
+      toast('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。', 'error')
       return
     }
 
@@ -365,7 +368,7 @@ verifyDraws().then(results => {
     const expectedHash = firstDraw?.txidHash || product.txidHash
     
     if (!expectedHash) {
-      alert('沒有可用的 TXID Hash 進行驗證')
+      toast('沒有可用的 TXID Hash 進行驗證', 'error')
       return
     }
 
@@ -382,20 +385,20 @@ verifyDraws().then(results => {
         : '✗ 驗證失敗：TXID Hash 與 TXID 不一致，請檢查資料')
     } catch (error) {
       console.error('驗證錯誤:', error)
-      alert('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+      toast('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error')
     }
   }
 
   // 驗證所有抽獎記錄
   const handleVerifyAllDraws = async () => {
     if (!product || draws.length === 0) {
-      alert('沒有抽獎記錄可驗證')
+      toast('沒有抽獎記錄可驗證', 'error')
       return
     }
 
     const seed = getProductSeed(product)
     if (!seed) {
-      alert('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。')
+      toast('無法獲取 Seed，無法驗證。請確保商品已完抽或使用測試模式。', 'error')
       return
     }
 
@@ -498,7 +501,7 @@ verifyDraws().then(results => {
       }
     } catch (error) {
       console.error('驗證錯誤:', error)
-      alert('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'))
+      toast('驗證失敗：' + (error instanceof Error ? error.message : '未知錯誤'), 'error')
     } finally {
       setIsVerifying(false)
     }
@@ -508,9 +511,9 @@ verifyDraws().then(results => {
   const getGridPrizeColor = (level: string) => {
     const levelMap: { [key: string]: { bg: string, text: string } } = {
       'A賞': { bg: 'bg-yellow-400', text: 'text-yellow-900' },
-      'B賞': { bg: 'bg-gray-400', text: 'text-gray-900' },
+      'B賞': { bg: 'bg-neutral-400', text: 'text-neutral-900' },
       'C賞': { bg: 'bg-amber-700', text: 'text-amber-50' },
-      'D賞': { bg: 'bg-blue-500', text: 'text-blue-900' },
+      'D賞': { bg: 'bg-primary', text: 'text-blue-900' },
       'E賞': { bg: 'bg-green-500', text: 'text-green-900' },
       'F賞': { bg: 'bg-pink-500', text: 'text-pink-900' },
       'G賞': { bg: 'bg-purple-500', text: 'text-purple-900' },
@@ -518,7 +521,7 @@ verifyDraws().then(results => {
       'I賞': { bg: 'bg-orange-500', text: 'text-orange-900' },
       'J賞': { bg: 'bg-red-600', text: 'text-red-50' },
     }
-    return levelMap[level] || { bg: 'bg-gray-300', text: 'text-gray-900' }
+    return levelMap[level] || { bg: 'bg-neutral-300', text: 'text-neutral-900' }
   }
 
   if (!product) {
@@ -531,7 +534,7 @@ verifyDraws().then(results => {
         ]}
       >
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">載入中...</p>
+          <CardSkeleton rows={3} />
         </div>
       </AdminLayout>
     )
@@ -550,7 +553,7 @@ verifyDraws().then(results => {
         {/* 商品資訊 */}
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <h2 className="text-lg font-semibold text-neutral-900 mb-2">{product.name}</h2>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-neutral-600">
             <p>商品編號：{product.productCode}</p>
             <p>狀態：{product.status === 'ended' ? '已完抽' : product.status === 'active' ? '進行中' : '待上架'}</p>
             {product.endedAt && <p>結束時間：{product.endedAt}</p>}
@@ -561,14 +564,14 @@ verifyDraws().then(results => {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-neutral-900">公平性驗證</h2>
           </div>
 
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-neutral-600 mb-6">
             請輸入抽獎相關參數進行公平性驗證，確保抽獎結果的透明度和公正性。
           </p>
 
@@ -581,14 +584,14 @@ verifyDraws().then(results => {
               href="https://emn178.github.io/online-tools/sha256.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
               前往 SHA256 哈希驗證工具
             </a>
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-neutral-600 mt-2">
               可使用此工具驗證 TXID 與 TXID Hash 是否一致，確保抽獎結果的公平性（TXID 會在抽獎結束後公開）
             </p>
           </div>
@@ -603,14 +606,14 @@ verifyDraws().then(results => {
               if (seed) {
                 return (
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700 break-all">
+                    <div className="flex-1 px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-mono text-neutral-700 break-all">
                       {seed}
                     </div>
                     <button
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(seed)
-                          alert('Seed 已複製到剪貼板')
+                          toast('Seed 已複製到剪貼板', 'success')
                         } catch (e) {
                           console.error('複製失敗:', e)
                         }
@@ -623,7 +626,7 @@ verifyDraws().then(results => {
                 )
               } else {
                 return (
-                  <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm text-gray-500">
+                  <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm text-neutral-500">
                     完抽後公布
                   </div>
                 )
@@ -638,14 +641,14 @@ verifyDraws().then(results => {
             </label>
             {product.txidHash ? (
               <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700 break-all">
+                <div className="flex-1 px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-mono text-neutral-700 break-all">
                   {product.txidHash}
                 </div>
                 <button
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(product.txidHash || '')
-                      alert('TXID Hash 已複製到剪貼板')
+                      toast('TXID Hash 已複製到剪貼板', 'success')
                     } catch (e) {
                       console.error('複製失敗:', e)
                     }
@@ -656,7 +659,7 @@ verifyDraws().then(results => {
                 </button>
               </div>
             ) : (
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm text-gray-500">
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm text-neutral-500">
                 尚未生成（當商品上架且開賣時自動生成）
               </div>
             )}
@@ -668,7 +671,7 @@ verifyDraws().then(results => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleVerifyHash}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:opacity-60 disabled:transition-none"
+                  className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium disabled:bg-neutral-400 disabled:cursor-not-allowed disabled:hover:bg-neutral-400 disabled:opacity-60 disabled:transition-none"
                   disabled={product.status === 'active' || (!product.seed && product.status !== 'ended')}
                 >
                   驗證 TXID Hash
@@ -676,7 +679,7 @@ verifyDraws().then(results => {
                 {draws.length > 0 && (
                   <button
                     onClick={handleVerifyAllDraws}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:opacity-60 disabled:transition-none"
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:bg-neutral-400 disabled:cursor-not-allowed disabled:hover:bg-neutral-400 disabled:opacity-60 disabled:transition-none"
                     disabled={isVerifying || product.status === 'active' || (!product.seed && product.status !== 'ended')}
                   >
                     {isVerifying ? '驗證中...' : '驗證所有抽獎記錄'}
@@ -696,21 +699,21 @@ verifyDraws().then(results => {
               )}
               {/* 驗證結果簡要統計 */}
               {verificationResults.length > 0 && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-4 bg-primary border border-blue-200 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="text-sm">
-                        <span className="text-gray-600">總計：</span>
-                        <span className="font-semibold text-gray-900 ml-1">{verificationResults.length}</span>
+                        <span className="text-neutral-600">總計：</span>
+                        <span className="font-semibold text-neutral-900 ml-1">{verificationResults.length}</span>
                       </div>
                       <div className="text-sm">
-                        <span className="text-gray-600">通過：</span>
+                        <span className="text-neutral-600">通過：</span>
                         <span className="font-semibold text-green-600 ml-1">
                           {verificationResults.filter(r => r.match).length}
                         </span>
                       </div>
                       <div className="text-sm">
-                        <span className="text-gray-600">失敗：</span>
+                        <span className="text-neutral-600">失敗：</span>
                         <span className="font-semibold text-red-500 ml-1">
                           {verificationResults.filter(r => !r.match).length}
                         </span>
@@ -718,7 +721,7 @@ verifyDraws().then(results => {
                     </div>
                     <button
                       onClick={() => setIsResultsModalOpen(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
                     >
                       查看詳細結果
                     </button>
@@ -726,12 +729,12 @@ verifyDraws().then(results => {
                 </div>
               )}
               {product.status === 'active' && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-neutral-500">
                   提示：活動進行中，驗證功能將在活動結束後開放。活動結束後會公布 Seed，屆時可進行完整驗證。
                 </p>
               )}
               {product.status !== 'active' && !product.seed && product.status !== 'ended' && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-neutral-500">
                   提示：活動結束後才會公布 Seed，屆時可進行完整驗證。目前使用模擬 Seed 進行測試驗證。
                 </p>
               )}
@@ -744,7 +747,7 @@ verifyDraws().then(results => {
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 大賞數量
               </label>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700">
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-mono text-neutral-700">
                 {product.prizes.filter(p => (product.majorPrizes || ['A賞']).includes(p.level)).length}
               </div>
             </div>
@@ -752,7 +755,7 @@ verifyDraws().then(results => {
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 總抽獎次數
               </label>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm font-mono text-gray-700">
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-sm font-mono text-neutral-700">
                 {draws.length}
               </div>
             </div>
@@ -762,17 +765,17 @@ verifyDraws().then(results => {
         {product.txidHash && verificationCode && (
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <h3 className="text-base font-semibold text-neutral-900 mb-2">驗證程式碼</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-neutral-600 mb-4">
               以下是用於驗證抽獎結果的完整程式碼，您可以複製到任何 JavaScript 環境中執行以驗證結果：
             </p>
             <div className="relative">
-              <pre className={`bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs font-mono ${
+              <pre className={`bg-neutral-900 text-neutral-100 p-4 rounded-lg overflow-x-auto text-xs font-mono ${
                 !isCodeExpanded ? 'max-h-64 overflow-y-hidden' : ''
               }`}>
                 <code>{verificationCode}</code>
               </pre>
               {!isCodeExpanded && (
-                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-gray-900 to-transparent pointer-events-none rounded-b-lg"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-900 to-transparent pointer-events-none rounded-b-lg"></div>
               )}
               <div className="absolute top-4 right-4 flex items-center gap-2">
                 <a
@@ -789,16 +792,16 @@ verifyDraws().then(results => {
                 </a>
                 <button
                   onClick={() => setIsCodeExpanded(!isCodeExpanded)}
-                  className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+                  className="px-3 py-2 bg-neutral-700 text-white rounded-lg hover:bg-neutral-600 transition-colors text-sm font-medium"
                 >
                   {isCodeExpanded ? '收起' : '展開全部'}
                 </button>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(verificationCode)
-                    alert('程式碼已複製到剪貼板')
+                    toast('程式碼已複製到剪貼板', 'success')
                   }}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
                 >
                   複製程式碼
                 </button>
@@ -809,31 +812,31 @@ verifyDraws().then(results => {
 
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
           <h3 className="text-base font-semibold text-neutral-900 mb-2">公平性資訊總覽</h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-neutral-600 mb-4">
             快速檢視此商品目前對外公布的公平性關鍵資料，方便客服與自我檢查。
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-neutral-700">
             <div>
-              <div className="text-xs text-gray-500 mb-1">前台公平性驗證路徑</div>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg font-mono break-all text-xs">
+              <div className="text-xs text-neutral-500 mb-1">前台公平性驗證路徑</div>
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg font-mono break-all text-xs">
                 /fairness/{product.id}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">目前 TXID Hash（商品級）</div>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg font-mono break-all text-xs">
+              <div className="text-xs text-neutral-500 mb-1">目前 TXID Hash（商品級）</div>
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg font-mono break-all text-xs">
                 {product.txidHash || '尚未生成'}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">Seed</div>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg font-mono break-all text-xs">
+              <div className="text-xs text-neutral-500 mb-1">Seed</div>
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg font-mono break-all text-xs">
                 {product.seed || '完抽後公布'}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">狀態</div>
-              <div className="px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-lg text-xs">
+              <div className="text-xs text-neutral-500 mb-1">狀態</div>
+              <div className="px-3 py-2 bg-neutral-50 border-2 border-neutral-200 rounded-lg text-xs">
                 {product.status === 'ended'
                   ? '已完抽'
                   : product.status === 'active'
@@ -842,7 +845,7 @@ verifyDraws().then(results => {
               </div>
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-500">
+          <p className="mt-3 text-xs text-neutral-500">
             提示：前台玩家可在「公平性驗證」頁面透過 Seed Hash、TXID Hash 與自身抽獎紀錄完成第三方驗證。
           </p>
         </div>
@@ -858,17 +861,17 @@ verifyDraws().then(results => {
             <>
               <div className="mb-4 flex items-center gap-4">
                 <div className="text-sm">
-                  <span className="text-gray-600">總計：</span>
-                  <span className="font-semibold text-gray-900 ml-1">{verificationResults.length}</span>
+                  <span className="text-neutral-600">總計：</span>
+                  <span className="font-semibold text-neutral-900 ml-1">{verificationResults.length}</span>
                 </div>
                 <div className="text-sm">
-                  <span className="text-gray-600">通過：</span>
+                  <span className="text-neutral-600">通過：</span>
                   <span className="font-semibold text-green-600 ml-1">
                     {verificationResults.filter(r => r.match).length}
                   </span>
                 </div>
                 <div className="text-sm">
-                  <span className="text-gray-600">失敗：</span>
+                  <span className="text-neutral-600">失敗：</span>
                   <span className="font-semibold text-red-500 ml-1">
                     {verificationResults.filter(r => !r.match).length}
                   </span>
@@ -877,28 +880,28 @@ verifyDraws().then(results => {
               <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-white z-10">
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">Nonce</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">抽獎編號</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">實際獎項</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">計算獎項</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">隨機數</th>
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">結果</th>
+                    <tr className="border-b border-neutral-200">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">Nonce</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">實際獎項</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">計算獎項</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">隨機數</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">結果</th>
                     </tr>
                   </thead>
                   <tbody>
                     {verificationResults.map((result, index) => (
                       <tr 
                         key={index} 
-                        className={`border-b border-gray-100 ${
+                        className={`border-b border-neutral-100 ${
                           result.match ? 'bg-green-50' : 'bg-red-50'
                         }`}
                       >
-                        <td className="py-2 px-3 font-mono text-gray-700">{result.nonce}</td>
-                        <td className="py-2 px-3 font-mono text-gray-700">{result.drawId}</td>
-                        <td className="py-2 px-3 text-gray-700">{result.actualPrize}</td>
-                        <td className="py-2 px-3 text-gray-700">{result.calculatedPrize}</td>
-                        <td className="py-2 px-3 font-mono text-gray-600 text-xs">
+                        <td className="py-2 px-3 font-mono text-neutral-700">{result.nonce}</td>
+                        <td className="py-2 px-3 font-mono text-neutral-700">{result.drawId}</td>
+                        <td className="py-2 px-3 text-neutral-700">{result.actualPrize}</td>
+                        <td className="py-2 px-3 text-neutral-700">{result.calculatedPrize}</td>
+                        <td className="py-2 px-3 font-mono text-neutral-600 text-xs">
                           {result.randomValue.toFixed(6)}
                         </td>
                         <td className="py-2 px-3">
@@ -923,11 +926,11 @@ verifyDraws().then(results => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold text-neutral-900">抽獎結果分布</h3>
-                <p className="text-sm text-gray-500 mt-1">（僅供查詢，無法操作）</p>
+                <p className="text-sm text-neutral-500 mt-1">（僅供查詢，無法操作）</p>
               </div>
               <button
                 onClick={() => setIsDistributionExpanded(!isDistributionExpanded)}
-                className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+                className="px-3 py-2 bg-neutral-700 text-white rounded-lg hover:bg-neutral-600 transition-colors text-sm font-medium"
               >
                 {isDistributionExpanded ? '收起' : '展開全部'}
               </button>
@@ -941,11 +944,11 @@ verifyDraws().then(results => {
                 const prizeStats = stats[prize.level] || { total: prize.total, drawn: 0, remaining: prize.total }
                 
                 return (
-                  <div key={prizeKey} className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-sm font-medium text-gray-700 mb-1">{prize.level}</div>
-                    <div className="text-sm text-gray-900">
+                  <div key={prizeKey} className="bg-neutral-50 rounded-lg p-3">
+                    <div className="text-sm font-medium text-neutral-700 mb-1">{prize.level}</div>
+                    <div className="text-sm text-neutral-900">
                       <span className="text-lg font-bold">{prizeStats.remaining}/{prizeStats.total}</span>
-                      <span className="text-xs text-gray-500 ml-1">(已抽：{prizeStats.drawn} 個)</span>
+                      <span className="text-xs text-neutral-500 ml-1">(已抽：{prizeStats.drawn} 個)</span>
                     </div>
                   </div>
                 )
@@ -958,14 +961,14 @@ verifyDraws().then(results => {
                 {/* 抽獎記錄列表 */}
                 <div className="overflow-x-auto mb-6">
                   <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">序號</th>
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">抽獎編號</th>
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">籤號</th>
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">使用者</th>
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">獎項</th>
-                        <th className="text-left py-2 px-3 font-medium text-gray-700">時間</th>
+                    <thead className="bg-neutral-50 border-b border-neutral-200">
+                      <tr className="border-b border-neutral-200">
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">序號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">籤號</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">使用者</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">獎項</th>
+                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">時間</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -973,17 +976,17 @@ verifyDraws().then(results => {
                         const ticketNumber = draw.ticketNumber || draw.nonce
                         
                         return (
-                          <tr key={draw.id} className="border-b border-gray-100">
-                            <td className="py-2 px-3 text-gray-600 align-middle">{index + 1}</td>
-                            <td className="py-2 px-3 font-mono text-gray-700 align-middle">{draw.drawId}</td>
+                          <tr key={draw.id} className="border-b border-neutral-100">
+                            <td className="py-2 px-3 text-neutral-600 align-middle">{index + 1}</td>
+                            <td className="py-2 px-3 font-mono text-neutral-700 align-middle">{draw.drawId}</td>
                             <td className="py-2 px-3 align-middle">
-                              <span className="inline-flex items-center justify-center font-mono bg-blue-50 px-2 py-1 rounded text-gray-700 w-[3.5rem]">
+                              <span className="inline-flex items-center justify-center font-mono bg-primary px-2 py-1 rounded text-neutral-700 w-[3.5rem]">
                                 {ticketNumber.toString().padStart(3, '0')}
                               </span>
                             </td>
-                            <td className="py-2 px-3 text-gray-700 align-middle">{draw.userName}</td>
-                            <td className="py-2 px-3 text-gray-700 align-middle">{draw.prize}</td>
-                            <td className="py-2 px-3 text-gray-600 align-middle font-mono">{draw.time}</td>
+                            <td className="py-2 px-3 text-neutral-700 align-middle">{draw.userName}</td>
+                            <td className="py-2 px-3 text-neutral-700 align-middle">{draw.prize}</td>
+                            <td className="py-2 px-3 text-neutral-600 align-middle font-mono">{draw.time}</td>
                           </tr>
                         )
                       })}
@@ -1027,11 +1030,11 @@ verifyDraws().then(results => {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900">各賞分布如下</h3>
-                  <p className="text-sm text-gray-500 mt-1">（僅供查詢，無法操作）</p>
+                  <p className="text-sm text-neutral-500 mt-1">（僅供查詢，無法操作）</p>
                 </div>
                 <button
                   onClick={() => setIsPrizeDistributionExpanded(!isPrizeDistributionExpanded)}
-                  className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+                  className="px-3 py-2 bg-neutral-700 text-white rounded-lg hover:bg-neutral-600 transition-colors text-sm font-medium"
                 >
                   {isPrizeDistributionExpanded ? '收起' : '展開全部'}
                 </button>
@@ -1039,12 +1042,12 @@ verifyDraws().then(results => {
               <div className="space-y-3">
                 <div className="flex items-center gap-4 text-sm justify-center">
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                    <span className="text-gray-700">可用：{availableCount} 個</span>
+                    <div className="w-4 h-4 bg-primary rounded"></div>
+                    <span className="text-neutral-700">可用：{availableCount} 個</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-300 rounded"></div>
-                    <span className="text-gray-700">已售：{soldCount} 個</span>
+                    <div className="w-4 h-4 bg-neutral-300 rounded"></div>
+                    <span className="text-neutral-700">已售：{soldCount} 個</span>
                   </div>
                 </div>
                 <div className="relative">
@@ -1068,8 +1071,8 @@ verifyDraws().then(results => {
                             key={ticketNumber}
                             className={`p-1.5 rounded text-center text-xs font-medium flex flex-col justify-center items-center min-h-[3rem] ${
                               isSold
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                : 'bg-blue-500 text-white'
+                                ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                                : 'bg-primary text-white'
                             }`}
                             title={tooltip}
                           >

@@ -18,19 +18,16 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || reactId
 
     return (
-      <div className={cn('space-y-1.5', fullWidth && 'w-full')}>
+      <div className={cn('space-y-1', fullWidth && 'w-full')}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-neutral-700"
-          >
+          <label htmlFor={inputId} className="block text-xs font-medium text-neutral-500">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
               {leftIcon}
             </div>
           )}
@@ -38,30 +35,26 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full px-3 py-2 bg-white border-2 rounded-lg min-h-[42px]',
-              'focus:outline-none focus:ring-2 transition-all duration-200',
-              'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed disabled:border-gray-200',
+              'w-full px-3 py-1.5 bg-white border rounded-lg text-sm',
+              'focus:outline-none focus:ring-1 transition-colors',
+              'disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed disabled:border-neutral-200',
               leftIcon ? 'pl-10' : '',
               rightIcon ? 'pr-10' : '',
               error
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
                 : 'border-neutral-200 hover:border-neutral-300 focus:border-primary focus:ring-primary',
               className
             )}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 pointer-events-none">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
               {rightIcon}
             </div>
           )}
         </div>
-        {error && (
-          <p className="text-xs text-red-500">{error}</p>
-        )}
-        {helperText && !error && (
-          <p className="text-xs text-gray-500">{helperText}</p>
-        )}
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        {helperText && !error && <p className="text-xs text-neutral-500">{helperText}</p>}
       </div>
     )
   }

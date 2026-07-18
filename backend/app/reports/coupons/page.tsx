@@ -1,8 +1,10 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface CouponRow {
   id: string
@@ -96,7 +98,7 @@ export default function CouponsReportPage() {
           <button
             onClick={handleExport}
             disabled={!rows.length}
-            className="ml-auto px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
+            className="ml-auto h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
           >
             匯出 CSV
           </button>
@@ -111,7 +113,7 @@ export default function CouponsReportPage() {
             </div>
             <div className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-500 mb-1">已使用</p>
-              <p className="text-2xl font-black text-emerald-600">{fmt(usedRows.length)}</p>
+              <p className="text-2xl font-black text-green-600">{fmt(usedRows.length)}</p>
               <p className="text-xs text-neutral-400 mt-0.5">
                 使用率 {rows.length ? Math.round(usedRows.length / rows.length * 100) : 0}%
               </p>
@@ -127,7 +129,7 @@ export default function CouponsReportPage() {
         {/* 資料表 */}
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           {loading ? (
-            <div className="py-16 text-center text-sm text-neutral-400">載入中…</div>
+            <CardSkeleton rows={3} />
           ) : rows.length === 0 ? (
             <div className="py-16 text-center text-sm text-neutral-400">本期無折價券紀錄</div>
           ) : (
@@ -151,7 +153,7 @@ export default function CouponsReportPage() {
                       </td>
                       <td className="py-2 px-3 font-mono text-xs whitespace-nowrap">
                         {r.used_at
-                          ? <span className="text-emerald-600">{new Date(r.used_at).toLocaleString('zh-TW', { hour12: false })}</span>
+                          ? <span className="text-green-600">{new Date(r.used_at).toLocaleString('zh-TW', { hour12: false })}</span>
                           : <span className="text-neutral-400">未使用</span>}
                       </td>
                       <td className="py-2 px-3 font-medium whitespace-nowrap">{r.user_name}</td>
@@ -160,7 +162,7 @@ export default function CouponsReportPage() {
                         <div className="text-xs text-neutral-400">{r.coupon_title}</div>
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-xs bg-primary text-primary">
                           {DISCOUNT_TYPE_LABEL[r.discount_type] ?? r.discount_type}
                         </span>
                       </td>
@@ -170,9 +172,9 @@ export default function CouponsReportPage() {
                           : `NT$ ${fmt(r.discount_value)}`}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-xs ${r.used_at ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                        <Badge variant={r.used_at ? 'success' : 'default'}>
                           {r.used_at ? '已使用' : '未使用'}
-                        </span>
+                        </Badge>
                       </td>
                     </tr>
                   ))}

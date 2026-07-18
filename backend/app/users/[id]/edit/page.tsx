@@ -4,6 +4,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import SelectField from '@/components/ui/SelectField'
 
 interface UserProfile {
   id: string
@@ -146,7 +148,7 @@ export default function UserEditPage() {
 
   if (loading) return (
     <AdminLayout pageTitle="編輯會員" breadcrumbs={[{ label: '會員管理', href: '/users' }, { label: '編輯' }]}>
-      <div className="py-20 text-center text-sm text-neutral-400">載入中…</div>
+      <CardSkeleton rows={3} />
     </AdminLayout>
   )
 
@@ -158,7 +160,7 @@ export default function UserEditPage() {
       <div className="max-w-2xl space-y-5">
 
         {msg && (
-          <div className={`px-4 py-3 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          <div className={`px-4 py-3 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             {msg.text}
           </div>
         )}
@@ -228,41 +230,41 @@ export default function UserEditPage() {
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">顯示名稱</label>
               <input value={form.name || ''} onChange={e => set('name', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">Email</label>
               <input value={form.email || ''} onChange={e => set('email', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">性別</label>
-              <select value={form.gender || ''} onChange={e => set('gender', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <SelectField value={form.gender || ''} onChange={e => set('gender', e.target.value)}
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                 <option value="">未設定</option>
                 <option value="male">男</option>
                 <option value="female">女</option>
                 <option value="other">其他</option>
-              </select>
+              </SelectField>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">生日</label>
               <input type="date" value={form.birthday || ''} onChange={e => set('birthday', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">手機號碼</label>
               <input value={form.phone_number || ''} onChange={e => set('phone_number', e.target.value)}
                 placeholder="0912345678"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
-              <select value={form.status || 'active'} onChange={e => set('status', e.target.value as 'active' | 'inactive')}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <SelectField value={form.status || 'active'} onChange={e => set('status', e.target.value as 'active' | 'inactive')}
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                 <option value="active">啟用</option>
                 <option value="inactive">停用</option>
-              </select>
+              </SelectField>
             </div>
           </div>
         </div>
@@ -274,18 +276,18 @@ export default function UserEditPage() {
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">收件人姓名</label>
               <input value={form.recipient_name || ''} onChange={e => set('recipient_name', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">收件人電話</label>
               <input value={form.recipient_phone || ''} onChange={e => set('recipient_phone', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
           </div>
           <div>
             <label className="text-xs text-neutral-500 mb-1 block">地址</label>
             <input value={form.address || ''} onChange={e => set('address', e.target.value)}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
           </div>
         </div>
 
@@ -296,12 +298,12 @@ export default function UserEditPage() {
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">代幣</label>
               <input type="number" value={form.tokens ?? 0} onChange={e => set('tokens', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">積分</label>
               <input type="number" value={form.points ?? 0} onChange={e => set('points', e.target.value)}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
           </div>
         </div>
@@ -331,7 +333,7 @@ export default function UserEditPage() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="輸入新密碼（至少 8 碼）"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 pr-10"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 pr-10"
               />
               <button type="button" onClick={() => setShowPassword(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">

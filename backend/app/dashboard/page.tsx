@@ -282,7 +282,7 @@ function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
+      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
         !
       </div>
       {show && (
@@ -339,7 +339,7 @@ function StatCard({ title, value, unit, subtext, trend, trendValue, trendPeriod,
       {trend && trendValue && selectedPeriod && (
         <div className="flex items-center gap-1 text-xs text-neutral-600 mt-auto">
           <span>{getPeriodText(selectedPeriod)}相比 {trendValue}%</span>
-          <svg className={`w-3 h-3 ${trend === 'up' ? 'text-emerald-600' : 'text-red-500'}`} fill="currentColor" viewBox="0 0 20 20">
+          <svg className={`w-3 h-3 ${trend === 'up' ? 'text-green-600' : 'text-red-500'}`} fill="currentColor" viewBox="0 0 20 20">
             {trend === 'up' ? (
               <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
             ) : (
@@ -857,7 +857,7 @@ function RankingList({ title, data, limit = 10, tooltip }: { title: string, data
             </div>
             <div className="flex items-center gap-10 flex-shrink-0">
               {item.change !== undefined && (
-                <div className={`text-xs text-right w-16 ${item.change >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <div className={`text-xs text-right w-16 ${item.change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                   {item.change >= 0 ? '+' : ''}{item.change}%
                 </div>
               )}

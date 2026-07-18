@@ -1,8 +1,12 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface MarketplaceListing {
   id: number
@@ -21,6 +25,7 @@ interface MarketplaceListing {
 type StatusFilter = 'all' | 'active' | 'sold' | 'cancelled'
 
 export default function MarketplaceAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [listings, setListings] = useState<MarketplaceListing[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -75,100 +80,69 @@ export default function MarketplaceAdminPage() {
     }
   }
 
-  const handleForceCancel = async (listing: MarketplaceListing) => {
-    if (!window.confirm(`確定要強制下架這筆上架嗎？\n\n${listing.prize_level}賞 ${listing.prize_name}\n售價：${listing.price} G`)) {
-      return
-    }
-
-    try {
-      const res = await fetch('/api/admin/marketplace/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ listingId: listing.id, sellerId: listing.seller_id }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '下架失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '下架失敗')
-        return
-      }
-
-      setListings((prev) =>
-        prev.map((item) =>
-          item.id === listing.id ? { ...item, status: 'cancelled' } : item
-        )
-      )
-    } catch (e) {
-      console.error('Unexpected error cancelling listing:', e)
-      alert('下架失敗')
-    }
+  const handleForceCancel = (listing: MarketplaceListing) => {
+    confirm({
+      title: '強制下架',
+      message: `確定要強制下架這筆上架嗎？\n${listing.prize_level}賞 ${listing.prize_name}｜售價：${listing.price} G`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/admin/marketplace/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ listingId: listing.id, sellerId: listing.seller_id }),
+          })
+          if (!res.ok) { console.error('下架失敗'); return }
+          const data = await res.json().catch(() => null)
+          if (data?.success) {
+            setListings((prev) => prev.map((item) => item.id === listing.id ? { ...item, status: 'cancelled' } : item))
+          }
+        } catch (e) {
+          console.error('Unexpected error cancelling listing:', e)
+        }
+      },
+    })
   }
 
-  const handleClearTestData = async () => {
-    if (!window.confirm('此操作會清空所有市集上架、交易紀錄與回收池資料，僅建議在測試環境使用，確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsClearing(true)
-      const res = await fetch('/api/admin/marketplace/clear', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '清除測試資料失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert('清除測試資料失敗')
-        return
-      }
-
-      await fetchListings()
-      alert('已清除市集與回收池測試資料')
-    } catch (e) {
-      console.error('Unexpected error clearing test data:', e)
-      alert('清除測試資料失敗')
-    } finally {
-      setIsClearing(false)
-    }
+  const handleClearTestData = () => {
+    confirm({
+      title: '清空市集資料',
+      message: '此操作會清空所有市集上架、交易紀錄與回收池資料，僅建議在測試環境使用，確定要繼續嗎？',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setIsClearing(true)
+          const res = await fetch('/api/admin/marketplace/clear', { method: 'POST', credentials: 'include' })
+          if (!res.ok) { console.error('清除測試資料失敗'); return }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error clearing test data:', e)
+        } finally {
+          setIsClearing(false)
+        }
+      },
+    })
   }
 
-  const handleSeedTestData = async () => {
-    if (
-      !window.confirm(
-        '此操作會從倉庫挑選可上架的賞項（status=in_warehouse、可交易、且有圖片），建立市集上架測試資料。確定要繼續嗎？'
-      )
-    ) {
-      return
-    }
-
-    try {
-      setIsSeeding(true)
-      const res = await fetch('/api/admin/marketplace/seed', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        alert(data?.error || '建立假資料失敗')
-        return
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '建立假資料失敗')
-        return
-      }
-
-      await fetchListings()
-      alert(`已建立 ${data.created || 0} 筆市集上架測試資料`)
-    } catch (e) {
-      console.error('Unexpected error seeding marketplace listings:', e)
-      alert('建立假資料失敗')
-    } finally {
-      setIsSeeding(false)
-    }
+  const handleSeedTestData = () => {
+    confirm({
+      title: '建立假資料',
+      message: '此操作會從倉庫挑選可上架的賞項（status=in_warehouse、可交易、且有圖片），建立市集上架測試資料。確定要繼續嗎？',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setIsSeeding(true)
+          const res = await fetch('/api/admin/marketplace/seed', { method: 'POST', credentials: 'include' })
+          if (!res.ok) { console.error('建立假資料失敗'); return }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error seeding marketplace listings:', e)
+        } finally {
+          setIsSeeding(false)
+        }
+      },
+    })
   }
 
   const filteredListings = useMemo(() => {
@@ -241,7 +215,7 @@ export default function MarketplaceAdminPage() {
     <AdminLayout
       pageTitle="市集管理"
     >
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-neutral-900">玩家市集上架審核</h2>
@@ -350,25 +324,17 @@ export default function MarketplaceAdminPage() {
                   >
                     狀態
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-right">操作</th>
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
+                  <TableSkeleton rows={5} cols={6} />
                 ) : sortedListings.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-neutral-500">
-                      目前沒有符合條件的市集上架資料
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={6} message="目前沒有符合條件的市集上架資料" />
                 ) : (
                   sortedListings.map((item) => (
-                    <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className="py-3 px-4 text-sm text-neutral-600 whitespace-nowrap">
                         {formatDateTime(item.created_at)}
                       </td>
@@ -401,9 +367,9 @@ export default function MarketplaceAdminPage() {
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             item.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700'
+                              ? 'bg-green-50 text-green-700'
                               : item.status === 'sold'
-                              ? 'bg-blue-50 text-blue-700'
+                              ? 'bg-primary text-primary'
                               : 'bg-neutral-100 text-neutral-600'
                           }`}
                         >
@@ -431,6 +397,7 @@ export default function MarketplaceAdminPage() {
           </div>
         </PageCard>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

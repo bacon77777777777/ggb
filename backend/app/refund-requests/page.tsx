@@ -2,6 +2,8 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface RefundRequest {
   id: number
@@ -19,9 +21,9 @@ interface RefundRequest {
 
 const STATUS_META = {
   pending:   { label: '待審核', cls: 'bg-yellow-50 text-yellow-700' },
-  approved:  { label: '已核准', cls: 'bg-blue-50 text-blue-700' },
+  approved:  { label: '已核准', cls: 'bg-primary text-primary' },
   rejected:  { label: '已拒絕', cls: 'bg-red-50 text-red-600' },
-  processed: { label: '已處理', cls: 'bg-emerald-50 text-emerald-700' },
+  processed: { label: '已處理', cls: 'bg-green-50 text-green-700' },
 }
 
 export default function RefundRequestsPage() {
@@ -138,9 +140,9 @@ export default function RefundRequestsPage() {
 
         {/* 申請列表 */}
         {loading ? (
-          <div className="text-center py-12 text-neutral-400">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : requests.length === 0 ? (
-          <div className="text-center py-12 text-neutral-400">無退款申請</div>
+          <EmptyState message="無退款申請" />
         ) : (
           <div className="space-y-3">
             {requests.map(r => {
@@ -185,12 +187,12 @@ export default function RefundRequestsPage() {
                       />
                       {r.status === 'pending' && (
                         <>
-                          <button onClick={() => act(r.id, 'approve')} className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">核准</button>
+                          <button onClick={() => act(r.id, 'approve')} className="px-3 py-1.5 text-sm bg-primary text-primary rounded-lg hover:bg-blue-100">核准</button>
                           <button onClick={() => act(r.id, 'reject')} className="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100">拒絕</button>
                         </>
                       )}
                       {r.status === 'approved' && (
-                        <button onClick={() => act(r.id, 'process')} className="px-3 py-1.5 text-sm bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 font-medium">
+                        <button onClick={() => act(r.id, 'process')} className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium">
                           執行退款（扣代幣）
                         </button>
                       )}

@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 
 type EventStatus = 'pending' | 'processed' | 'dismissed'
@@ -124,7 +125,7 @@ export default function AgentEventsPage() {
 
   return (
     <AdminLayout pageTitle="事件中心">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 頂部操作列 */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex gap-1 bg-neutral-100 rounded-lg p-1">
@@ -132,7 +133,7 @@ export default function AgentEventsPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value)}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab.value
                     ? 'bg-white text-neutral-800 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-700'
@@ -152,7 +153,7 @@ export default function AgentEventsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => handleAll('processed')}
-                className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                className="px-3 py-1.5 text-xs border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors"
               >
                 全部標為已處理
               </button>
@@ -175,7 +176,7 @@ export default function AgentEventsPage() {
 
         {/* 事件列表 */}
         {loading ? (
-          <div className="flex justify-center py-16 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-neutral-400 gap-2">
             <span className="text-3xl">
@@ -238,7 +239,7 @@ export default function AgentEventsPage() {
                       <button
                         disabled={isUpdating}
                         onClick={() => updateStatus([ev.id], 'processed')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                       >
                         {isUpdating ? '處理中…' : '✓ 已處理'}
                       </button>

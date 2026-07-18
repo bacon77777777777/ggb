@@ -4,6 +4,8 @@ import { AdminLayout, StatsCard, SearchToolbar, PageCard, Modal, DataTable, type
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
+import { useToast } from '@/contexts/ToastContext'
+import SelectField from '@/components/ui/SelectField'
 
 interface Role {
   id: number
@@ -24,6 +26,7 @@ interface Admin {
 }
 
 export default function AdminsPage() {
+  const { toast } = useToast()
   const [sortField, setSortField] = useState<string>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [displayCount, setDisplayCount] = useState(20)
@@ -73,7 +76,7 @@ export default function AdminsPage() {
 
     } catch (error) {
       console.error('Error fetching data:', error)
-      alert('載入資料失敗')
+      toast('載入資料失敗', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -184,7 +187,7 @@ export default function AdminsPage() {
   const handleSubmit = async () => {
     try {
       if (!formData.username || !formData.role_id) {
-        alert('請填寫完整資料')
+        toast('請填寫完整資料', 'warning')
         return
       }
 
@@ -214,14 +217,14 @@ export default function AdminsPage() {
         throw new Error(errMsg)
       }
 
-      alert(editingAdmin ? '更新成功' : '新增成功')
+      toast(editingAdmin ? '更新成功' : '新增成功', 'success')
 
       setIsAddModalOpen(false)
       setIsEditModalOpen(false)
       fetchData()
     } catch (error: any) {
       console.error('Error saving admin:', error)
-      alert('儲存失敗：' + (error?.message || '未知錯誤'))
+      toast('儲存失敗：' + (error?.message || '未知錯誤', 'error'))
     }
   }
 
@@ -264,19 +267,19 @@ export default function AdminsPage() {
       key: 'id',
       label: 'ID',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono">MNG{admin.id.toString().padStart(3, '0')}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono">MNG{admin.id.toString().padStart(3, '0')}</span>
     },
     {
       key: 'username',
       label: '帳號',
       sortable: true,
-      className: 'font-medium text-gray-900'
+      className: 'font-medium text-neutral-900'
     },
     {
       key: 'nickname',
       label: '暱稱',
       sortable: true,
-      className: 'text-gray-700'
+      className: 'text-neutral-700'
     },
     {
       key: 'role',
@@ -285,8 +288,8 @@ export default function AdminsPage() {
       render: (admin) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
           ${admin.role?.name === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-            admin.role?.name === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-            'bg-gray-50 text-gray-700 border-gray-100'
+            admin.role?.name === 'admin' ? 'bg-primary text-primary border-blue-100' :
+            'bg-neutral-50 text-neutral-700 border-neutral-100'
           }`}>
           {admin.role?.display_name || '未知角色'}
         </span>
@@ -310,13 +313,13 @@ export default function AdminsPage() {
       key: 'created_at',
       label: '建立時間',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono whitespace-nowrap">{formatDateTime(admin.created_at)}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.created_at)}</span>
     },
     {
       key: 'last_login_at',
       label: '最後登入',
       sortable: true,
-      render: (admin) => <span className="text-gray-500 font-mono whitespace-nowrap">{formatDateTime(admin.last_login_at)}</span>
+      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.last_login_at)}</span>
     },
     {
       key: 'actions',
@@ -324,7 +327,7 @@ export default function AdminsPage() {
       render: (admin) => (
         <button
           onClick={() => handleEdit(admin)}
-          className="text-blue-500 hover:text-blue-700 font-medium text-sm"
+          className="text-primary hover:text-primary font-medium text-sm"
         >
           編輯
         </button>
@@ -442,8 +445,8 @@ export default function AdminsPage() {
         >
            <div className="space-y-4">
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
-                 帳號 <span className="text-xs text-gray-500">(僅限英文數字)</span>
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
+                 帳號 <span className="text-xs text-neutral-500">(僅限英文數字)</span>
                </label>
                <input
                  type="text"
@@ -454,42 +457,42 @@ export default function AdminsPage() {
                      setFormData({ ...formData, username: value })
                    }
                  }}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                  placeholder="請輸入帳號"
                />
              </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 暱稱
               </label>
               <input
                 type="text"
                 value={formData.nickname}
                 onChange={e => setFormData({ ...formData, nickname: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                 placeholder="請輸入暱稱"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 密碼
               </label>
                <input
                  type="password"
                  value={formData.password}
                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                  placeholder={isEditModalOpen ? "不修改請留空" : "請設定密碼"}
                />
              </div>
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
                  角色
                </label>
-               <select
+               <SelectField
                  value={formData.role_id}
                  onChange={e => setFormData({ ...formData, role_id: Number(e.target.value) })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                >
                  <option value={0} disabled>請選擇角色</option>
                  {roles.map(role => (
@@ -497,20 +500,20 @@ export default function AdminsPage() {
                      {role.display_name} ({role.name})
                    </option>
                  ))}
-               </select>
+               </SelectField>
              </div>
              <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
+               <label className="block text-sm font-medium text-neutral-700 mb-1">
                  狀態
                </label>
-               <select
+               <SelectField
                  value={formData.status}
                  onChange={e => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
                >
                  <option value="active">啟用</option>
                  <option value="inactive">停用</option>
-               </select>
+               </SelectField>
              </div>
  
              <div className="flex justify-end gap-3 pt-4 border-t mt-6">
@@ -520,13 +523,13 @@ export default function AdminsPage() {
                    setIsEditModalOpen(false)
                    setEditingAdmin(null)
                  }}
-                 className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                 className="px-4 py-2 text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
                >
                  取消
                </button>
                <button
                  onClick={handleSubmit}
-                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                >
                  儲存
                </button>

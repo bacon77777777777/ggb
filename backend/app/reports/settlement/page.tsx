@@ -1,7 +1,9 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -35,7 +37,7 @@ function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
+      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
         !
       </div>
       {show && (
@@ -54,7 +56,7 @@ function Row({ label, value, bold, red, green, muted, indigo, indent }: {
   return (
     <div className={`flex items-center justify-between py-1 ${indent ? 'pl-3' : ''}`}>
       <div className="text-sm">{label}</div>
-      <span className={`text-sm tabular-nums ${bold ? 'font-semibold text-neutral-800' : red ? 'text-red-500' : green ? 'text-emerald-600' : muted ? 'text-neutral-400' : indigo ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
+      <span className={`text-sm tabular-nums ${bold ? 'font-semibold text-neutral-800' : red ? 'text-red-500' : green ? 'text-green-600' : muted ? 'text-neutral-400' : indigo ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
         {value}
       </span>
     </div>
@@ -236,16 +238,16 @@ export default function SettlementPage() {
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
-              <select
+              <SelectField
                 value={selectedSupplierId}
                 onChange={e => setSelectedSupplierId(e.target.value)}
-                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[140px]"
+                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px]"
               >
                 {suppliers.map(s => (
                   <option key={s.id} value={String(s.id)}>{s.name}</option>
                 ))}
                 {suppliers.length === 0 && <option value="">載入中…</option>}
-              </select>
+              </SelectField>
             </div>
 
             {/* 匯出 + 費率設定 */}
@@ -253,7 +255,7 @@ export default function SettlementPage() {
               <button
                 onClick={handleExport}
                 disabled={!data || loading}
-                className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -265,7 +267,7 @@ export default function SettlementPage() {
               <div className="relative" ref={settingsRef}>
                 <button
                   onClick={() => setShowSettings(v => !v)}
-                  className={`px-4 py-2 border-2 rounded-lg transition-colors text-sm font-medium shadow-sm flex items-center gap-2 whitespace-nowrap ${
+                  className={`h-9 px-4 border rounded-lg transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
                     showSettings
                       ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
                       : 'bg-white border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:shadow-md'
@@ -287,12 +289,12 @@ export default function SettlementPage() {
                       <div className="flex items-center justify-between gap-3">
                         <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
                         {data?.hasActualFee ? (
-                          <span className="text-sm font-medium text-emerald-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
+                          <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
                         ) : (
                           <div className="flex items-center gap-1">
                             <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
                               onChange={e => setEcpayRate(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">% 估算</span>
                           </div>
                         )}
@@ -306,7 +308,7 @@ export default function SettlementPage() {
                           <div className="flex items-center gap-1">
                             <input type="number" value={f.value} min={f.min} max={f.max}
                               onChange={e => f.setter(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>
@@ -374,11 +376,7 @@ export default function SettlementPage() {
           </div>
         )}
 
-        {loading && (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
-            載入中…
-          </div>
-        )}
+        {loading && <CardSkeleton rows={5} />}
 
         {!loading && data && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -392,12 +390,12 @@ export default function SettlementPage() {
                 <div className="py-12 text-center text-sm text-neutral-400">本期無消費紀錄</div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr className="text-xs text-neutral-400 border-b border-neutral-100">
-                      <th className="text-left px-4 py-2">商品</th>
-                      <th className="text-right px-4 py-2">單價</th>
-                      <th className="text-right px-4 py-2">次數</th>
-                      <th className="text-right px-4 py-2">小計</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">商品</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">單價</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">次數</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">小計</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -465,7 +463,7 @@ export default function SettlementPage() {
                     <span className="text-base font-bold text-neutral-800">實際應付廠商</span>
                     <InfoTooltip text={`① 消費 G − 綠界手續費 = 淨收入\n② 淨收入 − 折價券（50%）− 運費（50%）${pointsMode === 'A' ? ' + 積分補償（50%）' : ''} = 可分潤基礎\n③ 可分潤基礎 × ${supplierShare}% = 廠商分潤\n④ 廠商分潤 − 分解退代幣 = 實際應付廠商`} />
                   </div>
-                  <span className="text-xl font-bold text-emerald-600 tabular-nums">{fmt(supplierNet)}</span>
+                  <span className="text-xl font-bold text-green-600 tabular-nums">{fmt(supplierNet)}</span>
                 </div>
                 {!period?.isClosed && (
                   <p className="text-xs text-amber-500 mt-1">* 本期尚未結算，以上為預估金額</p>

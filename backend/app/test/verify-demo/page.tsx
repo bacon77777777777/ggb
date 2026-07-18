@@ -302,7 +302,7 @@ export default function VerifyDemoPage() {
       case 'A賞':
         return 'bg-yellow-100 text-yellow-700 border border-yellow-200'
       case 'B賞':
-        return 'bg-blue-100 text-blue-700 border border-blue-200'
+        return 'bg-blue-100 text-primary border border-blue-200'
       case 'C賞':
         return 'bg-green-100 text-green-700 border border-green-200'
       case 'D賞':
@@ -339,7 +339,7 @@ export default function VerifyDemoPage() {
                 className="w-8 h-8 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center transition-colors"
                 aria-label="驗證機制說明"
               >
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
@@ -352,16 +352,16 @@ export default function VerifyDemoPage() {
                     onClick={() => setShowTooltip(false)}
                   />
                   {/* Tooltip 內容 */}
-                  <div className="absolute right-0 top-full mt-2 w-96 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-lg z-50">
+                  <div className="absolute right-0 top-full mt-2 w-96 bg-gradient-to-r from-primary to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-lg z-50">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-base font-semibold text-gray-900 mb-1">驗證機制說明</h3>
-                        <div className="text-sm text-gray-600 space-y-1.5">
+                        <h3 className="text-base font-semibold text-neutral-900 mb-1">驗證機制說明</h3>
+                        <div className="text-sm text-neutral-600 space-y-1.5">
                           <p>
                             <strong>核心原理：</strong>TXID Hash 只基於「隨機種子 (Seed)」和「序列號 (Nonce)」，不包含殺率參數。
                           </p>
@@ -383,67 +383,67 @@ export default function VerifyDemoPage() {
             {/* 步驟 1 */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                selectedProductId ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                selectedProductId ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'
               }`}>
                 {selectedProductId ? '✓' : '1'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-600">步驟 1</div>
-                <div className="text-sm font-medium text-gray-900 truncate">選擇商品</div>
+                <div className="text-xs font-medium text-neutral-600">步驟 1</div>
+                <div className="text-sm font-medium text-neutral-900 truncate">選擇商品</div>
               </div>
             </div>
-            <div className="hidden md:block text-gray-300">→</div>
+            <div className="hidden md:block text-neutral-300">→</div>
             
             {/* 步驟 2 */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                publishedHash ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                publishedHash ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'
               }`}>
                 {publishedHash ? '✓' : '2'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-600">步驟 2</div>
-                <div className="text-sm font-medium text-gray-900 truncate">查看 TXID Hash</div>
+                <div className="text-xs font-medium text-neutral-600">步驟 2</div>
+                <div className="text-sm font-medium text-neutral-900 truncate">查看 TXID Hash</div>
               </div>
             </div>
-            <div className="hidden md:block text-gray-300">→</div>
+            <div className="hidden md:block text-neutral-300">→</div>
             
             {/* 步驟 3 */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-blue-100 text-blue-700">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold bg-blue-100 text-primary">
                 3
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-600">步驟 3</div>
-                <div className="text-sm font-medium text-gray-900 truncate">調整殺率（可選）</div>
+                <div className="text-xs font-medium text-neutral-600">步驟 3</div>
+                <div className="text-sm font-medium text-neutral-900 truncate">調整殺率（可選）</div>
               </div>
             </div>
-            <div className="hidden md:block text-gray-300">→</div>
+            <div className="hidden md:block text-neutral-300">→</div>
             
             {/* 步驟 4 */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                seed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                seed ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'
               }`}>
                 {seed ? '✓' : '4'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-600">步驟 4</div>
-                <div className="text-sm font-medium text-gray-900 truncate">活動結束，公布 Seed</div>
+                <div className="text-xs font-medium text-neutral-600">步驟 4</div>
+                <div className="text-sm font-medium text-neutral-900 truncate">活動結束，公布 Seed</div>
               </div>
             </div>
-            <div className="hidden md:block text-gray-300">→</div>
+            <div className="hidden md:block text-neutral-300">→</div>
             
             {/* 步驟 5 */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                results ? (results.hashMatch ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') : 'bg-gray-100 text-gray-500'
+                results ? (results.hashMatch ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') : 'bg-neutral-100 text-neutral-500'
               }`}>
                 {results ? (results.hashMatch ? '✓' : '✗') : '5'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-600">步驟 5</div>
-                <div className="text-sm font-medium text-gray-900 truncate">執行驗證測試</div>
+                <div className="text-xs font-medium text-neutral-600">步驟 5</div>
+                <div className="text-sm font-medium text-neutral-900 truncate">執行驗證測試</div>
               </div>
             </div>
           </div>
@@ -458,18 +458,18 @@ export default function VerifyDemoPage() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 商品選擇
-                <span className="ml-2 text-xs text-gray-500 font-normal">（選擇要測試的商品）</span>
+                <span className="ml-2 text-xs text-neutral-500 font-normal">（選擇要測試的商品）</span>
               </label>
               <select
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm"
+                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-sm"
               >
                 {allProducts.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-neutral-500 mt-1">
                 選擇要進行驗證測試的商品
               </p>
             </div>
@@ -486,7 +486,7 @@ export default function VerifyDemoPage() {
                   disabled
                   readOnly
                   placeholder="活動開始時會自動生成並顯示"
-                  className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-gray-600 cursor-not-allowed placeholder:text-gray-400"
+                  className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
                 />
                 <button
                   onClick={async () => {
@@ -499,7 +499,7 @@ export default function VerifyDemoPage() {
                     }
                   }}
                   disabled={!publishedHash}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium whitespace-nowrap disabled:bg-neutral-300 disabled:cursor-not-allowed disabled:hover:bg-neutral-300"
                 >
                   複製
                 </button>
@@ -511,7 +511,7 @@ export default function VerifyDemoPage() {
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   隨機種子 (Seed)
-                  <span className="ml-2 text-xs text-gray-500 font-normal">（活動結束後公布）</span>
+                  <span className="ml-2 text-xs text-neutral-500 font-normal">（活動結束後公布）</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -520,19 +520,19 @@ export default function VerifyDemoPage() {
                     disabled
                     readOnly
                     placeholder={seed ? seed : "執行驗證測試時會自動公布"}
-                    className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-gray-600 cursor-not-allowed placeholder:text-gray-400"
+                    className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
                   />
                   <button
                     onClick={publishSeed}
                     disabled={!initialSeed || !!seed}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium whitespace-nowrap disabled:bg-neutral-300 disabled:cursor-not-allowed disabled:hover:bg-neutral-300"
                     title={seed ? 'Seed 已公布' : '手動提前公布 Seed（執行驗證時會自動公布）'}
                   >
                     {seed ? '✓ 已公布' : '提前公布'}
                   </button>
                 </div>
                 {!seed && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-neutral-500 mt-1">
                     💡 提示：點擊「執行驗證測試」時會自動公布 Seed（模擬活動結束）
                   </p>
                 )}
@@ -541,16 +541,16 @@ export default function VerifyDemoPage() {
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                   序列號 (Nonce)
-                  <span className="ml-2 text-xs text-gray-500 font-normal">（抽獎序號）</span>
+                  <span className="ml-2 text-xs text-neutral-500 font-normal">（抽獎序號）</span>
                 </label>
                 <input
                   type="number"
                   value={nonce}
                   onChange={(e) => setNonce(e.target.value)}
                   min="1"
-                  className="w-full px-3 py-2 border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
+                  className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors font-mono text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-neutral-500 mt-1">
                   用於指定要驗證的抽獎序號（從 1 開始）
                 </p>
               </div>
@@ -563,15 +563,15 @@ export default function VerifyDemoPage() {
               <h3 className="text-sm font-semibold text-neutral-700 mb-4">殺率參數設定（僅調整大獎項，小獎項自動補足）</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 初始殺率 */}
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <label className="text-sm font-medium text-gray-900 block">
+                      <label className="text-sm font-medium text-neutral-900 block">
                         基準值（活動開始時）
                       </label>
-                      <p className="text-xs text-gray-600 mt-0.5">這是活動開始時的基準值，不可調整</p>
+                      <p className="text-xs text-neutral-600 mt-0.5">這是活動開始時的基準值，不可調整</p>
                     </div>
-                    <span className="text-lg font-bold text-gray-700">
+                    <span className="text-lg font-bold text-neutral-700">
                       {(profitRate1 * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -579,22 +579,22 @@ export default function VerifyDemoPage() {
                     <div className="flex-1 relative">
                       {/* 只讀顯示滑桿，固定值為1.0 */}
                       <div className="relative">
-                        <div className="w-full h-2 bg-gray-200 rounded-lg relative">
+                        <div className="w-full h-2 bg-neutral-200 rounded-lg relative">
                           {/* 顯示當前值的位置（1.0 = 33.33%） */}
                           <div 
-                            className="absolute top-0 h-2 bg-gray-400 rounded-lg"
+                            className="absolute top-0 h-2 bg-neutral-400 rounded-lg"
                             style={{ width: '33.33%' }}
                           />
                           {/* 節點標記 */}
                           <div 
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-md"
+                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-neutral-500 rounded-full border-2 border-white shadow-md"
                             style={{ left: 'calc(33.33% - 8px)' }}
                           />
                         </div>
                         <div className="relative mt-1" style={{ height: '18px' }}>
-                          <span className="absolute text-xs text-gray-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
-                          <span className="absolute text-xs text-gray-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
-                          <span className="absolute text-xs text-gray-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
+                          <span className="absolute text-xs text-neutral-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
+                          <span className="absolute text-xs text-neutral-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
+                          <span className="absolute text-xs text-neutral-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
                         </div>
                       </div>
                     </div>
@@ -604,7 +604,7 @@ export default function VerifyDemoPage() {
                         value={profitRate1.toFixed(2)}
                         readOnly
                         disabled
-                        className="w-full px-2 py-1.5 border-2 border-gray-300 rounded-lg bg-gray-100 text-sm font-mono text-center text-gray-600 cursor-not-allowed"
+                        className="w-full px-2 py-1.5 border-2 border-neutral-300 rounded-lg bg-neutral-100 text-sm font-mono text-center text-neutral-600 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -617,7 +617,7 @@ export default function VerifyDemoPage() {
                     const minorPrizes1 = adjustedPrizes1.filter(p => !majorPrizeLevels.includes(p.level))
                     
                     return (
-                      <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                      <div className="mt-3 pt-3 border-t border-neutral-200 space-y-3">
                         {/* 大獎項 */}
                         {majorPrizes1.length > 0 && (
                           <>
@@ -639,14 +639,14 @@ export default function VerifyDemoPage() {
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                         {prize.level}
                                       </span>
-                                      <span className="text-gray-700 truncate max-w-[140px]">{prize.name}</span>
-                                      <span className="text-gray-400 text-xs font-mono">0/{totalQuantity}</span>
+                                      <span className="text-neutral-700 truncate max-w-[140px]">{prize.name}</span>
+                                      <span className="text-neutral-400 text-xs font-mono">0/{totalQuantity}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-500 text-xs">{prize.probability.toFixed(2)}%</span>
-                                      <span className="text-gray-400 text-xs">→</span>
+                                      <span className="text-neutral-500 text-xs">{prize.probability.toFixed(2)}%</span>
+                                      <span className="text-neutral-400 text-xs">→</span>
                                       <span className={`font-mono text-xs ${
-                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-gray-700'
+                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-neutral-700'
                                       }`}>
                                         {prize.adjustedProbability.toFixed(2)}%
                                       </span>
@@ -661,7 +661,7 @@ export default function VerifyDemoPage() {
                         {/* 小獎項（自動補足） */}
                         {minorPrizes1.length > 0 && (
                           <>
-                            <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-200">
+                            <div className="text-xs font-semibold text-neutral-600 mb-2 flex items-center gap-1.5 mt-3 pt-3 border-t border-neutral-200">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                               </svg>
@@ -674,19 +674,19 @@ export default function VerifyDemoPage() {
                                 const originalPrize = product.prizes.find(p => p.level === prize.level && p.name === prize.name)
                                 const totalQuantity = originalPrize?.total || 0
                                 return (
-                                  <div key={idx} className="flex items-center justify-between text-sm bg-white rounded px-2.5 py-1.5 border border-gray-200">
+                                  <div key={idx} className="flex items-center justify-between text-sm bg-white rounded px-2.5 py-1.5 border border-neutral-200">
                                     <div className="flex items-center gap-2">
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                         {prize.level}
                                       </span>
-                                      <span className="text-gray-700 truncate max-w-[140px]">{prize.name}</span>
-                                      <span className="text-gray-400 text-xs font-mono">0/{totalQuantity}</span>
+                                      <span className="text-neutral-700 truncate max-w-[140px]">{prize.name}</span>
+                                      <span className="text-neutral-400 text-xs font-mono">0/{totalQuantity}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-500 text-xs">{prize.probability.toFixed(2)}%</span>
-                                      <span className="text-gray-400 text-xs">→</span>
+                                      <span className="text-neutral-500 text-xs">{prize.probability.toFixed(2)}%</span>
+                                      <span className="text-neutral-400 text-xs">→</span>
                                       <span className={`font-mono text-xs ${
-                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-gray-700'
+                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-neutral-700'
                                       }`}>
                                         {prize.adjustedProbability.toFixed(2)}%
                                       </span>
@@ -696,9 +696,9 @@ export default function VerifyDemoPage() {
                               })}
                             </div>
                             {/* 顯示總和 */}
-                            <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-xs">
-                              <span className="text-gray-600">機率總和</span>
-                              <span className="font-mono font-semibold text-gray-900">
+                            <div className="mt-2 pt-2 border-t border-neutral-200 flex items-center justify-between text-xs">
+                              <span className="text-neutral-600">機率總和</span>
+                              <span className="font-mono font-semibold text-neutral-900">
                                 {adjustedPrizes1.reduce((sum, p) => sum + p.adjustedProbability, 0).toFixed(2)}%
                               </span>
                             </div>
@@ -728,12 +728,12 @@ export default function VerifyDemoPage() {
                         step="0.01"
                         value={profitRate2}
                         onChange={(e) => setProfitRate2(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                        className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
                       />
                       <div className="relative mt-1" style={{ height: '18px' }}>
-                        <span className="absolute text-xs text-gray-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
-                        <span className="absolute text-xs text-gray-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
-                        <span className="absolute text-xs text-gray-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
+                        <span className="absolute text-xs text-neutral-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
+                        <span className="absolute text-xs text-neutral-500" style={{ left: '33.33%', transform: 'translateX(-50%)' }}>100%</span>
+                        <span className="absolute text-xs text-neutral-500" style={{ right: '0%', transform: 'translateX(0)' }}>300%</span>
                       </div>
                     </div>
                     <div className="w-24">
@@ -744,7 +744,7 @@ export default function VerifyDemoPage() {
                         step="0.01"
                         value={profitRate2.toFixed(2)}
                         onChange={(e) => setProfitRate2(parseFloat(e.target.value) || 1.0)}
-                        className="w-full px-2 py-1.5 border-2 border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono text-center"
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono text-center"
                       />
                     </div>
                   </div>
@@ -779,14 +779,14 @@ export default function VerifyDemoPage() {
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                         {prize.level}
                                       </span>
-                                      <span className="text-gray-700 truncate max-w-[140px]">{prize.name}</span>
-                                      <span className="text-gray-400 text-xs font-mono">0/{totalQuantity}</span>
+                                      <span className="text-neutral-700 truncate max-w-[140px]">{prize.name}</span>
+                                      <span className="text-neutral-400 text-xs font-mono">0/{totalQuantity}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-500 text-xs">{prize.probability.toFixed(2)}%</span>
-                                      <span className="text-gray-400 text-xs">→</span>
+                                      <span className="text-neutral-500 text-xs">{prize.probability.toFixed(2)}%</span>
+                                      <span className="text-neutral-400 text-xs">→</span>
                                       <span className={`font-mono text-xs ${
-                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-gray-700'
+                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-neutral-700'
                                       }`}>
                                         {prize.adjustedProbability.toFixed(2)}%
                                       </span>
@@ -801,7 +801,7 @@ export default function VerifyDemoPage() {
                         {/* 小獎項（自動補足） */}
                         {minorPrizes2.length > 0 && (
                           <>
-                            <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5 mt-3 pt-3 border-t border-orange-200">
+                            <div className="text-xs font-semibold text-neutral-600 mb-2 flex items-center gap-1.5 mt-3 pt-3 border-t border-orange-200">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                               </svg>
@@ -814,19 +814,19 @@ export default function VerifyDemoPage() {
                                 const originalPrize = product.prizes.find(p => p.level === prize.level && p.name === prize.name)
                                 const totalQuantity = originalPrize?.total || 0
                                 return (
-                                  <div key={idx} className="flex items-center justify-between text-sm bg-white rounded px-2.5 py-1.5 border border-gray-200">
+                                  <div key={idx} className="flex items-center justify-between text-sm bg-white rounded px-2.5 py-1.5 border border-neutral-200">
                                     <div className="flex items-center gap-2">
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                                         {prize.level}
                                       </span>
-                                      <span className="text-gray-700 truncate max-w-[140px]">{prize.name}</span>
-                                      <span className="text-gray-400 text-xs font-mono">0/{totalQuantity}</span>
+                                      <span className="text-neutral-700 truncate max-w-[140px]">{prize.name}</span>
+                                      <span className="text-neutral-400 text-xs font-mono">0/{totalQuantity}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-500 text-xs">{prize.probability.toFixed(2)}%</span>
-                                      <span className="text-gray-400 text-xs">→</span>
+                                      <span className="text-neutral-500 text-xs">{prize.probability.toFixed(2)}%</span>
+                                      <span className="text-neutral-400 text-xs">→</span>
                                       <span className={`font-mono text-xs ${
-                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-gray-700'
+                                        change > 0 ? 'text-green-700' : change < 0 ? 'text-red-700' : 'text-neutral-700'
                                       }`}>
                                         {prize.adjustedProbability.toFixed(2)}%
                                       </span>
@@ -836,9 +836,9 @@ export default function VerifyDemoPage() {
                               })}
                             </div>
                             {/* 顯示總和 */}
-                            <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-xs">
-                              <span className="text-gray-600">機率總和</span>
-                              <span className="font-mono font-semibold text-gray-900">
+                            <div className="mt-2 pt-2 border-t border-neutral-200 flex items-center justify-between text-xs">
+                              <span className="text-neutral-600">機率總和</span>
+                              <span className="font-mono font-semibold text-neutral-900">
                                 {adjustedPrizes2.reduce((sum, p) => sum + p.adjustedProbability, 0).toFixed(2)}%
                               </span>
                             </div>
@@ -857,7 +857,7 @@ export default function VerifyDemoPage() {
             <button
               onClick={runVerification}
               disabled={!initialSeed || !nonce || !publishedHash}
-              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-base font-semibold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors text-base font-semibold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -865,7 +865,7 @@ export default function VerifyDemoPage() {
               執行驗證測試
             </button>
             {(!initialSeed || !nonce || !publishedHash) && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
+              <p className="text-xs text-neutral-500 mt-2 text-center">
                 {!publishedHash && '⚠️ 請等待 TXID Hash 生成'}
                 {publishedHash && !nonce && '⚠️ 請輸入序列號 (Nonce)'}
                 {publishedHash && nonce && !initialSeed && '⚠️ 請等待系統初始化'}
@@ -880,7 +880,7 @@ export default function VerifyDemoPage() {
             {/* 驗證結果標題 - 更明顯 */}
             <div className={`mb-6 p-5 rounded-xl border-2 ${
               results.hashMatch 
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
+                ? 'bg-gradient-to-r from-green-50 to-green-50 border-green-300' 
                 : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-300'
             }`}>
               <div className="flex items-center gap-4">
@@ -1002,7 +1002,7 @@ export default function VerifyDemoPage() {
 
             {/* 獎項對比 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+              <div className="p-3 bg-gradient-to-r from-green-50 to-green-50 rounded-lg border border-green-200">
                 <h3 className="text-sm font-semibold text-green-900 mb-2">
                   初始殺率 ({profitRate1.toFixed(2)}x) 的獎項
                 </h3>
@@ -1037,7 +1037,7 @@ export default function VerifyDemoPage() {
 
             {/* 獎項機率預覽 */}
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">獎項機率預覽</h3>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3">獎項機率預覽</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* 初始殺率的獎項列表 */}
                 <div>
@@ -1053,29 +1053,29 @@ export default function VerifyDemoPage() {
                       return (
                         <div
                           key={index}
-                          className={`p-2.5 rounded-lg border ${isMajor ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50'}`}
+                          className={`p-2.5 rounded-lg border ${isMajor ? 'border-green-200 bg-green-50/50' : 'border-neutral-200 bg-neutral-50'}`}
                         >
                           <div className="flex items-center gap-2 mb-2">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                               {prize.level}
                             </span>
-                            <span className="text-sm font-medium text-gray-900 flex-1 truncate">{prize.name}</span>
+                            <span className="text-sm font-medium text-neutral-900 flex-1 truncate">{prize.name}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">原始</label>
-                              <div className="text-sm font-mono text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                              <label className="block text-xs text-neutral-500 mb-1">原始</label>
+                              <div className="text-sm font-mono text-neutral-700 bg-white px-2 py-1 rounded border border-neutral-200">
                                 {prize.probability.toFixed(2)}%
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">調整後</label>
+                              <label className="block text-xs text-neutral-500 mb-1">調整後</label>
                               <div className={`text-sm font-mono px-2 py-1 rounded border ${
                                 prize.adjustedProbability > prize.probability
                                   ? 'text-green-700 bg-green-50 border-green-200'
                                   : prize.adjustedProbability < prize.probability
                                     ? 'text-red-700 bg-red-50 border-red-200'
-                                    : 'text-gray-700 bg-white border-gray-200'
+                                    : 'text-neutral-700 bg-white border-neutral-200'
                               }`}>
                                 {prize.adjustedProbability.toFixed(2)}%
                               </div>
@@ -1101,29 +1101,29 @@ export default function VerifyDemoPage() {
                       return (
                         <div
                           key={index}
-                          className={`p-2 rounded-lg border ${isMajor ? 'border-orange-200 bg-orange-50/50' : 'border-gray-200 bg-gray-50'}`}
+                          className={`p-2 rounded-lg border ${isMajor ? 'border-orange-200 bg-orange-50/50' : 'border-neutral-200 bg-neutral-50'}`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
                             <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPrizeColor(prize.level)}`}>
                               {prize.level}
                             </span>
-                            <span className="text-xs font-medium text-gray-900 flex-1 truncate">{prize.name}</span>
+                            <span className="text-xs font-medium text-neutral-900 flex-1 truncate">{prize.name}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">原始</label>
-                              <div className="text-sm font-mono text-gray-700 bg-white px-2 py-1 rounded border border-gray-200">
+                              <label className="block text-xs text-neutral-500 mb-1">原始</label>
+                              <div className="text-sm font-mono text-neutral-700 bg-white px-2 py-1 rounded border border-neutral-200">
                                 {prize.probability.toFixed(2)}%
                               </div>
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">調整後</label>
+                              <label className="block text-xs text-neutral-500 mb-1">調整後</label>
                               <div className={`text-sm font-mono px-2 py-1 rounded border ${
                                 prize.adjustedProbability > prize.probability
                                   ? 'text-green-700 bg-green-50 border-green-200'
                                   : prize.adjustedProbability < prize.probability
                                     ? 'text-red-700 bg-red-50 border-red-200'
-                                    : 'text-gray-700 bg-white border-gray-200'
+                                    : 'text-neutral-700 bg-white border-neutral-200'
                               }`}>
                                 {prize.adjustedProbability.toFixed(2)}%
                               </div>
@@ -1141,13 +1141,13 @@ export default function VerifyDemoPage() {
             {results.prizeWithRate1 && results.prizeWithRate2 && (
               <div className={`mb-3 p-3 rounded-lg border ${
                 results.prizeWithRate1.level === results.prizeWithRate2.level
-                  ? 'bg-blue-50 border-blue-200'
+                  ? 'bg-primary border-blue-200'
                   : 'bg-yellow-50 border-yellow-200'
               }`}>
                 <div className="flex items-start gap-2">
                   <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
                     results.prizeWithRate1.level === results.prizeWithRate2.level
-                      ? 'text-blue-500'
+                      ? 'text-primary'
                       : 'text-yellow-600'
                   }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1177,9 +1177,9 @@ export default function VerifyDemoPage() {
             )}
 
             {/* 驗證流程視覺化 */}
-            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+            <div className="p-4 bg-gradient-to-br from-primary to-indigo-50 rounded-lg border-2 border-blue-200">
               <h4 className="text-base font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 驗證流程時間軸
@@ -1192,13 +1192,13 @@ export default function VerifyDemoPage() {
                 
                 {/* 步驟 1: 活動開始 */}
                 <div className="relative">
-                  <div className="absolute left-[-1.5rem] w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-md flex items-center justify-center">
+                  <div className="absolute left-[-1.5rem] w-6 h-6 bg-primary rounded-full border-2 border-white shadow-md flex items-center justify-center">
                     <span className="text-xs font-bold text-white">1</span>
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm">
-                    <div className="text-sm font-semibold text-blue-700 mb-1">活動開始</div>
-                    <div className="text-xs text-gray-600">系統公布 TXID Hash</div>
-                    <code className="text-xs font-mono bg-blue-50 px-2 py-1 rounded mt-1 inline-block">{publishedHash.substring(0, 20)}...</code>
+                    <div className="text-sm font-semibold text-primary mb-1">活動開始</div>
+                    <div className="text-xs text-neutral-600">系統公布 TXID Hash</div>
+                    <code className="text-xs font-mono bg-primary px-2 py-1 rounded mt-1 inline-block">{publishedHash.substring(0, 20)}...</code>
                   </div>
                 </div>
                 
@@ -1209,7 +1209,7 @@ export default function VerifyDemoPage() {
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-orange-200 shadow-sm">
                     <div className="text-sm font-semibold text-orange-700 mb-1">抽獎過程</div>
-                    <div className="text-xs text-gray-600">管理員調整殺率：{profitRate1.toFixed(2)}x → {profitRate2.toFixed(2)}x</div>
+                    <div className="text-xs text-neutral-600">管理員調整殺率：{profitRate1.toFixed(2)}x → {profitRate2.toFixed(2)}x</div>
                     <div className="text-xs text-green-600 mt-1">✓ Hash 不受影響</div>
                   </div>
                 </div>
@@ -1221,11 +1221,11 @@ export default function VerifyDemoPage() {
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-green-200 shadow-sm">
                     <div className="text-sm font-semibold text-green-700 mb-1">活動結束</div>
-                    <div className="text-xs text-gray-600">系統公布 Seed</div>
+                    <div className="text-xs text-neutral-600">系統公布 Seed</div>
                     {seed ? (
                       <code className="text-xs font-mono bg-green-50 px-2 py-1 rounded mt-1 inline-block">{seed.substring(0, 20)}...</code>
                     ) : (
-                      <span className="text-xs text-gray-400 italic">（執行驗證時自動公布）</span>
+                      <span className="text-xs text-neutral-400 italic">（執行驗證時自動公布）</span>
                     )}
                   </div>
                 </div>
@@ -1249,7 +1249,7 @@ export default function VerifyDemoPage() {
                     }`}>
                       {results ? (results.hashMatch ? '✓ 驗證成功' : '✗ 驗證失敗') : '玩家驗證'}
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-neutral-600">
                       {results 
                         ? (results.hashMatch 
                           ? '使用 Seed、Nonce 和 Hash 驗證，結果一致'

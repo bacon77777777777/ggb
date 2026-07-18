@@ -6,6 +6,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 
 interface DismantledItem {
   id: string
@@ -248,16 +250,12 @@ export default function DismantledPage() {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {loading ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-neutral-500">載入中...</td>
-                  </tr>
+                  <TableSkeleton rows={6} cols={6} />
                 ) : sortedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-neutral-500">無資料</td>
-                  </tr>
+                  <TableEmpty colSpan={6} />
                 ) : (
                   sortedItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className={`${getDensityClasses()} text-neutral-600 whitespace-nowrap`}>
                         {formatDateTime(item.created_at)}
                       </td>

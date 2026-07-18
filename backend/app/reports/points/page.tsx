@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface PointRow {
   id: string
@@ -87,7 +88,7 @@ export default function PointsReportPage() {
           <button
             onClick={handleExport}
             disabled={!rows.length}
-            className="ml-auto px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
+            className="ml-auto h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 text-sm font-medium flex items-center gap-2 disabled:opacity-40"
           >
             匯出 CSV
           </button>
@@ -116,7 +117,7 @@ export default function PointsReportPage() {
         {/* 資料表 */}
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           {loading ? (
-            <div className="py-16 text-center text-sm text-neutral-400">載入中…</div>
+            <CardSkeleton rows={3} />
           ) : rows.length === 0 ? (
             <div className="py-16 text-center text-sm text-neutral-400">本期無積分領取紀錄</div>
           ) : (
@@ -139,7 +140,7 @@ export default function PointsReportPage() {
                       <td className="py-2 px-3 whitespace-nowrap">{r.task_title}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          r.task_type === 'daily' ? 'bg-blue-50 text-blue-700' :
+                          r.task_type === 'daily' ? 'bg-primary text-primary' :
                           r.task_type === 'weekly' ? 'bg-purple-50 text-purple-700' :
                           r.task_type === 'achievement' ? 'bg-amber-50 text-amber-700' :
                           'bg-neutral-100 text-neutral-600'

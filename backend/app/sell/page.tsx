@@ -1,9 +1,15 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useToast } from '@/contexts/ToastContext'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 
 interface SellListing {
   id: number
@@ -30,6 +36,8 @@ interface SellListing {
 type StatusFilter = 'all' | 'draft' | 'active' | 'sold' | 'hidden'
 
 export default function SellAdminPage() {
+  const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const [listings, setListings] = useState<SellListing[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,12 +62,12 @@ export default function SellAdminPage() {
     const bootstrapRes = await fetch('/api/admin/sell/bootstrap', { method: 'POST', credentials: 'include' })
     if (!bootstrapRes.ok) {
       const data = await bootstrapRes.json().catch(() => null)
-      alert(data?.error || '初始化販售資料表失敗')
+      toast(data?.error || '初始化販售資料表失敗', 'error')
       return false
     }
     const data = await bootstrapRes.json().catch(() => null)
     if (!data?.success) {
-      alert(data?.error || '初始化販售資料表失敗')
+      toast(data?.error || '初始化販售資料表失敗', 'error')
       return false
     }
     return true
@@ -118,69 +126,64 @@ export default function SellAdminPage() {
     }
   }
 
-  const handleClear = async () => {
-    if (!window.confirm('此操作會清空所有販售上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsClearing(true)
-      let res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        const didBootstrap = await maybeBootstrap(String(data?.error || ''))
-        if (didBootstrap) {
-          res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+  const handleClear = () => {
+    confirm({
+      title: '清空販售資料',
+      message: '此操作會清空所有販售上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setIsClearing(true)
+          let res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+          if (!res.ok) {
+            const data = await res.json().catch(() => null)
+            const didBootstrap = await maybeBootstrap(String(data?.error || ''))
+            if (didBootstrap) {
+              res = await fetch('/api/admin/sell/clear', { method: 'POST', credentials: 'include' })
+            }
+            if (!res.ok) {
+              console.error('清除失敗')
+              return
+            }
+          }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error clearing sell listings:', e)
+        } finally {
+          setIsClearing(false)
         }
-        if (!res.ok) {
-          const data2 = await res.json().catch(() => null)
-          alert(data2?.error || data?.error || '清除失敗')
-          return
-        }
-      }
-      await fetchListings()
-      alert('已清除販售測試資料')
-    } catch (e) {
-      console.error('Unexpected error clearing sell listings:', e)
-      alert('清除失敗')
-    } finally {
-      setIsClearing(false)
-    }
+      },
+    })
   }
 
-  const handleSeed = async () => {
-    if (!window.confirm('此操作會新增「寶可夢實體卡」販售假資料（含多規格/多圖），確定要繼續嗎？')) {
-      return
-    }
-
-    try {
-      setIsSeeding(true)
-      let res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        const didBootstrap = await maybeBootstrap(String(data?.error || ''))
-        if (didBootstrap) {
-          res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+  const handleSeed = () => {
+    confirm({
+      title: '建立假資料',
+      message: '此操作會新增「寶可夢實體卡」販售假資料（含多規格/多圖），確定要繼續嗎？',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setIsSeeding(true)
+          let res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+          if (!res.ok) {
+            const data = await res.json().catch(() => null)
+            const didBootstrap = await maybeBootstrap(String(data?.error || ''))
+            if (didBootstrap) {
+              res = await fetch('/api/admin/sell/seed', { method: 'POST', credentials: 'include' })
+            }
+            if (!res.ok) {
+              console.error('建立假資料失敗')
+              return
+            }
+          }
+          await fetchListings()
+        } catch (e) {
+          console.error('Unexpected error seeding sell listings:', e)
+        } finally {
+          setIsSeeding(false)
         }
-        if (!res.ok) {
-          const data2 = await res.json().catch(() => null)
-          alert(data2?.error || data?.error || '建立假資料失敗')
-          return
-        }
-      }
-      const data = await res.json().catch(() => null)
-      if (!data || !data.success) {
-        alert(data?.message || '建立假資料失敗')
-        return
-      }
-      await fetchListings()
-      alert(`已建立 ${data.created || 0} 筆販售假資料`)
-    } catch (e) {
-      console.error('Unexpected error seeding sell listings:', e)
-      alert('建立假資料失敗')
-    } finally {
-      setIsSeeding(false)
-    }
+      },
+    })
   }
 
   const filteredListings = useMemo(() => {
@@ -244,26 +247,25 @@ export default function SellAdminPage() {
     }
   }
 
-  const deleteListing = async (id: number, title: string) => {
-    if (!window.confirm(`確定要刪除販售上架「${title || id}」嗎？此動作無法復原。`)) return
-    const res = await fetch(`/api/admin/sell/listings?id=${encodeURIComponent(String(id))}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => null)
-      throw new Error(data?.error || '刪除失敗')
-    }
-    setListings((prev) => prev.filter((x) => x.id !== id))
-    setExpandedListings((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-    setSelectedListings((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
+  const deleteListing = (id: number, title: string) => {
+    confirm({
+      title: '刪除上架',
+      message: `確定要刪除販售上架「${title || id}」嗎？此動作無法復原。`,
+      type: 'danger',
+      onConfirm: async () => {
+        const res = await fetch(`/api/admin/sell/listings?id=${encodeURIComponent(String(id))}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => null)
+          console.error(data?.error || '刪除失敗')
+          return
+        }
+        setListings((prev) => prev.filter((x) => x.id !== id))
+        setExpandedListings((prev) => { const next = new Set(prev); next.delete(id); return next })
+        setSelectedListings((prev) => { const next = new Set(prev); next.delete(id); return next })
+      },
     })
   }
 
@@ -276,7 +278,8 @@ export default function SellAdminPage() {
 
   return (
     <AdminLayout pageTitle="販售管理" pageSubtitle="自由上架寶可夢實體卡（與市集分開）">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+      <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatsCard title="總上架" value={stats.total} />
         <StatsCard title="上架中" value={stats.active} />
         <StatsCard title="已售出" value={stats.sold} />
@@ -353,7 +356,7 @@ export default function SellAdminPage() {
                 <SortableTableHeader sortKey="title" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   標題
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">規格</th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">規格</th>
                 <SortableTableHeader sortKey="view_count" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   瀏覽
                 </SortableTableHeader>
@@ -363,28 +366,20 @@ export default function SellAdminPage() {
                 <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   狀態
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">上架</th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架</th>
                 <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   建立時間
                 </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
                   操作
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
               {isLoading ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-neutral-500">
-                    載入中…
-                  </td>
-                </tr>
+                <TableSkeleton rows={5} cols={9} />
               ) : sortedListings.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-neutral-500">
-                    目前沒有符合條件的販售上架資料
-                  </td>
-                </tr>
+                <TableEmpty colSpan={9} message="目前沒有符合條件的販售上架資料" />
               ) : (
                 sortedListings.map((item) => {
                   const items = Array.isArray(item.items) ? item.items : []
@@ -434,19 +429,7 @@ export default function SellAdminPage() {
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{item.seller_name}</td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                              item.status === 'active'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : item.status === 'sold'
-                                ? 'bg-blue-50 text-blue-700'
-                                : item.status === 'draft'
-                                ? 'bg-neutral-100 text-neutral-700'
-                                : 'bg-neutral-100 text-neutral-600'
-                            }`}
-                          >
-                            {statusLabel}
-                          </span>
+                          <Badge status={item.status}>{statusLabel}</Badge>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -460,7 +443,7 @@ export default function SellAdminPage() {
                                 setListings((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: nextStatus } : x)))
                               } catch (e) {
                                 console.error('Failed to update sell listing status:', e)
-                                alert('更新狀態失敗')
+                                toast('更新狀態失敗', 'error')
                               }
                             }}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all flex-shrink-0 disabled:opacity-50 ${
@@ -486,7 +469,7 @@ export default function SellAdminPage() {
                               href={`${FRONTEND_URL}/sell/${item.id}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium whitespace-nowrap"
+                              className="text-primary hover:text-blue-800 text-sm font-medium whitespace-nowrap"
                             >
                               前台
                             </Link>
@@ -497,7 +480,7 @@ export default function SellAdminPage() {
                                   await deleteListing(item.id, item.title)
                                 } catch (e) {
                                   console.error('Failed to delete sell listing:', e)
-                                  alert('刪除失敗')
+                                  toast('刪除失敗', 'error')
                                 }
                               }}
                               className="text-red-600 hover:text-red-800 text-sm font-medium whitespace-nowrap"
@@ -577,6 +560,8 @@ export default function SellAdminPage() {
           </table>
         </div>
       </PageCard>
+      </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

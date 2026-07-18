@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -180,7 +183,7 @@ export default function SellOrdersAdminPage() {
 
   return (
     <AdminLayout pageTitle="販售訂單">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard title="全部" value={counts.total} />
           <StatsCard title="進行中" value={counts.inProgress} />
@@ -243,47 +246,34 @@ export default function SellOrdersAdminPage() {
                   <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     訂單
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">上架單</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架單</th>
                   <SortableTableHeader sortKey="total_price" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     金額(G)
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">付款</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">進度</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">買家</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 whitespace-nowrap">賣家</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">付款</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">進度</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">買家</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">賣家</th>
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                     建立時間
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
                     操作
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={9} className="py-10 text-center text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
+                  <TableSkeleton rows={6} cols={9} />
                 ) : sortedOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-10 text-center text-neutral-500">
-                      目前沒有符合條件的販售訂單
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={9} message="目前沒有符合條件的販售訂單" />
                 ) : (
                   sortedOrders.map((o) => {
                     const isCompleted = Boolean(o.completed_at) && !o.cancelled
                     const statusText = o.cancelled ? '已取消' : isCompleted ? '已完成' : '進行中'
-                    const statusClass = o.cancelled
-                      ? 'bg-neutral-100 text-neutral-700'
-                      : isCompleted
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-amber-50 text-amber-700'
 
                     return (
-                      <tr key={o.id} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={o.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-neutral-900">#{o.id}</span>
@@ -308,7 +298,7 @@ export default function SellOrdersAdminPage() {
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${statusClass}`}>{statusText}</span>
+                            <Badge status={statusText}>{statusText}</Badge>
                             <span className="text-xs text-neutral-500">{stepLabel(o.step)}</span>
                           </div>
                         </td>
@@ -318,7 +308,7 @@ export default function SellOrdersAdminPage() {
                           {formatDateTime(o.created_at)}
                         </td>
                         <td className="py-3 px-4 sticky right-0 bg-white border-l border-neutral-200 whitespace-nowrap">
-                          <Link href={`/sell-orders/${o.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                          <Link href={`/sell-orders/${o.id}`} className="text-primary hover:text-blue-800 text-sm font-medium">
                             查看
                           </Link>
                         </td>

@@ -1,7 +1,9 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 
 interface RechargeRecord {
   id: number
@@ -60,7 +62,7 @@ export default function RechargeReviewPage() {
 
   return (
     <AdminLayout pageTitle="待複核儲值">
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 text-sm text-amber-800">
           以下為 <strong>pending 超過 30 分鐘</strong>、尚未收到 ECPay callback 的儲值訂單。
@@ -68,7 +70,7 @@ export default function RechargeReviewPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-neutral-400">載入中...</div>
+          <CardSkeleton rows={3} />
         ) : records.length === 0 ? (
           <div className="text-center py-16 text-neutral-400">
             <p className="text-4xl mb-3">✅</p>
@@ -87,9 +89,7 @@ export default function RechargeReviewPage() {
                         <span className="font-mono text-sm font-semibold text-neutral-800">
                           {r.order_number ?? `#${r.id}`}
                         </span>
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
-                          待複核
-                        </span>
+                        <Badge variant="warning">待複核</Badge>
                         <span className="text-xs text-neutral-400">{age} 建立</span>
                         {flaggedAge && (
                           <span className="text-xs text-rose-400">• {flaggedAge} 標記</span>

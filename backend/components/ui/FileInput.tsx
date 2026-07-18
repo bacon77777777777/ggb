@@ -1,6 +1,6 @@
 'use client'
 
-import { InputHTMLAttributes, forwardRef } from 'react'
+import { InputHTMLAttributes, forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface FileInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
@@ -13,15 +13,13 @@ export interface FileInputProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 
 const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
   ({ label, error, helperText, fullWidth = true, className, id, accept, ...props }, ref) => {
-    const inputId = id || `file-input-${Math.random().toString(36).substr(2, 9)}`
+    const reactId = useId()
+    const inputId = id || reactId
 
     return (
-      <div className={cn('space-y-1.5', fullWidth && 'w-full')}>
+      <div className={cn('space-y-1', fullWidth && 'w-full')}>
         {label && (
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-neutral-700"
-          >
+          <label htmlFor={inputId} className="block text-xs font-medium text-neutral-500">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -32,25 +30,21 @@ const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
           id={inputId}
           accept={accept}
           className={cn(
-            'w-full px-3 py-2 bg-white border-2 rounded-lg',
-            'focus:outline-none focus:ring-2 transition-all duration-200',
-            'file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0',
-            'file:text-sm file:font-medium file:bg-primary file:text-white',
+            'w-full px-3 py-1.5 bg-white border rounded-lg text-sm',
+            'focus:outline-none focus:ring-1 transition-colors',
+            'file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0',
+            'file:text-xs file:font-medium file:bg-primary file:text-white',
             'file:cursor-pointer hover:file:bg-primary-dark',
-            'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+            'disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed disabled:border-neutral-200',
             error
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+              ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
               : 'border-neutral-200 hover:border-neutral-300 focus:border-primary focus:ring-primary',
             className
           )}
           {...props}
         />
-        {error && (
-          <p className="text-xs text-red-500">{error}</p>
-        )}
-        {helperText && !error && (
-          <p className="text-xs text-gray-500">{helperText}</p>
-        )}
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        {helperText && !error && <p className="text-xs text-neutral-500">{helperText}</p>}
       </div>
     )
   }

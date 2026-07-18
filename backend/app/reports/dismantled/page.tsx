@@ -2,8 +2,11 @@
 
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import SelectField from '@/components/ui/SelectField'
 
 interface Supplier { id: number; name: string }
 interface DismantleRow {
@@ -91,16 +94,16 @@ export default function DismantledReportPage() {
 
         {/* 工具列 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
-          <select
+          <SelectField
             value={selectedSupplierId}
             onChange={e => setSelectedSupplierId(e.target.value)}
-            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
           >
             <option value="">所有廠商</option>
             {suppliers.map(s => (
               <option key={s.id} value={String(s.id)}>{s.name}</option>
             ))}
-          </select>
+          </SelectField>
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -111,7 +114,7 @@ export default function DismantledReportPage() {
           {rows.length > 0 && (
             <button
               onClick={handleExport}
-              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap"
+              className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -145,7 +148,7 @@ export default function DismantledReportPage() {
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200 bg-neutral-50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">時間</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">用戶</th>
@@ -158,27 +161,16 @@ export default function DismantledReportPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-neutral-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                        載入中…
-                      </div>
-                    </td>
-                  </tr>
+                  <TableSkeleton rows={6} cols={7} />
                 ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-neutral-400 text-sm">
-                      此區間無分解紀錄
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={7} message="此區間無分解紀錄" />
                 ) : rows.map(row => (
                   <tr key={row.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                     <td className="px-4 py-2.5 text-xs text-neutral-500 font-mono whitespace-nowrap">
                       {new Date(row.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Link href={`/users/${row.user_id}`} className="text-blue-600 hover:underline font-medium text-xs">
+                      <Link href={`/users/${row.user_id}`} className="text-primary hover:underline font-medium text-xs">
                         {row.userName}
                       </Link>
                     </td>

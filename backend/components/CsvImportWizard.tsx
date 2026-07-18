@@ -346,7 +346,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
     <select
       value={value ?? ''}
       onChange={e => onChange(e.target.value || null)}
-      className="w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+      className="w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 bg-white"
     >
       <option value="">{placeholder ?? '— 不映射 —'}</option>
       {headers.map(h => <option key={h} value={h}>{h}</option>)}
@@ -387,7 +387,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
                 <select
                   value={selectedSupplierId}
                   onChange={e => setSelectedSupplierId(e.target.value)}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
                 >
                   <option value="">— 未指定廠商 —</option>
                   {suppliers.map(s => (
@@ -427,9 +427,9 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
               )}
 
               {/* Default type selector */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <div className="bg-primary border border-blue-100 rounded-xl p-4">
                 <p className="text-sm font-semibold text-blue-800 mb-2">預設商品類型</p>
-                <p className="text-xs text-blue-600 mb-3">若 CSV 沒有類型欄位，所有商品套用此類型</p>
+                <p className="text-xs text-primary mb-3">若 CSV 沒有類型欄位，所有商品套用此類型</p>
                 <div className="flex gap-2 flex-wrap">
                   {PRODUCT_TYPE_OPTIONS.map(opt => (
                     <button
@@ -437,7 +437,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
                       onClick={() => setDefaultType(opt.value)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                         defaultType === opt.value
-                          ? 'bg-blue-600 text-white border-blue-600'
+                          ? 'bg-primary text-white border-primary'
                           : 'bg-white text-neutral-600 border-neutral-200 hover:border-blue-300'
                       }`}
                     >
@@ -458,15 +458,15 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
                     return (
                       <div key={field.key} className={`rounded-xl border p-3 ${
                         isRequired && !isOk ? 'border-red-200 bg-red-50' :
-                        isOk ? 'border-emerald-200 bg-emerald-50' :
+                        isOk ? 'border-green-200 bg-green-50' :
                         'border-neutral-100 bg-neutral-50'
                       }`}>
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isOk ? 'bg-emerald-500' : isRequired ? 'bg-red-400' : 'bg-neutral-300'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isOk ? 'bg-green-500' : isRequired ? 'bg-red-400' : 'bg-neutral-300'}`} />
                           <span className="text-xs font-semibold text-neutral-700">
                             {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
                           </span>
-                          {isOk && <span className="text-xs text-emerald-600 ml-auto">自動偵測</span>}
+                          {isOk && <span className="text-xs text-green-600 ml-auto">自動偵測</span>}
                         </div>
                         <ColSelect
                           value={mapped}
@@ -509,7 +509,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
                           value={g.levelOverride}
                           onChange={e => updatePrizeGroup(g.id, { levelOverride: e.target.value })}
                           placeholder="等級名稱（A賞、SR、款式1…）"
-                          className="flex-1 border border-neutral-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+                          className="flex-1 border border-neutral-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 bg-white"
                         />
                         <button
                           onClick={() => removePrizeGroup(g.id)}
@@ -547,7 +547,7 @@ export default function CsvImportWizard({ isOpen, onClose, onImported }: Props) 
                             <th key={h} className="px-3 py-2 text-left text-neutral-500 font-semibold whitespace-nowrap">
                               {h}
                               {Object.values(fieldMap).includes(h) && (
-                                <span className="ml-1 text-emerald-500">✓</span>
+                                <span className="ml-1 text-green-500">✓</span>
                               )}
                             </th>
                           ))}

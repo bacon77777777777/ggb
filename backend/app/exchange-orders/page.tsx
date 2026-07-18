@@ -1,8 +1,14 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 type DoneFilter = 'all' | 'in_progress' | 'done'
 
@@ -31,6 +37,7 @@ const stepLabel = (step: number) => {
 }
 
 export default function ExchangeOrdersAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -85,13 +92,7 @@ export default function ExchangeOrdersAdminPage() {
     }
   }
 
-  const handlePatch = async (order: OrderRow, patch: { step?: number; done?: boolean }) => {
-    const nextDone = typeof patch.done === 'boolean' ? patch.done : order.done
-    if (nextDone && !order.done) {
-      const ok = window.confirm(`確定要將此交換紀錄標記為已完成嗎？\n\nOrder：${order.id}`)
-      if (!ok) return
-    }
-
+  const doPatch = async (order: OrderRow, patch: { step?: number; done?: boolean }) => {
     const prev = order
     const next: OrderRow = {
       ...order,
@@ -100,7 +101,6 @@ export default function ExchangeOrdersAdminPage() {
       updated_at: new Date().toISOString(),
     }
     setOrders((rows) => rows.map((r) => (r.id === order.id ? next : r)))
-
     try {
       const res = await fetch('/api/admin/exchange/orders', {
         method: 'PATCH',
@@ -109,13 +109,25 @@ export default function ExchangeOrdersAdminPage() {
         body: JSON.stringify({ id: order.id, ...patch }),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || '更新失敗')
+        setOrders((rows) => rows.map((r) => (r.id === prev.id ? prev : r)))
       }
     } catch (e) {
       console.error('Unexpected error updating exchange order:', e)
       setOrders((rows) => rows.map((r) => (r.id === prev.id ? prev : r)))
-      alert('更新失敗')
+    }
+  }
+
+  const handlePatch = (order: OrderRow, patch: { step?: number; done?: boolean }) => {
+    const nextDone = typeof patch.done === 'boolean' ? patch.done : order.done
+    if (nextDone && !order.done) {
+      confirm({
+        title: '標記完成',
+        message: `確定要將此交換紀錄標記為已完成嗎？\n\nOrder：${order.id}`,
+        type: 'info',
+        onConfirm: () => doPatch(order, patch),
+      })
+    } else {
+      doPatch(order, patch)
     }
   }
 
@@ -187,7 +199,7 @@ export default function ExchangeOrdersAdminPage() {
 
   return (
     <AdminLayout pageTitle="交換紀錄">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatsCard title="全部" value={counts.total} />
           <StatsCard title="進行中" value={counts.inProgress} />
@@ -238,7 +250,7 @@ export default function ExchangeOrdersAdminPage() {
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-y border-neutral-200">
                   <SortableTableHeader sortKey="updated_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     更新時間
@@ -249,30 +261,18 @@ export default function ExchangeOrdersAdminPage() {
                   <SortableTableHeader sortKey="done" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     完成
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Order</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Offer</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">創建者</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">發起者</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Order</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Offer</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">創建者</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">發起者</th>
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
                   </SortableTableHeader>
                 </tr>
               </thead>
               <tbody>
-                {isLoading && (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && sortedOrders.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-neutral-500">
-                      沒有資料
-                    </td>
-                  </tr>
-                )}
+                {isLoading && <TableSkeleton rows={6} cols={8} />}
+                {!isLoading && sortedOrders.length === 0 && <TableEmpty colSpan={8} message="沒有資料" />}
                 {!isLoading &&
                   sortedOrders.map((order) => (
                     <tr key={order.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
@@ -281,7 +281,7 @@ export default function ExchangeOrdersAdminPage() {
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <select
+                          <SelectField
                             value={order.step}
                             onChange={(e) => handlePatch(order, { step: Number(e.target.value) })}
                             className="border border-neutral-200 rounded-lg px-2 py-1 text-sm bg-white"
@@ -291,7 +291,7 @@ export default function ExchangeOrdersAdminPage() {
                                 {s}. {stepLabel(s)}
                               </option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
@@ -302,9 +302,9 @@ export default function ExchangeOrdersAdminPage() {
                             checked={order.done}
                             onChange={(e) => handlePatch(order, { done: e.target.checked })}
                           />
-                          <span className={`text-xs px-2 py-1 rounded border ${order.done ? 'bg-green-50 text-green-700 border-green-200' : 'bg-neutral-50 text-neutral-600 border-neutral-200'}`}>
+                          <Badge variant={order.done ? 'success' : 'default'}>
                             {order.done ? '已完成' : '進行中'}
-                          </span>
+                          </Badge>
                         </label>
                       </td>
                       <td className="py-3 px-4 text-sm text-neutral-700">
@@ -340,6 +340,7 @@ export default function ExchangeOrdersAdminPage() {
           </div>
         </PageCard>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

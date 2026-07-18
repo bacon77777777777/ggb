@@ -4,6 +4,309 @@
 
 ---
 
+## v2026.07.18｜2026-07-18｜Staging 環境變數修正（儲值頁 Unauthorized）
+
+### Vercel Preview 環境變數修正
+- 前台 Preview `NEXT_PUBLIC_API_URL` 原為空字串 → 改為 `https://ggb-backend-git-dev-ggbtw.vercel.app`
+- 後台 Preview `NEXT_PUBLIC_BASE_URL` 原為空字串 → 改為 `https://ggb-backend-git-dev-ggbtw.vercel.app`
+- 後台 Preview `NEXT_PUBLIC_FRONTEND_URL` 原為空字串 → 改為 `https://staging.ggb.com.tw`
+- 修正後 staging.ggb.com.tw 儲值頁按確認支付會正確呼叫後台 API 並傳送 JWT 驗證
+
+---
+
+## v2026.07.17｜2026-07-18｜倉庫/分解/抽獎紀錄 UI 修正 + 超商選店 PWA 修正
+
+### 倉庫品項列表（`frontend/app/profile/page.tsx`）
+- 轉蛋、盒玩品項的賞等標籤固定顯示「普通」（不再顯示品項名稱）
+- 分解紀錄手機版從 2 欄格狀改為直式列表（同倉庫格式），顯示廠商名、賞等標籤、品項名、商品名、代幣回收數
+- 分解紀錄查詢新增 `suppliers` join，補入廠商名稱欄位
+
+### 抽獎紀錄（draw-history）
+- 轉蛋、盒玩品項展開後不顯示籤號（其他類型保留）
+- 賞等標籤同步顯示「普通」
+
+### 超商選店 PWA 修正
+- 選店表單改用 `form.target = '_blank'`，避免 PWA 畫面被 ECPay 頁面取代
+- 新增 `frontend/app/logistics/cvs-callback/page.tsx`：選店完成後用 `postMessage` 回傳門市資訊給 PWA opener；無 opener 時改寫 `localStorage` 待 PWA 下次 focus 讀取
+- `backend/app/api/logistics/map-callback/route.ts` 改導向 `/logistics/cvs-callback` 而非 `/profile`
+
+### 配送錯誤訊息改善
+- `handleConfirmDelivery` 錯誤 log 改為輸出 `.message`、`.code`、`.details` 欄位，方便排查
+
+### Migration 327 — orders 補 logistics 欄位
+- `orders` 表新增 `logistics_type`、`logistics_subtype`、`store_id`、`store_name` 四欄
+- 修正 `create_delivery_order` RPC 插入失敗（column does not exist）
+
+### 超商取貨 PWA 空白頁根本修正（Migration 328 + server-side polling）
+- 根因：ECPay callback 在 SFSafariViewController，無法與 PWA WKWebView 共享 session / localStorage
+- 新建 `cvs_pending_selections` 表（migration 328），後端 callback 後寫入門市資料
+- 前端表單送出時產生 `requestId`，透過後端線程帶入 ECPay callback URL
+- 前端在 WKWebView 內 polling `/api/logistics/cvs-pending?token=xxx`（2秒一次，最多 90 秒）
+- 收到資料後自動填入門市並彈出配送 modal，不依賴任何跨 context 通信
+- 新增 `frontend/app/api/logistics/cvs-pending/route.ts` polling 端點
+
+---
+
+## v2026.07.16｜2026-07-18｜新轉蛋機 mode2 + 後台 sidebar 調整 + 分析頁週區間圖表
+
+### 新轉蛋機模組 `gacha_mode2`
+- 新增 `frontend/components/shop/GachaMachineMode2.tsx`
+- 使用 `frontend/public/images/gacha/mode2/` 圖素（main.png 750×932、box.svg、hole.svg、switch.png、btn1/btn2）
+- 蛋箱區 (3.6%, 7.94%)、switch 旋鈕 (39.87%, 56.22%)、蛋口 (66.67%, 62.23%)，按鈕位置與經典版相同
+- 確認付款 → switch 旋轉 360° → 蛋墜入蛋口 → 等待點擊蛋口顯示獎品
+- switch 圖片與「立即轉蛋」按鈕都可觸發購買確認彈窗
+- 在 `GachaProductDetail.tsx` 的 `MACHINE_COMPONENTS` 新增 `gacha_mode2` 對應
+
+### 後台 Sidebar 調整（`backend/components/AdminLayout.tsx`）
+- 移除 LOGO 圖片，改用純文字「GGB管理後台」
+- 側欄收起時顯示「G」縮寫
+
+### 分析頁週區間圖表（`/analytics-overview`）
+- 8–90 天範圍自動改用週（週一）為 x 軸區間，修正 G2 ordinal 排序錯亂問題
+- 儲值與消耗對比 LineChart：ResizeObserver 動態填滿高度（maxHeight 360）
+- y 軸對齊修正、圖例 paddingTop 統一為 24px
+
+---
+
+## v2026.07.15｜2026-07-16｜分析頁 — 換用 @ant-design/charts 圖表 + DateRangePicker
+
+### 分析頁圖表升級（`/analytics-overview`）
+- 安裝 `@ant-design/charts` v2.6.7（G2 5.0）
+- `Sparkline` SVG → `Tiny.Area`（平滑曲線面積圖，dynamic import + ssr:false）
+- `DonutChart` SVG → `Pie`（innerRadius=0.68，真實 AntD 風格甜甜圈）
+- `BarChart` SVG → `Column`（自動調色，hover highlight）
+- 右上角時間選擇器換用已有的 `DateRangePicker` 組件（與儲值明細頁相同），搭配今日/本週/本月/本年快捷按鈕
+- API 改為只接 `start`/`end` 參數，去除 `period` 字串，前後期自動從時間長度推算
+- 新增 `spark` 欄位（最近 14 個日/月資料點）供 KPI sparkline 使用
+
+---
+
+## v2026.07.13｜2026-07-16｜分析頁 — Ant Design Pro 風格營運儀表板
+
+### 新頁面：`/analytics-overview`（營運總覽 → 分析頁）
+
+**4 層資料視覺化**，右上角時間切換（今日/本週/本月/本年/自訂）統一控制所有層：
+
+**第 1 層 — KPI 卡片**（4 格橫排，白底 + 分隔線）
+- 總銷售額、訪問量、消費筆數（抽獎）、總儲值金額
+- 每卡片：大字值 + 周同比 % + 日同比 % + 迷你 Sparkline
+- 轉化率 = totalDrawCount / totalVisits × 100%
+- 客單價 = totalSales / totalDrawCount
+
+**第 2 層 — 線上熱門搜尋 + 銷售類別佔比**
+- 熱門搜尋：`search_logs` GROUP BY keyword，顯示搜尋次數 + 同比成長%
+- 類別佔比：`draw_records → products.type`，SVG 甜甜圈圖（純 stroke-dasharray 不依賴外部套件）
+
+**第 3 層 — 廠商銷售概覽**
+- Tab 切換：銷售額 / 消費筆數
+- 左側：時間序列 SVG 柱狀圖（日或月 breakdown）
+- 右側：廠商銷售排行榜（mini progress bar）
+
+**第 4 層 — 廠商轉化率**
+- 各廠商 SVG 環形進度圓（銷售佔比 %）
+- 60%+ 藍、30%+ 綠、<30% 琥珀
+
+### 新 API：`/api/admin/analytics-overview`
+- 支援 `period` + `start/end` 參數
+- 同時查 current + previous period，計算周同比
+- 另查今日/昨日 → 日同比
+- Bot 排除（同財務 query 慣例）
+- 返回：totalSales, totalVisits, totalDrawCount, totalRecharges, bars[], keywords[], categories[], suppliers[]
+- `bars` 本年模式按月分組（12 根），其他模式按日分組
+
+### 所有圖表純 SVG / CSS，無外部圖表套件
+
+---
+
+## v2026.07.12｜2026-07-16｜Design System — 商品品項 form + Toolbar 高度統一
+
+### 商品品項卡片重設計（products/[id]/page.tsx）
+- 每個欄位加上明確 `<label>`：品項名稱、等級、總數量、剩餘庫存、抽中機率、分解設定
+- 卡片結構：標頭（品項N + 剩餘/總計 + 刪除）+ 主體（圖片+名稱橫排、等級、3欄數量、分解設定）
+- 卡片改用 `bg-white rounded-xl`，標頭 `bg-neutral-50 border-b`
+- 轉蛋／盒玩分解設定改為禁用表單（SelectField disabled + input disabled），而非純文字
+
+### Toolbar 高度統一 — 全站三種高度收斂為 `h-9`（36px）
+**根本原因**：
+- text 按鈕 `py-2 border`（38px）≠ 匯出CSV `py-2 border-2`（40px）≠ icon 按鈕 `w-10 h-10`（40px）≠ 搜尋框 `py-1.5`（34px）
+
+**SearchToolbar 修正**：
+- 新增按鈕：`py-2` → `h-9`
+- 匯出CSV：`py-2 border-2` → `h-9 border`
+- 搜尋框：`py-1.5` → `h-9`
+- icon 按鈕（密度/篩選/欄位）：`w-10 h-10 border-2` → `w-9 h-9 border`
+- 批量操作按鈕：`py-1.5` → `h-9`
+
+**Picker 觸發器修正**（DatePicker、DateRangePicker、YearMonthPicker）：
+- 全部由 `py-1.5 / py-2` → `h-9`
+
+**頁面自訂按鈕修正**：
+- products/page.tsx：智能批量匯入、上傳圖片 `py-2` → `h-9`
+- recharges/page.tsx：近三個月快選月份按鈕 + 匯出CSV
+- reports 8 個子頁面：匯出CSV `py-2 border-2` → `h-9 border`
+
+---
+
+## v2026.07.11｜2026-07-16｜Design System — 頁面佈局標準化
+
+### 根本問題修正：雙層 padding
+- AdminLayout `<main>` 已有 `p-6`，多頁頁面根 div 又加 `p-6` 造成雙層 padding
+- 受影響頁面（移除根 div 的 `p-6`）：categories, coupons, exchange, marketplace, exchange-orders, sell-orders, sell-orders/[id], categories/[id], tools
+
+### 根 spacing 統一：`space-y-4` → `space-y-6`
+- 修正：agent-events, content-drafts, dev-logs, leaderboard-bots, news, recharge-review, recharges
+
+### suppliers 結構升級
+- 原本用 raw `<div className="bg-white rounded-lg border...">` 包裹 table
+- 改用 `<PageCard noPadding>`，與其他列表頁一致
+- 新增 `import PageCard`
+
+### sell 頁加 `space-y-6` wrapper
+- StatsCard grid + PageCard 原本直接在 AdminLayout 下（無間距 wrapper）
+- 包上 `<div className="space-y-6">`；grid gap `gap-3 → gap-4`
+
+### coupons 頁移除冗餘標題
+- `<h2>折價券列表</h2>` 與 AdminLayout pageTitle 重複，移除
+- `hover:bg-primary-dark` 修正為 `hover:bg-primary/90`
+
+---
+
+## v2026.07.10｜2026-07-16｜Design System — SelectField 元件統一全站表單欄位
+
+### 新元件：`SelectField`（`components/ui/SelectField.tsx`）
+- 統一封裝 `appearance-none + 自訂 chevron + py-1.5 px-3 text-sm border rounded-lg`
+- `compact` prop 提供 text-xs 緊湊模式（用於品項行內編輯）
+- disabled 狀態自動套用 bg-neutral-50
+
+### 全站 `<select>` 替換（48 個 → SelectField）
+- **批量腳本**：20 個頁面（settlement-snapshots, reports, analytics, competitor-intel, logs, content-drafts, exchange, users, news, dev-logs 等）
+- **手動修**：products/[id]（8 個，含 div.relative+svg wrapper 全部拆除）、products/new（7 個）、orders/[id]（pill 樣式 select 保留特殊 className）
+- 根本解決：所有 select 現在 `appearance-none`，跨瀏覽器高度一致，加上統一 chevron 圖示
+
+### 自訂 picker 高度統一
+- `DatePicker` / `YearMonthPicker` 觸發器加入 `text-sm px-3`，與 input/select 高度對齊
+
+### Badge 補完
+- exchange-orders: done 狀態 span → Badge
+- logs: success/失敗 status span → Badge
+- reports/coupons: 已使用/未使用 span → Badge
+- users/[id]: isPending + failed overlay span → Badge
+
+---
+
+## v2026.07.9｜2026-07-16｜Design System 收尾 — 最後 6 處 inline span 換 Badge
+
+### Badge 組件擴充 + 最後一批覆蓋
+- statusVariantMap 新增報表用狀態：`success / shipped / in_warehouse / pending_delivery / refunded / exchanged / dismantled / listing`
+- `reports/[type]/page.tsx`：STATUS_COLOR span（recharge/消費兩個資料表）→ Badge；供應商名稱 span → `<Badge variant="primary">`
+- `recharge-review/page.tsx`：待複核 amber span → `<Badge variant="warning">`
+- `competitor-intel/page.tsx`：AI 爬取 span → `<Badge variant="primary">`
+- `news/page.tsx`：已上架/下架草稿計數 span → `<Badge variant="success">` / `<Badge variant="default">`
+
+---
+
+## v2026.07.8｜2026-07-16｜Design System 深掃第二輪 — Badge 全覆蓋 / TableEmpty / th 排版統一
+
+### Badge 組件擴充 + 全站覆蓋
+- statusVariantMap 新增 15 個狀態：open/in_progress/resolved/closed/approved/published/archived/confirmed/pending 等 CS 工單 + 草稿 + 月結狀態
+- 替換 content-drafts, cs-management/tickets, suppliers, settings/modules, draws, products (熱賣/已完抽), settings/rates 的 inline span → Badge
+- DataTable 組件 emptyMessage 升級：`<td>文字</td>` → `<TableEmpty message={...} />` 帶圖示
+- settlement-snapshots 狀態 span 也換成 Badge
+
+### TableEmpty / TableSkeleton 全站補完
+- news/page.tsx, orders/page.tsx, dismantled/page.tsx（修正多餘 `<tr>` wrapper bug）
+- reports/dismantled：spinner loading td → TableSkeleton，empty td → TableEmpty
+- sell, exchange, marketplace, cs-management/tickets 的 table loading + empty 全部標準化
+
+### `<th>` 排版統一
+- tools, products/[id]/verify, reports/logistics, dev-logs, reports/settlement, marketplace 補上 `text-xs font-semibold text-neutral-500` 標準排版
+
+### window.prompt 移除
+- settlement-snapshots/page.tsx：`window.prompt()` 替換為 inline 密碼輸入框，CRON_SECRET 常駐顯示於控制列
+
+---
+
+## v2026.07.7｜2026-07-16｜Design System 全站 UX 掃蕩 — Toast / 骨架屏 / Badge / Empty State
+
+### Toast 通知系統（`backend/contexts/ToastContext.tsx`）
+- 新增全域 Toast Provider，4 種類型：success / error / warning / info，右上角滑入動畫
+- 所有頁面 `alert()` 呼叫（共 42 個檔案、100+ 處）全部替換為 `toast(msg, type)`，type 依訊息語意自動判斷（失敗→error、成功→success、請填→warning）
+- `globals.css` 補 `toast-in` keyframe 動畫
+
+### Loading 骨架屏全站覆蓋
+- 43 個頁面的「載入中…」文字 → `CardSkeleton` / `TableSkeleton` 動畫佔位
+- `TableSkeleton` 整合進 `DataTable.isLoading` prop；`CardSkeleton` 用於卡片/區塊型內容
+- 涵蓋：settings/*, reports/*, settlement-snapshots, refund-requests, permissions, news, users 等
+
+### Badge 組件擴充
+- `statusVariantMap` 新增 10 個狀態：`paused`, `deleted`, `sold`, `draft`, `hidden`, `進行中`, `審核中`, `已退款`, `已拒絕`, `已拒絕`
+- 替換 `exchange/page.tsx`、`sell-orders/page.tsx`、`sell/page.tsx` 的 inline status span → `<Badge status=...>`
+- 移除 `exchange/page.tsx` 的 `statusBadgeClass` helper function
+
+### Empty State 統一
+- `TableEmpty` 覆蓋：sell, exchange, marketplace, cs-management/tickets, reports/[type], dismantled 等 table empty row
+- `EmptyState` 覆蓋：suppliers, settlement-snapshots, refund-requests, permissions 等卡片型空狀態
+
+---
+
+## v2026.07.6｜2026-07-16｜Design System 批次 2–7 — UI Kit 全站統一
+
+### 組件統一（components/ui/）
+- **Input / Select / Textarea / FileInput**：border-2 → border、py-2 min-h-[42px] → py-1.5、ring-2 → ring-1；disabled gray-* → neutral-100/400/200；helper text → neutral-500
+- **Label**：text-sm text-neutral-700 → text-xs text-neutral-500
+- **Switch**：bg-gray-200 → bg-neutral-200（unchecked track）
+- **Badge**：新增 `status` prop，內建 `statusVariantMap` 自動對照 20+ 種狀態字串到 variant，匯出 `BadgeVariant` 型別
+- **Select**：新增 `placeholder` prop；useId() 取代 Math.random()
+
+### 共用 Dialog 修正（components/）
+- **AlertDialog / ConfirmDialog**：gray-900/600/50/300/400 全部換成 neutral-*；取消鈕 border-2 → border border-neutral-200
+
+### 全站 emerald-* → green-*（24 個頁面）
+- emerald-50/100/200/600/700/800 統一改為 green-*，success 色系統一
+
+### 偏離頁面修正
+- **settings/modules**：gray-300/blue-500/rounded-md → neutral-200/primary/rounded-lg；bg-blue-600 → bg-primary
+- **analytics**：gray-300/blue-500/blue-600 → neutral-200/primary
+- **settings/rates**：border-blue-300/disabled:bg-gray-300 → primary 系列
+- **orders、users/[id]、reports/logistics**：status getStatusColor 中的 gray-100/gray-700 → neutral-100/neutral-600
+
+### Design System 頁面（/design-system）
+- 新增 `backend/app/design-system/page.tsx`，展示所有 token、組件、間距、陰影、狀態色規範
+- 包含「禁止使用」清單：gray-*、emerald-*、自定義 getStatusColor、border-2（inputs）等
+- 加入 AdminLayout 側邊欄導覽（IconTools 圖示）
+
+---
+
+## v2026.07.5｜2026-07-16｜Design System 批次 1 — Tailwind Token 地基
+
+### 設計系統
+- **補全 neutral scale**：新增 50/400/600/800，共 10 階完整 scale（原本缺 4 個，530+ 個 class 原本 fallback 到 Tailwind 預設不受控）
+- **移除 accent token**：dead alias（值與 primary 完全相同），全站僅 1 處使用，已清除
+
+---
+
+## v2026.07.4｜2026-07-15｜商品編輯頁 UI 重構 + 品項欄位鎖定規則
+
+### 功能
+- **商品編輯頁佈局重構**（`backend/app/products/[id]/page.tsx`）：從左右雙欄卡片改為全寬上下三段（上架資訊 / 商品資訊 / 品項），品項改 grid-cols-3 排列
+- **重置按鈕**：儲存後快照 formData + prizes，點重置還原至最後儲存狀態
+- **「類別」欄位鎖定**：type 建立後不可修改（disabled select）
+- **品項欄位鎖定規則**：
+  - 一番賞 / 抽卡 / 自製賞（isVerifiable）：等級可選（不含「普通」）、總數量唯讀、剩餘唯讀
+  - 盒玩 / 轉蛋（isGachaType）：等級固定顯示「普通」、總數量可改（儲存時驗證不低於已抽數量）、剩餘唯讀自動 delta 計算
+  - 名稱、圖片全類型可改
+- **品項區塊標題**顯示整體 剩餘 / 總計；各品項卡片標題顯示個別 remaining/total
+- **商品主圖**改為 56px dashed 縮圖，與品項圖樣式統一
+
+### 修正
+- **ESLint build 錯誤**：`catch(e){}` 空 block statement，改為 `catch(_e){ /* clipboard unavailable */ }`
+
+### 樣式統一
+- DatePicker、YearMonthPicker、TagSelector trigger 高度與 border 統一為 `py-1.5 border border-neutral-200`
+- YearMonthPicker 新增 `onClear` prop
+
+---
+
 ## v2026.07.3｜2026-07-14｜LINE 推播修復 + 環境變數補齊
 
 ### 修復

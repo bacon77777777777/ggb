@@ -1,8 +1,14 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useEffect, useMemo, useState } from 'react'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import SelectField from '@/components/ui/SelectField'
 
 type OfferStatus = 'active' | 'paused' | 'deleted'
 
@@ -37,13 +43,9 @@ const statusLabel = (status: OfferStatus) => {
   return '已刪除'
 }
 
-const statusBadgeClass = (status: OfferStatus) => {
-  if (status === 'active') return 'bg-green-50 text-green-700 border-green-200'
-  if (status === 'paused') return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-neutral-100 text-neutral-600 border-neutral-200'
-}
 
 export default function ExchangeOffersAdminPage() {
+  const { confirm, dialogProps } = useConfirmDialog()
   const [offers, setOffers] = useState<OfferRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
@@ -97,29 +99,29 @@ export default function ExchangeOffersAdminPage() {
     fetchOffers()
   }, [])
 
-  const handleSeedDemo = async () => {
-    const ok = window.confirm('確定要插入幾筆交換假資料嗎？（用於測試列表/流程）')
-    if (!ok) return
-    try {
-      setIsSeeding(true)
-      const res = await fetch('/api/admin/exchange/seed', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offers: 6, withOrder: true }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || '插入失敗')
-      }
-      await fetchOffers()
-      alert('已插入假資料')
-    } catch (e) {
-      console.error('Unexpected error seeding exchange demo data:', e)
-      alert('插入失敗')
-    } finally {
-      setIsSeeding(false)
-    }
+  const handleSeedDemo = () => {
+    confirm({
+      title: '建立交換假資料',
+      message: '確定要插入幾筆交換假資料嗎？（用於測試列表/流程）',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          setIsSeeding(true)
+          const res = await fetch('/api/admin/exchange/seed', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ offers: 6, withOrder: true }),
+          })
+          if (!res.ok) { console.error('插入失敗'); return }
+          await fetchOffers()
+        } catch (e) {
+          console.error('Unexpected error seeding exchange demo data:', e)
+        } finally {
+          setIsSeeding(false)
+        }
+      },
+    })
   }
 
   const handleSort = (field: string) => {
@@ -131,30 +133,31 @@ export default function ExchangeOffersAdminPage() {
     }
   }
 
-  const handleUpdateStatus = async (offer: OfferRow, nextStatus: OfferStatus) => {
+  const handleUpdateStatus = (offer: OfferRow, nextStatus: OfferStatus) => {
     if (nextStatus === offer.status) return
-    const ok = window.confirm(`確定要將此交換上架狀態改為「${statusLabel(nextStatus)}」嗎？\n\nOffer：${offer.id}`)
-    if (!ok) return
-
-    const prev = offer.status
-    setOffers((rows) => rows.map((r) => (r.id === offer.id ? { ...r, status: nextStatus, updated_at: new Date().toISOString() } : r)))
-
-    try {
-      const res = await fetch('/api/admin/exchange/offers', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ id: offer.id, status: nextStatus }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || '更新失敗')
-      }
-    } catch (e) {
-      console.error('Unexpected error updating exchange offer status:', e)
-      setOffers((rows) => rows.map((r) => (r.id === offer.id ? { ...r, status: prev } : r)))
-      alert('更新失敗')
-    }
+    confirm({
+      title: '更新狀態',
+      message: `確定要將此交換上架狀態改為「${statusLabel(nextStatus)}」嗎？\n\nOffer：${offer.id}`,
+      type: 'info',
+      onConfirm: async () => {
+        const prev = offer.status
+        setOffers((rows) => rows.map((r) => (r.id === offer.id ? { ...r, status: nextStatus, updated_at: new Date().toISOString() } : r)))
+        try {
+          const res = await fetch('/api/admin/exchange/offers', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ id: offer.id, status: nextStatus }),
+          })
+          if (!res.ok) {
+            setOffers((rows) => rows.map((r) => (r.id === offer.id ? { ...r, status: prev } : r)))
+          }
+        } catch (e) {
+          console.error('Unexpected error updating exchange offer status:', e)
+          setOffers((rows) => rows.map((r) => (r.id === offer.id ? { ...r, status: prev } : r)))
+        }
+      },
+    })
   }
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -216,7 +219,7 @@ export default function ExchangeOffersAdminPage() {
 
   return (
     <AdminLayout pageTitle="交換管理">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -303,7 +306,7 @@ export default function ExchangeOffersAdminPage() {
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="bg-neutral-50 border-y border-neutral-200">
                   <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     建立時間
@@ -311,30 +314,18 @@ export default function ExchangeOffersAdminPage() {
                   <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     狀態
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">Offer</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">會員</th>
-                  <th className="py-3 px-4 text-left text-sm font-semibold text-neutral-700">內容</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">Offer</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">會員</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500">內容</th>
                   <SortableTableHeader sortKey="updated_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                     更新時間
                   </SortableTableHeader>
-                  <th className="py-3 px-4 text-right text-sm font-semibold text-neutral-700">操作</th>
+                  <th className="py-3 px-4 text-right text-xs font-semibold text-neutral-500">操作</th>
                 </tr>
               </thead>
               <tbody>
-                {isLoading && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-neutral-500">
-                      載入中…
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && sortedOffers.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-neutral-500">
-                      沒有資料
-                    </td>
-                  </tr>
-                )}
+                {isLoading && <TableSkeleton rows={5} cols={7} />}
+                {!isLoading && sortedOffers.length === 0 && <TableEmpty colSpan={7} />}
                 {!isLoading &&
                   sortedOffers.map((offer) => {
                     const want = offer.cards.filter((c) => c.side === 'want')
@@ -347,9 +338,7 @@ export default function ExchangeOffersAdminPage() {
                           {offer.created_at ? formatDateTime(offer.created_at) : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">
-                          <span className={`inline-flex items-center px-2 py-1 rounded border text-xs font-medium ${statusBadgeClass(offer.status)}`}>
-                            {statusLabel(offer.status)}
-                          </span>
+                          <Badge status={offer.status}>{statusLabel(offer.status)}</Badge>
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700">
                           <CopyableID id={offer.id} />
@@ -382,7 +371,7 @@ export default function ExchangeOffersAdminPage() {
                           {offer.updated_at ? formatDateTime(offer.updated_at) : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700 text-right">
-                          <select
+                          <SelectField
                             value={offer.status}
                             onChange={(e) => handleUpdateStatus(offer, e.target.value as OfferStatus)}
                             className="border border-neutral-200 rounded-lg px-2 py-1 text-sm bg-white"
@@ -390,7 +379,7 @@ export default function ExchangeOffersAdminPage() {
                             <option value="active">上架中</option>
                             <option value="paused">暫停</option>
                             <option value="deleted">已刪除</option>
-                          </select>
+                          </SelectField>
                         </td>
                       </tr>
                     )
@@ -400,6 +389,7 @@ export default function ExchangeOffersAdminPage() {
           </div>
         </PageCard>
       </div>
+          {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

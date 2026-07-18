@@ -4,8 +4,11 @@ import AdminLayout from '@/components/AdminLayout'
 import { useLog } from '@/contexts/LogContext'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
+import SelectField from '@/components/ui/SelectField'
 
 export default function EditSmallItemPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const { addLog } = useLog()
@@ -103,7 +106,7 @@ export default function EditSmallItemPage() {
       router.push('/small-items')
     } catch (error) {
       console.error('Error updating small item:', error)
-      alert('更新失敗，請重試')
+      toast('更新失敗，請重試', 'error')
     } finally {
       setLoading(false)
     }
@@ -141,7 +144,7 @@ export default function EditSmallItemPage() {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+              className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               placeholder="請輸入小物名稱"
               required
             />
@@ -151,16 +154,16 @@ export default function EditSmallItemPage() {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               分類 <span className="text-red-500">*</span>
             </label>
-            <select
+            <SelectField
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-3 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+              className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               required
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
 
           <div>
@@ -181,7 +184,7 @@ export default function EditSmallItemPage() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="w-full px-4 py-3 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               />
             </div>
           </div>
@@ -193,7 +196,7 @@ export default function EditSmallItemPage() {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+              className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               placeholder="請輸入小物描述（選填）"
               rows={3}
             />

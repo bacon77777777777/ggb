@@ -5,6 +5,11 @@ import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
+import SelectField from '@/components/ui/SelectField'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -31,10 +36,10 @@ const STATUS_LABEL: Record<string, string> = {
   listing: '上架中', cancelled: '已取消',
 }
 const STATUS_COLOR: Record<string, string> = {
-  completed: 'bg-emerald-100 text-emerald-700', success: 'bg-emerald-100 text-emerald-700',
+  completed: 'bg-green-100 text-green-700', success: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700', pending_delivery: 'bg-yellow-100 text-yellow-700',
   failed: 'bg-red-100 text-red-700', refunded: 'bg-red-100 text-red-700',
-  cancelled: 'bg-red-100 text-red-700', shipped: 'bg-blue-100 text-blue-700',
+  cancelled: 'bg-red-100 text-red-700', shipped: 'bg-blue-100 text-primary',
   in_warehouse: 'bg-purple-100 text-purple-700', exchanged: 'bg-neutral-100 text-neutral-600',
   dismantled: 'bg-neutral-100 text-neutral-600', listing: 'bg-indigo-100 text-indigo-700',
 }
@@ -67,7 +72,7 @@ function CompletionBar({ pct }: { pct: number }) {
     <div className="flex items-center gap-2">
       <div className="flex-1 bg-neutral-100 rounded-full h-1.5 min-w-[60px]">
         <div
-          className={`h-1.5 rounded-full ${pct >= 90 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-neutral-300'}`}
+          className={`h-1.5 rounded-full ${pct >= 90 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-neutral-300'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -77,6 +82,7 @@ function CompletionBar({ pct }: { pct: number }) {
 }
 
 export default function ReportPage() {
+  const { toast } = useToast()
   const { type } = useParams<{ type: string }>()
   const reportType = (type as ReportType) || 'overview'
   const meta = TYPE_META[reportType] ?? TYPE_META.overview
@@ -145,7 +151,7 @@ export default function ReportPage() {
       else if (reportType === 'overview') { setOverview(json.overview ?? null); setFunnel(json.funnel ?? null); setDailyBreakdown(json.dailyBreakdown ?? []) }
       else if (reportType === 'products') setProductsData(json.data ?? [])
       else if (reportType === 'behavior') setBehaviorData(json)
-    } catch (e: any) { alert(e.message || '載入失敗') }
+    } catch (e: any) { toast(e.message || '載入失敗', 'error') }
     finally { setLoading(false) }
   }, [reportType, start, end, filterSupplier, filterType])
 
@@ -213,28 +219,28 @@ export default function ReportPage() {
         <div className="flex items-center justify-end gap-2 flex-wrap">
           {reportType === 'products' && (
             <>
-              <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <SelectField value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有廠商</option>
                 {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-              </select>
-              <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+              </SelectField>
+              <SelectField value={filterType} onChange={e => setFilterType(e.target.value)}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="">所有種類</option>
                 {productTypes.map(t => <option key={t} value={t}>{PRODUCT_TYPE_LABEL[t] || t}</option>)}
-              </select>
-              <select value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+              </SelectField>
+              <SelectField value={filterCurrency} onChange={e => setFilterCurrency(e.target.value as 'all' | 'tokens' | 'points')}
+                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                 <option value="all">全幣種</option>
                 <option value="tokens">代幣</option>
                 <option value="points">積分</option>
-              </select>
+              </SelectField>
             </>
           )}
           <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
           {canExport && (
             <button onClick={handleExport}
-              className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2 whitespace-nowrap">
+              className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -247,16 +253,16 @@ export default function ReportPage() {
         {reportType === 'overview' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : !overview ? (
               <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
             ) : (
               <>
                 {/* 摘要數據（儀表板未重複的） */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-emerald-600" />
+                  <KpiCard label="平均每次抽賞" value={`${overview.avgTokenPerDraw.toLocaleString()} G`} sub="消費代幣 / 次" color="text-green-600" />
                   <KpiCard label="折價券折損" value={`NT$ ${overview.couponDiscountFixed.toLocaleString()}`} sub={overview.couponDiscountPercentageCount > 0 ? `另有 ${overview.couponDiscountPercentageCount} 張折扣%券` : '固定金額券'} color="text-orange-500" />
-                  <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-blue-600" />
+                  <KpiCard label="累積會員總數" value={`${overview.totalMembers.toLocaleString()} 人`} color="text-primary" />
                   <KpiCard label="首次付費用戶佔比" value={funnel ? `${funnel.newUserConversionRate}%` : '—'} sub="新用戶→首儲轉化" color="text-indigo-600" />
                 </div>
 
@@ -274,7 +280,7 @@ export default function ReportPage() {
                             value: funnel.newUsers,
                             unit: '人',
                             rate: null,
-                            color: 'bg-blue-500',
+                            color: 'bg-primary',
                             width: 100,
                           },
                           {
@@ -298,7 +304,7 @@ export default function ReportPage() {
                             value: funnel.repeatPayersInPeriod,
                             unit: '人',
                             rate: funnel.repurchaseRateInPeriod,
-                            color: 'bg-emerald-500',
+                            color: 'bg-green-500',
                             width: funnel.uniquePayers > 0 ? Math.round(funnel.repeatPayersInPeriod / funnel.uniquePayers * 100) : 0,
                           },
                         ].map((step, i) => (
@@ -307,7 +313,7 @@ export default function ReportPage() {
                               <span className="text-xs text-neutral-500">{step.label}</span>
                               <div className="flex items-center gap-2">
                                 {step.rate !== null && (
-                                  <span className="text-xs font-semibold text-emerald-600">{step.rate}%</span>
+                                  <span className="text-xs font-semibold text-green-600">{step.rate}%</span>
                                 )}
                                 <span className="text-sm font-bold text-neutral-800 tabular-nums">
                                   {step.value.toLocaleString()} {step.unit}
@@ -333,7 +339,7 @@ export default function ReportPage() {
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { label: '首次付費用戶', value: funnel.firstTimePayers, sub: '生命週期首次', color: 'text-indigo-600' },
-                          { label: '本期回購率', value: `${funnel.repurchaseRateInPeriod}%`, sub: `${funnel.repeatPayersInPeriod} 人 2 次以上`, color: 'text-emerald-600' },
+                          { label: '本期回購率', value: `${funnel.repurchaseRateInPeriod}%`, sub: `${funnel.repeatPayersInPeriod} 人 2 次以上`, color: 'text-green-600' },
                           { label: '平均儲值次數 / 人', value: `${funnel.avgRechargesPerPayer} 次`, sub: '本期付費用戶', color: 'text-violet-600' },
                           { label: '首購平均等待天數', value: funnel.avgDaysToFirstPurchase !== null ? `${funnel.avgDaysToFirstPurchase} 天` : '—', sub: '新用戶 → 首儲', color: 'text-orange-500' },
                         ].map(k => (
@@ -351,7 +357,7 @@ export default function ReportPage() {
                           <p className="text-xs font-semibold text-neutral-400 mb-2">新用戶首購時間分佈</p>
                           <div className="space-y-1.5">
                             {[
-                              { label: '當天', value: funnel.purchaseTimingDist.sameDay, color: 'bg-emerald-500' },
+                              { label: '當天', value: funnel.purchaseTimingDist.sameDay, color: 'bg-green-500' },
                               { label: '1–2 天', value: funnel.purchaseTimingDist.within3Days, color: 'bg-blue-400' },
                               { label: '3–6 天', value: funnel.purchaseTimingDist.within7Days, color: 'bg-indigo-400' },
                               { label: '7–29 天', value: funnel.purchaseTimingDist.within30Days, color: 'bg-violet-400' },
@@ -386,10 +392,10 @@ export default function ReportPage() {
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 border-b border-neutral-100">
+                        <thead className="bg-neutral-50 border-b border-neutral-200">
                           <tr>
                             {['日期', '儲值金額(TWD)', '抽獎次數', '新用戶數'].map(h => (
-                              <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500">{h}</th>
+                              <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -425,13 +431,13 @@ export default function ReportPage() {
           <div className={`grid gap-3 ${filterCurrency === 'all' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
             <KpiCard label="商品數" value={filteredProducts.length.toLocaleString()} />
             {filterCurrency !== 'points' && (
-              <KpiCard label="總消費代幣" value={`${filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G`} color="text-emerald-600" />
+              <KpiCard label="總消費代幣" value={`${filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G`} color="text-green-600" />
             )}
             {filterCurrency !== 'tokens' && (() => {
               const totalPts = filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0)
               return <KpiCard label="總消費積分" value={`${totalPts.toLocaleString()} G`} color={totalPts > 0 ? 'text-indigo-600' : 'text-orange-400'} />
             })()}
-            <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-blue-600" />
+            <KpiCard label="總抽獎次數" value={filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()} color="text-primary" />
           </div>
         )}
         {reportType === 'products' && (
@@ -441,26 +447,26 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {filteredProducts.length} 項商品</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">#</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">商品名稱</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">廠商</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">種類</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">抽獎次數</th>
-                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
-                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">積分</th>}
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
-                      <th className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">完抽率</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">#</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">商品名稱</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">廠商</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">種類</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">抽獎次數</th>
+                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
+                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">積分</th>}
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">完抽率</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {filteredProducts.length === 0 ? (
-                      <tr><td colSpan={9} className="py-16 text-center text-sm text-neutral-400">此條件無商品資料</td></tr>
+                      <TableEmpty colSpan={9} message="此條件無商品資料" />
                     ) : filteredProducts.map((p, i) => {
                       const tokenRev = p.revenue - (p.pointsUsed ?? 0)
                       const pts = p.pointsUsed ?? 0
@@ -472,13 +478,13 @@ export default function ReportPage() {
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
                             {p.supplierName ? (
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">{p.supplierName}</span>
+                              <Badge variant="primary">{p.supplierName}</Badge>
                             ) : '—'}
                           </td>
                           <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">{PRODUCT_TYPE_LABEL[p.type] || p.type || '—'}</td>
                           <td className="px-4 py-3 text-right font-semibold">{p.drawCount.toLocaleString()}</td>
                           {filterCurrency !== 'points' && (
-                            <td className="px-4 py-3 text-right font-semibold text-emerald-700">{tokenRev.toLocaleString()} G</td>
+                            <td className="px-4 py-3 text-right font-semibold text-green-700">{tokenRev.toLocaleString()} G</td>
                           )}
                           {filterCurrency !== 'tokens' && (
                             <td className="px-4 py-3 text-right font-semibold text-indigo-600">
@@ -501,7 +507,7 @@ export default function ReportPage() {
                         <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
                         <td className="px-4 py-2 text-right font-bold">{filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
                         {filterCurrency !== 'points' && (
-                          <td className="px-4 py-2 text-right font-bold text-emerald-700">
+                          <td className="px-4 py-2 text-right font-bold text-green-700">
                             {filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G
                           </td>
                         )}
@@ -524,8 +530,8 @@ export default function ReportPage() {
         {reportType === 'recharge' && !loading && rechargeData.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="儲值筆數" value={rechargeData.length.toLocaleString()} />
-            <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-emerald-600" sub="已完成筆數" />
-            <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-blue-600" />
+            <KpiCard label="完成金額" value={`NT$ ${rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}`} color="text-green-600" sub="已完成筆數" />
+            <KpiCard label="贈點合計" value={`${rechargeData.reduce((s, r) => s + (r.bonus ?? 0), 0).toLocaleString()} G`} color="text-primary" />
           </div>
         )}
         {reportType === 'recharge' && (
@@ -535,16 +541,16 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {rechargeData.length} 筆</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : rechargeData.length === 0 ? (
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無儲值紀錄</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       {['日期', '訂單編號', '用戶', 'Email', '金額(TWD)', '贈點', '付款方式', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -559,9 +565,7 @@ export default function ReportPage() {
                         <td className="px-4 py-2 text-right">{r.bonus ?? 0}</td>
                         <td className="px-4 py-2 text-neutral-500">{r.payment_method ?? '—'}</td>
                         <td className="px-4 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                            {STATUS_LABEL[r.status] ?? r.status}
-                          </span>
+                          <Badge status={r.status}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
                         </td>
                       </tr>
                     ))}
@@ -583,8 +587,8 @@ export default function ReportPage() {
         {reportType === 'consumption' && !loading && consumptionData.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <KpiCard label="消費筆數" value={consumptionData.length.toLocaleString()} />
-            <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-emerald-600" />
-            <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-blue-600" />
+            <KpiCard label="總消費代幣" value={`${consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G`} color="text-green-600" />
+            <KpiCard label="平均每筆" value={`${Math.round(consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0) / consumptionData.length).toLocaleString()} G`} color="text-primary" />
           </div>
         )}
         {reportType === 'consumption' && (
@@ -594,16 +598,16 @@ export default function ReportPage() {
               <span className="text-sm text-neutral-500">共 {consumptionData.length} 筆</span>
             </div>
             {loading ? (
-              <div className="py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : consumptionData.length === 0 ? (
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無消費紀錄</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       {['日期', '用戶', 'Email', '商品', '消耗代幣(G)', '獎品等級', '獎品名稱', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -620,9 +624,7 @@ export default function ReportPage() {
                         </td>
                         <td className="px-4 py-2 text-neutral-700">{d.prize_name ?? '—'}</td>
                         <td className="px-4 py-2">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[d.status] ?? 'bg-neutral-100 text-neutral-600'}`}>
-                            {STATUS_LABEL[d.status] ?? d.status}
-                          </span>
+                          <Badge status={d.status}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
                         </td>
                       </tr>
                     ))}
@@ -643,15 +645,15 @@ export default function ReportPage() {
         {reportType === 'behavior' && (
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">載入中…</div>
+              <CardSkeleton rows={5} />
             ) : !behaviorData ? (
-              <div className="bg-white rounded-lg border border-neutral-200 py-20 text-center text-neutral-400 text-sm">無資料</div>
+              <EmptyState message="無資料" />
             ) : (
               <>
                 {/* KPI */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-blue-600" />
-                  <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-emerald-600" />
+                  <KpiCard label="點擊商品數（去重）" value={String(behaviorData.clickTotal)} color="text-primary" />
+                  <KpiCard label="點擊後成功抽獎" value={String(behaviorData.converted)} color="text-green-600" />
                   <KpiCard label="點擊 → 抽轉化率" value={`${behaviorData.conversionRate}%`} color="text-amber-600" />
                 </div>
 
@@ -663,7 +665,7 @@ export default function ReportPage() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead>
+                        <thead className="bg-neutral-50 border-b border-neutral-200">
                           <tr className="border-b border-neutral-100">
                             <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">日期</th>
                             <th className="text-right py-2 px-3 text-xs font-semibold text-neutral-500">活躍用戶數</th>
@@ -676,7 +678,7 @@ export default function ReportPage() {
                             return behaviorData.dailyActiveUsers.map(d => (
                               <tr key={d.date} className="border-b border-neutral-50 hover:bg-neutral-50">
                                 <td className="py-2 px-3 font-mono text-xs text-neutral-600">{d.date}</td>
-                                <td className="py-2 px-3 text-right font-semibold text-blue-600">{d.count}</td>
+                                <td className="py-2 px-3 text-right font-semibold text-primary">{d.count}</td>
                                 <td className="py-2 px-3">
                                   <div className="bg-neutral-100 rounded-full h-1.5">
                                     <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${Math.round(d.count / max * 100)}%` }} />

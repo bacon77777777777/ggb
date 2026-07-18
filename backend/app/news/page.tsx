@@ -1,10 +1,13 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
+import { TableEmpty } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
 
 interface NewsArticle {
   id: string
@@ -32,7 +35,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   ichiban: 'bg-red-50 text-red-700',
   gacha:   'bg-orange-50 text-orange-700',
   blindbox:'bg-purple-50 text-purple-700',
-  tcg:     'bg-blue-50 text-blue-700',
+  tcg:     'bg-primary text-primary',
   general: 'bg-neutral-100 text-neutral-600',
 }
 
@@ -51,6 +54,7 @@ function savePrefs(patch: Record<string, unknown>) {
 }
 
 export default function NewsPage() {
+  const { toast } = useToast()
   const prefs  = loadPrefs()
   const router = useRouter()
 
@@ -63,7 +67,7 @@ export default function NewsPage() {
     try {
       const res = await fetch('/api/admin/trigger/news-agent', { method: 'POST', credentials: 'include' })
       const data = await res.json()
-      if (!res.ok) { alert(data?.error ?? '生成失敗'); return }
+      if (!res.ok) { toast(data?.error ?? '生成失敗', 'error'); return }
       const r = data.skipReasons ?? {}
       const detail = [
         r.duplicate  ? `重複${r.duplicate}` : '',
@@ -72,9 +76,9 @@ export default function NewsPage() {
         r.titleDup   ? `標題重複${r.titleDup}` : '',
         r.insertErr  ? `寫入錯誤${r.insertErr}` : '',
       ].filter(Boolean).join('、')
-      alert(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇\n${detail || '（重複或無圖）'}`)
+      toast(`完成！新增 ${data.written ?? 0} 篇，跳過 ${data.skipped ?? 0} 篇\n${detail || '（重複或無圖）'}`, 'success')
       fetchData()
-    } catch { alert('生成失敗') } finally { setIsGenerating(false) }
+    } catch { toast('生成失敗', 'error') } finally { setIsGenerating(false) }
   }
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -174,7 +178,7 @@ export default function NewsPage() {
     const next = !article.is_active
     setNews(prev => prev.map(n => n.id === article.id ? { ...n, is_active: next } : n))
     const { error } = await supabase.from('news').update({ is_active: next }).eq('id', article.id)
-    if (error) { fetchData(); alert('更新失敗') }
+    if (error) { fetchData(); toast('更新失敗', 'error') }
   }
 
   // ─── 刪除 ────────────────────────────────────────────────────────────────
@@ -182,7 +186,7 @@ export default function NewsPage() {
     if (!confirm('確定要刪除此文章嗎？')) return
     const { error } = await supabase.from('news').delete().eq('id', id)
     if (!error) setNews(prev => prev.filter(n => n.id !== id))
-    else alert('刪除失敗')
+    else toast('刪除失敗', 'error')
   }
 
   // ─── 編輯 / 新增 ──────────────────────────────────────────────────────────
@@ -195,7 +199,7 @@ export default function NewsPage() {
 
   return (
     <AdminLayout pageTitle="文章管理">
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         <PageCard>
           <SearchToolbar
@@ -271,12 +275,8 @@ export default function NewsPage() {
           {/* ── 統計列 ── */}
           <div className="flex items-center gap-3 px-4 py-2 text-sm border-b border-neutral-100">
             <span className="text-neutral-500">共 {news.length} 篇</span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-              已上架 {activeCount}
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-500 border border-neutral-200">
-              下架草稿 {draftCount}
-            </span>
+            <Badge variant="success">已上架 {activeCount}</Badge>
+            <Badge variant="default">下架草稿 {draftCount}</Badge>
             {sorted.length !== news.length && (
               <span className="text-neutral-400 text-xs">篩選後顯示 {sorted.length} 篇</span>
             )}
@@ -285,7 +285,7 @@ export default function NewsPage() {
           {/* ── 表格 ── */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="border-b border-neutral-200">
                   <th className="px-4 py-2.5 text-left w-10">
                     <input
@@ -327,11 +327,7 @@ export default function NewsPage() {
                     </tr>
                   ))
                 ) : sorted.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-16 text-center text-neutral-400 text-sm">
-                      {news.length === 0 ? '尚無文章資料' : '沒有符合條件的文章'}
-                    </td>
-                  </tr>
+                  <TableEmpty colSpan={8} message={news.length === 0 ? '尚無文章資料' : '沒有符合條件的文章'} />
                 ) : (
                   sorted.map(article => (
                     <tr key={article.id}

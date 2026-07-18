@@ -7,17 +7,19 @@ interface YearMonthPickerProps {
   month: string
   onYearChange: (value: string) => void
   onMonthChange: (value: string) => void
+  onClear?: () => void
   placeholder?: string
   label?: string
 }
 
-export default function YearMonthPicker({ 
-  year, 
-  month, 
-  onYearChange, 
-  onMonthChange, 
+export default function YearMonthPicker({
+  year,
+  month,
+  onYearChange,
+  onMonthChange,
+  onClear,
   placeholder = '選擇年月',
-  label 
+  label
 }: YearMonthPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom')
@@ -77,14 +79,27 @@ export default function YearMonthPicker({
       <div
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-white border-2 border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-neutral-300 shadow-sm cursor-pointer flex items-center justify-between min-h-[42px]"
+        className="w-full h-9 px-3 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300 cursor-pointer flex items-center justify-between"
       >
         <span className={year && month ? 'text-neutral-900' : 'text-neutral-400'}>
           {getDisplayText()}
         </span>
-        <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
+        <div className="flex items-center gap-1">
+          {(year || month) && onClear && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClear() }}
+              className="p-0.5 hover:bg-neutral-100 rounded transition-colors"
+            >
+              <svg className="w-4 h-4 text-neutral-400 hover:text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+          <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
       </div>
 
       {isOpen && (

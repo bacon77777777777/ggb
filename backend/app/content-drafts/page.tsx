@@ -1,7 +1,10 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 type DraftStatus = 'pending' | 'approved' | 'published' | 'archived'
 type DraftStyle  = 'promotional' | 'story' | 'urgency'
@@ -20,8 +23,8 @@ interface ContentDraft {
 
 const STATUS_LABEL: Record<DraftStatus, { label: string; cls: string }> = {
   pending:   { label: '待確認', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-  approved:  { label: '已確認', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-  published: { label: '已發布', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  approved:  { label: '已確認', cls: 'bg-blue-100 text-primary border-blue-200' },
+  published: { label: '已發布', cls: 'bg-green-100 text-green-700 border-green-200' },
   archived:  { label: '已棄用', cls: 'bg-neutral-100 text-neutral-500 border-neutral-200' },
 }
 
@@ -98,21 +101,21 @@ export default function ContentDraftsPage() {
 
   return (
     <AdminLayout pageTitle="AI 文案草稿">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* 操作列 */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">狀態篩選：</span>
-            <select
+            <SelectField
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">全部（{total}）</option>
               {STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div className="flex items-center gap-3">
             {generateMsg && (
@@ -140,7 +143,7 @@ export default function ContentDraftsPage() {
 
         {/* 草稿列表（依日期分組） */}
         {loading ? (
-          <div className="flex justify-center py-16 text-neutral-400 text-sm">載入中…</div>
+          <CardSkeleton rows={5} />
         ) : Object.keys(grouped).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-neutral-400 gap-2">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +172,7 @@ export default function ContentDraftsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className="text-sm font-semibold text-neutral-700">{s.emoji} {s.label}</span>
-                            <span className={`px-2 py-0.5 text-xs rounded border ${st.cls}`}>{st.label}</span>
+                            <Badge status={draft.status}>{st.label}</Badge>
                           </div>
                           <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-sans leading-relaxed bg-neutral-50 rounded-lg p-3 max-h-40 overflow-y-auto">
                             {draft.text_content}
@@ -184,22 +187,22 @@ export default function ContentDraftsPage() {
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
                           >
                             {copied === draft.id ? (
-                              <><svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> 已複製</>
+                              <><svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> 已複製</>
                             ) : (
                               <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> 複製文字</>
                             )}
                           </button>
                           {/* 狀態切換 */}
-                          <select
+                          <SelectField
                             value={draft.status}
                             disabled={updating === draft.id}
                             onChange={e => updateStatus(draft.id, e.target.value as DraftStatus)}
-                            className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                            className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                           >
                             {STATUS_OPTIONS.map(s => (
                               <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                       </div>
                     )

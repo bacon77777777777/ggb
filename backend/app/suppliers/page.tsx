@@ -1,10 +1,15 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import PageCard from '@/components/PageCard'
+import Badge from '@/components/ui/Badge'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useState, useEffect } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import EmptyState from '@/components/ui/EmptyState'
 
 interface Supplier {
   id: number
@@ -38,6 +43,7 @@ const EMPTY_FORM = {
 }
 
 export default function SuppliersPage() {
+  const { toast } = useToast()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -53,7 +59,7 @@ export default function SuppliersPage() {
       if (!res.ok) throw new Error((await res.json()).error || '載入失敗')
       setSuppliers(await res.json())
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -86,7 +92,7 @@ export default function SuppliersPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert('廠商名稱為必填'); return }
+    if (!form.name.trim()) { toast('廠商名稱為必填', 'error'); return }
     setSaving(true)
     try {
       const payload = {
@@ -110,7 +116,7 @@ export default function SuppliersPage() {
       setIsModalOpen(false)
       fetchSuppliers()
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -124,13 +130,13 @@ export default function SuppliersPage() {
       setDeleteTarget(null)
       fetchSuppliers()
     } catch (e: any) {
-      alert(e.message)
+      toast(e.message, 'error')
     }
   }
 
   return (
     <AdminLayout pageTitle="廠商管理">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-neutral-500">管理商品供應廠商資訊</p>
@@ -146,33 +152,31 @@ export default function SuppliersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+        <PageCard noPadding>
           {loading ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">載入中…</div>
+            <CardSkeleton rows={5} />
           ) : suppliers.length === 0 ? (
-            <div className="py-16 text-center text-neutral-400 text-sm">尚無廠商資料，點擊「新增廠商」開始建立</div>
+            <EmptyState message="尚無廠商資料，點擊「新增廠商」開始建立" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-100">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
                     {['廠商名稱', '統編', '聯絡人', '電話', 'Email', '狀態', '備註', '建立時間', '操作'].map((h) => (
-                      <th key={h} className="text-left px-4 py-2 text-xs font-medium text-neutral-500 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {suppliers.map((s) => (
-                    <tr key={s.id} className="hover:bg-neutral-50">
+                    <tr key={s.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-neutral-900">{s.name}</td>
                       <td className="px-4 py-3 text-neutral-600 font-mono text-xs">{s.tax_id ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-600">{s.contact_name ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-600">{s.contact_phone ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-500 text-xs">{s.contact_email ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                          {s.is_active ? '啟用' : '停用'}
-                        </span>
+                        <Badge status={s.is_active ? 'active' : 'inactive'}>{s.is_active ? '啟用' : '停用'}</Badge>
                       </td>
                       <td className="px-4 py-3 text-neutral-500 max-w-[200px] truncate">{s.notes ?? '—'}</td>
                       <td className="px-4 py-3 text-neutral-400 text-xs whitespace-nowrap">{formatDateTime(s.created_at)}</td>
@@ -198,7 +202,7 @@ export default function SuppliersPage() {
               </table>
             </div>
           )}
-        </div>
+        </PageCard>
       </div>
 
       {/* Create / Edit Modal */}
@@ -216,7 +220,7 @@ export default function SuppliersPage() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="例：廠商公司名稱"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
             <div>
@@ -227,7 +231,7 @@ export default function SuppliersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, tax_id: e.target.value }))}
                 placeholder="8碼統編"
                 maxLength={8}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -238,7 +242,7 @@ export default function SuppliersPage() {
                 type="text"
                 value={form.contact_name}
                 onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
             <div>
@@ -247,7 +251,7 @@ export default function SuppliersPage() {
                 type="text"
                 value={form.contact_phone}
                 onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -257,7 +261,7 @@ export default function SuppliersPage() {
               type="email"
               value={form.contact_email}
               onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
             />
           </div>
           <div>
@@ -266,7 +270,7 @@ export default function SuppliersPage() {
               type="text"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
             />
           </div>
 
@@ -286,7 +290,7 @@ export default function SuppliersPage() {
                     onChange={(e) => setForm((f) => ({ ...f, sender_name: e.target.value }))}
                     placeholder="空白則使用聯絡人"
                     maxLength={10}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
                 <div>
@@ -297,7 +301,7 @@ export default function SuppliersPage() {
                     onChange={(e) => setForm((f) => ({ ...f, sender_zip_code: e.target.value }))}
                     placeholder="例：100"
                     maxLength={6}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
               </div>
@@ -310,7 +314,7 @@ export default function SuppliersPage() {
                   type="text"
                   value={form.sender_address}
                   onChange={(e) => setForm((f) => ({ ...f, sender_address: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
             </div>
@@ -322,7 +326,7 @@ export default function SuppliersPage() {
               rows={3}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
             />
           </div>
           <div className="flex items-center gap-2">

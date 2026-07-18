@@ -4,6 +4,8 @@ import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/componen
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useToast } from '@/contexts/ToastContext'
+import SelectField from '@/components/ui/SelectField'
 
 type DiscountType = 'fixed' | 'percentage'
 
@@ -30,6 +32,7 @@ interface CouponFormState {
 }
 
 export default function CouponsPage() {
+  const { toast } = useToast()
   const [coupons, setCoupons] = useState<CouponRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -109,26 +112,26 @@ export default function CouponsPage() {
       await fetchCoupons()
     } catch (error) {
       console.error('Error deleting coupon:', error)
-      alert('刪除折價券失敗')
+      toast('刪除折價券失敗', 'error')
     }
   }
 
   const handleSubmit = async () => {
     const trimmedTitle = formData.title.trim()
     if (!trimmedTitle) {
-      alert('請輸入折價券名稱')
+      toast('請輸入折價券名稱', 'warning')
       return
     }
 
     const discountValue = Number(formData.discount_value)
     if (!Number.isFinite(discountValue) || discountValue <= 0) {
-      alert('請輸入有效的折扣數值')
+      toast('請輸入有效的折扣數值', 'warning')
       return
     }
 
     const minSpend = formData.min_spend ? Number(formData.min_spend) : 0
     if (!Number.isFinite(minSpend) || minSpend < 0) {
-      alert('請輸入有效的最低消費金額(TWD)')
+      toast('請輸入有效的最低消費金額(TWD)', 'warning')
       return
     }
 
@@ -163,7 +166,7 @@ export default function CouponsPage() {
       await fetchCoupons()
     } catch (error) {
       console.error('Error saving coupon:', error)
-      alert('儲存折價券失敗')
+      toast('儲存折價券失敗', 'error')
     }
   }
 
@@ -220,7 +223,7 @@ export default function CouponsPage() {
       render: (item) => (
         <span
           className={`px-2 py-1 rounded text-xs font-semibold ${
-            item.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-100 text-neutral-600'
+            item.is_active ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'
           }`}
         >
           {item.is_active ? '啟用中' : '已停用'}
@@ -244,7 +247,7 @@ export default function CouponsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleEdit(item)}
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+            className="text-primary hover:text-primary text-sm font-medium"
           >
             編輯
           </button>
@@ -261,17 +264,11 @@ export default function CouponsPage() {
 
   return (
     <AdminLayout pageTitle="折價券管理">
-      <div className="space-y-6 p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-neutral-900">折價券列表</h2>
-            <p className="text-sm text-neutral-500 mt-1">
-              管理折價券代碼、折扣內容與使用條件
-            </p>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-end">
           <button
             onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
           >
             + 新增折價券
           </button>
@@ -325,7 +322,7 @@ export default function CouponsPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   折扣類型
                 </label>
-                <select
+                <SelectField
                   value={formData.discount_type}
                   onChange={(e) =>
                     setFormData({ ...formData, discount_type: e.target.value as DiscountType })
@@ -334,7 +331,7 @@ export default function CouponsPage() {
                 >
                   <option value="fixed">固定金額(TWD)</option>
                   <option value="percentage">百分比</option>
-                </select>
+                </SelectField>
               </div>
 
               <div>

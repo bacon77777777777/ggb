@@ -1,13 +1,17 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
+import SelectField from '@/components/ui/SelectField'
 import CopyableID from '@/components/CopyableID'
 import ShippingProgress from '@/components/ShippingProgress'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useToast } from '@/contexts/ToastContext'
 
 export default function OrderDetailPage() {
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams()
   const idParam = params.id as string
@@ -119,7 +123,7 @@ export default function OrderDetailPage() {
       setShipment({ ...shipment, status: newStatus })
     } catch (err) {
       console.error('Error updating status:', err)
-      alert('更新狀態失敗')
+      toast('更新狀態失敗', 'error')
     }
   }
 
@@ -172,25 +176,6 @@ export default function OrderDetailPage() {
         </div>
       </AdminLayout>
     )
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-700'
-      case 'processing':
-        return 'bg-blue-100 text-blue-700'
-      case 'picked_up':
-        return 'bg-blue-100 text-blue-700'
-      case 'shipping':
-        return 'bg-blue-100 text-blue-700'
-      case 'delivered':
-        return 'bg-green-100 text-green-700'
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-700'
-      default:
-        return 'bg-neutral-100 text-neutral-700'
-    }
   }
 
   const getStatusText = (status: string) => {
@@ -247,30 +232,23 @@ export default function OrderDetailPage() {
           {/* 狀態切換下拉選單 */}
           <div className="flex items-center gap-3">
             <span className="text-sm text-neutral-500">切換狀態：</span>
-            <div className="relative">
-              <select
-                value={shipment.status}
-                onChange={(e) => {
-                  const newStatus = e.target.value as typeof shipment.status
-                  if (confirm(`確定要將狀態從「${getStatusText(shipment.status)}」改為「${getStatusText(newStatus)}」嗎？`)) {
-                    updateStatus(newStatus)
-                  }
-                }}
-                className="px-4 py-2.5 pr-10 bg-white border-2 border-neutral-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all hover:border-neutral-300 shadow-sm hover:shadow-md appearance-none cursor-pointer"
-              >
-                <option value="submitted">已提交</option>
-                <option value="processing">處理中</option>
-                <option value="picked_up">物流已收取</option>
-                <option value="shipping">配送中</option>
-                <option value="delivered">已送達</option>
-                <option value="cancelled">已取消</option>
-              </select>
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <SelectField
+              value={shipment.status}
+              className="px-4 pr-8 border-2 rounded-full font-medium shadow-sm hover:shadow-md"
+              onChange={(e) => {
+                const newStatus = e.target.value as typeof shipment.status
+                if (confirm(`確定要將狀態從「${getStatusText(shipment.status)}」改為「${getStatusText(newStatus)}」嗎？`)) {
+                  updateStatus(newStatus)
+                }
+              }}
+            >
+              <option value="submitted">已提交</option>
+              <option value="processing">處理中</option>
+              <option value="picked_up">物流已收取</option>
+              <option value="shipping">配送中</option>
+              <option value="delivered">已送達</option>
+              <option value="cancelled">已取消</option>
+            </SelectField>
           </div>
         </div>
 
@@ -294,9 +272,7 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500">配送狀態</span>
-                  <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(shipment.status)}`}>
-                    {getStatusText(shipment.status)}
-                  </span>
+                  <Badge status={shipment.status}>{getStatusText(shipment.status)}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500">建立時間</span>
@@ -362,7 +338,7 @@ export default function OrderDetailPage() {
                   <select 
                     value={shippingMethod}
                     onChange={(e) => setShippingMethod(e.target.value)}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option>宅配</option>
                     <option>超商取貨</option>
@@ -378,7 +354,7 @@ export default function OrderDetailPage() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="配送備註..."
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <div className="flex items-center gap-3 pt-2">
@@ -403,13 +379,13 @@ export default function OrderDetailPage() {
                               throw new Error(result.error || '建立物流單失敗');
                             }
 
-                            alert('物流單建立成功！');
+                            toast('物流單建立成功！', 'success');
                             // Refresh order data
                             window.location.reload();
                             
                           } catch (err: any) {
                             console.error('Error creating logistics order:', err);
-                            alert(`建立物流單失敗: ${err.message}`);
+                            toast(`建立物流單失敗: ${err.message}`, 'error');
                           }
                         }
                       }}
@@ -476,7 +452,7 @@ export default function OrderDetailPage() {
                             setShipment({ ...shipment, status: 'cancelled' })
                           } catch (err) {
                             console.error('Error cancelling order:', err)
-                            alert('取消訂單失敗')
+                            toast('取消訂單失敗', 'error')
                           }
                         }
                       }}

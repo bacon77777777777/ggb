@@ -1,7 +1,9 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
+import SelectField from '@/components/ui/SelectField'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
 interface MonitorLog {
@@ -49,18 +51,18 @@ interface MeetingLog {
 }
 
 const TYPE_META: Record<LogType, { label: string; color: string }> = {
-  feature:     { label: '新功能', color: 'bg-blue-100 text-blue-700' },
+  feature:     { label: '新功能', color: 'bg-blue-100 text-primary' },
   fix:         { label: '修復',   color: 'bg-red-100 text-red-700' },
   improvement: { label: '優化',   color: 'bg-amber-100 text-amber-700' },
   issue:       { label: '問題',   color: 'bg-purple-100 text-purple-700' },
 }
 
 const STATUS_META: Record<LogStatus, { label: string; color: string }> = {
-  released:   { label: '已發布', color: 'bg-emerald-100 text-emerald-700' },
+  released:   { label: '已發布', color: 'bg-green-100 text-green-700' },
   planned:    { label: '計劃中', color: 'bg-neutral-100 text-neutral-500' },
   open:       { label: '待處理', color: 'bg-red-100 text-red-600' },
-  in_progress:{ label: '進行中', color: 'bg-blue-100 text-blue-600' },
-  resolved:   { label: '已解決', color: 'bg-emerald-100 text-emerald-700' },
+  in_progress:{ label: '進行中', color: 'bg-blue-100 text-primary' },
+  resolved:   { label: '已解決', color: 'bg-green-100 text-green-700' },
 }
 
 const PRIORITY_META: Record<Priority, { label: string; color: string }> = {
@@ -215,7 +217,7 @@ export default function DevLogsPage() {
     <AdminLayout
       pageTitle="開發日誌"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
 
         {/* Tab + 新增按鈕 */}
         <div className="flex items-center justify-between">
@@ -230,7 +232,7 @@ export default function DevLogsPage() {
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setShowForm(false) }}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
@@ -283,32 +285,32 @@ export default function DevLogsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">類型</label>
-                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <SelectField value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LogType }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(TYPE_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">狀態</label>
-                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <SelectField value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as LogStatus }))}
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                   {Object.entries(STATUS_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
                 <input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
                   placeholder="e.g. v1.2.0"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               {form.type === 'issue' && (
                 <div>
                   <label className="text-xs text-neutral-500 mb-1 block">優先級</label>
-                  <select value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                  <SelectField value={form.priority ?? ''} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority || null }))}
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20">
                     <option value="">不設定</option>
                     {Object.entries(PRIORITY_META).map(([v, m]) => <option key={v} value={v}>{m.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               )}
             </div>
@@ -316,13 +318,13 @@ export default function DevLogsPage() {
               <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
               <input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 placeholder="簡短描述這筆紀錄"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">說明</label>
               <textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={3} placeholder="詳細說明、重現步驟、解決方案…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setForm(BLANK) }}
@@ -347,25 +349,25 @@ export default function DevLogsPage() {
                 <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
                 <input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="會議名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">時間 *</label>
                 <input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">參與人</label>
               <input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
                 placeholder="e.g. 王小明、李大華"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">會議內容</label>
               <textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
                 rows={6} placeholder="討論事項、決議結論、待辦事項…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setMeetingForm(MEETING_BLANK) }}
@@ -379,7 +381,7 @@ export default function DevLogsPage() {
         )}
 
         {loading ? (
-          <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+          <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={5} /></div>
         ) : (
           <>
             {/* ── 版本紀錄 Tab ── */}
@@ -572,7 +574,7 @@ export default function DevLogsPage() {
             {activeTab === 'monitor' && (
               <div className="space-y-4">
                 {monitorLoading ? (
-                  <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">載入中…</div>
+                  <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={5} /></div>
                 ) : monitorLogs.length === 0 ? (
                   <div className="bg-white rounded-xl border border-neutral-200 py-16 text-center text-sm text-neutral-400">
                     尚無監控資料，點「立即檢查」執行第一次快照
@@ -580,12 +582,12 @@ export default function DevLogsPage() {
                 ) : (() => {
                   const latest = monitorLogs[0]
                   const statusColor = (s: string) =>
-                    s === 'ok' ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                    s === 'ok' ? 'text-green-600 bg-green-50 border-green-200'
                     : s === 'warning' ? 'text-amber-600 bg-amber-50 border-amber-200'
                     : s === 'error' ? 'text-red-600 bg-red-50 border-red-200'
                     : 'text-neutral-400 bg-neutral-50 border-neutral-200'
                   const statusDot = (s: string) =>
-                    s === 'ok' ? 'bg-emerald-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
+                    s === 'ok' ? 'bg-green-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
                   const statusLabel = (s: string) =>
                     s === 'ok' ? '正常' : s === 'warning' ? '注意' : s === 'error' ? '異常' : '未知'
 
@@ -668,10 +670,10 @@ export default function DevLogsPage() {
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
-                            <thead className="bg-neutral-50 border-b border-neutral-100">
+                            <thead className="bg-neutral-50 border-b border-neutral-200">
                               <tr>
                                 {['時間', 'DB (MB)', 'R2 (MB)', 'R2 檔數', 'Vercel', 'GitHub CI', '整體'].map(h => (
-                                  <th key={h} className="px-4 py-2 text-left text-neutral-500 font-medium whitespace-nowrap">{h}</th>
+                                  <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                                 ))}
                               </tr>
                             </thead>
