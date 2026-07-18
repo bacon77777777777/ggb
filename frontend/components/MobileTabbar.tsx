@@ -112,7 +112,7 @@ function MobileTabbarInner() {
                     alt={tab.name}
                     width={37}
                     height={37}
-                    className="transition-opacity duration-300"
+                    className={cn("transition-opacity duration-300", !isActive && "opacity-80")}
                   />
                 </motion.div>
                 <span className={cn(
