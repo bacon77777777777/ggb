@@ -110,8 +110,8 @@ function MobileTabbarInner() {
                   <Image
                     src={imgSrc}
                     alt={tab.name}
-                    width={31}
-                    height={31}
+                    width={37}
+                    height={37}
                     className="transition-opacity duration-300"
                   />
                 </motion.div>
