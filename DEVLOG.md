@@ -4,6 +4,53 @@
 
 ---
 
+## v2026.07.18d｜2026-07-18｜積分消耗顯示修正（前台抽獎紀錄 + 後台消費報表）
+
+### 積分消耗顯示修正
+- **根本原因**：`draw_records.points_used` 存的是 G 等值（e.g. 150G），實際積分需 × 4（e.g. 600 積分）
+- `draw_records` 的 `points_used` 維持儲 G 等值（供廠商結算用），顯示層統一 × 4 換算
+- **前台抽獎紀錄**（`frontend/app/profile/page.tsx`）：
+  - select 補撈 `points_used`；累計至群組
+  - 有積分消耗時顯示「X 積分」（indigo 色），否則顯示 G 幣圖示 + 數字
+- **後台消費報表**（`backend/app/reports/[type]/page.tsx`）：
+  - 積分欄由 `N G` 改為 `N×4 積分`
+  - KPI 總積分卡、CSV 匯出同步修正
+
+---
+
+## v2026.07.18c｜2026-07-18｜留言頭像修正 + DB 同步 + 機器人留言改短
+
+### 留言頭像丟失修正（`frontend/app/news/[id]/page.tsx`, `frontend/app/api/news/[id]/comments/route.ts`）
+- `Avatar` component 改為：有 src 顯示圖片 → 有名字顯示首字 → 否則顯示預設 `/images/avatar/01.png`
+- 留言 GET API `name` 欄位加 fallback `|| '用戶'`
+- 留言 POST API 從 `user.user_metadata` 取 avatar_url/name 作備用
+
+### 機器人留言字數大幅縮短（`backend/app/api/cron/news-agent/route.ts`）
+- prompt 改為「絕大多數 1~8 字元，偶爾 1 則最多 15 字元」，不寫完整句子
+- 舊有長留言不追溯修改，新文章起套用
+
+### DB 同步（PROD）
+- migration 330：`token_adjustments` RLS 補 SELECT policy（修正 token_ledger 手動補幣前台讀不到）
+- migration 331：`create_delivery_orders_split` 補回 STG（從 PROD 對齊）
+
+---
+
+## v2026.07.18b｜2026-07-18｜prod 環境修正（超商選店/配送訂單賞等/ECPay 物流測試環境）
+
+### 超商取貨選店 404 修正
+- 前台 Production `NEXT_PUBLIC_API_URL` 未設 → 加入 `https://admin.ggb.com.tw`
+- 修正 `form.action = '/api/logistics/map'` 打到前台自己 404 的問題
+
+### 配送訂單品項賞等標籤（`frontend/app/profile/page.tsx`）
+- 配送訂單展開品項標籤同步修正：轉蛋/盒玩顯示「普通」，其他顯示「X賞」
+- query 補 `products ( name, type )`，mapping 加 gacha/blindbox 強制覆蓋邏輯
+
+### 後台 Production ECPay 物流測試環境憑證
+- 設定 `ECPAY_LOGISTICS_MERCHANT_ID / HASH_KEY / HASH_IV / MAP_URL / API_URL` 為綠界測試環境
+- 使用測試帳號 3002607，物流 API 指向 `logistics-stage.ecpay.com.tw`
+
+---
+
 ## v2026.07.18｜2026-07-18｜Staging 環境變數修正（儲值頁 Unauthorized）
 
 ### Vercel Preview 環境變數修正
