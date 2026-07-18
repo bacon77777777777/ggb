@@ -548,6 +548,8 @@ function ProfileContent() {
   const [storeId, setStoreId] = useState('');
   const [storeName, setStoreName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
+  const [pendingCvsToken, setPendingCvsToken] = useState<string | null>(null);
+  const cvsPollingRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Shipping fee settings (from platform_settings)
   const [shippingFeeHome, setShippingFeeHome] = useState(60);
@@ -1774,65 +1776,62 @@ function ProfileContent() {
     }
   }, [searchParams]);
 
-  // CVS store selection via popup postMessage (for PWA + desktop)
+  // Apply CVS store data and open delivery modal
+  const applyCvsStoreData = React.useCallback((sId: string, sName: string, sAddr: string, lSub?: string) => {
+    if (!sId) return;
+    setStoreId(sId);
+    setStoreName(sName || '');
+    setStoreAddress(sAddr || '');
+    if (!hasLargePackage) setLogisticsType('CVS');
+    if (lSub) setLogisticsSubType(lSub as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
+    setShowDeliveryModal(true);
+    if (cvsPollingRef.current) { clearInterval(cvsPollingRef.current); cvsPollingRef.current = null; }
+    setPendingCvsToken(null);
+    try {
+      const stored = sessionStorage.getItem('pending_delivery_items');
+      if (stored) {
+        const ids = JSON.parse(stored);
+        if (Array.isArray(ids) && ids.length > 0) setSelectedForDelivery(ids);
+        sessionStorage.removeItem('pending_delivery_items');
+      }
+    } catch { /* ignore */ }
+  }, [hasLargePackage, cvsPollingRef]);
+
+  // CVS store selection: postMessage (desktop/Safari popup) + server-side polling (iOS PWA)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       if (e.data?.type !== 'cvs_store_selected') return;
       const { storeId: sId, storeName: sName, storeAddress: sAddr, logisticsSubType: lSub } = e.data;
-      if (!sId) return;
-      setStoreId(sId);
-      setStoreName(sName || '');
-      setStoreAddress(sAddr || '');
-      if (!hasLargePackage) setLogisticsType('CVS');
-      if (lSub) setLogisticsSubType(lSub as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
-      setShowDeliveryModal(true);
-      // Restore pending items if any
-      try {
-        const stored = sessionStorage.getItem('pending_delivery_items');
-        if (stored) {
-          const ids = JSON.parse(stored);
-          if (Array.isArray(ids) && ids.length > 0) setSelectedForDelivery(ids);
-          sessionStorage.removeItem('pending_delivery_items');
-        }
-      } catch { /* ignore */ }
+      applyCvsStoreData(sId, sName, sAddr, lSub);
     };
     window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [applyCvsStoreData]);
 
-    // Fallback: check localStorage for store selection (iOS PWA SFSafariViewController)
-    const checkLocalStorage = () => {
+  // Poll backend for CVS store data (for iOS PWA where postMessage/localStorage don't cross contexts)
+  useEffect(() => {
+    if (!pendingCvsToken) return;
+    let attempts = 0;
+    const maxAttempts = 45; // 90 seconds at 2s interval
+    cvsPollingRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(cvsPollingRef.current!);
+        cvsPollingRef.current = null;
+        setPendingCvsToken(null);
+        return;
+      }
       try {
-        const raw = localStorage.getItem('cvs_store_pending');
-        if (!raw) return;
-        const data = JSON.parse(raw) as { storeId?: string; storeName?: string; storeAddress?: string; logisticsSubType?: string; ts?: number };
-        // Only consume if fresh (within last 5 minutes)
-        if (!data.storeId || (Date.now() - (data.ts || 0)) > 300_000) { localStorage.removeItem('cvs_store_pending'); return; }
-        localStorage.removeItem('cvs_store_pending');
-        setStoreId(data.storeId);
-        setStoreName(data.storeName || '');
-        setStoreAddress(data.storeAddress || '');
-        if (!hasLargePackage) setLogisticsType('CVS');
-        if (data.logisticsSubType) setLogisticsSubType(data.logisticsSubType as 'UNIMART' | 'FAMI' | 'HILIFE' | 'OKMART');
-        setShowDeliveryModal(true);
-        try {
-          const stored = sessionStorage.getItem('pending_delivery_items');
-          if (stored) {
-            const ids = JSON.parse(stored);
-            if (Array.isArray(ids) && ids.length > 0) setSelectedForDelivery(ids);
-            sessionStorage.removeItem('pending_delivery_items');
-          }
-        } catch { /* ignore */ }
-      } catch { /* ignore */ }
-    };
-    const onFocus = () => checkLocalStorage();
-    window.addEventListener('focus', onFocus);
-    checkLocalStorage(); // also check on mount
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [hasLargePackage]);
+        const res = await fetch(`/api/logistics/cvs-pending?token=${encodeURIComponent(pendingCvsToken)}`);
+        const data = await res.json();
+        if (data.found) {
+          applyCvsStoreData(data.storeId, data.storeName, data.storeAddress, data.logisticsSubType);
+        }
+      } catch { /* network errors are expected during ECPay redirect, keep polling */ }
+    }, 2000);
+    return () => { if (cvsPollingRef.current) { clearInterval(cvsPollingRef.current); cvsPollingRef.current = null; } };
+  }, [pendingCvsToken, applyCvsStoreData]);
 
   // Mobile warehouse lazy load
   useEffect(() => {
@@ -3190,7 +3189,9 @@ function ProfileContent() {
                                       console.error('Failed to save delivery items:', e);
                                     }
 
-                                    const form = document.createElement('form');
+                                    const reqId2 = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                                          setPendingCvsToken(reqId2);
+                                          const form = document.createElement('form');
                                           form.method = 'POST';
                                           form.target = '_blank';
                                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -3200,6 +3201,11 @@ function ProfileContent() {
                                           input.value = logisticsSubType;
                                           input.type = 'hidden';
                                           form.appendChild(input);
+                                          const ridInput2 = document.createElement('input');
+                                          ridInput2.name = 'requestId';
+                                          ridInput2.value = reqId2;
+                                          ridInput2.type = 'hidden';
+                                          form.appendChild(ridInput2);
                                           document.body.appendChild(form);
                                           form.submit();
                                         }}
@@ -3223,7 +3229,9 @@ function ProfileContent() {
                                                console.error('Failed to save delivery items:', e);
                                              }
 
-                                             const form = document.createElement('form');
+                                             const reqId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                                          setPendingCvsToken(reqId);
+                                          const form = document.createElement('form');
                                           form.method = 'POST';
                                           form.target = '_blank';
                                           const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -3233,6 +3241,11 @@ function ProfileContent() {
                                           input.value = logisticsSubType;
                                           input.type = 'hidden';
                                           form.appendChild(input);
+                                          const ridInput = document.createElement('input');
+                                          ridInput.name = 'requestId';
+                                          ridInput.value = reqId;
+                                          ridInput.type = 'hidden';
+                                          form.appendChild(ridInput);
                                           document.body.appendChild(form);
                                           form.submit();
                                         }}

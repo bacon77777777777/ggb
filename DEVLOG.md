@@ -27,6 +27,14 @@
 - `orders` 表新增 `logistics_type`、`logistics_subtype`、`store_id`、`store_name` 四欄
 - 修正 `create_delivery_order` RPC 插入失敗（column does not exist）
 
+### 超商取貨 PWA 空白頁根本修正（Migration 328 + server-side polling）
+- 根因：ECPay callback 在 SFSafariViewController，無法與 PWA WKWebView 共享 session / localStorage
+- 新建 `cvs_pending_selections` 表（migration 328），後端 callback 後寫入門市資料
+- 前端表單送出時產生 `requestId`，透過後端線程帶入 ECPay callback URL
+- 前端在 WKWebView 內 polling `/api/logistics/cvs-pending?token=xxx`（2秒一次，最多 90 秒）
+- 收到資料後自動填入門市並彈出配送 modal，不依賴任何跨 context 通信
+- 新增 `frontend/app/api/logistics/cvs-pending/route.ts` polling 端點
+
 ---
 
 ## v2026.07.16｜2026-07-18｜新轉蛋機 mode2 + 後台 sidebar 調整 + 分析頁週區間圖表
