@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.18c｜2026-07-18｜留言頭像修正 + DB 同步 + 機器人留言改短
+
+### 留言頭像丟失修正（`frontend/app/news/[id]/page.tsx`, `frontend/app/api/news/[id]/comments/route.ts`）
+- `Avatar` component 改為：有 src 顯示圖片 → 有名字顯示首字 → 否則顯示預設 `/images/avatar/01.png`
+- 留言 GET API `name` 欄位加 fallback `|| '用戶'`
+- 留言 POST API 從 `user.user_metadata` 取 avatar_url/name 作備用
+
+### 機器人留言字數大幅縮短（`backend/app/api/cron/news-agent/route.ts`）
+- prompt 改為「絕大多數 1~8 字元，偶爾 1 則最多 15 字元」，不寫完整句子
+- 舊有長留言不追溯修改，新文章起套用
+
+### DB 同步（PROD）
+- migration 330：`token_adjustments` RLS 補 SELECT policy（修正 token_ledger 手動補幣前台讀不到）
+- migration 331：`create_delivery_orders_split` 補回 STG（從 PROD 對齊）
+
+---
+
 ## v2026.07.18b｜2026-07-18｜prod 環境修正（超商選店/配送訂單賞等/ECPay 物流測試環境）
 
 ### 超商取貨選店 404 修正

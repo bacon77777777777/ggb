@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const userMap: Record<string, { name: string; avatar_url: string | null }> = {}
   for (const u of usersData ?? []) {
-    userMap[u.id] = { name: u.name, avatar_url: u.avatar_url }
+    userMap[u.id] = { name: u.name || '用戶', avatar_url: u.avatar_url }
   }
 
   // 撈所有留言的按讚數
@@ -91,9 +91,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', user.id)
     .single()
 
+  const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null
+  const metaName = user.user_metadata?.full_name || user.user_metadata?.name || null
+
   return NextResponse.json({
     ...data,
-    user: userData ? { name: userData.name, avatar_url: userData.avatar_url } : { name: '用戶', avatar_url: null },
+    user: {
+      name: userData?.name || metaName || '用戶',
+      avatar_url: userData?.avatar_url || metaAvatar || null,
+    },
     likes_count: 0,
     is_liked: false,
     is_own: true,

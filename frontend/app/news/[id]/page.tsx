@@ -83,19 +83,27 @@ function ThumbUpIcon({ filled, className }: { filled: boolean; className?: strin
 }
 
 // ─── 頭像 ────────────────────────────────────────────────────────────────────
-function Avatar({ src, name, size = 36 }: { src: string | null; name: string; size?: number }) {
-  const initials = (name ?? '?').slice(0, 1).toUpperCase();
-  if (src) {
+function Avatar({ src, name, size = 36 }: { src: string | null; name: string | null; size?: number }) {
+  const initials = (name ?? '').slice(0, 1).toUpperCase();
+  const imgSrc = src || null;
+  if (imgSrc) {
     return (
       <div style={{ width: size, height: size }} className="rounded-full overflow-hidden flex-shrink-0 relative">
-        <img src={src} alt={name} className="w-full h-full object-cover" />
+        <img src={imgSrc} alt={name ?? ''} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+  if (initials) {
+    return (
+      <div style={{ width: size, height: size }}
+        className="rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary font-black text-sm">
+        {initials}
       </div>
     );
   }
   return (
-    <div style={{ width: size, height: size }}
-      className="rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary font-black text-sm">
-      {initials}
+    <div style={{ width: size, height: size }} className="rounded-full overflow-hidden flex-shrink-0">
+      <img src="/images/avatar/01.png" alt="用戶" className="w-full h-full object-cover" />
     </div>
   );
 }
