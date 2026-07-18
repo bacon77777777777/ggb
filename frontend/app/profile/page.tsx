@@ -1391,7 +1391,7 @@ function ProfileContent() {
             *,
             draw_records (
               product_prizes ( level, name ),
-              products ( name )
+              products ( name, type )
             )
           `)
           .eq('user_id', user.id)
@@ -1431,11 +1431,16 @@ function ProfileContent() {
              id: order.id,
              order_number: order.order_number,
              itemsCount: order.draw_records?.length || 0,
-             items: (order.draw_records || []).map((dh) => ({
-               grade: dh.product_prizes?.level || '?',
-               name: dh.product_prizes?.name || '未知',
-               productName: (dh as any).products?.name || '未知商品',
-             })),
+             items: (order.draw_records || []).map((dh) => {
+               const productType = (dh as any).products?.type || 'unknown';
+               const rawGrade = dh.product_prizes?.level || '?';
+               const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
+               return {
+                 grade,
+                 name: dh.product_prizes?.name || '未知',
+                 productName: (dh as any).products?.name || '未知商品',
+               };
+             }),
              status: order.status,
              date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '/'),
              tracking: order.tracking_number || '-',
@@ -4395,7 +4400,7 @@ function ProfileContent() {
                                                 {grouped[productName].map((item, idx) => (
                                                   <div key={idx} className="flex items-center gap-2.5 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                                     <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase shrink-0">
-                                                      {item.grade}賞
+                                                      {item.grade === '普通' ? '普通' : `${item.grade}賞`}
                                                     </span>
                                                     <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
                                                       {item.name}
