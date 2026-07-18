@@ -4,6 +4,16 @@
 
 ---
 
+## v2026.07.18｜2026-07-18｜Staging 環境變數修正（儲值頁 Unauthorized）
+
+### Vercel Preview 環境變數修正
+- 前台 Preview `NEXT_PUBLIC_API_URL` 原為空字串 → 改為 `https://ggb-backend-git-dev-ggbtw.vercel.app`
+- 後台 Preview `NEXT_PUBLIC_BASE_URL` 原為空字串 → 改為 `https://ggb-backend-git-dev-ggbtw.vercel.app`
+- 後台 Preview `NEXT_PUBLIC_FRONTEND_URL` 原為空字串 → 改為 `https://staging.ggb.com.tw`
+- 修正後 staging.ggb.com.tw 儲值頁按確認支付會正確呼叫後台 API 並傳送 JWT 驗證
+
+---
+
 ## v2026.07.17｜2026-07-18｜倉庫/分解/抽獎紀錄 UI 修正 + 超商選店 PWA 修正
 
 ### 倉庫品項列表（`frontend/app/profile/page.tsx`）
