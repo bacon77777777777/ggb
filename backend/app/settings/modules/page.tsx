@@ -16,8 +16,7 @@ const PRODUCT_TYPES: {
     label: '轉蛋',
     themes: [
       { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
-      { value: 'gacha_modern', label: '現代膠囊機', desc: '格列膠囊展示，側邊把手風格' },
-      { value: 'gacha_retro', label: '復古街頭機', desc: '紅色機身圓形球倉，日式扭蛋街機風格' },
+      { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
     ],
   },
   {
