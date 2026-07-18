@@ -210,7 +210,9 @@ export function GachaMachineMode2({
       lastTime = time;
 
       if (dt > 0) {
-        const gravity = 18, floorY = 0.98, restitution = 0.8, friction = 0.995, angularFriction = 0.98;
+        // Larger container than mode1 (94% × 41% vs 84% × 36%), so higher gravity + lower
+        // restitution to compensate — eggs settle at the same visual pace as the classic machine.
+        const gravity = 26, floorY = 0.98, restitution = 0.58, friction = 0.995, angularFriction = 0.98;
         const { isShaking: shaking } = stateRef.current;
         const nowSec = time / 1000;
         const lastShake = lastShakeTimeRef.current;
