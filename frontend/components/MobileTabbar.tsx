@@ -3,7 +3,8 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, User, Gift, Box, Trophy, Store, Newspaper } from 'lucide-react';
+import Image from 'next/image';
+import { Box, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -64,12 +65,20 @@ function MobileTabbarInner() {
     return null;
   })();
 
-  const tabs: Array<{ name: string; href: string; icon: any; isCenter?: boolean }> = [
-    { name: '首頁', href: '/', icon: Home },
-    { name: '排行榜', href: '/ranking', icon: Trophy },
-    { name: '情報', href: '/news', icon: Newspaper },
-    { name: '簽到', href: '/mission', icon: Gift },
-    { name: '會員', href: '/profile', icon: User },
+  const tabImgMap: Record<string, number> = {
+    '/': 1,
+    '/ranking': 2,
+    '/news': 3,
+    '/mission': 4,
+    '/profile': 5,
+  };
+
+  const tabs: Array<{ name: string; href: string; isCenter?: boolean }> = [
+    { name: '首頁', href: '/' },
+    { name: '排行榜', href: '/ranking' },
+    { name: '情報', href: '/news' },
+    { name: '簽到', href: '/mission' },
+    { name: '會員', href: '/profile' },
   ];
 
   const handleTabClick = () => {
@@ -84,48 +93,8 @@ function MobileTabbarInner() {
         <div className={cn("relative w-full grid px-2 h-[56px]", tabs.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
           {tabs.map((tab) => {
             const isActive = pathname === tab.href || (tab.href === '/profile' && pathname.startsWith('/profile'));
-            const Icon = tab.icon;
-            
-            if (tab.isCenter) {
-              return (
-                <div key={tab.href} className="relative h-full flex items-center justify-center">
-                  <Link
-                    href={tab.href}
-                    className="flex flex-col items-center justify-end h-full w-full pb-1.5 relative"
-                    onClick={() => handleTabClick()}
-                  >
-                    <motion.div
-                      whileTap={{ scale: 0.9 }}
-                      initial={false}
-                      animate={{
-                        x: '-50%',
-                        y: isActive ? -22 : -18,
-                      }}
-                      className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center absolute left-1/2 border border-white/60 dark:border-neutral-900 bg-gradient-to-t from-[#EE4D2D] to-[#FF7043] text-white",
-                        theme === 'dark' && "border-neutral-800"
-                      )}
-                    >
-                      <div className="flex items-center justify-center w-8 h-8">
-                        <Icon
-                          size={22}
-                          strokeWidth={1.6}
-                          className="text-white"
-                        />
-                      </div>
-                    </motion.div>
-                    <span
-                      className={cn(
-                        "text-[11px] font-black transition-colors duration-300",
-                        isActive ? "text-primary" : "text-neutral-400 dark:text-neutral-500"
-                      )}
-                    >
-                      {tab.name}
-                    </span>
-                  </Link>
-                </div>
-              );
-            }
+            const imgIdx = tabImgMap[tab.href] || 1;
+            const imgSrc = `/images/topbar/${imgIdx}${isActive ? 'b' : 'a'}.png`;
 
             return (
               <Link
@@ -138,21 +107,13 @@ function MobileTabbarInner() {
                   whileTap={{ scale: 0.85 }}
                   className="relative z-10 flex items-center justify-center"
                 >
-                  <div
-                    className={cn(
-                      "flex items-center justify-center rounded-2xl transition-colors duration-300 w-8 h-8",
-                      isActive ? "bg-primary/10" : ""
-                    )}
-                  >
-                    <Icon
-                      size={22}
-                      strokeWidth={1.6}
-                      className={cn(
-                        "transition-colors duration-300",
-                        isActive ? "text-primary" : "text-neutral-400 dark:text-neutral-500"
-                      )}
-                    />
-                  </div>
+                  <Image
+                    src={imgSrc}
+                    alt={tab.name}
+                    width={28}
+                    height={28}
+                    className="transition-opacity duration-300"
+                  />
                 </motion.div>
                 <span className={cn(
                   "text-[11px] font-black transition-colors duration-300",
