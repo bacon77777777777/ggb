@@ -135,27 +135,23 @@ export function GachaMachineMode2({
   const isWaiting = state === 'waiting';
 
   const stateRef = useRef({ isShaking });
-  const prevIsShakingRef = useRef(false);
+  // Two separate prev refs — shared ref causes the second effect to always see updated value
+  const prevIsShakingForSwitchRef = useRef(false);
+  const prevIsShakingForImpulseRef = useRef(false);
   const prevIsDroppingRef = useRef(isDropping);
   const lastShakeTimeRef = useRef<number | null>(null);
   const applyShakeImpulseRef = useRef<(() => void) | null>(null);
-  // Track shakeRepeats at the moment shaking starts
-  const shakeRepeatsAtStartRef = useRef(shakeRepeats);
 
   useEffect(() => { eggsRef.current = eggs; }, [eggs]);
   useEffect(() => { if (isSoldOut) setEggs([]); }, [isSoldOut]);
   useEffect(() => { stateRef.current = { isShaking }; }, [isShaking]);
 
-  // Rotate switch when shaking starts with shakeRepeats > 1
-  // (shakeRepeats=1 = 推一下 preview only; >1 = real purchase or trial)
+  // Switch rotation: 推一下(shakeRepeats=1) 不旋轉，試試看/確認支付(>1) 旋轉一圈
   useEffect(() => {
-    if (isShaking && !prevIsShakingRef.current) {
-      shakeRepeatsAtStartRef.current = shakeRepeats;
-      if (shakeRepeats > 1) {
-        setSwitchAngle((prev) => prev + 360);
-      }
+    if (isShaking && !prevIsShakingForSwitchRef.current && shakeRepeats > 1) {
+      setSwitchAngle((prev) => prev + 360);
     }
-    prevIsShakingRef.current = isShaking;
+    prevIsShakingForSwitchRef.current = isShaking;
   }, [isShaking, shakeRepeats]);
 
   useEffect(() => {
@@ -176,7 +172,7 @@ export function GachaMachineMode2({
 
   useEffect(() => {
     const timeouts: number[] = [];
-    if (isShaking && !prevIsShakingRef.current && applyShakeImpulseRef.current) {
+    if (isShaking && !prevIsShakingForImpulseRef.current && applyShakeImpulseRef.current) {
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
       for (let i = 0; i < repeats; i++) {
@@ -186,6 +182,7 @@ export function GachaMachineMode2({
         timeouts.push(id);
       }
     }
+    prevIsShakingForImpulseRef.current = isShaking;
     return () => timeouts.forEach(clearTimeout);
   }, [isShaking, shakeRepeats, pushSoundMode]);
 
@@ -206,9 +203,6 @@ export function GachaMachineMode2({
   useEffect(() => {
     let frameId: number;
     let lastTime: number | null = null;
-    let lastTurbulenceChange = 0;
-    let forceX = 0, forceY = 0, torqueStrength = 0;
-    let shakeStartTime = 0;
 
     const step = (time: number) => {
       if (lastTime === null) lastTime = time;
@@ -221,35 +215,16 @@ export function GachaMachineMode2({
         const nowSec = time / 1000;
         const lastShake = lastShakeTimeRef.current;
 
+        // Freeze when eggs have settled (2s after last impulse and not shaking)
         if (!shaking && lastShake !== null && nowSec - lastShake > 2) {
           frameId = requestAnimationFrame(step);
           return;
         }
 
-        if (shaking && shakeStartTime === 0) { shakeStartTime = nowSec; lastTurbulenceChange = nowSec; }
-        if (!shaking) shakeStartTime = 0;
-        const shakeElapsed = shaking && shakeStartTime > 0 ? nowSec - shakeStartTime : 0;
-
         const current = eggsRef.current.map((e) => ({ ...e }));
         for (const egg of current) {
           egg.vy += gravity * dt;
-          if (shaking) {
-            if (shakeElapsed < 0.5) {
-              egg.vy -= 100 * dt;
-              egg.vx += (Math.random() - 0.5) * 40 * dt;
-              egg.angularVelocity += (Math.random() - 0.5) * 180 * dt;
-            } else if (shakeElapsed < 3.5) {
-              if (nowSec - lastTurbulenceChange > 0.15) {
-                forceX = (Math.random() - 0.5) * 70;
-                forceY = -35 - Math.random() * 25;
-                torqueStrength = (Math.random() - 0.5) * 250;
-                lastTurbulenceChange = nowSec;
-              }
-              egg.vx += forceX * dt;
-              egg.vy += forceY * dt;
-              egg.angularVelocity += torqueStrength * dt;
-            }
-          }
+          // Motion comes purely from applyShakeImpulse, no continuous turbulence here
           egg.vx *= friction; egg.vy *= friction; egg.angularVelocity *= angularFriction;
           egg.x += egg.vx * dt; egg.y += egg.vy * dt; egg.angle += egg.angularVelocity * dt;
           if (egg.x - egg.radius < 0) { egg.x = egg.radius; egg.vx = -egg.vx * restitution; }
