@@ -4,6 +4,22 @@
 
 ---
 
+## v2026.07.18b｜2026-07-18｜prod 環境修正（超商選店/配送訂單賞等/ECPay 物流測試環境）
+
+### 超商取貨選店 404 修正
+- 前台 Production `NEXT_PUBLIC_API_URL` 未設 → 加入 `https://admin.ggb.com.tw`
+- 修正 `form.action = '/api/logistics/map'` 打到前台自己 404 的問題
+
+### 配送訂單品項賞等標籤（`frontend/app/profile/page.tsx`）
+- 配送訂單展開品項標籤同步修正：轉蛋/盒玩顯示「普通」，其他顯示「X賞」
+- query 補 `products ( name, type )`，mapping 加 gacha/blindbox 強制覆蓋邏輯
+
+### 後台 Production ECPay 物流測試環境憑證
+- 設定 `ECPAY_LOGISTICS_MERCHANT_ID / HASH_KEY / HASH_IV / MAP_URL / API_URL` 為綠界測試環境
+- 使用測試帳號 3002607，物流 API 指向 `logistics-stage.ecpay.com.tw`
+
+---
+
 ## v2026.07.18｜2026-07-18｜Staging 環境變數修正（儲值頁 Unauthorized）
 
 ### Vercel Preview 環境變數修正
