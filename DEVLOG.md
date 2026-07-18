@@ -23,6 +23,10 @@
 ### 配送錯誤訊息改善
 - `handleConfirmDelivery` 錯誤 log 改為輸出 `.message`、`.code`、`.details` 欄位，方便排查
 
+### Migration 327 — orders 補 logistics 欄位
+- `orders` 表新增 `logistics_type`、`logistics_subtype`、`store_id`、`store_name` 四欄
+- 修正 `create_delivery_order` RPC 插入失敗（column does not exist）
+
 ---
 
 ## v2026.07.16｜2026-07-18｜新轉蛋機 mode2 + 後台 sidebar 調整 + 分析頁週區間圖表
