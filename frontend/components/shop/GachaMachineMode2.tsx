@@ -127,31 +127,36 @@ export function GachaMachineMode2({
   const eggsRef = useRef<Egg[]>(eggs);
   const [dropEggSrc, setDropEggSrc] = useState<string>(EGG_IMAGES[0]);
   const dropEggAltIndexRef = useRef(0);
+  // Accumulate target rotation so framer-motion animates each spin separately
   const [switchAngle, setSwitchAngle] = useState(0);
 
-  const isSpinning = state === 'spinning';
   const isShaking = state === 'shaking';
   const isDropping = state === 'dropping';
   const isWaiting = state === 'waiting';
 
-  const stateRef = useRef({ isSpinning, isShaking });
+  const stateRef = useRef({ isShaking });
   const prevIsShakingRef = useRef(false);
   const prevIsDroppingRef = useRef(isDropping);
-  const prevIsSpinningRef = useRef(false);
   const lastShakeTimeRef = useRef<number | null>(null);
   const applyShakeImpulseRef = useRef<(() => void) | null>(null);
+  // Track shakeRepeats at the moment shaking starts
+  const shakeRepeatsAtStartRef = useRef(shakeRepeats);
 
   useEffect(() => { eggsRef.current = eggs; }, [eggs]);
   useEffect(() => { if (isSoldOut) setEggs([]); }, [isSoldOut]);
-  useEffect(() => { stateRef.current = { isSpinning, isShaking }; }, [isSpinning, isShaking]);
+  useEffect(() => { stateRef.current = { isShaking }; }, [isShaking]);
 
-  // Spin starts → rotate switch 360°
+  // Rotate switch when shaking starts with shakeRepeats > 1
+  // (shakeRepeats=1 = 推一下 preview only; >1 = real purchase or trial)
   useEffect(() => {
-    if (isSpinning && !prevIsSpinningRef.current) {
-      setSwitchAngle((prev) => prev + 360);
+    if (isShaking && !prevIsShakingRef.current) {
+      shakeRepeatsAtStartRef.current = shakeRepeats;
+      if (shakeRepeats > 1) {
+        setSwitchAngle((prev) => prev + 360);
+      }
     }
-    prevIsSpinningRef.current = isSpinning;
-  }, [isSpinning]);
+    prevIsShakingRef.current = isShaking;
+  }, [isShaking, shakeRepeats]);
 
   useEffect(() => {
     applyShakeImpulseRef.current = () => {
@@ -181,7 +186,6 @@ export function GachaMachineMode2({
         timeouts.push(id);
       }
     }
-    prevIsShakingRef.current = isShaking;
     return () => timeouts.forEach(clearTimeout);
   }, [isShaking, shakeRepeats, pushSoundMode]);
 
@@ -198,14 +202,13 @@ export function GachaMachineMode2({
     prevIsDroppingRef.current = isDropping;
   }, [isDropping, isSoldOut, hasHighTierPending, playDropSound]);
 
-  // Physics loop (same as GachaMachineVisual)
+  // Physics loop
   useEffect(() => {
     let frameId: number;
     let lastTime: number | null = null;
-    let prevSpinning = stateRef.current.isSpinning;
-    let spinStartTime = 0;
     let lastTurbulenceChange = 0;
     let forceX = 0, forceY = 0, torqueStrength = 0;
+    let shakeStartTime = 0;
 
     const step = (time: number) => {
       if (lastTime === null) lastTime = time;
@@ -214,33 +217,32 @@ export function GachaMachineMode2({
 
       if (dt > 0) {
         const gravity = 18, floorY = 0.98, restitution = 0.8, friction = 0.995, angularFriction = 0.98;
-        const { isSpinning: spinning } = stateRef.current;
+        const { isShaking: shaking } = stateRef.current;
         const nowSec = time / 1000;
         const lastShake = lastShakeTimeRef.current;
 
-        if (!spinning && lastShake !== null && nowSec - lastShake > 2) {
-          prevSpinning = spinning;
+        if (!shaking && lastShake !== null && nowSec - lastShake > 2) {
           frameId = requestAnimationFrame(step);
           return;
         }
 
-        if (spinning && !prevSpinning) { spinStartTime = nowSec; lastTurbulenceChange = nowSec; forceX = 0; forceY = -60; torqueStrength = 0; }
-        if (!spinning && prevSpinning) spinStartTime = 0;
-        const spinElapsed = spinning && spinStartTime > 0 ? nowSec - spinStartTime : 0;
+        if (shaking && shakeStartTime === 0) { shakeStartTime = nowSec; lastTurbulenceChange = nowSec; }
+        if (!shaking) shakeStartTime = 0;
+        const shakeElapsed = shaking && shakeStartTime > 0 ? nowSec - shakeStartTime : 0;
 
         const current = eggsRef.current.map((e) => ({ ...e }));
         for (const egg of current) {
           egg.vy += gravity * dt;
-          if (spinning) {
-            if (spinElapsed < 0.5) {
-              egg.vy -= 120 * dt;
-              egg.vx += (Math.random() - 0.5) * 48 * dt;
-              egg.angularVelocity += (Math.random() - 0.5) * 200 * dt;
-            } else if (spinElapsed < 3.5) {
+          if (shaking) {
+            if (shakeElapsed < 0.5) {
+              egg.vy -= 100 * dt;
+              egg.vx += (Math.random() - 0.5) * 40 * dt;
+              egg.angularVelocity += (Math.random() - 0.5) * 180 * dt;
+            } else if (shakeElapsed < 3.5) {
               if (nowSec - lastTurbulenceChange > 0.15) {
-                forceX = (Math.random() - 0.5) * 80;
-                forceY = -40 - Math.random() * 30;
-                torqueStrength = (Math.random() - 0.5) * 300;
+                forceX = (Math.random() - 0.5) * 70;
+                forceY = -35 - Math.random() * 25;
+                torqueStrength = (Math.random() - 0.5) * 250;
                 lastTurbulenceChange = nowSec;
               }
               egg.vx += forceX * dt;
@@ -277,7 +279,6 @@ export function GachaMachineMode2({
         setEggs(current);
       }
 
-      prevSpinning = stateRef.current.isSpinning;
       frameId = requestAnimationFrame(step);
     };
 
@@ -304,7 +305,7 @@ export function GachaMachineMode2({
         />
       </div>
 
-      {/* Box white background (behind eggs) — (27,74), 707×386 on 750×932 canvas */}
+      {/* Box white fill as background for glass dome area — (27,74), 707×386 on 750×932 */}
       <div
         className="absolute pointer-events-none"
         style={{ left: '3.6%', top: '7.94%', width: '94.27%', height: '41.42%' }}
@@ -312,47 +313,53 @@ export function GachaMachineMode2({
         <Image src="/images/gacha/mode2/box.svg" alt="" fill className="object-fill" unoptimized />
       </div>
 
-      {/* Egg physics (on top of white box) */}
+      {/* Egg physics — clipped to the exact box.svg blob shape via CSS mask */}
       <div
-        className="absolute overflow-hidden"
-        style={{ left: '3.6%', top: '7.94%', width: '94.27%', height: '41.42%' }}
+        className="absolute"
+        style={{
+          left: '3.6%',
+          top: '7.94%',
+          width: '94.27%',
+          height: '41.42%',
+          WebkitMaskImage: 'url(/images/gacha/mode2/box.svg)',
+          WebkitMaskSize: '100% 100%',
+          maskImage: 'url(/images/gacha/mode2/box.svg)',
+          maskSize: '100% 100%',
+        }}
       >
-        <div className="absolute inset-0">
-          {eggs.map((egg) => (
-            <motion.div
-              key={egg.id}
-              className="absolute"
-              style={{
-                left: `${(egg.x - egg.radius) * 100}%`,
-                top: `${(egg.y - egg.radius) * 100}%`,
-                width: `${egg.radius * 2 * 100}%`,
-                aspectRatio: '1 / 1',
-                rotate: `${egg.angle}deg`,
-              }}
-            >
-              <Image src={egg.src || EGG_IMAGES[0]} alt="capsule" fill className="object-contain brightness-110" unoptimized />
-            </motion.div>
-          ))}
-        </div>
+        {eggs.map((egg) => (
+          <motion.div
+            key={egg.id}
+            className="absolute"
+            style={{
+              left: `${(egg.x - egg.radius) * 100}%`,
+              top: `${(egg.y - egg.radius) * 100}%`,
+              width: `${egg.radius * 2 * 100}%`,
+              aspectRatio: '1 / 1',
+              rotate: `${egg.angle}deg`,
+            }}
+          >
+            <Image src={egg.src || EGG_IMAGES[0]} alt="capsule" fill className="object-contain brightness-110" unoptimized />
+          </motion.div>
+        ))}
       </div>
 
-      {/* Switch knob — (299,524), 156×156 on 750×932; click also triggers purchase */}
+      {/* Switch knob — (299,524), 156×156; click triggers purchase; rotates 360° on purchase/trial */}
       <motion.div
         className={`absolute ${isSoldOut ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
         style={{ left: '39.87%', top: '56.22%', width: '20.8%', height: '16.74%', zIndex: 10 }}
         animate={{ rotate: switchAngle }}
-        transition={{ duration: 1, ease: 'easeInOut' }}
+        transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => { if (!isSoldOut && onPurchase) onPurchase(); }}
       >
         <Image src="/images/gacha/mode2/switch.png" alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
 
-      {/* Hole + dropping/waiting egg — (500,580), 157×157 on 750×932 */}
+      {/* Hole animation container — (500,580), 157×157; hole.svg NOT rendered (visual is in main.png) */}
       <div
         className="absolute"
         style={{ left: '66.67%', top: '62.23%', width: '20.93%', height: '16.85%', zIndex: 10 }}
       >
-        <Image src="/images/gacha/mode2/hole.svg" alt="hole" fill className="object-fill pointer-events-none" unoptimized />
         <div className="absolute inset-0 overflow-hidden">
           <AnimatePresence>
             {isDropping && (
