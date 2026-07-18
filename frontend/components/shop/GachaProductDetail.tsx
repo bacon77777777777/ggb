@@ -3,6 +3,7 @@ import { Database } from '@/types/database.types';
 import { GachaMachineVisual } from './GachaMachineVisual';
 import { GachaMachineModern } from './GachaMachineModern';
 import { GachaMachineRetro } from './GachaMachineRetro';
+import { GachaMachineMode2 } from './GachaMachineMode2';
 import { GachaCollectionList } from './GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { Prize } from '@/components/GachaMachine';
@@ -25,6 +26,7 @@ const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProp
   gacha_classic: GachaMachineVisual,
   gacha_modern: GachaMachineModern,
   gacha_retro: GachaMachineRetro,
+  gacha_mode2: GachaMachineMode2,
 }
 
 export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {

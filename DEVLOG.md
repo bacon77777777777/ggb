@@ -4,6 +4,27 @@
 
 ---
 
+## v2026.07.16｜2026-07-18｜新轉蛋機 mode2 + 後台 sidebar 調整 + 分析頁週區間圖表
+
+### 新轉蛋機模組 `gacha_mode2`
+- 新增 `frontend/components/shop/GachaMachineMode2.tsx`
+- 使用 `frontend/public/images/gacha/mode2/` 圖素（main.png 750×932、box.svg、hole.svg、switch.png、btn1/btn2）
+- 蛋箱區 (3.6%, 7.94%)、switch 旋鈕 (39.87%, 56.22%)、蛋口 (66.67%, 62.23%)，按鈕位置與經典版相同
+- 確認付款 → switch 旋轉 360° → 蛋墜入蛋口 → 等待點擊蛋口顯示獎品
+- switch 圖片與「立即轉蛋」按鈕都可觸發購買確認彈窗
+- 在 `GachaProductDetail.tsx` 的 `MACHINE_COMPONENTS` 新增 `gacha_mode2` 對應
+
+### 後台 Sidebar 調整（`backend/components/AdminLayout.tsx`）
+- 移除 LOGO 圖片，改用純文字「GGB管理後台」
+- 側欄收起時顯示「G」縮寫
+
+### 分析頁週區間圖表（`/analytics-overview`）
+- 8–90 天範圍自動改用週（週一）為 x 軸區間，修正 G2 ordinal 排序錯亂問題
+- 儲值與消耗對比 LineChart：ResizeObserver 動態填滿高度（maxHeight 360）
+- y 軸對齊修正、圖例 paddingTop 統一為 24px
+
+---
+
 ## v2026.07.15｜2026-07-16｜分析頁 — 換用 @ant-design/charts 圖表 + DateRangePicker
 
 ### 分析頁圖表升級（`/analytics-overview`）
