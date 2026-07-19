@@ -14,6 +14,7 @@ import { GachaCollectionList } from '@/components/shop/GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
+import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 
@@ -258,8 +259,8 @@ export default function BlindboxDetailPage() {
       ]);
     }
 
-    const isMode2 = (product as any)?.machine_theme === 'blindbox_mode2';
-    if (isMode2) {
+    const isVendingMachine = ['blindbox_mode2', 'blindbox_mode3'].includes((product as any)?.machine_theme);
+    if (isVendingMachine) {
       setMode2DrawCount(1);
       setMode2State('animating');
     } else {
@@ -363,7 +364,7 @@ export default function BlindboxDetailPage() {
       if (refreshProfile) {
         refreshProfile();
       }
-      if ((product as any).machine_theme === 'blindbox_mode2') {
+      if (['blindbox_mode2', 'blindbox_mode3'].includes((product as any).machine_theme)) {
         setMode2DrawCount(results.length);
         setMode2State('animating');
       } else {
@@ -487,13 +488,6 @@ export default function BlindboxDetailPage() {
   return (
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
-      style={{
-        backgroundImage: "url('/images/gacha/bg.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#000000',
-      }}
     >
       <div className="w-full flex justify-center">
         <div
@@ -508,6 +502,20 @@ export default function BlindboxDetailPage() {
             {(product as any).machine_theme === 'blindbox_mode2' ? (
               <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
                 <BlindboxMachineMode2
+                  machineState={mode2State}
+                  drawCount={mode2DrawCount}
+                  boxImageUrl={(product as any).box_image_url ?? undefined}
+                  remaining={product.remaining ?? 10}
+                  onAnimationComplete={handleMode2AnimComplete}
+                  onPush={() => {}}
+                  onPurchase={handlePlay}
+                  onTrial={handleTrial}
+                  isSoldOut={isSoldOut}
+                />
+              </div>
+            ) : (product as any).machine_theme === 'blindbox_mode3' ? (
+              <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+                <BlindboxMachineMode3
                   machineState={mode2State}
                   drawCount={mode2DrawCount}
                   boxImageUrl={(product as any).box_image_url ?? undefined}
@@ -681,7 +689,7 @@ export default function BlindboxDetailPage() {
             )}
           </div>
 
-          <div className="w-full">
+          <div className="w-full px-2 py-2">
             <GachaCollectionList
               productId={product.id}
               product={product as any}

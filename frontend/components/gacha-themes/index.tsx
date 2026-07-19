@@ -16,6 +16,8 @@ export type MachineTheme =
   | 'card_pack'
   | 'card_flip'
   | 'blindbox_classic'
+  | 'blindbox_mode2'
+  | 'blindbox_mode3'
   | 'blindbox_claw';
 
 export interface GachaThemeProps {
@@ -44,6 +46,8 @@ const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   card_pack:        CardPackAnimation,
   card_flip:        CardFlipDirect,
   blindbox_classic: ClassicCapsule,
+  blindbox_mode2:   ClassicCapsule,
+  blindbox_mode3:   ClassicCapsule,
   blindbox_claw:    ClassicCapsule,
 };
 

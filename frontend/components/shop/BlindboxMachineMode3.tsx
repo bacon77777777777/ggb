@@ -76,7 +76,7 @@ interface PhysBox {
 }
 
 // ─── props ────────────────────────────────────────────────────────────────────
-export interface BlindboxMachineMode2Props {
+export interface BlindboxMachineMode3Props {
   machineState: 'idle' | 'animating';
   drawCount:    number;
   boxImageUrl?: string;
@@ -90,7 +90,7 @@ export interface BlindboxMachineMode2Props {
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
-export function BlindboxMachineMode2({
+export function BlindboxMachineMode3({
   machineState,
   drawCount,
   boxImageUrl,
@@ -100,8 +100,8 @@ export function BlindboxMachineMode2({
   onTrial,
   isSoldOut,
   onLoaded,
-}: BlindboxMachineMode2Props) {
-  const boxSrc = boxImageUrl || '/images/blindbox/mode2/box.png';
+}: BlindboxMachineMode3Props) {
+  const boxSrc = boxImageUrl || '/images/blindbox/mode3/box.png';
 
   const [slotState, setSlotState]   = useState<('present' | 'nudging' | 'gone' | 'shuffling')[]>(Array(20).fill('present'));
   const [physBoxes, setPhysBoxes]   = useState<PhysBox[]>([]);
@@ -117,9 +117,6 @@ export function BlindboxMachineMode2({
   const timerRefs      = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Shuffle (換一批) ──────────────────────────────────────────────────────
-  // Phase 1 (0ms):   front fades out while sliding; back slides to front position.
-  // Phase 2 (600ms): ghost back row fades in (new stock appears behind).
-  // Phase 3 (1400ms): instant full reset via shelfKey++ — no return animation.
   const handleShuffle = useCallback(() => {
     if (isShuffling || machineState === 'animating') return;
     setIsShuffling(true);
@@ -233,8 +230,6 @@ export function BlindboxMachineMode2({
   // ── Reset on idle ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (machineState === 'idle' && prevMachineState.current === 'animating') {
-      // Increment shelfKey → shelf motion.divs remount with initial={false},
-      // so boxes snap to original positions instantly (no slide-back animation).
       setShelfKey(k => k + 1);
       setSlotState(Array(20).fill('present'));
       stopPhysics();
@@ -331,7 +326,7 @@ export function BlindboxMachineMode2({
       {/* Background */}
       <div className="absolute inset-0">
         <Image
-          src="/images/blindbox/mode2/main.png"
+          src="/images/blindbox/mode3/main.png"
           alt="blindbox machine"
           fill
           className="object-fill"
@@ -456,7 +451,7 @@ export function BlindboxMachineMode2({
           Opaque everywhere except the transparent oval — reveals physics boxes below. */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
         <Image
-          src="/images/blindbox/mode2/hole_bg.png"
+          src="/images/blindbox/mode3/hole_bg.png"
           alt=""
           fill
           className="object-fill"
@@ -466,19 +461,19 @@ export function BlindboxMachineMode2({
 
       {/* Buttons (z=20) */}
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png" alt="換一批" text="換一批"
+        src="/images/blindbox/mode3/btn2.png" alt="換一批" text="換一批"
         className={`absolute ${isSoldOut || isShuffling ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
-        src="/images/blindbox/mode2/btn1.png" alt="立即開盒" text="立即開盒"
+        src="/images/blindbox/mode3/btn1.png" alt="立即開盒" text="立即開盒"
         className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
         onClick={() => onPurchase?.()} />
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png" alt="試試看" text="試試看"
+        src="/images/blindbox/mode3/btn2.png" alt="試試看" text="試試看"
         className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}

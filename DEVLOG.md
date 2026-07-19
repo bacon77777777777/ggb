@@ -4,6 +4,25 @@
 
 ---
 
+## v2026.07.19d｜2026-07-19｜blindbox_mode3 叢林探險 + 換一批動畫 + UI 修正
+
+### 新模組：blindbox_mode3（叢林探險販賣機）
+- 複製 mode2 架構，換 main/hole_bg/btn 圖片為 mode3 素材
+- 後台商品設定、全站模組設定、gacha-themes type 均已加入
+
+### 換一批動畫全面重設計（mode2 & mode3）
+- 前排：滑到定點後 opacity→0 淡出（delay 0.3s, duration 0.5s）
+- 後排：移至前排原始位置後停留，不回彈
+- t=600ms：後排後方新盒子淡入（stagger 40ms/欄）
+- t=1400ms：shelfKey++ 瞬間重整架上盒子（initial={false}，無動畫）
+- 彈窗關閉後也用相同 shelfKey++ 機制，後排不再滑回
+
+### 盒玩頁面 UI 修正
+- 總覽/商品資訊卡片加 `px-2 py-2`，左右 padding 與轉蛋頁一致
+- 背景改為純色 `bg-neutral-50 dark:bg-neutral-950`，移除 gacha 背景圖
+
+---
+
 ## v2026.07.19c｜2026-07-19｜blindbox_mode2 動畫大幅升級
 
 ### BlindboxMachineMode2 物理動畫全面優化

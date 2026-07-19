@@ -22,6 +22,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   blindbox: [
     { value: 'blindbox_classic', label: '原始經典（過場華麗動畫）' },
     { value: 'blindbox_mode2',   label: '販賣機（可愛兔子貨架，盒子飛入取物口）' },
+    { value: 'blindbox_mode3',   label: '販賣機（叢林探險，盒子飛入取物口）' },
   ],
 }
 
