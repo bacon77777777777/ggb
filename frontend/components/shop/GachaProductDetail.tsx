@@ -4,6 +4,8 @@ import { GachaMachineVisual } from './GachaMachineVisual';
 import { GachaMachineModern } from './GachaMachineModern';
 import { GachaMachineRetro } from './GachaMachineRetro';
 import { GachaMachineMode2 } from './GachaMachineMode2';
+import { GachaMachineMode3 } from './GachaMachineMode3';
+import { GachaMachineMode4 } from './GachaMachineMode4';
 import { GachaCollectionList } from './GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { Prize } from '@/components/GachaMachine';
@@ -27,6 +29,8 @@ const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProp
   gacha_modern: GachaMachineModern,
   gacha_retro: GachaMachineRetro,
   gacha_mode2: GachaMachineMode2,
+  gacha_mode3: GachaMachineMode3,
+  gacha_mode4: GachaMachineMode4,
 }
 
 export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {

@@ -388,10 +388,13 @@ export default function BlindboxDetailPage() {
   };
 
   const handleMode2AnimComplete = () => {
-    setMode2State('idle');
+    // Keep mode2State as 'animating' while prize popup is open.
+    // setMode2State('idle') is called in handlePrizeClose so the shelf resets only after popup closes.
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
       setCollectionRefreshKey((prev) => prev + 1);
+    } else {
+      setMode2State('idle');
     }
   };
 

@@ -49,9 +49,8 @@ const PRODUCT_TYPES: {
     type: 'blindbox',
     label: '盒玩',
     themes: [
-      { value: 'blindbox_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機（預設）' },
-      { value: 'blindbox_claw', label: '夾娃娃機', desc: '夾娃娃機風格揭曉' },
-      { value: 'blindbox_mode2', label: 'Dreamy Box 機台', desc: '可愛貨架機台，盒子飛入取物口動畫' },
+      { value: 'blindbox_classic', label: '原始經典', desc: '過場華麗動畫（預設）' },
+      { value: 'blindbox_mode2', label: '販賣機', desc: '可愛兔子貨架機台，盒子飛入取物口動畫' },
     ],
   },
 ]

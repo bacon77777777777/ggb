@@ -7,6 +7,8 @@ export type MachineTheme =
   | 'gacha_classic'
   | 'gacha_modern'
   | 'gacha_retro'
+  | 'gacha_mode3'
+  | 'gacha_mode4'
   | 'ichiban_grid'
   | 'ichiban_tear'
   | 'custom_grid'
@@ -33,6 +35,8 @@ const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   gacha_classic:    ClassicCapsule,
   gacha_modern:     ClassicCapsule,
   gacha_retro:      ClassicCapsule,
+  gacha_mode3:      ClassicCapsule,
+  gacha_mode4:      ClassicCapsule,
   ichiban_grid:     ClassicCapsule,
   ichiban_tear:     ClassicCapsule,
   custom_grid:      ClassicCapsule,

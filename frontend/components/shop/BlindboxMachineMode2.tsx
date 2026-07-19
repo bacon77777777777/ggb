@@ -1,75 +1,99 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
 
-// ─── layout constants (750×932 design) ───────────────────────────────────────
-const BOX_W    = 149;   // box width  in 750-px canvas
-const BOX_H    = 149;   // box height in 750-px canvas (square)
-const BOX_STEP = 127;   // = BOX_W - 22 (22px overlap)
-const ROW0_TOP = 148;
-const ROW1_TOP = 356;
-const COL0_LEFT = 46;
+// ─── layout (750×932 design) ─────────────────────────────────────────────────
+const BOX_DESIGN_W   = 100;
+const BOX_STEP       = 128;   // 100px wide + 28px gap
+const ROW0_TOP       = 166;   // upper shelf front row — y in design units
+const ROW1_TOP       = 373;   // lower shelf front row
+const BACK_CSS_PX    = 12;    // CSS px: back boxes shift up (depth illusion)
+const BACK_CSS_X     = 4;     // CSS px: back boxes shift right (depth illusion)
+const BACK_SCALE     = 0.90;  // back boxes appear slightly smaller (further back)
+const COL0_LEFT      = 71;
 
-// Hole: (120, 570), svg 510×167
-const HOLE_LEFT   = 120;
-const HOLE_TOP    = 570;
-const HOLE_W      = 510;
-const HOLE_H      = 167;
-const HOLE_CTR_X  = HOLE_LEFT + HOLE_W / 2;   // 375
-const HOLE_CTR_Y  = HOLE_TOP  + HOLE_H / 2;   // 653.5
+const HOLE_LEFT = 120;
+const HOLE_TOP  = 570;
+const HOLE_W    = 510;
+const HOLE_H    = 167;
 
-// Container rendered at CSS width=375, height=375*(932/750)≈466.5
 const CSS_W = 375;
-const CSS_H = CSS_W * (932 / 750);
-const TO_CSS = CSS_W / 750;   // 0.5
+const CSS_H = CSS_W * (932 / 750);   // ≈ 466 px
+const TO_CSS = CSS_W / 750;          // 0.5
 
-// Pre-compute slot positions (% of container) + fly offsets (CSS px)
-const SLOTS = Array.from({ length: 10 }, (_, i) => {
-  const row  = Math.floor(i / 5);
-  const col  = i % 5;
-  const l750 = COL0_LEFT + col * BOX_STEP;
-  const t750 = row === 0 ? ROW0_TOP : ROW1_TOP;
+const BOX_CSS_W     = BOX_DESIGN_W * TO_CSS;   // 50 px
+const BOX_CSS_H_EST = 55;
+const BOX_R = 20;   // collision radius (smaller → 5 boxes fit across hole width)
 
-  const cssLeft   = l750 * TO_CSS;
-  const cssTop    = t750 * (CSS_H / 932);
-  const cssW      = BOX_W * TO_CSS;
-  const cssCtrX   = cssLeft + cssW / 2;
-  const cssCtrY   = cssTop  + cssW / 2;
+// Visual hole bounds
+const HOLE_L = HOLE_LEFT * TO_CSS;
+const HOLE_R = HOLE_L + HOLE_W * TO_CSS;
+const HOLE_T = (HOLE_TOP / 932) * CSS_H;
+const HOLE_B = HOLE_T + (HOLE_H / 932) * CSS_H;
 
+// Physics wall bounds — 10px outside the visual hole mask
+const PHYS_L = HOLE_L - 10;
+const PHYS_R = HOLE_R + 10;
+
+// Two depth layers in the retrieval slot.
+// depth=0 (front): z=10, floor at/below hole bottom.
+// depth=1 (back):  z=8,  floor slightly higher (appears further back).
+const FRONT_FLOOR = HOLE_B + BOX_R * 0.5;
+const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
+
+// 20 slots total: upper shelf (0-9) + lower shelf (10-19).
+// Within each shelf: front (depth=0, i%10 < 5) + back (depth=1, i%10 >= 5).
+// Back boxes sit BACK_CSS_PX higher than front (depth illusion).
+const SLOTS = Array.from({ length: 20 }, (_, i) => {
+  const shelf  = Math.floor(i / 10) as 0 | 1;  // 0=upper, 1=lower
+  const within = i % 10;
+  const depth  = (Math.floor(within / 5)) as 0 | 1;  // 0=front, 1=back
+  const col    = within % 5;
+  const t750   = shelf === 0 ? ROW0_TOP : ROW1_TOP;
+  const leftPx = (COL0_LEFT + col * BOX_STEP) * TO_CSS + (depth === 1 ? BACK_CSS_X : 0);
+  const topPx  = (t750 / 932) * CSS_H - (depth === 1 ? BACK_CSS_PX : 0);
   return {
-    leftPct:   (l750 / 750) * 100,
-    topPct:    (t750 / 932) * 100,
-    widthPct:  (BOX_W / 750) * 100,
-    heightPct: (BOX_H / 932) * 100,
-    // pixel offset to bring box center to top edge of hole
-    dx: HOLE_CTR_X * TO_CSS - cssCtrX,
-    dy: (HOLE_TOP - 10) * (CSS_H / 932) - cssCtrY,
+    leftPx,
+    topPx,
+    centerX: leftPx + BOX_CSS_W / 2,
+    centerY: topPx  + BOX_CSS_H_EST / 2,
+    depth,
   };
 });
 
-// ─── types ───────────────────────────────────────────────────────────────────
-export interface BlindboxMachineMode2Props {
-  machineState: 'idle' | 'animating';
-  drawCount: number;
-  boxImageUrl?: string;
-  remaining: number;
-  onAnimationComplete?: () => void;
-  onPush?: () => void;
-  onPurchase?: () => void;
-  onTrial?: () => void;
-  isSoldOut?: boolean;
-  onLoaded?: () => void;
+function rand(min: number, max: number) { return min + Math.random() * (max - min); }
+
+// ─── physics particle ─────────────────────────────────────────────────────────
+interface PhysBox {
+  id: number;
+  x: number; y: number;
+  vx: number; vy: number;
+  angle: number; av: number;
+  depth: 0 | 1;   // 0=front row, 1=back row
 }
 
-// ─── component ───────────────────────────────────────────────────────────────
+// ─── props ────────────────────────────────────────────────────────────────────
+export interface BlindboxMachineMode2Props {
+  machineState: 'idle' | 'animating';
+  drawCount:    number;
+  boxImageUrl?: string;
+  remaining:    number;
+  onAnimationComplete?: () => void;
+  onPush?:      () => void;
+  onPurchase?:  () => void;
+  onTrial?:     () => void;
+  isSoldOut?:   boolean;
+  onLoaded?:    () => void;
+}
+
+// ─── component ────────────────────────────────────────────────────────────────
 export function BlindboxMachineMode2({
   machineState,
   drawCount,
   boxImageUrl,
-  remaining,
   onAnimationComplete,
   onPush,
   onPurchase,
@@ -79,93 +103,206 @@ export function BlindboxMachineMode2({
 }: BlindboxMachineMode2Props) {
   const boxSrc = boxImageUrl || '/images/blindbox/mode2/box.png';
 
-  // slot state: 'present' | 'flying' | 'gone'
-  const [slotState, setSlotState] = useState<('present' | 'flying' | 'gone')[]>(
-    Array(10).fill('present'),
-  );
+  const [slotState, setSlotState]   = useState<('present' | 'nudging' | 'gone')[]>(Array(20).fill('present'));
+  const [physBoxes, setPhysBoxes]   = useState<PhysBox[]>([]);
 
-  // hole drop: list of keys so multiple drops can queue
-  const [holeDropKeys, setHoleDropKeys] = useState<number[]>([]);
-
+  const physRef        = useRef<PhysBox[]>([]);
+  const frameRef       = useRef<number | undefined>(undefined);
+  const physActiveRef  = useRef(false);
+  const doneCalledRef  = useRef(false);
   const prevMachineState = useRef<'idle' | 'animating'>('idle');
-  const timerRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const timerRefs      = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Reset shelf when returning to idle (modal closed)
+  // ── Physics loop ─────────────────────────────────────────────────────────
+  const stopPhysics = useCallback(() => {
+    physActiveRef.current = false;
+    if (frameRef.current !== undefined) cancelAnimationFrame(frameRef.current);
+  }, []);
+
+  const startPhysicsLoop = useCallback((onSettled: () => void) => {
+    if (physActiveRef.current) return;
+    physActiveRef.current = true;
+
+    const GRAVITY     = 1200;
+    const BOX_RES     = 0.12;   // box-to-box: absorb most energy
+    const FLOOR_RES   = 0.30;   // floor bounce: visible hop, not too high
+    const FRICTION    = 0.975;
+    const ANG_FRIC    = 0.84;   // damp spin quickly so boxes don't keep rotating
+    const SETTLE_V    = 1.2;
+
+    let lastTime: number | null = null;
+    let settledCalled = false;
+
+    const step = (time: number) => {
+      if (lastTime === null) lastTime = time;
+      const dt = Math.min((time - lastTime) / 1000, 0.033);
+      lastTime = time;
+
+      const cur = physRef.current.map(b => ({ ...b }));
+
+      for (const b of cur) {
+        b.vy += GRAVITY * dt;
+        b.vx *= FRICTION; b.vy *= FRICTION;
+        b.x  += b.vx * dt; b.y += b.vy * dt;
+        b.angle += b.av * dt; b.av *= ANG_FRIC;
+
+        // Depth-specific floor (front row sits lower, back row sits higher)
+        const floorY = b.depth === 0 ? FRONT_FLOOR : BACK_FLOOR;
+        if (b.y + BOX_R > floorY) {
+          b.y  = floorY - BOX_R;
+          b.vy = -Math.abs(b.vy) * FLOOR_RES;   // visible bounce, not high
+          b.vx *= 0.85;
+          b.av  = b.av * 0.4 + rand(-0.5, 0.5);  // damp existing spin + small tipping nudge
+        }
+
+        // Side walls — only enforce inside hole zone
+        if (b.y + BOX_R > HOLE_T) {
+          if (b.x - BOX_R < PHYS_L) { b.x = PHYS_L + BOX_R; b.vx =  Math.abs(b.vx) * BOX_RES; }
+          if (b.x + BOX_R > PHYS_R) { b.x = PHYS_R - BOX_R; b.vx = -Math.abs(b.vx) * BOX_RES; }
+        }
+      }
+
+      // Pairwise collision — only same-depth boxes interact
+      for (let i = 0; i < cur.length; i++) {
+        for (let j = i + 1; j < cur.length; j++) {
+          if (cur[i].depth !== cur[j].depth) continue;
+          const a = cur[i], b = cur[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d2 = dx * dx + dy * dy;
+          const minD = BOX_R * 2;
+          if (d2 === 0 || d2 >= minD * minD) continue;
+          const d = Math.sqrt(d2), ov = minD - d;
+          const nx = dx / d, ny = dy / d;
+          a.x -= nx * ov * 0.5; a.y -= ny * ov * 0.5;
+          b.x += nx * ov * 0.5; b.y += ny * ov * 0.5;
+          const [avx, avy] = [a.vx, a.vy];
+          a.vx = b.vx * BOX_RES; a.vy = b.vy * BOX_RES;
+          b.vx = avx  * BOX_RES; b.vy = avy  * BOX_RES;
+          const spin = rand(-0.6, 0.6);
+          a.av += spin; b.av -= spin;
+        }
+      }
+
+      // Post-collision ceiling clamp: boxes that entered hole cannot be pushed back above it
+      for (const b of cur) {
+        if (b.y + BOX_R > HOLE_T && b.y - BOX_R < HOLE_T) {
+          b.y = HOLE_T + BOX_R;
+          if (b.vy < 0) { b.vy = 0; b.vx *= 0.5; }
+        }
+      }
+
+      physRef.current = cur;
+      setPhysBoxes([...cur]);
+
+      if (!settledCalled && cur.length > 0 && cur.every(b => Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V && Math.abs(b.av) < 0.3)) {
+        settledCalled = true;
+        physActiveRef.current = false;
+        onSettled();
+        return;
+      }
+
+      frameRef.current = requestAnimationFrame(step);
+    };
+
+    frameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => () => stopPhysics(), [stopPhysics]);
+
+  // ── Reset on idle ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (machineState === 'idle' && prevMachineState.current === 'animating') {
-      setSlotState(Array(10).fill('present'));
+      setSlotState(Array(20).fill('present'));
+      stopPhysics();
+      physRef.current = [];
+      setPhysBoxes([]);
+      doneCalledRef.current = false;
       prevMachineState.current = 'idle';
     }
-  }, [machineState]);
+  }, [machineState, stopPhysics]);
 
-  // Trigger animation
+  // ── Trigger draw ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (machineState !== 'animating' || prevMachineState.current === 'animating') return;
     prevMachineState.current = 'animating';
+    doneCalledRef.current = false;
 
-    // clear any stale timers
     timerRefs.current.forEach(clearTimeout);
     timerRefs.current = [];
 
-    // pick random present slots
     const presentIdxs = slotState
       .map((s, i) => (s === 'present' ? i : -1))
       .filter(i => i >= 0);
-    const count = Math.min(drawCount, presentIdxs.length, 10);
-    const shuffled = [...presentIdxs].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, count);
+    const count = Math.min(drawCount, presentIdxs.length);
+    // Front boxes (depth=0) dispense before back boxes (depth=1), like a real vending machine
+    const frontIdxs = presentIdxs.filter(i => SLOTS[i].depth === 0).sort(() => Math.random() - 0.5);
+    const backIdxs  = presentIdxs.filter(i => SLOTS[i].depth === 1).sort(() => Math.random() - 0.5);
+    const selected  = [...frontIdxs, ...backIdxs].slice(0, count);
 
-    const STAGGER     = 180;  // ms between boxes
-    const FLY_MS      = 850;  // fly from shelf to hole
-    const DROP_MS     = 500;  // fall through hole
+    // Companion back boxes: for each selected front box, the back box at (idx+5) nudges
+    // forward WITH it but stays on the shelf (returns to present after the drop).
+    const companions = selected
+      .filter(i => SLOTS[i].depth === 0)
+      .map(i => i + 5)
+      .filter(i => i < 20 && slotState[i] === 'present');
 
-    selected.forEach((slotIdx, i) => {
-      // start flying
-      const t1 = setTimeout(() => {
-        setSlotState(prev => {
-          const next = [...prev];
-          next[slotIdx] = 'flying';
-          return next;
-        });
-      }, i * STAGGER);
-
-      // arrive at hole → hole drop
-      const t2 = setTimeout(() => {
-        setSlotState(prev => {
-          const next = [...prev];
-          next[slotIdx] = 'gone';
-          return next;
-        });
-        const dropKey = Date.now() + i;
-        setHoleDropKeys(prev => [...prev, dropKey]);
-        const t3 = setTimeout(
-          () => setHoleDropKeys(prev => prev.filter(k => k !== dropKey)),
-          DROP_MS + 100,
-        );
-        timerRefs.current.push(t3);
-      }, i * STAGGER + FLY_MS);
-
-      timerRefs.current.push(t1, t2);
+    // Phase 1: nudge selected + companions forward
+    setSlotState(prev => {
+      const n = [...prev];
+      selected.forEach(idx    => { n[idx] = 'nudging'; });
+      companions.forEach(idx  => { n[idx] = 'nudging'; });
+      return n;
     });
 
-    // 2 s after last box exits → callback
-    const totalWait = (count - 1) * STAGGER + FLY_MS + DROP_MS + 2000;
-    const tDone = setTimeout(() => {
-      onAnimationComplete?.();
-    }, totalWait);
-    timerRefs.current.push(tDone);
+    // Phase 2: physics drop after 1s — selected fall, companions return to shelf
+    const tDrop = setTimeout(() => {
+      setSlotState(prev => {
+        const n = [...prev];
+        selected.forEach(idx => { n[idx] = 'gone'; });
+        // companions stay 'nudging' (at front-row position) until idle resets everything
+        return n;
+      });
 
-    return () => {
-      timerRefs.current.forEach(clearTimeout);
-      timerRefs.current = [];
-    };
+      // Boxes spawn at shelf positions and physically fall into the hole.
+      // depth comes from the slot itself (front/back row).
+      const newBoxes: PhysBox[] = selected.map((slotIdx, i) => ({
+        id:    Date.now() + i,
+        x:     SLOTS[slotIdx].centerX,
+        y:     SLOTS[slotIdx].centerY,
+        vx:    rand(-20, 20),
+        vy:    rand(40, 80),
+        angle: 0,
+        av:    rand(-0.08, 0.08),
+        depth: SLOTS[slotIdx].depth,
+      }));
+
+      physRef.current = newBoxes;
+      setPhysBoxes(newBoxes);
+
+      const callDone = () => {
+        if (doneCalledRef.current) return;
+        doneCalledRef.current = true;
+        onAnimationComplete?.();
+      };
+
+      // Physics settle detection just stops the rAF loop; timing is driven by fixed timer.
+      startPhysicsLoop(() => {});
+      // Boxes reach hole in ~0.4s; fire popup ~1s after that → 1500ms total from drop.
+      const tSafe = setTimeout(callDone, 1500);
+      timerRefs.current.push(tSafe);
+    }, 1000);
+
+    timerRefs.current.push(tDrop);
+
+    return () => { timerRefs.current.forEach(clearTimeout); timerRefs.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineState]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="relative w-full h-full" style={{ touchAction: 'pan-y' }}>
 
-      {/* ── Background ── */}
+      {/* Background */}
       <div className="absolute inset-0">
         <Image
           src="/images/blindbox/mode2/main.png"
@@ -177,53 +314,82 @@ export function BlindboxMachineMode2({
         />
       </div>
 
-      {/* ── Shelf boxes ── */}
-      {SLOTS.map((slot, i) => {
-        const s = slotState[i];
-        if (s === 'gone') return null;
-        return (
-          <motion.div
-            key={i}
-            className="absolute"
-            style={{
-              left:   `${slot.leftPct}%`,
-              top:    `${slot.topPct}%`,
-              width:  `${slot.widthPct}%`,
-              height: `${slot.heightPct}%`,
-              zIndex: s === 'flying' ? 15 : 5,
-            }}
-            animate={
-              s === 'flying'
-                ? {
-                    scale:   [1, 1.45, 1.45, 0.85],
-                    x:       [0, 0,    slot.dx * 0.4, slot.dx],
-                    y:       [0, -18,  slot.dy * 0.35, slot.dy],
-                    rotate:  [0, 6,    -12,  20],
-                    opacity: [1, 1,    1,    1],
-                  }
-                : { scale: 1, x: 0, y: 0, rotate: 0, opacity: 1 }
-            }
-            transition={{ duration: 0.85, ease: 'easeInOut' }}
-          >
-            <Image
-              src={boxSrc}
-              alt="blindbox"
-              fill
-              className="object-contain"
-              unoptimized
-            />
-          </motion.div>
-        );
-      })}
+      {/* Shelf boxes — back row (depth=1) rendered first so front (depth=0) appears on top.
+          Back boxes: scale BACK_SCALE, shifted up BACK_CSS_PX, z=4.
+          Front boxes: scale 1.0, z=5. */}
+      {[1, 0].flatMap(renderDepth =>
+        SLOTS.map((slot, i) => {
+          if (slot.depth !== renderDepth) return null;
+          const s = slotState[i];
+          if (s === 'gone') return null;
+          const isBack    = renderDepth === 1;
+          const baseScale = isBack ? BACK_SCALE : 1.0;
+          return (
+            <motion.div
+              key={i}
+              style={{
+                position:        'absolute',
+                left:            slot.leftPx,
+                top:             slot.topPx,
+                width:           BOX_CSS_W,
+                zIndex:          isBack ? 4 : 5,
+                transformOrigin: 'bottom center',
+              }}
+              animate={
+                s === 'nudging'
+                  // front boxes nudge 16px forward; back boxes slide + scale up to front-row original size
+                  ? { y: isBack ? BACK_CSS_PX : 16, x: isBack ? -BACK_CSS_X : 0, scale: isBack ? 1.0 : 1.02 }
+                  : { y: 0, x: 0, scale: baseScale }
+              }
+              transition={
+                s === 'nudging'
+                  ? { duration: 1.0, ease: 'easeOut' }
+                  : { duration: 0.3, ease: 'easeOut' }
+              }
+            >
+              <Image
+                src={boxSrc}
+                alt="blindbox"
+                width={BOX_CSS_W}
+                height={BOX_CSS_H_EST}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                unoptimized
+              />
+            </motion.div>
+          );
+        })
+      )}
 
-      {/* ── hole_bg overlay (z above flying boxes, hides overflow) ── */}
-      <div
-        className="absolute inset-x-0 bottom-0 pointer-events-none"
-        style={{
-          top:    `${(HOLE_TOP - 50) / 932 * 100}%`,
-          zIndex: 12,
-        }}
-      >
+      {/* Physics boxes — fall from shelf through machine into hole.
+          z=8 (back row) and z=10 (front row): both below hole_bg z=12,
+          visible through the transparent oval in hole_bg. */}
+      {physBoxes.map(b => (
+        <div
+          key={b.id}
+          style={{
+            position:   'absolute',
+            left:       b.x - BOX_CSS_W / 2,
+            top:        b.y - BOX_CSS_H_EST / 2,
+            width:      BOX_CSS_W,
+            zIndex:     b.depth === 0 ? 10 : 8,
+            transform:  `rotate(${b.angle}rad)${b.depth === 1 ? ' scale(0.9)' : ''}`,
+            willChange: 'transform',
+          }}
+        >
+          <Image
+            src={boxSrc}
+            alt="box"
+            width={BOX_CSS_W}
+            height={BOX_CSS_H_EST}
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+            unoptimized
+          />
+        </div>
+      ))}
+
+      {/* hole_bg (z=12): full-size overlay same as main.png.
+          Opaque everywhere except the transparent oval — reveals physics boxes below. */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
         <Image
           src="/images/blindbox/mode2/hole_bg.png"
           alt=""
@@ -233,78 +399,33 @@ export function BlindboxMachineMode2({
         />
       </div>
 
-      {/* ── Hole drop area (clipped by hole.svg) ── */}
-      <div
-        className="absolute overflow-hidden"
-        style={{
-          left:   `${(HOLE_LEFT / 750) * 100}%`,
-          top:    `${(HOLE_TOP  / 932) * 100}%`,
-          width:  `${(HOLE_W   / 750) * 100}%`,
-          height: `${(HOLE_H   / 932) * 100}%`,
-          zIndex: 13,
-          WebkitMaskImage: 'url(/images/blindbox/mode2/hole.svg)',
-          WebkitMaskSize:  '100% 100%',
-          maskImage:       'url(/images/blindbox/mode2/hole.svg)',
-          maskSize:        '100% 100%',
-        }}
-      >
-        <AnimatePresence>
-          {holeDropKeys.map(key => (
-            <motion.div
-              key={key}
-              initial={{ y: '-130%', rotate: -15, opacity: 1 }}
-              animate={{ y:  '90%',  rotate:  25, opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, ease: 'easeIn' }}
-              className="absolute inset-0 flex items-start justify-center"
-            >
-              <div className="relative w-[60%] aspect-square mt-2">
-                <Image src={boxSrc} alt="box" fill className="object-contain" unoptimized />
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* ── Buttons ── */}
+      {/* Buttons (z=20) */}
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png"
-        alt="換一盒"
-        text="換一盒"
+        src="/images/blindbox/mode2/btn2.png" alt="換一盒" text="換一盒"
         className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => onPush?.()}
-      />
+        onClick={() => onPush?.()} />
       <ImageButton
-        src="/images/blindbox/mode2/btn1.png"
-        alt="立即開盒"
-        text="立即開盒"
+        src="/images/blindbox/mode2/btn1.png" alt="立即開盒" text="立即開盒"
         className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => onPurchase?.()}
-      />
+        onClick={() => onPurchase?.()} />
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png"
-        alt="試試看"
-        text="試試看"
+        src="/images/blindbox/mode2/btn2.png" alt="試試看" text="試試看"
         className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => onTrial?.()}
-      />
+        onClick={() => onTrial?.()} />
 
-      {/* ── Sold out overlay ── */}
       {isSoldOut && (
         <div
           className="pointer-events-none absolute inset-0 flex justify-center items-start pt-16 bg-black/60"
           style={{ zIndex: 25 }}
         >
           <div className="inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
-            <span className="text-[14px] font-black tracking-widest text-yellow-300">
-              該商品已完抽
-            </span>
+            <span className="text-[14px] font-black tracking-widest text-yellow-300">該商品已完抽</span>
           </div>
         </div>
       )}
