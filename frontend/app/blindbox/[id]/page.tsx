@@ -52,9 +52,6 @@ export default function BlindboxDetailPage() {
   // mode2 machine state
   const [mode2State, setMode2State] = useState<'idle' | 'animating'>('idle');
   const [mode2DrawCount, setMode2DrawCount] = useState(0);
-  // Stores the in-flight gacha API promise so animation can start immediately
-  // while the API runs in the background; resolved in handleMode2AnimComplete.
-  const apiPromiseRef = useRef<Promise<typeof wonPrizes> | null>(null);
   const bgVideos = useMemo(() => ['/videos/bg.mp4'], []);
   const bgVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
@@ -281,92 +278,9 @@ export default function BlindboxDetailPage() {
       return;
     }
 
-    const isVendingMachine = ['blindbox_mode2', 'blindbox_mode3'].includes((product as any)?.machine_theme);
-
-    if (isVendingMachine) {
-      // ── Optimistic path: start animation immediately, API runs in background ──
-      // Use local remaining to clamp quantity (avoids waiting for server refresh).
-      const optimisticQty = Math.min(Math.max(1, quantity), Math.max(1, product.remaining ?? quantity));
-
-      // Build the API promise but don't await it here.
-      const p = product; // capture for closure
-      apiPromiseRef.current = (async () => {
-        // Quick server-side remaining refresh (fast Supabase read)
-        let clampedQty = optimisticQty;
-        try {
-          const { data: latest } = await supabase
-            .from('products')
-            .select('remaining, status')
-            .eq('id', p.id)
-            .single();
-          if (latest) {
-            setProduct((prev) => (prev ? { ...prev, ...latest } as ProductRow : prev));
-            if (latest.status === 'ended' || (latest.remaining ?? 0) <= 0) {
-              throw new Error('商品已完抽');
-            }
-            clampedQty = Math.min(Math.max(1, quantity), Math.max(1, latest.remaining ?? 1));
-          }
-        } catch (e) {
-          const msg = (e as { message?: string })?.message;
-          if (msg === '商品已完抽') throw e;
-          // ignore other refresh errors and continue with optimistic qty
-        }
-
-        const drawRes = await fetch('/api/gacha', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId: p.id,
-            count: clampedQty,
-            usePoints: options.usePoints,
-            couponId: options.couponId || null,
-          }),
-        });
-        if (!drawRes.ok) {
-          const err = await drawRes.json().catch(() => ({}));
-          throw new Error(err.error || '購買失敗，請稍後再試');
-        }
-        const data = (await drawRes.json()).prizes as {
-          name: string; grade: string; image_url: string;
-          ticket_number?: number; is_last_one?: boolean;
-        }[];
-
-        let results = data.map((item, index) => ({
-          id: item.ticket_number !== undefined ? String(item.ticket_number) : `${p.id}-${index}`,
-          name: item.name,
-          grade: item.grade,
-          image_url: item.image_url,
-          ticket_number: item.ticket_number,
-          is_last_one: item.is_last_one,
-        }));
-
-        if (results.some(r => !r.image_url) && prizes.length > 0) {
-          const imageMap = new Map<string, string>();
-          for (const prize of prizes) {
-            if (!prize.image_url) continue;
-            const key = `${(prize.level || '').trim()}|${(prize.name || '').trim()}`;
-            if (!imageMap.has(key)) imageMap.set(key, prize.image_url);
-          }
-          results = results.map(r => {
-            if (r.image_url) return r;
-            const key = `${(r.grade || '').trim()}|${(r.name || '').trim()}`;
-            const mapped = imageMap.get(key);
-            return mapped ? { ...r, image_url: mapped } : r;
-          });
-        }
-        return results;
-      })();
-
-      // Close modal & start animation immediately — don't block on API
-      setIsPurchaseModalOpen(false);
-      setMode2DrawCount(optimisticQty);
-      setMode2State('animating');
-      return;
-    }
-
-    // ── Non-vending machine: blocking flow (video animation) ──
     setIsProcessing(true);
     try {
+      // Refresh latest remaining before purchasing to avoid stale state
       let latestRemaining = product.remaining ?? 0;
       try {
         const { data: latest } = await supabase
@@ -384,10 +298,15 @@ export default function BlindboxDetailPage() {
             return;
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        // ignore refresh failure and proceed with local value
+      }
 
+      // Clamp quantity with the refreshed remaining
       const clampedQty = Math.min(Math.max(1, quantity), Math.max(1, latestRemaining));
-      if (clampedQty < quantity) showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
+      if (clampedQty < quantity) {
+        showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
+      }
 
       const drawRes = await fetch('/api/gacha', {
         method: 'POST',
@@ -403,12 +322,17 @@ export default function BlindboxDetailPage() {
         const err = await drawRes.json().catch(() => ({}));
         throw new Error(err.error || '購買失敗，請稍後再試');
       }
-      const data = (await drawRes.json()).prizes as {
-        name: string; grade: string; image_url: string;
-        ticket_number?: number; is_last_one?: boolean;
+      const data = (await drawRes.json()).prizes;
+
+      const rawResults = data as unknown as {
+        name: string;
+        grade: string;
+        image_url: string;
+        ticket_number?: number;
+        is_last_one?: boolean;
       }[];
 
-      let results = data.map((item, index) => ({
+      let results = rawResults.map((item, index) => ({
         id: item.ticket_number !== undefined ? String(item.ticket_number) : `${product.id}-${index}`,
         name: item.name,
         grade: item.grade,
@@ -419,11 +343,14 @@ export default function BlindboxDetailPage() {
 
       if (results.some(r => !r.image_url) && prizes.length > 0) {
         const imageMap = new Map<string, string>();
-        for (const prize of prizes) {
-          if (!prize.image_url) continue;
-          const key = `${(prize.level || '').trim()}|${(prize.name || '').trim()}`;
-          if (!imageMap.has(key)) imageMap.set(key, prize.image_url);
+        for (const p of prizes) {
+          if (!p.image_url) continue;
+          const key = `${(p.level || '').trim()}|${(p.name || '').trim()}`;
+          if (!imageMap.has(key)) {
+            imageMap.set(key, p.image_url);
+          }
         }
+
         results = results.map(r => {
           if (r.image_url) return r;
           const key = `${(r.grade || '').trim()}|${(r.name || '').trim()}`;
@@ -434,16 +361,23 @@ export default function BlindboxDetailPage() {
 
       setWonPrizes(results);
       setIsPurchaseModalOpen(false);
-      if (refreshProfile) refreshProfile();
-      setVideoMode('purchase');
-      setIsVideoOpen(true);
+      if (refreshProfile) {
+        refreshProfile();
+      }
+      if (['blindbox_mode2', 'blindbox_mode3'].includes((product as any).machine_theme)) {
+        setMode2DrawCount(results.length);
+        setMode2State('animating');
+      } else {
+        setVideoMode('purchase');
+        setIsVideoOpen(true);
+      }
     } catch (e: unknown) {
       console.error('Blindbox purchase error:', e);
       let message = '購買失敗，請稍後再試';
       try {
         const err = (e as { code?: string; message?: string }) || {};
         const code = err.code;
-        const msg: string | undefined = err.message;
+        const msg: string | undefined = err.message || (typeof e === 'object' ? JSON.parse(JSON.stringify(e as object))?.message : undefined);
         if (code === 'P0001' || (typeof msg === 'string' && /not enough stock|no prizes left/i.test(msg))) {
           message = '剩餘數量不足或已完抽，請刷新後重試';
         }
@@ -454,32 +388,14 @@ export default function BlindboxDetailPage() {
     }
   };
 
-  const handleMode2AnimComplete = async () => {
-    if (apiPromiseRef.current) {
-      // Real purchase: await the background API (may already be resolved = instant)
-      try {
-        const results = await apiPromiseRef.current;
-        apiPromiseRef.current = null;
-        setWonPrizes(results);
-        if (refreshProfile) refreshProfile();
-        setIsPrizeModalOpen(true);
-        setCollectionRefreshKey((prev) => prev + 1);
-      } catch (e: unknown) {
-        apiPromiseRef.current = null;
-        let message = '購買失敗，請稍後再試';
-        const msg = (e as { message?: string })?.message;
-        if (msg) message = msg;
-        showToast(message, 'error');
-        setMode2State('idle');
-      }
+  const handleMode2AnimComplete = () => {
+    // Keep mode2State as 'animating' while prize popup is open.
+    // setMode2State('idle') is called in handlePrizeClose so the shelf resets only after popup closes.
+    if (wonPrizes.length > 0) {
+      setIsPrizeModalOpen(true);
+      setCollectionRefreshKey((prev) => prev + 1);
     } else {
-      // Trial: wonPrizes already set, just open modal
-      if (wonPrizes.length > 0) {
-        setIsPrizeModalOpen(true);
-        setCollectionRefreshKey((prev) => prev + 1);
-      } else {
-        setMode2State('idle');
-      }
+      setMode2State('idle');
     }
   };
 
