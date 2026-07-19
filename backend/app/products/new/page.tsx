@@ -4,6 +4,8 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   gacha:    [
     { value: 'gacha_classic', label: '原始經典（物理蛋球掉落）' },
     { value: 'gacha_mode2',   label: '新款機台（旋鈕式蛋口出蛋）' },
+    { value: 'gacha_mode3',   label: '金光閃閃機台（旋鈕式蛋口出蛋）' },
+    { value: 'gacha_mode4',   label: '狗狗蛋箱（無旋鈕，蛋口出蛋）' },
   ],
   ichiban:  [
     { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },
@@ -18,8 +20,9 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'custom_tear', label: '沉浸式撕紙（全畫面揭曉）' },
   ],
   blindbox: [
-    { value: 'blindbox_classic', label: '原始經典（物理蛋球掉落）' },
-    { value: 'blindbox_claw',    label: '夾娃娃機' },
+    { value: 'blindbox_classic', label: '原始經典（過場華麗動畫）' },
+    { value: 'blindbox_mode2',   label: '販賣機（可愛兔子貨架，盒子飛入取物口）' },
+    { value: 'blindbox_mode3',   label: '販賣機（叢林探險，盒子飛入取物口）' },
   ],
 }
 
