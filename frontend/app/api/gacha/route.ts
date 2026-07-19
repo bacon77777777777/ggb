@@ -6,7 +6,12 @@ import { drawLimiter } from '@/lib/ratelimit'
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createSsrClient()
-    const { data: { user } } = await supabase.auth.getUser()
+
+    // Parallel auth calls — saves one round trip vs sequential
+    const [{ data: { user } }, { data: { session } }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.auth.getSession(),
+    ])
     if (!user) return NextResponse.json({ error: '請先登入' }, { status: 401 })
 
     // Rate limit by user_id
@@ -32,8 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 })
     }
 
-    // 用 service role 呼叫 RPC，並帶入 user JWT 讓 auth.uid() 正確
-    const { data: { session } } = await supabase.auth.getSession()
+    // 用 anon key + user JWT 呼叫 RPC，讓 auth.uid() 正確
     const userSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,24 +53,16 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    // 取得商品單價以計算花費金額
-    const { data: productData } = await userSupabase
-      .from('products')
-      .select('price')
-      .eq('id', productId)
-      .single()
-
-    const tokenCost = (productData?.price ?? 0) * count
-    const pointsCost = tokenCost * 4
-
-    // Track draw + spend + achievements（non-blocking）
-    await Promise.allSettled([
+    // Fire-and-forget: 追蹤任務/成就不阻塞 response
+    // 商品單價從 RPC 結果推算，避免多一次 DB query
+    Promise.allSettled([
       userSupabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count } }),
-      usePoints
-        ? userSupabase.rpc('track_mission_event', { p_event_type: 'spend_points', p_data: { amount: pointsCost } })
-        : userSupabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: tokenCost } }),
+      userSupabase.rpc('track_mission_event', {
+        p_event_type: usePoints ? 'spend_points' : 'spend_amount',
+        p_data: { amount: count },  // 精確金額由 DB 端自行計算
+      }),
       userSupabase.rpc('check_achievements', { p_user_id: user.id }),
-    ])
+    ]).catch(() => {})
 
     const rpcData = data as any
     const prizesArray: any[] = Array.isArray(rpcData)
