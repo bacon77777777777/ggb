@@ -81,7 +81,7 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 - **所有 migration 執行後必須同時套兩個環境**（除非 STG 明確不需要某功能）
 - STG 不需要：GB哥 AI 基礎建設（line_conversations / gb_pending_actions / capability_gaps）
 - PROD psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-2.pooler.supabase.com -p 5432 -U "postgres.akdqleelvqvjhjnfkpfq" -d postgres`
-- STG psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`（port 5432 若失敗改 6543）
+- STG psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`
 - **RLS 注意**：新建 table 若有 `ENABLE ROW LEVEL SECURITY` 必須同步建 policy，不然前台讀不到（會靜默返回空陣列）
 - 定期 diff 指令（確認兩環境 table 一致）：
   ```sql
