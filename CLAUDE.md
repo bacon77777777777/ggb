@@ -76,12 +76,12 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 | 環境 | DB | Supabase project |
 |------|-----|-----------------|
 | PROD | `akdqleelvqvjhjnfkpfq`（ap-northeast-2） | admin.ggb.com.tw |
-| STG  | `zqxxmdbvtwuiocebaxvk`（ap-southeast-1） | staging.ggb.com.tw |
+| STG  | `zqxxmdbvtwuiocebaxvk`（ap-northeast-1） | staging.ggb.com.tw |
 
 - **所有 migration 執行後必須同時套兩個環境**（除非 STG 明確不需要某功能）
 - STG 不需要：GB哥 AI 基礎建設（line_conversations / gb_pending_actions / capability_gaps）
 - PROD psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-2.pooler.supabase.com -p 5432 -U "postgres.akdqleelvqvjhjnfkpfq" -d postgres`
-- STG psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-southeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`（port 5432 若失敗改 6543）
+- STG psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`（port 5432 若失敗改 6543）
 - **RLS 注意**：新建 table 若有 `ENABLE ROW LEVEL SECURITY` 必須同步建 policy，不然前台讀不到（會靜默返回空陣列）
 - 定期 diff 指令（確認兩環境 table 一致）：
   ```sql
@@ -110,6 +110,23 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 **pg_cron secret 注意**：Supabase pg_cron 執行環境無法使用 `current_setting('app.cron_secret')`，所有 cron job SQL 必須把 secret 字串 hardcode 在 SQL 內，不可用動態讀取。
 
 **agent_events 事件匯流排**：任何 AI 單位偵測到跨部門信號 → INSERT `agent_events` + 推 LINE → 後台「事件中心」（`/agent-events`）顯示待處理。
+
+### 抽獎模組（Machine Theme）
+
+抽獎模組主題在**兩個地方**定義，新增模組時兩個都要改：
+
+1. **全站預設**：`backend/app/settings/modules/page.tsx` → `PRODUCT_TYPES[].themes[]`
+2. **各別商品覆蓋**：`backend/app/products/[id]/page.tsx` → `MODULE_OPTIONS`
+
+前台渲染：
+- `frontend/components/shop/GachaProductDetail.tsx` → `MACHINE_COMPONENTS`（轉蛋用）
+- `frontend/components/gacha-themes/index.tsx` → `MachineTheme` type + `THEME_MAP`（其他類型用）
+
+現有轉蛋模組：
+- `gacha_classic`：物理蛋球掉落（GachaMachineVisual）
+- `gacha_mode2`：旋鈕式轉蛋機（GachaMachineMode2，圖素在 `gacha/mode2/`）
+- `gacha_mode3`：金光閃閃機台（GachaMachineMode3，圖素在 `gacha/mode3/`，同 mode2 邏輯換主圖）
+- `gacha_mode4`：狗狗蛋箱（GachaMachineMode4，圖素在 `gacha/mode4/`，無旋鈕/switch，有自訂 box.svg + hole.svg 遮罩）
 
 ### 情報系統（News）
 
@@ -231,6 +248,10 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
 - 所有 migration 執行後 commit 並 push（不需詢問）
 - **推版前必須更新 `DEVLOG.md`**：在對應日期下記錄本次變更的功能、修正、migration，再 commit + push
 - **推版節奏**：完成功能後不自動推版，等老闆本地測試完、明確說「推版」再推
+- **分支規則（嚴格遵守）**：
+  - 老闆說「推版」→ **push `dev`**（對應 STG 環境）
+  - 老闆說「推正」→ 才從 dev merge/push 到 **`main`**（對應 PROD 環境）
+  - 永遠不直接 push main，除非明確說「推正」
 - 後台 API 統一用 `getSupabaseAdmin()`，前台用 `createClient()`（anon key）
 - 財務對帳公式：`expected = recharge_total + manual_total - draw_total - refund_deducted`
 - 稽核軌跡：所有管理員操作都呼叫 `logAdminAction()`

@@ -17,6 +17,8 @@ const PRODUCT_TYPES: {
     themes: [
       { value: 'gacha_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機' },
       { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
+      { value: 'gacha_mode3', label: '金光閃閃機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
+      { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
     ],
   },
   {
@@ -49,6 +51,7 @@ const PRODUCT_TYPES: {
     themes: [
       { value: 'blindbox_classic', label: '原始經典', desc: '物理蛋球掉落轉蛋機（預設）' },
       { value: 'blindbox_claw', label: '夾娃娃機', desc: '夾娃娃機風格揭曉' },
+      { value: 'blindbox_mode2', label: 'Dreamy Box 機台', desc: '可愛貨架機台，盒子飛入取物口動畫' },
     ],
   },
 ]

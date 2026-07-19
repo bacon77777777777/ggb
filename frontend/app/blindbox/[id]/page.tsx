@@ -13,6 +13,7 @@ import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaCollectionList } from '@/components/shop/GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
+import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 
@@ -47,6 +48,9 @@ export default function BlindboxDetailPage() {
   const [videoMode, setVideoMode] = useState<'trial' | 'purchase' | null>(null);
   const [scale, setScale] = useState(1);
   const [bgVariantIndex, setBgVariantIndex] = useState(0);
+  // mode2 machine state
+  const [mode2State, setMode2State] = useState<'idle' | 'animating'>('idle');
+  const [mode2DrawCount, setMode2DrawCount] = useState(0);
   const bgVideos = useMemo(() => ['/videos/bg.mp4'], []);
   const bgVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
@@ -254,8 +258,14 @@ export default function BlindboxDetailPage() {
       ]);
     }
 
-    setVideoMode('trial');
-    setIsVideoOpen(true);
+    const isMode2 = (product as any)?.machine_theme === 'blindbox_mode2';
+    if (isMode2) {
+      setMode2DrawCount(1);
+      setMode2State('animating');
+    } else {
+      setVideoMode('trial');
+      setIsVideoOpen(true);
+    }
   };
 
   const handlePurchaseConfirm = async (quantity: number, options: { usePoints: boolean, couponId?: string }) => {
@@ -350,12 +360,16 @@ export default function BlindboxDetailPage() {
 
       setWonPrizes(results);
       setIsPurchaseModalOpen(false);
-      // Refresh user profile to update points/tokens balance immediately
       if (refreshProfile) {
         refreshProfile();
       }
-      setVideoMode('purchase');
-      setIsVideoOpen(true);
+      if ((product as any).machine_theme === 'blindbox_mode2') {
+        setMode2DrawCount(results.length);
+        setMode2State('animating');
+      } else {
+        setVideoMode('purchase');
+        setIsVideoOpen(true);
+      }
     } catch (e: unknown) {
       console.error('Blindbox purchase error:', e);
       let message = '購買失敗，請稍後再試';
@@ -370,6 +384,14 @@ export default function BlindboxDetailPage() {
       showToast(message, 'error');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleMode2AnimComplete = () => {
+    setMode2State('idle');
+    if (wonPrizes.length > 0) {
+      setIsPrizeModalOpen(true);
+      setCollectionRefreshKey((prev) => prev + 1);
     }
   };
 
@@ -410,6 +432,7 @@ export default function BlindboxDetailPage() {
 
   const handlePrizeClose = async () => {
     setIsPrizeModalOpen(false);
+    setMode2State('idle');  // resets shelf to full in mode2
     try {
       if (product?.id) {
         const { data } = await supabase
@@ -479,6 +502,21 @@ export default function BlindboxDetailPage() {
           }}
         >
           <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
+            {(product as any).machine_theme === 'blindbox_mode2' ? (
+              <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+                <BlindboxMachineMode2
+                  machineState={mode2State}
+                  drawCount={mode2DrawCount}
+                  boxImageUrl={(product as any).box_image_url ?? undefined}
+                  remaining={product.remaining ?? 10}
+                  onAnimationComplete={handleMode2AnimComplete}
+                  onPush={() => {}}
+                  onPurchase={handlePlay}
+                  onTrial={handleTrial}
+                  isSoldOut={isSoldOut}
+                />
+              </div>
+            ) : (
             <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
               <video
                 ref={bgVideoRef}
@@ -623,19 +661,20 @@ export default function BlindboxDetailPage() {
                 }}
                 onClick={handleTrial}
               />
-            </div>
 
-            {isSoldOut && (
-              <div
-                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
-                style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
-              >
-                <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
-                  <span className="text-[14px] font-black tracking-widest text-yellow-300">
-                    該商品已完抽
-                  </span>
+              {isSoldOut && (
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                  style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
+                >
+                  <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
+                    <span className="text-[14px] font-black tracking-widest text-yellow-300">
+                      該商品已完抽
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
+            </div>
             )}
           </div>
 

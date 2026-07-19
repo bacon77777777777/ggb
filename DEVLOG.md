@@ -4,6 +4,34 @@
 
 ---
 
+## v2026.07.19b｜2026-07-19｜盒玩新模組 blindbox_mode2（Dreamy Box 貨架機台）
+
+### 新增盒玩 mode2 機台
+- **BlindboxMachineMode2**（`frontend/components/shop/BlindboxMachineMode2.tsx`）：
+  - 2 排 × 5 格貨架（22px 重疊），抽後盒子消失，關彈窗刷新滿格
+  - Z 軸放大 → Y 軸飛至取物口 → hole.svg 遮罩下落動畫
+  - 10 抽各錯開 180ms stagger
+  - 全部進洞後 2 秒彈出恭喜獲得結果彈窗
+- **blindbox/[id]/page.tsx**：偵測 `machine_theme === 'blindbox_mode2'` 切換至新元件
+- **Migration 332**：`products.box_image_url TEXT`（盒子圖片，STG 已套用）
+- **後台**：machine_theme 選 blindbox_mode2 時顯示盒子圖片上傳欄（正方形）
+
+---
+
+## v2026.07.19a｜2026-07-19｜新增轉蛋模組 mode3（金光閃閃）、mode4（狗狗蛋箱）
+
+### 新增轉蛋機台模組
+- **mode3 金光閃閃**（`frontend/components/shop/GachaMachineMode3.tsx`）：複製 mode2 旋鈕機台，換 `main.png` 主圖，圖素路徑改至 `gacha/mode3/`
+- **mode4 狗狗蛋箱**（`frontend/components/shop/GachaMachineMode4.tsx`）：無旋鈕設計，box / hole 改用自訂 SVG 遮罩（CSS mask），圖素路徑 `gacha/mode4/`
+- 四個登記點全部同步更新：
+  - `backend/app/settings/modules/page.tsx` → PRODUCT_TYPES 全站預設
+  - `backend/app/products/[id]/page.tsx` → MODULE_OPTIONS 各別商品覆蓋
+  - `frontend/components/shop/GachaProductDetail.tsx` → MACHINE_COMPONENTS
+  - `frontend/components/gacha-themes/index.tsx` → MachineTheme type + THEME_MAP
+- **CLAUDE.md** 補充抽獎模組架構說明，防止日後遺忘登記點
+
+---
+
 ## v2026.07.18d｜2026-07-18｜積分消耗顯示修正（前台抽獎紀錄 + 後台消費報表）
 
 ### 積分消耗顯示修正

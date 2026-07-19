@@ -22,6 +22,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   blindbox: [
     { value: 'blindbox_classic', label: '原始經典（物理蛋球掉落）' },
     { value: 'blindbox_claw',    label: '夾娃娃機' },
+    { value: 'blindbox_mode2',   label: 'Dreamy Box 機台（貨架飛入取物口）' },
   ],
 }
 
@@ -51,6 +52,8 @@ export default function EditProductPage() {
     cost: '',
     image: null as File | null,
     imagePreview: '',
+    boxImage: null as File | null,
+    boxImagePreview: '',
     status: 'active',
     category: '一番賞',
     categoryId: '',
@@ -313,6 +316,8 @@ export default function EditProductPage() {
             txidHash: product.txid_hash || '',
             seed: product.seed || '',
             selectedTagIds: tagIds,
+            boxImage: null as File | null,
+            boxImagePreview: (product as any).box_image_url || '',
           }
           setFormData(loaded)
           setSavedFormData(loaded)
@@ -387,14 +392,20 @@ export default function EditProductPage() {
 
       // 1. Upload Product Image
       let productImageUrl = formData.imagePreview
-      // If the image is a blob URL (newly selected), upload it.
-      // If it's a supabase URL (existing), keep it.
-      // Or simply check if formData.image is not null.
       if (formData.image) {
         const file = formData.image
         const fileExt = file.name.split('.').pop()
         const fileName = `product-${Date.now()}.${fileExt}`
         productImageUrl = await uploadViaAdmin(file, fileName)
+      }
+
+      // 1b. Upload Box Image (blindbox_mode2)
+      let boxImageUrl = formData.boxImagePreview || null
+      if (formData.boxImage) {
+        const file = formData.boxImage
+        const fileExt = file.name.split('.').pop()
+        const fileName = `box-${Date.now()}.${fileExt}`
+        boxImageUrl = await uploadViaAdmin(file, fileName)
       }
 
       // 2. Prepare Product Data
@@ -415,9 +426,10 @@ export default function EditProductPage() {
         machine_theme: formData.machineTheme || null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
-        // txid_hash: formData.txidHash || null, // Seed and Hash should not be updated via Edit form to preserve fairness
+        // txid_hash: formData.txidHash || null,
         // seed: formData.seed || null,
         image_url: productImageUrl,
+        box_image_url: boxImageUrl,
       }
 
       productData.release_year = formData.releaseYear || null
@@ -691,6 +703,24 @@ export default function EditProductPage() {
                     ))}
                   </SelectField>
                 </div>
+                {/* 盒子圖片（blindbox_mode2 專用） */}
+                {formData.machineTheme === 'blindbox_mode2' && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">盒子圖片（正方形）</label>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer flex items-center gap-1 px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm hover:border-neutral-400 transition-colors">
+                        <span>選擇圖片</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) setFormData({ ...formData, boxImage: file, boxImagePreview: URL.createObjectURL(file) })
+                        }} />
+                      </label>
+                      {formData.boxImagePreview && (
+                        <img src={formData.boxImagePreview} alt="box" className="w-10 h-10 object-cover rounded border border-neutral-200" />
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
                   <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
