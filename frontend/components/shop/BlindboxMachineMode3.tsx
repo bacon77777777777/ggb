@@ -289,11 +289,11 @@ export function BlindboxMachineMode3({
       const newBoxes: PhysBox[] = selected.map((slotIdx, i) => ({
         id:    Date.now() + i,
         x:     SLOTS[slotIdx].centerX,
-        y:     SLOTS[slotIdx].centerY,
-        vx:    rand(-20, 20),
-        vy:    rand(40, 80),
-        angle: 0,
-        av:    rand(-0.08, 0.08),
+        y:     SLOTS[slotIdx].centerY + 16,
+        vx:    rand(-15, 15),
+        vy:    rand(100, 150),
+        angle: rand(-0.60, -0.50),           // ≈ −30° to −34°, matches CSS rotate(-32deg) end state
+        av:    rand(2.0, 3.5),
         depth: SLOTS[slotIdx].depth,
       }));
 
@@ -335,9 +335,18 @@ export function BlindboxMachineMode3({
         />
       </div>
 
+      <style>{`
+        @keyframes ggb-tip-forward {
+          0%   { transform: translateY(0px)  rotate(0deg); }
+          35%  { transform: translateY(5px)  rotate(-4deg); }
+          100% { transform: translateY(16px) rotate(-32deg); }
+        }
+      `}</style>
+
       {/* Shelf boxes — back row (depth=1) rendered first so front (depth=0) appears on top.
           Back boxes: scale BACK_SCALE, shifted up BACK_CSS_PX, z=4.
-          Front boxes: scale 1.0, z=5. */}
+          Front boxes: scale 1.0, z=5.
+          Plain divs + CSS transitions/animations (framer-motion can't do perspective rotateX). */}
       {[1, 0].flatMap(renderDepth =>
         SLOTS.map((slot, i) => {
           if (slot.depth !== renderDepth) return null;
@@ -345,36 +354,50 @@ export function BlindboxMachineMode3({
           if (s === 'gone') return null;
           const isBack    = renderDepth === 1;
           const baseScale = isBack ? BACK_SCALE : 1.0;
+
+          let transform: string;
+          let transition: string;
+          let opacity    = 1;
+          let animation: string | undefined;
+
+          if (s === 'nudging') {
+            if (isBack) {
+              transform  = `translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px) scale(1.0)`;
+              transition = 'transform 1.0s ease-out';
+            } else {
+              animation  = 'ggb-tip-forward 1s cubic-bezier(0.3,0,0.7,1) forwards';
+              transform  = 'translateY(16px) rotate(-32deg)';
+              transition = 'none';
+            }
+          } else if (s === 'shuffling') {
+            if (isBack) {
+              transform  = `translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px) scale(1.0)`;
+              transition = 'transform 0.8s ease-out';
+            } else {
+              transform  = 'translateY(16px) scale(1.02)';
+              opacity    = 0;
+              transition = 'transform 0.8s ease-out, opacity 0.5s ease 0.3s';
+            }
+          } else {
+            transform  = `scale(${baseScale})`;
+            transition = 'transform 0.3s ease-out';
+          }
+
           return (
-            <motion.div
+            <div
               key={`${i}-${shelfKey}`}
-              initial={false}
               style={{
-                position:        'absolute',
-                left:            slot.leftPx,
-                top:             slot.topPx,
-                width:           BOX_CSS_W,
-                zIndex:          isBack ? 4 : 5,
-                transformOrigin: 'bottom center',
+                position:   'absolute',
+                left:       slot.leftPx,
+                top:        slot.topPx,
+                width:      BOX_CSS_W,
+                zIndex:     isBack ? 4 : 5,
+                transformOrigin: isBack ? 'bottom center' : '50% 50%',
+                transform,
+                transition,
+                opacity,
+                ...(animation ? { animation } : {}),
               }}
-              animate={
-                s === 'nudging'
-                  ? { y: isBack ? BACK_CSS_PX : 16, x: isBack ? -BACK_CSS_X : 0, scale: isBack ? 1.0 : 1.02, opacity: 1 }
-                : s === 'shuffling'
-                  ? isBack
-                    ? { y: BACK_CSS_PX, x: -BACK_CSS_X, scale: 1.0, opacity: 1 }
-                    : { y: 16, x: 0, scale: 1.02, opacity: 0 }
-                  : { y: 0, x: 0, scale: baseScale, opacity: 1 }
-              }
-              transition={
-                s === 'nudging'
-                  ? { duration: 1.0, ease: 'easeOut' }
-                : s === 'shuffling'
-                  ? isBack
-                    ? { duration: 0.8, ease: 'easeOut' }
-                    : { duration: 0.8, ease: 'easeOut', opacity: { delay: 0.3, duration: 0.5 } }
-                  : { duration: 0.3, ease: 'easeOut' }
-              }
             >
               <Image
                 src={boxSrc}
@@ -384,7 +407,7 @@ export function BlindboxMachineMode3({
                 style={{ width: '100%', height: 'auto', display: 'block' }}
                 unoptimized
               />
-            </motion.div>
+            </div>
           );
         })
       )}
