@@ -4,6 +4,8 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   gacha:    [
     { value: 'gacha_classic', label: '原始經典（物理蛋球掉落）' },
     { value: 'gacha_mode2',   label: '新款機台（旋鈕式蛋口出蛋）' },
+    { value: 'gacha_mode3',   label: '金光閃閃機台（旋鈕式蛋口出蛋）' },
+    { value: 'gacha_mode4',   label: '狗狗蛋箱（無旋鈕，蛋口出蛋）' },
   ],
   ichiban:  [
     { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },
