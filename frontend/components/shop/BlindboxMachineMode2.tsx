@@ -458,12 +458,16 @@ export function BlindboxMachineMode2({
           68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(${ry68}deg) translateY(15px); }
           100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg)  rotateY(20deg) rotateZ(-5deg) translateY(18px); }
         }
-        @keyframes ggb-3d-shuffle-out-m2-c${c} {
-          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); opacity:1; }
-          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(12px); opacity:1; }
-          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(${ry68}deg) translateY(15px); opacity:0.8; }
-          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg)  rotateY(20deg) translateY(22px); opacity:0; }
+        @keyframes ggb-3d-shuffle-transform-m2-c${c} {
+          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
+          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(12px); }
+          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(${ry68}deg) translateY(15px); }
+          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg)  rotateY(20deg) translateY(22px); }
         }`;}).join('')}
+        @keyframes ggb-3d-shuffle-fade-m2 {
+          0%, 55% { opacity: 1; }
+          100%    { opacity: 0; }
+        }
       `}</style>
 
       {/* Shelf boxes */}
@@ -474,33 +478,38 @@ export function BlindboxMachineMode2({
           if (s === 'gone') return null;
           const isBack = renderDepth === 1;
 
-          let transform: string;
-          let transition: string;
-          let opacity = 1;
-          let animation: string | undefined;
-
           const ry = colRotY(slot.col);
+
+          // Outer div: position + opacity (no preserve-3d — opacity breaks 3D context)
+          // Inner div: preserve-3d + transform (no opacity here)
+          let innerTransform: string;
+          let innerTransition: string;
+          let innerAnimation: string | undefined;
+          let outerAnimation: string | undefined;
+
           if (s === 'nudging') {
             if (isBack) {
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
-              transition = 'transform 1.0s ease-out';
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              innerTransition   = 'transform 1.0s ease-out';
             } else {
-              animation  = `ggb-3d-eject-m2-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
-              transition = 'none';
+              innerAnimation    = `ggb-3d-eject-m2-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
+              innerTransition   = 'none';
             }
           } else if (s === 'shuffling') {
             if (isBack) {
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
-              transition = 'transform 0.8s ease-out';
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              innerTransition   = 'transform 0.8s ease-out';
             } else {
-              animation  = `ggb-3d-shuffle-out-m2-c${slot.col} 0.9s cubic-bezier(0.4,0,0.6,1) forwards`;
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg) rotateY(20deg) translateY(22px)`;
-              transition = 'none';
+              // Opacity goes on outer div so it never touches the preserve-3d context
+              outerAnimation    = 'ggb-3d-shuffle-fade-m2 0.9s cubic-bezier(0.4,0,0.6,1) forwards';
+              innerAnimation    = `ggb-3d-shuffle-transform-m2-c${slot.col} 0.9s cubic-bezier(0.4,0,0.6,1) forwards`;
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg) rotateY(20deg) translateY(22px)`;
+              innerTransition   = 'none';
             }
           } else {
-            transform  = shelfBase3D(isBack ? BACK_SCALE : 1, slot.col);
-            transition = 'transform 0.3s ease-out';
+            innerTransform    = shelfBase3D(isBack ? BACK_SCALE : 1, slot.col);
+            innerTransition   = 'transform 0.3s ease-out';
           }
 
           return (
@@ -513,14 +522,18 @@ export function BlindboxMachineMode2({
                 width:    BOX_W,
                 height:   BOX_H,
                 zIndex:   isBack ? 4 : 5,
-                transformStyle: 'preserve-3d',
-                transform,
-                transition,
-                opacity,
-                ...(animation ? { animation } : {}),
+                ...(outerAnimation ? { animation: outerAnimation } : {}),
               }}
             >
-              <Box3DFaces />
+              <div style={{
+                width: '100%', height: '100%',
+                transformStyle: 'preserve-3d',
+                transform: innerTransform,
+                transition: innerTransition !== 'none' ? innerTransition : undefined,
+                ...(innerAnimation ? { animation: innerAnimation } : {}),
+              }}>
+                <Box3DFaces />
+              </div>
             </div>
           );
         })
