@@ -188,16 +188,18 @@ const extractCloveUrlsFromHtml = (html: string, base: URL) => {
   const out = new Set<string>()
   const ids = new Set<string>()
 
-  const pathRe = /\/zh-TW\/oripa\/All\/[a-z0-9]+/gi
+  // Match both /zh-TW/oripa/All/[id] and /oripa/All/[id] (no lang prefix)
+  const pathRe = /\/(?:zh-TW\/)?oripa\/All\/([a-z0-9]+)/gi
   let m: RegExpExecArray | null
   while ((m = pathRe.exec(html))) {
-    const abs = absolutize(base, m[0])
+    const abs = absolutize(base, `/zh-TW/oripa/All/${m[1]}`)
     if (abs) out.add(abs)
   }
 
-  const idRe = /cmm[a-z0-9]+/gi
+  // cmm-prefixed product IDs
+  const idRe = /\b(cmm[a-z0-9]+)/gi
   while ((m = idRe.exec(html))) {
-    ids.add(m[0])
+    ids.add(m[1])
   }
 
   for (const id of Array.from(ids)) {
@@ -205,6 +207,32 @@ const extractCloveUrlsFromHtml = (html: string, base: URL) => {
     if (abs) out.add(abs)
   }
   return Array.from(out)
+}
+
+const fetchCloveListingHtml = async (inputUrl: URL) => {
+  // If user entered the bare homepage or /oripa/All (no lang prefix), fetch the zh-TW listing page directly
+  const isRootOrShort = inputUrl.pathname === '/' || !inputUrl.pathname.includes('/oripa/All/')
+  const fetchUrl = isRootOrShort
+    ? `https://oripa.clove.jp/zh-TW/oripa/All`
+    : inputUrl.toString()
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const res = await fetchWithRetry(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    })
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+    return await readTextWithLimit(res, 2_000_000)
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 const fetchSlimeToyToken = async () => {
@@ -368,6 +396,9 @@ export async function POST(req: Request) {
     let all: string[] = []
     if (host === 'slimetoy.com.tw') {
       all = await expandSlimeToyHome(effectiveLimit)
+    } else if (host === 'oripa.clove.jp') {
+      const html = await fetchCloveListingHtml(u)
+      all = extractCloveUrlsFromHtml(html, u)
     } else {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 15_000)
@@ -388,7 +419,7 @@ export async function POST(req: Request) {
       } finally {
         clearTimeout(timer)
       }
-      all = host === 'oripa.clove.jp' ? extractCloveUrlsFromHtml(html, u) : extractGenericProductLinks(html, u, effectiveLimit)
+      all = extractGenericProductLinks(html, u, effectiveLimit)
     }
     const urls = all.slice(0, effectiveLimit)
 

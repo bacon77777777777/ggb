@@ -115,7 +115,7 @@ const COMPETITORS = [
   { name: 'SlimeToy 台灣', url: 'https://slimetoy.com.tw/' },
   { name: 'Dopamine Kuji', url: 'https://dopaminekuji.com/' },
   { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },
-  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/' },
+  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/zh-TW/oripa/All' },
   { name: '一番賞 Online（官方）', url: 'https://on-line.1kuji.com/' },
   { name: '一番賞 Official（JP）', url: 'https://1kuji.com/' },
   { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },

@@ -176,11 +176,8 @@ const roundToTens = (v: number) => {
   return Math.round(v / 10) * 10
 }
 
-const cloveJpyToTokenRate = () => {
-  const raw = process.env.CLOVE_JPY_TO_TWD_RATE ?? process.env.CLOVE_JPY_TO_TOKEN_RATE ?? '0.22'
-  const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? n : 0.22
-}
+// Japanese yen → TWD: user standard is JPY ÷ 3
+const jpyToTwd = (jpy: number) => Math.round(jpy / 3)
 
 const sanitizeFileStem = (s: string) => {
   return String(s ?? '')
@@ -846,11 +843,14 @@ const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
     }
     prizes = withImageFilenames(prizes)
     const typeGuess = sourceHost === 'oripa.clove.jp' ? 'card' : guessTypeFromNameOrUrl(name, url)
+    const isJapaneseSite = sourceHost?.endsWith('.jp') ?? false
     const finalPrice = (() => {
-      if (sourceHost !== 'oripa.clove.jp') return price
-      const clovePrice = price ?? toNumber(nextData?.props?.pageProps?.oripa?.price)
-      if (clovePrice === null) return null
-      return roundToTens(clovePrice * cloveJpyToTokenRate())
+      if (sourceHost === 'oripa.clove.jp') {
+        const clovePrice = price ?? toNumber(nextData?.props?.pageProps?.oripa?.price)
+        return clovePrice != null ? jpyToTwd(clovePrice) : null
+      }
+      if (isJapaneseSite && price != null) return jpyToTwd(price)
+      return price
     })()
 
     return {
