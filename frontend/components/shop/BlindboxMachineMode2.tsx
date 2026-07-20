@@ -46,8 +46,8 @@ const FACES = {
   back:   '/images/blindbox/mode3/box/6.png',
   left:   '/images/blindbox/mode3/box/3.png',
   right:  '/images/blindbox/mode3/box/5.png',
-  top:    '/images/blindbox/mode3/box/1.png',
-  bottom: '/images/blindbox/mode3/box/2.png',
+  top:    '/images/blindbox/mode3/box/2.png', // 交換：原 bottom 圖
+  bottom: '/images/blindbox/mode3/box/1.png', // 交換：原 top 圖
 } as const;
 
 const BASE_AX = -20;
@@ -109,6 +109,7 @@ interface PhysBox {
   angleY: number; avY: number;
   depth: 0 | 1;
   landed: boolean;
+  landedAt: number;
   targetAngleZ: number;
 }
 
@@ -142,6 +143,7 @@ export function BlindboxMachineMode2({
   const [isShuffling, setIsShuffling]   = useState(false);
   const [showGhostBack, setShowGhostBack] = useState(false);
   const [shelfKey, setShelfKey]         = useState(0);
+  const [readyToPick, setReadyToPick]   = useState(false);
 
   const physRef          = useRef<PhysBox[]>([]);
   const frameRef         = useRef<number | undefined>(undefined);
@@ -206,11 +208,19 @@ export function BlindboxMachineMode2({
           b.angleY += b.avY * dt;
           b.avY    *= ROT_FRIC;
         } else {
-          const dz = b.targetAngleZ - b.angleZ;
-          b.angleZ = Math.abs(dz) < 0.02 ? b.targetAngleZ : b.angleZ + dz * 0.20;
-          b.angleX += (BASE_AX - b.angleX) * 0.08;
-          b.angleY += (BASE_AY - b.angleY) * 0.08;
-          b.avX = 0; b.avY = 0;
+          if (Date.now() - b.landedAt > 500) {
+            b.angleZ = b.targetAngleZ;
+            b.angleX = BASE_AX;
+            b.angleY = BASE_AY;
+            b.avX = 0; b.avY = 0; b.avZ = 0;
+            b.vx = 0; b.vy = 0;
+          } else {
+            const dz = b.targetAngleZ - b.angleZ;
+            b.angleZ = Math.abs(dz) < 0.02 ? b.targetAngleZ : b.angleZ + dz * 0.25;
+            b.angleX += (BASE_AX - b.angleX) * 0.20;
+            b.angleY += (BASE_AY - b.angleY) * 0.20;
+            b.avX = 0; b.avY = 0;
+          }
         }
 
         const floorY = b.depth === 0 ? FRONT_FLOOR : BACK_FLOOR;
@@ -220,7 +230,8 @@ export function BlindboxMachineMode2({
           b.vx *= 0.80;
 
           if (!b.landed) {
-            b.landed = true;
+            b.landed   = true;
+            b.landedAt = Date.now();
             const tipRight = b.avZ >= 0;
             b.targetAngleZ = tipRight ? Math.PI / 2 : -Math.PI / 2;
             b.avX += rand(-25, 25);
@@ -311,6 +322,7 @@ export function BlindboxMachineMode2({
       prevMachineState.current = 'idle';
       setIsShuffling(false);
       setShowGhostBack(false);
+      setReadyToPick(false);
     }
   }, [machineState, stopPhysics]);
 
@@ -365,6 +377,7 @@ export function BlindboxMachineMode2({
           avY:      rand(-30, 30),
           depth:    SLOTS[slotIdx].depth,
           landed:   false,
+          landedAt: 0,
           targetAngleZ: 0,
         };
       });
@@ -375,11 +388,11 @@ export function BlindboxMachineMode2({
       const callDone = () => {
         if (doneCalledRef.current) return;
         doneCalledRef.current = true;
-        onAnimationComplete?.();
+        setReadyToPick(true);
       };
 
-      startPhysicsLoop(() => {});
-      const tSafe = setTimeout(callDone, 2000);
+      startPhysicsLoop(() => callDone());
+      const tSafe = setTimeout(callDone, 2500);
       timerRefs.current.push(tSafe);
     }, 1000);
 
@@ -388,6 +401,12 @@ export function BlindboxMachineMode2({
     return () => { timerRefs.current.forEach(clearTimeout); timerRefs.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [machineState]);
+
+  const handleSlotClick = () => {
+    if (!readyToPick) return;
+    setReadyToPick(false);
+    onAnimationComplete?.();
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const shelfBase3D = (extraScale = 1) =>
@@ -405,8 +424,16 @@ export function BlindboxMachineMode2({
         />
       </div>
 
-      {/* CSS keyframes for 3D shelf animations */}
+      {/* CSS keyframes */}
       <style>{`
+        @keyframes ggb-slot-pulse-m2 {
+          0%, 100% { background: rgba(255,220,50,0.0); box-shadow: none; }
+          50%       { background: rgba(255,220,50,0.18); box-shadow: 0 0 24px 10px rgba(255,200,50,0.30); }
+        }
+        @keyframes ggb-slot-text-m2 {
+          0%, 100% { opacity: 0.6; transform: scale(0.96); }
+          50%       { opacity: 1.0; transform: scale(1.04); }
+        }
         @keyframes ggb-3d-eject-m2 {
           0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg); }
           40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg) translateY(14px); }
@@ -534,6 +561,35 @@ export function BlindboxMachineMode2({
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
         <Image src="/images/blindbox/mode2/hole_bg.png" alt="" fill className="object-fill" unoptimized />
       </div>
+
+      {/* Retrieval slot click area (z=13) */}
+      {readyToPick && (
+        <div
+          onClick={handleSlotClick}
+          style={{
+            position: 'absolute',
+            left: HOLE_L, top: HOLE_T,
+            width: HOLE_R - HOLE_L,
+            height: HOLE_B - HOLE_T,
+            zIndex: 13,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'ggb-slot-pulse-m2 1.1s ease-in-out infinite',
+          }}
+        >
+          <span style={{
+            color: '#fff8c0',
+            fontWeight: 900,
+            fontSize: '15px',
+            letterSpacing: '0.12em',
+            textShadow: '0 0 8px rgba(255,200,0,0.9), 0 1px 3px rgba(0,0,0,0.6)',
+            animation: 'ggb-slot-text-m2 1.1s ease-in-out infinite',
+          }}>點擊取物</span>
+        </div>
+      )}
 
       {/* Buttons (z=20) */}
       <ImageButton
