@@ -528,7 +528,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '5.33%',
@@ -552,7 +552,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '31.73%',
@@ -570,7 +570,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '69.6%',
