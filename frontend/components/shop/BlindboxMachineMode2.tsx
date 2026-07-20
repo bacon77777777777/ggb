@@ -65,8 +65,8 @@ const SLOTS = Array.from({ length: 20 }, (_, i) => {
   return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth, col };
 });
 
-// col 0 (左) → +10°, col 2 (中) → 0°, col 4 (右) → -10°
-const colRotY = (col: number) => (2 - col) * 5;
+// col 0 (左) → -10°, col 2 (中) → 0°, col 4 (右) → +10°
+const colRotY = (col: number) => (col - 2) * 5;
 
 function rand(min: number, max: number) { return min + Math.random() * (max - min); }
 
