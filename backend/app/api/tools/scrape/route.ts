@@ -843,13 +843,14 @@ const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
     }
     prizes = withImageFilenames(prizes)
     const typeGuess = sourceHost === 'oripa.clove.jp' ? 'card' : guessTypeFromNameOrUrl(name, url)
-    const isJapaneseSite = sourceHost?.endsWith('.jp') ?? false
+    // .tw / .com.tw 是台幣，不換算；其他競品幾乎都是日幣 → ÷3
+    const isTaiwanese = !!(sourceHost?.endsWith('.tw'))
     const finalPrice = (() => {
       if (sourceHost === 'oripa.clove.jp') {
         const clovePrice = price ?? toNumber(nextData?.props?.pageProps?.oripa?.price)
         return clovePrice != null ? jpyToTwd(clovePrice) : null
       }
-      if (isJapaneseSite && price != null) return jpyToTwd(price)
+      if (!isTaiwanese && price != null) return jpyToTwd(price)
       return price
     })()
 
