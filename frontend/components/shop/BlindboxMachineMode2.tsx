@@ -593,7 +593,21 @@ export function BlindboxMachineMode2({
         <Image src="/images/blindbox/mode2/hole_bg.png" alt="" fill className="object-fill" unoptimized />
       </div>
 
-      {/* Retrieval slot click area (z=13) */}
+      {/* 取物口黑色半透明蓋板（模擬塑膠透明蓋，z=13，常駐） */}
+      <div
+        className="pointer-events-none"
+        style={{
+          position: 'absolute',
+          left: HOLE_L, top: HOLE_T,
+          width: HOLE_R - HOLE_L,
+          height: HOLE_B - HOLE_T,
+          zIndex: 13,
+          borderRadius: '50%',
+          background: 'rgba(0,0,0,0.50)',
+        }}
+      />
+
+      {/* Retrieval slot click area (z=14) */}
       {readyToPick && (
         <div
           onClick={handleSlotClick}
@@ -602,7 +616,7 @@ export function BlindboxMachineMode2({
             left: HOLE_L, top: HOLE_T,
             width: HOLE_R - HOLE_L,
             height: HOLE_B - HOLE_T,
-            zIndex: 13,
+            zIndex: 14,
             borderRadius: '50%',
             cursor: 'pointer',
             display: 'flex',
@@ -625,7 +639,7 @@ export function BlindboxMachineMode2({
       {/* Buttons (z=20) */}
       <ImageButton
         src="/images/blindbox/mode2/btn2.png" alt="換一批" text="換一批"
-        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
