@@ -598,14 +598,20 @@ export function BlindboxMachineMode2({
         className="pointer-events-none"
         style={{
           position: 'absolute',
-          left: HOLE_L, top: HOLE_T,
-          width: HOLE_R - HOLE_L,
-          height: HOLE_B - HOLE_T,
+          left: `${(120/750)*100}%`,
+          top: `${(570/932)*100}%`,
+          width: `${(510/750)*100}%`,
+          height: `${(167/932)*100}%`,
           zIndex: 13,
-          borderRadius: '50%',
-          background: 'rgba(0,0,0,0.50)',
         }}
-      />
+      >
+        <Image
+          src="/images/blindbox/mode2/hole.svg"
+          alt="" fill className="object-fill"
+          style={{ filter: 'invert(1) opacity(0.5)' }}
+          unoptimized
+        />
+      </div>
 
       {/* Retrieval slot click area (z=14) */}
       {readyToPick && (
