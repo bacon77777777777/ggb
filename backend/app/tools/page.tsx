@@ -118,7 +118,7 @@ const COMPETITORS: { name: string; url: string; note?: string }[] = [
   { name: 'Wonder Kuji 台灣', url: 'https://wonderkuji.com.tw/kujiland' },
   { name: '籤引道 台灣', url: 'https://kujibikido.tw/' },
   { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },
-  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/' },
+  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/', note: 'SPA，可能無法爬取' },
   { name: 'Gashapon 官方（JP）', url: 'https://gashapon.jp/products/' },
   { name: 'Bandai 官方扭蛋', url: 'https://bandainamco-am.co.jp/zh-CHT/others/gashapon-bandai-officialshop/item/' },
   { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },

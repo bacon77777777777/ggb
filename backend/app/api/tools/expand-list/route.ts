@@ -189,26 +189,22 @@ const extractGenericProductLinks = (html: string, base: URL, limit: number) => {
 
 const extractCloveUrlsFromHtml = (html: string, base: URL) => {
   const out = new Set<string>()
-  const ids = new Set<string>()
 
-  // Match both /zh-TW/oripa/All/[id] and /oripa/All/[id] (no lang prefix)
-  const pathRe = /\/(?:zh-TW\/)?oripa\/All\/([a-z0-9]+)/gi
+  // Match product IDs from JSON: "id":"cm..." (at least 20 chars, Cuid2 format)
+  const jsonIdRe = /"id"\s*:\s*"(cm[a-z0-9]{18,})"/gi
   let m: RegExpExecArray | null
+  while ((m = jsonIdRe.exec(html))) {
+    const abs = absolutize(base, `/zh-TW/oripa/All/${m[1]}`)
+    if (abs) out.add(abs)
+  }
+
+  // Also match any /oripa/All/[id] hrefs (with or without lang prefix)
+  const pathRe = /\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?oripa\/All\/(cm[a-z0-9]{18,})/g
   while ((m = pathRe.exec(html))) {
     const abs = absolutize(base, `/zh-TW/oripa/All/${m[1]}`)
     if (abs) out.add(abs)
   }
 
-  // cmm-prefixed product IDs
-  const idRe = /\b(cmm[a-z0-9]+)/gi
-  while ((m = idRe.exec(html))) {
-    ids.add(m[1])
-  }
-
-  for (const id of Array.from(ids)) {
-    const abs = absolutize(base, `/zh-TW/oripa/All/${id}`)
-    if (abs) out.add(abs)
-  }
   return Array.from(out)
 }
 
