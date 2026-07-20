@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Fragment } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -417,9 +417,8 @@ export default function ToolsPage() {
                     const isAiFilled = (field: string) => e?.aiFilledFields?.includes(field)
 
                     return (
-                      <>
+                      <Fragment key={`${it.url}-${idx}`}>
                         <tr
-                          key={`${it.url}-${idx}`}
                           className="border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50/50 transition-colors"
                         >
                           {/* 商品圖 */}
@@ -586,7 +585,7 @@ export default function ToolsPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     )
                   })}
                 </tbody>
