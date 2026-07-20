@@ -466,7 +466,7 @@ const getSlimeToyMasterToken = async () => {
       if (!homeRes.ok) throw new Error(`Fetch failed: ${homeRes.status}`)
       const homeHtml = await readTextWithLimit(homeRes, 600_000)
       const jsUrl =
-        homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/js\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
+        homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/(?:js|assets)\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
       if (!jsUrl) throw new Error('找不到 SlimeToy app.js')
 
       const jsRes = await fetchWithRetry(jsUrl, {
