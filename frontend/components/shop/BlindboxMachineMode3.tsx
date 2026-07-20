@@ -66,10 +66,8 @@ const SLOTS = Array.from({ length: 20 }, (_, i) => {
   return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth, col };
 });
 
-// Per-column rotateY: left boxes show right face (+), right boxes show left face (−)
-// Simulates diverging perspective rays from a single viewpoint in front of the machine.
-// col 0 → 22°, col 1 → 13°, col 2 → 4°, col 3 → −5°, col 4 → −14°
-const slotRotY = (col: number) => 4 + (2 - col) * 9;
+// col 0 (左) → +10°, col 2 (中) → 0°, col 4 (右) → -10°
+const colRotY = (col: number) => (2 - col) * 5;
 
 function rand(min: number, max: number) { return min + Math.random() * (max - min); }
 
@@ -444,8 +442,8 @@ export function BlindboxMachineMode3({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const shelfBase3D = (extraScale = 1) =>
-    `perspective(300px) scale(${SHELF_SCALE * extraScale}) rotateX(${BASE_AX}deg) rotateY(25deg)`;
+  const shelfBase3D = (extraScale = 1, col = 2) =>
+    `perspective(300px) scale(${SHELF_SCALE * extraScale}) rotateX(${BASE_AX}deg) rotateY(${colRotY(col)}deg)`;
 
   return (
     <div className="relative w-full h-full" style={{ touchAction: 'pan-y' }}>
@@ -459,7 +457,7 @@ export function BlindboxMachineMode3({
         />
       </div>
 
-      {/* CSS keyframes for 3D shelf animations + slot pulse */}
+      {/* CSS keyframes — per-column eject/shuffle so start angle matches idle */}
       <style>{`
         @keyframes ggb-slot-pulse {
           0%, 100% { background: rgba(255,220,50,0.0); box-shadow: none; }
@@ -469,20 +467,22 @@ export function BlindboxMachineMode3({
           0%, 100% { opacity: 0.6; transform: scale(0.96); }
           50%       { opacity: 1.0; transform: scale(1.04); }
         }
-        /* Draw eject: slide forward along shelf → reach edge → tip over */
-        @keyframes ggb-3d-eject {
-          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg); }
-          40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg) translateY(14px); }
-          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(24deg) translateY(15px); }
+        ${[0,1,2,3,4].map(c => {
+          const ry = colRotY(c);
+          const ry68 = (ry + 20) / 2;
+          return `
+        @keyframes ggb-3d-eject-c${c} {
+          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
+          40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(14px); }
+          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(${ry68}deg) translateY(15px); }
           100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg)  rotateY(20deg) rotateZ(-5deg) translateY(18px); }
         }
-        /* Shuffle out: slide forward → tip to edge → fall + fade */
-        @keyframes ggb-3d-shuffle-out {
-          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg); opacity:1; }
-          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg) translateY(12px); opacity:1; }
-          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(24deg) translateY(15px); opacity:0.8; }
+        @keyframes ggb-3d-shuffle-out-c${c} {
+          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); opacity:1; }
+          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(12px); opacity:1; }
+          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(${ry68}deg) translateY(15px); opacity:0.8; }
           100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg)  rotateY(20deg) translateY(22px); opacity:0; }
-        }
+        }`;}).join('')}
       `}</style>
 
       {/* Shelf boxes — back row rendered first (lower z-index) */}
@@ -498,30 +498,27 @@ export function BlindboxMachineMode3({
           let opacity = 1;
           let animation: string | undefined;
 
+          const ry = colRotY(slot.col);
           if (s === 'nudging') {
             if (isBack) {
-              // Companion: slide forward to front-row position (spring mechanism effect)
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(25deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
               transition = 'transform 1.0s ease-out';
             } else {
-              // Front box: slide forward → reach edge → tip over (seamless CSS→physics)
-              animation  = 'ggb-3d-eject 1s cubic-bezier(0.3,0,0.7,1) forwards';
+              animation  = `ggb-3d-eject-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
               transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
               transition = 'none';
             }
           } else if (s === 'shuffling') {
             if (isBack) {
-              // Back companion: mirror slide to front
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(25deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
               transition = 'transform 0.8s ease-out';
             } else {
-              // Front box: slide + tip + fade (換一批)
-              animation  = 'ggb-3d-shuffle-out 0.9s cubic-bezier(0.4,0,0.6,1) forwards';
+              animation  = `ggb-3d-shuffle-out-c${slot.col} 0.9s cubic-bezier(0.4,0,0.6,1) forwards`;
               transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg) rotateY(20deg) translateY(22px)`;
               transition = 'none';
             }
           } else {
-            transform  = shelfBase3D(isBack ? BACK_SCALE : 1);
+            transform  = shelfBase3D(isBack ? BACK_SCALE : 1, slot.col);
             transition = 'transform 0.3s ease-out';
           }
 
@@ -577,20 +574,19 @@ export function BlindboxMachineMode3({
       {/* Ghost back row fading in during 換一批 */}
       {showGhostBack && SLOTS.map((slot, slotIdx) => {
         if (slot.depth !== 1) return null;
-        const col = slotIdx % 5;
         return (
           <motion.div
             key={`ghost-${slotIdx}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.45, ease: 'easeOut', delay: col * 0.04 }}
+            transition={{ duration: 0.45, ease: 'easeOut', delay: slot.col * 0.04 }}
             style={{
               position: 'absolute',
               left: slot.leftPx, top: slot.topPx,
               width: BOX_W, height: BOX_H,
               zIndex: 3,
               transformStyle: 'preserve-3d',
-              transform: shelfBase3D(BACK_SCALE),
+              transform: shelfBase3D(BACK_SCALE, slot.col),
             }}
           >
             <Box3DFaces />

@@ -62,8 +62,11 @@ const SLOTS = Array.from({ length: 20 }, (_, i) => {
   const t750   = shelf === 0 ? ROW0_TOP : ROW1_TOP;
   const leftPx = (COL0_LEFT + col * BOX_STEP) * TO_CSS + (depth === 1 ? BACK_CSS_X : 0);
   const topPx  = (t750 / 932) * CSS_H - (depth === 1 ? BACK_CSS_PX : 0);
-  return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth };
+  return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth, col };
 });
+
+// col 0 (左) → +10°, col 2 (中) → 0°, col 4 (右) → -10°
+const colRotY = (col: number) => (2 - col) * 5;
 
 function rand(min: number, max: number) { return min + Math.random() * (max - min); }
 
@@ -420,8 +423,8 @@ export function BlindboxMachineMode2({
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const shelfBase3D = (extraScale = 1) =>
-    `perspective(300px) scale(${SHELF_SCALE * extraScale}) rotateX(${BASE_AX}deg) rotateY(25deg)`;
+  const shelfBase3D = (extraScale = 1, col = 2) =>
+    `perspective(300px) scale(${SHELF_SCALE * extraScale}) rotateX(${BASE_AX}deg) rotateY(${colRotY(col)}deg)`;
 
   return (
     <div className="relative w-full h-full" style={{ touchAction: 'pan-y' }}>
@@ -435,7 +438,7 @@ export function BlindboxMachineMode2({
         />
       </div>
 
-      {/* CSS keyframes */}
+      {/* CSS keyframes — per-column eject/shuffle */}
       <style>{`
         @keyframes ggb-slot-pulse-m2 {
           0%, 100% { background: rgba(255,220,50,0.0); box-shadow: none; }
@@ -445,18 +448,22 @@ export function BlindboxMachineMode2({
           0%, 100% { opacity: 0.6; transform: scale(0.96); }
           50%       { opacity: 1.0; transform: scale(1.04); }
         }
-        @keyframes ggb-3d-eject-m2 {
-          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg); }
-          40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg) translateY(14px); }
-          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(24deg) translateY(15px); }
+        ${[0,1,2,3,4].map(c => {
+          const ry = colRotY(c);
+          const ry68 = (ry + 20) / 2;
+          return `
+        @keyframes ggb-3d-eject-m2-c${c} {
+          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
+          40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(14px); }
+          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(${ry68}deg) translateY(15px); }
           100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg)  rotateY(20deg) rotateZ(-5deg) translateY(18px); }
         }
-        @keyframes ggb-3d-shuffle-out-m2 {
-          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg); opacity:1; }
-          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(25deg) translateY(12px); opacity:1; }
-          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(24deg) translateY(15px); opacity:0.8; }
+        @keyframes ggb-3d-shuffle-out-m2-c${c} {
+          0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); opacity:1; }
+          38%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(12px); opacity:1; }
+          62%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-5deg)  rotateY(${ry68}deg) translateY(15px); opacity:0.8; }
           100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg)  rotateY(20deg) translateY(22px); opacity:0; }
-        }
+        }`;}).join('')}
       `}</style>
 
       {/* Shelf boxes */}
@@ -472,26 +479,27 @@ export function BlindboxMachineMode2({
           let opacity = 1;
           let animation: string | undefined;
 
+          const ry = colRotY(slot.col);
           if (s === 'nudging') {
             if (isBack) {
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(25deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
               transition = 'transform 1.0s ease-out';
             } else {
-              animation  = 'ggb-3d-eject-m2 1s cubic-bezier(0.3,0,0.7,1) forwards';
+              animation  = `ggb-3d-eject-m2-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
               transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
               transition = 'none';
             }
           } else if (s === 'shuffling') {
             if (isBack) {
-              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(25deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
+              transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(${BASE_AX}deg) rotateY(${ry}deg) translateY(${BACK_CSS_PX}px) translateX(${-BACK_CSS_X}px)`;
               transition = 'transform 0.8s ease-out';
             } else {
-              animation  = 'ggb-3d-shuffle-out-m2 0.9s cubic-bezier(0.4,0,0.6,1) forwards';
+              animation  = `ggb-3d-shuffle-out-m2-c${slot.col} 0.9s cubic-bezier(0.4,0,0.6,1) forwards`;
               transform  = `perspective(300px) scale(${SHELF_SCALE}) rotateX(25deg) rotateY(20deg) translateY(22px)`;
               transition = 'none';
             }
           } else {
-            transform  = shelfBase3D(isBack ? BACK_SCALE : 1);
+            transform  = shelfBase3D(isBack ? BACK_SCALE : 1, slot.col);
             transition = 'transform 0.3s ease-out';
           }
 
@@ -547,20 +555,19 @@ export function BlindboxMachineMode2({
       {/* Ghost back row fading in during 換一批 */}
       {showGhostBack && SLOTS.map((slot, slotIdx) => {
         if (slot.depth !== 1) return null;
-        const col = slotIdx % 5;
         return (
           <motion.div
             key={`ghost-${slotIdx}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.45, ease: 'easeOut', delay: col * 0.04 }}
+            transition={{ duration: 0.45, ease: 'easeOut', delay: slot.col * 0.04 }}
             style={{
               position: 'absolute',
               left: slot.leftPx, top: slot.topPx,
               width: BOX_W, height: BOX_H,
               zIndex: 3,
               transformStyle: 'preserve-3d',
-              transform: shelfBase3D(BACK_SCALE),
+              transform: shelfBase3D(BACK_SCALE, slot.col),
             }}
           >
             <Box3DFaces />
