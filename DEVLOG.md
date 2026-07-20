@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.20g｜2026-07-20｜盒玩落地快速穩定 + 換一批不禁用 + 購買速度優化
+
+### 盒玩物理徹底重寫（mode2/3）
+- **根本原因**：spring 在落地後把 avZ 從 0.03 rad/s 拉升到 3 rad/s，造成持續旋轉；`callDone` snap 跳到 targetAngleZ（最多 84° 跳動）
+- **修法**：移除 spring，改純摩擦衰減（`avZ *= 0.80`）；落地瞬間 `avZ *= 0.30` 立刻切速；不設 targetAngleZ，callDone 保留 angleZ 原位不 snap
+- 落地後 ~0.3 秒內 Z 旋轉停止，X/Y lerp 0.35 快速收斂到 BASE_AX/BASE_AY
+- 碰撞 spin 只加給未落地盒子，防止已落地盒子被連續擾動
+
+### 換一批點擊後三顆按鈕不禁用（mode2/3）
+- 移除 `isShuffling` 禁用條件；立即開盒/試試看 onClick guard 同步移除
+
+### 購買流程加速（blindbox + 所有 gacha）
+- 移除購買前的庫存 pre-check refresh（省 200-500ms RTT），server 端已在 `play_gacha_locked` 做驗證
+- API route `getUser()` 改 `getSession()`，避免 Supabase Auth server 額外請求（省 100-300ms）
+
+---
+
 ## v2026.07.20f｜2026-07-20｜盒玩落地物理平滑化 + 取物口蓋板改由圖片實現
 
 ### 盒玩落地物理平滑化（mode2/3）

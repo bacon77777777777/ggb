@@ -7,11 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createSsrClient()
 
-    // Parallel auth calls — saves one round trip vs sequential
-    const [{ data: { user } }, { data: { session } }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.auth.getSession(),
-    ])
+    // getSession reads from cookie (no server RTT); middleware already refreshed the token
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return NextResponse.json({ error: '請先登入' }, { status: 401 })
 
     // Rate limit by user_id

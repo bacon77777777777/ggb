@@ -182,12 +182,10 @@ export function BlindboxMachineMode2({
 
     const GRAVITY      = 1200;
     const BOX_RES      = 0.12;
-    const FLOOR_RES    = 0.18;
+    const FLOOR_RES    = 0.06;
     const FRICTION     = 0.975;
     const ANG_FRIC_AIR  = 0.92;
     const ROT_FRIC      = 0.97;
-    const ANG_FRIC_LAND = 0.88;
-    const ROT_FRIC_LAND = 0.84;
     const SETTLE_V      = 1.5;
 
     let lastTime: number | null = null;
@@ -213,20 +211,12 @@ export function BlindboxMachineMode2({
           b.angleY += b.avY * dt;
           b.avY    *= ROT_FRIC;
         } else {
-          const settleAge = (Date.now() - b.landedAt) / 1000;
-          const t = Math.min(1, settleAge / 0.8);
-          const dampZ  = ANG_FRIC_LAND  + t * (0.97 - ANG_FRIC_LAND);
-          const dampXY = ROT_FRIC_LAND  + t * (0.97 - ROT_FRIC_LAND);
+          b.avZ *= 0.80;
           b.angleZ += b.avZ * dt;
-          b.avZ    *= dampZ;
-          b.angleX += b.avX * dt;
-          b.avX    *= dampXY;
-          b.angleY += b.avY * dt;
-          b.avY    *= dampXY;
-          const spring = 0.03 + t * 0.10;
-          b.avZ += (b.targetAngleZ - b.angleZ) * spring;
-          b.avX += (BASE_AX - b.angleX) * spring * 0.5;
-          b.avY += (BASE_AY - b.angleY) * spring * 0.5;
+          b.angleX += (BASE_AX - b.angleX) * 0.35;
+          b.angleY += (BASE_AY - b.angleY) * 0.35;
+          b.avX = 0;
+          b.avY = 0;
         }
 
         const floorY = b.depth === 0 ? FRONT_FLOOR : BACK_FLOOR;
@@ -238,10 +228,9 @@ export function BlindboxMachineMode2({
           if (!b.landed) {
             b.landed   = true;
             b.landedAt = Date.now();
-            const tipRight = b.avZ >= 0;
-            b.targetAngleZ = tipRight ? Math.PI / 2 : -Math.PI / 2;
-            b.avX += rand(-25, 25);
-            b.avY += rand(-15, 15);
+            b.avZ *= 0.30;
+            b.avX = 0;
+            b.avY = 0;
           }
         }
 
@@ -269,9 +258,8 @@ export function BlindboxMachineMode2({
           const spinZ = rand(-1.0, 1.0);
           const spinX = rand(-35, 35);
           const spinY = rand(-50, 50);
-          a.avZ += spinZ; b.avZ -= spinZ;
-          a.avX += spinX; b.avX -= spinX;
-          a.avY += spinY; b.avY -= spinY;
+          if (!a.landed) { a.avZ += spinZ; a.avX += spinX; a.avY += spinY; }
+          if (!b.landed) { b.avZ -= spinZ; b.avX -= spinX; b.avY -= spinY; }
         }
       }
 
@@ -288,17 +276,17 @@ export function BlindboxMachineMode2({
       const now = Date.now();
       const allSettled = cur.length > 0 && cur.every(b => {
         if (!b.landed) return false;
-        if (b.landedAt > 0 && now - b.landedAt > 2500) return true;
+        if (b.landedAt > 0 && now - b.landedAt > 2000) return true;
         const posSlow = Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V;
-        const angSlow = Math.abs(b.avZ) < 0.10 && Math.abs(b.avX) < 2.0 && Math.abs(b.avY) < 2.0;
-        return posSlow && angSlow;
+        const angDone = Math.abs(b.avZ) < 0.05 && Math.abs(b.angleX - BASE_AX) < 1.0 && Math.abs(b.angleY - BASE_AY) < 1.0;
+        return posSlow && angDone;
       });
 
       if (!settledCalled && allSettled) {
         settledCalled = true;
         physRef.current = cur.map(b => ({
           ...b,
-          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
+          angleZ: b.angleZ,
           angleX: BASE_AX, angleY: BASE_AY,
           avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
         }));
@@ -397,7 +385,7 @@ export function BlindboxMachineMode2({
         stopPhysics();
         const snapped = physRef.current.map(b => ({
           ...b,
-          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
+          angleZ: b.angleZ,
           angleX: BASE_AX, angleY: BASE_AY,
           avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
         }));
@@ -626,22 +614,22 @@ export function BlindboxMachineMode2({
       {/* Buttons (z=20) */}
       <ImageButton
         src="/images/blindbox/mode2/btn2.png" alt="換一批" text="換一批"
-        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
         src="/images/blindbox/mode2/btn1.png" alt="立即開盒" text="立即開盒"
-        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isShuffling && machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
+        onClick={() => { if (machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
       <ImageButton
         src="/images/blindbox/mode2/btn2.png" alt="試試看" text="試試看"
-        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isShuffling && machineState === 'idle' && !readyToPick) onTrial?.(); }} />
+        onClick={() => { if (machineState === 'idle' && !readyToPick) onTrial?.(); }} />
 
       {isSoldOut && (
         <div

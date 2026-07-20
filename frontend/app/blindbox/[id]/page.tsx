@@ -280,30 +280,8 @@ export default function BlindboxDetailPage() {
 
     setIsProcessing(true);
     try {
-      // Refresh latest remaining before purchasing to avoid stale state
-      let latestRemaining = product.remaining ?? 0;
-      try {
-        const { data: latest } = await supabase
-          .from('products')
-          .select('remaining, status')
-          .eq('id', product.id)
-          .single();
-        if (latest) {
-          latestRemaining = latest.remaining ?? latestRemaining;
-          setProduct((prev) => (prev ? { ...prev, ...latest } as ProductRow : prev));
-          if (latest.status === 'ended' || latestRemaining <= 0) {
-            setIsPurchaseModalOpen(false);
-            showToast('商品已完抽', 'info');
-            setIsProcessing(false);
-            return;
-          }
-        }
-      } catch {
-        // ignore refresh failure and proceed with local value
-      }
-
-      // Clamp quantity with the refreshed remaining
-      const clampedQty = Math.min(Math.max(1, quantity), Math.max(1, latestRemaining));
+      // Use local remaining — server validates stock in play_gacha_locked anyway
+      const clampedQty = Math.min(Math.max(1, quantity), Math.max(1, product.remaining ?? 1));
       if (clampedQty < quantity) {
         showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
       }
