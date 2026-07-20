@@ -4,6 +4,21 @@
 
 ---
 
+## v2026.07.20i｜2026-07-20｜商品建立修正（抽卡賞等 + R2 憑證更新）
+
+### 抽卡商品賞等改為一翻賞制（A賞～J賞）
+- 移除 `cardLevels`（N/R/SR/SSR/UR/LR/SP/SEC/PR/HR/GR/MR/CHR）
+- 抽卡類型改用 `ichibanLevels`，與一翻賞/自製賞統一（新增頁 + 編輯頁同步）
+
+### R2 API Token 更新
+- 舊 token 失效（signature mismatch），在 Cloudflare dashboard Roll 後更新 `R2_SECRET_ACCESS_KEY`
+- 同步更新 `backend/.env.local` 和 `frontend/.env.local`
+
+### Upload route 401 錯誤訊息改善
+- 原本「Unauthorized」改為「請重新登入（session 已過期）」，更容易 debug
+
+---
+
 ## v2026.07.20h｜2026-07-20｜統一 Loading 畫面（全商品類型）
 
 ### 統一商品頁 Loading 畫面
