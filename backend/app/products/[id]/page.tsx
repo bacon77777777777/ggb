@@ -703,24 +703,6 @@ export default function EditProductPage() {
                     ))}
                   </SelectField>
                 </div>
-                {/* 盒子圖片（blindbox_mode2 專用） */}
-                {formData.machineTheme === 'blindbox_mode2' && (
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">盒子圖片（正方形）</label>
-                    <div className="flex items-center gap-2">
-                      <label className="cursor-pointer flex items-center gap-1 px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm hover:border-neutral-400 transition-colors">
-                        <span>選擇圖片</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) setFormData({ ...formData, boxImage: file, boxImagePreview: URL.createObjectURL(file) })
-                        }} />
-                      </label>
-                      {formData.boxImagePreview && (
-                        <img src={formData.boxImagePreview} alt="box" className="w-10 h-10 object-cover rounded border border-neutral-200" />
-                      )}
-                    </div>
-                  </div>
-                )}
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
                   <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
