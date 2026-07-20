@@ -16,6 +16,7 @@ interface GachaMachineMode3Props {
   isSoldOut?: boolean;
   pushSoundMode?: 'manual' | 'auto';
   hasHighTierPending?: boolean;
+  disableButtons?: boolean;
 }
 
 const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
@@ -67,6 +68,7 @@ export function GachaMachineMode3({
   isSoldOut = false,
   pushSoundMode = 'auto',
   hasHighTierPending,
+  disableButtons = false,
 }: GachaMachineMode3Props) {
   const createInitialEggs = (): Egg[] => {
     const count = 15;
@@ -319,7 +321,7 @@ export function GachaMachineMode3({
         style={{ left: '39.87%', top: '56.22%', width: '20.8%', height: '16.74%', zIndex: 10 }}
         animate={{ rotate: switchAngle }}
         transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
-        onClick={() => { if (!isSoldOut && (state === 'idle' || state === 'shaking') && onPurchase) onPurchase(); }}
+        onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       >
         <Image src="/images/gacha/mode3/switch.png" alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
@@ -365,7 +367,7 @@ export function GachaMachineMode3({
         src="/images/gacha/mode3/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={() => {
@@ -379,19 +381,19 @@ export function GachaMachineMode3({
         src="/images/gacha/mode3/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && (state === 'idle' || state === 'shaking') && onPurchase) onPurchase(); }}
+        onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       />
       <ImageButton
         src="/images/gacha/mode3/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && (state === 'idle' || state === 'shaking') && onTrial) onTrial(); }}
+        onClick={() => { if (!isSoldOut && !disableButtons && onTrial) onTrial(); }}
       />
 
       {isSoldOut && (

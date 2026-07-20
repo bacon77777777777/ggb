@@ -89,6 +89,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
   }, [machineState, wonPrizes]);
   const [collectionRefreshKey, setCollectionRefreshKey] = useState(0);
   const [pushSoundMode, setPushSoundMode] = useState<'manual' | 'auto'>('auto');
+  const [isPushShaking, setIsPushShaking] = useState(false);
 
   const isSoldOut = product.status === 'ended'
     || product.remaining === 0
@@ -99,9 +100,11 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
     trackEvent('draw_preview', { productId: product.id, series: product.name });
     setPushSoundMode('manual');
     setShakeRepeats(1);
+    setIsPushShaking(true);
     setMachineState('shaking');
     setTimeout(() => {
       setMachineState('idle');
+      setIsPushShaking(false);
       setPushSoundMode('auto');
     }, 200);
   };
@@ -431,6 +434,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
                     isSoldOut={isSoldOut}
                     pushSoundMode={pushSoundMode}
                     hasHighTierPending={forceGoldEgg || hasHighTierPending}
+                    disableButtons={machineState !== 'idle' && !isPushShaking}
                   />
                 )
               })()}
