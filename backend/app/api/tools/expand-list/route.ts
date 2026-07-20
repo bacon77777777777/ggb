@@ -103,21 +103,85 @@ const absolutize = (base: URL, pathOrUrl: string) => {
   return `${base.origin}/${s}`
 }
 
-const extractSlimeToyUrlsFromHtml = (html: string, base: URL) => {
-  const out = new Set<string>()
-  const patterns = [
-    /href\s*=\s*["'](\/ichiban\/(?:detail|tubes)\/\d+(?:\/[\w/-]+)?)["']/gi,
-    /href\s*=\s*["'](\/gacha\/detail\/\d+(?:\/[\w/-]+)?)["']/gi,
-    /href\s*=\s*["'](\/blindbox\/(?:detail|item)\/\d+(?:\/[\w/-]+)?)["']/gi,
-  ]
-  for (const re of patterns) {
-    let m: RegExpExecArray | null
-    while ((m = re.exec(html))) {
-      const abs = absolutize(base, m[1])
-      if (abs) out.add(abs)
+const NON_PRODUCT_PATH_SEGMENTS = new Set([
+  'login', 'logout', 'register', 'signup', 'sign-up', 'account', 'profile',
+  'cart', 'checkout', 'payment', 'order', 'orders', 'wishlist', 'favorites', 'favourite',
+  'about', 'contact', 'faq', 'help', 'support', 'terms', 'privacy', 'policy', 'legal',
+  'search', 'sitemap', 'feed', 'rss', 'robots',
+  'cdn-cgi', 'assets', 'static', 'images', 'img', 'css', 'js', 'fonts', 'media',
+  'api', 'auth', 'oauth', 'callback', 'webhook',
+  'admin', 'dashboard', 'settings',
+  'top', 'home', 'index',
+])
+
+const extractGenericProductLinks = (html: string, base: URL, limit: number) => {
+  const hrefRe = /href\s*=\s*["']([^"']+)["']/gi
+  const sameOriginLinks: string[] = []
+  let m: RegExpExecArray | null
+
+  while ((m = hrefRe.exec(html))) {
+    const href = m[1].trim()
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) continue
+
+    const abs = absolutize(base, href)
+    if (!abs) continue
+
+    let u: URL
+    try {
+      u = new URL(abs)
+    } catch {
+      continue
+    }
+
+    if (u.origin !== base.origin) continue
+
+    const path = u.pathname
+    if (/\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|css|js|ico|woff|ttf)(\?|$)/i.test(path)) continue
+
+    const segments = path.split('/').filter(Boolean)
+    if (segments.length === 0) continue
+
+    const first = segments[0].toLowerCase()
+    if (NON_PRODUCT_PATH_SEGMENTS.has(first) && segments.length <= 2) continue
+
+    sameOriginLinks.push(u.origin + u.pathname)
+  }
+
+  if (sameOriginLinks.length === 0) return []
+
+  // Group links by their first path segment (e.g., /products/, /items/)
+  const patternLinks = new Map<string, Set<string>>()
+  for (const link of sameOriginLinks) {
+    try {
+      const segs = new URL(link).pathname.split('/').filter(Boolean)
+      if (segs.length < 2) continue
+      const pattern = `/${segs[0]}/`
+      if (!patternLinks.has(pattern)) patternLinks.set(pattern, new Set())
+      patternLinks.get(pattern)!.add(link)
+    } catch {
+      continue
     }
   }
-  return Array.from(out)
+
+  // Find patterns with enough distinct product-looking links
+  const ranked = [...patternLinks.entries()]
+    .filter(([, links]) => links.size >= 3)
+    .sort((a, b) => b[1].size - a[1].size)
+
+  if (ranked.length === 0) {
+    // No dominant pattern, return all unique links up to limit
+    return [...new Set(sameOriginLinks)].slice(0, limit)
+  }
+
+  // Collect from top patterns
+  const results: string[] = []
+  for (const [, links] of ranked.slice(0, 3)) {
+    for (const link of links) {
+      if (!results.includes(link)) results.push(link)
+      if (results.length >= limit) return results
+    }
+  }
+  return results
 }
 
 const extractCloveUrlsFromHtml = (html: string, base: URL) => {
@@ -324,7 +388,7 @@ export async function POST(req: Request) {
       } finally {
         clearTimeout(timer)
       }
-      all = host === 'oripa.clove.jp' ? extractCloveUrlsFromHtml(html, u) : extractSlimeToyUrlsFromHtml(html, u)
+      all = host === 'oripa.clove.jp' ? extractCloveUrlsFromHtml(html, u) : extractGenericProductLinks(html, u, effectiveLimit)
     }
     const urls = all.slice(0, effectiveLimit)
 

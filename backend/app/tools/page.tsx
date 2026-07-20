@@ -190,6 +190,9 @@ export default function ToolsPage() {
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ScrapeResult | null>(null)
 
+  const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
+  const [isDiscovering, setIsDiscovering] = useState(false)
+
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
   const [batchIsLoading, setBatchIsLoading] = useState(false)
   const [batchError, setBatchError] = useState<string | null>(null)
@@ -213,12 +216,33 @@ export default function ToolsPage() {
     return { total, ok, error: errorCount, loading }
   }, [batchItems])
 
+  const tryDiscoverLinks = async (target: string) => {
+    setIsDiscovering(true)
+    setDiscoveredUrls([])
+    try {
+      const res = await fetch('/api/tools/expand-list', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: target, limit: 500 }),
+      })
+      const json = await res.json().catch(() => null)
+      if (res.ok && Array.isArray(json?.data?.urls) && json.data.urls.length > 0) {
+        setDiscoveredUrls(json.data.urls)
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setIsDiscovering(false)
+    }
+  }
+
   const handleScrape = async () => {
     const target = normalizeInputUrl(url)
     if (!target || isLoading) return
     setIsLoading(true)
     setError(null)
     setData(null)
+    setDiscoveredUrls([])
     try {
       const res = await fetch('/api/tools/scrape', {
         method: 'POST',
@@ -228,9 +252,14 @@ export default function ToolsPage() {
       const json = await res.json().catch(() => null)
       if (!res.ok) {
         setError(String(json?.error || '抓取失敗'))
+        void tryDiscoverLinks(target)
         return
       }
-      setData(json?.data || null)
+      const result: ScrapeResult = json?.data || null
+      setData(result)
+      if (result && result.prizes.length === 0) {
+        void tryDiscoverLinks(target)
+      }
     } catch (e: any) {
       setError(e?.message || '抓取失敗')
     } finally {
@@ -553,7 +582,7 @@ export default function ToolsPage() {
                     <input
                       value={batchListUrl}
                       onChange={(e) => setBatchListUrl(e.target.value)}
-                      placeholder="https://slimetoy.com.tw/ 或 https://oripa.clove.jp/zh-TW/oripa/All"
+                      placeholder="https://slimetoy.com.tw/ 或 https://dopaminekuji.com/ 或任何商品列表頁"
                       className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <button
@@ -717,6 +746,28 @@ export default function ToolsPage() {
                   </button>
                 </div>
                 {error && <div className="text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
+                {isDiscovering && (
+                  <div className="text-sm text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+                    偵測列表頁連結中...
+                  </div>
+                )}
+                {!isDiscovering && discoveredUrls.length > 0 && (
+                  <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="text-sm text-blue-800">
+                      此頁面是列表頁，發現 <strong>{discoveredUrls.length}</strong> 個商品連結
+                    </div>
+                    <button
+                      onClick={() => {
+                        setBatchItems(discoveredUrls.map(u => ({ inputUrl: u, status: 'pending' as const })))
+                        setBatchError(null)
+                        setMode('batch')
+                      }}
+                      className="px-3 py-1.5 bg-blue-700 text-white rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors ml-4 shrink-0"
+                    >
+                      切換批量模式
+                    </button>
+                  </div>
+                )}
                 {data && (
                   <div className="mt-2 space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.20k｜2026-07-20｜後台工具強化（任意網址爬取）
+
+### expand-list：通用商品連結發現（任意網站）
+- 新增 `extractGenericProductLinks()`：解析任意頁面所有 `<a href>` 連結，過濾非商品路徑，依 URL path prefix 聚類，回傳最多商品連結的路徑群
+- 支援 dopaminekuji.com 等未知網站，不再侷限 slimetoy/clove
+
+### scrape：Claude AI fallback prize 提取
+- 當 JSON-LD / nextData / text regex 都無法提取獎項時，改用 `claude-haiku` 讀取頁面文字並結構化輸出
+- 適用任何商品頁，包含日文/中文混排的一番賞/轉蛋頁面
+
+### 工具 UI：列表頁自動偵測
+- 單筆模式若無獎項，自動在背景呼叫 expand-list
+- 發現商品連結時顯示藍色提示欄「發現 X 個商品，切換批量模式」
+- 一鍵切換批量模式並載入所有連結
+
+---
+
 ## v2026.07.20j｜2026-07-20｜全站 SEO 強化（關鍵字・Sitemap・Article JSON-LD）
 
 ### 全站 keywords + 更強的 title/description（root layout）

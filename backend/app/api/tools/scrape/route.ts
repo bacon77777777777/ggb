@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+import Anthropic from '@anthropic-ai/sdk'
 
 type Prize = {
   name: string
@@ -708,6 +709,52 @@ const scrapeSlimeToyByProductId = async (productId: string, kind?: string): Prom
   }
 }
 
+const extractPrizesWithAI = async (pageText: string, hint: { name?: string; url: string }): Promise<Prize[]> => {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return []
+
+  const client = new Anthropic({ apiKey })
+  const truncated = pageText.slice(0, 8000)
+
+  const prompt = `你是商品資料擷取工具。從以下網頁文字中提取一番賞/轉蛋/盲盒商品的獎項清單。
+商品網址: ${hint.url}
+${hint.name ? `商品名稱: ${hint.name}` : ''}
+
+網頁文字:
+${truncated}
+
+請以 JSON 格式回覆，僅包含以下結構，不要其他說明文字：
+{
+  "prizes": [
+    { "name": "獎項名稱", "level": "賞等(如A賞/B賞)", "quantity": 數量 }
+  ]
+}
+如果找不到獎項清單，prizes 為空陣列。等級格式範例：A賞、B賞、C賞、最後賞、SP賞、隱藏賞。`
+
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const text = msg.content.find(b => b.type === 'text')?.text || ''
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return []
+    const parsed = tryParseJson(jsonMatch[0])
+    if (!parsed?.prizes || !Array.isArray(parsed.prizes)) return []
+    const prizes: Prize[] = parsed.prizes
+      .map((p: any) => ({
+        name: String(p.name ?? '').trim(),
+        level: String(p.level ?? '').trim(),
+        quantity: toNumber(p.quantity) ?? 1,
+      }))
+      .filter((p: Prize) => p.name && p.quantity > 0)
+    return prizes.slice(0, 20)
+  } catch {
+    return []
+  }
+}
+
 const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
   let parsedUrl: URL | null = null
   try {
@@ -780,9 +827,14 @@ const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
       }
     }
 
+    const pageText = stripHtmlToText(html)
+
     if (prizes.length === 0) {
-      const text = stripHtmlToText(html)
-      prizes = extractPrizesFromText(text)
+      prizes = extractPrizesFromText(pageText)
+    }
+
+    if (prizes.length === 0) {
+      prizes = await extractPrizesWithAI(pageText, { name, url })
     }
 
     const sourceHost = parsedUrl?.hostname?.toLowerCase() || null
