@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.20j｜2026-07-20｜全站 SEO 強化（關鍵字・Sitemap・Article JSON-LD）
+
+### 全站 keywords + 更強的 title/description（root layout）
+- 新增 SITE_KEYWORDS 涵蓋 30+ 關鍵字：線上轉蛋、線上一番賞、線上抽獎、轉蛋台灣、盲盒、盒玩、寶可夢卡牌、集換式卡牌、吉吉比、GGB 等
+- Root title 改為「吉吉比｜線上轉蛋・線上一番賞・盲盒・卡牌 台灣最大平台」
+- OG image 改用 banner.png
+
+### 商品頁 SEO 強化（seo-products.ts）
+- Title：{商品名}｜線上一番賞/轉蛋/盲盒/抽卡 吉吉比
+- Description 自動帶入商品名、系列、單抽價格、剩餘數量、關鍵字
+- 每頁獨立 keywords meta
+
+### 情報文章 SEO 強化（news/[id]/layout.tsx）
+- 新增 NewsArticle JSON-LD，符合 Google 新聞/Discover 收錄資格
+- Title、description、OG 全面補強關鍵字
+
+### Sitemap 加入新聞文章
+- fetchNewsForSitemap() 撈所有 is_active=true 文章加入 sitemap
+- 新聞列表頁 changeFrequency 改 hourly
+- 商品頁 priority 提升至 0.8
+
+---
+
 ## v2026.07.20i｜2026-07-20｜商品建立修正（抽卡賞等 + R2 憑證更新）
 
 ### 抽卡商品賞等改為一翻賞制（A賞～J賞）
