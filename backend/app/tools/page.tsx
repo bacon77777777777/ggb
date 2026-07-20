@@ -272,7 +272,7 @@ export default function ToolsPage() {
   const starLabel = (r: number) => '★'.repeat(r) + '☆'.repeat(5 - r)
 
   return (
-    <AdminLayout pageTitle="競品爬取工具" pageSubtitle="貼上任意競品網址，自動發現商品並補齊欄位">
+    <AdminLayout pageTitle="競品爬取工具">
       <div className="space-y-4">
 
         {/* URL Input */}
