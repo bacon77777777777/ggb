@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.07.20d｜2026-07-20｜換一批3D盒消失修正 + 按鈕禁用邏輯統一
+
+### 換一批動畫 3D 盒子消失 bug 修正（BlindboxMode2/3）
+- **根本原因**：CSS `opacity < 1` 在同一 DOM 元素套用 `transform-style:preserve-3d` 會強制建立 stacking context，導致 3D 塌成 2D 單面（只剩 4.png 正面）
+- **修法**：shelf 盒子改用兩層 div — 外層處理 opacity 動畫（無 preserve-3d），內層處理 3D transform 動畫（無 opacity）
+- shuffle keyframe 拆成 `ggb-3d-shuffle-fade` + `ggb-3d-shuffle-transform-c${col}` 分開跑
+
+### 轉蛋/盒玩所有模組按鈕禁用邏輯統一
+- **轉蛋機（GachaMachineVisual/Mode2/3/4）**：
+  - 新增 `disableButtons` prop，由 GachaProductDetail 統一計算（`machineState !== 'idle' && !isPushShaking`）
+  - 推一下（shaking 200ms）→ 三顆按鈕**不禁用**
+  - 立即轉蛋/試試看（spinning→result）→ 三顆全禁用直到關閉恭喜獲得彈窗
+- **盒玩機（BlindboxMode2/3）**：
+  - 換一批動效中（`isShuffling`）→ 三顆全禁用（原本立即開盒/試試看漏掉此條件）
+  - 立即開盒/試試看 → 三顆全禁用直到關閉彈窗
+
+---
+
 ## v2026.07.20b｜2026-07-20｜移除 blindbox_mode2 盒子圖片上傳欄位
 
 ### 後台商品編輯頁
