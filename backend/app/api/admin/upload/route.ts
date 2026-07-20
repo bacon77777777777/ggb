@@ -6,7 +6,7 @@ import { compressToWebP } from '@/lib/imageCompress'
 export async function POST(request: Request) {
   try {
     const session = await requireAdminSession()
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!session) return NextResponse.json({ error: '請重新登入（session 已過期）' }, { status: 401 })
 
     const form = await request.formData()
     const file = form.get('file')

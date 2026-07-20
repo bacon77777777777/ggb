@@ -116,21 +116,6 @@ export default function NewProductPage() {
     { value: '店鋪限定', label: '店鋪限定 Store Limited' },
     { value: '首批限定', label: '首批限定 First Edition' },
   ]
-  const cardLevels = [
-    { value: 'N', label: 'N' },
-    { value: 'R', label: 'R' },
-    { value: 'SR', label: 'SR' },
-    { value: 'SSR', label: 'SSR' },
-    { value: 'UR', label: 'UR' },
-    { value: 'LR', label: 'LR' },
-    { value: 'SP', label: 'SP' },
-    { value: 'SEC', label: 'SEC' },
-    { value: 'PR', label: 'PR' },
-    { value: 'HR', label: 'HR' },
-    { value: 'GR', label: 'GR' },
-    { value: 'MR', label: 'MR' },
-    { value: 'CHR', label: 'CHR' },
-  ]
 
   // 在客戶端設置日期，避免 Hydration Error
   useEffect(() => {
@@ -780,7 +765,6 @@ export default function NewProductPage() {
                               <option value="">等級</option>
                               {(formData.type === 'gacha' ? gachaLevels
                                 : formData.type === 'blindbox' ? blindboxLevels
-                                : formData.type === 'card' ? cardLevels
                                 : ichibanLevels).map(level => (
                                   <option key={level.value} value={level.value}>{level.label}</option>
                               ))}

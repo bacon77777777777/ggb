@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import { Loader2, Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
@@ -31,6 +32,7 @@ export default function BlindboxDetailPage() {
   const [product, setProduct] = useState<ProductRow | null>(null);
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMachineReady, setIsMachineReady] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
@@ -280,30 +282,8 @@ export default function BlindboxDetailPage() {
 
     setIsProcessing(true);
     try {
-      // Refresh latest remaining before purchasing to avoid stale state
-      let latestRemaining = product.remaining ?? 0;
-      try {
-        const { data: latest } = await supabase
-          .from('products')
-          .select('remaining, status')
-          .eq('id', product.id)
-          .single();
-        if (latest) {
-          latestRemaining = latest.remaining ?? latestRemaining;
-          setProduct((prev) => (prev ? { ...prev, ...latest } as ProductRow : prev));
-          if (latest.status === 'ended' || latestRemaining <= 0) {
-            setIsPurchaseModalOpen(false);
-            showToast('商品已完抽', 'info');
-            setIsProcessing(false);
-            return;
-          }
-        }
-      } catch {
-        // ignore refresh failure and proceed with local value
-      }
-
-      // Clamp quantity with the refreshed remaining
-      const clampedQty = Math.min(Math.max(1, quantity), Math.max(1, latestRemaining));
+      // Use local remaining — server validates stock in play_gacha_locked anyway
+      const clampedQty = Math.min(Math.max(1, quantity), Math.max(1, product.remaining ?? 1));
       if (clampedQty < quantity) {
         showToast(`剩餘數量不足，已調整為 ${clampedQty} 抽`, 'info');
       }
@@ -434,6 +414,22 @@ export default function BlindboxDetailPage() {
     }
   }, [isVideoOpen, videoMode]);
 
+  useEffect(() => {
+    if (!isLoading && product) {
+      const theme = (product as any).machine_theme;
+      if (theme !== 'blindbox_mode2' && theme !== 'blindbox_mode3') {
+        setIsMachineReady(true);
+      }
+    }
+  }, [isLoading, product]);
+
+  useEffect(() => {
+    if (!isLoading && !isMachineReady) {
+      const t = setTimeout(() => setIsMachineReady(true), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading, isMachineReady]);
+
   const handlePrizeClose = async () => {
     setIsPrizeModalOpen(false);
     setMode2State('idle');  // resets shelf to full in mode2
@@ -460,16 +456,7 @@ export default function BlindboxDetailPage() {
   }));
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-        <div className="flex flex-col items-center gap-4 text-white">
-          <Loader2 className="w-12 h-12 animate-spin text-white" />
-          <p className="text-white font-bold tracking-widest text-lg animate-pulse">
-            資源下載中...
-          </p>
-        </div>
-      </div>
-    );
+    return <ProductLoadingScreen />;
   }
 
   if (!product) {
@@ -486,8 +473,11 @@ export default function BlindboxDetailPage() {
   }
 
   return (
+    <>
+    {!isMachineReady && <ProductLoadingScreen />}
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
+      style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
     >
       <div className="w-full flex justify-center">
         <div
@@ -511,6 +501,7 @@ export default function BlindboxDetailPage() {
                   onPurchase={handlePlay}
                   onTrial={handleTrial}
                   isSoldOut={isSoldOut}
+                  onLoaded={() => setIsMachineReady(true)}
                 />
               </div>
             ) : (product as any).machine_theme === 'blindbox_mode3' ? (
@@ -525,6 +516,7 @@ export default function BlindboxDetailPage() {
                   onPurchase={handlePlay}
                   onTrial={handleTrial}
                   isSoldOut={isSoldOut}
+                  onLoaded={() => setIsMachineReady(true)}
                 />
               </div>
             ) : (
@@ -779,5 +771,6 @@ export default function BlindboxDetailPage() {
         />
       )}
     </div>
+    </>
   );
 }

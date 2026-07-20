@@ -16,6 +16,7 @@ interface GachaMachineMode4Props {
   isSoldOut?: boolean;
   pushSoundMode?: 'manual' | 'auto';
   hasHighTierPending?: boolean;
+  disableButtons?: boolean;
 }
 
 const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
@@ -67,6 +68,7 @@ export function GachaMachineMode4({
   isSoldOut = false,
   pushSoundMode = 'auto',
   hasHighTierPending,
+  disableButtons = false,
 }: GachaMachineMode4Props) {
   const createInitialEggs = (): Egg[] => {
     const count = 15;
@@ -348,7 +350,7 @@ export function GachaMachineMode4({
         src="/images/gacha/mode4/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={() => {
@@ -362,19 +364,19 @@ export function GachaMachineMode4({
         src="/images/gacha/mode4/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && onPurchase) onPurchase(); }}
+        onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       />
       <ImageButton
         src="/images/gacha/mode4/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && onTrial) onTrial(); }}
+        onClick={() => { if (!isSoldOut && !disableButtons && onTrial) onTrial(); }}
       />
 
       {isSoldOut && (

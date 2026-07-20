@@ -560,7 +560,7 @@ export function PurchaseConfirmationModal({
                   {isSoldOut
                     ? '商品已完抽'
                     : isProcessing
-                      ? '處理中...'
+                      ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />處理中...</span>
                       : usePoints
                         ? `確認支付 ${pointsCost.toLocaleString()} 積分`
                         : `確認支付 ${finalPrice.toLocaleString()} 代幣`}

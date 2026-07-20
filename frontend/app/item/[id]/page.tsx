@@ -8,6 +8,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
+import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
@@ -356,6 +357,7 @@ export default function ProductDetailPage() {
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMachineReady, setIsMachineReady] = useState(false);
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
 
   const [isFollowed, setIsFollowed] = useState(false);
@@ -1049,6 +1051,21 @@ export default function ProductDetailPage() {
     };
   }, [params.id, fetchData, showToast]);
 
+  // Non-gacha types don't have a machine image gate — mark ready as soon as DB loads
+  useEffect(() => {
+    if (!isLoading && product && product.type !== 'gacha') {
+      setIsMachineReady(true);
+    }
+  }, [isLoading, product]);
+
+  // 3s fallback in case machine image never fires onLoaded
+  useEffect(() => {
+    if (!isLoading && !isMachineReady) {
+      const t = setTimeout(() => setIsMachineReady(true), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading, isMachineReady]);
+
   useEffect(() => {
     const loadModuleSettings = () => {
       supabase.from('module_settings').select('product_type, machine_theme').then(({ data }) => {
@@ -1163,15 +1180,7 @@ export default function ProductDetailPage() {
   // };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-        {/* Remove duplicated loading indicator */}
-        <div className="flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="w-8 h-8 animate-spin" />
-          <span className="text-xs font-black tracking-widest">載入商品中...</span>
-        </div>
-      </div>
-    );
+    return <ProductLoadingScreen />;
   }
 
   if (!product) {
@@ -1226,7 +1235,14 @@ export default function ProductDetailPage() {
 
   if (product.type === 'gacha') {
     const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'gacha_classic'
-    return <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} />;
+    return (
+      <>
+        {!isMachineReady && <ProductLoadingScreen />}
+        <div style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}>
+          <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} onMachineReady={() => setIsMachineReady(true)} />
+        </div>
+      </>
+    );
   }
 
   // Handle back button click

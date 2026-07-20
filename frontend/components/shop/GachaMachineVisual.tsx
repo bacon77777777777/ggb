@@ -14,6 +14,7 @@ interface GachaMachineVisualProps {
   isSoldOut?: boolean;
   pushSoundMode?: 'manual' | 'auto';
   hasHighTierPending?: boolean;
+  disableButtons?: boolean;
 }
 
 const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
@@ -71,6 +72,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
     isSoldOut = false,
     pushSoundMode = 'auto',
     hasHighTierPending,
+    disableButtons = false,
   } = props;
   const createInitialEggs = (): Egg[] => {
     const count = 15;
@@ -528,7 +530,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '5.33%',
@@ -538,7 +540,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (isSoldOut) return;
+          if (isSoldOut || disableButtons) return;
           const audio = manualPushSoundRef.current;
           if (audio) {
             audio.currentTime = 0;
@@ -552,7 +554,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '31.73%',
@@ -562,7 +564,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (!isSoldOut && onPurchase) onPurchase();
+          if (!isSoldOut && !disableButtons && onPurchase) onPurchase();
         }}
       />
 
@@ -570,7 +572,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '69.6%',
@@ -580,7 +582,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (!isSoldOut && onTrial) onTrial();
+          if (!isSoldOut && !disableButtons && onTrial) onTrial();
         }}
       />
 

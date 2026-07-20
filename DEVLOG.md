@@ -4,6 +4,120 @@
 
 ---
 
+## v2026.07.20i｜2026-07-20｜商品建立修正（抽卡賞等 + R2 憑證更新）
+
+### 抽卡商品賞等改為一翻賞制（A賞～J賞）
+- 移除 `cardLevels`（N/R/SR/SSR/UR/LR/SP/SEC/PR/HR/GR/MR/CHR）
+- 抽卡類型改用 `ichibanLevels`，與一翻賞/自製賞統一（新增頁 + 編輯頁同步）
+
+### R2 API Token 更新
+- 舊 token 失效（signature mismatch），在 Cloudflare dashboard Roll 後更新 `R2_SECRET_ACCESS_KEY`
+- 同步更新 `backend/.env.local` 和 `frontend/.env.local`
+
+### Upload route 401 錯誤訊息改善
+- 原本「Unauthorized」改為「請重新登入（session 已過期）」，更容易 debug
+
+---
+
+## v2026.07.20h｜2026-07-20｜統一 Loading 畫面（全商品類型）
+
+### 統一商品頁 Loading 畫面
+- 新增 `ProductLoadingScreen` 共用元件（`frontend/components/ui/ProductLoadingScreen.tsx`）：淺色背景 + Loader2 spinner + 「載入商品中...」
+- **轉蛋（gacha）**：機台圖片載入完成後才顯示內容，載入期間 content hidden-render（避免 layout shift）；GachaProductDetail 新增 `onMachineReady` prop
+- **盒玩（blindbox_mode2/3）**：`onLoaded` 觸發 `isMachineReady`，機台主圖下載完成後才撤除 Loading；其他盒玩主題（影片）資源載入後立即 ready
+- **一翻賞/抽卡/自製賞**：DB 資料就緒即 ready，無機台圖片等待
+- **3s 安全 fallback**：圖片載入失敗或超時，3 秒後強制顯示內容
+- 統一替換舊的深色「資源下載中...」Loading 畫面
+
+---
+
+## v2026.07.20g｜2026-07-20｜盒玩落地快速穩定 + 換一批不禁用 + 購買速度優化
+
+### 盒玩物理徹底重寫（mode2/3）
+- **根本原因**：spring 在落地後把 avZ 從 0.03 rad/s 拉升到 3 rad/s，造成持續旋轉；`callDone` snap 跳到 targetAngleZ（最多 84° 跳動）
+- **修法**：移除 spring，改純摩擦衰減（`avZ *= 0.80`）；落地瞬間 `avZ *= 0.30` 立刻切速；不設 targetAngleZ，callDone 保留 angleZ 原位不 snap
+- 落地後 ~0.3 秒內 Z 旋轉停止，X/Y lerp 0.35 快速收斂到 BASE_AX/BASE_AY
+- 碰撞 spin 只加給未落地盒子，防止已落地盒子被連續擾動
+
+### 換一批點擊後三顆按鈕不禁用（mode2/3）
+- 移除 `isShuffling` 禁用條件；立即開盒/試試看 onClick guard 同步移除
+
+### 購買流程加速（blindbox + 所有 gacha）
+- 移除購買前的庫存 pre-check refresh（省 200-500ms RTT），server 端已在 `play_gacha_locked` 做驗證
+- API route `getUser()` 改 `getSession()`，避免 Supabase Auth server 額外請求（省 100-300ms）
+
+---
+
+## v2026.07.20f｜2026-07-20｜盒玩落地物理平滑化 + 取物口蓋板改由圖片實現
+
+### 盒玩落地物理平滑化（mode2/3）
+- **問題**：盒子落地後會跳成停止（離散 lerp + 硬 snap），視覺上不連貫
+- **修法**：改用漸進式阻尼 + spring force，落地後 0~800ms 內阻尼從 0.88 漸升至 0.97，同時以 spring 向目標角度收斂
+- 新常數 `ANG_FRIC_LAND = 0.88`、`ROT_FRIC_LAND = 0.84`
+- `allSettled` 改為角速度門檻判斷（`avZ < 0.10`、`avX/Y < 2.0`）+ 2500ms 安全 fallback
+
+### 取物口蓋板改由美術圖實現
+- 移除 CSS `filter: invert(1) opacity(0.5)` 的 hole.svg 黑遮罩
+- 效果改由 `hole_bg.png` 美術圖直接呈現（mode2/3 主圖同步更新）
+
+---
+
+## v2026.07.20e｜2026-07-20｜盒玩取物口蓋板 + 換一批禁用補完 + 圖片補 git
+
+### 盒玩機取物口黑色半透明蓋板（mode2/3）
+- 新增常駐黑色圓角矩形遮罩模擬塑膠透明蓋效果
+- 使用 `hole.svg`（510×167 rx=80 rounded rect）作為形狀，`filter: invert(1) opacity(0.5)` 轉成 50% 黑色
+- 改用百分比定位（120/750, 570/932, 510/750, 167/932）解決固定像素在縮放容器中位置偏移的問題
+- 點擊取物 click area 改為 z=14（覆蓋於蓋板之上）
+
+### 換一批按鈕禁用補完（mode2/3）
+- 補上 `readyToPick` 條件，確保盒子落地等待取物時三顆按鈕全部禁用
+
+### 補上未追蹤的靜態圖片資源
+- `frontend/public/images/blindbox/mode3/box/1-6.png`、`mode2/box.svg`、`mode3/box.svg` 首次加入 git 追蹤
+- 先前只存在本機，staging 部署後找不到 3D 盒子六面圖
+
+---
+
+## v2026.07.20d｜2026-07-20｜換一批3D盒消失修正 + 按鈕禁用邏輯統一
+
+### 換一批動畫 3D 盒子消失 bug 修正（BlindboxMode2/3）
+- **根本原因**：CSS `opacity < 1` 在同一 DOM 元素套用 `transform-style:preserve-3d` 會強制建立 stacking context，導致 3D 塌成 2D 單面（只剩 4.png 正面）
+- **修法**：shelf 盒子改用兩層 div — 外層處理 opacity 動畫（無 preserve-3d），內層處理 3D transform 動畫（無 opacity）
+- shuffle keyframe 拆成 `ggb-3d-shuffle-fade` + `ggb-3d-shuffle-transform-c${col}` 分開跑
+
+### 轉蛋/盒玩所有模組按鈕禁用邏輯統一
+- **轉蛋機（GachaMachineVisual/Mode2/3/4）**：
+  - 新增 `disableButtons` prop，由 GachaProductDetail 統一計算（`machineState !== 'idle' && !isPushShaking`）
+  - 推一下（shaking 200ms）→ 三顆按鈕**不禁用**
+  - 立即轉蛋/試試看（spinning→result）→ 三顆全禁用直到關閉恭喜獲得彈窗
+- **盒玩機（BlindboxMode2/3）**：
+  - 換一批動效中（`isShuffling`）→ 三顆全禁用（原本立即開盒/試試看漏掉此條件）
+  - 立即開盒/試試看 → 三顆全禁用直到關閉彈窗
+
+---
+
+## v2026.07.20b｜2026-07-20｜移除 blindbox_mode2 盒子圖片上傳欄位
+
+### 後台商品編輯頁
+- 移除 `blindbox_mode2` 專用的盒子圖片上傳欄位
+- 兩個模式（mode2/mode3）現在都用固定六面圖，上傳欄位已無作用
+
+---
+
+## v2026.07.20a｜2026-07-20｜BlindboxMode2 升級3D盒子 + 全機台禁用按鈕修正
+
+### BlindboxMachineMode2 升級 3D 立體盒
+- 完整移植 Mode3 的 CSS preserve-3d 系統，Box3DFaces 六面圖（共用 `mode3/box/1-6.png`）
+- SHELF_SCALE=0.82、透視旋轉、CSS keyframe 前位移 → 翻倒（名稱加 `-m2` 後綴避免衝突）
+- 物理引擎升級：angleX/Y/Z 三軸旋轉，落地後 lerp 歸位，10 抽空中碰撞有 3D 角衝量
+
+### 全機台禁用按鈕移除透明度
+- 售完/換一批禁用狀態移除 `opacity-40`，只保留 `grayscale`
+- 涵蓋：BlindboxMode2/3、GachaMachineVisual、GachaModeMode2/3/4
+
+---
+
 ## v2026.07.19d｜2026-07-19｜blindbox_mode3 叢林探險 + 換一批動畫 + UI 修正
 
 ### 新模組：blindbox_mode3（叢林探險販賣機）
