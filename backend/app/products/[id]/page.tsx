@@ -113,21 +113,6 @@ export default function EditProductPage() {
     { value: '店鋪限定', label: '店鋪限定 Store Limited' },
     { value: '首批限定', label: '首批限定 First Edition' },
   ]
-  const cardLevels = [
-    { value: 'N', label: 'N' },
-    { value: 'R', label: 'R' },
-    { value: 'SR', label: 'SR' },
-    { value: 'SSR', label: 'SSR' },
-    { value: 'UR', label: 'UR' },
-    { value: 'LR', label: 'LR' },
-    { value: 'SP', label: 'SP' },
-    { value: 'SEC', label: 'SEC' },
-    { value: 'PR', label: 'PR' },
-    { value: 'HR', label: 'HR' },
-    { value: 'GR', label: 'GR' },
-    { value: 'MR', label: 'MR' },
-    { value: 'CHR', label: 'CHR' },
-  ]
   const [prizes, setPrizes] = useState<Array<{
     id: string
     name: string
@@ -886,7 +871,7 @@ export default function EditProductPage() {
                             }}
                           >
                             <option value="">— 選擇等級 —</option>
-                            {(formData.type === 'card' ? cardLevels : ichibanLevels).map(level => (
+                            {ichibanLevels.map(level => (
                               <option key={level.value} value={level.value}>{level.label}</option>
                             ))}
                           </SelectField>
