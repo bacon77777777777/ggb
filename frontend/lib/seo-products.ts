@@ -38,6 +38,22 @@ export async function fetchProductById(productId: number): Promise<DbProduct | n
   return data as DbProduct
 }
 
+const TYPE_LABEL: Record<string, string> = {
+  ichiban: '線上一番賞',
+  blindbox: '線上盲盒',
+  gacha: '線上轉蛋',
+  card: '線上抽卡',
+  custom: '線上抽獎',
+}
+
+const TYPE_KEYWORD: Record<string, string> = {
+  ichiban: '線上一番賞 台灣一番賞 日本一番賞',
+  blindbox: '線上盲盒 盲盒 盒玩',
+  gacha: '線上轉蛋 轉蛋台灣 日本扭蛋',
+  card: '線上抽卡 卡牌 集換式卡牌',
+  custom: '線上抽獎',
+}
+
 export function buildProductMetadata(product: DbProduct | null): Metadata {
   const siteUrl = getSiteUrl()
 
@@ -51,27 +67,50 @@ export function buildProductMetadata(product: DbProduct | null): Metadata {
 
   const { path } = productRoutePath(product)
   const canonical = `${siteUrl}${path}`
-  const title = `${product.name}｜${product.type === 'ichiban' ? '一番賞' : product.type === 'blindbox' ? '盲盒' : product.type === 'gacha' ? '轉蛋' : product.type === 'card' ? '卡包' : '商品'}`
+  const typeLabel = TYPE_LABEL[product.type ?? ''] ?? '線上抽獎'
+  const title = `${product.name}｜${typeLabel} 吉吉比`
+
+  const series = (product as any).series?.trim()
+  const price = product.price ?? 0
+  const remaining = product.remaining
+  const priceStr = price > 0 ? `${price} G／抽` : ''
+  const remainStr = typeof remaining === 'number' && remaining > 0 ? `剩 ${remaining} 個` : ''
 
   const descriptionRaw = product.description?.trim()
-  const description =
-    descriptionRaw ||
-    `立即查看「${product.name}」資訊：價格、剩餘數量、獎池內容與抽獎玩法。`
+  const autoDesc = [
+    `立即在吉吉比線上抽「${product.name}」`,
+    series ? `（${series}系列）` : '',
+    priceStr && remainStr ? `，${priceStr}，${remainStr}。` : priceStr ? `，${priceStr}。` : '。',
+    `公正透明、即抽即看、安全宅配到府。`,
+    TYPE_KEYWORD[product.type ?? ''] ?? '',
+  ].join('')
+
+  const description = descriptionRaw ? `${descriptionRaw.slice(0, 100)} — ${typeLabel} | 吉吉比` : autoDesc
 
   const imagePath = product.image_url || '/images/item.png'
-  const images = imagePath.startsWith('http') ? [imagePath] : [`${siteUrl}${imagePath}`]
+  const imageUrl = imagePath.startsWith('http') ? imagePath : `${siteUrl}${imagePath}`
+  const images = [{ url: imageUrl, width: 800, height: 800, alt: `${product.name} ${typeLabel}` }]
 
   const noindexStatuses = new Set(['pending', 'inactive', 'archived'])
   const shouldIndex = !noindexStatuses.has(String(product.status || ''))
 
+  const keywords = [
+    product.name,
+    series,
+    typeLabel,
+    TYPE_KEYWORD[product.type ?? ''],
+    '吉吉比', 'GGB',
+  ].filter(Boolean).join(', ')
+
   return {
     title,
     description,
+    keywords,
     alternates: { canonical },
     openGraph: {
       type: 'website',
       url: canonical,
-      siteName: '吉吉比',
+      siteName: '吉吉比 GGB',
       locale: 'zh_TW',
       title,
       description,
@@ -81,7 +120,7 @@ export function buildProductMetadata(product: DbProduct | null): Metadata {
       card: 'summary_large_image',
       title,
       description,
-      images,
+      images: [imageUrl],
     },
     robots: {
       index: shouldIndex,
