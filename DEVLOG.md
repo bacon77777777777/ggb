@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.20a｜2026-07-20｜BlindboxMode2 升級3D盒子 + 全機台禁用按鈕修正
+
+### BlindboxMachineMode2 升級 3D 立體盒
+- 完整移植 Mode3 的 CSS preserve-3d 系統，Box3DFaces 六面圖（共用 `mode3/box/1-6.png`）
+- SHELF_SCALE=0.82、透視旋轉、CSS keyframe 前位移 → 翻倒（名稱加 `-m2` 後綴避免衝突）
+- 物理引擎升級：angleX/Y/Z 三軸旋轉，落地後 lerp 歸位，10 抽空中碰撞有 3D 角衝量
+
+### 全機台禁用按鈕移除透明度
+- 售完/換一批禁用狀態移除 `opacity-40`，只保留 `grayscale`
+- 涵蓋：BlindboxMode2/3、GachaMachineVisual、GachaModeMode2/3/4
+
+---
+
 ## v2026.07.19d｜2026-07-19｜blindbox_mode3 叢林探險 + 換一批動畫 + UI 修正
 
 ### 新模組：blindbox_mode3（叢林探險販賣機）
