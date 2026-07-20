@@ -106,6 +106,17 @@ const downloadCsv = (items: WorkItem[]) => {
   document.body.removeChild(a)
 }
 
+// ─── Competitor list ─────────────────────────────────────────────────────────
+
+const COMPETITORS = [
+  { name: 'SlimeToy（台灣一番賞）', url: 'https://slimetoy.com.tw/' },
+  { name: 'Dopamine Kuji（日本一番賞）', url: 'https://dopaminekuji.com/' },
+  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/zh-TW/oripa/All' },
+  { name: 'AKIBAOO（秋葉原景品）', url: 'https://www.akibaoo.com/tw/category/ichiban-kuji/' },
+  { name: '迪迪熊轉蛋（台灣）', url: 'https://www.didi-bear.com/' },
+  { name: '玩具人（台灣）', url: 'https://www.toy-people.com/' },
+]
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ToolsPage() {
@@ -117,6 +128,7 @@ export default function ToolsPage() {
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
   const [imageModal, setImageModal] = useState<{ url: string; alt: string } | null>(null)
+  const [showCompetitors, setShowCompetitors] = useState(false)
 
   const isRunning = phase === 'discovering' || phase === 'scraping' || phase === 'ai-filling'
 
@@ -275,6 +287,13 @@ export default function ToolsPage() {
               className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary disabled:opacity-50"
             />
             <button
+              onClick={() => setShowCompetitors(v => !v)}
+              disabled={isRunning}
+              className="px-4 py-2 border border-neutral-200 bg-white text-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 shrink-0"
+            >
+              競品列表 {showCompetitors ? '▲' : '▼'}
+            </button>
+            <button
               onClick={() => void handleStart()}
               disabled={!inputUrl.trim() || isRunning}
               className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 shrink-0"
@@ -282,6 +301,40 @@ export default function ToolsPage() {
               {isRunning ? '讀取中...' : '開始讀取'}
             </button>
           </div>
+
+          {/* Competitor list dropdown */}
+          {showCompetitors && (
+            <div className="mt-3 rounded-lg border border-neutral-200 overflow-hidden">
+              {COMPETITORS.map((c, i) => (
+                <div
+                  key={c.url}
+                  className={`flex items-center justify-between px-3 py-2.5 gap-3 ${i > 0 ? 'border-t border-neutral-100' : ''} hover:bg-neutral-50 transition-colors`}
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-neutral-800">{c.name}</div>
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-neutral-400 hover:text-primary hover:underline truncate block"
+                    >
+                      {c.url}
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setInputUrl(c.url)
+                      setShowCompetitors(false)
+                    }}
+                    className="px-3 py-1 text-xs font-medium bg-neutral-900 text-white rounded-md hover:bg-black transition-colors shrink-0"
+                  >
+                    帶入
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
 
           {/* Progress bar */}
           {(isRunning || phase === 'done') && (
