@@ -184,9 +184,11 @@ export function BlindboxMachineMode2({
     const BOX_RES      = 0.12;
     const FLOOR_RES    = 0.18;
     const FRICTION     = 0.975;
-    const ANG_FRIC_AIR = 0.92;
-    const ROT_FRIC     = 0.97;
-    const SETTLE_V     = 1.5;
+    const ANG_FRIC_AIR  = 0.92;
+    const ROT_FRIC      = 0.97;
+    const ANG_FRIC_LAND = 0.88;
+    const ROT_FRIC_LAND = 0.84;
+    const SETTLE_V      = 1.5;
 
     let lastTime: number | null = null;
     let settledCalled = false;
@@ -211,19 +213,20 @@ export function BlindboxMachineMode2({
           b.angleY += b.avY * dt;
           b.avY    *= ROT_FRIC;
         } else {
-          if (Date.now() - b.landedAt > 500) {
-            b.angleZ = b.targetAngleZ;
-            b.angleX = BASE_AX;
-            b.angleY = BASE_AY;
-            b.avX = 0; b.avY = 0; b.avZ = 0;
-            b.vx = 0; b.vy = 0;
-          } else {
-            const dz = b.targetAngleZ - b.angleZ;
-            b.angleZ = Math.abs(dz) < 0.02 ? b.targetAngleZ : b.angleZ + dz * 0.25;
-            b.angleX += (BASE_AX - b.angleX) * 0.20;
-            b.angleY += (BASE_AY - b.angleY) * 0.20;
-            b.avX = 0; b.avY = 0;
-          }
+          const settleAge = (Date.now() - b.landedAt) / 1000;
+          const t = Math.min(1, settleAge / 0.8);
+          const dampZ  = ANG_FRIC_LAND  + t * (0.97 - ANG_FRIC_LAND);
+          const dampXY = ROT_FRIC_LAND  + t * (0.97 - ROT_FRIC_LAND);
+          b.angleZ += b.avZ * dt;
+          b.avZ    *= dampZ;
+          b.angleX += b.avX * dt;
+          b.avX    *= dampXY;
+          b.angleY += b.avY * dt;
+          b.avY    *= dampXY;
+          const spring = 0.03 + t * 0.10;
+          b.avZ += (b.targetAngleZ - b.angleZ) * spring;
+          b.avX += (BASE_AX - b.angleX) * spring * 0.5;
+          b.avY += (BASE_AY - b.angleY) * spring * 0.5;
         }
 
         const floorY = b.depth === 0 ? FRONT_FLOOR : BACK_FLOOR;
@@ -285,12 +288,10 @@ export function BlindboxMachineMode2({
       const now = Date.now();
       const allSettled = cur.length > 0 && cur.every(b => {
         if (!b.landed) return false;
-        if (b.landedAt > 0 && now - b.landedAt > 500) return true;
-        const slow = Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V;
-        const atZ  = b.angleZ === b.targetAngleZ;
-        const atX  = Math.abs(b.angleX - BASE_AX) < 1.5;
-        const atY  = Math.abs(b.angleY - BASE_AY) < 1.5;
-        return slow && atZ && atX && atY;
+        if (b.landedAt > 0 && now - b.landedAt > 2500) return true;
+        const posSlow = Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V;
+        const angSlow = Math.abs(b.avZ) < 0.10 && Math.abs(b.avX) < 2.0 && Math.abs(b.avY) < 2.0;
+        return posSlow && angSlow;
       });
 
       if (!settledCalled && allSettled) {
@@ -591,26 +592,6 @@ export function BlindboxMachineMode2({
       {/* hole_bg (z=12): opaque overlay with transparent oval */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
         <Image src="/images/blindbox/mode2/hole_bg.png" alt="" fill className="object-fill" unoptimized />
-      </div>
-
-      {/* 取物口黑色半透明蓋板（模擬塑膠透明蓋，z=13，常駐） */}
-      <div
-        className="pointer-events-none"
-        style={{
-          position: 'absolute',
-          left: `${(120/750)*100}%`,
-          top: `${(570/932)*100}%`,
-          width: `${(510/750)*100}%`,
-          height: `${(167/932)*100}%`,
-          zIndex: 13,
-        }}
-      >
-        <Image
-          src="/images/blindbox/mode2/hole.svg"
-          alt="" fill className="object-fill"
-          style={{ filter: 'invert(1) opacity(0.5)' }}
-          unoptimized
-        />
       </div>
 
       {/* Retrieval slot click area (z=14) */}
