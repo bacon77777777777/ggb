@@ -528,7 +528,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '5.33%',
@@ -538,7 +538,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (isSoldOut || state !== 'idle') return;
+          if (isSoldOut || (state !== 'idle' && state !== 'shaking')) return;
           const audio = manualPushSoundRef.current;
           if (audio) {
             audio.currentTime = 0;
@@ -552,7 +552,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '31.73%',
@@ -562,7 +562,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (!isSoldOut && state === 'idle' && onPurchase) onPurchase();
+          if (!isSoldOut && (state === 'idle' || state === 'shaking') && onPurchase) onPurchase();
         }}
       />
 
@@ -570,7 +570,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         src="/images/gacha/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || (state !== 'idle' && state !== 'shaking') ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{
           left: '69.6%',
@@ -580,7 +580,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
           zIndex: 20,
         }}
         onClick={() => {
-          if (!isSoldOut && state === 'idle' && onTrial) onTrial();
+          if (!isSoldOut && (state === 'idle' || state === 'shaking') && onTrial) onTrial();
         }}
       />
 
