@@ -108,25 +108,25 @@ const downloadCsv = (items: WorkItem[]) => {
 
 // ─── Competitor list ─────────────────────────────────────────────────────────
 
-const COMPETITORS = [
-  { name: 'Bandai 官方扭蛋商店', url: 'https://bandainamco-am.co.jp/zh-CHT/others/gashapon-bandai-officialshop/item/' },
-  { name: 'Gashapon 官方（JP）', url: 'https://gashapon.jp/' },
-  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/' },
+const COMPETITORS: { name: string; url: string; note?: string }[] = [
   { name: 'SlimeToy 台灣', url: 'https://slimetoy.com.tw/' },
   { name: 'Dopamine Kuji', url: 'https://dopaminekuji.com/' },
-  { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },
   { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/zh-TW/oripa/All' },
-  { name: '一番賞 Online（官方）', url: 'https://on-line.1kuji.com/' },
-  { name: '一番賞 Official（JP）', url: 'https://1kuji.com/' },
-  { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },
-  { name: 'CityDAO', url: 'https://citydao.world/' },
+  { name: '一番賞 Online（官方）', url: 'https://on-line.1kuji.com/Form/Product/ProductList.aspx' },
+  { name: '一番賞 Official（JP）', url: 'https://1kuji.com/products' },
+  { name: 'OneOne 台灣', url: 'https://www.oneone.com.tw/shop' },
+  { name: 'Wonder Kuji 台灣', url: 'https://wonderkuji.com.tw/kujiland' },
   { name: '籤引道 台灣', url: 'https://kujibikido.tw/' },
-  { name: 'One More Lottery', url: 'https://onemorelottery.tw/home' },
-  { name: 'SEGA Lucky Kuji Online', url: 'https://www.segaluckykujionline.net/' },
-  { name: 'EggBox Kuji', url: 'https://eggboxkuji.com/lottery' },
-  { name: 'OneOne 台灣', url: 'https://www.oneone.com.tw/' },
-  { name: 'Wonder Kuji 台灣', url: 'https://wonderkuji.com.tw/' },
+  { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },
+  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/' },
+  { name: 'Gashapon 官方（JP）', url: 'https://gashapon.jp/products/' },
+  { name: 'Bandai 官方扭蛋', url: 'https://bandainamco-am.co.jp/zh-CHT/others/gashapon-bandai-officialshop/item/' },
+  { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },
   { name: 'Konami Premium Kuji', url: 'https://premiumkuji.konami.net/' },
+  { name: 'CityDAO', url: 'https://citydao.world/', note: 'SPA，可能無法爬取' },
+  { name: 'EggBox Kuji', url: 'https://eggboxkuji.com/lottery', note: 'SPA，可能無法爬取' },
+  { name: 'One More Lottery', url: 'https://onemorelottery.tw/home', note: 'SPA，可能無法爬取' },
+  { name: 'SEGA Lucky Kuji Online', url: 'https://www.segaluckykujionline.net/', note: 'SPA，可能無法爬取' },
 ]
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -323,7 +323,10 @@ export default function ToolsPage() {
                   className={`flex items-center justify-between px-3 py-2.5 gap-3 ${i > 0 ? 'border-t border-neutral-100' : ''} hover:bg-neutral-50 transition-colors`}
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-neutral-800">{c.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-neutral-800">{c.name}</span>
+                      {c.note && <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{c.note}</span>}
+                    </div>
                     <a
                       href={c.url}
                       target="_blank"

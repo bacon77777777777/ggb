@@ -144,7 +144,9 @@ const extractGenericProductLinks = (html: string, base: URL, limit: number) => {
     const first = segments[0].toLowerCase()
     if (NON_PRODUCT_PATH_SEGMENTS.has(first) && segments.length <= 2) continue
 
-    sameOriginLinks.push(u.origin + u.pathname)
+    // Keep query string — some sites use ?id= or ?pid= to identify products
+    const fullUrl = u.origin + u.pathname + u.search
+    sameOriginLinks.push(fullUrl)
   }
 
   if (sameOriginLinks.length === 0) return []
@@ -153,9 +155,10 @@ const extractGenericProductLinks = (html: string, base: URL, limit: number) => {
   const patternLinks = new Map<string, Set<string>>()
   for (const link of sameOriginLinks) {
     try {
-      const segs = new URL(link).pathname.split('/').filter(Boolean)
-      if (segs.length < 2) continue
-      const pattern = `/${segs[0]}/`
+      const u2 = new URL(link)
+      const segs = u2.pathname.split('/').filter(Boolean)
+      // For query-string sites (path has 1 segment but has search params), use pathname as pattern
+      const pattern = segs.length >= 2 ? `/${segs[0]}/` : u2.pathname
       if (!patternLinks.has(pattern)) patternLinks.set(pattern, new Set())
       patternLinks.get(pattern)!.add(link)
     } catch {
