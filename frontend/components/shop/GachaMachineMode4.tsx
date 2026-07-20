@@ -348,7 +348,7 @@ export function GachaMachineMode4({
         src="/images/gacha/mode4/btn2.png"
         alt="推一下"
         text="推一下"
-        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={() => {
@@ -362,19 +362,19 @@ export function GachaMachineMode4({
         src="/images/gacha/mode4/btn1.png"
         alt="立即轉蛋"
         text="立即轉蛋"
-        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && onPurchase) onPurchase(); }}
+        onClick={() => { if (!isSoldOut && state === 'idle' && onPurchase) onPurchase(); }}
       />
       <ImageButton
         src="/images/gacha/mode4/btn2.png"
         alt="試試看"
         text="試試看"
-        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || state !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && onTrial) onTrial(); }}
+        onClick={() => { if (!isSoldOut && state === 'idle' && onTrial) onTrial(); }}
       />
 
       {isSoldOut && (

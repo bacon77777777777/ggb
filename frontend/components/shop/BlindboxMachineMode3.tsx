@@ -635,22 +635,22 @@ export function BlindboxMachineMode3({
       {/* Buttons (z=20) */}
       <ImageButton
         src="/images/blindbox/mode3/btn2.png" alt="換一批" text="換一批"
-        className={`absolute ${isSoldOut || isShuffling ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || isShuffling || machineState !== 'idle' ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
         src="/images/blindbox/mode3/btn1.png" alt="立即開盒" text="立即開盒"
-        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => onPurchase?.()} />
+        onClick={() => { if (machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
       <ImageButton
         src="/images/blindbox/mode3/btn2.png" alt="試試看" text="試試看"
-        className={`absolute ${isSoldOut ? 'grayscale pointer-events-none' : ''}`}
+        className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => onTrial?.()} />
+        onClick={() => { if (machineState === 'idle' && !readyToPick) onTrial?.(); }} />
 
       {isSoldOut && (
         <div
