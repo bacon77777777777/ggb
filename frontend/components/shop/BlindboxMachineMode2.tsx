@@ -279,8 +279,10 @@ export function BlindboxMachineMode2({
       physRef.current = cur;
       setPhysBoxes([...cur]);
 
+      const now = Date.now();
       const allSettled = cur.length > 0 && cur.every(b => {
         if (!b.landed) return false;
+        if (b.landedAt > 0 && now - b.landedAt > 500) return true;
         const slow = Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V;
         const atZ  = b.angleZ === b.targetAngleZ;
         const atX  = Math.abs(b.angleX - BASE_AX) < 1.5;
@@ -292,7 +294,7 @@ export function BlindboxMachineMode2({
         settledCalled = true;
         physRef.current = cur.map(b => ({
           ...b,
-          angleZ: b.targetAngleZ,
+          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
           angleX: BASE_AX, angleY: BASE_AY,
           avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
         }));
@@ -388,11 +390,20 @@ export function BlindboxMachineMode2({
       const callDone = () => {
         if (doneCalledRef.current) return;
         doneCalledRef.current = true;
+        stopPhysics();
+        const snapped = physRef.current.map(b => ({
+          ...b,
+          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
+          angleX: BASE_AX, angleY: BASE_AY,
+          avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
+        }));
+        physRef.current = snapped;
+        setPhysBoxes([...snapped]);
         setReadyToPick(true);
       };
 
       startPhysicsLoop(() => callDone());
-      const tSafe = setTimeout(callDone, 2500);
+      const tSafe = setTimeout(callDone, 1500);
       timerRefs.current.push(tSafe);
     }, 1000);
 

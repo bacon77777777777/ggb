@@ -63,8 +63,13 @@ const SLOTS = Array.from({ length: 20 }, (_, i) => {
   const t750   = shelf === 0 ? ROW0_TOP : ROW1_TOP;
   const leftPx = (COL0_LEFT + col * BOX_STEP) * TO_CSS + (depth === 1 ? BACK_CSS_X : 0);
   const topPx  = (t750 / 932) * CSS_H - (depth === 1 ? BACK_CSS_PX : 0);
-  return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth };
+  return { leftPx, topPx, centerX: leftPx + BOX_W / 2, centerY: topPx + BOX_H / 2, depth, col };
 });
+
+// Per-column rotateY: left boxes show right face (+), right boxes show left face (−)
+// Simulates diverging perspective rays from a single viewpoint in front of the machine.
+// col 0 → 22°, col 1 → 13°, col 2 → 4°, col 3 → −5°, col 4 → −14°
+const slotRotY = (col: number) => 4 + (2 - col) * 9;
 
 function rand(min: number, max: number) { return min + Math.random() * (max - min); }
 
@@ -292,9 +297,11 @@ export function BlindboxMachineMode3({
       physRef.current = cur;
       setPhysBoxes([...cur]);
 
-      // Settle: all boxes must be landed, slow, at target Z angle, and X/Y near base
+      // Settle: all boxes landed AND either snapped (>500ms) or fully at rest
+      const now = Date.now();
       const allSettled = cur.length > 0 && cur.every(b => {
         if (!b.landed) return false;
+        if (b.landedAt > 0 && now - b.landedAt > 500) return true; // hard-snap already applied
         const slow = Math.abs(b.vx) < SETTLE_V && Math.abs(b.vy) < SETTLE_V;
         const atZ  = b.angleZ === b.targetAngleZ;
         const atX  = Math.abs(b.angleX - BASE_AX) < 1.5;
@@ -306,7 +313,7 @@ export function BlindboxMachineMode3({
         settledCalled = true;
         physRef.current = cur.map(b => ({
           ...b,
-          angleZ: b.targetAngleZ,
+          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
           angleX: BASE_AX, angleY: BASE_AY,
           avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
         }));
@@ -406,11 +413,21 @@ export function BlindboxMachineMode3({
       const callDone = () => {
         if (doneCalledRef.current) return;
         doneCalledRef.current = true;
-        setReadyToPick(true); // user must click retrieval slot to open prize popup
+        // Stop loop + freeze all boxes before showing click prompt
+        stopPhysics();
+        const snapped = physRef.current.map(b => ({
+          ...b,
+          angleZ: b.landed ? b.targetAngleZ : b.angleZ,
+          angleX: BASE_AX, angleY: BASE_AY,
+          avZ: 0, avX: 0, avY: 0, vx: 0, vy: 0,
+        }));
+        physRef.current = snapped;
+        setPhysBoxes([...snapped]);
+        setReadyToPick(true);
       };
 
       startPhysicsLoop(() => callDone());
-      const tSafe = setTimeout(callDone, 2500);
+      const tSafe = setTimeout(callDone, 1500);
       timerRefs.current.push(tSafe);
     }, 1000);
 
