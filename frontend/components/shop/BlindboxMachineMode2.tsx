@@ -234,6 +234,15 @@ export function BlindboxMachineMode2({
           }
         }
 
+        // Stacking landing: box resting on another box, never touched floor
+        if (!b.landed && Math.abs(b.vx) < 10 && Math.abs(b.vy) < 20) {
+          b.landed   = true;
+          b.landedAt = Date.now();
+          b.avZ *= 0.30;
+          b.avX = 0;
+          b.avY = 0;
+        }
+
         if (b.y + BOX_R > HOLE_T) {
           if (b.x - BOX_R < PHYS_L) { b.x = PHYS_L + BOX_R; b.vx =  Math.abs(b.vx) * BOX_RES; }
           if (b.x + BOX_R > PHYS_R) { b.x = PHYS_R - BOX_R; b.vx = -Math.abs(b.vx) * BOX_RES; }
