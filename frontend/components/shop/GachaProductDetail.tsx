@@ -22,6 +22,7 @@ interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
   prizes: Database['public']['Tables']['product_prizes']['Row'][];
   machineTheme?: string;
+  onMachineReady?: () => void;
 }
 
 const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
@@ -33,7 +34,7 @@ const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProp
   gacha_mode4: GachaMachineMode4,
 }
 
-export function GachaProductDetail({ product, prizes, machineTheme }: GachaProductDetailProps) {
+export function GachaProductDetail({ product, prizes, machineTheme, onMachineReady }: GachaProductDetailProps) {
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
@@ -430,7 +431,7 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
                     onPurchase={handlePurchaseClick}
                     onTrial={handleTrial}
                     onHoleClick={handleHoleClick}
-                    onLoaded={() => setIsMachineLoaded(true)}
+                    onLoaded={() => { setIsMachineLoaded(true); onMachineReady?.(); }}
                     isSoldOut={isSoldOut}
                     pushSoundMode={pushSoundMode}
                     hasHighTierPending={forceGoldEgg || hasHighTierPending}
@@ -477,14 +478,6 @@ export function GachaProductDetail({ product, prizes, machineTheme }: GachaProdu
                   )}
                 </div>
               </div>
-              {!isMachineLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80">
-                  <div className="flex flex-col items-center gap-3 text-white">
-                    <Loader2 className="w-8 h-8 animate-spin" />
-                    <span className="text-xs font-black tracking-widest">載入機台中...</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

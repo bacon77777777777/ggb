@@ -4,6 +4,18 @@
 
 ---
 
+## v2026.07.20h｜2026-07-20｜統一 Loading 畫面（全商品類型）
+
+### 統一商品頁 Loading 畫面
+- 新增 `ProductLoadingScreen` 共用元件（`frontend/components/ui/ProductLoadingScreen.tsx`）：淺色背景 + Loader2 spinner + 「載入商品中...」
+- **轉蛋（gacha）**：機台圖片載入完成後才顯示內容，載入期間 content hidden-render（避免 layout shift）；GachaProductDetail 新增 `onMachineReady` prop
+- **盒玩（blindbox_mode2/3）**：`onLoaded` 觸發 `isMachineReady`，機台主圖下載完成後才撤除 Loading；其他盒玩主題（影片）資源載入後立即 ready
+- **一翻賞/抽卡/自製賞**：DB 資料就緒即 ready，無機台圖片等待
+- **3s 安全 fallback**：圖片載入失敗或超時，3 秒後強制顯示內容
+- 統一替換舊的深色「資源下載中...」Loading 畫面
+
+---
+
 ## v2026.07.20g｜2026-07-20｜盒玩落地快速穩定 + 換一批不禁用 + 購買速度優化
 
 ### 盒玩物理徹底重寫（mode2/3）
