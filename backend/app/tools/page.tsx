@@ -109,12 +109,24 @@ const downloadCsv = (items: WorkItem[]) => {
 // ─── Competitor list ─────────────────────────────────────────────────────────
 
 const COMPETITORS = [
-  { name: 'SlimeToy（台灣一番賞）', url: 'https://slimetoy.com.tw/' },
-  { name: 'Dopamine Kuji（日本一番賞）', url: 'https://dopaminekuji.com/' },
-  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/zh-TW/oripa/All' },
-  { name: 'AKIBAOO（秋葉原景品）', url: 'https://www.akibaoo.com/tw/category/ichiban-kuji/' },
-  { name: '迪迪熊轉蛋（台灣）', url: 'https://www.didi-bear.com/' },
-  { name: '玩具人（台灣）', url: 'https://www.toy-people.com/' },
+  { name: 'Bandai 官方扭蛋商店', url: 'https://bandainamco-am.co.jp/zh-CHT/others/gashapon-bandai-officialshop/item/' },
+  { name: 'Gashapon 官方（JP）', url: 'https://gashapon.jp/' },
+  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/' },
+  { name: 'SlimeToy 台灣', url: 'https://slimetoy.com.tw/' },
+  { name: 'Dopamine Kuji', url: 'https://dopaminekuji.com/' },
+  { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },
+  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/' },
+  { name: '一番賞 Online（官方）', url: 'https://on-line.1kuji.com/' },
+  { name: '一番賞 Official（JP）', url: 'https://1kuji.com/' },
+  { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },
+  { name: 'CityDAO', url: 'https://citydao.world/' },
+  { name: '籤引道 台灣', url: 'https://kujibikido.tw/' },
+  { name: 'One More Lottery', url: 'https://onemorelottery.tw/home' },
+  { name: 'SEGA Lucky Kuji Online', url: 'https://www.segaluckykujionline.net/' },
+  { name: 'EggBox Kuji', url: 'https://eggboxkuji.com/lottery' },
+  { name: 'OneOne 台灣', url: 'https://www.oneone.com.tw/' },
+  { name: 'Wonder Kuji 台灣', url: 'https://wonderkuji.com.tw/' },
+  { name: 'Konami Premium Kuji', url: 'https://premiumkuji.konami.net/' },
 ]
 
 // ─── Main component ───────────────────────────────────────────────────────────
