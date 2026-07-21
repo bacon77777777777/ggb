@@ -26,17 +26,17 @@ const steps = [
     items: [
       {
         label: '查看結果',
-        desc: '抽獎結果即時顯示，獎品自動存入帳號「倉庫」。每次抽取均為獨立隨機，與前後抽次無關。',
+        desc: '抽獎結果即時顯示，獎品自動存入帳號「我的倉庫」。可前往「個人中心 → 抽獎紀錄」查看歷史記錄。每次抽取均為獨立隨機，與前後抽次無關。',
       },
     ],
   },
   {
     step: 3,
-    title: '申請出貨',
+    title: '申請配送',
     items: [
       {
-        label: '前往倉庫',
-        desc: '進入「個人中心 → 倉庫」選取商品後申請出貨。倉庫提供 30 天免費寄存，逾期系統將自動分解品項並退還原價 G幣。',
+        label: '前往我的倉庫',
+        desc: '進入「個人中心 → 我的倉庫」選取獎品後申請配送。倉庫提供 30 天免費寄存，逾期系統將自動分解品項並返還相應代幣，請務必在期限內申請配送。',
       },
     ],
   },
@@ -50,11 +50,12 @@ export default function GachaRulesPage() {
   useEffect(() => {
     supabase
       .from('platform_settings')
-      .select('value')
-      .eq('key', 'free_shipping_threshold')
-      .maybeSingle()
+      .select('key, value')
+      .in('key', ['free_shipping_threshold'])
       .then(({ data }) => {
-        if (data?.value) setFreeShippingThreshold(Number(data.value));
+        if (!data) return;
+        const map = Object.fromEntries(data.map(r => [r.key, r.value]));
+        if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
       });
   }, [supabase]);
 
@@ -62,32 +63,32 @@ export default function GachaRulesPage() {
 
   const rules = [
     {
-      label: '訂單查詢',
-      desc: '進入「個人中心 → 我的訂單」即可查看訂單狀態與物流資訊。',
+      label: '配送訂單查詢',
+      desc: '申請配送後，可進入「個人中心 → 我的訂單」查看配送訂單狀態與物流資訊。',
     },
     {
-      label: '出貨時間',
-      desc: '廠商備貨後出貨，約 3–7 個工作天送達（不含假日）。活動檔期或特殊情況可能稍有延遲，詳情請聯繫客服。',
+      label: '配送時間',
+      desc: '廠商備貨後配送，約 3–7 個工作天送達（不含假日）。活動檔期或特殊情況可能稍有延遲，詳情請聯繫客服。',
     },
     {
       label: '倉庫寄存',
-      desc: '獎品存入倉庫後提供 30 天免費寄存。第 31 天起，系統將自動分解未申請出貨的品項，並退還原價 G幣至帳戶，請務必在期限內申請出貨。',
+      desc: '獎品存入我的倉庫後提供 30 天免費寄存。第 31 天起，系統將自動分解未申請配送的品項並返還相應代幣至帳戶，請務必在期限內申請配送。',
     },
     {
       label: '免運條件',
-      desc: `單次申請出貨達 ${thresholdText} 件（含）以上免收運費。僅限台灣本島配送，不支援離島、港澳及海外地區。`,
+      desc: `單次申請配送達 ${thresholdText} 件（含）以上免收運費。僅限台灣本島配送，不支援離島、港澳及海外地區。`,
     },
     {
       label: '分解規則',
-      desc: '倉庫內品項可隨時申請分解，退還原價 G幣。分解操作確認後無法還原，請確認後再執行。',
+      desc: '我的倉庫內獎品可隨時手動申請分解，系統將依商品類型計算分解金額，返還相應代幣至帳戶。分解操作確認後無法還原，請確認後再執行。',
     },
     {
       label: '售後服務',
-      desc: '收到商品後若發現缺件或品質問題，請於 7 日內透過平台客服聯繫，並提供訂單編號及完整開箱錄影（從未拆封外包裝到內容物全程）。逾期或無影片佐證將無法受理。',
+      desc: '收到商品後若發現缺件或品質問題，請於 7 日內聯繫客服，並提供訂單編號及完整開箱錄影（從未拆封外包裝到內容物全程）。逾期或無影片佐證將無法受理。',
     },
     {
       label: '配送延誤',
-      desc: '若出貨後 7 個工作天仍未收到商品，請聯繫客服查詢物流狀態。確認異常者，平台將協助追件或處理。',
+      desc: '若配送後 7 個工作天仍未收到商品，請聯繫客服查詢物流狀態。確認異常者，平台將協助追件或處理。',
     },
   ];
 
@@ -147,7 +148,7 @@ export default function GachaRulesPage() {
           </p>
           <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-              客服聯繫方式：進入「個人中心 → 聯絡客服」，透過平台官方管道描述您的問題，客服將盡速回覆。
+              聯繫客服：可透過「個人中心 → 聯絡客服」填寫表單，或加入 GGB 官方 LINE 帳號聯繫，客服將盡速回覆。
             </p>
           </div>
         </div>
