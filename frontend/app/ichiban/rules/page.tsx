@@ -110,18 +110,20 @@ export default function IchibanRulesPage() {
         <div className="space-y-10 md:grid md:grid-cols-3 md:gap-6 md:space-y-0 md:pt-8">
         {steps.map(({ step, title, items }) => (
           <div key={step} className="relative">
-            <Image
-              src={`/images/rules/${step}.png`}
-              alt={title}
-              width={100}
-              height={100}
-              className="absolute -top-5 right-4 object-contain drop-shadow-lg pointer-events-none z-10"
-            />
+            <div className="absolute -top-5 right-4 w-[100px] h-[100px] pointer-events-none z-10">
+              <Image
+                src={`/images/rules/${step}.png`}
+                alt={title}
+                fill
+                sizes="100px"
+                className="object-contain drop-shadow-lg"
+              />
+            </div>
             <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm md:flex md:flex-col md:h-full">
               <div className="bg-primary/10 dark:bg-primary/20 px-5 pt-5 pb-5 rounded-t-3xl min-h-[100px]">
                 <div className="pr-28">
                   <span className="inline-block text-[13px] font-black text-white bg-primary px-3.5 py-1.5 rounded-full mb-2.5">步驟 {step}</span>
-                  <p className="text-[20px] font-black text-neutral-900 dark:text-white leading-snug">{title}</p>
+                  <p className="text-[20px] font-black text-neutral-900 dark:text-white leading-snug whitespace-nowrap">{title}</p>
                 </div>
               </div>
               <div className="px-5 py-5 space-y-5 md:flex-1">

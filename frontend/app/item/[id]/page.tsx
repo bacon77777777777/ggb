@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen, ChevronLeft } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -1882,6 +1882,20 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0">
+      {/* Mobile top nav — 蓋在 Navbar 上，只顯示手機 */}
+      <div className="fixed top-0 left-0 right-0 z-[200] h-14 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
+        <div className="h-full flex items-center px-2">
+          <button
+            onClick={() => router.back()}
+            className="p-2 -ml-1 text-neutral-900 dark:text-white"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8 truncate">
+            {product.name}
+          </span>
+        </div>
+      </div>
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
           <div className="lg:col-span-4 lg:sticky lg:top-24">
