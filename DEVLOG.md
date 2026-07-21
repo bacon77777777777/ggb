@@ -4,6 +4,22 @@
 
 ---
 
+## v2026.07.21h｜2026-07-21｜DS 稽核 + ActionBar 擴大遷移 + 後台修復
+
+### 前台 DS 稽核頁強化
+- Color Tokens 全面修正：primary `#EE4D2D`（橘紅）、加入 primary 4 子 token + accent 3 個、neutral 改為前台正確值
+- 新增 UI Kit Components showcase：Button 6 variants、Input states、Modal 兩種模式、ActionBar/BottomSheet preview
+
+### ActionBar 擴大遷移（共 6 頁）
+- `exchange/[id]`、`exchange-orders/[id]`（3 個 conditional）、`item/[id]`
+
+### 後台修復
+- 後台登入頁 error 訊息改紅色樣式（原藍色語意錯誤）
+- AdminLayout hydration mismatch 修復：`isSidebarOpen` 初始值固定 `true`，由 `useEffect` 從 localStorage 修正
+- 後台登入頁標題改為「GGB後台管理系統 / 線上抽獎平台」
+
+---
+
 ## v2026.07.21g｜2026-07-21｜AlertModal 整合 + ActionBar / BottomSheet 新組件
 
 ### AlertModal → Modal 整合（profile/page.tsx）
