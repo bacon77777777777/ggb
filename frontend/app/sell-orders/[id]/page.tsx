@@ -541,7 +541,7 @@ export default function SellOrderDetailPage() {
   return (
     <div
       className={cn(
-        'min-h-screen bg-[#F5F5F5] dark:bg-neutral-950',
+        'min-h-screen bg-neutral-50 dark:bg-neutral-950',
         actionBar ? 'pb-[calc(88px+env(safe-area-inset-bottom))]' : 'pb-24'
       )}
     >

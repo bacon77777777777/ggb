@@ -700,7 +700,7 @@ export default function MessageThreadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <div className="max-w-3xl mx-auto px-2 sm:px-6 pt-2 pb-24">
         {!isSellThread && isOwner && !otherUserId && (
           <div className="pt-2 pb-2">

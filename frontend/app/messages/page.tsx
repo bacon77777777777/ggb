@@ -180,7 +180,7 @@ export default function MessagesListPage() {
   const list = useMemo(() => threads, [threads]);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <div className="max-w-3xl mx-auto px-2 sm:px-6 pt-2 pb-24">
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
           {isAuthLoading || isLoading ? (

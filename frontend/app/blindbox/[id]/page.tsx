@@ -476,7 +476,7 @@ export default function BlindboxDetailPage() {
     <>
     {!isMachineReady && <ProductLoadingScreen />}
     <div
-      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
+      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 overflow-x-hidden"
       style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
     >
       <div

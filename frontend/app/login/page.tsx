@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, ChevronLeft, Gift } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Gift } from 'lucide-react'
+import SimplePageHeader from '@/components/ui/SimplePageHeader'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Input } from '@/components/ui'
@@ -419,12 +420,7 @@ function AuthContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
-      <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-50 px-4">
-        <button onClick={handleBack} className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-lg font-black text-neutral-900 dark:text-white">{getTitle()}</h1>
-      </div>
+      <SimplePageHeader title={getTitle()} onBack={handleBack} darkBg="page" />
 
       <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
         <div className="w-full max-w-sm">

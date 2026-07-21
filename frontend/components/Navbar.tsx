@@ -549,8 +549,9 @@ function NavbarInner() {
   return (
     <>
       <NavbarLayout
+        innerClassName={isProductDetailPage ? "max-w-[960px] !px-4" : undefined}
         className={cn(
-          isProductDetailPage && "fixed left-0 right-0 md:sticky top-0",
+          isProductDetailPage && "fixed left-0 right-0",
           (
             (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market', 'check-in'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
@@ -561,30 +562,44 @@ function NavbarInner() {
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
-        leftClassName="flex-1 md:flex-none md:w-auto"
+        leftClassName={isProductDetailPage ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
         left={
           <>
-            <div className="flex items-center md:hidden overflow-hidden shrink-0">
-              {showBackButton && (
+            {isProductDetailPage ? (
+              showBackButton && (
                 <button
                   onClick={handleBack}
-                  className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 md:hidden shrink-0"
+                  className="flex items-center gap-0.5 -ml-2 pl-1 pr-3 py-2 rounded-xl text-neutral-900 dark:text-neutral-100 active:opacity-70 transition-opacity min-w-0 flex-1"
                 >
-                  <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+                  <ChevronLeft className="w-7 h-7 stroke-[2.5] shrink-0" />
+                  <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
                 </button>
-              )}
-            </div>
-
-            {/* Mobile Page Title */}
-            {!isHomePage && (
-              <div className="md:hidden flex items-center min-w-0 flex-1">
-                <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">
-                  {getPageTitle()}
+              )
+            ) : (
+              <>
+                <div className="flex items-center overflow-hidden shrink-0 md:hidden">
+                  {showBackButton && (
+                    <button
+                      onClick={handleBack}
+                      className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 shrink-0 md:hidden"
+                    >
+                      <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+                    </button>
+                  )}
                 </div>
-              </div>
+
+                {/* Mobile Page Title */}
+                {!isHomePage && (
+                  <div className="flex items-center min-w-0 flex-1 md:hidden">
+                    <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">
+                      {getPageTitle()}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", !showLogo && "hidden md:flex")}>
+            <Link href="/" className={cn("flex items-center group md:relative", isProductDetailPage ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src="/images/20260629/logo.svg"
@@ -597,7 +612,7 @@ function NavbarInner() {
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center gap-3 lg:gap-5">
+            <div className={cn("hidden", !isProductDetailPage && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(
@@ -710,9 +725,9 @@ function NavbarInner() {
 
             {/* news detail page 的返回/分享由文章頁自身的 fixed nav 處理，Navbar 不重複顯示 */}
 
-            {/* Product Page Mobile Actions */}
+            {/* Product Page Actions */}
             {isProductDetailPage && (
-              <div className="flex items-center gap-0.5 md:hidden">
+              <div className="flex items-center gap-0.5">
                 {rulesPath && (
                   <Link
                     href={rulesPath}

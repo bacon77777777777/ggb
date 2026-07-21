@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
 import Image from 'next/image';
+import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 const steps = [
   {
@@ -90,19 +90,7 @@ export default function GachaRulesPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-16 pt-14">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-14 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
-        <div className="max-w-[960px] mx-auto h-full flex items-center px-2">
-          <button
-            onClick={() => router.back()}
-            className="p-2 -ml-1 text-neutral-900 dark:text-white"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8 md:mr-0">轉蛋規則</span>
-          <div className="hidden md:block w-10 flex-shrink-0" />
-        </div>
-      </div>
+      <SimplePageHeader title="轉蛋規則" onBack={() => router.back()} maxWidth="max-w-[960px]" />
 
       <div className="max-w-[560px] md:max-w-[960px] mx-auto px-4 py-6 space-y-4 md:space-y-8">
 

@@ -617,6 +617,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
     </svg>
   )
+  // 前台 Design System（手機螢幕）
+  const IconFrontendDS = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  )
 
   const handleNavScroll = () => {
     if (!navRef.current || !user?.username) return
@@ -796,6 +802,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '工具', path: '/tools', icon: IconTools },
           { name: '殺率調整', path: '/settings/rates', icon: IconBolt },
           { name: 'Design System', path: '/design-system', icon: IconPalette },
+          { name: '前台 DS 稽核', path: '/frontend-design-system', icon: IconFrontendDS },
         ],
       },
     ],

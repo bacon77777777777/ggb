@@ -624,7 +624,7 @@ export default function ExchangeOrderFlowPage() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <div className="max-w-3xl mx-auto px-2 sm:px-6 py-24 text-center text-sm font-black text-neutral-400">
           載入中
         </div>
@@ -634,7 +634,7 @@ export default function ExchangeOrderFlowPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <div className="max-w-3xl mx-auto px-2 sm:px-6 py-24 text-center text-sm font-black text-neutral-400">
           登入後才可查看
         </div>
@@ -643,7 +643,7 @@ export default function ExchangeOrderFlowPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="max-w-3xl mx-auto px-2 sm:px-6">
         <div className="sticky top-[57px] z-40 -mx-2 sm:-mx-6 -mt-px">
           <Stepper step={step} />

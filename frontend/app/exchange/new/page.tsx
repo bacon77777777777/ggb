@@ -267,7 +267,7 @@ export default function NewExchangeOfferPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-[57px] md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-[57px] md:pt-6">
         <div className="max-w-3xl mx-auto px-2 sm:px-6">
           <div className="py-24 text-center text-sm font-black text-neutral-400">載入中</div>
         </div>
@@ -277,7 +277,7 @@ export default function NewExchangeOfferPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-[57px] md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-[57px] md:pt-6">
         <div className="max-w-3xl mx-auto px-2 sm:px-6">
           <div className="py-16 text-center">
             <div className="text-base font-black text-neutral-900 dark:text-white mb-2">登入後才可上架</div>
@@ -299,7 +299,7 @@ export default function NewExchangeOfferPage() {
   const isSelected = (cardId: string) => (mode === 'getting' ? gettingCards : givingCards).some((c) => c.id === cardId);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-28 pt-3 md:pt-6">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28 pt-3 md:pt-6">
       <div className="max-w-3xl mx-auto px-2 sm:px-6">
         <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 px-4 py-4">
           <div>

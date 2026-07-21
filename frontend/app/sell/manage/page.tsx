@@ -196,7 +196,7 @@ export default function SellManagePage() {
   const formatDate = (raw: string | null) => (raw ? raw.slice(0, 10) : '');
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24 pt-14">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 pt-14">
       <div className="max-w-7xl mx-auto px-2">
         <div className="flex items-center gap-2 mb-3">
           <button

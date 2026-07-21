@@ -3,7 +3,8 @@
 import { useState, Suspense, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import SimplePageHeader from '@/components/ui/SimplePageHeader'
 import { Input } from '@/components/ui'
 import SolidButton from '@/components/ui/SolidButton'
 import { translateAuthError } from '@/lib/authErrors'
@@ -120,15 +121,11 @@ function ForgotPasswordContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
-      <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-50 px-4">
-        <button
-          onClick={() => step === 1 ? router.push(backHref) : setStep(s => (s - 1) as 1 | 2 | 3)}
-          className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-lg font-black text-neutral-900 dark:text-white">{titles[step]}</h1>
-      </div>
+      <SimplePageHeader
+        title={titles[step]}
+        onBack={() => step === 1 ? router.push(backHref) : setStep(s => (s - 1) as 1 | 2 | 3)}
+        darkBg="page"
+      />
 
       <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
         <div className="w-full max-w-sm">

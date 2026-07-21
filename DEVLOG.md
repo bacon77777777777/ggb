@@ -4,6 +4,46 @@
 
 ---
 
+## v2026.07.21e｜2026-07-21｜前台 Design System 稽核系統 + UI 統一
+
+### 前台 DS 合規掃描系統（新增）
+- Migration 336：建立 `frontend_design_scan_runs` + `frontend_design_scan_results` 兩張表（PROD + STG 同步）
+- `backend/scripts/frontend-design-scan.ts`：掃描前台所有 .tsx/.ts，檢測 magic hex、bg-primary-600、gray-*、emerald-*、rounded-md、z-[magic]、inline style color 等違規
+- `backend/app/api/admin/frontend-design-scan/route.ts`：讀取最新掃描結果 API
+- `backend/app/frontend-design-system/page.tsx`：重寫為 live compliance scanner（對齊後台 Design System 頁架構）
+  - CompliancePanel：統計摘要 / 違規類型分布 / 可展開違規檔案列表
+  - Color Tokens 展示（light + dark mode）
+  - z-index 規範表
+  - 禁用 class / pattern 清單
+- 初次掃描結果：272 個檔案 / 292 個違規 / 62 個違規檔案
+
+### 前台 Navbar 導航修正
+- 商品詳情頁（`isProductDetailPage`）：返回圖標 + 標題合併為單一 `<button>`，整體可點擊
+
+### 頂部導航統一（SimplePageHeader）
+- 新增 `frontend/components/ui/SimplePageHeader.tsx`（h-14 固定 header，含 back/title/right slot）
+- 套用至 5 個規則頁、login、forgot-password、profile 手機驗證 modal
+
+### 死代碼清除
+- 刪除 `frontend/components/ui/Badge.tsx`（零使用）
+- 刪除 `frontend/components/NewsCard.tsx`（零使用）
+- 刪除 `frontend/components/PageCard.tsx`（@deprecated，零使用）
+
+### 共用工具抽取
+- `frontend/lib/productImage.ts`：ITEM_IMAGES 陣列 + getItemImageForId + DEFAULT_ITEM_IMAGE（修正 defaulet → default typo）
+- `frontend/lib/timeAgo.ts`：timeAgo() 共用工具
+- `frontend/components/news/CategoryBadge.tsx`：CategoryBadge 共用元件
+
+### 全站色碼修正
+- bg-[#F5F5F5]（45 處）→ bg-neutral-50
+- bg-primary-600（2 處）→ bg-primary、bg-primary-700 → bg-primary/90
+
+### 商品頁背景圖移除
+- GachaProductDetail：移除 gacha/bg.png 背景
+- item/[id] card 類型：移除 card/pcbg.png 桌面背景
+
+---
+
 ## v2026.07.21d｜2026-07-21｜規則頁面 RWD 完善 + 商品頁手機導航
 
 ### 規則頁面（5 個：gacha / blindbox / ichiban / card / custom）

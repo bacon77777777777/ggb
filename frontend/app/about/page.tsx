@@ -2,7 +2,7 @@
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20">
       <div className="max-w-3xl mx-auto pt-4 md:pt-8 px-4">
 
         <div className="mb-6">

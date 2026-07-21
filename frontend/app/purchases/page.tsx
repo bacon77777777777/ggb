@@ -181,7 +181,7 @@ export default function PurchasesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
         <div className="space-y-2 pt-0 pb-0 px-2">
           <Tabs value={activeFilter} onValueChange={(v) => setFilter(v as OrderFilter)} className="w-full">

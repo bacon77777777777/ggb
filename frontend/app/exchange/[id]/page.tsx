@@ -307,7 +307,7 @@ export default function ExchangeDetailPage() {
 
   if (isOfferLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-[57px] md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-[57px] md:pt-6">
         <div className="max-w-3xl mx-auto px-4">
           <div className="py-24 text-center text-sm font-black text-neutral-400">載入中</div>
         </div>
@@ -317,7 +317,7 @@ export default function ExchangeDetailPage() {
 
   if (!offer) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-[57px] md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-[57px] md:pt-6">
         <div className="max-w-3xl mx-auto px-4">
           <div className="py-24 text-center text-sm font-black text-neutral-400">找不到交換</div>
         </div>
@@ -326,7 +326,7 @@ export default function ExchangeDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-32 pt-3 md:pt-6">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 pt-3 md:pt-6">
       <div className="max-w-3xl mx-auto px-2 sm:px-6">
         <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 px-4 py-4">
           <div className="flex items-center justify-between">

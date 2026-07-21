@@ -5,7 +5,6 @@ export { default as Select } from './Select'
 export { default as Textarea } from './Textarea'
 export { default as FileInput } from './FileInput'
 export { default as Label } from './Label'
-export { default as Badge } from './Badge'
 export { default as Card } from './Card'
 
 // Types
@@ -15,5 +14,4 @@ export type { SelectProps } from './Select'
 export type { TextareaProps } from './Textarea'
 export type { FileInputProps } from './FileInput'
 export type { LabelProps } from './Label'
-export type { BadgeProps } from './Badge'
 export type { CardProps } from './Card'

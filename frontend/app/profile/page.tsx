@@ -34,6 +34,7 @@ import {
   Star
 } from 'lucide-react';
 import { AlertModal } from '@/components/ui/AlertModal';
+import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -2251,7 +2252,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               {/* Top Nav */}
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
@@ -2349,7 +2350,7 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -3607,7 +3608,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -3675,7 +3676,7 @@ function ProfileContent() {
               </div>
 
                 {/* Market Management Content */}
-                <div className="flex-1 overflow-y-auto p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+                <div className="flex-1 overflow-y-auto p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                   {activeMarketTab === 'listing' ? (
                     filteredMarketListings.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-neutral-400">
@@ -4196,7 +4197,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -4238,7 +4239,7 @@ function ProfileContent() {
               {/* Mobile List Style (Unified 3-Layer Structure) */}
               <div
                 ref={mobileDeliveryScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -4624,7 +4625,7 @@ function ProfileContent() {
         return (
           <div className="pb-20 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -4639,7 +4640,7 @@ function ProfileContent() {
               {/* Mobile List */}
               <div
                 ref={mobileDrawScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -4984,7 +4985,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile')} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5022,7 +5023,7 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                 {filteredTopupHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Wallet className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -5234,7 +5235,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5268,7 +5269,7 @@ function ProfileContent() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950">
                 {isLoadingData ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -5492,7 +5493,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5511,7 +5512,7 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List */}
-              <div className="flex-1 overflow-y-auto bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+              <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-24">
                 {coupons.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Ticket className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -6169,15 +6170,12 @@ function ProfileContent() {
 
             {isPhoneBindModalOpen && (
               <div className="fixed inset-0 z-[90] bg-white dark:bg-neutral-950">
-                <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-[95] px-4">
-                  <button
-                    onClick={() => setIsPhoneBindModalOpen(false)}
-                    className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white"
-                  >
-                    <ChevronLeft className="w-6 h-6" />
-                  </button>
-                  <h1 className="text-lg font-black text-neutral-900 dark:text-white">手機驗證</h1>
-                </div>
+                <SimplePageHeader
+                  title="手機驗證"
+                  onBack={() => setIsPhoneBindModalOpen(false)}
+                  darkBg="page"
+                  className="z-[95]"
+                />
 
                 <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
                   <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8">
