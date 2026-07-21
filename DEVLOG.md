@@ -4,6 +4,30 @@
 
 ---
 
+## v2026.07.21a｜2026-07-21｜成就任務系統大修
+
+### 最高獎成就 trigger（migration 333）
+- 新增 `draw_records` AFTER INSERT trigger，自動追蹤最高獎成就
+- 適用商品類型：ichiban / card / custom（轉蛋/盲盒無賞等，排除）
+- 最高獎定義：`product_prizes.total <= 3`
+- 命中：`top_prize_count+1`、`bad_luck_streak=0` + 任務進度更新
+- 未命中：`bad_luck_streak+1` + 任務進度更新
+- 修正 `top_prize_count` / `bad_luck_streak` 原本從未被更新的問題
+
+### 一發入魂定義修正（migration 335）
+- 原本：帳號史上第一筆 draw_record 才算（條件太嚴苛）
+- 改為：對任一商品的第一次抽獎即抽中最高獎（每個新商品都有機會）
+
+### 任務文字統一（migration 334）
+- 所有「轉蛋」改為「抽獎」（21 筆，PROD + STG）
+- 移除成就描述括號說明文字
+
+### 一番賞抽獎追蹤補漏
+- `TicketSelectionFlow` 補呼叫 `track_mission_event(draw_count)` + `check_achievements`
+- 原本一番賞完全不計入任何抽獎任務次數
+
+---
+
 ## v2026.07.20m｜2026-07-20｜競品爬取修正
 
 ### 修正 Clove 只顯示 1 筆
