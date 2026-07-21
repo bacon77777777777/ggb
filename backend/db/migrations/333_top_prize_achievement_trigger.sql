@@ -134,14 +134,14 @@ BEGIN
     v_is_top := FALSE;
   END IF;
 
-  -- 判斷是否首抽（這筆是否為該用戶第一筆 draw_record）
-  SELECT COUNT(*) INTO v_draw_count FROM draw_records WHERE user_id = NEW.user_id;
-  -- v_draw_count 已包含 NEW 這筆（AFTER trigger）
+  -- 判斷是否為對此商品的首抽（含剛插入這筆）
+  SELECT COUNT(*) INTO v_draw_count FROM draw_records
+  WHERE user_id = NEW.user_id AND product_id = NEW.product_id;
 
   PERFORM public.update_top_prize_stats(
     NEW.user_id,
     v_is_top,
-    v_draw_count = 1   -- is_first_draw
+    v_draw_count = 1   -- is_first_draw: 此商品的第一抽
   );
 
   RETURN NEW;
