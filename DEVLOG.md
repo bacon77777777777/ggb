@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.07.21i｜2026-07-21｜前台 DS Token 大掃除（278 → 28 違規）
+
+### tailwind.config.js 新增 token
+- `accent-orange: '#FF5E00'`（MissionFrame 任務橘）
+- `item-bg: '#28324E'`（商品縮圖佔位背景深藍灰）
+
+### 違規修正（278 → 28，降 90%）
+- `gray-*` → `neutral-*`（全站，15 → 0）
+- `emerald-*` → `accent-emerald`（全站，56 → 0）
+- `rounded-md` → `rounded-xl`（全站，76 → 0）
+- `bg/text-[#EE4D2D]` → `bg/text-primary`（6 個檔案）
+- `bg-[#28324E]` → `bg-item-bg`（profile × 4、WarehouseItemDetailModal）
+- MissionFrame：`#ff5e00` → `accent-orange`、`#1b1b1b` → `neutral-900` 等
+- 掃描腳本排除 `profilecard/` 子專案（shadcn 獨立 DS，不屬主程式）
+- 剩餘 28 個 magic hex（排行榜金色、特殊背景色等）列為設計例外，暫不處理
+
+---
+
 ## v2026.07.21h｜2026-07-21｜DS 稽核 + ActionBar 擴大遷移 + 後台修復
 
 ### 前台 DS 稽核頁強化
