@@ -187,14 +187,21 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             注意事項
           </p>
           <ol className="space-y-1 list-decimal list-inside">
-            {[
+            {(product.type === 'blindbox' ? [
+              '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+              '抽出後即確認結果，不可退款或更換款式。',
+              '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+              '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+              '商品圖片僅供參考，實物以實際配送為準。',
+              '本平台保留對所有活動及商品之最終解釋權。',
+            ] : [
               '轉蛋商品均為隨機出獎，抽到什麼出什麼。',
               '轉出後即確認結果，不可退款或更換款式。',
-              '實體獎品由廠商備貨出貨，出貨時間約 3-7 個工作日。',
+              '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
               '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
-              '商品圖片僅供參考，實物以實際出貨為準。',
+              '商品圖片僅供參考，實物以實際配送為準。',
               '本平台保留對所有活動及商品之最終解釋權。',
-            ].map((item, i) => (
+            ]).map((item, i) => (
               <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
                 {item}
               </li>

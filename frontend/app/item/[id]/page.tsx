@@ -1679,19 +1679,40 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
+              <div className="pt-1">
                 <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
                   注意事項
                 </p>
                 <ol className="space-y-1 list-decimal list-inside">
-                  {[
-                    '商品均為隨機出獎，抽到什麼出什麼。',
+                  {((t => t === 'ichiban' ? [
+                    '一番賞為固定賞項隨機出獎，依抽到的賞別為主，無法指定特定賞別。',
                     '抽出後即確認結果，不可退款或更換款式。',
                     '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
                     '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
                     '商品圖片僅供參考，實物以實際配送為準。',
                     '本平台保留對所有活動及商品之最終解釋權。',
-                  ].map((item, i) => (
+                  ] : t === 'card' ? [
+                    '抽卡商品均為隨機出卡，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '卡片由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'blindbox' ? [
+                    '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : [
+                    '自製賞商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ])(product.type as string)).map((item, i) => (
                     <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
                       {item}
                     </li>
@@ -2206,19 +2227,40 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
+              <div className="pt-1">
                 <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
                   注意事項
                 </p>
                 <ol className="space-y-1 list-decimal list-inside">
-                  {[
-                    '商品均為隨機出獎，抽到什麼出什麼。',
+                  {((t => t === 'ichiban' ? [
+                    '一番賞為固定賞項隨機出獎，依抽到的賞別為主，無法指定特定賞別。',
                     '抽出後即確認結果，不可退款或更換款式。',
                     '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
                     '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
                     '商品圖片僅供參考，實物以實際配送為準。',
                     '本平台保留對所有活動及商品之最終解釋權。',
-                  ].map((item, i) => (
+                  ] : t === 'card' ? [
+                    '抽卡商品均為隨機出卡，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '卡片由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'blindbox' ? [
+                    '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : [
+                    '自製賞商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ])(product.type as string)).map((item, i) => (
                     <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
                       {item}
                     </li>
