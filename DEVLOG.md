@@ -17,6 +17,14 @@
 - `openAllDone=true` 時不顯示三按鈕（前往倉庫/顯示獎項/繼續抽獎）
 - 三按鈕保留給「逐張手動開啟所有」的情境（`allOpened && !openAllDone`）
 
+### IchibanTicket 顯示簡化
+- 移除票券非 showPrizeDetail 視圖的品項名稱（prizeName）和籤號（ticketNumber）
+- 只顯示賞等（F賞 / A賞 / LAST ONE）
+
+### 全部開啟後觸發 GachaResultModal
+- openAllDone useEffect：桌機 modal → `onTearFinish(tearResults)` 觸發 GachaResultModal
+- 手機：存 `ggb_tear_results` 至 sessionStorage → `handleBackToProduct` 導回商品頁 → 頁面 mount 讀取並彈窗
+
 ### 先前修正保留
 - `isModal && ichibanTheme === 'ichiban_tear'` 時跳過中間畫面（避免桌機卡死）
 

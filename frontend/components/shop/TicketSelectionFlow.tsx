@@ -689,11 +689,24 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     setOpenAllDone(true);
   };
 
-  // 全部開啟後 2 秒自動跳轉（中間結果畫面）
+  // 全部開啟後 2 秒：桌機 modal → onTearFinish 觸發 GachaResultModal；手機 → sessionStorage + 導回商品頁
   useEffect(() => {
     if (!openAllDone) return;
     const t = setTimeout(() => {
-      handleBackToProduct();
+      const tearResults: TearResult[] = drawnResults.map((r, i) => ({
+        id: String(i),
+        name: r.name,
+        rarity: r.grade || 'E',
+        grade: r.grade,
+        image_url: r.image_url,
+        is_last_one: r.is_last_one,
+      }));
+      if (onTearFinish) {
+        onTearFinish(tearResults);
+      } else {
+        try { sessionStorage.setItem('ggb_tear_results', JSON.stringify(tearResults)); } catch { /* ignore */ }
+        handleBackToProduct();
+      }
     }, 2000);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps

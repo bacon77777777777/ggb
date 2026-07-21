@@ -202,14 +202,6 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                       {isLastOne ? "ONE" : "賞"}
                     </span>
                   </div>
-                  <div className="text-base sm:text-sm lg:text-[12.5px] font-black text-neutral-300 text-center line-clamp-1 w-full mt-0.5 lg:-mt-[1px] leading-tight px-1">
-                    {prizeName}
-                  </div>
-                  {ticketNumber !== undefined && ticketNumber > 0 && (
-                    <div className="text-sm sm:text-xs lg:text-[11px] font-bold text-neutral-300/80 mt-0.5 lg:-mt-[1px]">
-                      No. {ticketNumber.toString().padStart(3, '0')}
-                    </div>
-                  )}
                 </motion.div>
               ) : (
                 <motion.div
