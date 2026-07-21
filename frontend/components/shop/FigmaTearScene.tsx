@@ -34,6 +34,9 @@ export default function FigmaTearScene({
   const [showButton, setShowButton] = useState(initialDone);
   const [showPrize, setShowPrize]  = useState(initialDone);
   const [touched, setTouched]     = useState(false);
+  const [skipPending, setSkipPending] = useState(false);
+  // 防止 SKIP 與 auto-trigger 同時到期時重複呼叫
+  const finishedRef = useRef(false);
   const wrapperRef    = useRef<HTMLDivElement>(null);  // .ichiban-flipbook
   const turnReady     = useRef(false);
   const pressStartX   = useRef<number | null>(null);
@@ -64,12 +67,14 @@ export default function FigmaTearScene({
     return () => clearTimeout(t);
   }, [done, showButton]);
 
-  // 最後一張撕完 → 1 秒自動結束（不等使用者按 SKIP）
+  // 最後一張撕完 → 2 秒自動結束（讓使用者短暫看到獎項再跳出）
   useEffect(() => {
     if (!done || !isLast) return;
     const t = setTimeout(() => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
       (onOpenAll ?? onBack ?? onDone)?.();
-    }, 1000);
+    }, 2000);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, isLast]);
@@ -349,10 +354,18 @@ export default function FigmaTearScene({
           )}
         </AnimatePresence>
         <button
-          onClick={onOpenAll ?? onBack ?? onDone}
+          onClick={() => {
+            if (skipPending || finishedRef.current) return;
+            setSkipPending(true);
+            setTimeout(() => {
+              if (finishedRef.current) return;
+              finishedRef.current = true;
+              (onOpenAll ?? onBack ?? onDone)?.();
+            }, 2000);
+          }}
           className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
         >
-          SKIP
+          {skipPending ? '...' : 'SKIP'}
         </button>
       </div>
     </div>

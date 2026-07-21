@@ -4,6 +4,22 @@
 
 ---
 
+## v2026.07.21k｜2026-07-21｜一番賞原始經典模組流程優化
+
+### 目標
+撕完最後一張或點擊 SKIP，延遲 2 秒後才關閉 modal 顯示 GachaResultModal；移除中間結果畫面（浮動撕開圖 + 三按鈕）
+
+### 變更
+- `FigmaTearScene.tsx`
+  - 最後一張 auto-trigger 延遲：1000ms → 2000ms
+  - SKIP 按鈕：加 2 秒延遲（`skipPending` state + `finishedRef` 防重複觸發）
+  - 兩路徑共用 `finishedRef`，防止同時到期雙呼叫
+- `TicketSelectionFlow.tsx`
+  - `drawnResults.length > 0` 中間結果畫面區塊：`isModal=true` 時提前 `return null`
+  - 不影響沈浸式模組（走不同 code path）
+
+---
+
 ## v2026.07.21j｜2026-07-21｜STG draw_records 欄位同步修復
 
 ### 問題

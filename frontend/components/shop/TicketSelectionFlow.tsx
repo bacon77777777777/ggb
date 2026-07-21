@@ -1012,6 +1012,10 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   }
 
   if (drawnResults.length > 0) {
+    // 桌機 modal 模式：FigmaTearScene 的 onOpenAll/onBack 負責觸發 onTearFinish，
+    // 跳過這個中間結果畫面，直接讓 modal 關閉後由父層顯示 GachaResultModal
+    if (isModal) return null;
+
     const allOpened = drawnResults.every(r => r.isOpened);
     const hasLastOne = drawnResults.some(r => r.is_last_one);
     const normalTickets = drawnResults.filter(r => !r.is_last_one);
