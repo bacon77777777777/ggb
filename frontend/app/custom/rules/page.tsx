@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import Image from 'next/image';
 
 const steps = [
   {
@@ -105,13 +106,22 @@ export default function CustomRulesPage() {
               <span className="text-[12px] font-black text-primary tracking-widest uppercase">第 {step} 步</span>
               <p className="text-[16px] font-black text-neutral-900 dark:text-white mt-0.5">{title}</p>
             </div>
-            <div className="px-5 py-4 space-y-4">
-              {items.map(({ label, desc }) => (
-                <div key={label}>
-                  <p className="text-[14px] font-black text-neutral-900 dark:text-white mb-1">{label}</p>
-                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
-                </div>
-              ))}
+            <div className="px-5 py-4 flex items-start gap-4">
+              <div className="flex-1 space-y-4">
+                {items.map(({ label, desc }) => (
+                  <div key={label}>
+                    <p className="text-[14px] font-black text-neutral-900 dark:text-white mb-1">{label}</p>
+                    <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
+                  </div>
+                ))}
+              </div>
+              <Image
+                src={`/images/rules/${step}.png`}
+                alt={title}
+                width={120}
+                height={120}
+                className="flex-shrink-0 rounded-xl object-contain"
+              />
             </div>
           </div>
         ))}
