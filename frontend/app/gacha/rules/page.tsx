@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 
 const steps = [
   {
@@ -45,19 +44,15 @@ const steps = [
 export default function GachaRulesPage() {
   const router = useRouter();
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
-  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
-    supabase
-      .from('platform_settings')
-      .select('key, value')
-      .in('key', ['free_shipping_threshold'])
-      .then(({ data }) => {
-        if (!data) return;
-        const map = Object.fromEntries(data.map(r => [r.key, r.value]));
+    fetch('/api/platform-settings')
+      .then(r => r.json())
+      .then((map: Record<string, string>) => {
         if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
-      });
-  }, [supabase]);
+      })
+      .catch(() => {});
+  }, []);
 
   const thresholdText = freeShippingThreshold != null ? `${freeShippingThreshold}` : '—';
 
@@ -80,7 +75,7 @@ export default function GachaRulesPage() {
     },
     {
       label: '分解規則',
-      desc: '我的倉庫內獎品可隨時手動申請分解，系統將依商品類型計算分解金額，返還相應代幣至帳戶。分解操作確認後無法還原，請確認後再執行。',
+      desc: '我的倉庫內品項可隨時手動申請分解，系統將依商品類別計算分解金額，返還相應代幣至帳戶。分解操作確認後無法還原，請確認後再執行。',
     },
     {
       label: '售後服務',
