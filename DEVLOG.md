@@ -4,6 +4,26 @@
 
 ---
 
+## v2026.07.21g｜2026-07-21｜AlertModal 整合 + ActionBar / BottomSheet 新組件
+
+### AlertModal → Modal 整合（profile/page.tsx）
+- `frontend/components/ui/Modal.tsx` 新增 `compact` prop（AlertModal 相容模式：320px 寬、圓角 2xl、標題置中）
+- `profile/page.tsx` 6 個 `<AlertModal>` 全數遷移為 `<Modal compact>`
+- logout 確認改用全域 `showAlert()` AlertProvider（不再用局部 state + AlertModal）
+- 刪除 `frontend/components/ui/AlertModal.tsx`（零殘留引用）
+
+### ActionBar 新組件
+- 新增 `frontend/components/ui/ActionBar.tsx`：統一 fixed bottom 操作欄（backdrop-blur、safe-area-inset-bottom、shadow-modal）
+- 支援 `hideOn="lg"` / `hideOn="md"` 響應式隱藏、`zIndex` 覆寫
+- 已遷移：`sell/new/page.tsx`、`sell/new/specs/page.tsx`
+
+### BottomSheet 新組件
+- 新增 `frontend/components/ui/BottomSheet.tsx`：底部滑入抽屜（portal、遮罩、grab handle、ESC 關閉、body scroll lock）
+- 支援 `title`、`height`、`zIndex` props
+- 匯出至 `components/ui/index.ts`
+
+---
+
 ## v2026.07.21f｜2026-07-21｜前台 UI Kit 整頓
 
 ### Button 系統整合

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, ImagePlus, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -342,7 +342,7 @@ export default function SellNewPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[120] bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <ActionBar zIndex="z-[120]">
         <Button
           type="button"
           onClick={submit}
@@ -352,7 +352,7 @@ export default function SellNewPage() {
         >
           {isSaving ? '上架中…' : '上架'}
         </Button>
-      </div>
+      </ActionBar>
 
       {editingImageIndex !== null && (
         <div className="fixed inset-0 z-[2000] bg-black/40 flex items-end" onClick={() => setEditingImageIndex(null)}>

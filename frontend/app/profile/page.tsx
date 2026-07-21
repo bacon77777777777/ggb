@@ -33,7 +33,7 @@ import {
   MessageCircle,
   Star
 } from 'lucide-react';
-import { AlertModal } from '@/components/ui/AlertModal';
+import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 import { cn } from '@/lib/utils';
@@ -2187,10 +2187,14 @@ function ProfileContent() {
     }
   };
 
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   const handleLogout = () => {
-    setShowLogoutConfirm(true);
+    showAlert({
+      title: '登出確認',
+      message: '確定要登出您的帳號嗎？',
+      type: 'confirm',
+      confirmText: '確認登出',
+      onConfirm: async () => await logout(),
+    });
   };
 
   if (isAuthLoading) {
@@ -2552,7 +2556,7 @@ function ProfileContent() {
             <div className="mb-4 lg:mb-6">
               <ProfileSectionHeader
                 title="我的倉庫"
-                description="管理您獲得的獎項，隨時申請出貨"
+
                 actions={
                   activeWarehouseTab === 'all' ? (
                     <>
@@ -3849,7 +3853,7 @@ function ProfileContent() {
                     <div className="space-y-4">
                       <ProfileSectionHeader
                         title="交易所管理"
-                        description="管理您的上架獎項與售出紀錄"
+
                         actions={
                           selectedMarketItems.length > 0 ? (
                             <>
@@ -4040,7 +4044,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="交易所管理"
-                      description="管理您的上架獎項與售出紀錄"
+
                     />
 
                     {tabBar}
@@ -4466,7 +4470,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="配送訂單"
-                      description="追蹤您的獎項配送狀態"
+
                     />
 
                     <ProfileToolbar
@@ -4810,7 +4814,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="抽獎紀錄"
-                      description="查看抽卡結果與獎項明細"
+
                     />
 
                     <ProfileToolbar
@@ -5109,7 +5113,7 @@ function ProfileContent() {
 
                 return (
                   <div className="space-y-4">
-                    <ProfileSectionHeader title="儲值紀錄" description="管理您的代幣儲值明細" />
+                    <ProfileSectionHeader title="儲值紀錄" />
 
                     <ProfileToolbar
                       left={
@@ -5363,7 +5367,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="我的關注"
-                      description="您感興趣的商品清單"
+
                     />
 
                     <ProfileToolbar
@@ -5657,7 +5661,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="我的優惠券"
-                      description="查看與管理您的優惠券"
+
                       actions={
                         <button
                           type="button"
@@ -6866,11 +6870,11 @@ function ProfileContent() {
         </div>
       </div>
       {/* Edit Nickname Modal (Alert Style) */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditNickname}
         onClose={() => setShowEditNickname(false)}
         title="編輯名稱"
-        variant="default"
+
       >
         <div className="mb-2">
           <input
@@ -6892,14 +6896,14 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Title Picker Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showTitlePicker}
         onClose={() => setShowTitlePicker(false)}
         title="選擇稱號"
-        variant="default"
+
       >
         {userTitles.length === 0 ? (
           <p className="text-sm text-neutral-400 text-center py-4">尚未獲得任何稱號，完成成就即可解鎖！</p>
@@ -6929,10 +6933,10 @@ function ProfileContent() {
         >
           關閉
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Gender Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditGender}
         onClose={() => {
           // Reset temp gender when closing without saving
@@ -6940,7 +6944,7 @@ function ProfileContent() {
           setShowEditGender(false);
         }}
         title="設定性別"
-        variant="default"
+
       >
         <div className="space-y-2 mb-4">
           {['male', 'female', 'other'].map((option) => (
@@ -6972,17 +6976,17 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Birthday Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditBirthday}
         onClose={() => {
           setTempBirthday(null);
           setShowEditBirthday(false);
         }}
         title="設定生日"
-        variant="default"
+
       >
         <div className="mb-4">
           <p className="text-sm text-neutral-500 mb-2">生日設定後將無法修改，請確認輸入正確。</p>
@@ -7057,21 +7061,7 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '確認設定'}
         </button>
-      </AlertModal>
-
-      {/* Logout Confirm Modal */}
-      <AlertModal
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        title="登出確認"
-        description="確定要登出您的帳號嗎？"
-        variant="confirm"
-        confirmText="確認登出"
-        onConfirm={async () => {
-          await logout();
-          setShowLogoutConfirm(false);
-        }}
-      />
+      </Modal>
 
       {/* Address Book Modal (Slide-in) */}
       <AnimatePresence>
@@ -7189,11 +7179,11 @@ function ProfileContent() {
       </AnimatePresence>
 
       {/* Edit CVS Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditCvs}
         onClose={() => setShowEditCvs(false)}
         title="設定超商取貨"
-        variant="default"
+
       >
         <div className="space-y-3 mb-2 max-h-[60vh] overflow-y-auto px-1">
           {/* Store Selection */}
@@ -7358,7 +7348,7 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存設定'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Recipient Modal (Slide-in) */}
       <AnimatePresence>
