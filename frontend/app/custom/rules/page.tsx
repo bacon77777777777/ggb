@@ -95,15 +95,15 @@ export default function CustomRulesPage() {
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8 lg:mr-0">自製賞規則</span>
-          <div className="hidden lg:block w-10 flex-shrink-0" />
+          <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8 md:mr-0">自製賞規則</span>
+          <div className="hidden md:block w-10 flex-shrink-0" />
         </div>
       </div>
 
-      <div className="max-w-[560px] lg:max-w-[960px] mx-auto px-4 py-6 space-y-4 lg:space-y-8">
+      <div className="max-w-[560px] md:max-w-[960px] mx-auto px-4 py-6 space-y-4 md:space-y-8">
 
         {/* Steps */}
-        <div className="space-y-10 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0 lg:pt-8">
+        <div className="space-y-10 md:grid md:grid-cols-3 md:gap-6 md:space-y-0 md:pt-8">
         {steps.map(({ step, title, items }) => (
           <div key={step} className="relative">
             <Image
@@ -113,14 +113,14 @@ export default function CustomRulesPage() {
               height={100}
               className="absolute -top-5 right-4 object-contain drop-shadow-lg pointer-events-none z-10"
             />
-            <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm lg:flex lg:flex-col lg:h-full">
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm md:flex md:flex-col md:h-full">
               <div className="bg-primary/10 dark:bg-primary/20 px-5 pt-5 pb-5 rounded-t-3xl min-h-[100px]">
                 <div className="pr-28">
                   <span className="inline-block text-[13px] font-black text-white bg-primary px-3.5 py-1.5 rounded-full mb-2.5">步驟 {step}</span>
                   <p className="text-[20px] font-black text-neutral-900 dark:text-white leading-snug">{title}</p>
                 </div>
               </div>
-              <div className="px-5 py-5 space-y-5 lg:flex-1">
+              <div className="px-5 py-5 space-y-5 md:flex-1">
                 {items.map(({ label, desc }) => (
                   <div key={label} className="flex gap-3 items-start">
                     <div className="mt-[7px] w-2 h-2 rounded-full bg-primary flex-shrink-0" />
@@ -141,7 +141,7 @@ export default function CustomRulesPage() {
           <div className="bg-neutral-100 dark:bg-neutral-800 px-5 py-3 border-b border-neutral-100 dark:border-neutral-800">
             <p className="text-[16px] font-black text-neutral-900 dark:text-white">規則說明</p>
           </div>
-          <div className="px-5 py-4 space-y-5 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-5 lg:space-y-0">
+          <div className="px-5 py-4 space-y-5 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-5 md:space-y-0">
             {rules.map(({ label, desc }) => (
               <div key={label}>
                 <span className="inline-block text-[12px] font-black text-primary bg-primary/10 px-2.5 py-0.5 rounded-full mb-1.5">{label}</span>
