@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -1680,24 +1680,23 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
-                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
-                  抽獎注意事項
-                </h4>
-                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>商品庫庫存會即時更新，售完為止。</span>
-                  </li>
-                </ul>
+                <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
+                  注意事項
+                </p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  {[
+                    '商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ].map((item, i) => (
+                    <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
+                      {item}
+                    </li>
+                  ))}
+                </ol>
               </div>
             </div>
 
@@ -2208,24 +2207,23 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
-                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
-                  抽獎注意事項
-                </h4>
-                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>商品庫庫存會即時更新，售完為止。</span>
-                  </li>
-                </ul>
+                <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
+                  注意事項
+                </p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  {[
+                    '商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ].map((item, i) => (
+                    <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
+                      {item}
+                    </li>
+                  ))}
+                </ol>
               </div>
             </div>
 
