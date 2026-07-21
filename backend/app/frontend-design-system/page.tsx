@@ -3,22 +3,36 @@
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 
-// ─── 前台 Color Tokens ───────────────────────────────────────
+// ─── 前台 Color Tokens（來源：frontend/tailwind.config.js）─────
+const primaryTokens = [
+  { name: 'primary',       hex: '#EE4D2D', usage: '主要按鈕、CTA、highlight' },
+  { name: 'primary-dark',  hex: '#D9441F', usage: 'hover 態' },
+  { name: 'primary-light', hex: '#FF7043', usage: '淡版' },
+  { name: 'primary-soft',  hex: '#FFF4EF', usage: '極淡背景' },
+]
+
+const accentTokens = [
+  { name: 'accent-red',     hex: '#DC2626', usage: '獎項、價格紅' },
+  { name: 'accent-yellow',  hex: '#FACC15', usage: '代幣金' },
+  { name: 'accent-emerald', hex: '#10B981', usage: '成功綠' },
+]
+
 const colorTokens = [
-  { name: 'primary',       hex: '#4ADE80', usage: '主要按鈕、CTA、highlight' },
-  { name: 'neutral-50',    hex: '#FAFAFA', usage: '極淡背景（取代 bg-[#F5F5F5]）' },
-  { name: 'neutral-100',   hex: '#F5F5F5', usage: '次淡背景' },
-  { name: 'neutral-200',   hex: '#E5E5E5', usage: 'border 主要' },
-  { name: 'neutral-400',   hex: '#A3A3A3', usage: 'placeholder、icon' },
-  { name: 'neutral-500',   hex: '#737373', usage: '輔助文字' },
-  { name: 'neutral-700',   hex: '#404040', usage: '主體文字（light）' },
-  { name: 'neutral-900',   hex: '#171717', usage: '標題（light）' },
+  { name: 'neutral-50',  hex: '#F9FAFB', usage: '極淡背景' },
+  { name: 'neutral-100', hex: '#F3F4F6', usage: '次淡背景' },
+  { name: 'neutral-200', hex: '#E5E7EB', usage: 'border 主要' },
+  { name: 'neutral-300', hex: '#D1D5DB', usage: 'divider' },
+  { name: 'neutral-400', hex: '#9CA3AF', usage: 'placeholder、icon' },
+  { name: 'neutral-500', hex: '#6B7280', usage: '輔助文字' },
+  { name: 'neutral-600', hex: '#4B5563', usage: '次要文字' },
+  { name: 'neutral-700', hex: '#374151', usage: '主體文字（light）' },
+  { name: 'neutral-800', hex: '#1F2937', usage: 'dark surface（卡片）' },
+  { name: 'neutral-900', hex: '#111827', usage: '標題 / dark page bg' },
 ]
 
 const darkBgTokens = [
-  { name: 'neutral-800', hex: '#262626', usage: 'dark surface（卡片）' },
-  { name: 'neutral-900', hex: '#171717', usage: 'dark page bg' },
-  { name: 'neutral-950', hex: '#0a0a0a', usage: 'dark 最深底色' },
+  { name: 'neutral-800', hex: '#1F2937', usage: 'dark surface（卡片）' },
+  { name: 'neutral-900', hex: '#111827', usage: 'dark page bg' },
 ]
 
 // ─── Section wrapper ─────────────────────────────────────────
@@ -182,9 +196,9 @@ export default function FrontendDesignSystemPage() {
 
         {/* ── 前台 Color Tokens ── */}
         <Section title="Color Tokens" id="colors">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Light Mode</h3>
-          <div className="grid grid-cols-4 gap-2 mb-6">
-            {colorTokens.map(t => (
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Primary（橘紅）</h3>
+          <div className="grid grid-cols-4 gap-2 mb-5">
+            {primaryTokens.map(t => (
               <div key={t.name} className="rounded-lg overflow-hidden border border-neutral-200">
                 <div className="h-10" style={{ background: t.hex }} />
                 <div className="p-2 bg-white">
@@ -196,12 +210,40 @@ export default function FrontendDesignSystemPage() {
             ))}
           </div>
 
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Accent</h3>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {accentTokens.map(t => (
+              <div key={t.name} className="rounded-lg overflow-hidden border border-neutral-200">
+                <div className="h-10" style={{ background: t.hex }} />
+                <div className="p-2 bg-white">
+                  <div className="text-[9px] font-mono font-semibold text-neutral-600 truncate">{t.name}</div>
+                  <div className="text-[9px] font-mono text-neutral-400">{t.hex}</div>
+                  <div className="text-[8px] text-neutral-400 mt-0.5 leading-tight">{t.usage}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Neutral</h3>
+          <div className="grid grid-cols-5 gap-2 mb-5">
+            {colorTokens.map(t => (
+              <div key={t.name} className="rounded-lg overflow-hidden border border-neutral-200">
+                <div className="h-8" style={{ background: t.hex }} />
+                <div className="p-1.5 bg-white">
+                  <div className="text-[8px] font-mono font-semibold text-neutral-600 truncate">{t.name}</div>
+                  <div className="text-[8px] font-mono text-neutral-400">{t.hex}</div>
+                  <div className="text-[7px] text-neutral-400 mt-0.5 leading-tight">{t.usage}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Dark Mode Backgrounds</h3>
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             {darkBgTokens.map(t => (
               <div key={t.name} className="rounded-lg overflow-hidden border border-neutral-200">
                 <div className="h-10" style={{ background: t.hex }} />
-                <div className="p-2 bg-neutral-900">
+                <div className="p-2" style={{ background: '#111827' }}>
                   <div className="text-[9px] font-mono font-semibold text-neutral-300 truncate">{t.name}</div>
                   <div className="text-[9px] font-mono text-neutral-500">{t.hex}</div>
                   <div className="text-[8px] text-neutral-500 mt-0.5 leading-tight">{t.usage}</div>
@@ -212,9 +254,9 @@ export default function FrontendDesignSystemPage() {
 
           <div className="text-xs text-neutral-500 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
             <strong className="text-yellow-700">規範：</strong>{' '}
-            禁止 <code className="font-mono">bg-[#F5F5F5]</code>（改 <code className="font-mono">bg-neutral-50</code>）。
+            禁止 <code className="font-mono">bg-[#xxx]</code> magic hex。
             禁止 <code className="font-mono">bg-primary-600</code>（token 不存在，改 <code className="font-mono">bg-primary</code>）。
-            禁止任何 magic hex 色碼。
+            禁止 <code className="font-mono">gray-*</code>（改 <code className="font-mono">neutral-*</code>）。
           </div>
         </Section>
 
@@ -248,18 +290,18 @@ export default function FrontendDesignSystemPage() {
             <div className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wider">Button</div>
             <div className="flex flex-wrap gap-2 mb-2">
               {[
-                { label: 'primary', bg: '#4ADE80', text: '#fff', shadow: '0 1px 3px rgba(74,222,128,0.3)' },
-                { label: 'solid',   bg: '#4ADE80', text: '#fff', shadow: '0 4px 14px rgba(74,222,128,0.3)' },
+                { label: 'primary', bg: '#EE4D2D', text: '#fff', shadow: '0 1px 3px rgba(238,77,45,0.3)' },
+                { label: 'solid',   bg: '#EE4D2D', text: '#fff', shadow: '0 4px 14px rgba(238,77,45,0.3)' },
                 { label: 'danger',  bg: '#EF4444', text: '#fff', shadow: '0 1px 3px rgba(239,68,68,0.2)' },
-                { label: 'secondary', bg: '#F5F5F5', text: '#404040', shadow: 'none' },
-                { label: 'ghost',   bg: 'transparent', text: '#4ADE80', shadow: 'none' },
-                { label: 'outline', bg: 'transparent', text: '#404040', shadow: 'none', border: '1px solid #E5E5E5' },
+                { label: 'secondary', bg: '#F3F4F6', text: '#374151', shadow: 'none' },
+                { label: 'ghost',   bg: 'transparent', text: '#EE4D2D', shadow: 'none' },
+                { label: 'outline', bg: 'transparent', text: '#374151', shadow: 'none', border: '1px solid #E5E7EB' },
               ].map(b => (
                 <button key={b.label} style={{ background: b.bg, color: b.text, boxShadow: b.shadow, border: b.border ?? 'none', borderRadius: 12, padding: '8px 16px', fontSize: 13, fontWeight: 900, cursor: 'default' }}>
                   {b.label}
                 </button>
               ))}
-              <button style={{ background: '#4ADE80', color: '#fff', borderRadius: 12, padding: '8px 16px', fontSize: 13, fontWeight: 900, opacity: 0.5, cursor: 'not-allowed' }}>
+              <button style={{ background: '#EE4D2D', color: '#fff', borderRadius: 12, padding: '8px 16px', fontSize: 13, fontWeight: 900, opacity: 0.5, cursor: 'not-allowed' }}>
                 disabled
               </button>
             </div>
@@ -274,15 +316,15 @@ export default function FrontendDesignSystemPage() {
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <div className="text-[10px] text-neutral-400 mb-1">default</div>
-                <input readOnly placeholder="placeholder" style={{ width: '100%', border: '1px solid #E5E5E5', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#fff', outline: 'none' }} />
+                <input readOnly placeholder="placeholder" style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#374151', background: '#fff', outline: 'none' }} />
               </div>
               <div>
                 <div className="text-[10px] text-neutral-400 mb-1">focus</div>
-                <input readOnly placeholder="focus ring" style={{ width: '100%', border: '1px solid #4ADE80', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#fff', outline: 'none', boxShadow: '0 0 0 1px #4ADE80' }} />
+                <input readOnly placeholder="focus ring" style={{ width: '100%', border: '1px solid #EE4D2D', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#374151', background: '#fff', outline: 'none', boxShadow: '0 0 0 1px #EE4D2D' }} />
               </div>
               <div>
                 <div className="text-[10px] text-neutral-400 mb-1">error</div>
-                <input readOnly value="錯誤值" style={{ width: '100%', border: '1px solid #EF4444', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#FFF5F5', outline: 'none', boxShadow: '0 0 0 1px #EF4444' }} />
+                <input readOnly value="錯誤值" style={{ width: '100%', border: '1px solid #EF4444', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#374151', background: '#FFF5F5', outline: 'none', boxShadow: '0 0 0 1px #EF4444' }} />
               </div>
             </div>
             <div className="text-[10px] text-neutral-400 font-mono">
@@ -317,8 +359,8 @@ export default function FrontendDesignSystemPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl overflow-hidden border border-neutral-200">
                 <div className="bg-white/90 border-t border-neutral-200 px-4 py-2.5 flex items-center gap-2" style={{ backdropFilter: 'blur(12px)' }}>
-                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white" style={{ background: '#4ADE80' }}>立即購買</div>
-                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-semibold" style={{ background: '#F5F5F5', color: '#404040' }}>加入倉庫</div>
+                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white" style={{ background: '#EE4D2D' }}>立即購買</div>
+                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-semibold" style={{ background: '#F3F4F6', color: '#374151' }}>加入倉庫</div>
                 </div>
                 <div className="px-3 py-1.5 text-[10px] text-neutral-400 font-mono bg-neutral-50">{'<ActionBar hideOn="lg" zIndex="z-50">'}</div>
               </div>
