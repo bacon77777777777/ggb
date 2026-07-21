@@ -47,7 +47,7 @@ function* walkTsx(dir: string): Generator<string> {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (!['node_modules', '.next', '.git'].includes(entry.name)) yield* walkTsx(full)
+      if (!['node_modules', '.next', '.git', 'profilecard'].includes(entry.name)) yield* walkTsx(full)
     } else if (entry.isFile() && (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts'))) {
       yield full
     }
