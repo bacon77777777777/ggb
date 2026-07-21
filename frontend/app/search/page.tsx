@@ -483,6 +483,7 @@ export default function SearchPage() {
                 <input
                   ref={inputRef}
                   value={query}
+                  autoFocus={!!focusParam}
                   onFocus={() => setIsInputFocused(true)}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="曾經搜尋平凡的商品"

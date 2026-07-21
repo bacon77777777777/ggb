@@ -714,7 +714,7 @@ function NavbarInner() {
 
             {isAuthenticated && isHomePage && (
               <Link
-                href="/search"
+                href="/search?focus=1"
                 className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                 aria-label="搜尋"
               >
@@ -838,7 +838,7 @@ function NavbarInner() {
                 <>
                   {/* 未登入搜尋圖標（手機，登入按鈕左邊） */}
                   <Link
-                    href="/search"
+                    href="/search?focus=1"
                     className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                     aria-label="搜尋"
                   >
