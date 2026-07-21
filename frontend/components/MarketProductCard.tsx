@@ -74,7 +74,7 @@ export default function MarketProductCard({
                     <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">{price.toLocaleString()}</span>
+                    <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>
                     <span className="text-[11px] font-black text-neutral-400">/個</span>
                   </div>
                 </div>

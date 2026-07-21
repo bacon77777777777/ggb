@@ -403,18 +403,18 @@ const getStatusConfig = (status: string) => {
       return { label: '配送中', color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' };
     case 'delivered':
     case 'completed':
-      return { label: '已送達', color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+      return { label: '已送達', color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
     case 'cancelled':
       return { label: '已取消', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' };
     default:
-      return { label: '未知狀態', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-100' };
+      return { label: '未知狀態', color: 'text-neutral-500', bg: 'bg-neutral-50', border: 'border-neutral-100' };
   }
 };
 
 const getTopupStatusConfig = (status: string) => {
   const s = status.toLowerCase();
   if (s === 'paid' || s === 'success') {
-    return { label: '交易成功', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+    return { label: '交易成功', color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
   }
   if (s === 'pending') {
     return { label: '待付款', color: 'text-neutral-500', bg: 'bg-neutral-100', border: 'border-neutral-200' };
@@ -2391,7 +2391,7 @@ function ProfileContent() {
                               isSelected && !isDisabled && "bg-accent-emerald/5"
                             )}
                           >
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || '/images/item.png'}
                                 alt={item.name}
@@ -2405,7 +2405,7 @@ function ProfileContent() {
                                 {item.supplierName}
                               </p>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                   {item.grade}
                                 </span>
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2463,7 +2463,7 @@ function ProfileContent() {
                       <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                         {filteredDismantledItems.map((item) => (
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || '/images/item.png'}
                                 alt={item.name}
@@ -2475,7 +2475,7 @@ function ProfileContent() {
                             <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
                               <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                   {item.grade}
                                 </span>
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2721,7 +2721,7 @@ function ProfileContent() {
                                       {item.grade}
                                     </span>
                                   </div>
-                                  <div className="relative w-14 h-14 rounded-xl bg-[#28324E] overflow-hidden flex-shrink-0">
+                                  <div className="relative w-14 h-14 rounded-xl bg-item-bg overflow-hidden flex-shrink-0">
                                     <Image
                                       src={item.image || '/images/item.png'}
                                       alt={item.name}
@@ -2810,7 +2810,7 @@ function ProfileContent() {
                                         header: '賞別',
                                         className: 'w-[110px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                             {item.grade}
                                           </span>
                                         ),
@@ -2851,7 +2851,7 @@ function ProfileContent() {
                                         header: '籤號',
                                         className: 'w-[120px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 font-amount whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 font-amount whitespace-nowrap">
                                             {item.ticketNo}
                                           </span>
                                         ),
@@ -2939,7 +2939,7 @@ function ProfileContent() {
                           <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                             {filteredDismantledItems.map((item) => (
                               <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                                   <Image
                                     src={item.image || '/images/item.png'}
                                     alt={item.name}
@@ -2951,7 +2951,7 @@ function ProfileContent() {
                                 <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
                                   <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                       {item.grade}
                                     </span>
                                     <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2995,7 +2995,7 @@ function ProfileContent() {
                                         header: '賞別',
                                         className: 'w-[110px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                             {item.grade}
                                           </span>
                                         ),
@@ -3484,7 +3484,7 @@ function ProfileContent() {
                             unoptimized
                           />
                           <div>
-                            <span className="px-2 py-0.5 bg-accent-red text-white text-[10px] font-black rounded-md uppercase">{sellingItem.grade}</span>
+                            <span className="px-2 py-0.5 bg-accent-red text-white text-[10px] font-black rounded-xl uppercase">{sellingItem.grade}</span>
                             <h4 className={cn("font-black text-neutral-900 dark:text-white mt-1 line-clamp-1", isDesktop ? "text-sm" : "text-[13px]")}>{sellingItem.name}</h4>
                             <p className="text-xs text-neutral-400 font-bold mt-0.5">{sellingItem.series}</p>
                           </div>
@@ -3769,7 +3769,7 @@ function ProfileContent() {
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight line-clamp-1 flex-1">{item.product.name}</h4>
                                 <span className={cn(
                                   "px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ml-2",
-                                  item.type === 'sell' ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
+                                  item.type === 'sell' ? "bg-accent-emerald/15 text-accent-emerald" : "bg-blue-100 text-blue-600"
                                 )}>
                                   {item.type === 'sell' ? '售出' : '購入'}
                                 </span>
@@ -3939,7 +3939,7 @@ function ProfileContent() {
                             header: '賞別',
                             className: 'w-[110px]',
                             render: (item) => (
-                              <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                              <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                 {item.product.grade}
                               </span>
                             ),
@@ -4083,7 +4083,7 @@ function ProfileContent() {
                           header: '賞別',
                           className: 'w-[110px]',
                           render: (item) => (
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black whitespace-nowrap">
+                            <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black whitespace-nowrap">
                               {item.product.grade}
                             </span>
                           ),
@@ -4116,8 +4116,8 @@ function ProfileContent() {
                           render: (item) => (
                             <span
                               className={cn(
-                                'inline-flex px-2 py-0.5 rounded-md text-[12px] font-black whitespace-nowrap',
-                                item.type === 'sell' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                                'inline-flex px-2 py-0.5 rounded-xl text-[12px] font-black whitespace-nowrap',
+                                item.type === 'sell' ? 'bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20' : 'bg-blue-50 text-blue-700 border border-blue-100'
                               )}
                             >
                               {item.type === 'sell' ? '售出' : '購入'}
@@ -4296,7 +4296,7 @@ function ProfileContent() {
                               {(() => {
                                  const s = order.status;
                                  if (s === 'delivered' || s === 'completed') {
-                                   return <div className="text-[13px] font-black text-emerald-500">已送達</div>;
+                                   return <div className="text-[13px] font-black text-accent-emerald">已送達</div>;
                                  }
                                  if (s === 'submitted' || s === 'processing') {
                                    return <div className="text-[13px] font-black text-neutral-400">待出貨</div>;
@@ -4304,7 +4304,7 @@ function ProfileContent() {
                                  if (['picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
                                    const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
                                    return (
-                                     <div className="text-[13px] font-black text-emerald-500">預計{text}</div>
+                                     <div className="text-[13px] font-black text-accent-emerald">預計{text}</div>
                                    );
                                  }
                                  return null;
@@ -4595,7 +4595,7 @@ function ProfileContent() {
                                 key={idx}
                                 className="flex items-center gap-2 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 px-2 py-2"
                               >
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
                                   {it.grade}
                                 </span>
                                 <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
@@ -4736,11 +4736,11 @@ function ProfileContent() {
                                     <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                       <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
                                         {!['gacha', 'blindbox'].includes(item.productType || '') && (
-                                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-md border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
+                                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-xl border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
                                             {result.ticket_number}
                                           </span>
                                         )}
-                                        <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-md border border-accent-red/10 uppercase shrink-0">
+                                        <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-xl border border-accent-red/10 uppercase shrink-0">
                                           {result.grade}
                                         </span>
                                         <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
@@ -4840,7 +4840,7 @@ function ProfileContent() {
                           header: '編號',
                           className: 'w-[140px]',
                           render: (item) => (
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 text-[12px] font-black text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 font-mono">
+                            <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-[12px] font-black text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 font-mono">
                               {formatDrawId(item.id, item.rawDate)}
                             </span>
                           ),
@@ -4928,11 +4928,11 @@ function ProfileContent() {
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   {!['gacha', 'blindbox'].includes(item.productType || '') && (
-                                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
                                       {result.ticket_number}
                                     </span>
                                   )}
-                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
                                     {result.grade}
                                   </span>
                                   <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
@@ -5329,9 +5329,9 @@ function ProfileContent() {
                   if (product.status === 'selling') {
                     return {
                       label: '販售中',
-                      color: 'text-emerald-700 dark:text-emerald-300',
-                      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-                      border: 'border-emerald-100 dark:border-emerald-900/30',
+                      color: 'text-accent-emerald dark:text-accent-emerald',
+                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
+                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
                     }
                   }
                   return {
@@ -5545,9 +5545,9 @@ function ProfileContent() {
 
                         <div className="flex-shrink-0 self-center">
                            <span className={cn(
-                             "px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider border",
+                             "px-2 py-1 rounded-xl text-[11px] font-black uppercase tracking-wider border",
                              coupon.status === 'unused' 
-                               ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                               ? "bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20" 
                                : "bg-neutral-50 text-neutral-400 border-neutral-100"
                            )}>
                              {coupon.status === 'unused' ? '使用' : coupon.status === 'used' ? '已用' : '過期'}
@@ -5621,9 +5621,9 @@ function ProfileContent() {
                   if (coupon.status === 'unused') {
                     return {
                       label: '可使用',
-                      color: 'text-emerald-700 dark:text-emerald-300',
-                      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-                      border: 'border-emerald-100 dark:border-emerald-900/30',
+                      color: 'text-accent-emerald dark:text-accent-emerald',
+                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
+                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
                     }
                   }
                   if (coupon.status === 'used') {
@@ -6337,7 +6337,7 @@ function ProfileContent() {
                         </div>
                       )}
                       {!isGuest && user.is_phone_verified && (
-                        <CheckCircle2 className="w-[18px] h-[18px] text-emerald-200 drop-shadow-sm shrink-0" />
+                        <CheckCircle2 className="w-[18px] h-[18px] text-accent-emerald drop-shadow-sm shrink-0" />
                       )}
                       {/* Badge Image */}
                       {!isGuest && user.is_phone_verified && (
@@ -6883,7 +6883,7 @@ function ProfileContent() {
             maxLength={20}
             minLength={2}
             placeholder="例：王吉比"
-            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             autoFocus
           />
         </div>
@@ -7016,7 +7016,7 @@ function ProfileContent() {
                   }
                 }}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none"
+                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none"
                 style={{ height: '48px' }}
               />
             ) : (
@@ -7037,7 +7037,7 @@ function ProfileContent() {
                 }}
                 customInput={
                   <input 
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
                     readOnly 
                   />
                 }
@@ -7291,7 +7291,7 @@ function ProfileContent() {
                <input
                  value={settingsForm.cvsStoreId}
                  onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreId: e.target.value })}
-                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                  placeholder="輸入代號"
                  readOnly
                />
@@ -7301,7 +7301,7 @@ function ProfileContent() {
                <input
                  value={settingsForm.cvsStoreName}
                  onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreName: e.target.value })}
-                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                  placeholder="例如：7-11 某某門市"
                  readOnly
                />
@@ -7312,7 +7312,7 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsStoreAddress}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreAddress: e.target.value })}
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               placeholder="輸入門市地址"
               readOnly
             />
@@ -7324,7 +7324,7 @@ function ProfileContent() {
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsRecipientName: e.target.value })}
               maxLength={30}
               placeholder="例：王吉比"
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
           <div>
@@ -7337,7 +7337,7 @@ function ProfileContent() {
               inputMode="numeric"
               pattern="^09\d{8}$"
               placeholder={PHONE_PLACEHOLDER}
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
         </div>
@@ -7410,7 +7410,7 @@ function ProfileContent() {
               {/* Default Toggle (Visual only for now) */}
               <div className="bg-white dark:bg-neutral-900 mt-3 px-4 py-3 flex items-center justify-between">
                 <span className="text-[15px] text-neutral-900 dark:text-white">設為預設地址</span>
-                <div className="w-11 h-6 bg-emerald-500 rounded-full relative">
+                <div className="w-11 h-6 bg-accent-emerald rounded-full relative">
                   <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
               </div>

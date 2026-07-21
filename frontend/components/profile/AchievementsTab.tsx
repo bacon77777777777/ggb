@@ -30,7 +30,7 @@ const TITLE_STYLES: Record<string, string> = {
   purple: 'from-purple-500 to-violet-600',
   red:    'from-rose-500 to-pink-600',
   blue:   'from-blue-500 to-cyan-500',
-  green:  'from-emerald-500 to-teal-500',
+  green:  'from-accent-emerald to-teal-500',
 };
 
 const BADGE_IMAGE: Record<string, string> = {

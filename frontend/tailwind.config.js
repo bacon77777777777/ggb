@@ -15,10 +15,12 @@ module.exports = {
           soft: '#FFF4EF',
         },
         accent: {
-          red: '#DC2626',   // 獎項/價格紅
+          red: '#DC2626',    // 獎項/價格紅
           yellow: '#FACC15', // 代幣金
           emerald: '#10B981', // 成功綠
+          orange: '#FF5E00', // 任務/簽到橘（MissionFrame）
         },
+        'item-bg': '#28324E', // 商品縮圖佔位背景（深藍灰）
         neutral: {
           50: '#F9FAFB',
           100: '#F3F4F6',

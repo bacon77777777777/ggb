@@ -546,7 +546,7 @@ export default function SellOrderDetailPage() {
       )}
     >
       {showEscrowPay && (
-        <div className="bg-[#EE4D2D] text-white px-4 py-2 text-[13px] font-black">
+        <div className="bg-primary text-white px-4 py-2 text-[13px] font-black">
           請於 <span className="font-amount">{payDeadlineText}</span> 前完成付款
         </div>
       )}
@@ -665,7 +665,7 @@ export default function SellOrderDetailPage() {
               <div className="text-[13px] font-black text-neutral-900 dark:text-white">訂單金額</div>
               <div className="flex items-center gap-1.5">
                 <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
-                <span className="text-[16px] font-black font-amount text-[#EE4D2D]">{totalPrice.toLocaleString()}</span>
+                <span className="text-[16px] font-black font-amount text-primary">{totalPrice.toLocaleString()}</span>
               </div>
             </div>
 
@@ -768,7 +768,7 @@ export default function SellOrderDetailPage() {
               onClick={actionBar.right.onClick}
               disabled={actionBar.right.disabled}
               className={cn(
-                'flex-1 h-[44px] rounded-xl text-[15px] font-black text-white bg-[#EE4D2D] active:scale-[0.99] transition-transform',
+                'flex-1 h-[44px] rounded-xl text-[15px] font-black text-white bg-primary active:scale-[0.99] transition-transform',
                 actionBar.right.disabled ? 'opacity-60' : ''
               )}
             >

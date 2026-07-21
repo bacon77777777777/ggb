@@ -243,7 +243,7 @@ export function PurchaseConfirmation({
             </div>
             {product.is_preorder && (
               <div className="mt-1">
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200">
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
                   <Info className="w-3.5 h-3.5" />
                   <span className="text-[11px] md:text-[12px] font-bold">
                     預購商品，預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString() : '待公布'}
@@ -280,7 +280,7 @@ export function PurchaseConfirmation({
             {selectedTickets.map(num => (
               <div 
                 key={num} 
-                className="aspect-square bg-primary text-white rounded-md flex items-center justify-center font-amount font-black text-[13px] md:text-[15px] shadow-sm shadow-primary/30 leading-none"
+                className="aspect-square bg-primary text-white rounded-xl flex items-center justify-center font-amount font-black text-[13px] md:text-[15px] shadow-sm shadow-primary/30 leading-none"
               >
                 {num.toString().padStart(2, '0')}
               </div>
@@ -319,7 +319,7 @@ export function PurchaseConfirmation({
                     }
                   }}
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-blue-600"></div>
               </label>
            </div>
 
@@ -373,7 +373,7 @@ export function PurchaseConfirmation({
                      </span> {usePoints ? '積分' : '代幣'}
                    </span>
                    {!isInsufficient && (usePoints ? pointsCost > 0 : finalPrice > 0) && (
-                      <span className="text-xs text-emerald-500">
+                      <span className="text-xs text-accent-emerald">
                         購買後剩餘: {usePoints ? (userPoints - pointsCost).toLocaleString() : (userTokens - finalPrice).toLocaleString()}
                       </span>
                    )}

@@ -271,7 +271,7 @@ export function PurchaseConfirmationModal({
                       </div>
                       {product.is_preorder && (
                         <div className="mt-1">
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200">
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
                             <Info className="w-3.5 h-3.5" />
                             <span className="text-[11px] font-bold">
                               預購商品，預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString() : '待公布'}
@@ -368,7 +368,7 @@ export function PurchaseConfirmationModal({
                              }
                            }}
                          />
-                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                         <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-blue-600"></div>
                        </label>
                     </div>
 
@@ -410,7 +410,7 @@ export function PurchaseConfirmationModal({
                           <div className="flex flex-col items-end">
                             <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
                             {!isInsufficient && pointsCost > 0 && (
-                              <span className="text-xs text-emerald-500">購買後剩餘: {(userPoints - pointsCost).toLocaleString()}</span>
+                              <span className="text-xs text-accent-emerald">購買後剩餘: {(userPoints - pointsCost).toLocaleString()}</span>
                             )}
                           </div>
                         </div>
@@ -420,7 +420,7 @@ export function PurchaseConfirmationModal({
                           <div className="flex flex-col items-end">
                             <span><span className="font-amount">{userTokens.toLocaleString()}</span> 代幣</span>
                             {!isInsufficient && finalPrice > 0 && (
-                              <span className="text-xs text-emerald-500">購買後剩餘: {(userTokens - finalPrice).toLocaleString()}</span>
+                              <span className="text-xs text-accent-emerald">購買後剩餘: {(userTokens - finalPrice).toLocaleString()}</span>
                             )}
                           </div>
                         </div>
@@ -512,7 +512,7 @@ export function PurchaseConfirmationModal({
                               <span className={cn("font-black text-lg", isSelected ? "text-accent-red" : "text-neutral-900 dark:text-white")}>
                                 {coupon.code}
                               </span>
-                              <span className="text-xs font-bold px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-md text-neutral-500">
+                              <span className="text-xs font-bold px-2 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-neutral-500">
                                 {coupon.discount_type === 'fixed' ? '折抵金額' : '折扣百分比'}
                               </span>
                             </div>

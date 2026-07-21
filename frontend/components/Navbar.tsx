@@ -814,7 +814,7 @@ function NavbarInner() {
                       </div>
                       {/* Invite Code Display */}
                       <div 
-                        className="flex items-center gap-1.5 mt-1.5 bg-neutral-50 dark:bg-neutral-800 px-2 py-0.5 rounded-md cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors group/invite w-fit"
+                        className="flex items-center gap-1.5 mt-1.5 bg-neutral-50 dark:bg-neutral-800 px-2 py-0.5 rounded-xl cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors group/invite w-fit"
                         onClick={(e) => {
                           e.preventDefault();
                           if (user.invite_code) {

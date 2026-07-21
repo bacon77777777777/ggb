@@ -27,7 +27,7 @@ const MissionIcon = ({ name }: { name: string | null }) => {
     case 'Log-in': return <LogIn className="w-5 h-5 text-green-500" />;
     case 'Eye': return <Eye className="w-5 h-5 text-cyan-500" />;
     case 'Heart': return <Heart className="w-5 h-5 text-pink-500" />;
-    case 'Wallet': return <Wallet className="w-5 h-5 text-emerald-500" />;
+    case 'Wallet': return <Wallet className="w-5 h-5 text-accent-emerald" />;
     case 'Sparkles': return <Sparkles className="w-5 h-5 text-amber-400" />;
     case 'Calendar': return <Calendar className="w-5 h-5 text-blue-500" />;
     case 'Users': return <Users className="w-5 h-5 text-indigo-500" />;

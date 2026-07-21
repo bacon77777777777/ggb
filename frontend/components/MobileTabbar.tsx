@@ -29,7 +29,7 @@ function MobileTabbarSkeleton() {
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="relative h-full flex items-center justify-center">
               <div className="flex flex-col items-center justify-end h-full w-full pb-1.5 relative gap-1">
-                <Skeleton className="w-6 h-6 rounded-md" />
+                <Skeleton className="w-6 h-6 rounded-xl" />
                 <Skeleton className="w-8 h-2 rounded-sm" />
               </div>
             </div>

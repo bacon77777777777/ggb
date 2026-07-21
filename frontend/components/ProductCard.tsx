@@ -105,7 +105,7 @@ export default function ProductCard(props: ProductCardProps) {
           
           <div className="absolute top-0 right-0 z-10 flex flex-col items-end pointer-events-none">
             {isHot && (
-              <div className="h-6 px-2 inline-flex items-center rounded-tr-lg rounded-bl-lg bg-[#EE4D2D] text-white text-[11px] font-black border border-white/10 leading-none">
+              <div className="h-6 px-2 inline-flex items-center rounded-tr-lg rounded-bl-lg bg-primary text-white text-[11px] font-black border border-white/10 leading-none">
                 熱門
               </div>
             )}
@@ -149,7 +149,7 @@ export default function ProductCard(props: ProductCardProps) {
                     <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">{price.toLocaleString()}</span>
+                    <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>
                     {!!unitLabel && <span className="text-[11px] font-black text-neutral-400">{unitLabel}</span>}
                   </div>
                 </div>

@@ -14,7 +14,7 @@ const TITLE_STYLES: Record<string, string> = {
   purple: 'bg-gradient-to-r from-purple-500 to-violet-600',
   red:    'bg-gradient-to-r from-rose-500 to-pink-600',
   blue:   'bg-gradient-to-r from-blue-500 to-cyan-500',
-  green:  'bg-gradient-to-r from-emerald-500 to-teal-500',
+  green:  'bg-gradient-to-r from-accent-emerald to-teal-500',
 };
 
 function TitleBadge({ title }: { title: { name: string; color_key: string } }) {
@@ -424,7 +424,7 @@ export function RankingCategoryTabs({ activeCategory, onCategoryChange }: Rankin
           )}
           <p className={clsx(
             "font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[28px] transition-colors duration-300",
-            activeCategory === tab.id ? "text-white" : "text-[#818181]"
+            activeCategory === tab.id ? "text-white" : "text-neutral-500"
           )}>{tab.label}</p>
         </div>
       ))}
