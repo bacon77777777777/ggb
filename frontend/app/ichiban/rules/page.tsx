@@ -105,27 +105,30 @@ export default function IchibanRulesPage() {
 
         {/* Steps */}
         {steps.map(({ step, title, items }) => (
-          <div key={step} className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800">
-            <div className="bg-primary/10 dark:bg-primary/20 px-5 py-3 border-b border-neutral-100 dark:border-neutral-800">
-              <span className="text-[12px] font-black text-primary tracking-widest uppercase">第 {step} 步</span>
-              <p className="text-[16px] font-black text-neutral-900 dark:text-white mt-0.5">{title}</p>
-            </div>
-            <div className="px-5 py-4 flex items-start gap-4">
-              <div className="flex-1 space-y-4">
-                {items.map(({ label, desc }) => (
-                  <div key={label}>
-                    <p className="text-[14px] font-black text-neutral-900 dark:text-white mb-1">{label}</p>
-                    <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
-                  </div>
-                ))}
+          <div key={step} className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800 shadow-sm">
+            <div className="bg-primary/10 dark:bg-primary/20 px-5 pt-5 pb-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="inline-block text-[11px] font-black text-primary bg-primary/15 dark:bg-primary/30 px-2.5 py-0.5 rounded-full tracking-widest uppercase mb-2">第 {step} 步</span>
+                <p className="text-[18px] font-black text-neutral-900 dark:text-white leading-snug">{title}</p>
               </div>
               <Image
                 src={`/images/rules/${step}.png`}
                 alt={title}
-                width={120}
-                height={120}
-                className="flex-shrink-0 rounded-xl object-contain"
+                width={100}
+                height={100}
+                className="flex-shrink-0 drop-shadow-md object-contain"
               />
+            </div>
+            <div className="px-5 py-4 space-y-4 border-t border-neutral-100 dark:border-neutral-800">
+              {items.map(({ label, desc }) => (
+                <div key={label} className="flex gap-3">
+                  <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                  <div>
+                    <p className="text-[14px] font-black text-neutral-900 dark:text-white mb-0.5">{label}</p>
+                    <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
