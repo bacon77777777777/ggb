@@ -479,7 +479,10 @@ export default function BlindboxDetailPage() {
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
       style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
     >
-      <div className="w-full flex justify-center">
+      <div
+        className="w-full flex justify-center"
+        style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
+      >
         <div
           className="relative"
           style={{
@@ -681,15 +684,17 @@ export default function BlindboxDetailPage() {
             )}
           </div>
 
-          <div className="w-full px-2 py-2">
-            <GachaCollectionList
-              productId={product.id}
-              product={product as any}
-              prizes={prizes}
-              refreshKey={collectionRefreshKey}
-            />
-          </div>
         </div>
+      </div>
+
+      {/* 猜你喜歡 — 在 scale 容器外，正常文件流 */}
+      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-2">
+        <GachaCollectionList
+          productId={product.id}
+          product={product as any}
+          prizes={prizes}
+          refreshKey={collectionRefreshKey}
+        />
       </div>
 
       {product && (
