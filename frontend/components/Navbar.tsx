@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag } from 'lucide-react';
+import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import NavbarLayout from './NavbarLayout';
 
@@ -705,9 +705,10 @@ function NavbarInner() {
                 {rulesPath && (
                   <Link
                     href={rulesPath}
-                    className="px-2.5 py-1 rounded-lg text-[13px] font-black text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95"
+                    className="p-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95"
+                    aria-label="規則"
                   >
-                    規則
+                    <BookOpen className="w-5 h-5 stroke-[2]" />
                   </Link>
                 )}
                 <button onClick={handleShare} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-600 dark:text-neutral-400 transition-colors active:scale-95">
