@@ -543,7 +543,8 @@ function NavbarInner() {
     }
   };
 
-  if (pathname === '/news' || isNewsDetailPage) return null;
+  const isRulesPage = /^\/[^/]+\/rules$/.test(pathname);
+  if (pathname === '/news' || isNewsDetailPage || isRulesPage) return null;
 
   return (
     <>
