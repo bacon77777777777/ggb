@@ -208,7 +208,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         <div className="pt-1 sm:pt-2">
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-1">
             <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-            <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">
+            <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">
               查看更多
             </Link>
           </div>
