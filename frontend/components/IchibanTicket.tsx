@@ -183,9 +183,9 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                   transition={{ delay: 0.3, duration: 0.6, type: 'spring' }}
                   className="flex flex-col items-center justify-center w-full z-10 px-8 pl-14"
                 >
-                  <div className="flex items-baseline gap-0.5 sm:gap-1 text-center justify-center -mb-1">
+                  <div className="flex items-baseline gap-1 text-center justify-center">
                     <span className={cn(
-                      "text-[40px] sm:text-5xl lg:text-[43px] font-black tracking-tighter leading-none font-amount",
+                      "text-[60px] sm:text-[64px] lg:text-[60px] font-black tracking-tighter leading-none font-amount",
                       isLastOne ? "text-yellow-600 drop-shadow-sm" : "text-neutral-300"
                     )}>
                       {(() => {
@@ -196,7 +196,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                       })()}
                     </span>
                     <span className={cn(
-                      "text-lg sm:text-lg lg:text-[16px] font-black",
+                      "text-2xl sm:text-2xl lg:text-[22px] font-black",
                       isLastOne ? "text-yellow-700" : "text-neutral-300"
                     )}>
                       {isLastOne ? "ONE" : "賞"}

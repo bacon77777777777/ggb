@@ -1226,13 +1226,10 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="h-16 px-4 md:px-6 flex items-center justify-center w-full">
           {openAllDone ? (
-            // 全部開啟後禁用，2 秒後自動跳轉
-            <Button
-              disabled
-              className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-400 text-white opacity-60 cursor-not-allowed"
-            >
+            // 全部開啟後禁用灰，2 秒後自動跳轉
+            <div className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex items-center justify-center cursor-not-allowed select-none">
               全部開啟
-            </Button>
+            </div>
           ) : !allOpened ? (
             <Button
               onClick={handleOpenAll}
