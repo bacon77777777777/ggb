@@ -5,6 +5,7 @@ import { normalizePhone, PHONE_PLACEHOLDER } from '@/lib/phone';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { ActionBar } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 
@@ -936,8 +937,8 @@ export default function ExchangeOrderFlowPage() {
       </div>
 
       {order && step === 4 && !order.done && !order.cancelled ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2 w-full">
             <button
               type="button"
               onClick={() => updateReceipt({ action: 'return' })}
@@ -959,10 +960,10 @@ export default function ExchangeOrderFlowPage() {
               確認
             </button>
           </div>
-        </div>
+        </ActionBar>
       ) : order && step === 5 && order.done ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto w-full">
             <button
               type="button"
               onClick={submitRating}
@@ -977,11 +978,11 @@ export default function ExchangeOrderFlowPage() {
               {role && order.ratings[role]?.submitted ? '已送出' : '送出'}
             </button>
           </div>
-        </div>
+        </ActionBar>
       ) : (
         order && primary && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto w-full">
             <button
               type="button"
               onClick={updateMyConfirm}
@@ -996,7 +997,7 @@ export default function ExchangeOrderFlowPage() {
               {primary.label}
             </button>
           </div>
-        </div>
+        </ActionBar>
         )
       )}
     </div>

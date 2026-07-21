@@ -30,11 +30,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const { setHighlightedProductId } = useProduct()
   const { addLog } = useLog()
   const [isMounted, setIsMounted] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const last = localStorage.getItem('sidebarOpen_last')
-    return last === null ? true : last === 'true'
-  })
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [sidebarTransitionReady, setSidebarTransitionReady] = useState(false)
   const [groupOpenMap, setGroupOpenMap] = useState<Record<string, boolean>>({})
   const [isGroupInitialized, setIsGroupInitialized] = useState(false)

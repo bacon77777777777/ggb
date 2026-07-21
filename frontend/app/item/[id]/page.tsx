@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen } from 'lucide-react';
@@ -2321,8 +2321,8 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 h-auto min-h-16 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 flex items-center lg:hidden z-50 shadow-modal">
-          <div className="flex items-center gap-4 w-full pb-2">
+        <ActionBar hideOn="lg">
+          <div className="flex items-center gap-4 w-full">
             <div className="flex flex-col items-center justify-center pl-2">
               <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400 leading-none mb-1 whitespace-nowrap">
                 優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
@@ -2362,7 +2362,7 @@ export default function ProductDetailPage() {
                   : '立即轉蛋'}
             </Button>
           </div>
-        </div>
+        </ActionBar>
 
         {showResultModal && (
           <PrizeResultModal

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -439,25 +439,23 @@ export default function ExchangeDetailPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 h-auto min-h-16 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 flex items-center md:hidden z-50 shadow-modal">
-        <div className="w-full pb-2">
-          <Button
-            onClick={() => {
-              if (!user?.id) {
-                showToast('請先登入', 'plain');
-                router.push(`/login?redirect=${encodeURIComponent(`/exchange/${offer.id}`)}`);
-                return;
-              }
-              setIsActivateOpen(true);
-            }}
-            size="lg"
-            className="w-full h-[44px] text-base font-black rounded-xl shadow-xl transition-all active:scale-[0.95] flex items-center justify-center"
-            variant="danger"
-          >
-            啟動交換
-          </Button>
-        </div>
-      </div>
+      <ActionBar hideOn="md">
+        <Button
+          onClick={() => {
+            if (!user?.id) {
+              showToast('請先登入', 'plain');
+              router.push(`/login?redirect=${encodeURIComponent(`/exchange/${offer.id}`)}`);
+              return;
+            }
+            setIsActivateOpen(true);
+          }}
+          size="lg"
+          className="w-full h-[44px] text-base font-black rounded-xl shadow-xl transition-all active:scale-[0.95] flex items-center justify-center"
+          variant="danger"
+        >
+          啟動交換
+        </Button>
+      </ActionBar>
 
       {isActivateOpen && (
         <div

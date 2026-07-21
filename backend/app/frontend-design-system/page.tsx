@@ -241,6 +241,102 @@ export default function FrontendDesignSystemPage() {
           </div>
         </Section>
 
+        {/* ── UI Components ── */}
+        <Section title="UI Kit Components" id="components">
+          {/* Button */}
+          <div className="mb-6">
+            <div className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wider">Button</div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[
+                { label: 'primary', bg: '#4ADE80', text: '#fff', shadow: '0 1px 3px rgba(74,222,128,0.3)' },
+                { label: 'solid',   bg: '#4ADE80', text: '#fff', shadow: '0 4px 14px rgba(74,222,128,0.3)' },
+                { label: 'danger',  bg: '#EF4444', text: '#fff', shadow: '0 1px 3px rgba(239,68,68,0.2)' },
+                { label: 'secondary', bg: '#F5F5F5', text: '#404040', shadow: 'none' },
+                { label: 'ghost',   bg: 'transparent', text: '#4ADE80', shadow: 'none' },
+                { label: 'outline', bg: 'transparent', text: '#404040', shadow: 'none', border: '1px solid #E5E5E5' },
+              ].map(b => (
+                <button key={b.label} style={{ background: b.bg, color: b.text, boxShadow: b.shadow, border: b.border ?? 'none', borderRadius: 12, padding: '8px 16px', fontSize: 13, fontWeight: 900, cursor: 'default' }}>
+                  {b.label}
+                </button>
+              ))}
+              <button style={{ background: '#4ADE80', color: '#fff', borderRadius: 12, padding: '8px 16px', fontSize: 13, fontWeight: 900, opacity: 0.5, cursor: 'not-allowed' }}>
+                disabled
+              </button>
+            </div>
+            <div className="text-[10px] text-neutral-400 font-mono">
+              {'<Button variant="primary|solid|danger|secondary|ghost|outline" size="sm|md|lg" isLoading fullWidth>'}
+            </div>
+          </div>
+
+          {/* Input */}
+          <div className="mb-6">
+            <div className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wider">Input / Select / Textarea</div>
+            <div className="grid grid-cols-3 gap-3 mb-2">
+              <div>
+                <div className="text-[10px] text-neutral-400 mb-1">default</div>
+                <input readOnly placeholder="placeholder" style={{ width: '100%', border: '1px solid #E5E5E5', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#fff', outline: 'none' }} />
+              </div>
+              <div>
+                <div className="text-[10px] text-neutral-400 mb-1">focus</div>
+                <input readOnly placeholder="focus ring" style={{ width: '100%', border: '1px solid #4ADE80', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#fff', outline: 'none', boxShadow: '0 0 0 1px #4ADE80' }} />
+              </div>
+              <div>
+                <div className="text-[10px] text-neutral-400 mb-1">error</div>
+                <input readOnly value="錯誤值" style={{ width: '100%', border: '1px solid #EF4444', borderRadius: 12, padding: '8px 12px', fontSize: 14, color: '#404040', background: '#FFF5F5', outline: 'none', boxShadow: '0 0 0 1px #EF4444' }} />
+              </div>
+            </div>
+            <div className="text-[10px] text-neutral-400 font-mono">
+              {'<Input label error helperText /> · <Select /> · <Textarea /> — 全部 rounded-xl border focus:ring-1'}
+            </div>
+          </div>
+
+          {/* Modal */}
+          <div className="mb-6">
+            <div className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wider">Modal</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 bg-neutral-50">
+                  <span className="text-sm font-semibold text-neutral-900">標準 Modal</span>
+                  <div className="w-6 h-6 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-500 text-xs">✕</div>
+                </div>
+                <div className="p-4 text-xs text-neutral-500">{'<Modal isOpen onClose title> · max-w-lg rounded-xl'}</div>
+              </div>
+              <div className="border border-neutral-200 rounded-2xl overflow-hidden" style={{ maxWidth: 220 }}>
+                <div className="relative h-[42px] flex items-center justify-center border-b border-neutral-100 bg-neutral-50">
+                  <span className="text-sm font-semibold text-neutral-900">Compact</span>
+                  <div className="absolute right-3 w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-400 text-[10px]">✕</div>
+                </div>
+                <div className="p-3 text-[10px] text-neutral-500">{'compact — 320px rounded-2xl 置中標題'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ActionBar / BottomSheet */}
+          <div className="mb-2">
+            <div className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wider">ActionBar · BottomSheet</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl overflow-hidden border border-neutral-200">
+                <div className="bg-white/90 border-t border-neutral-200 px-4 py-2.5 flex items-center gap-2" style={{ backdropFilter: 'blur(12px)' }}>
+                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white" style={{ background: '#4ADE80' }}>立即購買</div>
+                  <div className="flex-1 h-9 rounded-xl flex items-center justify-center text-xs font-semibold" style={{ background: '#F5F5F5', color: '#404040' }}>加入倉庫</div>
+                </div>
+                <div className="px-3 py-1.5 text-[10px] text-neutral-400 font-mono bg-neutral-50">{'<ActionBar hideOn="lg" zIndex="z-50">'}</div>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-neutral-200">
+                <div className="bg-white rounded-t-2xl border-t border-neutral-200">
+                  <div className="flex justify-center pt-2 pb-1"><div className="w-8 h-1 rounded-full bg-neutral-200" /></div>
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100">
+                    <span className="text-xs font-black text-neutral-900">抽屜標題</span>
+                    <span className="text-neutral-400 text-xs">✕</span>
+                  </div>
+                  <div className="px-4 py-2 text-[10px] text-neutral-400">scroll content...</div>
+                </div>
+                <div className="px-3 py-1.5 text-[10px] text-neutral-400 font-mono bg-neutral-50">{'<BottomSheet isOpen onClose title height="60vh">'}</div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* ── 禁止清單 ── */}
         <Section title="禁止使用" id="forbidden">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
