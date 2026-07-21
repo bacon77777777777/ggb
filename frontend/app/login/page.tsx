@@ -430,7 +430,7 @@ function AuthContent() {
               "mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center",
               error || errorParam 
                 ? "bg-red-50 text-red-600 border border-red-100" 
-                : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : "bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20"
             )}>
               {error || translateAuthError(errorParam) || messageParam}
             </div>

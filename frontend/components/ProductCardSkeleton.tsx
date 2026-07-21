@@ -11,7 +11,7 @@ export default function ProductCardSkeleton() {
       {/* Content */}
       <div className="flex flex-col flex-1 p-2">
         <div className="mb-1">
-          <Skeleton className="h-4 w-12 rounded-md" />
+          <Skeleton className="h-4 w-12 rounded-xl" />
         </div>
         
         <Skeleton className="h-5 w-full mb-1" />
