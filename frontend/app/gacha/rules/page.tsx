@@ -101,7 +101,7 @@ export default function GachaRulesPage() {
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8">規則</span>
+        <span className="flex-1 text-center text-[17px] font-black text-neutral-900 dark:text-white mr-8">轉蛋規則</span>
       </div>
 
       <div className="max-w-[560px] mx-auto px-4 py-6 space-y-4">
