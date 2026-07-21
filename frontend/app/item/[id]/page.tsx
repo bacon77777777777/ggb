@@ -1704,7 +1704,7 @@ export default function ProductDetailPage() {
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
                 {recommendations.map((item) => (
@@ -2232,7 +2232,7 @@ export default function ProductDetailPage() {
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
                 {recommendations.map((item) => (

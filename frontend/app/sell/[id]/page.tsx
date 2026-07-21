@@ -702,7 +702,7 @@ export default function SellDetailPage() {
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               {isRecommendationsLoading ? (
                 <div className="py-10 text-center text-[13px] font-black text-neutral-400">載入中</div>
