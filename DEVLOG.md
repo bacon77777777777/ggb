@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.21j｜2026-07-21｜STG draw_records 欄位同步修復
+
+### 問題
+- STG `draw_records` 缺少 `txid_seed` 和 `points_used` 兩個欄位
+- `play_ichiban` DB 函數寫入這兩個欄位，導致 STG 購買一番賞時報 `Purchase error: {}`
+- PROD 早已有這兩個欄位，屬於歷史 STG/PROD 同步缺口
+
+### 修復
+- 補 migration `274_stg_sync_draw_records.sql`，已套用至 STG
+- 清除 TicketSelectionFlow.tsx 中的 debug error logging
+
+---
+
 ## v2026.07.21i｜2026-07-21｜前台 DS Token 大掃除（278 → 28 違規）
 
 ### tailwind.config.js 新增 token

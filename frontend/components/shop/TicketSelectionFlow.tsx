@@ -495,7 +495,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         p_use_points: options?.usePoints || false,
         p_coupon_id: options?.couponId || null
       });
-      
+
       if (error) throw error;
 
       // Fire-and-forget: 任務/成就追蹤（不阻塞抽獎流程）
