@@ -7,7 +7,7 @@ import { Database } from '@/types/database.types';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -1985,6 +1985,14 @@ export default function ProductDetailPage() {
                           ? '立即抽獎'
                           : '立即轉蛋'}
                     </Button>
+
+                    <Link
+                      href={`/${product.type}/rules`}
+                      className="w-[44px] h-[44px] border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50"
+                      aria-label="規則"
+                    >
+                      <BookOpen className="w-5 h-5 stroke-[2.5]" />
+                    </Link>
 
                     <button
                       onClick={handleShare}

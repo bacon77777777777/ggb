@@ -26,6 +26,7 @@ function NavbarInner() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMessagesMoreOpen, setIsMessagesMoreOpen] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
+  const [productType, setProductType] = useState<string | null>(null);
   const [isProductFollowed, setIsProductFollowed] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesMoreRef = useRef<HTMLDivElement>(null);
@@ -64,11 +65,11 @@ function NavbarInner() {
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
   const isProductDetailPage = /^\/(?:item|blindbox|gacha|card)\/[^/]+$/.test(pathname) || isSellDetailPage;
   const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|card)\/[^/]+$/);
-  const itemPageMatch = !rulesPageMatch && /^\/item\/[^/]+$/.test(pathname);
+  const isItemPage = /^\/item\/[^/]+$/.test(pathname);
   const rulesPath = rulesPageMatch
     ? `/${rulesPageMatch[1]}/rules`
-    : itemPageMatch
-    ? '/ichiban/rules'
+    : isItemPage && productType
+    ? `/${productType}/rules`
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isFairnessPage = pathname.startsWith('/fairness');
@@ -134,8 +135,11 @@ function NavbarInner() {
 
         if (!productId) return;
         if (!/^\d+$/.test(productId)) return;
-        const { data } = await supabase.from('products').select('name').eq('id', productId).single();
-        if (data) setProductName(data.name);
+        const { data } = await supabase.from('products').select('name, type').eq('id', productId).single();
+        if (data) {
+          setProductName(data.name);
+          setProductType((data as any).type || null);
+        }
       };
 
       void fetchTitle();
@@ -172,6 +176,7 @@ function NavbarInner() {
       }
     } else {
       setProductName(null);
+      setProductType(null);
       setIsProductFollowed(false);
     }
   }, [pathname, user, isProductDetailPage, isSellDetailPage, isNewsDetailPage, supabase]);
