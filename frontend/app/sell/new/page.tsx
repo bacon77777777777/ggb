@@ -278,6 +278,7 @@ export default function SellNewPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, 60))}
             placeholder="請輸入"
+            maxLength={60}
             className="mt-2 w-full h-10 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -292,6 +293,7 @@ export default function SellNewPage() {
             onChange={(e) => setNote(e.target.value.slice(0, 3000))}
             rows={3}
             placeholder="請輸入"
+            maxLength={3000}
             className="mt-2 w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 py-2 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
           />
         </div>

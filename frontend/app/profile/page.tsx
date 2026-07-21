@@ -57,6 +57,7 @@ import ProfileStatusBadge from '@/components/profile/desktop/ProfileStatusBadge'
 import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
 import SolidButton from '@/components/ui/SolidButton';
@@ -3274,19 +3275,24 @@ function ProfileContent() {
 
                         <p className={cn("font-black text-neutral-900 dark:text-white pt-2", isDesktop ? "text-sm" : "text-[13px]")}>收件人資訊</p>
                          <div className="grid grid-cols-1 gap-3">
-                           <input 
-                             value={settingsForm.recipientName} 
+                           <input
+                             value={settingsForm.recipientName}
                              onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
-                             placeholder="收件人姓名" 
+                             placeholder="例：王吉比"
+                             maxLength={30}
                              className={cn(
                                "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
                                isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
                              )}
                            />
-                           <input 
+                           <input
                              value={settingsForm.recipientPhone}
                              onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                             placeholder="聯絡電話" 
+                             onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
+                             placeholder={PHONE_PLACEHOLDER}
+                             type="tel"
+                             inputMode="numeric"
+                             pattern="^09\d{8}$"
                              className={cn(
                                "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
                                isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
@@ -6183,10 +6189,13 @@ function ProfileContent() {
                             <input
                               name="phone"
                               type="tel"
-                              placeholder="09xxxxxxxx"
+                              inputMode="numeric"
+                              placeholder={PHONE_PLACEHOLDER}
+                              pattern="^09\d{8}$"
                               className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
                               value={phoneNumberInput}
                               onChange={(e) => setPhoneNumberInput(e.target.value)}
+                              onBlur={(e) => setPhoneNumberInput(normalizePhone(e.target.value))}
                               autoFocus
                             />
                           </div>
@@ -6864,11 +6873,13 @@ function ProfileContent() {
         variant="default"
       >
         <div className="mb-2">
-          <input  
+          <input
             value={settingsForm.nickname}
             onChange={e => setSettingsForm({...settingsForm, nickname: e.target.value})}
+            maxLength={20}
+            minLength={2}
+            placeholder="例：王吉比"
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-            placeholder="輸入名稱"
             autoFocus
           />
         </div>
@@ -7321,8 +7332,9 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsRecipientName}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsRecipientName: e.target.value })}
+              maxLength={30}
+              placeholder="例：王吉比"
               className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder="請填寫真實姓名"
             />
           </div>
           <div>
@@ -7330,8 +7342,12 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsRecipientPhone}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsRecipientPhone: e.target.value })}
+              onBlur={(e) => setSettingsForm({ ...settingsForm, cvsRecipientPhone: normalizePhone(e.target.value) })}
+              type="tel"
+              inputMode="numeric"
+              pattern="^09\d{8}$"
+              placeholder={PHONE_PLACEHOLDER}
               className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder="請填寫手機號碼"
             />
           </div>
         </div>
@@ -7370,20 +7386,24 @@ function ProfileContent() {
               <div className="bg-white dark:bg-neutral-900 mt-3 px-4">
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   <div className="py-1">
-                    <input 
+                    <input
                       value={settingsForm.recipientName}
                       onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
+                      maxLength={30}
+                      placeholder="例：王吉比"
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="收件人姓名"
                     />
                   </div>
                   <div className="py-1">
-                    <input 
+                    <input
                       value={settingsForm.recipientPhone}
                       onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="手機號碼"
+                      onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
                       type="tel"
+                      inputMode="numeric"
+                      pattern="^09\d{8}$"
+                      placeholder={PHONE_PLACEHOLDER}
+                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
                     />
                   </div>
                   <div className="py-1">

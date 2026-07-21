@@ -44,6 +44,12 @@ function UpdatePasswordContent() {
       return
     }
 
+    if (/[一-鿿㐀-䶿]/.test(password)) {
+      setError('密碼不得包含中文字元')
+      setIsLoading(false)
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('兩次輸入的密碼不一致')
       setIsLoading(false)

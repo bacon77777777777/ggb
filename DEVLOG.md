@@ -4,6 +4,27 @@
 
 ---
 
+## v2026.07.21b｜2026-07-21｜輸入框驗證全站補強
+
+### 電話號碼
+- 新增 `frontend/lib/phone.ts` 共用工具（normalizePhone / isValidPhone / 常數）
+- 所有手機號碼輸入框統一：`inputMode="numeric"`、placeholder `例：0900123456`、onBlur 自動正規化（886xxx / 9xxxxxxx → 09xxxxxxxx）
+- 套用位置：配送申請、超商設定、編輯地址、手機驗證、FAQ 客服表單、交換訂單收件人
+
+### 姓名欄位
+- 所有姓名欄位：`maxLength={30}`、placeholder `例：王吉比`
+- 暱稱編輯：補 `maxLength={20}` / `minLength={2}`（UI 說 2-20 但原本無 HTML 限制）
+
+### 密碼欄位
+- 三個入口（login、forgot-password、update-password）統一加入：密碼不得包含中文字元檢核
+
+### 其他
+- 私訊輸入框 `maxLength={1000}`
+- 賣場商品名稱 / 描述補 HTML `maxLength`（60 / 3000）
+- 銀行帳號 `inputMode="numeric"`
+
+---
+
 ## v2026.07.21a｜2026-07-21｜成就任務系統大修
 
 ### 最高獎成就 trigger（migration 333）

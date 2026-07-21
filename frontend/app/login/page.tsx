@@ -166,6 +166,11 @@ function AuthContent() {
       setIsLoading(false)
       return
     }
+    if (/[一-鿿㐀-䶿]/.test(password)) {
+      setError('密碼不得包含中文字元')
+      setIsLoading(false)
+      return
+    }
 
     const supabase = createClient()
     const { data: updateData, error } = await supabase.auth.updateUser({

@@ -97,6 +97,10 @@ function ForgotPasswordContent() {
       setError('密碼長度至少需 6 個字元')
       return
     }
+    if (/[一-鿿㐀-䶿]/.test(password)) {
+      setError('密碼不得包含中文字元')
+      return
+    }
     setLoading(true)
     setError(null)
 

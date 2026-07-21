@@ -110,6 +110,7 @@ export default function SellSettingsPage() {
               <input
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
+                inputMode="numeric"
                 placeholder="例如：012345678901"
                 className="w-full h-11 bg-neutral-100 dark:bg-neutral-800 rounded-xl px-3 text-[13px] font-black text-neutral-900 dark:text-neutral-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 disabled={isFetching}
@@ -122,6 +123,7 @@ export default function SellSettingsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="例如：王小明"
+                maxLength={30}
                 className="w-full h-11 bg-neutral-100 dark:bg-neutral-800 rounded-xl px-3 text-[13px] font-black text-neutral-900 dark:text-neutral-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 disabled={isFetching}
               />

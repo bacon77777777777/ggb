@@ -812,6 +812,7 @@ export default function MessageThreadPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 rows={1}
+                maxLength={1000}
                 placeholder="輸入文字"
                 className="w-full h-[24px] leading-[24px] resize-none bg-transparent text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none"
               />

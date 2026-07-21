@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { normalizePhone, PHONE_PLACEHOLDER } from '@/lib/phone';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -756,8 +757,11 @@ export default function ExchangeOrderFlowPage() {
                   <input
                     value={recipientPhone}
                     onChange={(e) => setRecipientPhone(e.target.value)}
-                    onBlur={saveRecipient}
-                    placeholder="收件電話"
+                    onBlur={(e) => { setRecipientPhone(normalizePhone(e.target.value)); saveRecipient(); }}
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="^09\d{8}$"
+                    placeholder={PHONE_PLACEHOLDER}
                     className="w-full h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                   {!isRecipientReady && (
