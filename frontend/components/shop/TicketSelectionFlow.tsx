@@ -131,6 +131,9 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [isSoldOut, setIsSoldOut] = useState(false);
   const [blindboxPhase, setBlindboxPhase] = useState<'opening' | 'revealed'>('opening');
 
+  // 中間結果畫面「全部開啟」後 → 禁用按鈕 + 2 秒跳轉
+  const [openAllDone, setOpenAllDone] = useState(false);
+
   // FigmaTear mode
   const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
   const [showFigmaTear, setShowFigmaTear] = useState(false);
@@ -683,7 +686,18 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
       return updated;
     });
+    setOpenAllDone(true);
   };
+
+  // 全部開啟後 2 秒自動跳轉（中間結果畫面）
+  useEffect(() => {
+    if (!openAllDone) return;
+    const t = setTimeout(() => {
+      handleBackToProduct();
+    }, 2000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAllDone]);
 
   const handleContinueDraw = () => {
     setDrawnResults([]);
@@ -1198,9 +1212,17 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       {/* Bottom Action Bar */}
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="h-16 px-4 md:px-6 flex items-center justify-center w-full">
-          {!allOpened ? (
-            <Button 
-              onClick={handleOpenAll} 
+          {openAllDone ? (
+            // 全部開啟後禁用，2 秒後自動跳轉
+            <Button
+              disabled
+              className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-400 text-white opacity-60 cursor-not-allowed"
+            >
+              全部開啟
+            </Button>
+          ) : !allOpened ? (
+            <Button
+              onClick={handleOpenAll}
               disabled={!isButtonsReady}
               className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -1208,8 +1230,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
             </Button>
           ) : (
             <div className="flex gap-3 w-full justify-center">
-              <Button 
-                onClick={() => router.push('/profile?tab=warehouse')} 
+              <Button
+                onClick={() => router.push('/profile?tab=warehouse')}
                 className="flex-1 md:flex-none md:w-[180px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-200 hover:bg-neutral-300 text-neutral-700 shadow-sm whitespace-nowrap"
               >
                 前往倉庫
@@ -1217,7 +1239,6 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               <Button
                 onClick={() => {
                   if (tearIsDone) {
-                    // ichiban_tear mode: "顯示籤號" goes back to the tear scene
                     setShowFigmaTear(true);
                   } else {
                     setShowPrizeDetails(!showPrizeDetails);
@@ -1227,18 +1248,18 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               >
                 {tearIsDone ? "顯示籤號" : (showPrizeDetails ? "顯示籤號" : "顯示獎項")}
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   if (showResultsButton) {
                     handleShowFullResults();
                   } else {
                     handleContinueDraw();
                   }
-                }} 
+                }}
                 className={cn(
                   "flex-1 md:flex-none md:w-[180px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black shadow-xl transition-colors whitespace-nowrap",
-                  showResultsButton 
-                    ? "bg-neutral-900 hover:bg-neutral-800 text-white shadow-neutral-900/20" 
+                  showResultsButton
+                    ? "bg-neutral-900 hover:bg-neutral-800 text-white shadow-neutral-900/20"
                     : "bg-accent-red hover:bg-accent-red/90 text-white shadow-accent-red/20"
                 )}
               >

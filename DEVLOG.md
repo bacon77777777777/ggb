@@ -4,19 +4,21 @@
 
 ---
 
-## v2026.07.21k｜2026-07-21｜一番賞原始經典模組流程優化
+## v2026.07.21k｜2026-07-21｜一番賞流程優化（兩輪迭代）
 
-### 目標
-撕完最後一張或點擊 SKIP，延遲 2 秒後才關閉 modal 顯示 GachaResultModal；移除中間結果畫面（浮動撕開圖 + 三按鈕）
+### FigmaTearScene（原始經典）
+- 最後一張 auto-trigger 延遲維持 1 秒（保持順暢）
+- SKIP 按鈕恢復即時跳轉（移除 2 秒延遲 + "..." 顯示）
+- `finishedRef` 防 SKIP 與 auto-trigger 重複呼叫
 
-### 變更
-- `FigmaTearScene.tsx`
-  - 最後一張 auto-trigger 延遲：1000ms → 2000ms
-  - SKIP 按鈕：加 2 秒延遲（`skipPending` state + `finishedRef` 防重複觸發）
-  - 兩路徑共用 `finishedRef`，防止同時到期雙呼叫
-- `TicketSelectionFlow.tsx`
-  - `drawnResults.length > 0` 中間結果畫面區塊：`isModal=true` 時提前 `return null`
-  - 不影響沈浸式模組（走不同 code path）
+### 中間結果畫面（ichiban 通用）
+- 新增 `openAllDone` state：點擊「全部開啟」後設 true
+- `openAllDone=true`：按鈕變灰禁用，2 秒後自動呼叫 `handleBackToProduct`
+- `openAllDone=true` 時不顯示三按鈕（前往倉庫/顯示獎項/繼續抽獎）
+- 三按鈕保留給「逐張手動開啟所有」的情境（`allOpened && !openAllDone`）
+
+### 先前修正保留
+- `isModal && ichibanTheme === 'ichiban_tear'` 時跳過中間畫面（避免桌機卡死）
 
 ---
 
