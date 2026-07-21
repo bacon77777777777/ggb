@@ -63,8 +63,13 @@ function NavbarInner() {
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
   const isProductDetailPage = /^\/(?:item|blindbox|gacha|card)\/[^/]+$/.test(pathname) || isSellDetailPage;
-  const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|ichiban)\/[^/]+$/);
-  const rulesPath = rulesPageMatch ? `/${rulesPageMatch[1]}/rules` : null;
+  const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|card)\/[^/]+$/);
+  const itemPageMatch = !rulesPageMatch && /^\/item\/[^/]+$/.test(pathname);
+  const rulesPath = rulesPageMatch
+    ? `/${rulesPageMatch[1]}/rules`
+    : itemPageMatch
+    ? '/ichiban/rules'
+    : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
