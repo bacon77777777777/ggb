@@ -104,34 +104,38 @@ export default function IchibanRulesPage() {
       <div className="max-w-[560px] mx-auto px-4 py-6 space-y-4">
 
         {/* Steps */}
+        <div className="space-y-10">
         {steps.map(({ step, title, items }) => (
-          <div key={step} className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800 shadow-sm">
-            <div className="bg-primary/10 dark:bg-primary/20 px-5 pt-5 pb-4 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <span className="inline-block text-[11px] font-black text-primary bg-primary/15 dark:bg-primary/30 px-2.5 py-0.5 rounded-full tracking-widest uppercase mb-2">第 {step} 步</span>
-                <p className="text-[18px] font-black text-neutral-900 dark:text-white leading-snug">{title}</p>
-              </div>
-              <Image
-                src={`/images/rules/${step}.png`}
-                alt={title}
-                width={100}
-                height={100}
-                className="flex-shrink-0 drop-shadow-md object-contain"
-              />
-            </div>
-            <div className="px-5 py-4 space-y-4 border-t border-neutral-100 dark:border-neutral-800">
-              {items.map(({ label, desc }) => (
-                <div key={label} className="flex gap-3">
-                  <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                  <div>
-                    <p className="text-[14px] font-black text-neutral-900 dark:text-white mb-0.5">{label}</p>
-                    <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
-                  </div>
+          <div key={step} className="relative">
+            <Image
+              src={`/images/rules/${step}.png`}
+              alt={title}
+              width={100}
+              height={100}
+              className="absolute -top-5 right-4 object-contain drop-shadow-lg pointer-events-none z-10"
+            />
+            <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
+              <div className="bg-primary/10 dark:bg-primary/20 px-5 pt-5 pb-5 rounded-t-3xl min-h-[100px]">
+                <div className="pr-28">
+                  <span className="inline-block text-[13px] font-black text-white bg-primary px-3.5 py-1.5 rounded-full mb-2.5">步驟 {step}</span>
+                  <p className="text-[20px] font-black text-neutral-900 dark:text-white leading-snug">{title}</p>
                 </div>
-              ))}
+              </div>
+              <div className="px-5 py-5 space-y-5">
+                {items.map(({ label, desc }) => (
+                  <div key={label} className="flex gap-3 items-start">
+                    <div className="mt-[7px] w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                    <div>
+                      <p className="text-[15px] font-black text-neutral-900 dark:text-white mb-1">{label}</p>
+                      <p className="text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ))}
+        </div>
 
         {/* Rules */}
         <div className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800">
