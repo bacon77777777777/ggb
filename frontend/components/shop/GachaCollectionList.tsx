@@ -65,32 +65,20 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     })();
   }, [(product as any).supplier_id, supabase]);
 
-  // 猜你喜歡：優先同類型，不足時 fallback 至全類型
+  // 猜你喜歡：任意類型 active 商品
   useEffect(() => {
     (async () => {
       try {
-        const { data: sameType } = await supabase
-          .from('products')
-          .select('*')
-          .eq('type', product.type)
-          .eq('status', 'active')
-          .neq('id', productId)
-          .limit(4);
-        if (sameType && sameType.length >= 2) {
-          setRecommendations(sameType);
-          return;
-        }
-        // fallback：任意類型
-        const { data: anyType } = await supabase
+        const { data } = await supabase
           .from('products')
           .select('*')
           .eq('status', 'active')
           .neq('id', productId)
           .limit(4);
-        setRecommendations(anyType ?? []);
+        setRecommendations(data ?? []);
       } catch {}
     })();
-  }, [productId, product.type, supabase]);
+  }, [productId, supabase]);
 
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
