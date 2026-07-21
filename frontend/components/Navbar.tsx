@@ -552,13 +552,21 @@ function NavbarInner() {
         left={
           <>
             <div className="flex items-center md:hidden overflow-hidden shrink-0">
-              {showBackButton && (
-                <button 
+              {showBackButton ? (
+                <button
                   onClick={handleBack}
                   className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 md:hidden shrink-0"
                 >
                   <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
                 </button>
+              ) : !isAuthenticated && !isLoading && !isForcingLoading && (
+                <Link
+                  href="/search"
+                  className="p-2 -ml-1 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
+                  aria-label="搜尋"
+                >
+                  <Search className="w-5 h-5 stroke-[2]" />
+                </Link>
               )}
             </div>
 

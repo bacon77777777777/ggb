@@ -279,7 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSupabaseUser(null);
     router.refresh();
-    router.push('/login');
+    router.push('/');
   };
 
   const refreshProfile = async () => {
