@@ -6,7 +6,7 @@ import SimplePageHeader from '@/components/ui/SimplePageHeader'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Input } from '@/components/ui'
-import SolidButton from '@/components/ui/SolidButton'
+import Button from '@/components/ui/Button'
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
@@ -292,12 +292,12 @@ function AuthContent() {
         </div>
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleLogin}
         isLoading={isLoading}
       >
         登入
-      </SolidButton>
+      </Button>
 
       {divider}
       <SocialLoginButtons />
@@ -331,12 +331,12 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep1}
         isLoading={isLoading}
       >
         下一步
-      </SolidButton>
+      </Button>
 
       {divider}
       <SocialLoginButtons />
@@ -363,12 +363,12 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep2}
         isLoading={isLoading}
       >
         下一步
-      </SolidButton>
+      </Button>
 
       <div className="mt-6 text-center">
         {countdown > 0 ? (
@@ -409,12 +409,12 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep3}
         isLoading={isLoading}
       >
         完成註冊
-      </SolidButton>
+      </Button>
     </div>
   )
 

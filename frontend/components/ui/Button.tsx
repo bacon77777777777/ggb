@@ -1,10 +1,11 @@
 'use client'
 
 import { ButtonHTMLAttributes, ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline'
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'solid'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
   leftIcon?: ReactNode
@@ -13,17 +14,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: 'bg-primary text-white hover:bg-primary-dark focus:ring-primary shadow-sm hover:shadow-md',
-  secondary: 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-300 dark:hover:bg-neutral-700 focus:ring-neutral-300 dark:focus:ring-neutral-700',
-  danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 shadow-sm hover:shadow-md',
-  ghost: 'bg-transparent text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:ring-neutral-200 dark:focus:ring-neutral-800',
-  outline: 'bg-white dark:bg-transparent border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 focus:ring-neutral-300 dark:focus:ring-neutral-700'
+  primary: 'bg-primary text-white font-black hover:bg-primary/90 focus:ring-primary shadow-sm hover:shadow-md',
+  secondary: 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 focus:ring-neutral-300 dark:focus:ring-neutral-700',
+  danger: 'bg-red-500 text-white font-black hover:bg-red-600 focus:ring-red-500 shadow-sm hover:shadow-md',
+  ghost: 'bg-transparent text-neutral-700 dark:text-neutral-200 font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:ring-neutral-200 dark:focus:ring-neutral-800',
+  outline: 'bg-white dark:bg-transparent border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 font-medium hover:border-neutral-300 dark:hover:border-neutral-600 focus:ring-neutral-300 dark:focus:ring-neutral-700',
+  // 全寬 CTA 按鈕（替代 SolidButton）
+  solid: 'bg-primary text-white font-black shadow-lg shadow-primary/30 active:scale-[0.98] disabled:!scale-100 disabled:!shadow-none focus:ring-primary',
 }
 
 const sizeStyles = {
   sm: 'px-3 py-1.5 text-sm',
   md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base'
+  lg: 'px-6 py-3 text-base h-11',
 }
 
 export default function Button({
@@ -41,8 +44,8 @@ export default function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
-        'transition-all duration-200 focus:outline-none focus:ring-2',
+        'inline-flex items-center justify-center gap-2 rounded-xl',
+        'transition-all duration-200 focus:outline-none focus:ring-1',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variantStyles[variant],
         sizeStyles[size],
@@ -53,13 +56,7 @@ export default function Button({
       {...props}
     >
       {isLoading ? (
-        <>
-          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span>載入中...</span>
-        </>
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <>
           {leftIcon && <span className="flex-shrink-0">{leftIcon}</span>}

@@ -61,7 +61,7 @@ import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/
 import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
-import SolidButton from '@/components/ui/SolidButton';
+import Button from '@/components/ui/Button';
 import ImageCropper from '@/components/ImageCropper';
 
 // --- Interfaces ---
@@ -6198,13 +6198,14 @@ function ProfileContent() {
                             />
                           </div>
 
-                          <SolidButton
+                          <Button
+                            variant="solid" fullWidth size="lg"
                             onClick={handleSendPhoneOtp}
                             isLoading={isSendingPhoneOtp}
                             disabled={isSendingPhoneOtp || !phoneNumberInput.trim()}
                           >
                             下一步
-                          </SolidButton>
+                          </Button>
                         </div>
                       ) : (
                         <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -6227,13 +6228,14 @@ function ProfileContent() {
                             />
                           </div>
 
-                          <SolidButton
+                          <Button
+                            variant="solid" fullWidth size="lg"
                             onClick={handleVerifyPhoneOtp}
                             isLoading={isVerifyingPhoneOtp}
                             disabled={isVerifyingPhoneOtp || phoneOtp.replace(/\D/g, '').length < 6}
                           >
                             確認驗證
-                          </SolidButton>
+                          </Button>
 
                           <div className="mt-6 flex items-center justify-between text-sm">
                             <button

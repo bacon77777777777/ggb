@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import SimplePageHeader from '@/components/ui/SimplePageHeader'
 import { Input } from '@/components/ui'
-import SolidButton from '@/components/ui/SolidButton'
+import Button from '@/components/ui/Button'
 import { translateAuthError } from '@/lib/authErrors'
 
 function ForgotPasswordContent() {
@@ -153,7 +153,7 @@ function ForgotPasswordContent() {
                   leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
                 />
               </div>
-              <SolidButton type="submit" isLoading={loading}>發送驗證碼</SolidButton>
+              <Button variant="solid" fullWidth size="lg" type="submit" isLoading={loading}>發送驗證碼</Button>
             </form>
           )}
 
@@ -175,7 +175,7 @@ function ForgotPasswordContent() {
                   onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                 />
               </div>
-              <SolidButton type="submit" isLoading={loading}>下一步</SolidButton>
+              <Button variant="solid" fullWidth size="lg" type="submit" isLoading={loading}>下一步</Button>
               <div className="mt-6 text-center">
                 {countdown > 0 ? (
                   <span className="text-neutral-400 text-sm">請稍等 {countdown} 秒重新傳送</span>
@@ -218,7 +218,7 @@ function ForgotPasswordContent() {
                   onRightIconClick={() => setShowPassword(!showPassword)}
                 />
               </div>
-              <SolidButton type="submit" isLoading={loading}>確認修改</SolidButton>
+              <Button variant="solid" fullWidth size="lg" type="submit" isLoading={loading}>確認修改</Button>
             </form>
           )}
         </div>

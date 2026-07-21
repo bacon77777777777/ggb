@@ -4,6 +4,30 @@
 
 ---
 
+## v2026.07.21f｜2026-07-21｜前台 UI Kit 整頓
+
+### Button 系統整合
+- 新增 `variant="solid"`（替代 SolidButton）：font-black、shadow-lg shadow-primary/30、active:scale、h-11（size lg）
+- Primary / Danger variant 改 `font-black`，Secondary / Ghost / Outline 保持 `font-medium`
+- 全 variant 從 `rounded-lg` → `rounded-xl`，`focus:ring-2` → `focus:ring-1`
+- Loading spinner 改用 `Loader2`（簡潔 icon-only）
+- 刪除 `SolidButton.tsx`；login、forgot-password、profile 三頁改用 `Button variant="solid"`
+
+### 表單元件修正（Input / Select / Textarea）
+- `border-2` → `border`、`min-h-[42px]` 移除、`focus:ring-2` → `focus:ring-1`
+- `gray-*` → `neutral-*`（disabled 狀態、helperText）
+- `rounded-lg` → `rounded-xl`
+- Label 從 `text-sm font-medium text-neutral-700` → `text-xs font-semibold text-neutral-500`（對齊 DS 規範）
+- 補齊 dark mode 樣式
+
+### 死代碼清除
+- 刪除 `EmptyState.tsx`（0 使用）
+- 刪除 `FileInput.tsx`（0 使用）
+- 刪除 `SidebarMenu.tsx`（0 使用）
+- `RulesModal.tsx` z-[9999] → z-50（修正魔術數字）
+
+---
+
 ## v2026.07.21e｜2026-07-21｜前台 Design System 稽核系統 + UI 統一
 
 ### 前台 DS 合規掃描系統（新增）
