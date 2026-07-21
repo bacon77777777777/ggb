@@ -497,7 +497,15 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       });
       
       if (error) throw error;
-      
+
+      // Fire-and-forget: 任務/成就追蹤（不阻塞抽獎流程）
+      const drawCount = ticketsToPlay.length;
+      Promise.allSettled([
+        supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: drawCount } }),
+        supabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: drawCount } }),
+        supabase.rpc('check_achievements', { p_user_id: user.id }),
+      ]).catch(() => {});
+
       const baseResults = (data as unknown as PlayIchibanResult[]).map((r) => ({
         grade: r.grade,
         name: r.name,
