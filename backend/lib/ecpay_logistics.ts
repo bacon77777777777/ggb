@@ -86,7 +86,7 @@ export function generateLogisticsParams(
     LogisticsType:     order.LogisticsType,
     LogisticsSubType:  order.LogisticsSubType,
     GoodsAmount:       String(Math.max(1, Math.floor(order.GoodsAmount))),
-    GoodsName:         (order.GoodsName || 'GachaGO商品').slice(0, 50),
+    GoodsName:         (order.GoodsName || 'GGB吉吉比商品').slice(0, 50),
     SenderName:        order.SenderName,
     SenderCellPhone:   order.SenderCellPhone,
     ReceiverName:      order.ReceiverName,

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaCollectionList } from '@/components/shop/GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
+import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
 import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
@@ -167,12 +168,16 @@ export default function BlindboxDetailPage() {
 
   useEffect(() => {
     const baseWidth = 375;
-    const maxWidth = 560;
 
     const updateScale = () => {
       if (typeof window === 'undefined') return;
-      const width = Math.min(window.innerWidth, maxWidth);
-      setScale(width / baseWidth);
+      const w = window.innerWidth;
+      if (w >= 1024) {
+        const colW = Math.floor((Math.min(w, 1280) - 40) * 4 / 12);
+        setScale(colW / baseWidth);
+      } else {
+        setScale(Math.min(w, 560) / baseWidth);
+      }
     };
 
     updateScale();
@@ -472,310 +477,286 @@ export default function BlindboxDetailPage() {
     );
   }
 
-  return (
-    <>
-    {!isMachineReady && <ProductLoadingScreen />}
+  const renderMachineInner = () => (
     <div
-      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 overflow-x-hidden"
-      style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
+      className="relative"
+      style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
     >
-      <div
-        className="w-full flex justify-center"
-        style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
-      >
-        <div
-          className="relative"
-          style={{
-            width: 375,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top center',
-          }}
-        >
-          <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
-            {(product as any).machine_theme === 'blindbox_mode2' ? (
-              <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-                <BlindboxMachineMode2
-                  machineState={mode2State}
-                  drawCount={mode2DrawCount}
-                  boxImageUrl={(product as any).box_image_url ?? undefined}
-                  remaining={product.remaining ?? 10}
-                  onAnimationComplete={handleMode2AnimComplete}
-                  onPush={() => {}}
-                  onPurchase={handlePlay}
-                  onTrial={handleTrial}
-                  isSoldOut={isSoldOut}
-                  onLoaded={() => setIsMachineReady(true)}
-                />
-              </div>
-            ) : (product as any).machine_theme === 'blindbox_mode3' ? (
-              <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-                <BlindboxMachineMode3
-                  machineState={mode2State}
-                  drawCount={mode2DrawCount}
-                  boxImageUrl={(product as any).box_image_url ?? undefined}
-                  remaining={product.remaining ?? 10}
-                  onAnimationComplete={handleMode2AnimComplete}
-                  onPush={() => {}}
-                  onPurchase={handlePlay}
-                  onTrial={handleTrial}
-                  isSoldOut={isSoldOut}
-                  onLoaded={() => setIsMachineReady(true)}
-                />
-              </div>
-            ) : (
-            <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-              <video
-                ref={bgVideoRef}
-                src={bgVideos[bgVariantIndex]}
-                className="absolute inset-0 w-full h-full object-cover"
-                autoPlay
-                preload="auto"
-                muted
-                playsInline
-              />
+      <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
+        {(product as any).machine_theme === 'blindbox_mode2' ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <BlindboxMachineMode2
+              machineState={mode2State}
+              drawCount={mode2DrawCount}
+              boxImageUrl={(product as any).box_image_url ?? undefined}
+              remaining={product.remaining ?? 10}
+              onAnimationComplete={handleMode2AnimComplete}
+              onPush={() => {}}
+              onPurchase={handlePlay}
+              onTrial={handleTrial}
+              isSoldOut={isSoldOut}
+              onLoaded={() => setIsMachineReady(true)}
+            />
+          </div>
+        ) : (product as any).machine_theme === 'blindbox_mode3' ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <BlindboxMachineMode3
+              machineState={mode2State}
+              drawCount={mode2DrawCount}
+              boxImageUrl={(product as any).box_image_url ?? undefined}
+              remaining={product.remaining ?? 10}
+              onAnimationComplete={handleMode2AnimComplete}
+              onPush={() => {}}
+              onPurchase={handlePlay}
+              onTrial={handleTrial}
+              isSoldOut={isSoldOut}
+              onLoaded={() => setIsMachineReady(true)}
+            />
+          </div>
+        ) : (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <video
+              ref={bgVideoRef}
+              src={bgVideos[bgVariantIndex]}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              preload="auto"
+              muted
+              playsInline
+            />
 
-              <div
-                className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-4 rounded-full hidden md:flex"
-                style={{
-                  top: 40,
-                  height: 24,
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  maxWidth: 320,
-                  zIndex: 20,
-                  pointerEvents: 'none',
-                  opacity: isEggBoxImageMode ? 0 : 1,
-                  transition: 'opacity 200ms ease-out',
-                }}
-              >
-                <span
-                  className="font-black text-center truncate"
-                  style={{
-                    color: '#FFFF30',
-                    fontSize: 16,
-                  }}
-                >
-                  {product.name}
-                </span>
-              </div>
+            <button
+              type="button"
+              className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
+              style={{ top: 340, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
+              onClick={() => setIsEggBoxImageMode((prev) => !prev)}
+            >
+              <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
+                點擊顯示圖片
+              </span>
+            </button>
 
-              <button
-                type="button"
-                className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-                style={{
-                  top: 340,
-                  height: 20,
-                  backgroundColor: 'rgba(0,0,0,0.6)',
-                  zIndex: 20,
-                }}
-                onClick={() => setIsEggBoxImageMode((prev) => !prev)}
-              >
-                <span
-                  className="font-medium"
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 12,
-                  }}
-                >
-                  點擊顯示圖片
-                </span>
-              </button>
-
-              <div
-                className="absolute left-1/2 -translate-x-1/2"
-                style={{
-                  top: 42,
-                  width: 167,
-                  height: 167,
-                  zIndex: 20,
-                }}
-              >
-                <div className="relative w-full h-full">
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      opacity: isEggBoxImageMode ? 0 : 1,
-                      pointerEvents: 'none',
-                      transition: 'opacity 200ms ease-out',
-                    }}
-                  />
-                  {product.id && (
-                    <div
-                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                      style={{
-                        opacity: isEggBoxImageMode ? 1 : 0,
-                        pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
-                        transition: 'opacity 200ms ease-out',
-                      }}
-                      onClick={() => setIsEggBoxImageMode(false)}
-                    >
-                      <Image
-                        src={sanitizeImageUrl(product.image_url) ?? `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                        alt={product.name}
-                        width={167}
-                        height={167}
-                        className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <ImageButton
-                src="/images/gacha/btn2.png"
-                alt="換一盒"
-                text="換一盒"
-                className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                textClassName="text-base md:text-lg"
-                style={{
-                  left: '5.33%',
-                  top: '84.5%',
-                  width: '25.06%',
-                  height: '11.2%',
-                  zIndex: 20,
-                }}
-                onClick={handleChangeBox}
-              />
-
-              <ImageButton
-                src="/images/gacha/btn1.png"
-                alt="立即開盒"
-                text="立即開盒"
-                className="absolute"
-                textClassName="text-base md:text-lg"
-                style={{
-                  left: '31.73%',
-                  top: '84.5%',
-                  width: '36.53%',
-                  height: '11.2%',
-                  zIndex: 20,
-                }}
-                onClick={handlePlay}
-              />
-
-              <ImageButton
-                src="/images/gacha/btn2.png"
-                alt="試試看"
-                text="試試看"
-                className="absolute"
-                textClassName="text-base md:text-lg"
-                style={{
-                  left: '69.6%',
-                  top: '84.5%',
-                  width: '25.06%',
-                  height: '11.2%',
-                  zIndex: 20,
-                }}
-                onClick={handleTrial}
-              />
-
-              {isSoldOut && (
+            <div
+              className="absolute left-1/2 -translate-x-1/2"
+              style={{ top: 42, width: 167, height: 167, zIndex: 20 }}
+            >
+              {product.id && (
                 <div
-                  className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
-                  style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
+                  className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                  style={{
+                    opacity: isEggBoxImageMode ? 1 : 0,
+                    pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
+                    transition: 'opacity 200ms ease-out',
+                  }}
+                  onClick={() => setIsEggBoxImageMode(false)}
                 >
-                  <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
-                    <span className="text-[14px] font-black tracking-widest text-yellow-300">
-                      該商品已完抽
-                    </span>
-                  </div>
+                  <Image
+                    src={sanitizeImageUrl(product.image_url) ?? `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    alt={product.name}
+                    width={167}
+                    height={167}
+                    className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                  />
                 </div>
               )}
             </div>
+
+            <ImageButton
+              src="/images/gacha/btn2.png"
+              alt="換一盒"
+              text="換一盒"
+              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+              textClassName="text-base md:text-lg"
+              style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
+              onClick={handleChangeBox}
+            />
+            <ImageButton
+              src="/images/gacha/btn1.png"
+              alt="立即開盒"
+              text="立即開盒"
+              className="absolute"
+              textClassName="text-base md:text-lg"
+              style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
+              onClick={handlePlay}
+            />
+            <ImageButton
+              src="/images/gacha/btn2.png"
+              alt="試試看"
+              text="試試看"
+              className="absolute"
+              textClassName="text-base md:text-lg"
+              style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
+              onClick={handleTrial}
+            />
+
+            {isSoldOut && (
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
+                style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
+              >
+                <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
+                  <span className="text-[14px] font-black tracking-widest text-yellow-300">
+                    該商品已完抽
+                  </span>
+                </div>
+              </div>
             )}
           </div>
-
-        </div>
+        )}
       </div>
-
-      {/* 猜你喜歡 — 在 scale 容器外，正常文件流 */}
-      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-2">
-        <GachaCollectionList
-          productId={product.id}
-          product={product as any}
-          prizes={prizes}
-          refreshKey={collectionRefreshKey}
-        />
-      </div>
-
-      {product && (
-        <PurchaseConfirmationModal
-          isOpen={isPurchaseModalOpen}
-          onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
-          onConfirm={handlePurchaseConfirm}
-          product={product}
-          userTokens={user?.tokens || 0}
-          userPoints={user?.points || 0}
-          isProcessing={isProcessing}
-          onTopUp={() => router.push('/topup')}
-        />
-      )}
-
-      {isVideoOpen && (
-        <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/90 pointer-events-auto">
-          <div className="absolute inset-0 -z-10">
-            <Image
-              src="/images/gacha_bg.png"
-              alt=""
-              fill
-              className="object-cover filter brightness-[0.3] blur-[10px]"
-              unoptimized
-            />
-            <div className="absolute inset-0 bg-black/40" />
-          </div>
-
-          <div className="relative w-full max-w-[560px] h-full overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col items-center justify-center bg-black">
-            <video
-              ref={openingVideoRef}
-              src="/videos/blindbox_op.mp4"
-              className="w-full h-full object-cover"
-              preload="auto"
-              muted={isVideoMuted}
-              playsInline
-              onEnded={handleVideoEnd}
-              onError={handleVideoError}
-            />
-            <button
-              type="button"
-              className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
-              onClick={() => {
-                setIsVideoMuted((prev) => {
-                  const next = !prev;
-                  const el = openingVideoRef.current;
-                  if (el) {
-                    el.muted = next;
-                    if (!next) {
-                      el.play().catch(() => undefined);
-                    }
-                  }
-                  return next;
-                });
-              }}
-            >
-              {isVideoMuted ? (
-                <VolumeX className="w-5 h-5" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </button>
-            <button
-              type="button"
-              className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
-              onClick={handleVideoEnd}
-            >
-              SKIP
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isPrizeModalOpen && (
-        <GachaResultModal
-          isOpen={isPrizeModalOpen}
-          onClose={handlePrizeClose}
-          results={blindboxResults}
-        />
-      )}
     </div>
+  );
+
+  return (
+    <>
+      {!isMachineReady && <ProductLoadingScreen />}
+      <div
+        className="min-h-screen bg-neutral-50 dark:bg-neutral-950"
+        style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}
+      >
+        {/* Mobile < 1024px */}
+        <div className="block lg:hidden overflow-x-hidden pb-32 pt-14">
+          <div
+            className="w-full flex justify-center"
+            style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
+          >
+            {renderMachineInner()}
+          </div>
+          <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2">
+            <GachaCollectionList
+              productId={product.id}
+              product={product as any}
+              prizes={prizes}
+              refreshKey={collectionRefreshKey}
+            />
+          </div>
+        </div>
+
+        {/* Desktop ≥ 1024px */}
+        <div className="hidden lg:block pb-12">
+          <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
+            <div className="grid grid-cols-12 gap-6 items-start">
+              <div className="col-span-4 sticky top-20">
+                <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+                  <div
+                    className="w-full overflow-hidden flex justify-center"
+                    style={{ height: Math.round(scale * 375 * 932 / 750) }}
+                  >
+                    {renderMachineInner()}
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <h1 className="text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">
+                      <span className="inline-block align-middle mr-2">
+                        <ProductBadge type="blindbox" className="h-5 px-1.5 text-[10px]" />
+                      </span>
+                      <span className="align-middle">{product.name}</span>
+                    </h1>
+                    <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
+                      <div className="flex items-baseline gap-2">
+                        <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
+                            {product.price.toLocaleString()}
+                          </span>
+                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
+                        </div>
+                      </div>
+                      {typeof product.remaining === 'number' && (
+                        <div className="text-right shrink-0">
+                          <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
+                          <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">
+                            {product.remaining.toLocaleString()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-span-8">
+                <GachaCollectionList
+                  productId={product.id}
+                  product={product as any}
+                  prizes={prizes}
+                  refreshKey={collectionRefreshKey}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {product && (
+          <PurchaseConfirmationModal
+            isOpen={isPurchaseModalOpen}
+            onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
+            onConfirm={handlePurchaseConfirm}
+            product={product}
+            userTokens={user?.tokens || 0}
+            userPoints={user?.points || 0}
+            isProcessing={isProcessing}
+            onTopUp={() => router.push('/topup')}
+          />
+        )}
+
+        {isVideoOpen && (
+          <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/90 pointer-events-auto">
+            <div className="absolute inset-0 -z-10">
+              <Image
+                src="/images/gacha_bg.png"
+                alt=""
+                fill
+                className="object-cover filter brightness-[0.3] blur-[10px]"
+                unoptimized
+              />
+              <div className="absolute inset-0 bg-black/40" />
+            </div>
+            <div className="relative w-full max-w-[560px] h-full overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col items-center justify-center bg-black">
+              <video
+                ref={openingVideoRef}
+                src="/videos/blindbox_op.mp4"
+                className="w-full h-full object-cover"
+                preload="auto"
+                muted={isVideoMuted}
+                playsInline
+                onEnded={handleVideoEnd}
+                onError={handleVideoError}
+              />
+              <button
+                type="button"
+                className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
+                onClick={() => {
+                  setIsVideoMuted((prev) => {
+                    const next = !prev;
+                    const el = openingVideoRef.current;
+                    if (el) {
+                      el.muted = next;
+                      if (!next) el.play().catch(() => undefined);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+              <button
+                type="button"
+                className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
+                onClick={handleVideoEnd}
+              >
+                SKIP
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isPrizeModalOpen && (
+          <GachaResultModal
+            isOpen={isPrizeModalOpen}
+            onClose={handlePrizeClose}
+            results={blindboxResults}
+          />
+        )}
+      </div>
     </>
   );
 }

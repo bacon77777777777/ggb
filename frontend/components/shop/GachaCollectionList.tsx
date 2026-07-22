@@ -121,16 +121,13 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
               return (
                 <tr
                   key={prize.id}
-                  className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors"
+                  className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors cursor-pointer"
+                  onClick={() => setPreviewPrize(prize)}
                 >
                   <td className="px-2 sm:px-6 py-1.5 sm:py-3">
                     <div className="flex items-center gap-2 sm:gap-3">
                       {/* 小圖 */}
-                      <button
-                        type="button"
-                        onClick={() => setPreviewPrize(prize)}
-                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                      >
+                      <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
                         <Image
                           src={imgSrc ?? '/images/item_defaulet.png'}
                           alt={prize.name}
@@ -139,7 +136,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                           unoptimized
                           onError={() => markBroken(prize.id)}
                         />
-                      </button>
+                      </div>
 
                       {/* 名稱 */}
                       <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate min-w-0">
@@ -219,7 +216,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
               查看更多
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {recommendations.map((item) => (
               <ProductCard
                 key={item.id}
@@ -256,14 +253,9 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-white/60 font-black uppercase tracking-widest bg-white/10 px-2 py-0.5 rounded">
-                {previewPrize.level}
-              </span>
-              <span className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
-                {previewPrize.name}
-              </span>
-            </div>
+            <span className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
+              {previewPrize.name}
+            </span>
             <Image
               src={brokenPrizeIds.has(previewPrize.id) || !previewPrize.image_url ? '/images/item_defaulet.png' : previewPrize.image_url}
               alt={previewPrize.name}

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const ApiUrl     = process.env.ECPAY_LOGISTICS_API_URL     || 'https://logistics-stage.ecpay.com.tw/Express/Create'
 
     // 寄件人：優先用廠商的 sender_name，其次 contact_name，最後 env var
-    const senderName      = supplierInfo?.sender_name      || supplierInfo?.contact_name      || process.env.ECPAY_SENDER_NAME       || 'GachaGO'
+    const senderName      = supplierInfo?.sender_name      || supplierInfo?.contact_name      || process.env.ECPAY_SENDER_NAME       || 'GGB吉吉比'
     const senderCellPhone = supplierInfo?.contact_phone                                        || process.env.ECPAY_SENDER_CELL_PHONE  || '0900000000'
     const senderZipCode   = supplierInfo?.sender_zip_code                                      || process.env.ECPAY_SENDER_ZIP_CODE    || ''
     const senderAddress   = supplierInfo?.sender_address   || supplierInfo?.address            || process.env.ECPAY_SENDER_ADDRESS     || ''
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         LogisticsType:     logisticsType,
         LogisticsSubType:  logisticsSubType,
         GoodsAmount:       Math.max(1, order.shipping_fee || 1),
-        GoodsName:         'GachaGO商品',
+        GoodsName:         'GGB吉吉比商品',
         SenderName:        senderName,
         SenderCellPhone:   senderCellPhone,
         SenderZipCode:     senderZipCode,

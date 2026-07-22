@@ -4,8 +4,8 @@ import Providers from '@/components/Providers'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | GachaGo Admin',
-    default: 'GachaGo 後台管理系統',
+    template: '%s | GGB 管理後台',
+    default: 'GGB 吉吉比管理後台',
   },
   description: '一番賞線上抽獎平台後台管理系統',
   icons: {

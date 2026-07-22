@@ -525,12 +525,16 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     const baseWidth = 375;
-    const maxWidth = 560;
 
     const updateScale = () => {
       if (typeof window === 'undefined') return;
-      const width = Math.min(window.innerWidth, maxWidth);
-      setCardScale(width / baseWidth);
+      const w = window.innerWidth;
+      if (w >= 1024) {
+        const colW = Math.floor((Math.min(w, 1280) - 40) * 4 / 12);
+        setCardScale(colW / baseWidth);
+      } else {
+        setCardScale(Math.min(w, 560) / baseWidth);
+      }
     };
 
     updateScale();
@@ -1141,10 +1145,7 @@ export default function ProductDetailPage() {
             if (currentPrize && newPrize.remaining < currentPrize.remaining) {
               setTimeout(() => {
                 showToast(
-                  <span className="flex items-center gap-2">
-                    <span className="bg-accent-red text-white text-[10px] px-1.5 py-0.5 rounded font-black">{newPrize.level}賞</span>
-                    <span>被抽走了！剩餘 {newPrize.remaining} 個</span>
-                  </span>,
+                  <span>{newPrize.name} 被抽走了！剩餘 {newPrize.remaining} 個</span>,
                   'info'
                 );
               }, 0);
@@ -1252,216 +1253,94 @@ export default function ProductDetailPage() {
   // };
 
   if (product.type === 'card') {
-    const baseCardWidth = 375
-    const baseCardHeight = baseCardWidth * (932 / 750)
-    const scaleSpacerHeight = Math.max(0, (cardScale - 1) * baseCardHeight)
-
-    return (
+    const renderCardMachine = () => (
       <div
-        className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
+        className="relative overflow-hidden"
+        style={{ width: 375, transform: `scale(${cardScale})`, transformOrigin: 'top center' }}
       >
-        <div className="w-full flex justify-center">
+        <div>
           <div
-            className="relative overflow-hidden"
+            className="relative w-full"
             style={{
-              width: 375,
-              transform: `scale(${cardScale})`,
-              transformOrigin: 'top center',
+              aspectRatio: '750/932',
+              backgroundImage: "url('/images/card/bg.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
             }}
           >
-            <div>
-              <div
-                className="relative w-full"
-                style={{
-                  aspectRatio: '750/932',
-                  backgroundImage: "url('/images/card/bg.png')",
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                }}
-              >
-              {!isCardImageMode && (
+            <button
+              type="button"
+              className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
+              style={{ top: 340, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
+              onClick={() => setIsCardImageMode(prev => !prev)}
+            >
+              <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
+                點擊卡包顯示圖片
+              </span>
+            </button>
+
+            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 167, height: 167, zIndex: 20 }}>
+              {product.id && (
                 <div
-                  className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center justify-center px-4 rounded-full"
-                  style={{
-                    top: 40,
-                    height: 24,
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    maxWidth: 320,
-                    zIndex: 20,
-                    pointerEvents: 'none',
-                  }}
+                  className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                  style={{ opacity: isCardImageMode ? 1 : 0, pointerEvents: isCardImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
+                  onClick={() => setIsCardImageMode(false)}
                 >
-                  <span
-                    className="font-black text-center truncate"
-                    style={{
-                      color: '#FFFF30',
-                      fontSize: 16,
-                    }}
-                  >
-                    {product.name}
-                  </span>
+                  <Image
+                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    alt={product.name}
+                    width={167}
+                    height={167}
+                    className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                  />
                 </div>
               )}
+            </div>
 
-                <button
-                  type="button"
-                  className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-                  style={{
-                    top: 340,
-                    height: 20,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    zIndex: 20,
-                  }}
-                  onClick={() => setIsCardImageMode(prev => !prev)}
-                >
-                  <span
-                    className="font-medium"
-                    style={{
-                      color: '#FFFFFF',
-                      fontSize: 12,
-                    }}
-                  >
-                    點擊卡包顯示圖片
-                  </span>
-                </button>
-
-                <div
-                  className="absolute left-1/2 -translate-x-1/2"
-                  style={{
-                    top: 42,
-                    width: 167,
-                    height: 167,
-                    zIndex: 20,
-                  }}
-                >
-                  <div className="relative w-full h-full">
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        opacity: isCardImageMode ? 0 : 1,
-                        pointerEvents: 'none',
-                        transition: 'opacity 200ms ease-out',
-                      }}
-                    />
-                    {product.id && (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                        style={{
-                          opacity: isCardImageMode ? 1 : 0,
-                          pointerEvents: isCardImageMode ? 'auto' : 'none',
-                          transition: 'opacity 200ms ease-out',
-                        }}
-                        onClick={() => setIsCardImageMode(false)}
-                      >
-                        <Image
-                          src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                          alt={product.name}
-                          width={167}
-                          height={167}
-                          className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
-                  style={{
-                    width: 375,
-                    zIndex: 10,
-                  }}
-                >
-                  <div
-                    className="relative w-full flex items-center justify-center"
-                    style={{ bottom: isMobile ? '40px' : '35px' }}
-                  >
-                    <PackSelectionCarousel
-                      cardScale={cardScale}
-                      ref={packCarouselRef}
-                      packStyles={packStyles}
-                      onActiveStyleChange={handleActiveStyleChange}
-                    />
-                  </div>
-                </div>
-
-                <ImageButton
-                  src="/images/gacha/btn2.png"
-                  alt="換一批"
-                  text="換一批"
-                  className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                  textClassName="text-base md:text-lg"
-                  style={{
-                    left: '5.33%',
-                    top: '84.5%',
-                    width: '25.06%',
-                    height: '11.2%',
-                    zIndex: 20,
-                  }}
-                  onClick={handleChangePack}
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
+              <div className="relative w-full flex items-center justify-center" style={{ bottom: isMobile ? '40px' : '35px' }}>
+                <PackSelectionCarousel
+                  cardScale={cardScale}
+                  ref={packCarouselRef}
+                  packStyles={packStyles}
+                  onActiveStyleChange={handleActiveStyleChange}
                 />
-
-                <ImageButton
-                  src="/images/gacha/btn1.png"
-                  alt="立即開包"
-                  text={isSoldOut ? '查看結果' : '立即開包'}
-                  className="absolute"
-                  textClassName="text-base md:text-lg"
-                  style={{
-                    left: '31.73%',
-                    top: '84.5%',
-                    width: '36.53%',
-                    height: '11.2%',
-                    zIndex: 20,
-                  }}
-                  onClick={isSoldOut ? handleShowResults : handleDrawClick}
-                />
-
-                <ImageButton
-                  src="/images/gacha/btn2.png"
-                  alt="試試看"
-                  text="試試看"
-                  className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-                  textClassName="text-base md:text-lg"
-                  style={{
-                    left: '69.6%',
-                    top: '84.5%',
-                    width: '25.06%',
-                    height: '11.2%',
-                    zIndex: 20,
-                  }}
-                  onClick={isSoldOut ? undefined : handleTrialCard}
-                />
-
-                {isSoldOut && (
-                  <div
-                    className="pointer-events-none absolute inset-x-0 top-0 flex justify-center"
-                    style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}
-                  >
-                    <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
-                      <span className="text-[14px] font-black tracking-widest text-yellow-300">
-                        該商品已完抽
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
+
+            <ImageButton src="/images/gacha/btn2.png" alt="換一批" text="換一批"
+              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+              textClassName="text-base md:text-lg"
+              style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
+              onClick={handleChangePack}
+            />
+            <ImageButton src="/images/gacha/btn1.png" alt="立即開包" text={isSoldOut ? '查看結果' : '立即開包'}
+              className="absolute" textClassName="text-base md:text-lg"
+              style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
+              onClick={isSoldOut ? handleShowResults : handleDrawClick}
+            />
+            <ImageButton src="/images/gacha/btn2.png" alt="試試看" text="試試看"
+              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+              textClassName="text-base md:text-lg"
+              style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
+              onClick={isSoldOut ? undefined : handleTrialCard}
+            />
+
+            {isSoldOut && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center" style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}>
+                <div className="mt-16 inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
+                  <span className="text-[14px] font-black tracking-widest text-yellow-300">該商品已完抽</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      </div>
+    );
 
-        {scaleSpacerHeight > 0 && (
-          <div
-            aria-hidden="true"
-            style={{
-              height: Math.ceil(scaleSpacerHeight),
-            }}
-          />
-        )}
-
-        <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
-          <div className="space-y-2 sm:space-y-5">
+    const cardRightContent = (
+      <div className="space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
                 <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">店家配率表</h2>
@@ -1500,9 +1379,9 @@ export default function ProductDetailPage() {
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg border border-primary/10 whitespace-nowrap">
-                              {prize.level}
-                            </span>
+                            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
+                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                            </div>
                             <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
                               {prize.name}
                             </div>
@@ -1739,6 +1618,65 @@ export default function ProductDetailPage() {
               </div>
             </div>
           </div>
+    );
+
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+        {/* Mobile < 1024px */}
+        <div className="block lg:hidden overflow-x-hidden pb-32 pt-14">
+          <div
+            className="w-full flex justify-center"
+            style={{ marginBottom: Math.round(375 * (932 / 750) * (cardScale - 1)) }}
+          >
+            {renderCardMachine()}
+          </div>
+          <div className="max-w-[560px] mx-auto px-2 pb-2 mt-2">
+            {cardRightContent}
+          </div>
+        </div>
+
+        {/* Desktop ≥ 1024px */}
+        <div className="hidden lg:block pb-12">
+          <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
+            <div className="grid grid-cols-12 gap-6 items-start">
+              <div className="col-span-4 sticky top-20">
+                <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+                  <div
+                    className="w-full overflow-hidden flex justify-center"
+                    style={{ height: Math.round(cardScale * 375 * 932 / 750) }}
+                  >
+                    {renderCardMachine()}
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <h1 className="text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">
+                      <span className="inline-block align-middle mr-2">
+                        <ProductBadge type="card" className="h-5 px-1.5 text-[10px]" />
+                      </span>
+                      <span className="align-middle">{product.name}</span>
+                    </h1>
+                    <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
+                      <div className="flex items-baseline gap-2">
+                        <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
+                          <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
+                        </div>
+                      </div>
+                      {typeof totalRemaining === 'number' && (
+                        <div className="text-right shrink-0">
+                          <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
+                          <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">{totalRemaining.toLocaleString()}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-span-8">
+                {cardRightContent}
+              </div>
+            </div>
+          </div>
         </div>
 
         {viewingPrize && (
@@ -1788,7 +1726,6 @@ export default function ProductDetailPage() {
               />
             );
           }
-          // 預設：播放影片
           return isVideoOpen ? (
             <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
               <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
@@ -1878,7 +1815,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14">
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
+          <div className="lg:col-span-4 lg:sticky lg:top-20">
             <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-800">
                 <div className="w-full h-full flex items-center justify-center text-white/20 group-hover:scale-105 transition-transform duration-500">
@@ -1922,7 +1859,7 @@ export default function ProductDetailPage() {
                         product.type === 'ichiban' && "sm:mt-1"
                       )}
                     >
-                      <ProductBadge type={product.type as 'ichiban' | 'blindbox' | 'gacha' | 'custom'} />
+                      <ProductBadge type={product.type as 'ichiban' | 'blindbox' | 'gacha' | 'custom'} className="h-5 px-1.5 text-[10px]" />
                     </span>
                   )}
                   <span className="align-middle">
@@ -1961,12 +1898,12 @@ export default function ProductDetailPage() {
 
                 <div className="pt-2 hidden lg:block">
                   <div className="flex items-center gap-3">
-          <Button 
+          <Button
                       onClick={totalRemaining === 0 ? handleShowResults : handleDrawClick}
                       size="lg"
                       className={cn(
-                        "flex-1 h-[44px] text-lg font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2",
-                        totalRemaining === 0 
+                        "w-full h-[44px] text-lg font-black rounded-xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2",
+                        totalRemaining === 0
                           ? "bg-neutral-900 dark:bg-neutral-50 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-neutral-900/20"
                           : "shadow-accent-red/20"
                       )}
@@ -1979,38 +1916,6 @@ export default function ProductDetailPage() {
                           ? '立即抽獎'
                           : '立即轉蛋'}
                     </Button>
-
-                    <Link
-                      href={`/${product.type}/rules`}
-                      className="w-[44px] h-[44px] border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50"
-                      aria-label="規則"
-                    >
-                      <BookOpen className="w-5 h-5 stroke-[2.5]" />
-                    </Link>
-
-                    <button
-                      onClick={handleShare}
-                      className={cn(
-                        "w-[44px] h-[44px] border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95",
-                        shareCopied
-                          ? "bg-green-50 border-green-400 text-green-500 dark:bg-green-900/20 dark:border-green-600"
-                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50"
-                      )}
-                    >
-                      {shareCopied ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Share2 className="w-5 h-5 stroke-[2.5]" />}
-                    </button>
-                    
-                    <button 
-                      onClick={handleFollowToggle}
-                      className={cn(
-                        "w-[44px] h-[44px] rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 border",
-                        isFollowed 
-                          ? "bg-accent-red text-white border-accent-red shadow-accent-red/20" 
-                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-accent-red hover:border-accent-red/50"
-                      )}
-                    >
-                      <Heart className={cn("w-5 h-5 stroke-[2.5]", isFollowed && "fill-current")} />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2056,9 +1961,9 @@ export default function ProductDetailPage() {
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <span className="text-[13px] text-primary font-black uppercase tracking-widest bg-primary/5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg border border-primary/10 whitespace-nowrap">
-                              {prize.level}
-                            </span>
+                            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
+                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                            </div>
                             <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
                               {prize.name}
                             </div>

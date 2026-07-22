@@ -41,8 +41,7 @@ const PRODUCT_TYPES: {
     type: 'custom',
     label: '自製賞',
     themes: [
-      { value: 'custom_grid', label: '經典列表', desc: '票券網格排列，各自拖拉撕開（預設）' },
-      { value: 'custom_tear', label: '沉浸式撕紙', desc: '全畫面場景，撕開揭曉最大賞' },
+      { value: 'custom_combo', label: '影片互動 Combo', desc: '全畫面影片播放，互動點擊揭曉最大賞（預設）' },
     ],
   },
   {
