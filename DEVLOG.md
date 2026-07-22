@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.22e｜2026-07-22｜緊急修復：優惠券抽獎 500（c.expires_at 欄位錯誤）
+
+### 根因
+- migration 339 的優惠券驗證查詢使用 `c.expires_at`（`coupons` 表沒有此欄）
+- 正確欄位是 `uc.expiry_date`（`user_coupons` 表，migration 101/122 建立）
+- 導致帶優惠券抽獎一律 500 `column c.expires_at does not exist`
+
+### 修復
+- migration `340_fix_play_gacha_coupon_expiry.sql`：第 49 行改為 `uc.expiry_date`
+- 已套用至 PROD + STG
+
+---
+
 ## v2026.07.22d｜2026-07-22｜緊急修復：全站抽獎 500（migration 337 引入）
 
 ### 根因
