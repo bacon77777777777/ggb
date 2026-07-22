@@ -17,6 +17,7 @@ import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmatio
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { trackEvent } from '@/lib/trackEvent';
+import ProductBadge from '@/components/ui/ProductBadge';
 
 interface GachaProductDetailProps {
   product: Database['public']['Tables']['products']['Row'];
@@ -42,16 +43,24 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
   const [scale, setScale] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const baseWidth = 375;
-    const maxWidth = 560;
-
+    const BASE = 375;
     const updateScale = () => {
       if (typeof window === 'undefined') return;
-      const width = Math.min(window.innerWidth, maxWidth);
-      setScale(width / baseWidth);
-      setIsMobile(window.innerWidth <= 767);
+      const w = window.innerWidth;
+      const isMob = w <= 767;
+      const isDesk = w >= 1024;
+      setIsMobile(isMob);
+      setIsDesktop(isDesk);
+      if (isDesk) {
+        // 左欄約 4/12 of (min(w,1280)-16px padding - 24px gap)
+        const colW = Math.floor((Math.min(w, 1280) - 40) * 4 / 12);
+        setScale(colW / BASE);
+      } else {
+        setScale(Math.min(w, 560) / BASE);
+      }
     };
 
     updateScale();
@@ -363,132 +372,151 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
     setMachineState('result');
   };
 
-  return (
-    <div className="min-h-screen pt-14 md:pt-0 overflow-x-hidden bg-neutral-50 dark:bg-neutral-950">
-      {/* 機台區域 — scale 容器，只含機台視覺，不含下方內容 */}
+  // 機台內容（手機/桌面共用 JSX 片段，由父層控制 scale 與容器）
+  const renderMachineInner = () => (
+    <div
+      className="relative"
+      style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
+    >
+      {/* 點擊蛋箱提示 */}
       <div
-        className="w-full flex justify-center"
-        style={{
-          marginBottom: Math.round(375 * (932 / 750) * (scale - 1)),
-        }}
+        className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
+        style={{ top: 221, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20, pointerEvents: 'none' }}
       >
-        <div
-          className="relative"
-          style={{
-            width: 375,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top center',
-          }}
-        >
-          <div
-            className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-4 rounded-full"
-            style={{
-              top: isMobile ? 92 : 40,
-              height: 24,
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              maxWidth: 320,
-              zIndex: 20,
-              pointerEvents: 'none',
-              opacity: isEggBoxImageMode || isMobile ? 0 : 1,
-              transition: 'opacity 200ms ease-out',
-            }}
-          >
-            <span
-              className="font-black text-center truncate"
-              style={{ color: '#FFFF30', fontSize: 16 }}
-            >
-              {product.name}
-            </span>
-          </div>
-          <div
-            className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-            style={{
-              top: 221,
-              height: 20,
-              backgroundColor: 'rgba(0,0,0,0.6)',
-              zIndex: 20,
-              pointerEvents: 'none',
-            }}
-          >
-            <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
-              點擊蛋箱顯示圖片
-            </span>
-          </div>
-          <div className="w-full max-w-[750px] mx-auto">
-            <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
-              {(() => {
-                const MachineComponent = MACHINE_COMPONENTS[machineTheme || 'gacha_classic'] ?? GachaMachineVisual
-                return (
-                  <MachineComponent
-                    state={machineState}
-                    shakeRepeats={shakeRepeats}
-                    onPush={handlePush}
-                    onPurchase={handlePurchaseClick}
-                    onTrial={handleTrial}
-                    onHoleClick={handleHoleClick}
-                    onLoaded={() => { setIsMachineLoaded(true); onMachineReady?.(); }}
-                    isSoldOut={isSoldOut}
-                    pushSoundMode={pushSoundMode}
-                    hasHighTierPending={forceGoldEgg || hasHighTierPending}
-                    disableButtons={machineState !== 'idle' && !isPushShaking}
-                  />
-                )
-              })()}
+        <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>點擊蛋箱顯示圖片</span>
+      </div>
+      <div className="w-full max-w-[750px] mx-auto">
+        <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+          {(() => {
+            const MachineComponent = MACHINE_COMPONENTS[machineTheme || 'gacha_classic'] ?? GachaMachineVisual;
+            return (
+              <MachineComponent
+                state={machineState}
+                shakeRepeats={shakeRepeats}
+                onPush={handlePush}
+                onPurchase={handlePurchaseClick}
+                onTrial={handleTrial}
+                onHoleClick={handleHoleClick}
+                onLoaded={() => { setIsMachineLoaded(true); onMachineReady?.(); }}
+                isSoldOut={isSoldOut}
+                pushSoundMode={pushSoundMode}
+                hasHighTierPending={forceGoldEgg || hasHighTierPending}
+                disableButtons={machineState !== 'idle' && !isPushShaking}
+              />
+            );
+          })()}
+          {/* 蛋箱圖片切換區 */}
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 167, height: 167, zIndex: 20 }}>
+            <div className="relative w-full h-full">
               <div
-                className="absolute left-1/2 -translate-x-1/2"
-                style={{ top: 42, width: 167, height: 167, zIndex: 20 }}
-              >
-                <div className="relative w-full h-full">
-                  <div
-                    className="absolute inset-0 cursor-pointer"
-                    style={{
-                      opacity: isEggBoxImageMode ? 0 : 1,
-                      pointerEvents: isEggBoxImageMode ? 'none' : 'auto',
-                      transition: 'opacity 200ms ease-out',
-                    }}
-                    onClick={() => { if (!product.id) return; setIsEggBoxImageMode(true); }}
+                className="absolute inset-0 cursor-pointer"
+                style={{ opacity: isEggBoxImageMode ? 0 : 1, pointerEvents: isEggBoxImageMode ? 'none' : 'auto', transition: 'opacity 200ms ease-out' }}
+                onClick={() => { if (!product.id) return; setIsEggBoxImageMode(true); }}
+              />
+              {product.id && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                  style={{ opacity: isEggBoxImageMode ? 1 : 0, pointerEvents: isEggBoxImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
+                  onClick={() => setIsEggBoxImageMode(false)}
+                >
+                  <Image
+                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                    alt={product.name} fill className="rounded-lg object-fill"
+                    onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
                   />
-                  {product.id && (
-                    <div
-                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                      style={{
-                        opacity: isEggBoxImageMode ? 1 : 0,
-                        pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
-                        transition: 'opacity 200ms ease-out',
-                      }}
-                      onClick={() => setIsEggBoxImageMode(false)}
-                    >
-                      <Image
-                        src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                        alt={product.name}
-                        fill
-                        className="rounded-lg object-fill"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.srcset = '/images/item.png';
-                          target.src = '/images/item.png';
-                        }}
-                      />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen pt-14 md:pt-0 bg-neutral-50 dark:bg-neutral-950">
+
+      {/* ── 手機/平板（< 1024px）：原始直式佈局，完全不動 ── */}
+      <div className="block lg:hidden overflow-x-hidden pb-32">
+        <div
+          className="w-full flex justify-center"
+          style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
+        >
+          {renderMachineInner()}
+        </div>
+        <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2">
+          <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
+        </div>
+      </div>
+
+      {/* ── 桌面（≥ 1024px）：左右分欄 ── */}
+      <div className="hidden lg:block pb-12">
+        <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
+          <div className="grid grid-cols-12 gap-6 items-start">
+
+            {/* 左欄：機台 + 資訊（sticky） */}
+            <div className="col-span-4 sticky top-20">
+              <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+                {/* 機台：明確高度 = 視覺高度，防止 overflow-hidden 切掉 */}
+                <div
+                  className="w-full overflow-hidden flex justify-center"
+                  style={{ height: Math.round(scale * 375 * 932 / 750) }}
+                >
+                  {renderMachineInner()}
+                </div>
+
+                {/* 商品名稱 + 價格 + 剩餘 */}
+                <div className="p-5 space-y-3">
+                  <h1 className="text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">
+                    <span className="inline-block align-middle mr-2">
+                      <ProductBadge type={product.type as 'gacha' | 'blindbox' | 'ichiban' | 'card' | 'custom'} className="h-5 px-1.5 text-[10px]" />
+                    </span>
+                    <span className="align-middle">{product.name}</span>
+                  </h1>
+
+                  {(product as any).is_preorder && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
+                      <span className="text-[11px] font-black">預購商品</span>
+                      <span className="text-[11px] font-bold">
+                        預計可配送日 {(product as any).preorder_available_at
+                          ? new Date((product as any).preorder_available_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })
+                          : '待公布'}
+                      </span>
                     </div>
                   )}
+
+                  <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
+                    <div className="flex items-baseline gap-2">
+                      <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
+                          {product.price.toLocaleString()}
+                        </span>
+                        <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
+                      </div>
+                    </div>
+                    {typeof product.remaining === 'number' && (
+                      <div className="text-right shrink-0">
+                        <div className="text-[11px] text-neutral-400 font-bold">剩餘</div>
+                        <div className="text-xl font-black text-neutral-900 dark:text-white font-amount leading-none">
+                          {product.remaining.toLocaleString()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* 右欄：品項列表 */}
+            <div className="col-span-8">
+              <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 總覽 + 猜你喜歡 — 在 scale 容器外，正常文件流 */}
-      <div className="w-full max-w-[560px] mx-auto px-2 pb-24 mt-2">
-        <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
-      </div>
-
-      <GachaResultModal
-        isOpen={showResultModal}
-        onClose={handleResultClose}
-        results={wonPrizes}
-      />
-
+      <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} />
       <PurchaseConfirmationModal
         isOpen={isPurchaseModalOpen}
         onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}

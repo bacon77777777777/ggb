@@ -157,14 +157,6 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                     />
                   </motion.div>
 
-                  {activeGrade && (
-                    <div className="mb-2">
-                      <span className="inline-flex items-center px-3 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-black text-neutral-700 dark:text-neutral-200 tracking-tight">
-                        {activeGrade}
-                      </span>
-                    </div>
-                  )}
-
                   <div className="mb-6 w-full px-2">
                     <div className="flex items-center justify-center gap-3">
                       {hasMultiple && (

@@ -16,8 +16,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'card_flip',  label: '直接翻牌（略過開包動畫）' },
   ],
   custom:   [
-    { value: 'custom_grid', label: '經典列表（票券網格撕開）' },
-    { value: 'custom_tear', label: '沉浸式撕紙（全畫面揭曉）' },
+    { value: 'custom_combo', label: '影片互動 Combo（全畫面影片＋互動點擊）' },
   ],
   blindbox: [
     { value: 'blindbox_classic', label: '原始經典（過場華麗動畫）' },

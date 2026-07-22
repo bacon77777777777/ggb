@@ -10,7 +10,6 @@ export { IchibanTicket } from './IchibanTicket'
 export { Input } from './ui'
 
 // Admin Components
-export { default as AdminLayout } from './AdminLayout'
 export { default as DataTable } from './DataTable'
 export { default as SearchToolbar } from './SearchToolbar'
 export { default as FilterTags } from './FilterTags'
