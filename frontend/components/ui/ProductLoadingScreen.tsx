@@ -2,17 +2,28 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ip.svg is a 1774×887 sprite sheet with 4 characters in a 2×2 grid.
-// Each cell is 887×443.5 units (2:1 ratio). Below we display at 280×140.
-const DISP_W = 280;
-const DISP_H = 140;
-const BG_SIZE = `${DISP_W * 2}px ${DISP_H * 2}px`; // full sprite at render scale
+// ip.svg: 1774×887, 4 characters in a single horizontal row.
+// Each cell: 443.5 wide × 887 tall (portrait, ~1:2 ratio).
+// Columns: [gumball|bunny|penguin|bear] at x 0, 443, 886, 1329.
+const CHAR_CELL_W = 443.5;
+const SVG_W = 1774;
+const SVG_H = 887;
 
+// Display one character at DISP_W wide; scale uniformly.
+const DISP_W = 170;
+const SCALE = DISP_W / CHAR_CELL_W;          // ≈ 0.383
+const DISP_H = Math.round(SVG_H * SCALE);    // ≈ 340 (show full character)
+const SHOW_H = 260;                           // clip bottom a bit, keep head+body
+
+const BG_W = Math.round(SVG_W * SCALE);      // ≈ 680
+const BG_H = Math.round(SVG_H * SCALE);      // ≈ 340
+
+// backgroundPosition offsets (shift image left to reveal each column)
 const CHARS = [
-  `0px 0px`,                         // gumball machine (col 0, row 0)
-  `-${DISP_W}px 0px`,                // bunny          (col 1, row 0)
-  `0px -${DISP_H}px`,               // penguin        (col 0, row 1)
-  `-${DISP_W}px -${DISP_H}px`,      // bear           (col 1, row 1)
+  `0px 0px`,                      // 轉蛋機
+  `-${DISP_W}px 0px`,             // 兔兔
+  `-${DISP_W * 2}px 0px`,         // 企鵝
+  `-${DISP_W * 3}px 0px`,         // 小熊
 ];
 
 export function ProductLoadingScreen() {
@@ -27,11 +38,11 @@ export function ProductLoadingScreen() {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-neutral-950">
       <div className="flex flex-col items-center gap-5">
 
-        {/* Float wrapper — gently bobs the whole character area */}
+        {/* Float wrapper — character bobs up and down while visible */}
         <motion.div
-          style={{ position: 'relative', width: DISP_W, height: DISP_H }}
-          animate={{ y: [0, -9, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ width: DISP_W, height: SHOW_H, position: 'relative', overflow: 'hidden' }}
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -41,16 +52,16 @@ export function ProductLoadingScreen() {
                 inset: 0,
                 transformOrigin: 'center bottom',
                 backgroundImage: 'url(/loading/ip.svg)',
-                backgroundSize: BG_SIZE,
+                backgroundSize: `${BG_W}px ${BG_H}px`,
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: CHARS[idx],
               }}
-              initial={{ scaleY: 0.08, scaleX: 1.55 }}
+              initial={{ scaleY: 0.06, scaleX: 1.6 }}
               animate={{ scaleY: 1, scaleX: 1 }}
-              exit={{ scaleY: 0.08, scaleX: 1.55 }}
+              exit={{ scaleY: 0.06, scaleX: 1.6 }}
               transition={{
-                scaleY: { type: 'spring', stiffness: 340, damping: 20 },
-                scaleX: { type: 'spring', stiffness: 340, damping: 20 },
+                scaleY: { type: 'spring', stiffness: 320, damping: 18 },
+                scaleX: { type: 'spring', stiffness: 320, damping: 18 },
               }}
             />
           </AnimatePresence>
@@ -73,7 +84,7 @@ export function ProductLoadingScreen() {
           </div>
         </div>
 
-        {/* Character position indicators */}
+        {/* Character indicators */}
         <div className="flex gap-2">
           {CHARS.map((_, i) => (
             <motion.div
