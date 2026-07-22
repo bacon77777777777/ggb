@@ -69,6 +69,10 @@ export async function POST(request: Request) {
 
     const prizes = Array.isArray(body?.prizes) ? body.prizes : []
     if (prizes.length > 0) {
+      const invalidPrize = prizes.find((p: any) => !p.total || p.total < 1)
+      if (invalidPrize) {
+        return NextResponse.json({ error: `品項「${invalidPrize.name || '未命名'}」總數量必須至少 1` }, { status: 400 })
+      }
       const { error: prizesError } = await supabaseAdmin
         .from('product_prizes')
         .insert(prizes.map((p) => ({ ...p, product_id: newProductId })))

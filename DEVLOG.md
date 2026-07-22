@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.22c｜2026-07-22｜QA 修復（次要 + 警告 + S2/S3）
+
+### [次要 1] 跑馬燈顯示「未知獎項」
+- 原因：`play_gacha` 只寫 `product_prize_id` 到 `draw_records`，不寫 `prize_name`，`get_winning_records` fallback 為「未知獎項」
+- 修正：migration `338_fix_winning_records_prize_name.sql`，LEFT JOIN `product_prizes` 取品項名稱 `COALESCE(dr.prize_name, pp.name, '未知獎項')`
+- migration 已套用至 PROD + STG
+
+### [次要 2] 篩選類別切換有殘影
+- 修正：`page.tsx` 新增 `isCategoryChanging` state，tab 切換時顯示 skeleton 直到下一個 frame 渲染完成
+
+### [警告 3] 前台日期顯示未指定台灣時區
+- 修正：`profile/page.tsx`、`purchases/page.tsx`、`item/[id]/page.tsx` 所有 `toLocaleString`/`toLocaleDateString` 加上 `timeZone: 'Asia/Taipei'`
+
+### [S2] 後台商品品項數量可輸入 0 或負值
+- 修正：`products/[id]/page.tsx` input min 改為 `1`，`handleSubmit` 提交前驗證所有品項 total >= 1
+- 修正：`api/admin/products/route.ts` 後端也驗證 prize total >= 1
+
+### [S3] 手動入帳寫入 recharge_records 污染 ECPay 對帳
+- 修正：`api/admin/recharges/route.ts` `manual_transfer`/`cash`/`line_pay` 等非 ECPay 手動補幣改寫 `token_adjustments`
+- 行銷類型（promotion/compensation/test）仍寫 `recharge_records`（token_ledger VIEW 的 marketing 來源）
+
+---
+
 ## v2026.07.22b｜2026-07-22｜QA 修復（3 阻塞 + 2 警告）
 
 ### [阻塞 1] 超商取貨「確認支付」按鈕永遠 disabled

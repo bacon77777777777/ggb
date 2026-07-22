@@ -293,6 +293,7 @@ export default function Home() {
     | `menu:${string}`;
 
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryTabId>('all');
+  const [isCategoryChanging, setIsCategoryChanging] = useState(false);
   const [direction, setDirection] = useState(0);
   const [activeSecondaryTab, setActiveSecondaryTab] = useState<string>('featured');
   const [sortMode, setSortMode] = useState<SortMode>('latest');
@@ -679,8 +680,10 @@ export default function Home() {
     const oldIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
     const newIndex = primaryTabs.findIndex((t) => t.id === newTabId);
     setDirection(newIndex > oldIndex ? 1 : -1);
+    setIsCategoryChanging(true);
     setActivePrimaryTab(newTabId);
     setActiveSecondaryTab('all');
+    requestAnimationFrame(() => setIsCategoryChanging(false));
   };
 
   const swipeConfidenceThreshold = 10000;
@@ -1206,7 +1209,7 @@ export default function Home() {
             </>
           ) : activePrimaryTab === 'all' ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
-              {isLoading ? (
+              {isLoading || isCategoryChanging ? (
                 Array.from({ length: 10 }).map((_, index) => (
                   <div key={index} className="h-[280px]">
                     <ProductCardSkeleton />
@@ -1322,7 +1325,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
-              {isLoading ? (
+              {isLoading || isCategoryChanging ? (
                 Array.from({ length: 10 }).map((_, index) => (
                   <div key={index} className="h-[280px]">
                     <ProductCardSkeleton />
