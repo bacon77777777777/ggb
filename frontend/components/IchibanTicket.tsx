@@ -81,6 +81,8 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
   const [internalIsOpened, setInternalIsOpened] = useState(false);
   const [dragProgress, setDragProgress] = useState(0);
   const playTearSound = useTearSound();
+  // 拖曳時是否已觸發音效（避免 onDragEnd 再次播放）
+  const hasSoundedRef = useRef(false);
   const isOpened = externalIsOpened !== undefined ? externalIsOpened : internalIsOpened;
   const formattedPrizeName = React.useMemo(() => formatPrizeName(prizeName), [prizeName]);
 
@@ -88,7 +90,9 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
     if (!isOpened) {
       setInternalIsOpened(true);
       setDragProgress(1);
-      playTearSound();
+      // 點擊觸發時播音（拖曳路徑已在 onDrag 播過，不重複）
+      if (!hasSoundedRef.current) playTearSound();
+      hasSoundedRef.current = false;
       onOpen?.();
     }
   };
@@ -263,12 +267,18 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                 const distance = Math.max(info.offset.x, 0);
                 const progress = Math.min(distance / 120, 1);
                 setDragProgress(progress);
+                // 拖曳開始瞬間觸發音效（距離 > 5px 即播，不等拖曳結束）
+                if (distance > 5 && !hasSoundedRef.current) {
+                  hasSoundedRef.current = true;
+                  playTearSound();
+                }
               }}
               onDragEnd={(_, info) => {
                 const distance = Math.max(info.offset.x, 0);
                 if (distance > 8) {
                   handleOpen();
                 } else {
+                  hasSoundedRef.current = false;
                   setDragProgress(0);
                 }
               }}

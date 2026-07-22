@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.21l｜2026-07-21｜音效優化 — 沈浸式/抽卡/盒玩
+
+### 沈浸式 IchibanTicket（撕紙）
+- 音效從 `onDragEnd` 移至 `onDrag` 距離 > 5px 即觸發
+- `hasSoundedRef` 防止拖曳 + 點擊路徑重複播放
+- 失敗拖曳（< 8px 放手）重置 ref，不留狀態
+
+### 抽卡 CardFlipDirect
+- 新增 `useCardSounds` hook：`sword1.mp3`（翻牌）+ `u_o8xh7gwsrj...mp3`（SSR bling）
+- 翻牌點擊瞬間播 flip 音；SSR shake 結束後播 bling + reveal
+
+### 盒玩 BlindboxMachineMode2
+- 新增 `useBoxSounds` hook：`changebox.mp3`（shuffle）/ `spinopel-open...mp3`（drop）/ `gachapush.mp3`（pick）
+- handleShuffle → playShuffle；盒子落下 → playDrop；handleSlotClick → playPick
+
+---
+
 ## v2026.07.21k｜2026-07-21｜一番賞流程優化（兩輪迭代）
 
 ### FigmaTearScene（原始經典）

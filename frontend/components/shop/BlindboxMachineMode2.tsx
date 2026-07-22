@@ -130,6 +130,38 @@ export interface BlindboxMachineMode2Props {
   onLoaded?:    () => void;
 }
 
+function useBoxSounds() {
+  const shuffleRef = useRef<HTMLAudioElement | null>(null);
+  const dropRef    = useRef<HTMLAudioElement | null>(null);
+  const pickRef    = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    shuffleRef.current = new Audio('/audio/changebox.mp3');
+    dropRef.current    = new Audio('/audio/spinopel-open-a-egg-carton-345737.mp3');
+    pickRef.current    = new Audio('/audio/gachapush.mp3');
+    [shuffleRef, dropRef, pickRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
+    return () => {
+      [shuffleRef, dropRef, pickRef].forEach(r => {
+        if (r.current) { r.current.pause(); r.current.src = ''; }
+      });
+    };
+  }, []);
+
+  const play = (ref: React.MutableRefObject<HTMLAudioElement | null>, volume = 1) => {
+    const a = ref.current;
+    if (!a) return;
+    a.volume = volume;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  };
+
+  return {
+    playShuffle: () => play(shuffleRef, 0.7),
+    playDrop:    () => play(dropRef, 0.8),
+    playPick:    () => play(pickRef, 0.9),
+  };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export function BlindboxMachineMode2({
   machineState,
@@ -154,10 +186,12 @@ export function BlindboxMachineMode2({
   const doneCalledRef    = useRef(false);
   const prevMachineState = useRef<'idle' | 'animating'>('idle');
   const timerRefs        = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const { playShuffle, playDrop, playPick } = useBoxSounds();
 
   // ── Shuffle ────────────────────────────────────────────────────────────────
   const handleShuffle = useCallback(() => {
     if (isShuffling || machineState === 'animating') return;
+    playShuffle();
     setIsShuffling(true);
     setSlotState(prev => prev.map(s => s === 'present' ? 'shuffling' : s) as typeof slotState);
     const t1 = setTimeout(() => setShowGhostBack(true), 600);
@@ -358,6 +392,7 @@ export function BlindboxMachineMode2({
     });
 
     const tDrop = setTimeout(() => {
+      playDrop(); // 盒子掉落音效
       setSlotState(prev => {
         const n = [...prev];
         selected.forEach(idx => { n[idx] = 'gone'; });
@@ -416,6 +451,7 @@ export function BlindboxMachineMode2({
 
   const handleSlotClick = () => {
     if (!readyToPick) return;
+    playPick(); // 選取盒子音效
     setReadyToPick(false);
     onAnimationComplete?.();
   };

@@ -1,11 +1,33 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
 import type { Prize } from '@/components/GachaMachine';
+
+function useCardSounds() {
+  const flipRef  = useRef<HTMLAudioElement | null>(null);
+  const blingRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    flipRef.current  = new Audio('/audio/sword1.mp3');
+    blingRef.current = new Audio('/audio/u_o8xh7gwsrj-correct_answer_toy_bi-bling-476370.mp3');
+    flipRef.current.preload  = 'auto';
+    blingRef.current.preload = 'auto';
+    return () => {
+      [flipRef, blingRef].forEach(r => {
+        if (r.current) { r.current.pause(); r.current.src = ''; }
+      });
+    };
+  }, []);
+
+  const playFlip  = () => { if (flipRef.current)  { flipRef.current.currentTime  = 0; void flipRef.current.play().catch(() => {}); } };
+  const playBling = () => { if (blingRef.current) { blingRef.current.currentTime = 0; void blingRef.current.play().catch(() => {}); } };
+
+  return { playFlip, playBling };
+}
 
 type CardFlipDirectProps = {
   isOpen: boolean;
@@ -46,6 +68,7 @@ export default function CardFlipDirect({
 }: CardFlipDirectProps) {
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [shakingId, setShakingId] = useState<string | null>(null);
+  const { playFlip, playBling } = useCardSounds();
 
   const ranks = useMemo(() => prizes.map(p => normalizeRank(p.grade, p.rarity)), [prizes]);
   const allRevealed = prizes.length > 0 && prizes.every(p => revealedIds.has(p.id));
@@ -62,10 +85,13 @@ export default function CardFlipDirect({
   const handleCardClick = (id: string, rank: 'SSR' | 'SR' | 'R' | 'N') => {
     if (revealedIds.has(id)) return;
     if (rank === 'SSR' && shakingId !== id) {
+      playFlip();
       setShakingId(id);
-      setTimeout(() => { setShakingId(null); reveal(id); }, 380);
+      // SSR：shake 結束後再播 bling + reveal
+      setTimeout(() => { playBling(); setShakingId(null); reveal(id); }, 380);
       return;
     }
+    playFlip();
     reveal(id);
   };
 
