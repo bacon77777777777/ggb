@@ -2,28 +2,24 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ip.svg: 1774×887, 4 characters in a single horizontal row.
-// Each cell: 443.5 wide × 887 tall (portrait, ~1:2 ratio).
-// Columns: [gumball|bunny|penguin|bear] at x 0, 443, 886, 1329.
-const CHAR_CELL_W = 443.5;
-const SVG_W = 1774;
-const SVG_H = 887;
+// ip.svg: 1774×887, left half (x 0-887) contains 4 chars in a 2×2 grid.
+// Each cell is 443.5×443.5 (square). Layout:
+//   [gumball | bunny  ]  y 0-443
+//   [penguin | bear   ]  y 443-887
+// Right half (x 887-1774) has additional characters we don't use here.
+const CELL = 443.5;          // square cell size in SVG units
+const DISP = 220;            // display size per character (square)
+const SCALE = DISP / CELL;   // ≈ 0.496
 
-// Display one character at DISP_W wide; scale uniformly.
-const DISP_W = 170;
-const SCALE = DISP_W / CHAR_CELL_W;          // ≈ 0.383
-const DISP_H = Math.round(SVG_H * SCALE);    // ≈ 340 (show full character)
-const SHOW_H = 260;                           // clip bottom a bit, keep head+body
+const BG_W = Math.round(1774 * SCALE); // 880 — full sprite scaled
+const BG_H = Math.round(887 * SCALE);  // 440
 
-const BG_W = Math.round(SVG_W * SCALE);      // ≈ 680
-const BG_H = Math.round(SVG_H * SCALE);      // ≈ 340
-
-// backgroundPosition offsets (shift image left to reveal each column)
+// [col, row] → background-position offset (shifts the full sprite to crop one cell)
 const CHARS = [
-  `0px 0px`,                      // 轉蛋機
-  `-${DISP_W}px 0px`,             // 兔兔
-  `-${DISP_W * 2}px 0px`,         // 企鵝
-  `-${DISP_W * 3}px 0px`,         // 小熊
+  { bgPos: `0px 0px` },                   // gumball  (col 0, row 0)
+  { bgPos: `-${DISP}px 0px` },            // bunny    (col 1, row 0)
+  { bgPos: `0px -${DISP}px` },            // penguin  (col 0, row 1)
+  { bgPos: `-${DISP}px -${DISP}px` },     // bear     (col 1, row 1)
 ];
 
 export function ProductLoadingScreen() {
@@ -38,9 +34,9 @@ export function ProductLoadingScreen() {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-neutral-950">
       <div className="flex flex-col items-center gap-5">
 
-        {/* Float wrapper — character bobs up and down while visible */}
+        {/* Float wrapper — character bobs while visible */}
         <motion.div
-          style={{ width: DISP_W, height: SHOW_H, position: 'relative', overflow: 'hidden' }}
+          style={{ width: DISP, height: DISP, position: 'relative', overflow: 'hidden' }}
           animate={{ y: [0, -10, 0] }}
           transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
         >
@@ -54,7 +50,7 @@ export function ProductLoadingScreen() {
                 backgroundImage: 'url(/loading/ip.svg)',
                 backgroundSize: `${BG_W}px ${BG_H}px`,
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: CHARS[idx],
+                backgroundPosition: CHARS[idx].bgPos,
               }}
               initial={{ scaleY: 0.06, scaleX: 1.6 }}
               animate={{ scaleY: 1, scaleX: 1 }}
