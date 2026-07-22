@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.22g｜2026-07-22｜修復 card SKIP 位置 + 自製賞 combo 動畫消失
+
+### Card 抽獎 Phase 1 SKIP 跑到瀏覽器右下角
+- `CardDrawAnimation.tsx`：Phase 1 SKIP 的 `absolute` 定位無 `relative` 父容器，跑到 `fixed inset-0` 全螢幕
+- 修正：加 `relative w-screen md:w-[calc(100dvh*393/852)] h-[100dvh]` wrapper，與 Phase 2 / BoosterPackOpenEffect 同寬
+
+### 自製賞支付後 combo 互動動畫消失
+- `item/[id]/page.tsx`：`effectiveTheme === 'custom_grid'` 路由到 `GachaThemeRenderer` → `ClassicCapsule`（轉蛋機）
+- 根因：`custom_grid` 在 THEME_MAP 對應的是轉蛋機 UI，非 combo 影片
+- 修正：`product.type !== 'custom'` 排除，自製賞永遠走 `GachaBattleEffect`（combo 影片互動）
+
+---
+
 ## v2026.07.22f｜2026-07-22｜修復 PC 購買彈窗跑版 + 後台開發日誌版本排序
 
 ### PC 購買彈窗跑版（非一番賞類別）
