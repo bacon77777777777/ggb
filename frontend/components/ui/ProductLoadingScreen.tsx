@@ -21,7 +21,7 @@ export function ProductLoadingScreen() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % CHARS.length), 500);
+    const t = setInterval(() => setIdx(i => (i + 1) % CHARS.length), 200);
     return () => clearInterval(t);
   }, []);
 
@@ -38,7 +38,7 @@ export function ProductLoadingScreen() {
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
+              transition={{ duration: 0.08, ease: 'easeOut' }}
             >
               {/* gentle float while visible */}
               <motion.img
