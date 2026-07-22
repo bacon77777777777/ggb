@@ -1249,7 +1249,7 @@ function ProfileContent() {
               grade,
               status: item.status as WarehouseItem['status'],
               image: item.product_prizes?.image_url || 'https://placehold.co/400',
-              date: new Date(item.created_at).toLocaleString('zh-TW'),
+              date: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
               ticketNo: item.ticket_number?.toString() || '',
               recycleValue,
               type: productType,
@@ -1292,7 +1292,7 @@ function ProfileContent() {
               series: item.products?.name || '未知系列',
               grade,
               image: item.product_prizes?.image_url || 'https://placehold.co/400',
-              dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at).toLocaleDateString('zh-TW'),
+              dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }),
               raw_dismantled_at: new Date(item.admin_recycle_pool?.[0]?.created_at ?? item.created_at),
               recycleValue: item.admin_recycle_pool?.[0]?.recycle_value ?? item.product_prizes?.recycle_value ?? 0,
               type: productType,
@@ -1330,8 +1330,8 @@ function ProfileContent() {
           draw_record_id: item.draw_records?.id,
           price: item.price,
           status: item.status,
-          created_at: new Date(item.created_at).toLocaleString('zh-TW'),
-          updated_at: new Date(item.updated_at).toLocaleString('zh-TW'),
+          created_at: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+          updated_at: new Date(item.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
           raw_updated_at: new Date(item.updated_at),
           product: {
             name: item.draw_records?.product_prizes?.name || '未知',
@@ -1372,8 +1372,8 @@ function ProfileContent() {
                 id: tx.id.toString(),
                 price: tx.price,
                 status: 'sold',
-                created_at: new Date(tx.created_at).toLocaleString('zh-TW'),
-                updated_at: new Date(tx.created_at).toLocaleString('zh-TW'),
+                created_at: new Date(tx.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+                updated_at: new Date(tx.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
                 raw_updated_at: new Date(tx.created_at),
                 product: {
                     name: tx.draw_records?.product_prizes?.name || '未知',
@@ -1447,7 +1447,7 @@ function ProfileContent() {
                };
              }),
              status: order.status,
-             date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '/'),
+             date: new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' }).replace(/\//g, '/'),
              tracking: order.tracking_number || '-',
              method: displayMethod,
              arrivalDate: arrivalDate,
@@ -1508,7 +1508,7 @@ function ProfileContent() {
               productStatus: item.products?.status,
               productRemaining: item.products?.remaining,
               productType: item.products?.type,
-              date: new Date(item.created_at).toLocaleString('zh-TW'),
+              date: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
               tickets: [item.ticket_number?.toString()],
               cost: item.products?.price || 0,
               pointsUsed: itemPointsUsed,
@@ -3335,7 +3335,7 @@ function ProfileContent() {
                       </button>
                       <button
                         onClick={handleConfirmDelivery}
-                        disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || !settingsForm.recipientAddress}
+                        disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'CVS' ? !storeId : !settingsForm.recipientAddress)}
                         className={cn(
                           "flex-1 bg-primary text-white rounded-xl font-black shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100",
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
@@ -5051,7 +5051,7 @@ function ProfileContent() {
                                 {item.order_number}
                               </span>
                               <div className="text-[11px] text-neutral-400 font-bold flex items-center gap-1">
-                                {new Date(item.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '/')}
+                                {new Date(item.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Taipei' }).replace(/\//g, '/')}
                               </div>
                             </div>
                             
@@ -5151,7 +5151,7 @@ function ProfileContent() {
                           render: (item) => (
                             <div className="min-w-0">
                               <div className="font-black text-neutral-900 dark:text-white whitespace-nowrap">
-                                {new Date(item.created_at).toLocaleString('zh-TW')}
+                                {new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}
                               </div>
                               <div className="text-[12px] text-neutral-500 dark:text-neutral-400 font-mono truncate">
                                 {item.order_number}
@@ -5539,7 +5539,7 @@ function ProfileContent() {
                            </div>
                            <p className="text-[11px] text-neutral-400 line-clamp-1">{coupon.description}</p>
                            <p className="text-[10px] text-neutral-400 font-medium">
-                              {coupon.expiryDate ? `期限：${new Date(coupon.expiryDate).toLocaleDateString()}` : '無使用期限'}
+                              {coupon.expiryDate ? `期限：${new Date(coupon.expiryDate).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}` : '無使用期限'}
                            </p>
                         </div>
 
@@ -5731,7 +5731,7 @@ function ProfileContent() {
                           className: 'w-[160px]',
                           render: (c: Coupon) => (
                             <div className="text-[13px] font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
-                              {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : '無期限'}
+                              {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }) : '無期限'}
                             </div>
                           ),
                         },

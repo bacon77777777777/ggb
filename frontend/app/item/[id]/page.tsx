@@ -1934,7 +1934,7 @@ export default function ProductDetailPage() {
                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
                       <span className="text-[11px] font-black">預購商品</span>
                       <span className="text-[11px] font-bold">
-                        預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString() : '待公布'}
+                        預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' }) : '待公布'}
                       </span>
                     </span>
                   </div>

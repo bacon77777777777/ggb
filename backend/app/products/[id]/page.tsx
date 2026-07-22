@@ -344,9 +344,17 @@ export default function EditProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 盒玩/轉蛋：數量不能低於已抽數量
-    if (isGachaType && savedPrizes.length > 0) {
+    // 盒玩/轉蛋：數量不能低於已抽數量；新品項數量必須 >= 1
+    if (isGachaType) {
       for (const prize of prizes) {
+        if (!prize.name?.trim()) {
+          toast(`請填寫品項名稱`, 'success')
+          return
+        }
+        if (prize.total < 1) {
+          toast(`品項「${prize.name || '未命名'}」總數量必須至少 1`, 'success')
+          return
+        }
         const saved = savedPrizes.find(sp => String(sp.id) === String(prize.id))
         if (saved) {
           const drawn = saved.total - saved.remaining
@@ -894,12 +902,12 @@ export default function EditProductPage() {
                                 const newTotal = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
                                 const delta = newTotal - prize.total
                                 const updated = [...prizes]
-                                updated[index].total = newTotal
+                                updated[index].total = Math.max(0, newTotal)
                                 updated[index].remaining = Math.max(0, prize.remaining + delta)
                                 setPrizes(updated)
                               }}
                               className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
-                              min="0"
+                              min="1"
                               placeholder="0"
                             />
                           )}

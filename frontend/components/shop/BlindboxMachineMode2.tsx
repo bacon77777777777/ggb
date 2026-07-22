@@ -130,6 +130,55 @@ export interface BlindboxMachineMode2Props {
   onLoaded?:    () => void;
 }
 
+function useBoxSounds() {
+  const shuffleRef = useRef<HTMLAudioElement | null>(null);
+  const dropRef    = useRef<HTMLAudioElement | null>(null);
+  const machineRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    shuffleRef.current = new Audio('/audio/changebox.mp3');
+    dropRef.current    = new Audio('/audio/spinopel-open-a-egg-carton-345737.mp3');
+    machineRef.current = new Audio('/audio/gacha.mp3');
+    machineRef.current.loop = true;
+    [shuffleRef, dropRef, machineRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
+    return () => {
+      [shuffleRef, dropRef, machineRef].forEach(r => {
+        if (r.current) { r.current.pause(); r.current.src = ''; }
+      });
+    };
+  }, []);
+
+  const play = (ref: React.MutableRefObject<HTMLAudioElement | null>, volume = 1) => {
+    const a = ref.current;
+    if (!a) return;
+    a.volume = volume;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  };
+
+  const startMachine = () => {
+    const a = machineRef.current;
+    if (!a) return;
+    a.volume = 0.55;
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  };
+
+  const stopMachine = () => {
+    const a = machineRef.current;
+    if (!a) return;
+    a.pause();
+    a.currentTime = 0;
+  };
+
+  return {
+    playShuffle:  () => play(shuffleRef, 0.7),
+    playDrop:     () => play(dropRef, 0.8),
+    startMachine,
+    stopMachine,
+  };
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export function BlindboxMachineMode2({
   machineState,
@@ -154,10 +203,46 @@ export function BlindboxMachineMode2({
   const doneCalledRef    = useRef(false);
   const prevMachineState = useRef<'idle' | 'animating'>('idle');
   const timerRefs        = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const { playShuffle, playDrop, startMachine, stopMachine } = useBoxSounds();
+
+  // Web Audio impact thud — throttled to avoid overlapping
+  const lastImpactRef = useRef(0);
+  const impactRef = useRef(() => {
+    const now = Date.now();
+    if (now - lastImpactRef.current < 120) return;
+    lastImpactRef.current = now;
+    try {
+      const ctx = new AudioContext();
+      // Noise burst
+      const bufLen = Math.floor(ctx.sampleRate * 0.07);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.22, ctx.currentTime);
+      ng.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      noise.connect(ng); ng.connect(ctx.destination);
+      noise.start();
+      // Low thud
+      const osc = ctx.createOscillator();
+      const og = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(90, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(22, ctx.currentTime + 0.2);
+      og.gain.setValueAtTime(0.55, ctx.currentTime);
+      og.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc.connect(og); og.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+      osc.onended = () => ctx.close();
+    } catch {}
+  });
 
   // ── Shuffle ────────────────────────────────────────────────────────────────
   const handleShuffle = useCallback(() => {
     if (isShuffling || machineState === 'animating') return;
+    playShuffle();
     setIsShuffling(true);
     setSlotState(prev => prev.map(s => s === 'present' ? 'shuffling' : s) as typeof slotState);
     const t1 = setTimeout(() => setShowGhostBack(true), 600);
@@ -231,6 +316,7 @@ export function BlindboxMachineMode2({
             b.avZ *= 0.30;
             b.avX = 0;
             b.avY = 0;
+            impactRef.current();
           }
         }
 
@@ -241,6 +327,7 @@ export function BlindboxMachineMode2({
           b.avZ *= 0.30;
           b.avX = 0;
           b.avY = 0;
+          impactRef.current();
         }
 
         if (b.y + BOX_R > HOLE_T) {
@@ -319,6 +406,7 @@ export function BlindboxMachineMode2({
       setShelfKey(k => k + 1);
       setSlotState(Array(20).fill('present'));
       stopPhysics();
+      stopMachine();
       physRef.current = [];
       setPhysBoxes([]);
       doneCalledRef.current = false;
@@ -334,6 +422,7 @@ export function BlindboxMachineMode2({
     if (machineState !== 'animating' || prevMachineState.current === 'animating') return;
     prevMachineState.current = 'animating';
     doneCalledRef.current = false;
+    startMachine();
 
     timerRefs.current.forEach(clearTimeout);
     timerRefs.current = [];
@@ -358,6 +447,7 @@ export function BlindboxMachineMode2({
     });
 
     const tDrop = setTimeout(() => {
+      playDrop(); // 盒子掉落音效
       setSlotState(prev => {
         const n = [...prev];
         selected.forEach(idx => { n[idx] = 'gone'; });
@@ -392,6 +482,7 @@ export function BlindboxMachineMode2({
         if (doneCalledRef.current) return;
         doneCalledRef.current = true;
         stopPhysics();
+        stopMachine();
         const snapped = physRef.current.map(b => ({
           ...b,
           angleZ: b.angleZ,

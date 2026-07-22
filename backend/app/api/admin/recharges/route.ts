@@ -71,22 +71,35 @@ export async function POST(request: Request) {
 
     const MARKETING_METHODS = ['promotion', 'compensation', 'test']
     const isMarketing = MARKETING_METHODS.includes(payment_method ?? '')
+    // manual_transfer/cash/line_pay 等非 ECPay 手動補幣寫 token_adjustments（避免污染 ECPay 對帳基礎）
+    // 行銷類型（promotion/compensation/test）仍寫 recharge_records（token_ledger VIEW 的 marketing 來源）
+    const isManualTransfer = !isMarketing
 
-    // 寫入 recharge_records
-    // 行銷類型：amount=0（無真實收款），bonus=tokens（贈出的 G幣）
-    const { error: insertErr } = await supabaseAdmin.from('recharge_records').insert({
-      user_id,
-      amount: isMarketing ? 0 : amount,
-      bonus:  isMarketing ? amount : 0,
-      status: 'success',
-      payment_method: payment_method ?? 'manual_transfer',
-      order_number: tradeNo,
-      trade_no: tradeNo,
-      review_note: note ?? null,
-      created_at: new Date().toISOString(),
-    })
-
-    if (insertErr) throw insertErr
+    if (isManualTransfer) {
+      const method = payment_method ?? 'manual_transfer'
+      const { error: insertErr } = await supabaseAdmin.from('token_adjustments').insert({
+        user_id,
+        delta: amount,
+        reason: note ? `${method}：${note}` : method,
+        created_by: 'admin',
+        created_at: new Date().toISOString(),
+      })
+      if (insertErr) throw insertErr
+    } else {
+      // 行銷類型：amount=0（無真實收款），bonus=tokens（贈出的 G幣）
+      const { error: insertErr } = await supabaseAdmin.from('recharge_records').insert({
+        user_id,
+        amount: 0,
+        bonus: amount,
+        status: 'success',
+        payment_method: payment_method,
+        order_number: tradeNo,
+        trade_no: tradeNo,
+        review_note: note ?? null,
+        created_at: new Date().toISOString(),
+      })
+      if (insertErr) throw insertErr
+    }
 
     // 更新 users.tokens
     const { data: updated, error: updateErr } = await supabaseAdmin

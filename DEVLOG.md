@@ -4,6 +4,117 @@
 
 ---
 
+## v2026.07.22e｜2026-07-22｜緊急修復：優惠券抽獎 500（c.expires_at 欄位錯誤）
+
+### 根因
+- migration 339 的優惠券驗證查詢使用 `c.expires_at`（`coupons` 表沒有此欄）
+- 正確欄位是 `uc.expiry_date`（`user_coupons` 表，migration 101/122 建立）
+- 導致帶優惠券抽獎一律 500 `column c.expires_at does not exist`
+
+### 修復
+- migration `340_fix_play_gacha_coupon_expiry.sql`：第 49 行改為 `uc.expiry_date`
+- 已套用至 PROD + STG
+
+---
+
+## v2026.07.22d｜2026-07-22｜緊急修復：全站抽獎 500（migration 337 引入）
+
+### 根因
+- migration 337 修正優惠券欄位時，順帶把 `play_gacha` 的商品狀態檢查從 `'active'` 改成 `'selling'`
+- 平台 37 個商品 status 全部為 `'active'`，沒有任何 `'selling'`
+- 導致全站所有抽獎（轉蛋/盒玩/抽卡/自製賞）一律 500 `Product is not available`
+
+### 修復
+- migration `339_fix_play_gacha_status_check.sql`：還原 `IF v_product.status <> 'active'`
+- 已套用至 PROD + STG
+
+---
+
+## v2026.07.22c｜2026-07-22｜QA 修復（次要 + 警告 + S2/S3）
+
+### [次要 1] 跑馬燈顯示「未知獎項」
+- 原因：`play_gacha` 只寫 `product_prize_id` 到 `draw_records`，不寫 `prize_name`，`get_winning_records` fallback 為「未知獎項」
+- 修正：migration `338_fix_winning_records_prize_name.sql`，LEFT JOIN `product_prizes` 取品項名稱 `COALESCE(dr.prize_name, pp.name, '未知獎項')`
+- migration 已套用至 PROD + STG
+
+### [次要 2] 篩選類別切換有殘影
+- 修正：`page.tsx` 新增 `isCategoryChanging` state，tab 切換時顯示 skeleton 直到下一個 frame 渲染完成
+
+### [警告 3] 前台日期顯示未指定台灣時區
+- 修正：`profile/page.tsx`、`purchases/page.tsx`、`item/[id]/page.tsx` 所有 `toLocaleString`/`toLocaleDateString` 加上 `timeZone: 'Asia/Taipei'`
+
+### [S2] 後台商品品項數量可輸入 0 或負值
+- 修正：`products/[id]/page.tsx` input min 改為 `1`，`handleSubmit` 提交前驗證所有品項 total >= 1
+- 修正：`api/admin/products/route.ts` 後端也驗證 prize total >= 1
+
+### [S3] 手動入帳寫入 recharge_records 污染 ECPay 對帳
+- 修正：`api/admin/recharges/route.ts` `manual_transfer`/`cash`/`line_pay` 等非 ECPay 手動補幣改寫 `token_adjustments`
+- 行銷類型（promotion/compensation/test）仍寫 `recharge_records`（token_ledger VIEW 的 marketing 來源）
+
+---
+
+## v2026.07.22b｜2026-07-22｜QA 修復（3 阻塞 + 2 警告）
+
+### [阻塞 1] 超商取貨「確認支付」按鈕永遠 disabled
+- 原因：disabled 條件永遠要求 `recipientAddress`，但 CVS 模式不顯示地址欄位
+- 修正：`profile/page.tsx` 依 `logisticsType` 分流，CVS 判 `storeId`、宅配判 `recipientAddress`
+
+### [阻塞 2] 後台退款審核頁整頁 500
+- 原因：`refund_requests.user_id` 的 FK 指向 `auth.users`（跨 schema），PostgREST 無法自動 JOIN `public.users`
+- 修正：refund-requests API 改為兩段查詢（先取退款申請，再批次查 public.users）
+
+### [阻塞 3] 優惠券抽籤 500 — `column uc.is_used does not exist`
+- 原因：`user_coupons` 實際欄位是 `status`('unused'/'used'/'expired')，但 `play_gacha` DB function 使用已廢棄的 `is_used` 欄位
+- 修正：migration `337_fix_coupon_is_used_column.sql`，`is_used = FALSE` → `status = 'unused'`，`SET is_used = TRUE` → `SET status = 'used'`
+- migration 已套用至 PROD + STG
+
+### [警告 1] 儀表板淨收/GMV 含未付款 pending 金額
+- 修正：`dashboard/route.ts` recharge_records 查詢加 `.eq('status', 'success')`
+
+### [警告 2] 儀表板「今日」統計用 UTC 而非台灣時間
+- 修正：`parseDateOnly` 解析從 `T00:00:00.000Z`（UTC midnight）改為 `T00:00:00+08:00`（台灣 midnight）
+
+---
+
+## v2026.07.22a｜2026-07-22｜音效升級 + 修復儲值交易失敗
+
+### 音效升級（第二輪）
+
+**抽卡 CardFlipDirect**
+- 卡包開啟瞬間：Web Audio 鋸齒波蓄力音（130→720Hz，0.5s）+ 300ms 後 paper-rip 撕裂音
+- 每張牌點擊維持 flip 音（sword1.mp3），SSR bling 不變
+
+**盒玩 BlindboxMachineMode2**
+- 支付確認後 `gacha.mp3` loop 播放（機器運轉音效），落定後自動停
+- 盒子碰地板/堆疊時 Web Audio 合成低頻 thud（90Hz→22Hz，限速 120ms 防連爆）
+- 移除選取盒子音效（恭喜獲得彈窗有自己的音效，不需重複）
+
+### 修復：STG/本地儲值交易失敗 10200074
+
+**原因**：Vercel Preview（dev branch）環境沒有 ECPay 金流 env vars，後台送出 `MerchantID=undefined` 到 ECPay
+
+**修復**：補設 Vercel Preview 環境的四個 ECPay 變數
+- `ECPAY_MERCHANT_ID` / `ECPAY_HASH_KEY` / `ECPAY_HASH_IV` / `ECPAY_API_URL`（測試帳號 3002607 + stage URL）
+
+---
+
+## v2026.07.21l｜2026-07-21｜音效優化 — 沈浸式/抽卡/盒玩
+
+### 沈浸式 IchibanTicket（撕紙）
+- 音效從 `onDragEnd` 移至 `onDrag` 距離 > 5px 即觸發
+- `hasSoundedRef` 防止拖曳 + 點擊路徑重複播放
+- 失敗拖曳（< 8px 放手）重置 ref，不留狀態
+
+### 抽卡 CardFlipDirect
+- 新增 `useCardSounds` hook：`sword1.mp3`（翻牌）+ `u_o8xh7gwsrj...mp3`（SSR bling）
+- 翻牌點擊瞬間播 flip 音；SSR shake 結束後播 bling + reveal
+
+### 盒玩 BlindboxMachineMode2
+- 新增 `useBoxSounds` hook：`changebox.mp3`（shuffle）/ `spinopel-open...mp3`（drop）/ `gachapush.mp3`（pick）
+- handleShuffle → playShuffle；盒子落下 → playDrop；handleSlotClick → playPick
+
+---
+
 ## v2026.07.21k｜2026-07-21｜一番賞流程優化（兩輪迭代）
 
 ### FigmaTearScene（原始經典）
