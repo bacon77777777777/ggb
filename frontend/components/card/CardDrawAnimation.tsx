@@ -64,18 +64,30 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
   const rarity = getRarity(prize);
   const rs = RARITY_STYLE[rarity];
   const isSSR = rarity === 'SSR';
+  // Track drag distance to distinguish real click from drag-end
+  const dragDeltaRef = useRef(0);
 
   const cardW = CW * s;
   const cardH = CH * s;
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-      if (info.offset.x > 35 || info.velocity.x > 100) {
+      dragDeltaRef.current = Math.abs(info.offset.x);
+      if (info.offset.x > 35 || info.velocity.x > 80) {
         animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
       }
     },
     [x, onSwiped],
   );
+
+  const handleClick = useCallback(() => {
+    // Ignore if this click was actually the end of a drag
+    if (dragDeltaRef.current > 10) {
+      dragDeltaRef.current = 0;
+      return;
+    }
+    animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
+  }, [x, onSwiped]);
 
   return (
     <motion.div
@@ -95,11 +107,13 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
         userSelect: 'none',
         WebkitUserSelect: 'none',
       }}
+      draggable={false}
       onDragEnd={handleDragEnd}
+      onClick={handleClick}
       initial={{ scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="cursor-grab active:cursor-grabbing"
+      className="cursor-pointer"
     >
       <div
         style={{

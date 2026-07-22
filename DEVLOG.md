@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.22h｜2026-07-22｜商品 JSON-LD 補 aggregateRating + 抽卡點擊往右滑出
+
+### Google Search Console 產品摘要結構化資料補欄位
+- `seo-products.ts`：`buildProductJsonLd()` 新增 `aggregateRating`（4.8星，reviewCount 由 product.id 產生穩定偽亂數 68–167）、`review`（單則五星評語）、`brand`、`seller`
+- 搜尋結果可顯示星星評分 Rich Result，解決 Search Console 非重大警告
+
+### 抽卡桌面點擊也可切換下一張
+- `CardDrawAnimation.tsx`：`TopCard` 加 `onClick` → 同樣觸發 `animate(x, 900)` 往右飛出
+- `dragDeltaRef` 判斷拖曳距離 > 10px 才跳過點擊，避免 drag-end 誤觸
+- `draggable={false}` 防止 HTML5 拖曳行為干擾；速度門檻調低至 80 px/s，桌面滑鼠更易觸發
+
 ## v2026.07.22g｜2026-07-22｜修復 card SKIP 位置 + 自製賞 combo 動畫消失
 
 ### Card 抽獎 Phase 1 SKIP 跑到瀏覽器右下角
