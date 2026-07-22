@@ -4,6 +4,16 @@
 
 ---
 
+## v2026.07.22i｜2026-07-22｜Loading 頁面 IP 角色彈跳動畫
+
+### 載入頁面全新 IP 角色動效
+- `ProductLoadingScreen.tsx`（含 `app/loading.tsx`）：移除舊 Loader2 spinner，改用 `/loading/ip.svg` 精靈圖展示四隻 IP 角色（轉蛋機、兔兔、企鵝、小熊）
+- 每 2 秒切換一隻，切換時角色「壓扁成餅→彈回」（scaleY: 0.08 → spring bounce），transformOrigin: bottom，視覺像從地面彈起
+- 待機時整體角色上下浮動（-9px 週期 2.5s）
+- 下方橘色小圓點指示目前角色位置，bouncing dots 動態省略號
+
+---
+
 ## v2026.07.22h｜2026-07-22｜商品 JSON-LD 補 aggregateRating + 抽卡點擊往右滑出
 
 ### Google Search Console 產品摘要結構化資料補欄位
