@@ -3335,7 +3335,7 @@ function ProfileContent() {
                       </button>
                       <button
                         onClick={handleConfirmDelivery}
-                        disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || !settingsForm.recipientAddress}
+                        disabled={isSubmittingDelivery || !settingsForm.recipientName || !settingsForm.recipientPhone || (logisticsType === 'CVS' ? !storeId : !settingsForm.recipientAddress)}
                         className={cn(
                           "flex-1 bg-primary text-white rounded-xl font-black shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100",
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"

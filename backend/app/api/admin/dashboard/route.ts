@@ -4,7 +4,8 @@ import { requireAdminSession } from '@/lib/requireAdmin'
 
 const parseDateOnly = (value: string | null) => {
   if (!value) return null
-  const d = new Date(`${value}T00:00:00.000Z`)
+  // 解析為台灣時間 (UTC+8) 的該日 00:00
+  const d = new Date(`${value}T00:00:00+08:00`)
   if (Number.isNaN(d.getTime())) return null
   return d
 }
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
           supabaseAdmin
             .from('recharge_records')
             .select('amount, created_at, user_id')
+            .eq('status', 'success')
             .gte('created_at', startDate.toISOString())
             .lt('created_at', queryEndDate.toISOString())
         ),

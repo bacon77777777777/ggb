@@ -10,21 +10,32 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status')
 
   const supabase = getSupabaseAdmin()
+
+  // refund_requests.user_id → auth.users（跨 schema），PostgREST 無法自動 join
+  // 改成兩段查詢：先取退款申請 + recharge，再 JOIN public.users
   let query = supabase
     .from('refund_requests')
-    .select(`
-      *,
-      user:users(id, name, email, tokens),
-      recharge:recharge_records(id, order_number, amount, status)
-    `)
+    .select('*, recharge:recharge_records(id, order_number, amount, status)')
     .order('created_at', { ascending: false })
     .limit(100)
 
   if (status) query = query.eq('status', status)
 
-  const { data, error } = await query
+  const { data: requests, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  const userIds = [...new Set((requests ?? []).map((r: any) => r.user_id).filter(Boolean))]
+  let userMap: Record<string, any> = {}
+  if (userIds.length) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, email, tokens')
+      .in('id', userIds)
+    userMap = Object.fromEntries((users ?? []).map((u: any) => [u.id, u]))
+  }
+
+  const result = (requests ?? []).map((r: any) => ({ ...r, user: userMap[r.user_id] ?? null }))
+  return NextResponse.json(result)
 }
 
 // 管理員代建退款申請

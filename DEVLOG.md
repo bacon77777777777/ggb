@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.22b｜2026-07-22｜QA 修復（3 阻塞 + 2 警告）
+
+### [阻塞 1] 超商取貨「確認支付」按鈕永遠 disabled
+- 原因：disabled 條件永遠要求 `recipientAddress`，但 CVS 模式不顯示地址欄位
+- 修正：`profile/page.tsx` 依 `logisticsType` 分流，CVS 判 `storeId`、宅配判 `recipientAddress`
+
+### [阻塞 2] 後台退款審核頁整頁 500
+- 原因：`refund_requests.user_id` 的 FK 指向 `auth.users`（跨 schema），PostgREST 無法自動 JOIN `public.users`
+- 修正：refund-requests API 改為兩段查詢（先取退款申請，再批次查 public.users）
+
+### [阻塞 3] 優惠券抽籤 500 — `column uc.is_used does not exist`
+- 原因：`user_coupons` 實際欄位是 `status`('unused'/'used'/'expired')，但 `play_gacha` DB function 使用已廢棄的 `is_used` 欄位
+- 修正：migration `337_fix_coupon_is_used_column.sql`，`is_used = FALSE` → `status = 'unused'`，`SET is_used = TRUE` → `SET status = 'used'`
+- migration 已套用至 PROD + STG
+
+### [警告 1] 儀表板淨收/GMV 含未付款 pending 金額
+- 修正：`dashboard/route.ts` recharge_records 查詢加 `.eq('status', 'success')`
+
+### [警告 2] 儀表板「今日」統計用 UTC 而非台灣時間
+- 修正：`parseDateOnly` 解析從 `T00:00:00.000Z`（UTC midnight）改為 `T00:00:00+08:00`（台灣 midnight）
+
+---
+
 ## v2026.07.22a｜2026-07-22｜音效升級 + 修復儲值交易失敗
 
 ### 音效升級（第二輪）
