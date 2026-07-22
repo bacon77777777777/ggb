@@ -43,7 +43,7 @@ const ACHIEVEMENT_META: Record<string, { mask: number; title?: string }> = {
   'draw_count:30':           { mask: 2 },
   'draw_count:100':          { mask: 3 },
   'draw_count:500':          { mask: 4,  title: '轉蛋狂熱者' },
-  'draw_count:1000':         { mask: 5,  title: '抽蛋之神' },
+  'draw_count:1000':         { mask: 5,  title: '抽獎之神' },
   'draw_count:5000':         { mask: 6,  title: '命運支配者' },
   'draw_streak:10':          { mask: 7 },
   'draw_streak:20':          { mask: 8 },

@@ -38,7 +38,7 @@ const BADGE_IMAGE: Record<string, string> = {
   draw_30:          '/images/mask/命運啟程.png',
   draw_100:         '/images/mask/停不下來.png',
   draw_500:         '/images/mask/轉蛋成癮.png',
-  draw_1000:        '/images/mask/抽蛋之神.png',
+  draw_1000:        '/images/mask/抽獎之神.png',
   draw_5000:        '/images/mask/命運支配者.png',
   draw_streak_10:   '/images/mask/每日修行.png',
   draw_streak_20:   '/images/mask/永不缺席.png',

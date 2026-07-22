@@ -29,7 +29,7 @@ const BADGE_IMAGE: Record<string, string> = {
   draw_30:          '/images/mask/命運啟程.png',
   draw_100:         '/images/mask/停不下來.png',
   draw_500:         '/images/mask/轉蛋成癮.png',
-  draw_1000:        '/images/mask/抽蛋之神.png',
+  draw_1000:        '/images/mask/抽獎之神.png',
   draw_5000:        '/images/mask/命運支配者.png',
   draw_streak_10:   '/images/mask/每日修行.png',
   draw_streak_20:   '/images/mask/永不缺席.png',
@@ -60,7 +60,7 @@ const BADGE_IMAGE: Record<string, string> = {
 // ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
 const TITLE_TO_BADGE_ID: Record<string, string> = {
   '轉蛋狂熱者': 'draw_500',
-  '抽蛋之神':   'draw_1000',
+  '抽獎之神':   'draw_1000',
   '命運支配者': 'draw_5000',
   '全勤戰士':   'login_streak_30',
   '吉吉比居民': 'login_streak_100',
@@ -89,7 +89,7 @@ const BADGE_SORT: Record<string, number> = {
 // ── 徽章 ID → 中文名稱（對應 migration 223 badges.name）──
 const BADGE_NAME: Record<string, string> = {
   first_draw: '初心試煉', draw_30: '命運啟程', draw_100: '停不下來',
-  draw_500: '轉蛋成癮', draw_1000: '抽蛋之神', draw_5000: '命運支配者',
+  draw_500: '轉蛋成癮', draw_1000: '抽獎之神', draw_5000: '命運支配者',
   draw_streak_10: '每日修行', draw_streak_20: '永不缺席',
   login_streak_7: '習慣養成', login_streak_30: '全勤戰士',
   login_streak_100: '常駐居民', first_topup: '初次獻祭',

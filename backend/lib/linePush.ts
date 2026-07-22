@@ -57,13 +57,22 @@ async function isFlagEnabled(key: LinePushKey): Promise<boolean> {
   }
 }
 
-async function send(text: string) {
-  if (!LINE_TOKEN || !NOTIFY_ID) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
+async function send(text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
+  if (!LINE_TOKEN || !NOTIFY_ID) {
+    console.error('[linePush] missing LINE_CHANNEL_ACCESS_TOKEN or NOTIFY_TARGET_ID')
+    return { ok: false, body: 'missing env vars' }
+  }
+  const res = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LINE_TOKEN}` },
     body: JSON.stringify({ to: NOTIFY_ID, messages: [{ type: 'text', text }] }),
   })
+  if (!res.ok) {
+    const body = await res.text()
+    console.error(`[linePush] LINE API error ${res.status}: ${body}`)
+    return { ok: false, status: res.status, body }
+  }
+  return { ok: true, status: res.status }
 }
 
 /**
@@ -71,9 +80,9 @@ async function send(text: string) {
  * 在 cron route 最上方：const pushLine = createLinePusher('line_push_xxx')
  */
 export function createLinePusher(key: LinePushKey) {
-  return async function pushLine(text: string) {
+  return async function pushLine(text: string): Promise<{ ok: boolean; status?: number; body?: string }> {
     const enabled = await isFlagEnabled(key)
-    if (!enabled) return
-    await send(text)
+    if (!enabled) return { ok: false, body: 'flag disabled' }
+    return send(text)
   }
 }
