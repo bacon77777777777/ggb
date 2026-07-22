@@ -5,8 +5,8 @@ export function getSiteUrl() {
     process.env.SITE_URL ||
     ''
 
-  const raw = (envUrl || 'https://gachago.shop').trim()
-  if (!raw) return 'https://gachago.shop'
+  const raw = (envUrl || 'https://www.ggb.com.tw').trim()
+  if (!raw) return 'https://www.ggb.com.tw'
   return raw.replace(/\/+$/, '')
 }
 

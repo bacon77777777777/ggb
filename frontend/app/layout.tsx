@@ -26,7 +26,7 @@ const SITE_KEYWORDS = [
   '線上轉蛋台灣', '日本一番賞', '日本扭蛋',
   '寶可夢卡牌', '寶可夢轉蛋', '鬼滅之刃一番賞', '航海王一番賞',
   '進擊的巨人一番賞', '咒術迴戰一番賞', '龍珠一番賞',
-  'GGB', '吉吉比', 'GachaGO',
+  'GGB', '吉吉比',
   '線上扭蛋', '扭蛋台灣', '免出門轉蛋', '宅配轉蛋',
 ].join(', ')
 
@@ -34,7 +34,7 @@ const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: '吉吉比 GGB',
-  alternateName: ['GGB', 'GachaGO', '吉吉比轉蛋'],
+  alternateName: ['GGB', '吉吉比轉蛋'],
   url: siteUrl,
   description: SITE_DESCRIPTION,
   potentialAction: {
