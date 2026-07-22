@@ -33,7 +33,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
     >
       <div className="space-y-6">
         {/* Image Section */}
-        <div className="relative aspect-square w-full bg-[#28324E] rounded-2xl overflow-hidden shadow-inner">
+        <div className="relative aspect-square w-full bg-item-bg rounded-2xl overflow-hidden shadow-inner">
           <Image 
             src={item.image || '/images/item.png'} 
             alt={item.name} 
@@ -48,7 +48,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
           </div>
           {item.ticketNo && (
             <div className="absolute bottom-3 right-3">
-              <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-neutral-900 text-xs font-black rounded-md shadow-sm border border-neutral-200">
+              <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-neutral-900 text-xs font-black rounded-xl shadow-sm border border-neutral-200">
                 No.{item.ticketNo}
               </span>
             </div>

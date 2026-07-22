@@ -4,10 +4,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, AlertTriangle, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen } from 'lucide-react';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -1259,12 +1259,6 @@ export default function ProductDetailPage() {
     return (
       <div
         className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0 overflow-x-hidden"
-        style={{
-          backgroundImage: isMobile ? undefined : "url('/images/card/pcbg.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
       >
         <div className="w-full flex justify-center">
           <div
@@ -1679,32 +1673,52 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
-                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
-                  抽獎注意事項
-                </h4>
-                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>商品庫庫存會即時更新，售完為止。</span>
-                  </li>
-                </ul>
+              <div className="pt-1">
+                <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
+                  注意事項
+                </p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  {((t => t === 'ichiban' ? [
+                    '一番賞為固定賞項隨機出獎，依抽到的賞別為主，無法指定特定賞別。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'card' ? [
+                    '抽卡商品均為隨機出卡，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '卡片由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'blindbox' ? [
+                    '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : [
+                    '自製賞商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ])(product.type as string)).map((item, i) => (
+                    <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
+                      {item}
+                    </li>
+                  ))}
+                </ol>
               </div>
             </div>
 
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
                 {recommendations.map((item) => (
@@ -1861,7 +1875,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14 md:pt-0">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14">
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
           <div className="lg:col-span-4 lg:sticky lg:top-24">
@@ -1917,7 +1931,7 @@ export default function ProductDetailPage() {
                 </h1>
                 {product.is_preorder && (
                   <div className="mt-1">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 text-yellow-700 border border-yellow-200">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200">
                       <span className="text-[11px] font-black">預購商品</span>
                       <span className="text-[11px] font-bold">
                         預計可配送日 {product.preorder_available_at ? new Date(product.preorder_available_at).toLocaleDateString() : '待公布'}
@@ -1965,6 +1979,14 @@ export default function ProductDetailPage() {
                           ? '立即抽獎'
                           : '立即轉蛋'}
                     </Button>
+
+                    <Link
+                      href={`/${product.type}/rules`}
+                      className="w-[44px] h-[44px] border rounded-xl flex items-center justify-center transition-all shadow-sm active:scale-95 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-primary hover:border-primary/50"
+                      aria-label="規則"
+                    >
+                      <BookOpen className="w-5 h-5 stroke-[2.5]" />
+                    </Link>
 
                     <button
                       onClick={handleShare}
@@ -2207,32 +2229,52 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              <div className="pt-3 sm:pt-6 mt-3 sm:mt-6 border-t border-neutral-50 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 -mx-3 sm:-mx-6 px-3 sm:px-6 pb-3 sm:pb-6 rounded-b-[24px] sm:rounded-b-[32px]">
-                <h4 className="text-[13px] sm:text-[13px] font-black text-neutral-900 dark:text-neutral-50 mb-2 sm:mb-4 flex items-center gap-2 uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-yellow fill-current" />
-                  抽獎注意事項
-                </h4>
-                <ul className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 space-y-2 sm:space-y-3.5 font-bold">
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>每抽價格為 <div className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-accent-yellow shadow-sm mx-0.5 sm:mx-1"><Image src="/images/gcoin.png" alt="G" width={10} height={10} className="object-contain w-2.5 h-2.5 sm:w-3 sm:h-3" /></div> <span className="text-neutral-900 dark:text-neutral-50 font-black font-amount text-sm sm:text-base leading-none">{product.price.toLocaleString()}</span>，抽獎結果隨機產生。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>所有獎項均為正版授權商品，請放心抽選。</span>
-                  </li>
-                  <li className="flex gap-2 sm:gap-3">
-                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-accent-red mt-1.5 shrink-0" />
-                    <span>商品庫庫存會即時更新，售完為止。</span>
-                  </li>
-                </ul>
+              <div className="pt-1">
+                <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
+                  注意事項
+                </p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  {((t => t === 'ichiban' ? [
+                    '一番賞為固定賞項隨機出獎，依抽到的賞別為主，無法指定特定賞別。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'card' ? [
+                    '抽卡商品均為隨機出卡，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '卡片由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : t === 'blindbox' ? [
+                    '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ] : [
+                    '自製賞商品均為隨機出獎，抽到什麼出什麼。',
+                    '抽出後即確認結果，不可退款或更換款式。',
+                    '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+                    '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+                    '商品圖片僅供參考，實物以實際配送為準。',
+                    '本平台保留對所有活動及商品之最終解釋權。',
+                  ])(product.type as string)).map((item, i) => (
+                    <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
+                      {item}
+                    </li>
+                  ))}
+                </ol>
               </div>
             </div>
 
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
                 {recommendations.map((item) => (
@@ -2279,8 +2321,8 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 h-auto min-h-16 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 flex items-center lg:hidden z-50 shadow-modal">
-          <div className="flex items-center gap-4 w-full pb-2">
+        <ActionBar hideOn="lg">
+          <div className="flex items-center gap-4 w-full">
             <div className="flex flex-col items-center justify-center pl-2">
               <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400 leading-none mb-1 whitespace-nowrap">
                 優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
@@ -2320,7 +2362,7 @@ export default function ProductDetailPage() {
                   : '立即轉蛋'}
             </Button>
           </div>
-        </div>
+        </ActionBar>
 
         {showResultModal && (
           <PrizeResultModal
@@ -2441,11 +2483,11 @@ export default function ProductDetailPage() {
                   <div className={cn(
                     "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
                     shareCopied
-                      ? "bg-emerald-100 dark:bg-emerald-900/40"
+                      ? "bg-accent-emerald/15 dark:bg-accent-emerald/15"
                       : "bg-neutral-100 dark:bg-neutral-800 group-hover:bg-primary/10"
                   )}>
                     {shareCopied
-                      ? <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      ? <svg className="w-5 h-5 text-accent-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                       : <svg className="w-5 h-5 text-neutral-500 dark:text-neutral-300 group-hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                     }
                   </div>

@@ -33,7 +33,8 @@ import {
   MessageCircle,
   Star
 } from 'lucide-react';
-import { AlertModal } from '@/components/ui/AlertModal';
+import { Modal } from '@/components/ui/Modal';
+import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -57,9 +58,10 @@ import ProfileStatusBadge from '@/components/profile/desktop/ProfileStatusBadge'
 import ProfilePagination from '@/components/profile/desktop/ProfilePagination';
 
 import { Tabs, TabsContent, TabsContentWrapper, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { normalizePhone, PHONE_PLACEHOLDER, PHONE_ERROR, isValidPhone } from '@/lib/phone';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { trackEvent, trackPageView } from '@/lib/trackEvent';
-import SolidButton from '@/components/ui/SolidButton';
+import Button from '@/components/ui/Button';
 import ImageCropper from '@/components/ImageCropper';
 
 // --- Interfaces ---
@@ -401,18 +403,18 @@ const getStatusConfig = (status: string) => {
       return { label: '配送中', color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' };
     case 'delivered':
     case 'completed':
-      return { label: '已送達', color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+      return { label: '已送達', color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
     case 'cancelled':
       return { label: '已取消', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' };
     default:
-      return { label: '未知狀態', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-100' };
+      return { label: '未知狀態', color: 'text-neutral-500', bg: 'bg-neutral-50', border: 'border-neutral-100' };
   }
 };
 
 const getTopupStatusConfig = (status: string) => {
   const s = status.toLowerCase();
   if (s === 'paid' || s === 'success') {
-    return { label: '交易成功', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' };
+    return { label: '交易成功', color: 'text-accent-emerald', bg: 'bg-accent-emerald/10', border: 'border-accent-emerald/20' };
   }
   if (s === 'pending') {
     return { label: '待付款', color: 'text-neutral-500', bg: 'bg-neutral-100', border: 'border-neutral-200' };
@@ -2185,10 +2187,14 @@ function ProfileContent() {
     }
   };
 
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   const handleLogout = () => {
-    setShowLogoutConfirm(true);
+    showAlert({
+      title: '登出確認',
+      message: '確定要登出您的帳號嗎？',
+      type: 'confirm',
+      confirmText: '確認登出',
+      onConfirm: async () => await logout(),
+    });
   };
 
   if (isAuthLoading) {
@@ -2250,7 +2256,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               {/* Top Nav */}
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
@@ -2348,7 +2354,7 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -2385,7 +2391,7 @@ function ProfileContent() {
                               isSelected && !isDisabled && "bg-accent-emerald/5"
                             )}
                           >
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || '/images/item.png'}
                                 alt={item.name}
@@ -2399,7 +2405,7 @@ function ProfileContent() {
                                 {item.supplierName}
                               </p>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                   {item.grade}
                                 </span>
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2457,7 +2463,7 @@ function ProfileContent() {
                       <div className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                         {filteredDismantledItems.map((item) => (
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                            <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
                                 src={item.image || '/images/item.png'}
                                 alt={item.name}
@@ -2469,7 +2475,7 @@ function ProfileContent() {
                             <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
                               <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                   {item.grade}
                                 </span>
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2550,7 +2556,7 @@ function ProfileContent() {
             <div className="mb-4 lg:mb-6">
               <ProfileSectionHeader
                 title="我的倉庫"
-                description="管理您獲得的獎項，隨時申請出貨"
+
                 actions={
                   activeWarehouseTab === 'all' ? (
                     <>
@@ -2715,7 +2721,7 @@ function ProfileContent() {
                                       {item.grade}
                                     </span>
                                   </div>
-                                  <div className="relative w-14 h-14 rounded-xl bg-[#28324E] overflow-hidden flex-shrink-0">
+                                  <div className="relative w-14 h-14 rounded-xl bg-item-bg overflow-hidden flex-shrink-0">
                                     <Image
                                       src={item.image || '/images/item.png'}
                                       alt={item.name}
@@ -2804,7 +2810,7 @@ function ProfileContent() {
                                         header: '賞別',
                                         className: 'w-[110px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                             {item.grade}
                                           </span>
                                         ),
@@ -2845,7 +2851,7 @@ function ProfileContent() {
                                         header: '籤號',
                                         className: 'w-[120px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 font-amount whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 font-amount whitespace-nowrap">
                                             {item.ticketNo}
                                           </span>
                                         ),
@@ -2933,7 +2939,7 @@ function ProfileContent() {
                           <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                             {filteredDismantledItems.map((item) => (
                               <div key={item.id} className="flex items-center gap-3 px-4 py-2">
-                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-[#28324E] overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
+                                <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                                   <Image
                                     src={item.image || '/images/item.png'}
                                     alt={item.name}
@@ -2945,7 +2951,7 @@ function ProfileContent() {
                                 <div className="flex-1 min-w-0 py-0.5 space-y-0.5">
                                   <p className="text-[11px] text-neutral-400 font-medium truncate">{item.supplierName || ''}</p>
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-md border border-primary/10 whitespace-nowrap flex-shrink-0">
+                                    <span className="text-[11px] text-primary font-black bg-primary/8 px-1.5 py-0.5 rounded-xl border border-primary/10 whitespace-nowrap flex-shrink-0">
                                       {item.grade}
                                     </span>
                                     <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight truncate">
@@ -2989,7 +2995,7 @@ function ProfileContent() {
                                         header: '賞別',
                                         className: 'w-[110px]',
                                         render: (item) => (
-                                          <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                                          <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                             {item.grade}
                                           </span>
                                         ),
@@ -3274,19 +3280,24 @@ function ProfileContent() {
 
                         <p className={cn("font-black text-neutral-900 dark:text-white pt-2", isDesktop ? "text-sm" : "text-[13px]")}>收件人資訊</p>
                          <div className="grid grid-cols-1 gap-3">
-                           <input 
-                             value={settingsForm.recipientName} 
+                           <input
+                             value={settingsForm.recipientName}
                              onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
-                             placeholder="收件人姓名" 
+                             placeholder="例：王吉比"
+                             maxLength={30}
                              className={cn(
                                "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
                                isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
                              )}
                            />
-                           <input 
+                           <input
                              value={settingsForm.recipientPhone}
                              onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                             placeholder="聯絡電話" 
+                             onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
+                             placeholder={PHONE_PLACEHOLDER}
+                             type="tel"
+                             inputMode="numeric"
+                             pattern="^09\d{8}$"
                              className={cn(
                                "w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all",
                                isDesktop ? "px-4 py-3 text-sm" : "px-3 py-2.5 text-[13px]"
@@ -3473,7 +3484,7 @@ function ProfileContent() {
                             unoptimized
                           />
                           <div>
-                            <span className="px-2 py-0.5 bg-accent-red text-white text-[10px] font-black rounded-md uppercase">{sellingItem.grade}</span>
+                            <span className="px-2 py-0.5 bg-accent-red text-white text-[10px] font-black rounded-xl uppercase">{sellingItem.grade}</span>
                             <h4 className={cn("font-black text-neutral-900 dark:text-white mt-1 line-clamp-1", isDesktop ? "text-sm" : "text-[13px]")}>{sellingItem.name}</h4>
                             <p className="text-xs text-neutral-400 font-bold mt-0.5">{sellingItem.series}</p>
                           </div>
@@ -3601,7 +3612,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => activeMarketTab === 'listing' ? router.push('/profile', { scroll: false }) : setActiveMarketTab('listing')} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -3669,7 +3680,7 @@ function ProfileContent() {
               </div>
 
                 {/* Market Management Content */}
-                <div className="flex-1 overflow-y-auto p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+                <div className="flex-1 overflow-y-auto p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                   {activeMarketTab === 'listing' ? (
                     filteredMarketListings.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-neutral-400">
@@ -3758,7 +3769,7 @@ function ProfileContent() {
                                 <h4 className="text-[13px] font-bold text-neutral-900 dark:text-white leading-tight line-clamp-1 flex-1">{item.product.name}</h4>
                                 <span className={cn(
                                   "px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ml-2",
-                                  item.type === 'sell' ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
+                                  item.type === 'sell' ? "bg-accent-emerald/15 text-accent-emerald" : "bg-blue-100 text-blue-600"
                                 )}>
                                   {item.type === 'sell' ? '售出' : '購入'}
                                 </span>
@@ -3842,7 +3853,7 @@ function ProfileContent() {
                     <div className="space-y-4">
                       <ProfileSectionHeader
                         title="交易所管理"
-                        description="管理您的上架獎項與售出紀錄"
+
                         actions={
                           selectedMarketItems.length > 0 ? (
                             <>
@@ -3928,7 +3939,7 @@ function ProfileContent() {
                             header: '賞別',
                             className: 'w-[110px]',
                             render: (item) => (
-                              <span className="inline-flex px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
+                              <span className="inline-flex px-2 py-0.5 rounded-xl bg-primary/10 text-primary border border-primary/10 text-[12px] font-black whitespace-nowrap">
                                 {item.product.grade}
                               </span>
                             ),
@@ -4033,7 +4044,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="交易所管理"
-                      description="管理您的上架獎項與售出紀錄"
+
                     />
 
                     {tabBar}
@@ -4072,7 +4083,7 @@ function ProfileContent() {
                           header: '賞別',
                           className: 'w-[110px]',
                           render: (item) => (
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black whitespace-nowrap">
+                            <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 text-[12px] font-black whitespace-nowrap">
                               {item.product.grade}
                             </span>
                           ),
@@ -4105,8 +4116,8 @@ function ProfileContent() {
                           render: (item) => (
                             <span
                               className={cn(
-                                'inline-flex px-2 py-0.5 rounded-md text-[12px] font-black whitespace-nowrap',
-                                item.type === 'sell' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                                'inline-flex px-2 py-0.5 rounded-xl text-[12px] font-black whitespace-nowrap',
+                                item.type === 'sell' ? 'bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20' : 'bg-blue-50 text-blue-700 border border-blue-100'
                               )}
                             >
                               {item.type === 'sell' ? '售出' : '購入'}
@@ -4190,7 +4201,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -4232,7 +4243,7 @@ function ProfileContent() {
               {/* Mobile List Style (Unified 3-Layer Structure) */}
               <div
                 ref={mobileDeliveryScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -4285,7 +4296,7 @@ function ProfileContent() {
                               {(() => {
                                  const s = order.status;
                                  if (s === 'delivered' || s === 'completed') {
-                                   return <div className="text-[13px] font-black text-emerald-500">已送達</div>;
+                                   return <div className="text-[13px] font-black text-accent-emerald">已送達</div>;
                                  }
                                  if (s === 'submitted' || s === 'processing') {
                                    return <div className="text-[13px] font-black text-neutral-400">待出貨</div>;
@@ -4293,7 +4304,7 @@ function ProfileContent() {
                                  if (['picked_up', 'shipping'].includes(s) && order.arrivalDate && order.arrivalDate !== '-') {
                                    const text = getArrivalText(order.arrivalDate) || `${order.arrivalDate}送達`;
                                    return (
-                                     <div className="text-[13px] font-black text-emerald-500">預計{text}</div>
+                                     <div className="text-[13px] font-black text-accent-emerald">預計{text}</div>
                                    );
                                  }
                                  return null;
@@ -4459,7 +4470,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="配送訂單"
-                      description="追蹤您的獎項配送狀態"
+
                     />
 
                     <ProfileToolbar
@@ -4584,7 +4595,7 @@ function ProfileContent() {
                                 key={idx}
                                 className="flex items-center gap-2 bg-white dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 px-2 py-2"
                               >
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
+                                <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
                                   {it.grade}
                                 </span>
                                 <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
@@ -4618,7 +4629,7 @@ function ProfileContent() {
         return (
           <div className="pb-20 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -4633,7 +4644,7 @@ function ProfileContent() {
               {/* Mobile List */}
               <div
                 ref={mobileDrawScrollRef}
-                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950"
+                className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   if (el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
@@ -4725,11 +4736,11 @@ function ProfileContent() {
                                     <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                       <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
                                         {!['gacha', 'blindbox'].includes(item.productType || '') && (
-                                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-md border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
+                                          <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-[11px] font-black rounded-xl border border-neutral-200 dark:border-neutral-700 font-sans shrink-0">
                                             {result.ticket_number}
                                           </span>
                                         )}
-                                        <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-md border border-accent-red/10 uppercase shrink-0">
+                                        <span className="px-2 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded-xl border border-accent-red/10 uppercase shrink-0">
                                           {result.grade}
                                         </span>
                                         <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
@@ -4803,7 +4814,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="抽獎紀錄"
-                      description="查看抽卡結果與獎項明細"
+
                     />
 
                     <ProfileToolbar
@@ -4829,7 +4840,7 @@ function ProfileContent() {
                           header: '編號',
                           className: 'w-[140px]',
                           render: (item) => (
-                            <span className="inline-flex px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-900 text-[12px] font-black text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 font-mono">
+                            <span className="inline-flex px-2 py-0.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 text-[12px] font-black text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 font-mono">
                               {formatDrawId(item.id, item.rawDate)}
                             </span>
                           ),
@@ -4917,11 +4928,11 @@ function ProfileContent() {
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   {!['gacha', 'blindbox'].includes(item.productType || '') && (
-                                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-800 whitespace-nowrap">
                                       {result.ticket_number}
                                     </span>
                                   )}
-                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded-xl text-[11px] font-black bg-primary/10 text-primary border border-primary/10 whitespace-nowrap">
                                     {result.grade}
                                   </span>
                                   <div className="text-[13px] font-bold text-neutral-800 dark:text-neutral-100 truncate">
@@ -4978,7 +4989,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header & Tabs */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile')} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5016,7 +5027,7 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List Style (Unified 3-Layer Structure) */}
-              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
                 {filteredTopupHistory.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Wallet className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -5102,7 +5113,7 @@ function ProfileContent() {
 
                 return (
                   <div className="space-y-4">
-                    <ProfileSectionHeader title="儲值紀錄" description="管理您的代幣儲值明細" />
+                    <ProfileSectionHeader title="儲值紀錄" />
 
                     <ProfileToolbar
                       left={
@@ -5228,7 +5239,7 @@ function ProfileContent() {
         return (
           <>
             {/* Mobile Layout */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5262,7 +5273,7 @@ function ProfileContent() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+              <div className="flex-1 overflow-y-auto px-2 pt-2 pb-24 bg-neutral-50 dark:bg-neutral-950">
                 {isLoadingData ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -5318,9 +5329,9 @@ function ProfileContent() {
                   if (product.status === 'selling') {
                     return {
                       label: '販售中',
-                      color: 'text-emerald-700 dark:text-emerald-300',
-                      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-                      border: 'border-emerald-100 dark:border-emerald-900/30',
+                      color: 'text-accent-emerald dark:text-accent-emerald',
+                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
+                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
                     }
                   }
                   return {
@@ -5356,7 +5367,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="我的關注"
-                      description="您感興趣的商品清單"
+
                     />
 
                     <ProfileToolbar
@@ -5486,7 +5497,7 @@ function ProfileContent() {
         return (
           <div className="pb-24 md:pb-0">
             {/* Mobile Header */}
-            <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+            <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
               <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => router.push('/profile', { scroll: false })} className="text-neutral-900 dark:text-white -ml-2 p-2">
@@ -5505,7 +5516,7 @@ function ProfileContent() {
               </div>
 
               {/* Mobile List */}
-              <div className="flex-1 overflow-y-auto bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+              <div className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-24">
                 {coupons.length === 0 ? (
                   <div className="py-20 text-center text-neutral-400">
                     <Ticket className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -5534,9 +5545,9 @@ function ProfileContent() {
 
                         <div className="flex-shrink-0 self-center">
                            <span className={cn(
-                             "px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider border",
+                             "px-2 py-1 rounded-xl text-[11px] font-black uppercase tracking-wider border",
                              coupon.status === 'unused' 
-                               ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                               ? "bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20" 
                                : "bg-neutral-50 text-neutral-400 border-neutral-100"
                            )}>
                              {coupon.status === 'unused' ? '使用' : coupon.status === 'used' ? '已用' : '過期'}
@@ -5610,9 +5621,9 @@ function ProfileContent() {
                   if (coupon.status === 'unused') {
                     return {
                       label: '可使用',
-                      color: 'text-emerald-700 dark:text-emerald-300',
-                      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-                      border: 'border-emerald-100 dark:border-emerald-900/30',
+                      color: 'text-accent-emerald dark:text-accent-emerald',
+                      bg: 'bg-accent-emerald/10 dark:bg-accent-emerald/10',
+                      border: 'border-accent-emerald/20 dark:border-accent-emerald/20',
                     }
                   }
                   if (coupon.status === 'used') {
@@ -5650,7 +5661,7 @@ function ProfileContent() {
                   <div className="space-y-4">
                     <ProfileSectionHeader
                       title="我的優惠券"
-                      description="查看與管理您的優惠券"
+
                       actions={
                         <button
                           type="button"
@@ -6163,15 +6174,12 @@ function ProfileContent() {
 
             {isPhoneBindModalOpen && (
               <div className="fixed inset-0 z-[90] bg-white dark:bg-neutral-950">
-                <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-[95] px-4">
-                  <button
-                    onClick={() => setIsPhoneBindModalOpen(false)}
-                    className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white"
-                  >
-                    <ChevronLeft className="w-6 h-6" />
-                  </button>
-                  <h1 className="text-lg font-black text-neutral-900 dark:text-white">手機驗證</h1>
-                </div>
+                <SimplePageHeader
+                  title="手機驗證"
+                  onBack={() => setIsPhoneBindModalOpen(false)}
+                  darkBg="page"
+                  className="z-[95]"
+                />
 
                 <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
                   <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8">
@@ -6183,21 +6191,25 @@ function ProfileContent() {
                             <input
                               name="phone"
                               type="tel"
-                              placeholder="09xxxxxxxx"
+                              inputMode="numeric"
+                              placeholder={PHONE_PLACEHOLDER}
+                              pattern="^09\d{8}$"
                               className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
                               value={phoneNumberInput}
                               onChange={(e) => setPhoneNumberInput(e.target.value)}
+                              onBlur={(e) => setPhoneNumberInput(normalizePhone(e.target.value))}
                               autoFocus
                             />
                           </div>
 
-                          <SolidButton
+                          <Button
+                            variant="solid" fullWidth size="lg"
                             onClick={handleSendPhoneOtp}
                             isLoading={isSendingPhoneOtp}
                             disabled={isSendingPhoneOtp || !phoneNumberInput.trim()}
                           >
                             下一步
-                          </SolidButton>
+                          </Button>
                         </div>
                       ) : (
                         <div className="w-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -6220,13 +6232,14 @@ function ProfileContent() {
                             />
                           </div>
 
-                          <SolidButton
+                          <Button
+                            variant="solid" fullWidth size="lg"
                             onClick={handleVerifyPhoneOtp}
                             isLoading={isVerifyingPhoneOtp}
                             disabled={isVerifyingPhoneOtp || phoneOtp.replace(/\D/g, '').length < 6}
                           >
                             確認驗證
-                          </SolidButton>
+                          </Button>
 
                           <div className="mt-6 flex items-center justify-between text-sm">
                             <button
@@ -6324,7 +6337,7 @@ function ProfileContent() {
                         </div>
                       )}
                       {!isGuest && user.is_phone_verified && (
-                        <CheckCircle2 className="w-[18px] h-[18px] text-emerald-200 drop-shadow-sm shrink-0" />
+                        <CheckCircle2 className="w-[18px] h-[18px] text-accent-emerald drop-shadow-sm shrink-0" />
                       )}
                       {/* Badge Image */}
                       {!isGuest && user.is_phone_verified && (
@@ -6857,18 +6870,20 @@ function ProfileContent() {
         </div>
       </div>
       {/* Edit Nickname Modal (Alert Style) */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditNickname}
         onClose={() => setShowEditNickname(false)}
         title="編輯名稱"
-        variant="default"
+
       >
         <div className="mb-2">
-          <input  
+          <input
             value={settingsForm.nickname}
             onChange={e => setSettingsForm({...settingsForm, nickname: e.target.value})}
-            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-            placeholder="輸入名稱"
+            maxLength={20}
+            minLength={2}
+            placeholder="例：王吉比"
+            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             autoFocus
           />
         </div>
@@ -6881,14 +6896,14 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Title Picker Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showTitlePicker}
         onClose={() => setShowTitlePicker(false)}
         title="選擇稱號"
-        variant="default"
+
       >
         {userTitles.length === 0 ? (
           <p className="text-sm text-neutral-400 text-center py-4">尚未獲得任何稱號，完成成就即可解鎖！</p>
@@ -6918,10 +6933,10 @@ function ProfileContent() {
         >
           關閉
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Gender Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditGender}
         onClose={() => {
           // Reset temp gender when closing without saving
@@ -6929,7 +6944,7 @@ function ProfileContent() {
           setShowEditGender(false);
         }}
         title="設定性別"
-        variant="default"
+
       >
         <div className="space-y-2 mb-4">
           {['male', 'female', 'other'].map((option) => (
@@ -6961,17 +6976,17 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Birthday Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditBirthday}
         onClose={() => {
           setTempBirthday(null);
           setShowEditBirthday(false);
         }}
         title="設定生日"
-        variant="default"
+
       >
         <div className="mb-4">
           <p className="text-sm text-neutral-500 mb-2">生日設定後將無法修改，請確認輸入正確。</p>
@@ -7001,7 +7016,7 @@ function ProfileContent() {
                   }
                 }}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none"
+                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all appearance-none"
                 style={{ height: '48px' }}
               />
             ) : (
@@ -7022,7 +7037,7 @@ function ProfileContent() {
                 }}
                 customInput={
                   <input 
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all cursor-pointer"
                     readOnly 
                   />
                 }
@@ -7046,21 +7061,7 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '確認設定'}
         </button>
-      </AlertModal>
-
-      {/* Logout Confirm Modal */}
-      <AlertModal
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        title="登出確認"
-        description="確定要登出您的帳號嗎？"
-        variant="confirm"
-        confirmText="確認登出"
-        onConfirm={async () => {
-          await logout();
-          setShowLogoutConfirm(false);
-        }}
-      />
+      </Modal>
 
       {/* Address Book Modal (Slide-in) */}
       <AnimatePresence>
@@ -7178,11 +7179,11 @@ function ProfileContent() {
       </AnimatePresence>
 
       {/* Edit CVS Modal */}
-      <AlertModal
+      <Modal compact
         isOpen={showEditCvs}
         onClose={() => setShowEditCvs(false)}
         title="設定超商取貨"
-        variant="default"
+
       >
         <div className="space-y-3 mb-2 max-h-[60vh] overflow-y-auto px-1">
           {/* Store Selection */}
@@ -7290,7 +7291,7 @@ function ProfileContent() {
                <input
                  value={settingsForm.cvsStoreId}
                  onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreId: e.target.value })}
-                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                  placeholder="輸入代號"
                  readOnly
                />
@@ -7300,7 +7301,7 @@ function ProfileContent() {
                <input
                  value={settingsForm.cvsStoreName}
                  onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreName: e.target.value })}
-                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                  placeholder="例如：7-11 某某門市"
                  readOnly
                />
@@ -7311,7 +7312,7 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsStoreAddress}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsStoreAddress: e.target.value })}
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               placeholder="輸入門市地址"
               readOnly
             />
@@ -7321,8 +7322,9 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsRecipientName}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsRecipientName: e.target.value })}
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder="請填寫真實姓名"
+              maxLength={30}
+              placeholder="例：王吉比"
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
           <div>
@@ -7330,8 +7332,12 @@ function ProfileContent() {
             <input
               value={settingsForm.cvsRecipientPhone}
               onChange={(e) => setSettingsForm({ ...settingsForm, cvsRecipientPhone: e.target.value })}
-              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder="請填寫手機號碼"
+              onBlur={(e) => setSettingsForm({ ...settingsForm, cvsRecipientPhone: normalizePhone(e.target.value) })}
+              type="tel"
+              inputMode="numeric"
+              pattern="^09\d{8}$"
+              placeholder={PHONE_PLACEHOLDER}
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
         </div>
@@ -7342,7 +7348,7 @@ function ProfileContent() {
         >
           {isUpdatingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : '儲存設定'}
         </button>
-      </AlertModal>
+      </Modal>
 
       {/* Edit Recipient Modal (Slide-in) */}
       <AnimatePresence>
@@ -7370,20 +7376,24 @@ function ProfileContent() {
               <div className="bg-white dark:bg-neutral-900 mt-3 px-4">
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   <div className="py-1">
-                    <input 
+                    <input
                       value={settingsForm.recipientName}
                       onChange={e => setSettingsForm({...settingsForm, recipientName: e.target.value})}
+                      maxLength={30}
+                      placeholder="例：王吉比"
                       className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="收件人姓名"
                     />
                   </div>
                   <div className="py-1">
-                    <input 
+                    <input
                       value={settingsForm.recipientPhone}
                       onChange={e => setSettingsForm({...settingsForm, recipientPhone: e.target.value})}
-                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
-                      placeholder="手機號碼"
+                      onBlur={e => setSettingsForm({...settingsForm, recipientPhone: normalizePhone(e.target.value)})}
                       type="tel"
+                      inputMode="numeric"
+                      pattern="^09\d{8}$"
+                      placeholder={PHONE_PLACEHOLDER}
+                      className="w-full bg-transparent border-none py-3 px-0 text-[15px] text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:ring-0"
                     />
                   </div>
                   <div className="py-1">
@@ -7400,7 +7410,7 @@ function ProfileContent() {
               {/* Default Toggle (Visual only for now) */}
               <div className="bg-white dark:bg-neutral-900 mt-3 px-4 py-3 flex items-center justify-between">
                 <span className="text-[15px] text-neutral-900 dark:text-white">設為預設地址</span>
-                <div className="w-11 h-6 bg-emerald-500 rounded-full relative">
+                <div className="w-11 h-6 bg-accent-emerald rounded-full relative">
                   <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
               </div>

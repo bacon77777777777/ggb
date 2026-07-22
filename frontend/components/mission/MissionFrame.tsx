@@ -30,7 +30,7 @@ const FloatingReward = ({ x, y, reward, onComplete }: { x: number; y: number; re
       <div className="relative w-5 h-5 shrink-0">
         <Image src={imgCoin} alt="Coin" fill className="object-contain" unoptimized />
       </div>
-      <span className="text-[#ff5e00] text-[20px] font-bold">+{reward}</span>
+      <span className="text-accent-orange text-[20px] font-bold">+{reward}</span>
     </motion.div>
   );
 };
@@ -46,7 +46,7 @@ function Text3({ text, onClick }: Text3Props) {
   return (
     <div onClick={onClick} className="content-stretch flex h-[48px] items-center justify-center relative rounded-[100px] shrink-0 w-[112px] cursor-pointer active:scale-95 transition-transform">
       <div aria-hidden="true" className="absolute border border-[#ff5e00] border-solid inset-0 pointer-events-none rounded-[100px]" />
-      <p className="font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[#ff5e00] text-[26px] text-center">{text}</p>
+      <p className="font-sans font-medium leading-[normal] not-italic relative shrink-0 text-accent-orange text-[26px] text-center">{text}</p>
     </div>
   );
 }
@@ -82,8 +82,8 @@ type HelperProps = {
 function Helper({ text, text1 }: HelperProps) {
   return (
     <div className="content-stretch flex gap-[12px] items-end relative shrink-0 w-full">
-      <p className="font-sans font-medium relative shrink-0 text-[#1b1b1b] text-[28px]">{text}</p>
-      <p className="font-sans font-normal relative shrink-0 text-[#ff5e00] text-[24px]">{text1}</p>
+      <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">{text}</p>
+      <p className="font-sans font-normal relative shrink-0 text-accent-orange text-[24px]">{text1}</p>
     </div>
   );
 }
@@ -95,8 +95,8 @@ type Text1Props = {
 function Text1({ text }: Text1Props) {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
-      <ImageAndText text="+20" additionalClassNames="bg-[#f1f3f4]" />
-      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-[#a8a8a8] text-[22px] text-right">{text}</p>
+      <ImageAndText text="+20" additionalClassNames="bg-neutral-100" />
+      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-400 text-[22px] text-right">{text}</p>
     </div>
   );
 }
@@ -112,7 +112,7 @@ function ImageAndText({ text, additionalClassNames = "" }: ImageAndTextProps) {
       <div className="relative w-[88px] h-[60px] flex items-center justify-center">
          <Image alt="" width={40} height={40} className="object-contain" src={imgCoin} unoptimized />
       </div>
-      <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-[#711e15] text-[26px] text-center w-[min-content] whitespace-pre-wrap">{text}</p>
+      <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-red-900 text-[26px] text-center w-[min-content] whitespace-pre-wrap">{text}</p>
     </div>
   );
 }
@@ -124,13 +124,13 @@ type TextProps = {
 function Text({ text }: TextProps) {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
-      <div className="bg-[#ffe8e7] content-stretch flex flex-col gap-[8px] h-[104px] items-center justify-center overflow-clip pt-[6px] relative rounded-[8px] shrink-0 w-[88px]">
+      <div className="bg-primary-soft content-stretch flex flex-col gap-[8px] h-[104px] items-center justify-center overflow-clip pt-[6px] relative rounded-[8px] shrink-0 w-[88px]">
         <div className="relative w-[88px] h-[60px] flex items-center justify-center">
            <img alt="" className="w-[40px] h-[40px] object-contain" src={imgCheck} />
         </div>
-        <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-[#711e15] text-[26px] text-center w-[min-content] whitespace-pre-wrap">{"+20"}</p>
+        <p className="font-['DIN_Alternate:Bold',sans-serif] font-bold leading-[normal] min-w-full not-italic relative shrink-0 text-red-900 text-[26px] text-center w-[min-content] whitespace-pre-wrap">{"+20"}</p>
       </div>
-      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-[#1b1b1b] text-[22px] text-right">{text}</p>
+      <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-900 text-[22px] text-right">{text}</p>
     </div>
   );
 }
@@ -165,7 +165,7 @@ const TITLE_STYLES: Record<string, string> = {
   purple: 'from-purple-500 to-violet-600',
   red:    'from-rose-500 to-pink-600',
   blue:   'from-blue-500 to-cyan-500',
-  green:  'from-emerald-500 to-teal-500',
+  green:  'from-accent-emerald to-teal-500',
 };
 
 const ACHIEVEMENT_TITLE: Record<string, { name: string; color: string }> = {
@@ -454,11 +454,11 @@ function MissionFrame({
           </div>
           <p className="absolute font-sans font-normal leading-[normal] left-[35px] not-italic text-[32px] text-white top-[27px]">簽到拿積分</p>
           <div className="absolute content-stretch flex gap-[12px] items-end justify-end leading-[normal] left-[37px] not-italic top-[103px]">
-            <p className="font-sans font-medium relative shrink-0 text-[#1b1b1b] text-[28px]">已連續簽到</p>
-            <p className="font-['DIN_Alternate:Bold',sans-serif] relative shrink-0 text-[#ff5e00] text-[32px] font-bold">{consecutiveDays}</p>
-            <p className="font-sans font-medium relative shrink-0 text-[#1b1b1b] text-[28px]">天</p>
+            <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">已連續簽到</p>
+            <p className="font-['DIN_Alternate:Bold',sans-serif] relative shrink-0 text-accent-orange text-[32px] font-bold">{consecutiveDays}</p>
+            <p className="font-sans font-medium relative shrink-0 text-neutral-900 text-[28px]">天</p>
           </div>
-          <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-[#a8a8a8] text-[24px] text-right top-[34px] whitespace-nowrap">每連續簽到7天，可獲得額外積分</p>
+          <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-neutral-400 text-[24px] text-right top-[34px] whitespace-nowrap">每連續簽到7天，可獲得額外積分</p>
           
           {/* Check-in Days - Dynamic Mock for now */}
           <div className="absolute content-stretch flex gap-[7px] items-center left-[22px] top-[164px]">
@@ -473,7 +473,7 @@ function MissionFrame({
             
             <div className="content-stretch flex flex-col gap-[10px] items-center relative shrink-0">
               <ImageAndText text="+100" additionalClassNames="bg-gradient-to-b from-[#fca062] to-[#feecde]" />
-              <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-[#a8a8a8] text-[22px] text-right">第7天</p>
+              <p className="font-sans font-normal leading-[normal] not-italic relative shrink-0 text-neutral-400 text-[22px] text-right">第7天</p>
             </div>
           </div>
           
@@ -527,7 +527,7 @@ function MissionFrame({
               </svg>
             </div>
             <p className="absolute font-sans font-normal leading-[normal] left-[35px] not-italic text-[32px] text-white top-[27px]">任務中心站</p>
-            <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-[#a8a8a8] text-[24px] text-right top-[34px] whitespace-nowrap">完成任務，即可領取積分哦</p>
+            <p className="-translate-x-full absolute font-sans font-normal leading-[normal] left-[672px] not-italic text-neutral-400 text-[24px] text-right top-[34px] whitespace-nowrap">完成任務，即可領取積分哦</p>
           </div>
           
           <div className="relative bg-white content-stretch flex flex-col items-center left-0 px-[24px] rounded-bl-[16px] rounded-br-[16px] w-[702px] h-auto pb-[220px] overflow-hidden" data-name="list">
@@ -546,7 +546,7 @@ function MissionFrame({
                 )}
                 <p className={clsx(
                   "font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[28px] transition-colors duration-300",
-                  activeTab === 'daily' ? "text-[#1b1b1b]" : "text-[#818181]"
+                  activeTab === 'daily' ? "text-neutral-900" : "text-neutral-500"
                 )}>每日任務</p>
               </div>
               <div 
@@ -562,7 +562,7 @@ function MissionFrame({
                 )}
                 <p className={clsx(
                   "font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[28px] transition-colors duration-300",
-                  activeTab === 'weekly' ? "text-[#1b1b1b]" : "text-[#818181]"
+                  activeTab === 'weekly' ? "text-neutral-900" : "text-neutral-500"
                 )}>每週任務</p>
               </div>
               <div
@@ -578,7 +578,7 @@ function MissionFrame({
                 )}
                 <p className={clsx(
                   "font-sans font-medium leading-[normal] not-italic relative shrink-0 text-[28px] transition-colors duration-300",
-                  activeTab === 'achievement' ? "text-[#1b1b1b]" : "text-[#818181]"
+                  activeTab === 'achievement' ? "text-neutral-900" : "text-neutral-500"
                 )}>成就</p>
               </div>
             </div>
@@ -620,7 +620,7 @@ function MissionFrame({
                         )}
                         <div className="content-stretch flex flex-col gap-[8px] items-start leading-[normal] not-italic relative shrink-0 w-[232px]">
                           <Helper text={mission.title} text1={`+${mission.reward}積分`} />
-                          <p className="font-sans font-normal relative shrink-0 text-[#797979] text-[24px] whitespace-nowrap">{mission.description}</p>
+                          <p className="font-sans font-normal relative shrink-0 text-neutral-500 text-[24px] whitespace-nowrap">{mission.description}</p>
                           {(() => {
                             const key = `${mission.condition_type}:${mission.target_value}`;
                             const titleInfo = mission.type === 'achievement' ? ACHIEVEMENT_TITLE[key] : undefined;
@@ -637,12 +637,12 @@ function MissionFrame({
                         {/* 進度顯示：pending 且 target > 1 時才顯示 */}
                         {mission.status === 'pending' &&
                           mission.current_value !== undefined && (
-                          <span className="shrink-0 text-[24px] font-medium text-[#999] whitespace-nowrap">
-                            <span className="text-[#ff6b35]">{Math.min(mission.current_value, mission.target_value ?? 1)}</span>/{mission.target_value}
+                          <span className="shrink-0 text-[24px] font-medium text-neutral-400 whitespace-nowrap">
+                            <span className="text-accent-orange">{Math.min(mission.current_value, mission.target_value ?? 1)}</span>/{mission.target_value}
                           </span>
                         )}
                         {(mission.status === 'claimed' || optimisticClaimedIds.has(mission.id)) ? (
-                          <div className="w-[112px] text-center text-gray-400 text-[24px]">已領取</div>
+                          <div className="w-[112px] text-center text-neutral-400 text-[24px]">已領取</div>
                         ) : mission.status === 'completed' ? (
                           <Text2 text="領取" onClick={(e) => handleClaim(mission, e)} />
                         ) : (
@@ -653,7 +653,7 @@ function MissionFrame({
                   ))}
                   
                   {sortedMissions.length === 0 && (
-                    <div className="py-10 text-center text-gray-500 text-2xl">
+                    <div className="py-10 text-center text-neutral-500 text-2xl">
                       暫無任務
                     </div>
                   )}
@@ -670,7 +670,7 @@ function MissionFrame({
         onClick={() => setIsRulesModalOpen(true)}
       >
         <div className="absolute h-[90px] left-0 overflow-clip top-0 w-[48px]">
-          <div className="absolute bg-[#ff1a16] h-[90px] left-0 pointer-events-none rounded-bl-[16px] rounded-tl-[16px] top-0 w-[49px]">
+          <div className="absolute bg-accent-red h-[90px] left-0 pointer-events-none rounded-bl-[16px] rounded-tl-[16px] top-0 w-[49px]">
             <div aria-hidden="true" className="absolute border border-[#ffd29d] border-solid inset-0 rounded-bl-[16px] rounded-tl-[16px]" />
             <div className="absolute inset-0 rounded-[inherit] shadow-[inset_8px_0px_10px_0px_rgba(255,255,255,0.41)]" />
           </div>

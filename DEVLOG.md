@@ -4,6 +4,276 @@
 
 ---
 
+## v2026.07.21k｜2026-07-21｜一番賞流程優化（兩輪迭代）
+
+### FigmaTearScene（原始經典）
+- 最後一張 auto-trigger 延遲維持 1 秒（保持順暢）
+- SKIP 按鈕恢復即時跳轉（移除 2 秒延遲 + "..." 顯示）
+- `finishedRef` 防 SKIP 與 auto-trigger 重複呼叫
+
+### 中間結果畫面（ichiban 通用）
+- 新增 `openAllDone` state：點擊「全部開啟」後設 true
+- `openAllDone=true`：按鈕變灰禁用，2 秒後自動呼叫 `handleBackToProduct`
+- `openAllDone=true` 時不顯示三按鈕（前往倉庫/顯示獎項/繼續抽獎）
+- 三按鈕保留給「逐張手動開啟所有」的情境（`allOpened && !openAllDone`）
+
+### IchibanTicket 顯示簡化
+- 移除票券非 showPrizeDetail 視圖的品項名稱（prizeName）和籤號（ticketNumber）
+- 只顯示賞等（F賞 / A賞 / LAST ONE）
+
+### 全部開啟後觸發 GachaResultModal
+- openAllDone useEffect：桌機 modal → `onTearFinish(tearResults)` 觸發 GachaResultModal
+- 手機：存 `ggb_tear_results` 至 sessionStorage → `handleBackToProduct` 導回商品頁 → 頁面 mount 讀取並彈窗
+
+### 先前修正保留
+- `isModal && ichibanTheme === 'ichiban_tear'` 時跳過中間畫面（避免桌機卡死）
+
+---
+
+## v2026.07.21j｜2026-07-21｜STG draw_records 欄位同步修復
+
+### 問題
+- STG `draw_records` 缺少 `txid_seed` 和 `points_used` 兩個欄位
+- `play_ichiban` DB 函數寫入這兩個欄位，導致 STG 購買一番賞時報 `Purchase error: {}`
+- PROD 早已有這兩個欄位，屬於歷史 STG/PROD 同步缺口
+
+### 修復
+- 補 migration `274_stg_sync_draw_records.sql`，已套用至 STG
+- 清除 TicketSelectionFlow.tsx 中的 debug error logging
+
+---
+
+## v2026.07.21i｜2026-07-21｜前台 DS Token 大掃除（278 → 28 違規）
+
+### tailwind.config.js 新增 token
+- `accent-orange: '#FF5E00'`（MissionFrame 任務橘）
+- `item-bg: '#28324E'`（商品縮圖佔位背景深藍灰）
+
+### 違規修正（278 → 28，降 90%）
+- `gray-*` → `neutral-*`（全站，15 → 0）
+- `emerald-*` → `accent-emerald`（全站，56 → 0）
+- `rounded-md` → `rounded-xl`（全站，76 → 0）
+- `bg/text-[#EE4D2D]` → `bg/text-primary`（6 個檔案）
+- `bg-[#28324E]` → `bg-item-bg`（profile × 4、WarehouseItemDetailModal）
+- MissionFrame：`#ff5e00` → `accent-orange`、`#1b1b1b` → `neutral-900` 等
+- 掃描腳本排除 `profilecard/` 子專案（shadcn 獨立 DS，不屬主程式）
+- 剩餘 28 個 magic hex（排行榜金色、特殊背景色等）列為設計例外，暫不處理
+
+---
+
+## v2026.07.21h｜2026-07-21｜DS 稽核 + ActionBar 擴大遷移 + 後台修復
+
+### 前台 DS 稽核頁強化
+- Color Tokens 全面修正：primary `#EE4D2D`（橘紅）、加入 primary 4 子 token + accent 3 個、neutral 改為前台正確值
+- 新增 UI Kit Components showcase：Button 6 variants、Input states、Modal 兩種模式、ActionBar/BottomSheet preview
+
+### ActionBar 擴大遷移（共 6 頁）
+- `exchange/[id]`、`exchange-orders/[id]`（3 個 conditional）、`item/[id]`
+
+### 後台修復
+- 後台登入頁 error 訊息改紅色樣式（原藍色語意錯誤）
+- AdminLayout hydration mismatch 修復：`isSidebarOpen` 初始值固定 `true`，由 `useEffect` 從 localStorage 修正
+- 後台登入頁標題改為「GGB後台管理系統 / 線上抽獎平台」
+
+---
+
+## v2026.07.21g｜2026-07-21｜AlertModal 整合 + ActionBar / BottomSheet 新組件
+
+### AlertModal → Modal 整合（profile/page.tsx）
+- `frontend/components/ui/Modal.tsx` 新增 `compact` prop（AlertModal 相容模式：320px 寬、圓角 2xl、標題置中）
+- `profile/page.tsx` 6 個 `<AlertModal>` 全數遷移為 `<Modal compact>`
+- logout 確認改用全域 `showAlert()` AlertProvider（不再用局部 state + AlertModal）
+- 刪除 `frontend/components/ui/AlertModal.tsx`（零殘留引用）
+
+### ActionBar 新組件
+- 新增 `frontend/components/ui/ActionBar.tsx`：統一 fixed bottom 操作欄（backdrop-blur、safe-area-inset-bottom、shadow-modal）
+- 支援 `hideOn="lg"` / `hideOn="md"` 響應式隱藏、`zIndex` 覆寫
+- 已遷移：`sell/new/page.tsx`、`sell/new/specs/page.tsx`
+
+### BottomSheet 新組件
+- 新增 `frontend/components/ui/BottomSheet.tsx`：底部滑入抽屜（portal、遮罩、grab handle、ESC 關閉、body scroll lock）
+- 支援 `title`、`height`、`zIndex` props
+- 匯出至 `components/ui/index.ts`
+
+---
+
+## v2026.07.21f｜2026-07-21｜前台 UI Kit 整頓
+
+### Button 系統整合
+- 新增 `variant="solid"`（替代 SolidButton）：font-black、shadow-lg shadow-primary/30、active:scale、h-11（size lg）
+- Primary / Danger variant 改 `font-black`，Secondary / Ghost / Outline 保持 `font-medium`
+- 全 variant 從 `rounded-lg` → `rounded-xl`，`focus:ring-2` → `focus:ring-1`
+- Loading spinner 改用 `Loader2`（簡潔 icon-only）
+- 刪除 `SolidButton.tsx`；login、forgot-password、profile 三頁改用 `Button variant="solid"`
+
+### 表單元件修正（Input / Select / Textarea）
+- `border-2` → `border`、`min-h-[42px]` 移除、`focus:ring-2` → `focus:ring-1`
+- `gray-*` → `neutral-*`（disabled 狀態、helperText）
+- `rounded-lg` → `rounded-xl`
+- Label 從 `text-sm font-medium text-neutral-700` → `text-xs font-semibold text-neutral-500`（對齊 DS 規範）
+- 補齊 dark mode 樣式
+
+### 死代碼清除
+- 刪除 `EmptyState.tsx`（0 使用）
+- 刪除 `FileInput.tsx`（0 使用）
+- 刪除 `SidebarMenu.tsx`（0 使用）
+- `RulesModal.tsx` z-[9999] → z-50（修正魔術數字）
+
+---
+
+## v2026.07.21e｜2026-07-21｜前台 Design System 稽核系統 + UI 統一
+
+### 前台 DS 合規掃描系統（新增）
+- Migration 336：建立 `frontend_design_scan_runs` + `frontend_design_scan_results` 兩張表（PROD + STG 同步）
+- `backend/scripts/frontend-design-scan.ts`：掃描前台所有 .tsx/.ts，檢測 magic hex、bg-primary-600、gray-*、emerald-*、rounded-md、z-[magic]、inline style color 等違規
+- `backend/app/api/admin/frontend-design-scan/route.ts`：讀取最新掃描結果 API
+- `backend/app/frontend-design-system/page.tsx`：重寫為 live compliance scanner（對齊後台 Design System 頁架構）
+  - CompliancePanel：統計摘要 / 違規類型分布 / 可展開違規檔案列表
+  - Color Tokens 展示（light + dark mode）
+  - z-index 規範表
+  - 禁用 class / pattern 清單
+- 初次掃描結果：272 個檔案 / 292 個違規 / 62 個違規檔案
+
+### 前台 Navbar 導航修正
+- 商品詳情頁（`isProductDetailPage`）：返回圖標 + 標題合併為單一 `<button>`，整體可點擊
+
+### 頂部導航統一（SimplePageHeader）
+- 新增 `frontend/components/ui/SimplePageHeader.tsx`（h-14 固定 header，含 back/title/right slot）
+- 套用至 5 個規則頁、login、forgot-password、profile 手機驗證 modal
+
+### 死代碼清除
+- 刪除 `frontend/components/ui/Badge.tsx`（零使用）
+- 刪除 `frontend/components/NewsCard.tsx`（零使用）
+- 刪除 `frontend/components/PageCard.tsx`（@deprecated，零使用）
+
+### 共用工具抽取
+- `frontend/lib/productImage.ts`：ITEM_IMAGES 陣列 + getItemImageForId + DEFAULT_ITEM_IMAGE（修正 defaulet → default typo）
+- `frontend/lib/timeAgo.ts`：timeAgo() 共用工具
+- `frontend/components/news/CategoryBadge.tsx`：CategoryBadge 共用元件
+
+### 全站色碼修正
+- bg-[#F5F5F5]（45 處）→ bg-neutral-50
+- bg-primary-600（2 處）→ bg-primary、bg-primary-700 → bg-primary/90
+
+### 商品頁背景圖移除
+- GachaProductDetail：移除 gacha/bg.png 背景
+- item/[id] card 類型：移除 card/pcbg.png 桌面背景
+
+---
+
+## v2026.07.21d｜2026-07-21｜規則頁面 RWD 完善 + 商品頁手機導航
+
+### 規則頁面（5 個：gacha / blindbox / ichiban / card / custom）
+- 步驟卡片圖片改為 `fill` 模式（支援 RWD 容器尺寸），桌面維持 100×100px
+- 標題加 `whitespace-nowrap`，防止「選擇商品並抽獎」等標題在 3 欄格局換行
+- 頂部導航全尺寸都顯示（保留桌面返回按鈕）
+
+### 商品頁（`/item/[id]`）
+- 新增手機端專屬固定頂部導航（`md:hidden`，z-[200] 蓋在 Navbar 上）
+- 顯示商品名稱 + 返回按鈕，桌面端沿用原 Navbar
+
+---
+
+## v2026.07.21c｜2026-07-21｜盒玩詳情頁補猜你喜歡
+
+- `GachaCollectionList` 移出 scale 容器，放至正常文件流
+- flex wrapper 補 `marginBottom = 375 * (932/750) * (scale-1)` 補償視覺高度
+- 效果：品項總覽 + 猜你喜歡 與轉蛋頁一致
+
+---
+
+## v2026.07.21b｜2026-07-21｜輸入框驗證全站補強
+
+### 電話號碼
+- 新增 `frontend/lib/phone.ts` 共用工具（normalizePhone / isValidPhone / 常數）
+- 所有手機號碼輸入框統一：`inputMode="numeric"`、placeholder `例：0900123456`、onBlur 自動正規化（886xxx / 9xxxxxxx → 09xxxxxxxx）
+- 套用位置：配送申請、超商設定、編輯地址、手機驗證、FAQ 客服表單、交換訂單收件人
+
+### 姓名欄位
+- 所有姓名欄位：`maxLength={30}`、placeholder `例：王吉比`
+- 暱稱編輯：補 `maxLength={20}` / `minLength={2}`（UI 說 2-20 但原本無 HTML 限制）
+
+### 密碼欄位
+- 三個入口（login、forgot-password、update-password）統一加入：密碼不得包含中文字元檢核
+
+### 其他
+- 私訊輸入框 `maxLength={1000}`
+- 賣場商品名稱 / 描述補 HTML `maxLength`（60 / 3000）
+- 銀行帳號 `inputMode="numeric"`
+
+---
+
+## v2026.07.21a｜2026-07-21｜成就任務系統大修
+
+### 最高獎成就 trigger（migration 333）
+- 新增 `draw_records` AFTER INSERT trigger，自動追蹤最高獎成就
+- 適用商品類型：ichiban / card / custom（轉蛋/盲盒無賞等，排除）
+- 最高獎定義：`product_prizes.total <= 3`
+- 命中：`top_prize_count+1`、`bad_luck_streak=0` + 任務進度更新
+- 未命中：`bad_luck_streak+1` + 任務進度更新
+- 修正 `top_prize_count` / `bad_luck_streak` 原本從未被更新的問題
+
+### 一發入魂定義修正（migration 335）
+- 原本：帳號史上第一筆 draw_record 才算（條件太嚴苛）
+- 改為：對任一商品的第一次抽獎即抽中最高獎（每個新商品都有機會）
+
+### 任務文字統一（migration 334）
+- 所有「轉蛋」改為「抽獎」（21 筆，PROD + STG）
+- 移除成就描述括號說明文字
+
+### 一番賞抽獎追蹤補漏
+- `TicketSelectionFlow` 補呼叫 `track_mission_event(draw_count)` + `check_achievements`
+- 原本一番賞完全不計入任何抽獎任務次數
+
+---
+
+## v2026.07.20m｜2026-07-20｜競品爬取修正
+
+### 修正 Clove 只顯示 1 筆
+- `extractCloveUrlsFromHtml` 舊 regex `cmm[a-z0-9]+` 只能匹配 `cmm` 開頭的 ID
+- 實際頁面 ID 格式為 Cuid2（`cmi...`、`cmq...`、`cmr...`），33 個商品全部漏抓
+- 改用 `"id":"cm[a-z0-9]{18,}"` JSON 模式，curl 驗證可正確識別全部 33 筆
+
+### 91toy 標記為 SPA
+- 首頁只有導覽連結，商品列表由 JS 渲染，HTML 爬取無法取得商品連結
+- 競品列表加上「SPA，可能無法爬取」橙色標記
+
+---
+
+## v2026.07.20l｜2026-07-20｜後台工具全面重新設計
+
+### 全新競品爬取體驗（tools/page.tsx 完整重寫）
+- **單一入口**：貼任意 URL（首頁/列表頁/商品頁）一鍵開始，自動判斷列表或單筆
+- **三段式進度條**：1. 發現連結 → 2. 抓取資料 → 3. AI 補齊，清楚顯示當前階段與百分比
+- **商品表格**：每列顯示 72×72 縮圖（點擊彈大圖）、名稱/類型/價格/代理商/稀有度⭐/熱賞標籤
+- **AI 補齊欄位**（新 `/api/tools/ai-enrich` 端點）：Claude Haiku 自動推斷代理商、稀有度（1-5星）、是否熱賣；AI 推測值以橙色 ✦ 標示
+- **獎項可展開**：點「X 項 ▼」展開子表格，獎項圖片同樣支援縮圖 → 彈窗
+- **圖片彈窗**：點縮圖 → overlay 顯示原圖 + 來源連結
+- **修正異步 bug**：AI 補齊階段改用 localResults Map 避免 React state 閉包讀取過期問題
+
+### 新增 API：/api/tools/ai-enrich
+- 輸入：name、typeGuess、prizes、sourceHost
+- 輸出：supplier、rarity（1-5）、isHot、aiFilledFields
+
+---
+
+## v2026.07.20k｜2026-07-20｜後台工具強化（任意網址爬取）
+
+### expand-list：通用商品連結發現（任意網站）
+- 新增 `extractGenericProductLinks()`：解析任意頁面所有 `<a href>` 連結，過濾非商品路徑，依 URL path prefix 聚類，回傳最多商品連結的路徑群
+- 支援 dopaminekuji.com 等未知網站，不再侷限 slimetoy/clove
+
+### scrape：Claude AI fallback prize 提取
+- 當 JSON-LD / nextData / text regex 都無法提取獎項時，改用 `claude-haiku` 讀取頁面文字並結構化輸出
+- 適用任何商品頁，包含日文/中文混排的一番賞/轉蛋頁面
+
+### 工具 UI：列表頁自動偵測
+- 單筆模式若無獎項，自動在背景呼叫 expand-list
+- 發現商品連結時顯示藍色提示欄「發現 X 個商品，切換批量模式」
+- 一鍵切換批量模式並載入所有連結
+
+---
+
 ## v2026.07.20j｜2026-07-20｜全站 SEO 強化（關鍵字・Sitemap・Article JSON-LD）
 
 ### 全站 keywords + 更強的 title/description（root layout）

@@ -65,21 +65,20 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
     })();
   }, [(product as any).supplier_id, supabase]);
 
-  // 猜你喜歡：抓同類型其他商品
+  // 猜你喜歡：任意類型 active 商品
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabase
           .from('products')
           .select('*')
-          .eq('type', product.type)
           .eq('status', 'active')
           .neq('id', productId)
           .limit(4);
         setRecommendations(data ?? []);
       } catch {}
     })();
-  }, [productId, product.type, supabase]);
+  }, [productId, supabase]);
 
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
@@ -188,14 +187,21 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             注意事項
           </p>
           <ol className="space-y-1 list-decimal list-inside">
-            {[
+            {(product.type === 'blindbox' ? [
+              '盒玩商品均為隨機出獎，抽到什麼出什麼。',
+              '抽出後即確認結果，不可退款或更換款式。',
+              '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+              '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+              '商品圖片僅供參考，實物以實際配送為準。',
+              '本平台保留對所有活動及商品之最終解釋權。',
+            ] : [
               '轉蛋商品均為隨機出獎，抽到什麼出什麼。',
               '轉出後即確認結果，不可退款或更換款式。',
-              '實體獎品由廠商備貨出貨，出貨時間約 3-7 個工作日。',
+              '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
               '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
-              '商品圖片僅供參考，實物以實際出貨為準。',
+              '商品圖片僅供參考，實物以實際配送為準。',
               '本平台保留對所有活動及商品之最終解釋權。',
-            ].map((item, i) => (
+            ]).map((item, i) => (
               <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">
                 {item}
               </li>
@@ -209,7 +215,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         <div className="pt-1 sm:pt-2">
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-1">
             <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-            <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">
+            <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">
               查看更多
             </Link>
           </div>

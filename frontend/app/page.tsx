@@ -1161,7 +1161,7 @@ export default function Home() {
                       <div className="flex flex-col p-2">
                         <div className="mb-1 h-[2.75rem]">
                           <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                            <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-[#EE4D2D] shadow-[#EE4D2D]/20">
+                            <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
                               販售
                             </span>
                             {listing.product.type && (
@@ -1177,7 +1177,7 @@ export default function Home() {
                               <div className="w-3.5 h-3.5">
                                 <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
-                              <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">
+                              <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
                               </span>
                             </div>
@@ -1219,7 +1219,7 @@ export default function Home() {
                   </div>
                   <button 
                     onClick={() => fetchData()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+                    className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors text-sm font-medium"
                   >
                     重試
                   </button>
@@ -1268,7 +1268,7 @@ export default function Home() {
                           <div className="flex flex-col p-2">
                             <div className="mb-1 h-[2.75rem]">
                               <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                                <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-[#EE4D2D] shadow-[#EE4D2D]/20">
+                                <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
                                   販售
                                 </span>
                                 <span className="inline">{listing.product.name}</span>
@@ -1281,7 +1281,7 @@ export default function Home() {
                                   <div className="w-3.5 h-3.5">
                                     <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                   </div>
-                                  <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">
+                                  <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                     {Math.round(listing.price).toLocaleString()}
                                   </span>
                                 </div>
@@ -1335,7 +1335,7 @@ export default function Home() {
                   </div>
                   <button 
                     onClick={() => fetchData()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm font-medium"
+                    className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors text-sm font-medium"
                   >
                     重試
                   </button>
@@ -1380,7 +1380,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24 transition-colors">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors">
       <div className="max-w-7xl mx-auto px-0 pt-0 sm:pt-4 md:hidden">
         <div className="px-2">
           <div className="rounded-none overflow-visible">
@@ -1630,7 +1630,7 @@ export default function Home() {
               {hasAnyPrimaryFeature && (
               <div className="sticky top-16 z-30 mb-4">
                 <div className="relative">
-                  <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-[#F5F5F5] dark:bg-neutral-950 z-0" />
+                  <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-neutral-50 dark:bg-neutral-950 z-0" />
                   <div className="relative z-10 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 px-3 py-2">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">

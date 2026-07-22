@@ -120,7 +120,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
           )}
           
           <div className={cn(
-            "absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-black shadow-sm z-10",
+            "absolute top-2 left-2 px-2 py-1 rounded-xl text-[10px] font-black shadow-sm z-10",
             isLastOne ? "bg-black text-white" : "bg-neutral-900 text-white"
           )}>
             {grade}
@@ -157,7 +157,7 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
       <div className="absolute inset-0 bg-black/10 rounded-[12px] blur-md translate-y-1 group-hover:translate-y-2 transition-transform will-change-transform" />
 
       {/* Main Ticket Base */}
-      <div className="absolute inset-0 rounded-[12px] shadow-xl bg-[#F3F4F6] will-change-transform">
+      <div className="absolute inset-0 rounded-[12px] shadow-xl bg-neutral-100 will-change-transform">
         
         {/* Inner Content Wrapper - Clipped */}
         <div className="absolute inset-0 rounded-[12px] overflow-hidden">
@@ -183,10 +183,10 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                   transition={{ delay: 0.3, duration: 0.6, type: 'spring' }}
                   className="flex flex-col items-center justify-center w-full z-10 px-8 pl-14"
                 >
-                  <div className="flex items-baseline gap-0.5 sm:gap-1 text-center justify-center -mb-1">
+                  <div className="flex items-baseline gap-1 text-center justify-center">
                     <span className={cn(
-                      "text-[40px] sm:text-5xl lg:text-[43px] font-black tracking-tighter leading-none font-amount",
-                      isLastOne ? "text-yellow-600 drop-shadow-sm" : "text-[#D3D3D3]"
+                      "text-[60px] sm:text-[64px] lg:text-[60px] font-black tracking-tighter leading-none font-amount",
+                      isLastOne ? "text-yellow-600 drop-shadow-sm" : "text-neutral-300"
                     )}>
                       {(() => {
                         if (isLastOne) return "LAST";
@@ -196,20 +196,12 @@ export const IchibanTicket: React.FC<IchibanTicketProps> = ({
                       })()}
                     </span>
                     <span className={cn(
-                      "text-lg sm:text-lg lg:text-[16px] font-black",
-                      isLastOne ? "text-yellow-700" : "text-[#D3D3D3]"
+                      "text-2xl sm:text-2xl lg:text-[22px] font-black",
+                      isLastOne ? "text-yellow-700" : "text-neutral-300"
                     )}>
                       {isLastOne ? "ONE" : "賞"}
                     </span>
                   </div>
-                  <div className="text-base sm:text-sm lg:text-[12.5px] font-black text-[#D3D3D3] text-center line-clamp-1 w-full mt-0.5 lg:-mt-[1px] leading-tight px-1">
-                    {prizeName}
-                  </div>
-                  {ticketNumber !== undefined && ticketNumber > 0 && (
-                    <div className="text-sm sm:text-xs lg:text-[11px] font-bold text-[#D3D3D3]/80 mt-0.5 lg:-mt-[1px]">
-                      No. {ticketNumber.toString().padStart(3, '0')}
-                    </div>
-                  )}
                 </motion.div>
               ) : (
                 <motion.div

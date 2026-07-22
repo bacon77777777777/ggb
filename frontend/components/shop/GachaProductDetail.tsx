@@ -370,11 +370,6 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
         className="w-full flex justify-center"
         style={{
           marginBottom: Math.round(375 * (932 / 750) * (scale - 1)),
-          backgroundImage: "url('/images/gacha/bg.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: '#000000',
         }}
       >
         <div

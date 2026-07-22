@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { normalizePhone, PHONE_PLACEHOLDER } from '@/lib/phone';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,7 +113,7 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20">
       <div className="max-w-3xl mx-auto pt-4 md:pt-8 px-4">
 
         <div className="mb-6">
@@ -197,11 +198,14 @@ export default function FAQPage() {
                     <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300 mb-1.5">手機門號</label>
                     <input
                       type="tel"
+                      inputMode="numeric"
                       value={form.phone}
                       onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                      onBlur={e => setForm(f => ({ ...f, phone: normalizePhone(e.target.value) }))}
                       disabled={!user || submitting}
                       required
-                      placeholder="09xx-xxx-xxx"
+                      placeholder={PHONE_PLACEHOLDER}
+                      pattern="^09\d{8}$"
                       className="w-full px-3 py-2.5 text-sm rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>

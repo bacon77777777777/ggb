@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { normalizePhone, PHONE_PLACEHOLDER } from '@/lib/phone';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { ActionBar } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 
@@ -623,7 +625,7 @@ export default function ExchangeOrderFlowPage() {
 
   if (isLoading || isFetching) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <div className="max-w-3xl mx-auto px-2 sm:px-6 py-24 text-center text-sm font-black text-neutral-400">
           載入中
         </div>
@@ -633,7 +635,7 @@ export default function ExchangeOrderFlowPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <div className="max-w-3xl mx-auto px-2 sm:px-6 py-24 text-center text-sm font-black text-neutral-400">
           登入後才可查看
         </div>
@@ -642,7 +644,7 @@ export default function ExchangeOrderFlowPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="max-w-3xl mx-auto px-2 sm:px-6">
         <div className="sticky top-[57px] z-40 -mx-2 sm:-mx-6 -mt-px">
           <Stepper step={step} />
@@ -756,8 +758,11 @@ export default function ExchangeOrderFlowPage() {
                   <input
                     value={recipientPhone}
                     onChange={(e) => setRecipientPhone(e.target.value)}
-                    onBlur={saveRecipient}
-                    placeholder="收件電話"
+                    onBlur={(e) => { setRecipientPhone(normalizePhone(e.target.value)); saveRecipient(); }}
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="^09\d{8}$"
+                    placeholder={PHONE_PLACEHOLDER}
                     className="w-full h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                   {!isRecipientReady && (
@@ -932,8 +937,8 @@ export default function ExchangeOrderFlowPage() {
       </div>
 
       {order && step === 4 && !order.done && !order.cancelled ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2 w-full">
             <button
               type="button"
               onClick={() => updateReceipt({ action: 'return' })}
@@ -955,10 +960,10 @@ export default function ExchangeOrderFlowPage() {
               確認
             </button>
           </div>
-        </div>
+        </ActionBar>
       ) : order && step === 5 && order.done ? (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto w-full">
             <button
               type="button"
               onClick={submitRating}
@@ -973,11 +978,11 @@ export default function ExchangeOrderFlowPage() {
               {role && order.ratings[role]?.submitted ? '已送出' : '送出'}
             </button>
           </div>
-        </div>
+        </ActionBar>
       ) : (
         order && primary && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 z-50">
-          <div className="max-w-3xl mx-auto">
+        <ActionBar>
+          <div className="max-w-3xl mx-auto w-full">
             <button
               type="button"
               onClick={updateMyConfirm}
@@ -992,7 +997,7 @@ export default function ExchangeOrderFlowPage() {
               {primary.label}
             </button>
           </div>
-        </div>
+        </ActionBar>
         )
       )}
     </div>

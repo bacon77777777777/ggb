@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag } from 'lucide-react';
+import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import NavbarLayout from './NavbarLayout';
 
@@ -26,6 +26,7 @@ function NavbarInner() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMessagesMoreOpen, setIsMessagesMoreOpen] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
+  const [productType, setProductType] = useState<string | null>(null);
   const [isProductFollowed, setIsProductFollowed] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesMoreRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,13 @@ function NavbarInner() {
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
   const isProductDetailPage = /^\/(?:item|blindbox|gacha|card)\/[^/]+$/.test(pathname) || isSellDetailPage;
+  const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|card)\/[^/]+$/);
+  const isItemPage = /^\/item\/[^/]+$/.test(pathname);
+  const rulesPath = rulesPageMatch
+    ? `/${rulesPageMatch[1]}/rules`
+    : isItemPage && productType
+    ? `/${productType}/rules`
+    : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
@@ -127,8 +135,11 @@ function NavbarInner() {
 
         if (!productId) return;
         if (!/^\d+$/.test(productId)) return;
-        const { data } = await supabase.from('products').select('name').eq('id', productId).single();
-        if (data) setProductName(data.name);
+        const { data } = await supabase.from('products').select('name, type').eq('id', productId).single();
+        if (data) {
+          setProductName(data.name);
+          setProductType((data as any).type || null);
+        }
       };
 
       void fetchTitle();
@@ -165,6 +176,7 @@ function NavbarInner() {
       }
     } else {
       setProductName(null);
+      setProductType(null);
       setIsProductFollowed(false);
     }
   }, [pathname, user, isProductDetailPage, isSellDetailPage, isNewsDetailPage, supabase]);
@@ -531,13 +543,15 @@ function NavbarInner() {
     }
   };
 
-  if (pathname === '/news' || isNewsDetailPage) return null;
+  const isRulesPage = /^\/[^/]+\/rules$/.test(pathname);
+  if (pathname === '/news' || isNewsDetailPage || isRulesPage) return null;
 
   return (
     <>
       <NavbarLayout
+        innerClassName={isProductDetailPage ? "max-w-[960px] !px-4" : undefined}
         className={cn(
-          isProductDetailPage && "fixed left-0 right-0 md:sticky top-0",
+          isProductDetailPage && "fixed left-0 right-0",
           (
             (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market', 'check-in'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
@@ -548,30 +562,44 @@ function NavbarInner() {
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
-        leftClassName="flex-1 md:flex-none md:w-auto"
+        leftClassName={isProductDetailPage ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
         left={
           <>
-            <div className="flex items-center md:hidden overflow-hidden shrink-0">
-              {showBackButton && (
-                <button 
+            {isProductDetailPage ? (
+              showBackButton && (
+                <button
                   onClick={handleBack}
-                  className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 md:hidden shrink-0"
+                  className="flex items-center gap-0.5 -ml-2 pl-1 pr-3 py-2 rounded-xl text-neutral-900 dark:text-neutral-100 active:opacity-70 transition-opacity min-w-0 flex-1"
                 >
-                  <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+                  <ChevronLeft className="w-7 h-7 stroke-[2.5] shrink-0" />
+                  <span className="text-[18px] font-black truncate">{getPageTitle()}</span>
                 </button>
-              )}
-            </div>
-
-            {/* Mobile Page Title */}
-            {!isHomePage && (
-              <div className="md:hidden flex items-center min-w-0 flex-1">
-                <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">
-                  {getPageTitle()}
+              )
+            ) : (
+              <>
+                <div className="flex items-center overflow-hidden shrink-0 md:hidden">
+                  {showBackButton && (
+                    <button
+                      onClick={handleBack}
+                      className="pl-2.5 pr-0 py-2 -ml-2 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors flex items-center gap-0 shrink-0 md:hidden"
+                    >
+                      <ChevronLeft className="w-7 h-7 stroke-[2.5]" />
+                    </button>
+                  )}
                 </div>
-              </div>
+
+                {/* Mobile Page Title */}
+                {!isHomePage && (
+                  <div className="flex items-center min-w-0 flex-1 md:hidden">
+                    <div className="text-[18px] font-black text-neutral-900 dark:text-white truncate">
+                      {getPageTitle()}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", !showLogo && "hidden md:flex")}>
+            <Link href="/" className={cn("flex items-center group md:relative", isProductDetailPage ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src="/images/20260629/logo.svg"
@@ -584,7 +612,7 @@ function NavbarInner() {
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center gap-3 lg:gap-5">
+            <div className={cn("hidden", !isProductDetailPage && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(
@@ -697,9 +725,18 @@ function NavbarInner() {
 
             {/* news detail page 的返回/分享由文章頁自身的 fixed nav 處理，Navbar 不重複顯示 */}
 
-            {/* Product Page Mobile Actions */}
+            {/* Product Page Actions */}
             {isProductDetailPage && (
-              <div className="flex items-center gap-0.5 md:hidden">
+              <div className="flex items-center gap-0.5">
+                {rulesPath && (
+                  <Link
+                    href={rulesPath}
+                    className="p-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95"
+                    aria-label="規則"
+                  >
+                    <BookOpen className="w-5 h-5 stroke-[2]" />
+                  </Link>
+                )}
                 <button onClick={handleShare} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-600 dark:text-neutral-400 transition-colors active:scale-95">
                   <Share2 className="w-5 h-5 stroke-[2]" />
                 </button>
@@ -714,7 +751,7 @@ function NavbarInner() {
 
             {isAuthenticated && isHomePage && (
               <Link
-                href="/search"
+                href="/search?focus=1"
                 className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                 aria-label="搜尋"
               >
@@ -777,7 +814,7 @@ function NavbarInner() {
                       </div>
                       {/* Invite Code Display */}
                       <div 
-                        className="flex items-center gap-1.5 mt-1.5 bg-neutral-50 dark:bg-neutral-800 px-2 py-0.5 rounded-md cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors group/invite w-fit"
+                        className="flex items-center gap-1.5 mt-1.5 bg-neutral-50 dark:bg-neutral-800 px-2 py-0.5 rounded-xl cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors group/invite w-fit"
                         onClick={(e) => {
                           e.preventDefault();
                           if (user.invite_code) {
@@ -836,6 +873,14 @@ function NavbarInner() {
             ) : (
               !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
                 <>
+                  {/* 未登入搜尋圖標（手機，登入按鈕左邊） */}
+                  <Link
+                    href="/search?focus=1"
+                    className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
+                    aria-label="搜尋"
+                  >
+                    <Search className="w-5 h-5 stroke-[2]" />
+                  </Link>
                   {/* Mobile login button: 細膠囊線框 */}
                   <Link
                     href="/login"

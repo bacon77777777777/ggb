@@ -460,7 +460,7 @@ export default function SearchPage() {
   }, [activePrimaryTab, filteredProducts.length, filteredSellListings.length, hasAnyPrimaryFeature]);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-20 transition-colors">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-20 transition-colors">
       <div className="sticky top-0 z-50 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
         <div className="max-w-7xl mx-auto px-2 relative">
           <div className="flex items-center gap-3 h-[57px]">
@@ -483,6 +483,7 @@ export default function SearchPage() {
                 <input
                   ref={inputRef}
                   value={query}
+                  autoFocus={!!focusParam}
                   onFocus={() => setIsInputFocused(true)}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="曾經搜尋平凡的商品"
@@ -640,7 +641,7 @@ export default function SearchPage() {
                       <div className="flex flex-col p-2">
                         <div className="mb-1 h-[2.75rem]">
                           <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                            <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-[#EE4D2D] shadow-[#EE4D2D]/20">
+                            <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
                               販售
                             </span>
                             <span className="inline">{listing.title}</span>
@@ -653,7 +654,7 @@ export default function SearchPage() {
                               <div className="w-3.5 h-3.5">
                                 <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
-                              <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">
+                              <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
                               </span>
                             </div>
@@ -722,7 +723,7 @@ export default function SearchPage() {
                               <div className="flex flex-col p-2">
                                 <div className="mb-1 h-[2.75rem]">
                                   <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                                    <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-[#EE4D2D] shadow-[#EE4D2D]/20">
+                                    <span className="inline-flex align-middle mr-1 relative -top-[0.1rem] h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
                                       販售
                                     </span>
                                     <span className="inline">{listing.title}</span>
@@ -735,7 +736,7 @@ export default function SearchPage() {
                                       <div className="w-3.5 h-3.5">
                                         <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                       </div>
-                                      <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">
+                                      <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                         {Math.round(listing.price).toLocaleString()}
                                       </span>
                                     </div>

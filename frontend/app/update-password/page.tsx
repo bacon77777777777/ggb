@@ -44,6 +44,12 @@ function UpdatePasswordContent() {
       return
     }
 
+    if (/[一-鿿㐀-䶿]/.test(password)) {
+      setError('密碼不得包含中文字元')
+      setIsLoading(false)
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('兩次輸入的密碼不一致')
       setIsLoading(false)
@@ -92,7 +98,7 @@ function UpdatePasswordContent() {
 
           {success ? (
             <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="bg-emerald-50 text-emerald-600 p-4 rounded-xl border border-emerald-100">
+              <div className="bg-accent-emerald/10 text-accent-emerald p-4 rounded-xl border border-accent-emerald/20">
                 <p className="font-bold mb-1">密碼更新成功</p>
                 <p className="text-sm">您現在可以使用新密碼登入。</p>
                 <p className="text-xs mt-2 text-neutral-500">3秒後自動跳轉至首頁...</p>

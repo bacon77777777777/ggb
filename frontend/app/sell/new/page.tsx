@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, ImagePlus, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -223,7 +223,7 @@ export default function SellNewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="max-w-7xl mx-auto px-0 pt-2 pb-20">
         <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
           <div className="flex items-center justify-between">
@@ -278,6 +278,7 @@ export default function SellNewPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, 60))}
             placeholder="請輸入"
+            maxLength={60}
             className="mt-2 w-full h-10 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -292,6 +293,7 @@ export default function SellNewPage() {
             onChange={(e) => setNote(e.target.value.slice(0, 3000))}
             rows={3}
             placeholder="請輸入"
+            maxLength={3000}
             className="mt-2 w-full bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 py-2 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
           />
         </div>
@@ -340,7 +342,7 @@ export default function SellNewPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[120] bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <ActionBar zIndex="z-[120]">
         <Button
           type="button"
           onClick={submit}
@@ -350,7 +352,7 @@ export default function SellNewPage() {
         >
           {isSaving ? '上架中…' : '上架'}
         </Button>
-      </div>
+      </ActionBar>
 
       {editingImageIndex !== null && (
         <div className="fixed inset-0 z-[2000] bg-black/40 flex items-end" onClick={() => setEditingImageIndex(null)}>

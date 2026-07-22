@@ -19,7 +19,7 @@ export default function ProfileStatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-md border text-[12px] font-bold whitespace-nowrap',
+        'inline-flex items-center px-2 py-0.5 rounded-xl border text-[12px] font-bold whitespace-nowrap',
         config.bg,
         config.color,
         config.border,

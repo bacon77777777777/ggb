@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/trackEvent';
+import CategoryBadge from '@/components/news/CategoryBadge';
+import { timeAgo } from '@/lib/timeAgo';
 
 interface NewsItem {
   id: string;
@@ -34,39 +36,6 @@ const CATEGORIES = [
   { key: 'tcg',      label: '卡牌' },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', general: '綜合',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  ichiban: 'bg-blue-500',
-  gacha:   'bg-orange-500',
-  blindbox:'bg-purple-500',
-  tcg:     'bg-amber-500',
-  general: 'bg-neutral-400',
-};
-
-function CategoryBadge({ category, className }: { category: string; className?: string }) {
-  const color = CATEGORY_COLORS[category] ?? 'bg-neutral-400';
-  const label = CATEGORY_LABELS[category] ?? category;
-  return (
-    <span className={cn(
-      'inline-flex items-center h-[18px] px-1.5 text-[10px] font-bold text-white rounded-[4px] flex-shrink-0',
-      color, className
-    )}>
-      {label}
-    </span>
-  );
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60)    return '剛剛';
-  if (diff < 3600)  return `${Math.floor(diff / 60)} 分鐘前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} 小時前`;
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} 天前`;
-  return new Date(dateStr).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
-}
 
 // ─── 輪播 ──────────────────────────────────────────────────────────────────
 function Carousel({ items }: { items: NewsItem[] }) {

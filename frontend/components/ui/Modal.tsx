@@ -1,3 +1,4 @@
+'use client'
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -11,9 +12,11 @@ interface ModalProps {
   children: React.ReactNode;
   className?: string;
   hideClose?: boolean;
+  /** AlertModal 相容模式：320px 窄框、圓角 2xl、標題置中 */
+  compact?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, className, hideClose }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className, hideClose, compact }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -51,22 +54,46 @@ export function Modal({ isOpen, onClose, title, children, className, hideClose }
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg bg-white dark:bg-neutral-900 rounded-lg shadow-xl animate-in zoom-in-95 duration-200 border border-neutral-100 dark:border-neutral-800",
+          'relative z-10 bg-white dark:bg-neutral-900 shadow-xl animate-in zoom-in-95 duration-200 border border-neutral-100 dark:border-neutral-800',
+          compact
+            ? 'w-full max-w-[320px] rounded-2xl'
+            : 'w-full max-w-lg rounded-xl',
           className
         )}
       >
-        <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">{title}</h3>
-          {!hideClose && (
-            <button
-              onClick={onClose}
-              className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-        <div className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-50">
+        {/* Header */}
+        {title && (
+          compact ? (
+            <div className="h-[50px] flex items-center justify-between px-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0 relative">
+              <div className="absolute inset-x-0 text-center pointer-events-none">
+                <h2 className="text-[17px] font-bold text-neutral-900 dark:text-white">{title}</h2>
+              </div>
+              <div className="w-8" />
+              {!hideClose && (
+                <button
+                  onClick={onClose}
+                  className="w-8 flex justify-end text-neutral-400 z-10 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">{title}</h3>
+              {!hideClose && (
+                <button
+                  onClick={onClose}
+                  className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          )
+        )}
+        {/* Content */}
+        <div className={cn('text-neutral-900 dark:text-neutral-50', compact ? 'p-4' : 'p-4 sm:p-5')}>
           {children}
         </div>
       </div>

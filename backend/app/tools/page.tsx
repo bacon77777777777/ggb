@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState, useCallback, Fragment } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type Prize = {
   name: string
@@ -21,773 +23,640 @@ type ScrapeResult = {
   prizes: Prize[]
 }
 
+type EnrichedFields = {
+  supplier: string | null
+  rarity: number
+  isHot: boolean
+  aiFilledFields: string[]
+}
+
+type WorkItem = {
+  url: string
+  scrapeStatus: 'pending' | 'loading' | 'ok' | 'error'
+  aiStatus: 'pending' | 'loading' | 'ok' | 'skipped'
+  result?: ScrapeResult
+  enriched?: EnrichedFields
+  error?: string
+}
+
+type Phase = 'idle' | 'discovering' | 'scraping' | 'ai-filling' | 'done'
+
+// ─── CSV export ───────────────────────────────────────────────────────────────
+
 const CSV_HEADERS = [
-  '商品名稱',
-  '商品圖片',
-  '價格',
-  '商品類型',
-  '預購商品',
-  '預計出貨時間',
-  '顯示菜單',
-  '狀態',
-  '開賣時間',
-  '稀有度',
-  '上市時間',
-  '代理商',
-  '產品條碼',
-  '熱賣',
-  '獎項1名稱', '獎項1等級', '獎項1數量', '獎項1圖片名稱',
-  '獎項2名稱', '獎項2等級', '獎項2數量', '獎項2圖片名稱',
-  '獎項3名稱', '獎項3等級', '獎項3數量', '獎項3圖片名稱',
-  '獎項4名稱', '獎項4等級', '獎項4數量', '獎項4圖片名稱',
-  '獎項5名稱', '獎項5等級', '獎項5數量', '獎項5圖片名稱',
-  '獎項6名稱', '獎項6等級', '獎項6數量', '獎項6圖片名稱',
-  '獎項7名稱', '獎項7等級', '獎項7數量', '獎項7圖片名稱',
-  '獎項8名稱', '獎項8等級', '獎項8數量', '獎項8圖片名稱',
-  '獎項9名稱', '獎項9等級', '獎項9數量', '獎項9圖片名稱',
-  '獎項10名稱', '獎項10等級', '獎項10數量', '獎項10圖片名稱',
-  '獎項11名稱', '獎項11等級', '獎項11數量', '獎項11圖片名稱',
-  '獎項12名稱', '獎項12等級', '獎項12數量', '獎項12圖片名稱',
-  '獎項13名稱', '獎項13等級', '獎項13數量', '獎項13圖片名稱',
-  '獎項14名稱', '獎項14等級', '獎項14數量', '獎項14圖片名稱',
-  '獎項15名稱', '獎項15等級', '獎項15數量', '獎項15圖片名稱',
-  '獎項16名稱', '獎項16等級', '獎項16數量', '獎項16圖片名稱',
-  '獎項17名稱', '獎項17等級', '獎項17數量', '獎項17圖片名稱',
-  '獎項18名稱', '獎項18等級', '獎項18數量', '獎項18圖片名稱',
-  '獎項19名稱', '獎項19等級', '獎項19數量', '獎項19圖片名稱',
-  '獎項20名稱', '獎項20等級', '獎項20數量', '獎項20圖片名稱',
+  '商品名稱', '商品圖片', '價格', '商品類型', '預購商品', '預計出貨時間',
+  '顯示菜單', '狀態', '開賣時間', '稀有度', '上市時間', '代理商', '產品條碼', '熱賣',
+  ...Array.from({ length: 20 }, (_, i) => [
+    `獎項${i + 1}名稱`, `獎項${i + 1}等級`, `獎項${i + 1}數量`, `獎項${i + 1}圖片名稱`,
+  ]).flat(),
 ]
 
-const escapeCsvCell = (val: string) => {
+const escapeCsv = (val: string) => {
   const s = String(val ?? '')
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-  return s
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-const parseCsv = (input: string) => {
-  const text = input.replace(/^\uFEFF/, '')
-  const rows: string[][] = []
-  let row: string[] = []
-  let cell = ''
-  let inQuotes = false
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    if (inQuotes) {
-      if (ch === '"') {
-        const next = text[i + 1]
-        if (next === '"') {
-          cell += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else {
-        cell += ch
-      }
-      continue
-    }
+const typeToZh = (t: ScrapeResult['typeGuess']) =>
+  ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '抽卡', custom: '自製賞' }[t] || '一番賞')
 
-    if (ch === '"') {
-      inQuotes = true
-      continue
-    }
-    if (ch === ',') {
-      row.push(cell)
-      cell = ''
-      continue
-    }
-    if (ch === '\n') {
-      row.push(cell)
-      cell = ''
-      const normalizedRow = row.map(v => v.replace(/\r$/, ''))
-      if (normalizedRow.some(v => v.trim() !== '')) rows.push(normalizedRow)
-      row = []
-      continue
-    }
-    cell += ch
-  }
-  row.push(cell)
-  const normalizedRow = row.map(v => v.replace(/\r$/, ''))
-  if (normalizedRow.some(v => v.trim() !== '')) rows.push(normalizedRow)
-  return rows
-}
+const normalizeNameForImport = (raw: string) =>
+  String(raw ?? '').replace(/潮玩賞/g, '').replace(/clove/gi, '').replace(/\s+/g, ' ').trim()
 
-const normalizeHeaderKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '')
-
-const typeToZh = (typeGuess: ScrapeResult['typeGuess']) => {
-  const map: Record<ScrapeResult['typeGuess'], string> = {
-    ichiban: '一番賞',
-    blindbox: '盒玩',
-    gacha: '轉蛋',
-    card: '抽卡',
-    custom: '自製賞',
-  }
-  return map[typeGuess] || '一番賞'
-}
-
-const normalizeNameForImport = (raw: string) => {
-  return String(raw ?? '')
-    .replace(/潮玩賞/g, '')
-    .replace(/clove/gi, '')
-    .replace(/賞\s+/g, '賞')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-const normalizeInputUrl = (raw: string) => {
-  let s = raw.trim()
-  if (s.startsWith('`') && s.endsWith('`') && s.length >= 2) {
-    s = s.slice(1, -1).trim()
-  }
-  if (!s) return s
-  let u: URL
-  try {
-    u = new URL(s)
-  } catch {
-    return s
-  }
-
-  return s
-}
-
-const buildImportRow = (data: ScrapeResult) => {
+const buildRow = (item: WorkItem): string[] => {
+  const r = item.result!
+  const e = item.enriched
   const row: string[] = []
-  row.push(normalizeNameForImport(data.name || ''))
-  row.push(data.imageFilename || '')
-  row.push(data.price !== null ? String(data.price) : '')
-  row.push(typeToZh(data.typeGuess))
-  row.push('否')
-  row.push('')
-  row.push('')
-  row.push('上架')
-  row.push('')
-  row.push('')
-  row.push('')
-  row.push('')  // 代理商
-  row.push('')  // 產品條碼
-  row.push('否')
-
-  const prizes = (data.prizes || []).slice(0, 20)
+  row.push(normalizeNameForImport(r.name || ''))
+  row.push(r.imageFilename || '')
+  row.push(r.price != null ? String(r.price) : '')
+  row.push(typeToZh(r.typeGuess))
+  row.push('否')         // 預購
+  row.push('')           // 預計出貨
+  row.push('')           // 顯示菜單
+  row.push('上架')        // 狀態
+  row.push('')           // 開賣時間
+  row.push(e?.rarity != null ? String(e.rarity) : '')  // 稀有度
+  row.push('')           // 上市時間
+  row.push(e?.supplier || '')   // 代理商
+  row.push('')           // 條碼
+  row.push(e?.isHot ? '是' : '否')  // 熱賣
+  const prizes = (r.prizes || []).slice(0, 20)
   for (let i = 0; i < 20; i++) {
     const p = prizes[i]
     row.push(p?.name || '')
     row.push(p?.level || '')
     row.push(p ? String(p.quantity) : '')
-    row.push(p?.imageFilename ? String(p.imageFilename) : '')
+    row.push(p?.imageFilename || '')
   }
   return row
 }
 
-type BatchItem =
-  | { inputUrl: string; status: 'pending' | 'loading'; result?: undefined; error?: undefined }
-  | { inputUrl: string; status: 'ok'; result: ScrapeResult; error?: undefined }
-  | { inputUrl: string; status: 'error'; result?: undefined; error: string }
+const downloadCsv = (items: WorkItem[]) => {
+  const ok = items.filter(i => i.scrapeStatus === 'ok' && i.result?.name && i.result?.price != null)
+  if (ok.length === 0) return
+  const bom = '﻿'
+  const rows = ok.map(i => buildRow(i).map(escapeCsv).join(','))
+  const csv = [CSV_HEADERS.map(escapeCsv).join(','), ...rows].join('\n')
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = '商品匯入範本_競品工具.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+// ─── Competitor list ─────────────────────────────────────────────────────────
+
+const COMPETITORS: { name: string; url: string; note?: string }[] = [
+  { name: 'SlimeToy 台灣', url: 'https://slimetoy.com.tw/' },
+  { name: 'Dopamine Kuji', url: 'https://dopaminekuji.com/' },
+  { name: 'Clove Oripa（日本抽卡）', url: 'https://oripa.clove.jp/zh-TW/oripa/All' },
+  { name: '一番賞 Online（官方）', url: 'https://on-line.1kuji.com/Form/Product/ProductList.aspx' },
+  { name: '一番賞 Official（JP）', url: 'https://1kuji.com/products' },
+  { name: 'OneOne 台灣', url: 'https://www.oneone.com.tw/shop' },
+  { name: 'Wonder Kuji 台灣', url: 'https://wonderkuji.com.tw/kujiland' },
+  { name: '籤引道 台灣', url: 'https://kujibikido.tw/' },
+  { name: 'KujiFlip 台灣', url: 'https://kujiflip.tw/' },
+  { name: '91toy 台灣', url: 'https://www.91toy.com.tw/', note: 'SPA，可能無法爬取' },
+  { name: 'Gashapon 官方（JP）', url: 'https://gashapon.jp/products/' },
+  { name: 'Bandai 官方扭蛋', url: 'https://bandainamco-am.co.jp/zh-CHT/others/gashapon-bandai-officialshop/item/' },
+  { name: 'TCG Japan 寶可夢', url: 'https://tcg-japan.com/pokemon' },
+  { name: 'Konami Premium Kuji', url: 'https://premiumkuji.konami.net/' },
+  { name: 'CityDAO', url: 'https://citydao.world/', note: 'SPA，可能無法爬取' },
+  { name: 'EggBox Kuji', url: 'https://eggboxkuji.com/lottery', note: 'SPA，可能無法爬取' },
+  { name: 'One More Lottery', url: 'https://onemorelottery.tw/home', note: 'SPA，可能無法爬取' },
+  { name: 'SEGA Lucky Kuji Online', url: 'https://www.segaluckykujionline.net/', note: 'SPA，可能無法爬取' },
+]
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ToolsPage() {
-  const [mode, setMode] = useState<'single' | 'batch'>('single')
-  const [url, setUrl] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<ScrapeResult | null>(null)
+  const [inputUrl, setInputUrl] = useState('')
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [progressPct, setProgressPct] = useState(0)
+  const [progressLabel, setProgressLabel] = useState('')
+  const [items, setItems] = useState<WorkItem[]>([])
+  const [globalError, setGlobalError] = useState<string | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
+  const [imageModal, setImageModal] = useState<{ url: string; alt: string } | null>(null)
+  const [showCompetitors, setShowCompetitors] = useState(false)
 
-  const [batchItems, setBatchItems] = useState<BatchItem[]>([])
-  const [batchIsLoading, setBatchIsLoading] = useState(false)
-  const [batchError, setBatchError] = useState<string | null>(null)
-  const [batchIsDownloadingImages, setBatchIsDownloadingImages] = useState(false)
-  const [batchListUrl, setBatchListUrl] = useState('')
-  const [batchIsLoadingList, setBatchIsLoadingList] = useState(false)
+  const isRunning = phase === 'discovering' || phase === 'scraping' || phase === 'ai-filling'
 
-  const canExport = useMemo(() => {
-    if (!data) return false
-    if (!data.name) return false
-    if (data.price === null || Number.isNaN(data.price)) return false
-    const total = (data.prizes || []).reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)
-    return total > 0
-  }, [data])
+  const updateItem = useCallback((url: string, patch: Partial<WorkItem>) => {
+    setItems(prev => prev.map(it => it.url === url ? { ...it, ...patch } : it))
+  }, [])
 
-  const batchStats = useMemo(() => {
-    const total = batchItems.length
-    const ok = batchItems.filter(i => i.status === 'ok').length
-    const errorCount = batchItems.filter(i => i.status === 'error').length
-    const loading = batchItems.filter(i => i.status === 'loading').length
-    return { total, ok, error: errorCount, loading }
-  }, [batchItems])
+  const handleStart = async () => {
+    const target = inputUrl.trim()
+    if (!target || isRunning) return
 
-  const handleScrape = async () => {
-    const target = normalizeInputUrl(url)
-    if (!target || isLoading) return
-    setIsLoading(true)
-    setError(null)
-    setData(null)
-    try {
-      const res = await fetch('/api/tools/scrape', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: target }),
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok) {
-        setError(String(json?.error || '抓取失敗'))
-        return
-      }
-      setData(json?.data || null)
-    } catch (e: any) {
-      setError(e?.message || '抓取失敗')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    setGlobalError(null)
+    setItems([])
+    setExpandedRows(new Set())
+    setPhase('discovering')
+    setProgressPct(5)
+    setProgressLabel('分析網址...')
 
-  const handleExport = () => {
-    if (!data) return
-    const row = buildImportRow(data)
-    const bom = '\uFEFF'
-    const csv = [CSV_HEADERS.map(escapeCsvCell).join(','), row.map(escapeCsvCell).join(',')].join('\n')
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
-    const downloadUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = '商品匯入範本_含獎項_由工具產生.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(downloadUrl)
-  }
-
-  const loadCsvText = (text: string) => {
-    const rows = parseCsv(text)
-    if (rows.length < 2) {
-      setBatchItems([])
-      setBatchError('CSV 內容不足（至少需要表頭＋1 筆資料）')
-      return
-    }
-    const headers = rows[0].map(h => h.trim())
-    const headerKeys = headers.map(normalizeHeaderKey)
-    const urlIdx =
-      headerKeys.findIndex(k => ['商品url', '商品網址', 'url', '網址', '商品連結', '商品連結url', '商品頁', '商品頁面'].includes(k)) ??
-      -1
-
-    const resolvedUrlIdx = urlIdx >= 0 ? urlIdx : headerKeys.findIndex(k => k.includes('url') || k.includes('網址') || k.includes('連結'))
-    if (resolvedUrlIdx < 0) {
-      setBatchItems([])
-      setBatchError('找不到 URL 欄位（建議表頭命名：商品URL）')
-      return
-    }
-
-    const items: BatchItem[] = rows
-      .slice(1)
-      .map(r => normalizeInputUrl(String(r[resolvedUrlIdx] ?? '')))
-      .map(u => u.trim())
-      .filter(Boolean)
-      .map((u) => ({ inputUrl: u, status: 'pending' as const }))
-
-    if (items.length === 0) {
-      setBatchItems([])
-      setBatchError('CSV 沒有可用的 URL')
-      return
-    }
-
-    setBatchError(null)
-    setBatchItems(items)
-  }
-
-  const handleBatchFile = async (file: File) => {
-    setBatchIsLoading(false)
-    setBatchError(null)
-    setBatchItems([])
-    const text = await file.text()
-    loadCsvText(text)
-  }
-
-  const handleLoadSample = async () => {
-    setBatchIsLoading(false)
-    setBatchError(null)
-    setBatchItems([])
-    const res = await fetch('/Thunderbit_fixed_encoding.csv')
-    if (!res.ok) {
-      setBatchError('無法載入範例 CSV')
-      return
-    }
-    const text = await res.text()
-    loadCsvText(text)
-  }
-
-  const loadListUrlToBatch = async () => {
-    const target = normalizeInputUrl(batchListUrl)
-    if (!target || batchIsLoadingList || batchIsLoading) return
-    setBatchIsLoadingList(true)
-    setBatchError(null)
-    setBatchItems([])
+    // Phase 1: discover URLs
+    let urls: string[] = []
     try {
       const res = await fetch('/api/tools/expand-list', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: target, limit: 500 }),
+        body: JSON.stringify({ url: target, limit: 300 }),
       })
       const json = await res.json().catch(() => null)
-      if (!res.ok) {
-        setBatchError(String(json?.error || '載入失敗'))
-        return
+      if (res.ok && Array.isArray(json?.data?.urls) && json.data.urls.length > 0) {
+        urls = json.data.urls
       }
-      const urls = Array.isArray(json?.data?.urls) ? json.data.urls : []
-      if (urls.length === 0) {
-        setBatchError('找不到可用的商品連結')
-        return
-      }
-      setBatchItems(urls.map((u: string) => ({ inputUrl: normalizeInputUrl(String(u)), status: 'pending' as const })))
-    } catch (e: any) {
-      setBatchError(e?.message || '載入失敗')
-    } finally {
-      setBatchIsLoadingList(false)
+    } catch {
+      // ignore, treat as single product
     }
-  }
 
-  const runBatchScrape = async () => {
-    if (batchIsLoading || batchItems.length === 0) return
-    setBatchIsLoading(true)
-    setBatchError(null)
-    const urls = batchItems.map(i => i.inputUrl)
-    setBatchItems(prev => prev.map(it => ({ inputUrl: it.inputUrl, status: 'pending' as const })))
+    if (urls.length === 0) urls = [target]
 
+    setItems(urls.map(u => ({ url: u, scrapeStatus: 'pending', aiStatus: 'pending' })))
+    setProgressPct(20)
+    setProgressLabel(`發現 ${urls.length} 個商品，開始抓取...`)
+    setPhase('scraping')
+
+    // Phase 2: scrape — keep results in a local map to avoid stale closure issues
+    const localResults = new Map<string, ScrapeResult | null>()
     const concurrency = 2
-    let cursor = 0
+    let scrapeIdx = 0
+    let scrapesDone = 0
 
-    const worker = async () => {
+    const scrapeWorker = async () => {
       while (true) {
-        const idx = cursor
-        cursor++
+        const idx = scrapeIdx++
         if (idx >= urls.length) break
-
-        setBatchItems(prev => {
-          const next = [...prev]
-          const cur = next[idx]
-          if (!cur) return prev
-          next[idx] = { inputUrl: cur.inputUrl, status: 'loading' }
-          return next
-        })
-
+        const u = urls[idx]
+        updateItem(u, { scrapeStatus: 'loading' })
         try {
-          const inputUrl = urls[idx]
-          await new Promise(resolve => setTimeout(resolve, 250))
+          await new Promise(r => setTimeout(r, 300))
           const res = await fetch('/api/tools/scrape', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ url: inputUrl }),
+            body: JSON.stringify({ url: u }),
           })
           const json = await res.json().catch(() => null)
           if (!res.ok) {
-            const message = String(json?.error || '抓取失敗')
-            setBatchItems(prev => {
-              const next = [...prev]
-              const cur = next[idx]
-              if (!cur) return prev
-              next[idx] = { inputUrl: inputUrl, status: 'error', error: message }
-              return next
-            })
-            continue
+            updateItem(u, { scrapeStatus: 'error', aiStatus: 'skipped', error: String(json?.error || '抓取失敗') })
+            localResults.set(u, null)
+          } else {
+            localResults.set(u, json?.data || null)
+            updateItem(u, { scrapeStatus: 'ok', result: json?.data })
           }
-          const result = (json?.data || null) as ScrapeResult | null
-          if (!result) throw new Error('回傳格式不正確')
-
-          setBatchItems(prev => {
-            const next = [...prev]
-            const cur = next[idx]
-            if (!cur) return prev
-            next[idx] = { inputUrl: inputUrl, status: 'ok', result }
-            return next
-          })
         } catch (e: any) {
-          const message = e?.message || '抓取失敗'
-          setBatchItems(prev => {
-            const next = [...prev]
-            const cur = next[idx]
-            if (!cur) return prev
-            next[idx] = { inputUrl: urls[idx], status: 'error', error: message }
-            return next
+          updateItem(u, { scrapeStatus: 'error', aiStatus: 'skipped', error: e?.message || '抓取失敗' })
+          localResults.set(u, null)
+        }
+        scrapesDone++
+        setProgressPct(20 + Math.round((scrapesDone / urls.length) * 55))
+        setProgressLabel(`抓取商品資料（${scrapesDone}/${urls.length}）...`)
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, scrapeWorker))
+
+    // Phase 3: AI enrich — read from localResults (no stale closure)
+    setPhase('ai-filling')
+    setProgressPct(75)
+    setProgressLabel('AI 補齊欄位...')
+
+    let aiIdx = 0
+    let aiDone = 0
+
+    const aiWorker = async () => {
+      while (true) {
+        const idx = aiIdx++
+        if (idx >= urls.length) break
+        const u = urls[idx]
+        const result = localResults.get(u) ?? null
+        if (!result) {
+          updateItem(u, { aiStatus: 'skipped' })
+          aiDone++
+          setProgressPct(75 + Math.round((aiDone / urls.length) * 25))
+          continue
+        }
+        updateItem(u, { aiStatus: 'loading' })
+        try {
+          const { name, typeGuess, prizes, sourceHost } = result
+          const res = await fetch('/api/tools/ai-enrich', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name, typeGuess, prizes, sourceHost }),
           })
+          const json = await res.json().catch(() => null)
+          updateItem(u, {
+            aiStatus: json?.data ? 'ok' : 'skipped',
+            enriched: json?.data || undefined,
+          })
+        } catch {
+          updateItem(u, { aiStatus: 'skipped' })
         }
+        aiDone++
+        setProgressPct(75 + Math.round((aiDone / urls.length) * 25))
+        setProgressLabel(`AI 補齊欄位（${aiDone}/${urls.length}）...`)
       }
     }
 
-    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker))
-    setBatchIsLoading(false)
+    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, aiWorker))
+
+    setPhase('done')
+    setProgressPct(100)
+    setProgressLabel('完成')
   }
 
-  const exportBatchImportCsv = () => {
-    const ok = batchItems.filter((i): i is Extract<BatchItem, { status: 'ok' }> => i.status === 'ok')
-    const rows = ok
-      .map(i => i.result)
-      .filter(r => {
-        if (!r?.name) return false
-        if (r.price === null || Number.isNaN(r.price)) return false
-        return true
-      })
-      .map(buildImportRow)
-
-    const bom = '\uFEFF'
-    const csv = [CSV_HEADERS.map(escapeCsvCell).join(','), ...rows.map(r => r.map(escapeCsvCell).join(','))].join('\n')
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
-    const downloadUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = '商品匯入範本_批量_由工具產生.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(downloadUrl)
-  }
-
-  const exportBatchResultCsv = () => {
-    const headers = ['商品URL', '狀態', '商品名稱', '價格', '商品類型', '獎項數量總和', '錯誤']
-    const rows = batchItems.map(i => {
-      if (i.status === 'ok') {
-        const total = (i.result.prizes || []).reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)
-        return [
-          i.inputUrl,
-          '成功',
-          i.result.name || '',
-          i.result.price !== null ? String(i.result.price) : '',
-          typeToZh(i.result.typeGuess),
-          String(total),
-          '',
-        ]
-      }
-      if (i.status === 'error') {
-        return [i.inputUrl, '失敗', '', '', '', '', i.error]
-      }
-      return [i.inputUrl, '待處理', '', '', '', '', '']
+  const toggleRow = (idx: number) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev)
+      next.has(idx) ? next.delete(idx) : next.add(idx)
+      return next
     })
-    const bom = '\uFEFF'
-    const csv = [headers.map(escapeCsvCell).join(','), ...rows.map(r => r.map(escapeCsvCell).join(','))].join('\n')
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
-    const downloadUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = '批量抓取結果.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(downloadUrl)
   }
 
-  const downloadBatchImagesZip = async () => {
-    const ok = batchItems.filter((i): i is Extract<BatchItem, { status: 'ok' }> => i.status === 'ok')
-    const files: Array<{ url: string; filename: string; mode: 'slimetoy' | 'clove' | 'auto' }> = []
-    const seen = new Set<string>()
+  const doneCount = items.filter(i => i.scrapeStatus === 'ok').length
+  const errorCount = items.filter(i => i.scrapeStatus === 'error').length
 
-    for (const it of ok) {
-      const host = it.result.sourceHost || ''
-      const mode = host === 'slimetoy.com.tw' ? 'slimetoy' : host === 'oripa.clove.jp' ? 'clove' : 'auto'
-
-      if (it.result.imageUrl && it.result.imageFilename) {
-        const key = `${it.result.imageUrl}::${it.result.imageFilename}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          files.push({ url: it.result.imageUrl, filename: it.result.imageFilename, mode })
-        }
-      }
-
-      for (const p of it.result.prizes || []) {
-        if (!p.image || !p.imageFilename) continue
-        if (!/^https?:\/\//i.test(p.image)) continue
-        const key = `${p.image}::${p.imageFilename}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        files.push({ url: p.image, filename: p.imageFilename, mode })
-      }
-    }
-
-    if (files.length === 0 || batchIsDownloadingImages) return
-    setBatchIsDownloadingImages(true)
-    try {
-      const res = await fetch('/api/tools/images/download', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ files }),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(String(json?.error || `下載失敗 (${res.status})`))
-      }
-      const blob = await res.blob()
-      const downloadUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = 'images_500x500_webp.zip'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(downloadUrl)
-    } catch (e: any) {
-      setBatchError(e?.message || '下載失敗')
-    } finally {
-      setBatchIsDownloadingImages(false)
-    }
-  }
+  const starLabel = (r: number) => '★'.repeat(r) + '☆'.repeat(5 - r)
 
   return (
-    <AdminLayout pageTitle="工具" pageSubtitle="貼上 URL 或上傳 CSV 批量抓取並匯出">
-      <div className="space-y-6">
+    <AdminLayout pageTitle="競品爬取工具">
+      <div className="space-y-4">
+
+        {/* URL Input */}
         <div className="bg-white rounded-xl border border-neutral-200 p-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              value={inputUrl}
+              onChange={e => setInputUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && void handleStart()}
+              placeholder="貼上競品首頁、列表頁或單一商品頁 URL..."
+              disabled={isRunning}
+              className="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary disabled:opacity-50"
+            />
+            <button
+              onClick={() => setShowCompetitors(v => !v)}
+              disabled={isRunning}
+              className="px-4 py-2 border border-neutral-200 bg-white text-neutral-700 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 shrink-0"
+            >
+              競品列表 {showCompetitors ? '▲' : '▼'}
+            </button>
+            <button
+              onClick={() => void handleStart()}
+              disabled={!inputUrl.trim() || isRunning}
+              className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 shrink-0"
+            >
+              {isRunning ? '讀取中...' : '開始讀取'}
+            </button>
+          </div>
+
+          {/* Competitor list dropdown */}
+          {showCompetitors && (
+            <div className="mt-3 rounded-lg border border-neutral-200 overflow-hidden">
+              {COMPETITORS.map((c, i) => (
+                <div
+                  key={c.url}
+                  className={`flex items-center justify-between px-3 py-2.5 gap-3 ${i > 0 ? 'border-t border-neutral-100' : ''} hover:bg-neutral-50 transition-colors`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-neutral-800">{c.name}</span>
+                      {c.note && <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{c.note}</span>}
+                    </div>
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-neutral-400 hover:text-primary hover:underline truncate block"
+                    >
+                      {c.url}
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setInputUrl(c.url)
+                      setShowCompetitors(false)
+                    }}
+                    className="px-3 py-1 text-xs font-medium bg-neutral-900 text-white rounded-md hover:bg-black transition-colors shrink-0"
+                  >
+                    帶入
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+
+          {/* Progress bar */}
+          {(isRunning || phase === 'done') && (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-neutral-500">
+                <span>{progressLabel}</span>
+                <span>{progressPct}%</span>
+              </div>
+              <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300 rounded-full"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              {/* Phase indicators */}
+              <div className="flex gap-4 text-xs mt-1">
+                {(['discovering', 'scraping', 'ai-filling', 'done'] as Phase[]).map((p, i) => {
+                  const labels = ['1. 發現連結', '2. 抓取資料', '3. AI 補齊', '完成']
+                  const phases: Phase[] = ['discovering', 'scraping', 'ai-filling', 'done']
+                  const currentIdx = phases.indexOf(phase)
+                  const active = i <= currentIdx
+                  return (
+                    <span key={p} className={active ? 'text-primary font-medium' : 'text-neutral-300'}>
+                      {labels[i]}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Global error */}
+        {globalError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+            {globalError}
+          </div>
+        )}
+
+        {/* Results */}
+        {items.length > 0 && (
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            {/* Table header actions */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
+              <div className="text-sm text-neutral-600">
+                共 {items.length} 筆
+                {doneCount > 0 && <span className="ml-2 text-emerald-600 font-medium">成功 {doneCount}</span>}
+                {errorCount > 0 && <span className="ml-2 text-red-500">失敗 {errorCount}</span>}
+              </div>
               <button
-                onClick={() => setMode('single')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${mode === 'single' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'}`}
+                onClick={() => downloadCsv(items)}
+                disabled={doneCount === 0}
+                className="px-4 py-1.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-black transition-colors disabled:opacity-40"
               >
-                單筆
-              </button>
-              <button
-                onClick={() => setMode('batch')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${mode === 'batch' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'}`}
-              >
-                批量（CSV）
+                匯出 CSV（{doneCount} 筆）
               </button>
             </div>
 
-            {mode === 'batch' && (
-              <div className="space-y-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-neutral-800">列表頁 URL（可直接載入商品清單）</label>
-                  <div className="flex flex-col md:flex-row md:items-center gap-2">
-                    <input
-                      value={batchListUrl}
-                      onChange={(e) => setBatchListUrl(e.target.value)}
-                      placeholder="https://slimetoy.com.tw/ 或 https://oripa.clove.jp/zh-TW/oripa/All"
-                      className="w-full md:flex-1 px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      onClick={() => void loadListUrlToBatch()}
-                      disabled={batchIsLoadingList || batchIsLoading}
-                      className="px-4 py-2 bg-neutral-100 text-neutral-900 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium disabled:opacity-50"
-                    >
-                      {batchIsLoadingList ? '載入中...' : '載入商品清單'}
-                    </button>
-                  </div>
-                </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-100 bg-neutral-50">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 w-20">商品圖</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 min-w-[200px]">商品名稱</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">類型</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">價格</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500 min-w-[100px]">代理商</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">稀有度</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">熱賣</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">獎項</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-neutral-500">狀態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, idx) => {
+                    const r = it.result
+                    const e = it.enriched
+                    const isExpanded = expandedRows.has(idx)
+                    const prizeCount = r?.prizes?.length ?? 0
+                    const isAiFilled = (field: string) => e?.aiFilledFields?.includes(field)
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-neutral-800">上傳 CSV（建議含欄位：商品URL）</label>
-                  <div className="flex flex-col md:flex-row md:items-center gap-2">
-                    <input
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0]
-                        if (f) void handleBatchFile(f)
-                      }}
-                      className="w-full md:w-auto"
-                    />
-                    <button
-                      onClick={handleLoadSample}
-                      className="px-3 py-2 bg-neutral-100 text-neutral-900 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium"
-                    >
-                      載入範例（Thunderbit_fixed_encoding.csv）
-                    </button>
-                  </div>
-                </div>
-
-                {batchError && <div className="text-sm text-red-600 whitespace-pre-wrap">{batchError}</div>}
-
-                {batchItems.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm text-neutral-700">
-                        共 {batchStats.total} 筆，成功 {batchStats.ok}，失敗 {batchStats.error}
-                        {batchStats.loading > 0 ? `（處理中 ${batchStats.loading}）` : ''}
-                      </div>
-                      <button
-                        onClick={runBatchScrape}
-                        disabled={batchIsLoading || batchItems.length === 0}
-                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        {batchIsLoading ? '批次讀取中...' : '開始批次讀取'}
-                      </button>
-                      <button
-                        onClick={exportBatchImportCsv}
-                        disabled={batchStats.ok === 0}
-                        className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-black transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        匯出匯入範本 CSV
-                      </button>
-                      <button
-                        onClick={() => void downloadBatchImagesZip()}
-                        disabled={batchStats.ok === 0 || batchIsDownloadingImages}
-                        className="px-4 py-2 bg-neutral-100 text-neutral-900 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        {batchIsDownloadingImages ? '打包圖片中...' : '下載圖片（webp）'}
-                      </button>
-                      <button
-                        onClick={exportBatchResultCsv}
-                        disabled={batchItems.length === 0}
-                        className="px-4 py-2 bg-neutral-100 text-neutral-900 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium disabled:opacity-50"
-                      >
-                        匯出結果 CSV
-                      </button>
-                    </div>
-
-                    <div className="rounded-lg border border-neutral-200 overflow-hidden">
-                      <div className="overflow-auto">
-                        <table className="min-w-full text-sm">
-                          <thead className="bg-white">
-                            <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">URL</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">狀態</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">商品名稱</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">價格</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">獎項</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white">
-                            {batchItems.slice(0, 200).map((it, idx) => {
-                              const statusText =
-                                it.status === 'pending'
-                                  ? '待處理'
-                                  : it.status === 'loading'
-                                    ? '讀取中'
-                                    : it.status === 'ok'
-                                      ? '成功'
-                                      : '失敗'
-                              const name = it.status === 'ok' ? it.result.name : ''
-                              const price = it.status === 'ok' ? (it.result.price ?? '') : ''
-                              const total =
-                                it.status === 'ok'
-                                  ? (it.result.prizes || []).reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)
-                                  : ''
-                              return (
-                                <tr key={`${it.inputUrl}-${idx}`} className="border-b border-neutral-100 last:border-b-0">
-                                  <td className="px-3 py-2 text-neutral-900 max-w-[520px]">
-                                    <a className="text-primary break-all" href={it.inputUrl} target="_blank" rel="noreferrer">
-                                      {it.inputUrl}
-                                    </a>
-                                  </td>
-                                  <td className="px-3 py-2 text-neutral-700">
-                                    {statusText}
-                                    {it.status === 'error' ? (
-                                      <div className="text-xs text-red-600 whitespace-pre-wrap">{it.error}</div>
-                                    ) : null}
-                                  </td>
-                                  <td className="px-3 py-2 text-neutral-900">{name}</td>
-                                  <td className="px-3 py-2 text-neutral-700">{price}</td>
-                                  <td className="px-3 py-2 text-neutral-700">{total}</td>
-                                </tr>
-                              )
-                            })}
-                            {batchItems.length > 200 && (
-                              <tr>
-                                <td className="px-3 py-3 text-neutral-500" colSpan={5}>
-                                  只顯示前 200 筆（匯出不受影響）
-                                </td>
-                              </tr>
+                    return (
+                      <Fragment key={`${it.url}-${idx}`}>
+                        <tr
+                          className="border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50/50 transition-colors"
+                        >
+                          {/* 商品圖 */}
+                          <td className="px-3 py-2">
+                            {r?.imageUrl ? (
+                              <button
+                                onClick={() => setImageModal({ url: r.imageUrl!, alt: r.name })}
+                                className="block w-[72px] h-[72px] rounded-lg overflow-hidden border border-neutral-200 hover:border-primary transition-colors"
+                              >
+                                <img
+                                  src={r.imageUrl}
+                                  alt={r.name}
+                                  className="w-full h-full object-cover"
+                                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                />
+                              </button>
+                            ) : it.scrapeStatus === 'loading' ? (
+                              <div className="w-[72px] h-[72px] rounded-lg bg-neutral-100 animate-pulse" />
+                            ) : (
+                              <div className="w-[72px] h-[72px] rounded-lg bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-300 text-xs">無圖</div>
                             )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                          </td>
 
-            {mode === 'single' && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-neutral-800">商品 URL</label>
-                  <input
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleScrape}
-                    disabled={!url.trim() || isLoading}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium disabled:opacity-50"
-                  >
-                    {isLoading ? '讀取中...' : '開始讀取'}
-                  </button>
-                  <button
-                    onClick={handleExport}
-                    disabled={!canExport}
-                    className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-black transition-colors text-sm font-medium disabled:opacity-50"
-                  >
-                    匯出 CSV
-                  </button>
-                </div>
-                {error && <div className="text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
-                {data && (
-                  <div className="mt-2 space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200">
-                        <div className="text-xs text-neutral-500">商品名稱</div>
-                        <div className="text-sm font-semibold text-neutral-900 break-words">{data.name}</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200">
-                        <div className="text-xs text-neutral-500">價格</div>
-                        <div className="text-sm font-semibold text-neutral-900">{data.price ?? '—'}</div>
-                      </div>
-                      <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200">
-                        <div className="text-xs text-neutral-500">類型</div>
-                        <div className="text-sm font-semibold text-neutral-900">{typeToZh(data.typeGuess)}</div>
-                      </div>
-                    </div>
-
-                    {data.imageUrl && (
-                      <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200">
-                        <div className="text-xs text-neutral-500 mb-2">商品圖片</div>
-                        <a href={data.imageUrl} target="_blank" rel="noreferrer" className="text-sm text-primary break-all">
-                          {data.imageUrl}
-                        </a>
-                      </div>
-                    )}
-
-                    <div className="rounded-lg border border-neutral-200 overflow-hidden">
-                      <div className="px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-sm font-semibold text-neutral-900">
-                        獎項（最多 20 筆）
-                      </div>
-                      <div className="overflow-auto">
-                        <table className="min-w-full text-sm">
-                          <thead className="bg-white">
-                            <tr className="border-b border-neutral-200">
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">名稱</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">等級</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">數量</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white">
-                            {(data.prizes || []).slice(0, 20).map((p, idx) => (
-                              <tr key={`${p.name}-${idx}`} className="border-b border-neutral-100 last:border-b-0">
-                                <td className="px-3 py-2 text-neutral-900">{p.name}</td>
-                                <td className="px-3 py-2 text-neutral-700">{p.level || '—'}</td>
-                                <td className="px-3 py-2 text-neutral-700">{p.quantity}</td>
-                              </tr>
-                            ))}
-                            {(data.prizes || []).length === 0 && (
-                              <tr>
-                                <td className="px-3 py-3 text-neutral-500" colSpan={3}>
-                                  未抓到獎項清單
-                                </td>
-                              </tr>
+                          {/* 商品名稱 */}
+                          <td className="px-3 py-2">
+                            {r?.name ? (
+                              <div>
+                                <a
+                                  href={it.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:underline text-sm font-medium leading-snug"
+                                >
+                                  {r.name}
+                                </a>
+                                <div className="text-xs text-neutral-400 mt-0.5 break-all">{it.url.replace(/^https?:\/\//, '').slice(0, 40)}</div>
+                              </div>
+                            ) : it.scrapeStatus === 'loading' ? (
+                              <div className="h-4 w-32 bg-neutral-100 rounded animate-pulse" />
+                            ) : it.scrapeStatus === 'error' ? (
+                              <div className="text-xs text-red-500">{it.error}</div>
+                            ) : (
+                              <div className="text-xs text-neutral-400">待抓取</div>
                             )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                          </td>
 
-                    {!canExport && (
-                      <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                        匯出 CSV 需要：商品名稱、價格、且獎項數量總和大於 0
-                      </div>
-                    )}
-                  </div>
-                )}
+                          {/* 類型 */}
+                          <td className="px-3 py-2 text-neutral-700 text-xs whitespace-nowrap">
+                            {r ? typeToZh(r.typeGuess) : '—'}
+                          </td>
+
+                          {/* 價格 */}
+                          <td className="px-3 py-2 text-neutral-900 font-medium text-sm whitespace-nowrap">
+                            {r?.price != null ? `${r.price} G` : r ? '—' : ''}
+                          </td>
+
+                          {/* 代理商 */}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {it.aiStatus === 'loading' ? (
+                              <div className="h-3 w-16 bg-neutral-100 rounded animate-pulse" />
+                            ) : e?.supplier ? (
+                              <span className={`text-xs ${isAiFilled('supplier') ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded' : 'text-neutral-700'}`}>
+                                {isAiFilled('supplier') && '✦ '}{e.supplier}
+                              </span>
+                            ) : r ? (
+                              <span className="text-neutral-300 text-xs">—</span>
+                            ) : null}
+                          </td>
+
+                          {/* 稀有度 */}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {it.aiStatus === 'loading' ? (
+                              <div className="h-3 w-12 bg-neutral-100 rounded animate-pulse" />
+                            ) : e?.rarity != null ? (
+                              <span className={`text-xs ${isAiFilled('rarity') ? 'text-amber-600' : 'text-neutral-700'}`}>
+                                {starLabel(e.rarity)}
+                              </span>
+                            ) : r ? (
+                              <span className="text-neutral-300 text-xs">—</span>
+                            ) : null}
+                          </td>
+
+                          {/* 熱賣 */}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {it.aiStatus === 'loading' ? (
+                              <div className="h-3 w-8 bg-neutral-100 rounded animate-pulse" />
+                            ) : e != null ? (
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${e.isHot ? 'bg-red-50 text-red-600' : 'text-neutral-300'}`}>
+                                {e.isHot ? '🔥 是' : '否'}
+                              </span>
+                            ) : r ? null : null}
+                          </td>
+
+                          {/* 獎項 */}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {prizeCount > 0 ? (
+                              <button
+                                onClick={() => toggleRow(idx)}
+                                className="flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                {prizeCount} 項
+                                <span className="text-neutral-400">{isExpanded ? '▲' : '▼'}</span>
+                              </button>
+                            ) : r ? (
+                              <span className="text-xs text-neutral-300">—</span>
+                            ) : null}
+                          </td>
+
+                          {/* 狀態 */}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {it.scrapeStatus === 'pending' && <span className="text-xs text-neutral-400">待處理</span>}
+                            {it.scrapeStatus === 'loading' && <span className="text-xs text-neutral-500 animate-pulse">抓取中...</span>}
+                            {it.scrapeStatus === 'error' && <span className="text-xs text-red-500">失敗</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'loading' && <span className="text-xs text-amber-500">AI補齊...</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'ok' && <span className="text-xs text-emerald-600">完成</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'skipped' && <span className="text-xs text-emerald-600">完成</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'pending' && <span className="text-xs text-emerald-500">✓ 已抓取</span>}
+                          </td>
+                        </tr>
+
+                        {/* Prizes sub-table */}
+                        {isExpanded && r && prizeCount > 0 && (
+                          <tr key={`prizes-${idx}`} className="bg-neutral-50 border-b border-neutral-100">
+                            <td colSpan={9} className="px-4 py-3">
+                              <div className="text-xs font-semibold text-neutral-500 mb-2">獎項清單</div>
+                              <div className="overflow-x-auto">
+                                <table className="text-xs w-full">
+                                  <thead>
+                                    <tr className="text-neutral-400">
+                                      <th className="text-left pb-1 pr-4 font-medium">賞等</th>
+                                      <th className="text-left pb-1 pr-4 font-medium">名稱</th>
+                                      <th className="text-left pb-1 pr-4 font-medium">數量</th>
+                                      <th className="text-left pb-1 font-medium">圖片</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {r.prizes.map((p, pi) => (
+                                      <tr key={`${p.name}-${pi}`} className="border-t border-neutral-100">
+                                        <td className="py-1.5 pr-4 text-neutral-600 font-medium">{p.level || '—'}</td>
+                                        <td className="py-1.5 pr-4 text-neutral-900">{p.name}</td>
+                                        <td className="py-1.5 pr-4 text-neutral-600">{p.quantity}</td>
+                                        <td className="py-1.5">
+                                          {p.image ? (
+                                            <button
+                                              onClick={() => setImageModal({ url: p.image!, alt: p.name })}
+                                              className="block w-9 h-9 rounded overflow-hidden border border-neutral-200 hover:border-primary"
+                                            >
+                                              <img
+                                                src={p.image}
+                                                alt={p.name}
+                                                className="w-full h-full object-cover"
+                                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                              />
+                                            </button>
+                                          ) : (
+                                            <span className="text-neutral-300">—</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* AI fill legend */}
+            {phase === 'done' && (
+              <div className="px-4 py-2.5 border-t border-neutral-100 text-xs text-neutral-400 flex items-center gap-1">
+                <span className="text-amber-600 font-medium">✦</span>
+                <span>橙色標示為 AI 推測值，請自行確認後再匯入</span>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Image modal */}
+      {imageModal && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setImageModal(null)}
+        >
+          <div
+            className="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
+              <span className="text-sm font-medium text-neutral-900 truncate pr-4">{imageModal.alt}</span>
+              <button
+                onClick={() => setImageModal(null)}
+                className="text-neutral-400 hover:text-neutral-700 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 flex items-center justify-center bg-neutral-50">
+              <img
+                src={imageModal.url}
+                alt={imageModal.alt}
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+              />
+            </div>
+            <div className="px-4 py-2.5 border-t border-neutral-100">
+              <a
+                href={imageModal.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary hover:underline break-all"
+              >
+                {imageModal.url}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }

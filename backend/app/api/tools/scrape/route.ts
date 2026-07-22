@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+import Anthropic from '@anthropic-ai/sdk'
 
 type Prize = {
   name: string
@@ -175,11 +176,8 @@ const roundToTens = (v: number) => {
   return Math.round(v / 10) * 10
 }
 
-const cloveJpyToTokenRate = () => {
-  const raw = process.env.CLOVE_JPY_TO_TWD_RATE ?? process.env.CLOVE_JPY_TO_TOKEN_RATE ?? '0.22'
-  const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? n : 0.22
-}
+// Japanese yen → TWD: user standard is JPY ÷ 3
+const jpyToTwd = (jpy: number) => Math.round(jpy / 3)
 
 const sanitizeFileStem = (s: string) => {
   return String(s ?? '')
@@ -468,7 +466,7 @@ const getSlimeToyMasterToken = async () => {
       if (!homeRes.ok) throw new Error(`Fetch failed: ${homeRes.status}`)
       const homeHtml = await readTextWithLimit(homeRes, 600_000)
       const jsUrl =
-        homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/js\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
+        homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/(?:js|assets)\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
       if (!jsUrl) throw new Error('找不到 SlimeToy app.js')
 
       const jsRes = await fetchWithRetry(jsUrl, {
@@ -708,6 +706,52 @@ const scrapeSlimeToyByProductId = async (productId: string, kind?: string): Prom
   }
 }
 
+const extractPrizesWithAI = async (pageText: string, hint: { name?: string; url: string }): Promise<Prize[]> => {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return []
+
+  const client = new Anthropic({ apiKey })
+  const truncated = pageText.slice(0, 8000)
+
+  const prompt = `你是商品資料擷取工具。從以下網頁文字中提取一番賞/轉蛋/盲盒商品的獎項清單。
+商品網址: ${hint.url}
+${hint.name ? `商品名稱: ${hint.name}` : ''}
+
+網頁文字:
+${truncated}
+
+請以 JSON 格式回覆，僅包含以下結構，不要其他說明文字：
+{
+  "prizes": [
+    { "name": "獎項名稱", "level": "賞等(如A賞/B賞)", "quantity": 數量 }
+  ]
+}
+如果找不到獎項清單，prizes 為空陣列。等級格式範例：A賞、B賞、C賞、最後賞、SP賞、隱藏賞。`
+
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const text = msg.content.find(b => b.type === 'text')?.text || ''
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return []
+    const parsed = tryParseJson(jsonMatch[0])
+    if (!parsed?.prizes || !Array.isArray(parsed.prizes)) return []
+    const prizes: Prize[] = parsed.prizes
+      .map((p: any) => ({
+        name: String(p.name ?? '').trim(),
+        level: String(p.level ?? '').trim(),
+        quantity: toNumber(p.quantity) ?? 1,
+      }))
+      .filter((p: Prize) => p.name && p.quantity > 0)
+    return prizes.slice(0, 20)
+  } catch {
+    return []
+  }
+}
+
 const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
   let parsedUrl: URL | null = null
   try {
@@ -780,9 +824,14 @@ const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
       }
     }
 
+    const pageText = stripHtmlToText(html)
+
     if (prizes.length === 0) {
-      const text = stripHtmlToText(html)
-      prizes = extractPrizesFromText(text)
+      prizes = extractPrizesFromText(pageText)
+    }
+
+    if (prizes.length === 0) {
+      prizes = await extractPrizesWithAI(pageText, { name, url })
     }
 
     const sourceHost = parsedUrl?.hostname?.toLowerCase() || null
@@ -794,11 +843,15 @@ const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
     }
     prizes = withImageFilenames(prizes)
     const typeGuess = sourceHost === 'oripa.clove.jp' ? 'card' : guessTypeFromNameOrUrl(name, url)
+    // .tw / .com.tw 是台幣，不換算；其他競品幾乎都是日幣 → ÷3
+    const isTaiwanese = !!(sourceHost?.endsWith('.tw'))
     const finalPrice = (() => {
-      if (sourceHost !== 'oripa.clove.jp') return price
-      const clovePrice = price ?? toNumber(nextData?.props?.pageProps?.oripa?.price)
-      if (clovePrice === null) return null
-      return roundToTens(clovePrice * cloveJpyToTokenRate())
+      if (sourceHost === 'oripa.clove.jp') {
+        const clovePrice = price ?? toNumber(nextData?.props?.pageProps?.oripa?.price)
+        return clovePrice != null ? jpyToTwd(clovePrice) : null
+      }
+      if (!isTaiwanese && price != null) return jpyToTwd(price)
+      return price
     })()
 
     return {

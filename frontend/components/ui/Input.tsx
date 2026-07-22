@@ -23,7 +23,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-neutral-700"
+            className="block text-xs font-semibold text-neutral-500 dark:text-neutral-400"
           >
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
@@ -39,14 +39,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              'w-full px-3 py-2 bg-white border-2 rounded-lg min-h-[42px]',
-              'focus:outline-none focus:ring-2 transition-all duration-200',
-              'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed disabled:border-gray-200',
+              'w-full px-3 py-2 bg-white dark:bg-neutral-900 border rounded-xl',
+              'focus:outline-none focus:ring-1 transition-all duration-200',
+              'text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400',
+              'disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed disabled:border-neutral-200',
               leftIcon ? 'pl-10' : '',
               rightIcon ? 'pr-10' : '',
               error
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                : 'border-neutral-200 hover:border-neutral-300 focus:border-primary focus:ring-primary',
+                : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 focus:border-primary focus:ring-primary',
               className
             )}
             {...props}
@@ -71,7 +72,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <p className="text-xs text-red-500">{error}</p>
         )}
         {helperText && !error && (
-          <p className="text-xs text-gray-500">{helperText}</p>
+          <p className="text-xs text-neutral-500">{helperText}</p>
         )}
       </div>
     )

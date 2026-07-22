@@ -254,7 +254,7 @@ export default function TopupPage() {
                       </div>
                       {plan.bonus > 0 ? (
                         <div className="mt-0.5 md:mt-1 w-full flex justify-center">
-                          <span className="text-[9px] md:text-xs font-black text-accent-emerald bg-accent-emerald/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                          <span className="text-[9px] md:text-xs font-black text-accent-emerald bg-accent-emerald/10 px-1.5 py-0.5 rounded-xl whitespace-nowrap">
                             +{plan.bonus.toLocaleString()} 贈點
                           </span>
                         </div>

@@ -291,7 +291,7 @@ export default function ExchangeManagePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-0 md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-0 md:pt-6">
         <div className="max-w-3xl mx-auto px-2 sm:px-6">
           <div className="py-24 text-center text-sm font-black text-neutral-400">載入中</div>
         </div>
@@ -301,7 +301,7 @@ export default function ExchangeManagePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pt-0 md:pt-6">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-0 md:pt-6">
         <div className="max-w-3xl mx-auto px-2 sm:px-6">
           <div className="py-16 text-center">
             <div className="text-base font-black text-neutral-900 dark:text-white mb-2">登入後才可管理</div>
@@ -322,7 +322,7 @@ export default function ExchangeManagePage() {
 
   return (
     <>
-      <div className="md:hidden fixed inset-0 z-[60] bg-[#F5F5F5] dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
+      <div className="md:hidden fixed inset-0 z-[60] bg-neutral-50 dark:bg-neutral-950 flex flex-col h-[100dvh] overscroll-none">
         <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-2 h-[57px] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <button
@@ -366,7 +366,7 @@ export default function ExchangeManagePage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-[#F5F5F5] dark:bg-neutral-950">
+        <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950">
           <div className="px-2 pt-2 space-y-2">
             {view === 'orders' ? (
               isDataLoading ? (
@@ -560,7 +560,7 @@ export default function ExchangeManagePage() {
         </div>
       </div>
 
-      <div className="hidden md:block min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-28 pt-6">
+      <div className="hidden md:block min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28 pt-6">
         <div className="max-w-3xl mx-auto px-2 sm:px-6">
           <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
             {view === 'orders' ? (

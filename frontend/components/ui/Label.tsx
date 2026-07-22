@@ -28,7 +28,7 @@ export default function Label({
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       {helperText && (
-        <p className="text-xs text-gray-500">{helperText}</p>
+        <p className="text-xs text-neutral-500">{helperText}</p>
       )}
     </div>
   )

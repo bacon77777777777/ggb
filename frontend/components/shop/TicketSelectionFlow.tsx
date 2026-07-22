@@ -131,6 +131,9 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const [isSoldOut, setIsSoldOut] = useState(false);
   const [blindboxPhase, setBlindboxPhase] = useState<'opening' | 'revealed'>('opening');
 
+  // 中間結果畫面「全部開啟」後 → 禁用按鈕 + 2 秒跳轉
+  const [openAllDone, setOpenAllDone] = useState(false);
+
   // FigmaTear mode
   const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
   const [showFigmaTear, setShowFigmaTear] = useState(false);
@@ -495,9 +498,17 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         p_use_points: options?.usePoints || false,
         p_coupon_id: options?.couponId || null
       });
-      
+
       if (error) throw error;
-      
+
+      // Fire-and-forget: 任務/成就追蹤（不阻塞抽獎流程）
+      const drawCount = ticketsToPlay.length;
+      Promise.allSettled([
+        supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: drawCount } }),
+        supabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: drawCount } }),
+        supabase.rpc('check_achievements', { p_user_id: user.id }),
+      ]).catch(() => {});
+
       const baseResults = (data as unknown as PlayIchibanResult[]).map((r) => ({
         grade: r.grade,
         name: r.name,
@@ -675,7 +686,31 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
       return updated;
     });
+    setOpenAllDone(true);
   };
+
+  // 全部開啟後 2 秒：桌機 modal → onTearFinish 觸發 GachaResultModal；手機 → sessionStorage + 導回商品頁
+  useEffect(() => {
+    if (!openAllDone) return;
+    const t = setTimeout(() => {
+      const tearResults: TearResult[] = drawnResults.map((r, i) => ({
+        id: String(i),
+        name: r.name,
+        rarity: r.grade || 'E',
+        grade: r.grade,
+        image_url: r.image_url,
+        is_last_one: r.is_last_one,
+      }));
+      if (onTearFinish) {
+        onTearFinish(tearResults);
+      } else {
+        try { sessionStorage.setItem('ggb_tear_results', JSON.stringify(tearResults)); } catch { /* ignore */ }
+        handleBackToProduct();
+      }
+    }, 2000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAllDone]);
 
   const handleContinueDraw = () => {
     setDrawnResults([]);
@@ -1004,6 +1039,10 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   }
 
   if (drawnResults.length > 0) {
+    // ichiban_tear 主題 + 桌機 modal 模式：FigmaTearScene 負責觸發 onTearFinish，
+    // 跳過這個中間畫面，讓父層在 modal 關閉後顯示 GachaResultModal
+    if (isModal && ichibanTheme === 'ichiban_tear') return null;
+
     const allOpened = drawnResults.every(r => r.isOpened);
     const hasLastOne = drawnResults.some(r => r.is_last_one);
     const normalTickets = drawnResults.filter(r => !r.is_last_one);
@@ -1186,9 +1225,14 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       {/* Bottom Action Bar */}
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="h-16 px-4 md:px-6 flex items-center justify-center w-full">
-          {!allOpened ? (
-            <Button 
-              onClick={handleOpenAll} 
+          {openAllDone ? (
+            // 全部開啟後禁用灰，2 秒後自動跳轉
+            <div className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-300 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 flex items-center justify-center cursor-not-allowed select-none">
+              全部開啟
+            </div>
+          ) : !allOpened ? (
+            <Button
+              onClick={handleOpenAll}
               disabled={!isButtonsReady}
               className="w-full md:w-[320px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-[#3B82F6] hover:bg-[#2563EB] text-white shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -1196,8 +1240,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
             </Button>
           ) : (
             <div className="flex gap-3 w-full justify-center">
-              <Button 
-                onClick={() => router.push('/profile?tab=warehouse')} 
+              <Button
+                onClick={() => router.push('/profile?tab=warehouse')}
                 className="flex-1 md:flex-none md:w-[180px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-neutral-200 hover:bg-neutral-300 text-neutral-700 shadow-sm whitespace-nowrap"
               >
                 前往倉庫
@@ -1205,7 +1249,6 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               <Button
                 onClick={() => {
                   if (tearIsDone) {
-                    // ichiban_tear mode: "顯示籤號" goes back to the tear scene
                     setShowFigmaTear(true);
                   } else {
                     setShowPrizeDetails(!showPrizeDetails);
@@ -1215,18 +1258,18 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               >
                 {tearIsDone ? "顯示籤號" : (showPrizeDetails ? "顯示籤號" : "顯示獎項")}
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   if (showResultsButton) {
                     handleShowFullResults();
                   } else {
                     handleContinueDraw();
                   }
-                }} 
+                }}
                 className={cn(
                   "flex-1 md:flex-none md:w-[180px] h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black shadow-xl transition-colors whitespace-nowrap",
-                  showResultsButton 
-                    ? "bg-neutral-900 hover:bg-neutral-800 text-white shadow-neutral-900/20" 
+                  showResultsButton
+                    ? "bg-neutral-900 hover:bg-neutral-800 text-white shadow-neutral-900/20"
                     : "bg-accent-red hover:bg-accent-red/90 text-white shadow-accent-red/20"
                 )}
               >

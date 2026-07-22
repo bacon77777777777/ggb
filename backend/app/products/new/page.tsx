@@ -226,6 +226,10 @@ export default function NewProductPage() {
       toast('請填寫所有必填欄位並至少添加一個獎項', 'warning')
       return
     }
+    if (!formData.supplierId) {
+      toast('請選擇廠商', 'warning')
+      return
+    }
     setIsSubmitting(true)
     
     try {
@@ -581,13 +585,13 @@ export default function NewProductPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  廠商
+                  廠商 <span className="text-red-500">*</span>
                 </label>
                 <SelectField
                   value={formData.supplierId}
                   onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
                 >
-                  <option value="">— 未指定 —</option>
+                  <option value="">— 請選擇廠商 —</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
                   ))}

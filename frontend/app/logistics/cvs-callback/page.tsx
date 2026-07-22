@@ -48,7 +48,7 @@ export default function CvsCallbackPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white px-6 text-center">
-      <CheckCircle2 className="w-14 h-14 text-emerald-500" />
+      <CheckCircle2 className="w-14 h-14 text-accent-emerald" />
       <h1 className="text-xl font-black text-neutral-900">門市已選擇</h1>
       <div className="bg-neutral-50 rounded-xl p-4 w-full max-w-xs text-left space-y-1">
         <p className="text-sm font-bold text-neutral-900">{storeName}</p>

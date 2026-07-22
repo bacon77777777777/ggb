@@ -197,7 +197,7 @@ export default function SellListPage() {
   }, [listings, query]);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24 transition-colors">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24 transition-colors">
       <div className="fixed top-0 left-0 right-0 z-[100] bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
         <div className="max-w-7xl mx-auto px-2 relative">
           <div className="flex items-center gap-3 h-[57px]">

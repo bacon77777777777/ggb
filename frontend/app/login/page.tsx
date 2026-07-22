@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, ChevronLeft, Gift } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Gift } from 'lucide-react'
+import SimplePageHeader from '@/components/ui/SimplePageHeader'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Input } from '@/components/ui'
-import SolidButton from '@/components/ui/SolidButton'
+import Button from '@/components/ui/Button'
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
@@ -166,6 +167,11 @@ function AuthContent() {
       setIsLoading(false)
       return
     }
+    if (/[一-鿿㐀-䶿]/.test(password)) {
+      setError('密碼不得包含中文字元')
+      setIsLoading(false)
+      return
+    }
 
     const supabase = createClient()
     const { data: updateData, error } = await supabase.auth.updateUser({
@@ -286,12 +292,12 @@ function AuthContent() {
         </div>
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleLogin}
         isLoading={isLoading}
       >
         登入
-      </SolidButton>
+      </Button>
 
       {divider}
       <SocialLoginButtons />
@@ -325,12 +331,12 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep1}
         isLoading={isLoading}
       >
         下一步
-      </SolidButton>
+      </Button>
 
       {divider}
       <SocialLoginButtons />
@@ -357,12 +363,12 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep2}
         isLoading={isLoading}
       >
         下一步
-      </SolidButton>
+      </Button>
 
       <div className="mt-6 text-center">
         {countdown > 0 ? (
@@ -403,23 +409,18 @@ function AuthContent() {
         />
       </div>
 
-      <SolidButton
+      <Button variant="solid" fullWidth size="lg"
         onClick={handleRegisterStep3}
         isLoading={isLoading}
       >
         完成註冊
-      </SolidButton>
+      </Button>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 flex flex-col relative">
-      <div className="fixed top-0 left-0 right-0 h-[56px] flex items-center justify-center bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 z-50 px-4">
-        <button onClick={handleBack} className="absolute left-4 p-2 -ml-2 text-neutral-900 dark:text-white">
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-lg font-black text-neutral-900 dark:text-white">{getTitle()}</h1>
-      </div>
+      <SimplePageHeader title={getTitle()} onBack={handleBack} darkBg="page" />
 
       <div className="flex-1 flex flex-col justify-start items-center pt-[88px] px-6 pb-8 z-10">
         <div className="w-full max-w-sm">
@@ -429,7 +430,7 @@ function AuthContent() {
               "mb-6 p-3 rounded-lg text-sm flex items-center justify-center text-center",
               error || errorParam 
                 ? "bg-red-50 text-red-600 border border-red-100" 
-                : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                : "bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20"
             )}>
               {error || translateAuthError(errorParam) || messageParam}
             </div>

@@ -393,7 +393,7 @@ async function verifyDraw(seed: string, nonce: number, expectedHash: string) {
                       seedHashMatch === null
                         ? 'text-neutral-500 dark:text-neutral-400'
                         : seedHashMatch
-                          ? 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-accent-emerald dark:text-accent-emerald'
                           : 'text-red-500 dark:text-red-400',
                     ].join(' ')}
                   >
@@ -494,7 +494,7 @@ async function verifyDraw(seed: string, nonce: number, expectedHash: string) {
                       txidHashMatch === null
                         ? 'text-neutral-500 dark:text-neutral-400'
                         : txidHashMatch
-                          ? 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-accent-emerald dark:text-accent-emerald'
                           : 'text-red-500 dark:text-red-400',
                     ].join(' ')}
                   >

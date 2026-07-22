@@ -702,7 +702,7 @@ export default function SellDetailPage() {
             <div className="pt-2 sm:pt-8">
               <div className="flex items-center justify-between mb-2 sm:mb-8 px-1">
                 <h2 className="text-base sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">猜你喜歡</h2>
-                <Link href="/" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
+                <Link href="/search" className="text-[13px] sm:text-sm font-black text-primary hover:text-primary/80 uppercase tracking-widest">查看更多</Link>
               </div>
               {isRecommendationsLoading ? (
                 <div className="py-10 text-center text-[13px] font-black text-neutral-400">載入中</div>
@@ -794,7 +794,7 @@ export default function SellDetailPage() {
                     className={cn(
                       "w-full text-left rounded-xl px-3 py-2 flex items-center gap-3 active:scale-[0.99] transition-transform",
                       active
-                        ? "border border-[#EE4D2D] bg-[#EE4D2D]/5"
+                        ? "border border-primary bg-primary/5"
                         : "bg-neutral-50 dark:bg-neutral-800/60"
                     )}
                   >
@@ -862,7 +862,7 @@ export default function SellDetailPage() {
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Image src="/images/gcoin.png" alt="G Coin" width={18} height={18} className="w-[18px] h-[18px] object-contain" />
-                <div className="text-[22px] font-black font-amount text-[#EE4D2D] tracking-tight">
+                <div className="text-[22px] font-black font-amount text-primary tracking-tight">
                   {Math.round(selectedTotalPrice).toLocaleString()}
                 </div>
               </div>
@@ -887,7 +887,7 @@ export default function SellDetailPage() {
               <div className="w-4 h-4">
                 <Image src="/images/gcoin.png" alt="G Coin" width={16} height={16} className="w-full h-full object-contain" />
               </div>
-              <span className="text-[24px] leading-none font-black font-amount text-[#EE4D2D] tracking-tight">
+              <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                 {Math.round(minUnitPrice).toLocaleString()}
               </span>
               <span className="text-[12px] font-black text-neutral-400 dark:text-neutral-500 ml-0.5">起</span>

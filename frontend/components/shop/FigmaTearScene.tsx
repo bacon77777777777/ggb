@@ -34,6 +34,8 @@ export default function FigmaTearScene({
   const [showButton, setShowButton] = useState(initialDone);
   const [showPrize, setShowPrize]  = useState(initialDone);
   const [touched, setTouched]     = useState(false);
+  // 防止 auto-trigger 重複呼叫（rare race condition）
+  const finishedRef = useRef(false);
   const wrapperRef    = useRef<HTMLDivElement>(null);  // .ichiban-flipbook
   const turnReady     = useRef(false);
   const pressStartX   = useRef<number | null>(null);
@@ -68,6 +70,8 @@ export default function FigmaTearScene({
   useEffect(() => {
     if (!done || !isLast) return;
     const t = setTimeout(() => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
       (onOpenAll ?? onBack ?? onDone)?.();
     }, 1000);
     return () => clearTimeout(t);
@@ -349,7 +353,11 @@ export default function FigmaTearScene({
           )}
         </AnimatePresence>
         <button
-          onClick={onOpenAll ?? onBack ?? onDone}
+          onClick={() => {
+            if (finishedRef.current) return;
+            finishedRef.current = true;
+            (onOpenAll ?? onBack ?? onDone)?.();
+          }}
           className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95"
         >
           SKIP

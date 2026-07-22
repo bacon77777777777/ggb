@@ -38,8 +38,8 @@ export default function ProductBadge({ type, className, icon = false }: ProductB
     },
     custom: {
       text: '自製',
-      color: 'bg-emerald-500',
-      shadow: 'shadow-emerald-500/20',
+      color: 'bg-accent-emerald',
+      shadow: 'shadow-accent-emerald/20',
       icon: Gift,
     },
     hot: {

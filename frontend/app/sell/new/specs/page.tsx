@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Button } from '@/components/ui';
+import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -114,7 +114,7 @@ export default function SellNewSpecsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="max-w-7xl mx-auto px-0 pt-2 pb-20">
         <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
@@ -276,11 +276,11 @@ export default function SellNewSpecsPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[120] bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <ActionBar zIndex="z-[120]">
         <Button type="button" onClick={done} className="w-full h-[44px] text-base font-black rounded-xl" variant="danger">
           完成
         </Button>
-      </div>
+      </ActionBar>
     </div>
   );
 }

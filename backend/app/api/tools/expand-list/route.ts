@@ -103,44 +103,135 @@ const absolutize = (base: URL, pathOrUrl: string) => {
   return `${base.origin}/${s}`
 }
 
-const extractSlimeToyUrlsFromHtml = (html: string, base: URL) => {
-  const out = new Set<string>()
-  const patterns = [
-    /href\s*=\s*["'](\/ichiban\/(?:detail|tubes)\/\d+(?:\/[\w/-]+)?)["']/gi,
-    /href\s*=\s*["'](\/gacha\/detail\/\d+(?:\/[\w/-]+)?)["']/gi,
-    /href\s*=\s*["'](\/blindbox\/(?:detail|item)\/\d+(?:\/[\w/-]+)?)["']/gi,
-  ]
-  for (const re of patterns) {
-    let m: RegExpExecArray | null
-    while ((m = re.exec(html))) {
-      const abs = absolutize(base, m[1])
-      if (abs) out.add(abs)
+const NON_PRODUCT_PATH_SEGMENTS = new Set([
+  'login', 'logout', 'register', 'signup', 'sign-up', 'account', 'profile',
+  'cart', 'checkout', 'payment', 'order', 'orders', 'wishlist', 'favorites', 'favourite',
+  'about', 'contact', 'faq', 'help', 'support', 'terms', 'privacy', 'policy', 'legal',
+  'search', 'sitemap', 'feed', 'rss', 'robots',
+  'cdn-cgi', 'assets', 'static', 'images', 'img', 'css', 'js', 'fonts', 'media',
+  'api', 'auth', 'oauth', 'callback', 'webhook',
+  'admin', 'dashboard', 'settings',
+  'top', 'home', 'index',
+])
+
+const extractGenericProductLinks = (html: string, base: URL, limit: number) => {
+  const hrefRe = /href\s*=\s*["']([^"']+)["']/gi
+  const sameOriginLinks: string[] = []
+  let m: RegExpExecArray | null
+
+  while ((m = hrefRe.exec(html))) {
+    const href = m[1].trim()
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) continue
+
+    const abs = absolutize(base, href)
+    if (!abs) continue
+
+    let u: URL
+    try {
+      u = new URL(abs)
+    } catch {
+      continue
+    }
+
+    if (u.origin !== base.origin) continue
+
+    const path = u.pathname
+    if (/\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|css|js|ico|woff|ttf)(\?|$)/i.test(path)) continue
+
+    const segments = path.split('/').filter(Boolean)
+    if (segments.length === 0) continue
+
+    const first = segments[0].toLowerCase()
+    if (NON_PRODUCT_PATH_SEGMENTS.has(first) && segments.length <= 2) continue
+
+    // Keep query string — some sites use ?id= or ?pid= to identify products
+    const fullUrl = u.origin + u.pathname + u.search
+    sameOriginLinks.push(fullUrl)
+  }
+
+  if (sameOriginLinks.length === 0) return []
+
+  // Group links by their first path segment (e.g., /products/, /items/)
+  const patternLinks = new Map<string, Set<string>>()
+  for (const link of sameOriginLinks) {
+    try {
+      const u2 = new URL(link)
+      const segs = u2.pathname.split('/').filter(Boolean)
+      // For query-string sites (path has 1 segment but has search params), use pathname as pattern
+      const pattern = segs.length >= 2 ? `/${segs[0]}/` : u2.pathname
+      if (!patternLinks.has(pattern)) patternLinks.set(pattern, new Set())
+      patternLinks.get(pattern)!.add(link)
+    } catch {
+      continue
     }
   }
-  return Array.from(out)
+
+  // Find patterns with enough distinct product-looking links
+  const ranked = [...patternLinks.entries()]
+    .filter(([, links]) => links.size >= 3)
+    .sort((a, b) => b[1].size - a[1].size)
+
+  if (ranked.length === 0) {
+    // No dominant pattern, return all unique links up to limit
+    return [...new Set(sameOriginLinks)].slice(0, limit)
+  }
+
+  // Collect from top patterns
+  const results: string[] = []
+  for (const [, links] of ranked.slice(0, 3)) {
+    for (const link of links) {
+      if (!results.includes(link)) results.push(link)
+      if (results.length >= limit) return results
+    }
+  }
+  return results
 }
 
 const extractCloveUrlsFromHtml = (html: string, base: URL) => {
   const out = new Set<string>()
-  const ids = new Set<string>()
 
-  const pathRe = /\/zh-TW\/oripa\/All\/[a-z0-9]+/gi
+  // Match product IDs from JSON: "id":"cm..." (at least 20 chars, Cuid2 format)
+  const jsonIdRe = /"id"\s*:\s*"(cm[a-z0-9]{18,})"/gi
   let m: RegExpExecArray | null
+  while ((m = jsonIdRe.exec(html))) {
+    const abs = absolutize(base, `/zh-TW/oripa/All/${m[1]}`)
+    if (abs) out.add(abs)
+  }
+
+  // Also match any /oripa/All/[id] hrefs (with or without lang prefix)
+  const pathRe = /\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?oripa\/All\/(cm[a-z0-9]{18,})/g
   while ((m = pathRe.exec(html))) {
-    const abs = absolutize(base, m[0])
+    const abs = absolutize(base, `/zh-TW/oripa/All/${m[1]}`)
     if (abs) out.add(abs)
   }
 
-  const idRe = /cmm[a-z0-9]+/gi
-  while ((m = idRe.exec(html))) {
-    ids.add(m[0])
-  }
-
-  for (const id of Array.from(ids)) {
-    const abs = absolutize(base, `/zh-TW/oripa/All/${id}`)
-    if (abs) out.add(abs)
-  }
   return Array.from(out)
+}
+
+const fetchCloveListingHtml = async (inputUrl: URL) => {
+  // If user entered the bare homepage or /oripa/All (no lang prefix), fetch the zh-TW listing page directly
+  const isRootOrShort = inputUrl.pathname === '/' || !inputUrl.pathname.includes('/oripa/All/')
+  const fetchUrl = isRootOrShort
+    ? `https://oripa.clove.jp/zh-TW/oripa/All`
+    : inputUrl.toString()
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const res = await fetchWithRetry(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    })
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+    return await readTextWithLimit(res, 2_000_000)
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 const fetchSlimeToyToken = async () => {
@@ -159,7 +250,7 @@ const fetchSlimeToyToken = async () => {
     })
     if (!homeRes.ok) throw new Error(`Fetch failed: ${homeRes.status}`)
     const homeHtml = await readTextWithLimit(homeRes, 600_000)
-    const jsUrl = homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/js\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
+    const jsUrl = homeHtml.match(/https:\/\/slimetoy\.com\.tw\/build\/(?:js|assets)\/app-[A-Za-z0-9_-]+\.js/i)?.[0] || null
     if (!jsUrl) throw new Error('找不到 SlimeToy app.js')
 
     const jsRes = await fetchWithRetry(jsUrl, {
@@ -304,6 +395,9 @@ export async function POST(req: Request) {
     let all: string[] = []
     if (host === 'slimetoy.com.tw') {
       all = await expandSlimeToyHome(effectiveLimit)
+    } else if (host === 'oripa.clove.jp') {
+      const html = await fetchCloveListingHtml(u)
+      all = extractCloveUrlsFromHtml(html, u)
     } else {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 15_000)
@@ -324,7 +418,7 @@ export async function POST(req: Request) {
       } finally {
         clearTimeout(timer)
       }
-      all = host === 'oripa.clove.jp' ? extractCloveUrlsFromHtml(html, u) : extractSlimeToyUrlsFromHtml(html, u)
+      all = extractGenericProductLinks(html, u, effectiveLimit)
     }
     const urls = all.slice(0, effectiveLimit)
 

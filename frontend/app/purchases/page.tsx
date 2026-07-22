@@ -176,12 +176,12 @@ export default function PurchasesPage() {
     if (cancelled) return { label: '未付款', className: 'text-neutral-600 bg-neutral-50 border-neutral-200' };
     if (step === 1) return { label: '待付款', className: 'text-amber-600 bg-amber-50 border-amber-100' };
     if (step === 2 || step === 3) return { label: '待出貨', className: 'text-blue-600 bg-blue-50 border-blue-100' };
-    if (step === 4) return { label: '待收貨', className: 'text-emerald-600 bg-emerald-50 border-emerald-100' };
+    if (step === 4) return { label: '待收貨', className: 'text-accent-emerald bg-accent-emerald border-accent-emerald/20' };
     return { label: '完成', className: 'text-neutral-600 bg-neutral-50 border-neutral-200' };
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-neutral-950 pb-24">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
       <div className="sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
         <div className="space-y-2 pt-0 pb-0 px-2">
           <Tabs value={activeFilter} onValueChange={(v) => setFilter(v as OrderFilter)} className="w-full">
