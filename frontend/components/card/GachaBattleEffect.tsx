@@ -36,7 +36,7 @@ const LOADER_CHARS = [
 function BattleLoadingChars() {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 200);
+    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 400);
     return () => clearInterval(t);
   }, []);
   return (
@@ -50,7 +50,7 @@ function BattleLoadingChars() {
         initial={{ opacity: 0, scale: 0.7 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.7 }}
-        transition={{ duration: 0.08, ease: 'easeOut' }}
+        transition={{ duration: 0.1, ease: 'easeOut' }}
       />
     </AnimatePresence>
   );

@@ -152,8 +152,8 @@ const LOADER_CHARS = [
 function CardLoadingOverlay() {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 200);
-    return () => clearTimeout(t);
+    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 400);
+    return () => clearInterval(t);
   }, []);
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center gap-4">
@@ -167,7 +167,7 @@ function CardLoadingOverlay() {
           initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.7 }}
-          transition={{ duration: 0.08, ease: 'easeOut' }}
+          transition={{ duration: 0.1, ease: 'easeOut' }}
         />
       </AnimatePresence>
       <p className="text-white/60 text-xs font-black tracking-widest">資源下載中</p>
