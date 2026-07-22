@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.07.22f｜2026-07-22｜修復 PC 購買彈窗跑版 + 後台開發日誌版本排序
+
+### PC 購買彈窗跑版（非一番賞類別）
+- `PurchaseConfirmationModal.tsx`：base class 有 `left-0 right-0` 在桌面版與 `left-1/2 w-[480px]` 衝突，導致 modal 撐滿全寬
+- 修正：`left-0 right-0` 移至 mobile 分支，desktop 獨立使用置中定位
+- 桌面版動畫改為 `scale` 進場（mobile 保持 `y` 底部滑入）
+
+### 後台開發日誌版本號排序錯誤
+- `dev-logs/page.tsx`：原本用 `localeCompare` 字串比較，`v2026.07.6` > `v2026.07.22e`（字元 `6` > `2`）
+- 修正：改為按各版本組第一筆的 `created_at` + `id` 降序排列
+- API `dev-logs/route.ts`：加上 `id DESC` 為次要排序，同日版本也能正確排序
+
+---
+
 ## v2026.07.22e｜2026-07-22｜緊急修復：優惠券抽獎 500（c.expires_at 欄位錯誤）
 
 ### 根因

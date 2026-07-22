@@ -12,6 +12,7 @@ export async function GET() {
     .from('dev_logs')
     .select('*')
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])
