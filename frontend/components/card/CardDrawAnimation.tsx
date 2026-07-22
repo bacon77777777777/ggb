@@ -144,6 +144,37 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
   );
 }
 
+// ── IP character cycling loader ───────────────────────────────────────────────
+const LOADER_CHARS = [
+  '/loading/1.svg','/loading/2.svg','/loading/3.svg','/loading/4.svg',
+  '/loading/5.svg','/loading/6.svg','/loading/7.svg','/loading/8.svg',
+];
+function CardLoadingOverlay() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 200);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center gap-4">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={idx}
+          src={LOADER_CHARS[idx]}
+          width={80}
+          height={90}
+          alt=""
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          transition={{ duration: 0.08, ease: 'easeOut' }}
+        />
+      </AnimatePresence>
+      <p className="text-white/60 text-xs font-black tracking-widest">資源下載中</p>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function CardDrawAnimation({
   isOpen,
@@ -196,14 +227,7 @@ export default function CardDrawAnimation({
   if (!isOpen) return null;
 
   if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full" />
-        </motion.div>
-        <p className="text-white font-bold tracking-widest text-lg animate-pulse mt-4">資源下載中...</p>
-      </div>
-    );
+    return <CardLoadingOverlay />;
   }
 
   return (

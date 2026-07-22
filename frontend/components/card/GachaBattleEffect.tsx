@@ -29,6 +29,33 @@ function getCardBackImage(rarity: Rarity) {
   return '/images/card/cardback4.png';
 }
 
+const LOADER_CHARS = [
+  '/loading/1.svg','/loading/2.svg','/loading/3.svg','/loading/4.svg',
+  '/loading/5.svg','/loading/6.svg','/loading/7.svg','/loading/8.svg',
+];
+function BattleLoadingChars() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={idx}
+        src={LOADER_CHARS[idx]}
+        width={80}
+        height={90}
+        alt=""
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.7 }}
+        transition={{ duration: 0.08, ease: 'easeOut' }}
+      />
+    </AnimatePresence>
+  );
+}
+
 export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType }: GachaBattleEffectProps) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [clickCount, setClickCount] = useState(0);
@@ -299,10 +326,8 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
             exit={{ opacity: 0 }}
             className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-black gap-4"
           >
-            <Loader2 className="w-12 h-12 text-white animate-spin" />
-            <p className="text-white font-bold tracking-widest text-sm animate-pulse">
-              資源下載中...
-            </p>
+            <BattleLoadingChars />
+            <p className="text-white/60 text-xs font-black tracking-widest">資源下載中</p>
           </motion.div>
         )}
 
