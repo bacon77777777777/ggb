@@ -14,14 +14,14 @@ const CHARS = [
   '/loading/8.svg', // 貓咪
 ];
 
-const W = 180;
-const H = Math.round(W * 543 / 484); // ≈ 202, maintain aspect ratio
+const W = 80;
+const H = Math.round(W * 543 / 484); // ≈ 90, maintain aspect ratio
 
 export function ProductLoadingScreen() {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % CHARS.length), 2200);
+    const t = setInterval(() => setIdx(i => (i + 1) % CHARS.length), 500);
     return () => clearInterval(t);
   }, []);
 
@@ -35,18 +35,10 @@ export function ProductLoadingScreen() {
             <motion.div
               key={idx}
               style={{ position: 'absolute', inset: 0 }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{
-                scale: {
-                  type: 'spring',
-                  stiffness: 380,
-                  damping: 20,
-                  mass: 0.7,
-                },
-                opacity: { duration: 0.15 },
-              }}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
             >
               {/* gentle float while visible */}
               <motion.img
