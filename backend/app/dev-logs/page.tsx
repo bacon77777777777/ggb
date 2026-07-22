@@ -132,7 +132,13 @@ export default function DevLogsPage() {
     if (!byVersion[v]) byVersion[v] = []
     byVersion[v].push(l)
   })
-  const versionGroups = Object.entries(byVersion).sort(([a], [b]) => b.localeCompare(a))
+  const versionGroups = Object.entries(byVersion).sort(([, logsA], [, logsB]) => {
+    const dateA = logsA[0]?.created_at ?? ''
+    const dateB = logsB[0]?.created_at ?? ''
+    if (dateA !== dateB) return dateB > dateA ? 1 : -1
+    // Same date: sort version strings numerically (handles v2026.07.6 vs v2026.07.22)
+    return logsB[0]?.id - logsA[0]?.id
+  })
 
   const filteredIssues = filterStatus === 'all' ? issues : issues.filter(i => i.status === filterStatus)
 

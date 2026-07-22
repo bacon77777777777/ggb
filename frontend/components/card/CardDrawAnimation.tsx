@@ -64,18 +64,30 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
   const rarity = getRarity(prize);
   const rs = RARITY_STYLE[rarity];
   const isSSR = rarity === 'SSR';
+  // Track drag distance to distinguish real click from drag-end
+  const dragDeltaRef = useRef(0);
 
   const cardW = CW * s;
   const cardH = CH * s;
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-      if (info.offset.x > 35 || info.velocity.x > 100) {
+      dragDeltaRef.current = Math.abs(info.offset.x);
+      if (info.offset.x > 35 || info.velocity.x > 80) {
         animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
       }
     },
     [x, onSwiped],
   );
+
+  const handleClick = useCallback(() => {
+    // Ignore if this click was actually the end of a drag
+    if (dragDeltaRef.current > 10) {
+      dragDeltaRef.current = 0;
+      return;
+    }
+    animate(x, 900, { duration: 0.22, ease: [0.2, 0, 0.4, 1], onComplete: onSwiped });
+  }, [x, onSwiped]);
 
   return (
     <motion.div
@@ -95,11 +107,13 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
         userSelect: 'none',
         WebkitUserSelect: 'none',
       }}
+      draggable={false}
       onDragEnd={handleDragEnd}
+      onClick={handleClick}
       initial={{ scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="cursor-grab active:cursor-grabbing"
+      className="cursor-pointer"
     >
       <div
         style={{
@@ -204,17 +218,20 @@ export default function CardDrawAnimation({
             exit={{ opacity: 0 }}
             className="w-full h-full flex items-center justify-center"
           >
-            <BoosterPackOpenEffect
-              packImage={packImage}
-              onComplete={() => setPhase('swipe')}
-            />
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-end">
-              <button
-                onClick={onGoToWarehouse}
-                className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
-              >
-                SKIP
-              </button>
+            {/* wrapper 寬度與 BoosterPackOpenEffect / Phase 2 swipe 相同，SKIP 定位在此容器內 */}
+            <div className="relative w-screen md:w-[calc(100dvh_*_393_/_852)] h-[100dvh] flex items-center justify-center">
+              <BoosterPackOpenEffect
+                packImage={packImage}
+                onComplete={() => setPhase('swipe')}
+              />
+              <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end">
+                <button
+                  onClick={onGoToWarehouse}
+                  className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
+                >
+                  SKIP
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

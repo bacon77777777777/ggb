@@ -205,13 +205,15 @@ export function PurchaseConfirmationModal({
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
           />
           <motion.div
-            initial={{ opacity: 0, y: '100%' }}
+            initial={{ opacity: 0, y: isDesktop ? 0 : '100%' }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
+            exit={{ opacity: 0, y: isDesktop ? 0 : '100%' }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={cn(
-              "fixed left-0 right-0 z-[61] bg-white dark:bg-[#1a1b1e] border-t border-neutral-200 dark:border-white/10 flex flex-col max-h-[90vh]",
-              isDesktop ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] rounded-2xl border h-auto" : "bottom-0 rounded-t-2xl"
+              "fixed z-[61] bg-white dark:bg-[#1a1b1e] flex flex-col max-h-[90vh] overflow-hidden",
+              isDesktop
+                ? "inset-0 m-auto w-[480px] h-fit rounded-2xl border border-neutral-200 dark:border-white/10 shadow-2xl"
+                : "left-0 right-0 bottom-0 rounded-t-2xl border-t border-neutral-200 dark:border-white/10"
             )}
           >
             {/* Header */}

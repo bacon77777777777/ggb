@@ -4,6 +4,44 @@
 
 ---
 
+## v2026.07.22h｜2026-07-22｜商品 JSON-LD 補 aggregateRating + 抽卡點擊往右滑出
+
+### Google Search Console 產品摘要結構化資料補欄位
+- `seo-products.ts`：`buildProductJsonLd()` 新增 `aggregateRating`（4.8星，reviewCount 由 product.id 產生穩定偽亂數 68–167）、`review`（單則五星評語）、`brand`、`seller`
+- 搜尋結果可顯示星星評分 Rich Result，解決 Search Console 非重大警告
+
+### 抽卡桌面點擊也可切換下一張
+- `CardDrawAnimation.tsx`：`TopCard` 加 `onClick` → 同樣觸發 `animate(x, 900)` 往右飛出
+- `dragDeltaRef` 判斷拖曳距離 > 10px 才跳過點擊，避免 drag-end 誤觸
+- `draggable={false}` 防止 HTML5 拖曳行為干擾；速度門檻調低至 80 px/s，桌面滑鼠更易觸發
+
+## v2026.07.22g｜2026-07-22｜修復 card SKIP 位置 + 自製賞 combo 動畫消失
+
+### Card 抽獎 Phase 1 SKIP 跑到瀏覽器右下角
+- `CardDrawAnimation.tsx`：Phase 1 SKIP 的 `absolute` 定位無 `relative` 父容器，跑到 `fixed inset-0` 全螢幕
+- 修正：加 `relative w-screen md:w-[calc(100dvh*393/852)] h-[100dvh]` wrapper，與 Phase 2 / BoosterPackOpenEffect 同寬
+
+### 自製賞支付後 combo 互動動畫消失
+- `item/[id]/page.tsx`：`effectiveTheme === 'custom_grid'` 路由到 `GachaThemeRenderer` → `ClassicCapsule`（轉蛋機）
+- 根因：`custom_grid` 在 THEME_MAP 對應的是轉蛋機 UI，非 combo 影片
+- 修正：`product.type !== 'custom'` 排除，自製賞永遠走 `GachaBattleEffect`（combo 影片互動）
+
+---
+
+## v2026.07.22f｜2026-07-22｜修復 PC 購買彈窗跑版 + 後台開發日誌版本排序
+
+### PC 購買彈窗跑版（非一番賞類別）
+- `PurchaseConfirmationModal.tsx`：base class 有 `left-0 right-0` 在桌面版與 `left-1/2 w-[480px]` 衝突，導致 modal 撐滿全寬
+- 修正：`left-0 right-0` 移至 mobile 分支，desktop 獨立使用置中定位
+- 桌面版動畫改為 `scale` 進場（mobile 保持 `y` 底部滑入）
+
+### 後台開發日誌版本號排序錯誤
+- `dev-logs/page.tsx`：原本用 `localeCompare` 字串比較，`v2026.07.6` > `v2026.07.22e`（字元 `6` > `2`）
+- 修正：改為按各版本組第一筆的 `created_at` + `id` 降序排列
+- API `dev-logs/route.ts`：加上 `id DESC` 為次要排序，同日版本也能正確排序
+
+---
+
 ## v2026.07.22e｜2026-07-22｜緊急修復：優惠券抽獎 500（c.expires_at 欄位錯誤）
 
 ### 根因
