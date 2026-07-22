@@ -246,7 +246,11 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
 ## 重要慣例
 
 - 所有 migration 執行後 commit 並 push（不需詢問）
-- **推版前必須更新 `DEVLOG.md`**：在對應日期下記錄本次變更的功能、修正、migration，再 commit + push
+- **推版前必須更新 `DEVLOG.md` + 同步 `dev_logs` DB 表**：
+  - 先更新 `DEVLOG.md`（格式：`## v2026.MM.DDx｜YYYY-MM-DD｜標題`）
+  - 再執行 `cd backend && export $(grep -v '^#' .env.local | xargs) && npx tsx scripts/sync_devlog_to_db.ts` 同步至後台「開發紀錄」
+  - 後台開發紀錄（`/dev-logs`）讀的是 `dev_logs` DB 表，**不是** DEVLOG.md 本身，兩邊必須同步
+  - 再 commit + push
 - **推版節奏**：完成功能後不自動推版，等老闆本地測試完、明確說「推版」再推
 - **分支規則（嚴格遵守）**：
   - 老闆說「推版」→ **push `dev`**（對應 STG 環境）
