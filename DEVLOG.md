@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.22d｜2026-07-22｜緊急修復：全站抽獎 500（migration 337 引入）
+
+### 根因
+- migration 337 修正優惠券欄位時，順帶把 `play_gacha` 的商品狀態檢查從 `'active'` 改成 `'selling'`
+- 平台 37 個商品 status 全部為 `'active'`，沒有任何 `'selling'`
+- 導致全站所有抽獎（轉蛋/盒玩/抽卡/自製賞）一律 500 `Product is not available`
+
+### 修復
+- migration `339_fix_play_gacha_status_check.sql`：還原 `IF v_product.status <> 'active'`
+- 已套用至 PROD + STG
+
+---
+
 ## v2026.07.22c｜2026-07-22｜QA 修復（次要 + 警告 + S2/S3）
 
 ### [次要 1] 跑馬燈顯示「未知獎項」
