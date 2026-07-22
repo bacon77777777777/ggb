@@ -10,14 +10,15 @@ import type { Prize } from '@/components/GachaMachine';
 function useCardSounds() {
   const flipRef  = useRef<HTMLAudioElement | null>(null);
   const blingRef = useRef<HTMLAudioElement | null>(null);
+  const ripRef   = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     flipRef.current  = new Audio('/audio/sword1.mp3');
     blingRef.current = new Audio('/audio/u_o8xh7gwsrj-correct_answer_toy_bi-bling-476370.mp3');
-    flipRef.current.preload  = 'auto';
-    blingRef.current.preload = 'auto';
+    ripRef.current   = new Audio('/audio/tanweraman-paper-rip-fast-252617.mp3');
+    [flipRef, blingRef, ripRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
     return () => {
-      [flipRef, blingRef].forEach(r => {
+      [flipRef, blingRef, ripRef].forEach(r => {
         if (r.current) { r.current.pause(); r.current.src = ''; }
       });
     };
@@ -25,8 +26,29 @@ function useCardSounds() {
 
   const playFlip  = () => { if (flipRef.current)  { flipRef.current.currentTime  = 0; void flipRef.current.play().catch(() => {}); } };
   const playBling = () => { if (blingRef.current) { blingRef.current.currentTime = 0; void blingRef.current.play().catch(() => {}); } };
+  const playRip   = () => { if (ripRef.current)   { ripRef.current.currentTime   = 0; void ripRef.current.play().catch(() => {}); } };
 
-  return { playFlip, playBling };
+  const playCharge = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(130, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(720, ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.08);
+      gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.38);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.52);
+      osc.onended = () => ctx.close();
+    } catch {}
+  };
+
+  return { playFlip, playBling, playRip, playCharge };
 }
 
 type CardFlipDirectProps = {
@@ -68,7 +90,8 @@ export default function CardFlipDirect({
 }: CardFlipDirectProps) {
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [shakingId, setShakingId] = useState<string | null>(null);
-  const { playFlip, playBling } = useCardSounds();
+  const { playFlip, playBling, playRip, playCharge } = useCardSounds();
+  const openSoundedRef = useRef(false);
 
   const ranks = useMemo(() => prizes.map(p => normalizeRank(p.grade, p.rarity)), [prizes]);
   const allRevealed = prizes.length > 0 && prizes.every(p => revealedIds.has(p.id));
@@ -77,8 +100,13 @@ export default function CardFlipDirect({
     if (!isOpen) {
       setRevealedIds(new Set());
       setShakingId(null);
+      openSoundedRef.current = false;
+    } else if (!openSoundedRef.current) {
+      openSoundedRef.current = true;
+      playCharge();
+      setTimeout(playRip, 300);
     }
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reveal = (id: string) => setRevealedIds(prev => new Set([...prev, id]));
 
