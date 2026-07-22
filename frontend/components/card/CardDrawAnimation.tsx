@@ -204,17 +204,20 @@ export default function CardDrawAnimation({
             exit={{ opacity: 0 }}
             className="w-full h-full flex items-center justify-center"
           >
-            <BoosterPackOpenEffect
-              packImage={packImage}
-              onComplete={() => setPhase('swipe')}
-            />
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-end">
-              <button
-                onClick={onGoToWarehouse}
-                className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
-              >
-                SKIP
-              </button>
+            {/* wrapper 寬度與 BoosterPackOpenEffect / Phase 2 swipe 相同，SKIP 定位在此容器內 */}
+            <div className="relative w-screen md:w-[calc(100dvh_*_393_/_852)] h-[100dvh] flex items-center justify-center">
+              <BoosterPackOpenEffect
+                packImage={packImage}
+                onComplete={() => setPhase('swipe')}
+              />
+              <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-end">
+                <button
+                  onClick={onGoToWarehouse}
+                  className="shrink-0 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] active:scale-95 transition-transform"
+                >
+                  SKIP
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
