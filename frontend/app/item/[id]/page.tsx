@@ -2396,7 +2396,8 @@ export default function ProductDetailPage() {
 
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
-          if (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack' || effectiveTheme === 'card_flip') {
+          // custom 型別永遠走 GachaBattleEffect（combo 影片互動），不走 GachaThemeRenderer
+          if (product.type !== 'custom' && (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack' || effectiveTheme === 'card_flip')) {
             return (
               <GachaThemeRenderer
                 theme={effectiveTheme || 'gacha_classic'}
