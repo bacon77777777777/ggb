@@ -4,6 +4,28 @@
 
 ---
 
+## v2026.07.22a｜2026-07-22｜音效升級 + 修復儲值交易失敗
+
+### 音效升級（第二輪）
+
+**抽卡 CardFlipDirect**
+- 卡包開啟瞬間：Web Audio 鋸齒波蓄力音（130→720Hz，0.5s）+ 300ms 後 paper-rip 撕裂音
+- 每張牌點擊維持 flip 音（sword1.mp3），SSR bling 不變
+
+**盒玩 BlindboxMachineMode2**
+- 支付確認後 `gacha.mp3` loop 播放（機器運轉音效），落定後自動停
+- 盒子碰地板/堆疊時 Web Audio 合成低頻 thud（90Hz→22Hz，限速 120ms 防連爆）
+- 移除選取盒子音效（恭喜獲得彈窗有自己的音效，不需重複）
+
+### 修復：STG/本地儲值交易失敗 10200074
+
+**原因**：Vercel Preview（dev branch）環境沒有 ECPay 金流 env vars，後台送出 `MerchantID=undefined` 到 ECPay
+
+**修復**：補設 Vercel Preview 環境的四個 ECPay 變數
+- `ECPAY_MERCHANT_ID` / `ECPAY_HASH_KEY` / `ECPAY_HASH_IV` / `ECPAY_API_URL`（測試帳號 3002607 + stage URL）
+
+---
+
 ## v2026.07.21l｜2026-07-21｜音效優化 — 沈浸式/抽卡/盒玩
 
 ### 沈浸式 IchibanTicket（撕紙）
