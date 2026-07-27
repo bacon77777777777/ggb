@@ -99,16 +99,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const glow20 = `rgba(${a},0.20)`
   const glow08 = `rgba(${a},0.08)`
 
-  // Title gradient
-  const tL = isDark
-    ? `rgb(${clamp(ar+(255-ar)*.75)},${clamp(ag+(255-ag)*.75)},${clamp(ab+(255-ab)*.75)})`
-    : `rgb(${clamp(ar*.85)},${clamp(ag*.72)},${clamp(ab*.85)})`
-  const tB = isDark
-    ? `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
-    : vars.accent
-  const tD = isDark
-    ? `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
-    : `rgb(${clamp(ar*.40)},${clamp(ag*.35)},${clamp(ab*.40)})`
+  // Title gradient — always dark/vibrant (hero is always dark)
+  const tL = `rgb(${clamp(ar+(255-ar)*.75)},${clamp(ag+(255-ag)*.75)},${clamp(ab+(255-ab)*.75)})`
+  const tB = `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
+  const tD = `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
   const titleGrad = `linear-gradient(180deg,${tL},${tB} 46%,${tD} 64%,${vars.accent})`
 
   // Theme-sensitive text / surface tokens
@@ -122,10 +116,12 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const textSemi68     = isDark ? 'rgba(255,255,255,.68)' : 'rgba(0,0,0,.68)'
   const textSemi42     = isDark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.42)'
   const overlayFaint   = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
-  const heroVeilStop   = isDark ? 'rgba(10,6,16,.65)' : 'rgba(250,248,255,.65)'
-  const heroSubColor   = isDark ? '#ecd8f0' : '#4a2060'
-  const arasaColor     = isDark ? '#f3e0ff' : '#2a1040'
-  void isDark // topbar is always dark; no theme-dependent token needed
+  // Hero is ALWAYS dark regardless of theme (cinematic section)
+  const heroBg         = isDark ? 'transparent' : '#0a0610'
+  const heroVeilStop   = 'rgba(10,6,16,.65)'
+  const heroSubColor   = '#ecd8f0'
+  const arasaColor     = '#f3e0ff'
+  const scrollColor    = 'rgba(255,255,255,.3)'
   const calloutBg      = isDark ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.05)'
   const calloutColor   = isDark ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.75)'
   const highlightBg    = isDark ? `linear-gradient(180deg,${cardDark},rgba(0,0,0,.5))` : `linear-gradient(180deg,${cardDark},rgba(255,255,255,.5))`
@@ -136,7 +132,6 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const chipBg         = isDark ? 'rgba(0,0,0,.3)' : 'rgba(0,0,0,.08)'
   const stickyBg       = isDark ? 'linear-gradient(180deg,transparent,rgba(0,0,0,.88) 28%)' : 'linear-gradient(180deg,transparent,rgba(255,255,255,.92) 28%)'
   const imgPlaceholder = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
-  const scrollColor    = isDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.25)'
 
   // Gold — fixed
   const GOLD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)'
@@ -146,17 +141,17 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv{background:${vars.bg};color:${textColor};min-height:100svh;overflow-x:hidden;
       font-family:'Noto Sans JP',system-ui,sans-serif;}
     .lpv-topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;
-      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;
-      background:rgba(10,6,16,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
-    .lpv-topbtn{pointer-events:auto;margin:8px;width:36px;height:36px;border-radius:999px;
-      background:rgba(255,255,255,.12);
+      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;}
+    .lpv-topbtn{pointer-events:auto;margin:10px;width:38px;height:38px;border-radius:999px;
+      background:rgba(8,4,14,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
       display:flex;align-items:center;justify-content:center;color:#fff;
       border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;}
     .lpv-topbtn:hover{opacity:.75;}
 
     /* ── HERO ── */
     .lpv-hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;
-      justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;}
+      justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;
+      background-color:${heroBg};}
     .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(110% 70% at 50% 14%,${borderStrong},transparent 52%),
