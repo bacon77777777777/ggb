@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
+import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import NavbarLayout from './NavbarLayout';
 
@@ -34,6 +34,29 @@ function NavbarInner() {
   const pathname = usePathname();
   
   const [supabase] = useState(() => createClient());
+  const [bellUnread, setBellUnread] = useState(false);
+
+  useEffect(() => {
+    const LAST_SEEN_KEY = 'ggb:bell:last_seen';
+    const check = async () => {
+      try {
+        const res = await fetch('/api/announcements?limit=1');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) return;
+        const latestAt = data[0]?.published_at;
+        if (!latestAt) return;
+        const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+        if (!lastSeen || new Date(latestAt) > new Date(lastSeen)) {
+          setBellUnread(true);
+        }
+      } catch {}
+    };
+    check();
+    const handler = () => setBellUnread(false);
+    window.addEventListener('ggb:announcementsRead', handler);
+    return () => window.removeEventListener('ggb:announcementsRead', handler);
+  }, []);
 
   // Check if we just logged in
   const isLoginRedirect = searchParams.get('login_success') === 'true';
@@ -59,7 +82,6 @@ function NavbarInner() {
     pathname === '/exchange' ||
     pathname === '/news' ||
     pathname === '/ranking' ||
-    pathname === '/check-in' ||
     (pathname === '/profile' && !activeTab);
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
@@ -72,6 +94,7 @@ function NavbarInner() {
     ? `/${productType}/rules`
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
+  const isAnnouncementDetailPage = /^\/announcements\/[^/]+$/.test(pathname);
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
     pathname !== '/exchange/new' && pathname !== '/exchange/manage' && /^\/exchange\/[^/]+$/.test(pathname);
@@ -269,7 +292,6 @@ function NavbarInner() {
     if (pathname === '/market') return '交換';
     if (pathname === '/ranking') return '排行榜';
     if (pathname.startsWith('/fairness')) return '公平性驗證';
-    if (pathname === '/check-in') return '每日簽到';
     if (pathname.endsWith('/select')) return '選擇籤號';
     if (pathname.endsWith('/confirm')) return '確認購買';
     if (isSellDetailPage) return productName || '販售';
@@ -282,6 +304,8 @@ function NavbarInner() {
     if (pathname === '/privacy') return '隱私權政策';
     if (pathname === '/return-policy') return '退換貨資訊';
     if (pathname === '/news') return '最新情報';
+    if (pathname === '/announcements') return '公告';
+    if (pathname.startsWith('/announcements/')) return '公告詳情';
     if (isExchangeDetailPage) return exchangeTitle;
     if (isMessagesDetailPage) return messagesTitle;
     
@@ -295,7 +319,6 @@ function NavbarInner() {
       if (tab === 'follows') return '我的關注';
       if (tab === 'settings') return '設定';
       if (tab === 'market') return '交易所管理';
-      if (tab === 'check-in') return '每日簽到';
       return '個人中心';
     }
     return '';
@@ -549,11 +572,11 @@ function NavbarInner() {
   return (
     <>
       <NavbarLayout
-        innerClassName={isProductDetailPage ? "max-w-[960px] !px-4" : undefined}
+        innerClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "max-w-[960px] !px-4" : undefined}
         className={cn(
           isProductDetailPage && "fixed left-0 right-0",
           (
-            (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market', 'check-in'].includes(activeTab as string))) ||
+            (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
             isSearchPage ||
             isExchangeManagePage ||
@@ -562,10 +585,10 @@ function NavbarInner() {
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
-        leftClassName={isProductDetailPage ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
+        leftClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
         left={
           <>
-            {isProductDetailPage ? (
+            {(isProductDetailPage || isAnnouncementDetailPage) ? (
               showBackButton && (
                 <button
                   onClick={handleBack}
@@ -599,7 +622,7 @@ function NavbarInner() {
               </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", isProductDetailPage ? "hidden" : (!showLogo && "hidden md:flex"))}>
+            <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementDetailPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src="/images/20260629/logo.svg"
@@ -612,7 +635,7 @@ function NavbarInner() {
               </div>
             </Link>
 
-            <div className={cn("hidden", !isProductDetailPage && "md:flex items-center gap-3 lg:gap-5")}>
+            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementDetailPage) && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(
@@ -625,6 +648,23 @@ function NavbarInner() {
                 <span>回首頁</span>
                 {pathname === '/' && (
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
+                )}
+              </Link>
+              <Link
+                href="/announcements"
+                className={cn(
+                  "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
+                  pathname === '/announcements' || pathname.startsWith('/announcements/')
+                    ? "text-primary"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
+                )}
+              >
+                <span>公告</span>
+                {(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
+                  <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
+                )}
+                {bellUnread && !(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
+                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-accent-red" />
                 )}
               </Link>
               <Link
@@ -725,6 +765,17 @@ function NavbarInner() {
 
             {/* news detail page 的返回/分享由文章頁自身的 fixed nav 處理，Navbar 不重複顯示 */}
 
+            {/* Announcement Detail Share */}
+            {isAnnouncementDetailPage && (
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95"
+                aria-label="分享"
+              >
+                <Share2 className="w-5 h-5 stroke-[2]" />
+              </button>
+            )}
+
             {/* Product Page Actions */}
             {isProductDetailPage && (
               <div className="flex items-center gap-0.5">
@@ -747,6 +798,19 @@ function NavbarInner() {
                   <Heart className={cn("w-5 h-5 stroke-[2]", isProductFollowed && "fill-current")} />
                 </button>
               </div>
+            )}
+
+            {isHomePage && (
+              <Link
+                href="/announcements"
+                className="relative p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform md:hidden"
+                aria-label="公告"
+              >
+                <Bell className="w-5 h-5 stroke-[2]" />
+                {bellUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-red border border-white dark:border-neutral-950" />
+                )}
+              </Link>
             )}
 
             {isAuthenticated && isHomePage && (

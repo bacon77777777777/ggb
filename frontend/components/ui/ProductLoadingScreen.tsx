@@ -1,12 +1,67 @@
 'use client';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// 8 individual IP character SVGs, each 484×543 (viewBox)
+const CHARS = [
+  '/loading/1.svg', // 轉蛋機
+  '/loading/2.svg', // 兔兔
+  '/loading/3.svg', // 柴犬
+  '/loading/4.svg', // 恐龍
+  '/loading/5.svg', // 企鵝
+  '/loading/6.svg', // 小熊
+  '/loading/7.svg', // 貴賓狗
+  '/loading/8.svg', // 貓咪
+];
+
+const W = 80;
+const H = Math.round(W * 543 / 484); // ≈ 90, maintain aspect ratio
 
 export function ProductLoadingScreen() {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % CHARS.length), 400);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-      <div className="flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="text-xs font-black tracking-widest">載入商品中...</span>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-neutral-950">
+      <div className="flex flex-col items-center gap-6">
+
+        {/* Character */}
+        <div style={{ width: W, height: H, position: 'relative' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx}
+              style={{ position: 'absolute', inset: 0 }}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.1, ease: 'easeOut' }}
+            >
+              {/* gentle float while visible */}
+              <motion.img
+                src={CHARS[idx]}
+                width={W}
+                height={H}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <motion.span
+          className="text-xs font-black tracking-widest text-neutral-400 dark:text-neutral-500"
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          載入中
+        </motion.span>
+
       </div>
     </div>
   );

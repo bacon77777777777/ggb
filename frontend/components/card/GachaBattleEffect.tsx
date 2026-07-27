@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
 
 type Rarity = 'SSR' | 'SR' | 'R' | 'N';
 
@@ -27,6 +27,33 @@ function getCardBackImage(rarity: Rarity) {
   if (rarity === 'SR') return '/images/card/cardback2.png';
   if (rarity === 'R') return '/images/card/cardback3.png';
   return '/images/card/cardback4.png';
+}
+
+const LOADER_CHARS = [
+  '/loading/1.svg','/loading/2.svg','/loading/3.svg','/loading/4.svg',
+  '/loading/5.svg','/loading/6.svg','/loading/7.svg','/loading/8.svg',
+];
+function BattleLoadingChars() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % LOADER_CHARS.length), 400);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={idx}
+        src={LOADER_CHARS[idx]}
+        width={80}
+        height={90}
+        alt=""
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.7 }}
+        transition={{ duration: 0.1, ease: 'easeOut' }}
+      />
+    </AnimatePresence>
+  );
 }
 
 export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType }: GachaBattleEffectProps) {
@@ -299,10 +326,14 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
             exit={{ opacity: 0 }}
             className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-black gap-4"
           >
-            <Loader2 className="w-12 h-12 text-white animate-spin" />
-            <p className="text-white font-bold tracking-widest text-sm animate-pulse">
-              資源下載中...
-            </p>
+            <BattleLoadingChars />
+            <motion.p
+              className="text-white/60 text-xs font-black tracking-widest"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              載入中
+            </motion.p>
           </motion.div>
         )}
 
@@ -316,9 +347,15 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
               className="relative z-10 w-full h-full flex items-center justify-center bg-black"
             >
               {isLoadingVideo && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/50 backdrop-blur-sm">
-                  <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
-                  <p className="text-white font-bold tracking-widest">載入動畫中...</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black gap-4">
+                  <BattleLoadingChars />
+                  <motion.p
+                    className="text-white/60 text-xs font-black tracking-widest"
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    載入中
+                  </motion.p>
                 </div>
               )}
               <video

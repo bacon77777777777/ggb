@@ -81,8 +81,11 @@ function MobileTabbarInner() {
     { name: '會員', href: '/profile' },
   ];
 
-  const handleTabClick = () => {
+  const handleTabClick = (href: string) => {
     hapticLight();
+    if (href === '/' && pathname === '/') {
+      window.dispatchEvent(new CustomEvent('ggb:resetHome'));
+    }
   };
 
   return (
@@ -101,7 +104,7 @@ function MobileTabbarInner() {
                 key={tab.href}
                 href={tab.href}
                 className="flex flex-col items-center justify-end pb-1.5 gap-0 h-full relative"
-                onClick={() => handleTabClick()}
+                onClick={() => handleTabClick(tab.href)}
               >
                 <motion.div
                   whileTap={{ scale: 0.85 }}

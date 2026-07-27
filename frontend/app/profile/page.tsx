@@ -24,7 +24,7 @@ import {
   User,
   ChevronDown,
   X,
-  Loader2,
+  Loader2, // used in button inline states
   CreditCard,
   Copy,
   Ticket,
@@ -49,8 +49,8 @@ import Image from 'next/image';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { IpLoader } from '@/components/ui/IpLoader';
 
-import DailyCheckInTab from '@/components/profile/DailyCheckInTab';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -222,7 +222,6 @@ interface TopupHistoryItem {
 }
 
 type TabType =
-  | 'check-in'
   | 'warehouse'
   | 'market'
   | 'delivery'
@@ -934,14 +933,6 @@ function ProfileContent() {
   }, [topupHistory, activeTopupTimeTab]);
 
   const handleTabChange = (tab: TabType) => {
-    if (tab === 'check-in') {
-      showAlert({
-        title: '開發中',
-        message: '頁面開發中',
-        type: 'info',
-      });
-      return;
-    }
     setActiveTab(tab);
     setIsMobileDetailOpen(true);
     router.push(`/profile?tab=${tab}`, { scroll: false });
@@ -966,7 +957,6 @@ function ProfileContent() {
     if (
       tab &&
       [
-        'check-in',
         'warehouse',
         ...(flags.market ? (['market'] as const) : []),
         'delivery',
@@ -2200,7 +2190,7 @@ function ProfileContent() {
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <IpLoader />
       </div>
     );
   }
@@ -2246,12 +2236,6 @@ function ProfileContent() {
     }
 
     switch (activeTab) {
-      case 'check-in':
-        return (
-          <div className="p-3 lg:p-8">
-            <DailyCheckInTab />
-          </div>
-        );
       case 'warehouse':
         return (
           <>
@@ -2365,7 +2349,7 @@ function ProfileContent() {
                 }}
               >
                 {isLoadingData ? (
-                  <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-10"><IpLoader /></div>
                 ) : activeWarehouseTab === 'all' ? (
                   filteredWarehouseItems.length === 0 ? (
                     <div className="py-20 text-center text-neutral-400">
@@ -6792,7 +6776,7 @@ function ProfileContent() {
 
               <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 overflow-hidden">
               <div className="space-y-1">
-                {navItems.filter(item => item.id !== 'check-in' && item.id !== 'settings' && item.id !== 'market').map((item) => (
+                {navItems.filter(item => item.id !== 'settings' && item.id !== 'market').map((item) => (
                   <button 
                     key={item.id} 
                     onClick={() => {

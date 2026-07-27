@@ -4,6 +4,56 @@
 
 ---
 
+## v2026.07.27c｜2026-07-27｜公告系統（前後台完整功能）
+
+### 新功能：公告管理系統
+- **後台**：`/announcements` — 公告管理 CRUD（新增/編輯/刪除/上下架/置頂），分類：消息/活動/系統
+- **後台 API**：`/api/admin/announcements` GET/POST，`/api/admin/announcements/[id]` PUT/DELETE
+- **前台列表**：`/announcements` — Tab 篩選（所有/消息/活動/系統）、swipe 換頁、bell badge 提示
+- **前台內頁**：`/announcements/[id]` — 商品詳情頁同款頂部導航（←回、分享圖示）、內容自動 linkify
+- **前台 API**：`/api/announcements` — 支援 `?id=` 單筆或列表，RLS 只回傳 is_active=true
+- **Navbar 鈴鐺**：行動端首頁顯示 🔔，有未讀公告顯示紅點（localStorage 記錄 last_seen）
+- **DB**：migration 341（建表）+ 342（分類簡化），PROD + STG 同步完成
+
+---
+
+## v2026.07.27b｜2026-07-27｜Loading 文字統一改「載入中」浮動效果
+
+### Loading 文字優化
+- 所有 loading 畫面文字統一為「載入中」（ProductLoadingScreen / CardDrawAnimation / GachaBattleEffect）
+- 移除 ProductLoadingScreen 三個彈跳圓點，改為文字上下浮動（`y: 0 → -6 → 0`，0.8s loop）
+
+---
+
+## v2026.07.27a｜2026-07-27｜IP 角色載入動畫 STG 修正 + 多項 UX 優化
+
+### 修正 Staging 載入 IP 圖丟失
+- `frontend/public/loading/1-8.svg` + `ip.svg` 補入 git，STG 環境不再缺圖
+
+### 首頁 Tab 重複點擊回綜合最上方
+- `MobileTabbar.tsx`：點首頁 Tab 時若已在 `/`，派送 `ggb:resetHome` 事件
+- `app/page.tsx`：監聽 `ggb:resetHome`，重設 `activePrimaryTab='all'` 並滾回頂部
+
+### 轉蛋音效重疊修正（GachaMachineVisual / Mode2 / Mode3 / Mode4）
+- 音效移出 `applyShakeImpulseRef`，改在 shake 週期開始時播一次
+- `shakeRepeats=2` 時只播一次 `gacha.mp3`，不再因兩次 impulse 重疊播音
+
+### 新聞留言第一篇有留言 + 加入酸民留言
+- `generateAndSeedComments` 改 `await`，並移至 `seed_bot_engagement_for_article` 前執行，避免 bot 先種留言導致 AI 留言跳過
+- 留言 prompt 新增 70% 機率含 1 則負面/酸民留言（「沒興趣」「普通」「又貴了」等）
+
+---
+
+## v2026.07.22i｜2026-07-22｜Loading 頁面 IP 角色彈跳動畫
+
+### 載入頁面全新 IP 角色動效
+- `ProductLoadingScreen.tsx`（含 `app/loading.tsx`）：移除舊 Loader2 spinner，改用 `/loading/ip.svg` 精靈圖展示四隻 IP 角色（轉蛋機、兔兔、企鵝、小熊）
+- 每 2 秒切換一隻，切換時角色「壓扁成餅→彈回」（scaleY: 0.08 → spring bounce），transformOrigin: bottom，視覺像從地面彈起
+- 待機時整體角色上下浮動（-9px 週期 2.5s）
+- 下方橘色小圓點指示目前角色位置，bouncing dots 動態省略號
+
+---
+
 ## v2026.07.22h｜2026-07-22｜商品 JSON-LD 補 aggregateRating + 抽卡點擊往右滑出
 
 ### Google Search Console 產品摘要結構化資料補欄位

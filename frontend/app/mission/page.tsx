@@ -6,7 +6,7 @@ import { MissionService } from '@/services/mission';
 import MissionFrame, { Mission } from '@/components/mission/MissionFrame';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
-import { Loader2 } from 'lucide-react';
+import { IpLoader } from '@/components/ui/IpLoader';
 import { useRouter } from 'next/navigation';
 
 export default function MissionPage() {
@@ -216,7 +216,7 @@ export default function MissionPage() {
   if (loading && missions.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neutral-50">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+        <IpLoader />
       </div>
     );
   }

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { IpLoader } from '@/components/ui/IpLoader';
 
 export interface ResultPrize {
   id: string;
@@ -137,8 +138,7 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
             {/* Loading View */}
             {isLoading || !showContent ? (
                <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-                 <Loader2 className="w-8 h-8 text-neutral-500 dark:text-neutral-400 animate-spin" />
-                 <p className="mt-4 text-sm font-bold text-neutral-500 dark:text-neutral-400">正在載入抽獎結果...</p>
+                 <IpLoader />
                </div>
             ) : (
               /* Result View */
