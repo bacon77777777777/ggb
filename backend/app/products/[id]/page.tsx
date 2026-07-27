@@ -31,13 +31,55 @@ import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import { useRouter, useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { generateTXID, calculateTXIDHash } from '@/utils/drawLogicClient'
 import { supabase } from '@/lib/supabaseClient'
 import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
+
+function CategoryMultiSelect({ categories, selected, onChange }: {
+  categories: { id: string; name: string }[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
+  const label = selected.length === 0 ? '選擇分類' : selected.map(id => categories.find(c => c.id === id)?.name).filter(Boolean).join('、')
+  return (
+    <div className="col-span-2 relative" ref={ref}>
+      <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單</label>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm hover:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary transition-colors text-left">
+        <span className={selected.length === 0 ? 'text-neutral-400' : 'text-neutral-800 truncate'}>{label}</span>
+        <span className="text-neutral-400 ml-2 flex-none">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">
+          {categories.map(cat => (
+            <label key={cat.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 cursor-pointer">
+              <input type="checkbox" checked={selected.includes(cat.id)} onChange={() => toggle(cat.id)}
+                className="w-4 h-4 accent-primary rounded" />
+              <span className="text-sm text-neutral-700">{cat.name}</span>
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <div className="px-3 py-1.5 border-t border-neutral-100">
+              <button type="button" onClick={() => onChange([])} className="text-xs text-red-400 hover:text-red-600">清除全部</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function EditProductPage() {
   const { toast } = useToast()
@@ -73,6 +115,7 @@ export default function EditProductPage() {
     txidHash: '',
     seed: '',
     selectedTagIds: [] as string[],
+    selectedCategoryIds: [] as string[],
   })
 
   const isLastOneLevel = (level: string) => {
@@ -132,6 +175,7 @@ export default function EditProductPage() {
   const [productCode, setProductCode] = useState<string>('')
   const [deletedPrizeIds, setDeletedPrizeIds] = useState<string[]>([])
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
+  const [allCategories, setAllCategories] = useState<Array<{ id: string; name: string }>>([])
 
   // State for small item library
   const [showSmallItemLibrary, setShowSmallItemLibrary] = useState(false)
@@ -145,6 +189,14 @@ export default function EditProductPage() {
     fetch('/api/admin/suppliers')
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setSuppliers(data) })
+      .catch(() => {})
+  }, [])
+
+  // Fetch categories (分類清單)
+  useEffect(() => {
+    fetch('/api/admin/categories')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAllCategories(data) })
       .catch(() => {})
   }, [])
 
@@ -271,8 +323,11 @@ export default function EditProductPage() {
             .from('product_tag_links')
             .select('tag_id')
             .eq('product_id', productId)
-
           const tagIds = tags ? tags.map((t: any) => t.tag_id) : []
+
+          // Fetch existing category memberships (分類清單)
+          const catRes = await fetch(`/api/admin/products/${productId}/categories`)
+          const categoryIds: string[] = catRes.ok ? await catRes.json() : []
 
           const loaded = {
             name: product.name,
@@ -293,6 +348,7 @@ export default function EditProductPage() {
             barcode: product.barcode || '',
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
+            selectedCategoryIds: categoryIds,
             machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '',
@@ -491,6 +547,13 @@ export default function EditProductPage() {
       } catch (err) {
         console.error('Failed to broadcast product updates', err)
       }
+
+      // Save category memberships (分類清單)
+      await fetch(`/api/admin/products/${productId}/categories`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryIds: formData.selectedCategoryIds }),
+      })
 
       addLog('修改商品', '商品管理', `修改商品「${formData.name}」`, 'success')
       router.push('/products')
@@ -725,12 +788,20 @@ export default function EditProductPage() {
                     className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
                     placeholder="寶可夢、鬼滅之刃..." />
                 </div>
-                <div className="flex items-center pb-1.5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.isHot} onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
-                      className="w-4 h-4 text-primary focus:ring-primary rounded border border-neutral-300" />
-                    <span className="text-xs font-medium text-neutral-600">熱賣商品</span>
-                  </label>
+                {allCategories.length > 0 && (
+                  <CategoryMultiSelect
+                    categories={allCategories}
+                    selected={formData.selectedCategoryIds}
+                    onChange={ids => setFormData(p => ({ ...p, selectedCategoryIds: ids }))}
+                  />
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
+                  <select value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                    <option value="0">否</option>
+                    <option value="1">是</option>
+                  </select>
                 </div>
               </div>
 

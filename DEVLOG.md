@@ -4,6 +4,86 @@
 
 ---
 
+## v2026.07.27i｜2026-07-27｜LP 淺色模式優化 + 輪播圖/公告站內連結
+
+### LP 淺色模式視覺優化
+- 卡片背景調淡（darkening 值從 -42/-58 降至 -28/-38，border 從 -88/-115 降至 -58/-76）
+- 淺色模式所有文字 opacity 調深（body .70→.82，次要文字 .42→.58 等）
+- 卡片內 accent 說明文字（`.rd`、`.rds`、`.sl`、`.feat-desc`）opacity 提升至 .82/.85
+- Section 標題改用深色漸層系統（`sectionTitleGrad`），淺色模式暗紫→主題色→暗紫，不再出現淺色漸層在白底上看不清
+- `.lpv-pp` / `.lpv-gold` 在淺色模式加 `filter:drop-shadow(0 1px 2px rgba(0,0,0,.22))` 提升可讀性
+- 修正 `logAdminAction` 呼叫格式（object 參數）
+
+### 輪播圖 / 公告站內連結優化
+- 輪播圖：`isInternalUrl()` 判斷，站內連結用 Next.js `<Link>` SPA 跳轉，外部連結才開新分頁
+- 公告內文 `linkify()`：同樣邏輯，站內 URL → `<Link>`，外部 URL → `<a target="_blank">`
+
+## v2026.07.27h｜2026-07-27｜活動 LP 深色/淺色主題切換
+
+### 主題模式（theme_mode）
+- DB migration 349：`events.theme_mode text DEFAULT 'dark' CHECK (IN ('dark','light'))`
+- 後台 events API（POST/PUT）儲存 `theme_mode`
+- **活動新增彈窗**：簡化為「深色/淺色」切換 + 單一主題色調色盤，背景色自動對應主題
+- **活動編輯頁**：新增深色/淺色切換按鈕 + 對應預設配色（暗紫/暗金/暗紅/暗藍 vs 純白紫/淡紫/淡金/淡藍）
+- **LP 渲染器**：`css()` 函數全面支援 theme，所有 hardcoded 白色文字/黑色背景改為動態 token，light mode 套用反向色系（淺底深字、卡片略深、hero veil 反轉）
+
+---
+
+## v2026.07.27g｜2026-07-27｜活動 LP 完善 + 分類清單連動 + 商品頁新增分類欄位
+
+### 活動 LP 視覺修正
+- H2 標題支援局部漸層（`h2_highlight`）與全體漸層（`h2_type`）
+- fukuro section 標題支援漸層（`ft_type`）
+- gallery callout 支援自訂邊框色（`callout_border`）
+- section subtitle 顏色調整（偏紫色，接近 zetcho）
+- LP loading 動畫改為 IP 角色 SVG 循環（禁止自製 spinner）
+- LP 相關商品改用 `ProductCard`（同猜你喜歡小卡樣式）
+
+### 分類清單連動（activities × products × LP）
+- **DB** migration 347：`products.tags text[]`（保留但不用）、migration 348：`events.linked_category_id uuid FK → categories`
+- 商品編輯：分類清單改自訂 checkbox dropdown（`menu_products` 多對多）
+- 活動新增/編輯：分類清單改 `<select>` 單選下拉
+- 新後台 API：`/api/admin/products/[id]/categories`（GET/PUT）
+- 前台 LP 底部「相關商品」：依 `linked_category_id → menu_products` 撈商品
+- 商品詳情頁：新增「分類」欄位，顯示所屬分類 pill，點擊跳回首頁對應 tab
+
+### 其他
+- 活動新增彈窗加寬（`max-w-xl`）並加 scroll 避免超出視窗
+- 熱賣商品改為下拉選單（是/否，預設否）
+- CLAUDE.md 新增前台 UI 慣例（loading / 商品卡不得自創）
+
+---
+
+## v2026.07.27f｜2026-07-27｜活動 LP — 新增 5 種 section + zetcho 模板 + 影片背景
+
+### 新功能：LP section 擴充
+- **5 種新 section type**（migration 346 PROD+STG）：`table`、`gallery`、`features`、`countdown`、`sticky_cta`
+- **hero section** 新增影片背景欄位：`bg_video_url`（mp4）、`bg_poster_url`（封面圖）
+- **cards section** 新增每張卡片的 `image_url` 欄位
+- `sticky_cta`：底部固定欄，不重複渲染（render outside sections.map）
+- `countdown`：useState+setInterval 即時倒數，expired_text 到期後顯示
+
+### 資產與模板
+- 從 pokekatsu.com/lp/zetcho 下載 6 部影片 + 1 張圖，上傳至 STG Supabase `lp-assets/zetcho/`
+- `buildTemplateSections()` 重構為 **13 個 section**，完全對齊 zetcho 版面順序與文案
+- 新活動預設配色改為暗紫（bg `#0a0610` / accent `#c026d3`）
+- PRESET 色票順序調整，暗紫列為第一（預設）
+
+---
+
+## v2026.07.27d｜2026-07-27｜活動 LP 模組系統（後台編輯器 + 前台渲染器）
+
+### 新功能：活動 Landing Page 模組
+- **DB**：migration 343 — `events` 表 + `event_sections` 表（PROD + STG 同步）
+- **後台 API**：`/api/admin/events` CRUD + `/api/admin/events/[id]/sections` CRUD + reorder
+- **後台 `/events`**：活動列表，主題色預覽（暗金/暗紫/暗紅/暗藍 + 自訂 hex），新增/刪除
+- **後台 `/events/[id]/edit`**：Section 編輯器，7 種 section type（hero/text/steps/cards/highlight/cta/product_ref）
+- **`product_ref` section**：選商品 ID → 前台自動拉 `product_prizes` 渲染獎品清單（半動態）
+- **前台 `/api/events/[slug]`**：公開 API，server-side 解析 product_ref
+- **前台 `/lp/[slug]`**：全螢幕沈浸式 LP 渲染器，複刻 pokekatsu 暗色系視覺風格，inline CSS 主題變數
+
+---
+
 ## v2026.07.27c｜2026-07-27｜公告系統（前後台完整功能）
 
 ### 新功能：公告管理系統

@@ -28,6 +28,15 @@ function formatDate(dateStr: string) {
   });
 }
 
+const INTERNAL_HOSTS = ['www.ggb.com.tw', 'ggb.com.tw', 'staging.ggb.com.tw']
+function isInternal(url: string) {
+  if (url.startsWith('/')) return true
+  try { return INTERNAL_HOSTS.includes(new URL(url).hostname) } catch { return false }
+}
+function toPath(url: string) {
+  try { const u = new URL(url); return u.pathname + u.search + u.hash } catch { return url }
+}
+
 function linkify(text: string): React.ReactNode[] {
   const urlRegex = /https?:\/\/[^\s]+/g;
   const parts = text.split(urlRegex);
@@ -36,11 +45,10 @@ function linkify(text: string): React.ReactNode[] {
   parts.forEach((part, i) => {
     result.push(part);
     if (urls[i]) {
-      result.push(
-        <a key={i} href={urls[i]} target="_blank" rel="noopener noreferrer"
-          className="text-primary underline underline-offset-2 break-all">
-          {urls[i]}
-        </a>
+      const internal = isInternal(urls[i]);
+      result.push(internal
+        ? <Link key={i} href={toPath(urls[i])} className="text-primary underline underline-offset-2 break-all">{urls[i]}</Link>
+        : <a key={i} href={urls[i]} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 break-all">{urls[i]}</a>
       );
     }
   });
