@@ -131,7 +131,16 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const hlFooterBorder = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.10)'
   const hlFooterColor  = isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)'
   const cardNumGrad    = isDark ? `linear-gradient(180deg,#fff 20%,${vars.accent})` : `linear-gradient(180deg,#111 20%,${vars.accent})`
-  const chipBg         = isDark ? 'rgba(0,0,0,.3)' : 'rgba(0,0,0,.08)'
+  const chipBg         = isDark ? 'rgba(0,0,0,.3)' : 'rgba(0,0,0,.06)'
+  const chipColor      = isDark ? '#ffd24a' : '#7a4e00'
+  const chipBorder     = isDark ? '#6a4a1e' : '#c47a10'
+  const ffb2Color      = isDark ? '#ffd24a' : '#8a5500'
+  const fukuroBg       = isDark
+    ? `linear-gradient(180deg,rgba(255,160,80,.09),rgba(${br},${bg_},${bb},.65))`
+    : `linear-gradient(180deg,rgba(255,140,60,.14),rgba(255,220,190,.35))`
+  const fukuroAccentBg = isDark
+    ? `linear-gradient(180deg,rgba(${a},.12),rgba(${br},${bg_},${bb},.65))`
+    : `linear-gradient(180deg,rgba(${a},.18),rgba(${ar},${ag},${ab},.06))`
   const stickyBg       = isDark ? 'linear-gradient(180deg,transparent,rgba(0,0,0,.88) 28%)' : 'linear-gradient(180deg,transparent,rgba(255,255,255,.92) 28%)'
   const imgPlaceholder = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
 
@@ -272,17 +281,17 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
 
     /* ── FUKURO ── default gold/warm; .accent overrides to theme colour */
     .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
-      background:linear-gradient(180deg,rgba(255,160,80,.09),rgba(${br},${bg_},${bb},.65));
+      background:${fukuroBg};
       padding:26px 18px;text-align:center;max-width:680px;margin:0 auto;}
     .lpv-fukuro-wrap.accent{border-color:${borderMid};
-      background:linear-gradient(180deg,rgba(${a},.12),rgba(${br},${bg_},${bb},.65));}
+      background:${fukuroAccentBg};}
     .lpv-fukuro-wrap .fft{font-weight:900;font-size:clamp(19px,5.2vw,28px);}
     .lpv-fukuro-wrap .ffb{margin:12px auto 0;color:${calloutColor};font-size:13px;
       line-height:1.85;font-weight:600;max-width:580px;white-space:pre-wrap;}
-    .lpv-fukuro-wrap .ffb2{margin-top:10px;color:#ffd24a;font-size:13px;font-weight:800;}
+    .lpv-fukuro-wrap .ffb2{margin-top:10px;color:${ffb2Color};font-size:13px;font-weight:800;}
     .lpv-chips{margin-top:14px;display:flex;flex-wrap:wrap;justify-content:center;gap:0;}
     .lpv-chip{display:inline-block;margin:4px;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:800;
-      color:#ffd24a;border:1px solid #6a4a1e;background:${chipBg};}
+      color:${chipColor};border:1px solid ${chipBorder};background:${chipBg};}
     .lpv-callout{max-width:680px;margin:22px auto 0;padding:14px 16px;border-radius:12px;
       border:1px dashed rgb(${e1r},${Math.round(e1g*.7)},${e1b});background:${calloutBg};
       color:${calloutColor};font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
