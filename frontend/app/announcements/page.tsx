@@ -17,17 +17,15 @@ interface Announcement {
 }
 
 const CATEGORIES = [
-  { key: 'all', label: '全部' },
-  { key: '公告', label: '公告' },
+  { key: 'all', label: '所有' },
+  { key: '消息', label: '消息' },
   { key: '活動', label: '活動' },
-  { key: '維護', label: '維護' },
   { key: '系統', label: '系統' },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  公告: 'bg-blue-100 text-blue-700',
+  消息: 'bg-blue-100 text-blue-700',
   活動: 'bg-green-100 text-green-700',
-  維護: 'bg-orange-100 text-orange-700',
   系統: 'bg-neutral-100 text-neutral-600',
 };
 

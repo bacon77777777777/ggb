@@ -17,9 +17,8 @@ interface Announcement {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  公告: 'bg-blue-100 text-blue-700',
+  消息: 'bg-blue-100 text-blue-700',
   活動: 'bg-green-100 text-green-700',
-  維護: 'bg-orange-100 text-orange-700',
   系統: 'bg-neutral-100 text-neutral-600',
 };
 

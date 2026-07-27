@@ -9,7 +9,7 @@ interface Announcement {
   id: string
   title: string
   content: string
-  category: '公告' | '活動' | '維護' | '系統'
+  category: '消息' | '活動' | '系統'
   is_active: boolean
   is_pinned: boolean
   published_at: string
@@ -17,19 +17,18 @@ interface Announcement {
   updated_at: string
 }
 
-const CATEGORIES = ['公告', '活動', '維護', '系統'] as const
+const CATEGORIES = ['消息', '活動', '系統'] as const
 
 const CATEGORY_COLORS: Record<string, string> = {
-  公告: 'bg-blue-100 text-blue-700',
+  消息: 'bg-blue-100 text-blue-700',
   活動: 'bg-green-100 text-green-700',
-  維護: 'bg-orange-100 text-orange-700',
   系統: 'bg-neutral-100 text-neutral-600',
 }
 
 const EMPTY_FORM = {
   title: '',
   content: '',
-  category: '公告' as Announcement['category'],
+  category: '消息' as Announcement['category'],
   is_active: true,
   is_pinned: false,
   published_at: new Date().toISOString().slice(0, 16),
