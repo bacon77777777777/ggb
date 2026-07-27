@@ -94,6 +94,7 @@ function NavbarInner() {
     ? `/${productType}/rules`
     : null;
   const isNewsDetailPage = /^\/news\/[^/]+$/.test(pathname);
+  const isAnnouncementDetailPage = /^\/announcements\/[^/]+$/.test(pathname);
   const isFairnessPage = pathname.startsWith('/fairness');
   const isExchangeDetailPage =
     pathname !== '/exchange/new' && pathname !== '/exchange/manage' && /^\/exchange\/[^/]+$/.test(pathname);
@@ -763,6 +764,17 @@ function NavbarInner() {
             )}
 
             {/* news detail page 的返回/分享由文章頁自身的 fixed nav 處理，Navbar 不重複顯示 */}
+
+            {/* Announcement Detail Share */}
+            {isAnnouncementDetailPage && (
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors active:scale-95"
+                aria-label="分享"
+              >
+                <Share2 className="w-5 h-5 stroke-[2]" />
+              </button>
+            )}
 
             {/* Product Page Actions */}
             {isProductDetailPage && (
