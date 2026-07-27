@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
-import { Search, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
+import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import NavbarLayout from './NavbarLayout';
 
@@ -34,6 +34,29 @@ function NavbarInner() {
   const pathname = usePathname();
   
   const [supabase] = useState(() => createClient());
+  const [bellUnread, setBellUnread] = useState(false);
+
+  useEffect(() => {
+    const LAST_SEEN_KEY = 'ggb:bell:last_seen';
+    const check = async () => {
+      try {
+        const res = await fetch('/api/announcements?limit=1');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) return;
+        const latestAt = data[0]?.published_at;
+        if (!latestAt) return;
+        const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+        if (!lastSeen || new Date(latestAt) > new Date(lastSeen)) {
+          setBellUnread(true);
+        }
+      } catch {}
+    };
+    check();
+    const handler = () => setBellUnread(false);
+    window.addEventListener('ggb:announcementsRead', handler);
+    return () => window.removeEventListener('ggb:announcementsRead', handler);
+  }, []);
 
   // Check if we just logged in
   const isLoginRedirect = searchParams.get('login_success') === 'true';
@@ -280,6 +303,8 @@ function NavbarInner() {
     if (pathname === '/privacy') return '隱私權政策';
     if (pathname === '/return-policy') return '退換貨資訊';
     if (pathname === '/news') return '最新情報';
+    if (pathname === '/announcements') return '公告';
+    if (pathname.startsWith('/announcements/')) return '公告詳情';
     if (isExchangeDetailPage) return exchangeTitle;
     if (isMessagesDetailPage) return messagesTitle;
     
@@ -625,6 +650,23 @@ function NavbarInner() {
                 )}
               </Link>
               <Link
+                href="/announcements"
+                className={cn(
+                  "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
+                  pathname === '/announcements' || pathname.startsWith('/announcements/')
+                    ? "text-primary"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
+                )}
+              >
+                <span>公告</span>
+                {(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
+                  <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
+                )}
+                {bellUnread && !(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
+                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-accent-red" />
+                )}
+              </Link>
+              <Link
                 href="/ranking"
                 className={cn(
                   "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors md:hidden",
@@ -744,6 +786,19 @@ function NavbarInner() {
                   <Heart className={cn("w-5 h-5 stroke-[2]", isProductFollowed && "fill-current")} />
                 </button>
               </div>
+            )}
+
+            {isHomePage && (
+              <Link
+                href="/announcements"
+                className="relative p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform md:hidden"
+                aria-label="公告"
+              >
+                <Bell className="w-5 h-5 stroke-[2]" />
+                {bellUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-red border border-white dark:border-neutral-950" />
+                )}
+              </Link>
             )}
 
             {isAuthenticated && isHomePage && (
