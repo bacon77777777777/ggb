@@ -86,18 +86,20 @@ export default function AnnouncementsPage() {
 
       {/* 固定 Tab 欄（在 Navbar 57px 下方） */}
       <div className="sticky top-[57px] z-20 bg-white dark:bg-neutral-950 border-b border-neutral-100 dark:border-neutral-800 px-2">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-transparent px-0 gap-0 overflow-visible w-full">
-            {CATEGORIES.map(cat => (
-              <TabsTrigger key={cat.key} value={cat.key} className="flex-1 justify-center">{cat.label}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="max-w-2xl mx-auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="bg-transparent px-0 gap-0 overflow-visible w-full">
+              {CATEGORIES.map(cat => (
+                <TabsTrigger key={cat.key} value={cat.key} className="flex-1 justify-center">{cat.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* 列表 */}
-      {isLoading ? <LoadingSkeleton /> : (
-        <div className="px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {isLoading ? <div className="max-w-2xl mx-auto"><LoadingSkeleton /></div> : (
+        <div className="max-w-2xl mx-auto px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
               此分類目前沒有公告

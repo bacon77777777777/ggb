@@ -572,7 +572,7 @@ function NavbarInner() {
   return (
     <>
       <NavbarLayout
-        innerClassName={isProductDetailPage ? "max-w-[960px] !px-4" : undefined}
+        innerClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "max-w-[960px] !px-4" : undefined}
         className={cn(
           isProductDetailPage && "fixed left-0 right-0",
           (
@@ -585,10 +585,10 @@ function NavbarInner() {
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
-        leftClassName={isProductDetailPage ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
+        leftClassName={(isProductDetailPage || isAnnouncementDetailPage) ? "flex-1" : "flex-1 md:flex-none md:w-auto"}
         left={
           <>
-            {isProductDetailPage ? (
+            {(isProductDetailPage || isAnnouncementDetailPage) ? (
               showBackButton && (
                 <button
                   onClick={handleBack}
@@ -622,7 +622,7 @@ function NavbarInner() {
               </>
             )}
             
-            <Link href="/" className={cn("flex items-center group md:relative", isProductDetailPage ? "hidden" : (!showLogo && "hidden md:flex"))}>
+            <Link href="/" className={cn("flex items-center group md:relative", (isProductDetailPage || isAnnouncementDetailPage) ? "hidden" : (!showLogo && "hidden md:flex"))}>
               <div className="flex items-center gap-1.5 transition-transform group-hover:scale-105">
                 <Image
                   src="/images/20260629/logo.svg"
@@ -635,7 +635,7 @@ function NavbarInner() {
               </div>
             </Link>
 
-            <div className={cn("hidden", !isProductDetailPage && "md:flex items-center gap-3 lg:gap-5")}>
+            <div className={cn("hidden", !(isProductDetailPage || isAnnouncementDetailPage) && "md:flex items-center gap-3 lg:gap-5")}>
               <Link
                 href="/"
                 className={cn(
