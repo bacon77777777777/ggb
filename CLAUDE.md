@@ -69,7 +69,9 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 ### Migrations
 
-編號遞增：`backend/db/migrations/<n>_name.sql`。每次 DB 變更都建新 migration 檔，直接用 psql 執行，**不需請使用者手動跑**。
+編號遞增：`backend/db/migrations/<n>_name.sql`。每次 DB 變更都建新 migration 檔，**由 Claude 直接用 psql 執行，不需使用者手動跑**。
+
+**Claude 負責執行所有 migration**：每次建完 migration 檔，Claude 必須主動在 STG 和 PROD 兩個環境都執行，不可只跑其中一個，也不可請使用者自行執行。
 
 **雙環境同步原則（PROD / STG）：**
 
@@ -80,8 +82,8 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 - **所有 migration 執行後必須同時套兩個環境**（除非 STG 明確不需要某功能）
 - STG 不需要：GB哥 AI 基礎建設（line_conversations / gb_pending_actions / capability_gaps）
-- PROD psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-2.pooler.supabase.com -p 5432 -U "postgres.akdqleelvqvjhjnfkpfq" -d postgres`
-- STG psql 連線：`PGPASSWORD="..." psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`
+- PROD psql 連線：`PGPASSWORD="OhpiiPc5OshSrtHt" psql -h aws-1-ap-northeast-2.pooler.supabase.com -p 5432 -U "postgres.akdqleelvqvjhjnfkpfq" -d postgres`
+- STG psql 連線：`PGPASSWORD="pdsCNbpWjJb4ikpR" psql -h aws-1-ap-northeast-1.pooler.supabase.com -p 5432 -U "postgres.zqxxmdbvtwuiocebaxvk" -d postgres`
 - **RLS 注意**：新建 table 若有 `ENABLE ROW LEVEL SECURITY` 必須同步建 policy，不然前台讀不到（會靜默返回空陣列）
 - 定期 diff 指令（確認兩環境 table 一致）：
   ```sql

@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.27c｜2026-07-27｜公告系統（前後台完整功能）
+
+### 新功能：公告管理系統
+- **後台**：`/announcements` — 公告管理 CRUD（新增/編輯/刪除/上下架/置頂），分類：消息/活動/系統
+- **後台 API**：`/api/admin/announcements` GET/POST，`/api/admin/announcements/[id]` PUT/DELETE
+- **前台列表**：`/announcements` — Tab 篩選（所有/消息/活動/系統）、swipe 換頁、bell badge 提示
+- **前台內頁**：`/announcements/[id]` — 商品詳情頁同款頂部導航（←回、分享圖示）、內容自動 linkify
+- **前台 API**：`/api/announcements` — 支援 `?id=` 單筆或列表，RLS 只回傳 is_active=true
+- **Navbar 鈴鐺**：行動端首頁顯示 🔔，有未讀公告顯示紅點（localStorage 記錄 last_seen）
+- **DB**：migration 341（建表）+ 342（分類簡化），PROD + STG 同步完成
+
+---
+
 ## v2026.07.27b｜2026-07-27｜Loading 文字統一改「載入中」浮動效果
 
 ### Loading 文字優化
