@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.27f｜2026-07-27｜活動 LP — 新增 5 種 section + zetcho 模板 + 影片背景
+
+### 新功能：LP section 擴充
+- **5 種新 section type**（migration 346 PROD+STG）：`table`、`gallery`、`features`、`countdown`、`sticky_cta`
+- **hero section** 新增影片背景欄位：`bg_video_url`（mp4）、`bg_poster_url`（封面圖）
+- **cards section** 新增每張卡片的 `image_url` 欄位
+- `sticky_cta`：底部固定欄，不重複渲染（render outside sections.map）
+- `countdown`：useState+setInterval 即時倒數，expired_text 到期後顯示
+
+### 資產與模板
+- 從 pokekatsu.com/lp/zetcho 下載 6 部影片 + 1 張圖，上傳至 STG Supabase `lp-assets/zetcho/`
+- `buildTemplateSections()` 重構為 **13 個 section**，完全對齊 zetcho 版面順序與文案
+- 新活動預設配色改為暗紫（bg `#0a0610` / accent `#c026d3`）
+- PRESET 色票順序調整，暗紫列為第一（預設）
+
+---
+
 ## v2026.07.27d｜2026-07-27｜活動 LP 模組系統（後台編輯器 + 前台渲染器）
 
 ### 新功能：活動 Landing Page 模組

@@ -750,7 +750,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '廠商管理', path: '/suppliers', icon: IconSuppliers },
           { name: '輪播圖管理', path: '/banners', icon: IconBanners },
           { name: '公告管理', path: '/announcements', icon: IconEvents },
-          { name: '活動 LP', path: '/events', icon: IconEvents },
+          { name: '活動頁管理', path: '/events', icon: IconEvents },
           { name: '文章管理', path: '/news', icon: IconNews },
           { name: '分類清單', path: '/categories', icon: IconCategories },
           { name: '抽獎模組設定', path: '/settings/modules', icon: IconPuzzle },
