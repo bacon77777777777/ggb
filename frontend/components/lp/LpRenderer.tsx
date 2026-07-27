@@ -17,6 +17,9 @@ interface Section {
   resolved?: { product: { id: number; name: string } | null; prizes: Prize[] }
 }
 
+const str = (v: unknown): string => (v as string) ?? ''
+const bool = (v: unknown): boolean => !!(v)
+
 function hexRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]
@@ -28,34 +31,31 @@ function css(vars: { bg: string; accent: string }) {
   const [br,bg_,bb] = hexRgb(vars.bg)
   const a = `${ar},${ag},${ab}`
 
-  // Solid card colours — computed like zetcho's hardcoded #180a1e / #0c0610 / #3a2042
-  // bg lifted slightly + small accent tint → produces dark tinted surface
+  // Solid card colours — bg lifted + small accent tint → dark tinted surface (like zetcho #180a1e / #0c0610)
   const c1r = clamp(br+8+ar*0.04), c1g = clamp(bg_+8+ag*0.04), c1b = clamp(bb+8+ab*0.04)
   const c2r = clamp(br+3+ar*0.02), c2g = clamp(bg_+3+ag*0.02), c2b = clamp(bb+3+ab*0.02)
   const e1r = clamp(br+28+ar*0.08), e1g = clamp(bg_+18+ag*0.08), e1b = clamp(bb+28+ab*0.08)
   const e2r = clamp(br+48+ar*0.14), e2g = clamp(bg_+32+ag*0.14), e2b = clamp(bb+48+ab*0.14)
-  const cardBg1   = `rgb(${c1r},${c1g},${c1b})`   // like #180a1e
-  const cardBg2   = `rgb(${c2r},${c2g},${c2b})`   // like #0c0610
-  const cardDark   = cardBg1
-  const cardDarker = cardBg2
-  const borderMid    = `rgb(${e1r},${e1g},${e1b})` // like #3a2042
-  const borderStrong = `rgb(${e2r},${e2g},${e2b})` // brighter border
+  const cardDark   = `rgb(${c1r},${c1g},${c1b})`
+  const cardDarker = `rgb(${c2r},${c2g},${c2b})`
+  const borderMid    = `rgb(${e1r},${e1g},${e1b})`
+  const borderStrong = `rgb(${e2r},${e2g},${e2b})`
 
-  // Lightened accent (like zetcho's #e879f9 vs base #c026d3 — used for numbers, eyebrow)
+  // Lightened accent (like zetcho's #e879f9 vs base #c026d3)
   const accentLight = `rgb(${clamp(ar+(255-ar)*.50)},${clamp(ag+(255-ag)*.32)},${clamp(ab+(255-ab)*.18)})`
 
-  // rgba for glows / shadows (these DO need transparency)
+  // rgba glows / shadows
   const glow40 = `rgba(${a},0.40)`
   const glow20 = `rgba(${a},0.20)`
   const glow08 = `rgba(${a},0.08)`
 
-  // 4-stop title gradient (zetcho --pp pattern): pale→bright→dark→base
+  // 4-stop title gradient (zetcho --pp pattern)
   const tL = `rgb(${clamp(ar+(255-ar)*.75)},${clamp(ag+(255-ag)*.75)},${clamp(ab+(255-ab)*.75)})`
   const tB = `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
   const tD = `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
   const titleGrad = `linear-gradient(180deg,${tL},${tB} 46%,${tD} 64%,${vars.accent})`
 
-  // Gold — always fixed like zetcho's --gold
+  // Gold — fixed like zetcho's --gold
   const GOLD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)'
   const GOLD_SHADOW = 'rgba(255,210,74,0.5)'
 
@@ -73,6 +73,7 @@ function css(vars: { bg: string; accent: string }) {
     /* ── HERO ── */
     .lpv-hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;
       justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;}
+    .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(110% 70% at 50% 14%,${borderStrong},transparent 52%),
                  radial-gradient(80% 50% at 50% 0%,${borderMid},transparent 55%);}
@@ -114,12 +115,11 @@ function css(vars: { bg: string; accent: string }) {
     /* ── SECTIONS ── */
     .lpv-sec{padding:64px 18px;max-width:1000px;margin:0 auto;}
     .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:#fff;}
-    .lpv-h2-accent{color:${vars.accent};}
     .lpv-h2s{text-align:center;font-size:13px;margin-top:8px;margin-bottom:34px;
       font-weight:700;letter-spacing:.5px;line-height:1.7;color:rgba(${a},0.75);}
     .lpv-body{font-size:15px;color:rgba(255,255,255,.72);line-height:1.9;white-space:pre-wrap;}
 
-    /* ── STEPS (flow) ── */
+    /* ── STEPS ── */
     .lpv-flow{display:flex;flex-direction:column;gap:0;max-width:560px;margin:0 auto;}
     .lpv-flowrow{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;
       border:1px solid ${borderMid};
@@ -139,6 +139,7 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-card.grand{border:2px solid ${borderStrong};
       background:linear-gradient(180deg,rgba(${a},0.22),${cardDarker});
       box-shadow:0 0 40px ${glow20},0 0 80px ${glow08};}
+    .lpv-card-img{width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:12px;}
     .lpv-card-tag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:1.5px;
       padding:3px 12px;border-radius:999px;margin-bottom:12px;
       background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);}
@@ -184,7 +185,7 @@ function css(vars: { bg: string; accent: string }) {
       font-size:clamp(20px,5.6vw,30px);}
     .lpv-stat .sl{font-size:11px;color:rgba(${a},0.65);font-weight:700;margin-top:6px;letter-spacing:.3px;}
 
-    /* ── FUKURO ── default is gold/warm like zetcho; accent variant overrides */
+    /* ── FUKURO ── default gold/warm; .accent overrides to theme colour */
     .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
       background:linear-gradient(180deg,rgba(255,160,80,.09),rgba(${br},${bg_},${bb},.65));
       padding:26px 18px;text-align:center;max-width:680px;margin:0 auto;}
@@ -201,7 +202,7 @@ function css(vars: { bg: string; accent: string }) {
       border:1px dashed rgb(${e1r},${Math.round(e1g*.7)},${e1b});background:rgba(0,0,0,.25);
       color:rgba(255,255,255,.78);font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
 
-    /* ── REL (ranking/comparison rows like zetcho zcl-rel) ── */
+    /* ── REL ── */
     .lpv-rel{display:flex;flex-direction:column;gap:8px;max-width:620px;margin:0 auto;}
     .lpv-relrow{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px;
       padding:12px 14px;border-radius:12px;border:1px solid ${borderMid};
@@ -210,12 +211,69 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:#ffd24a;}
     .lpv-relrow .rds{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:2px;}
 
-    /* ── RULE (2×2 rule grid like zetcho zcl-rule) ── */
+    /* ── RULE ── */
     .lpv-rule{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;margin:0 auto;}
     .lpv-rc{border-radius:12px;border:1px solid ${borderMid};
       background:linear-gradient(180deg,${cardDark},${cardDarker});padding:16px 14px;}
     .lpv-rc .rt{font-weight:900;font-size:16px;}
     .lpv-rc .rd{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:5px;line-height:1.6;}
+
+    /* ── TABLE ── */
+    .lpv-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
+    .lpv-tbl{width:100%;min-width:400px;border-collapse:collapse;font-size:clamp(10px,2.6vw,13px);}
+    .lpv-tbl th,.lpv-tbl td{padding:9px 6px;text-align:center;border:1px solid ${borderMid};}
+    .lpv-tbl thead th{background:${cardDark};color:${accentLight};font-weight:800;}
+    .lpv-tbl tbody th{background:${cardDarker};color:rgba(255,255,255,.65);font-weight:800;
+      text-align:left;padding-left:10px;white-space:nowrap;}
+    .lpv-tbl td{color:rgba(255,255,255,.85);font-weight:700;font-variant-numeric:tabular-nums;}
+    .lpv-tbl .hi{background:rgba(${a},.10);color:${accentLight};font-weight:900;}
+    .lpv-tbl thead th.hi{color:${vars.accent};}
+
+    /* ── GALLERY ── */
+    .lpv-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+    @media(min-width:600px){.lpv-gallery{grid-template-columns:repeat(3,1fr);}}
+    .lpv-gitem{position:relative;border-radius:14px;overflow:hidden;border:1px solid ${borderMid};
+      background:${cardDarker};aspect-ratio:9/11;}
+    .lpv-gitem img,.lpv-gitem video{width:100%;height:100%;object-fit:cover;}
+    .lpv-gcap{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;
+      background:linear-gradient(180deg,transparent,rgba(0,0,0,.82));
+      font-size:11px;font-weight:700;color:rgba(255,255,255,.85);}
+
+    /* ── FEATURES ── */
+    .lpv-features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:720px;margin:0 auto;}
+    @media(min-width:600px){.lpv-features{grid-template-columns:repeat(4,1fr);}}
+    .lpv-feat{border-radius:14px;border:1px solid ${borderMid};
+      background:linear-gradient(180deg,${cardDark},${cardDarker});padding:22px 14px;text-align:center;}
+    .lpv-feat-icon{font-size:32px;margin-bottom:10px;line-height:1;}
+    .lpv-feat-icon img{width:40px;height:40px;object-fit:contain;margin:0 auto;}
+    .lpv-feat-title{font-weight:900;font-size:15px;margin-bottom:6px;}
+    .lpv-feat-desc{font-size:11px;color:rgba(${a},.65);font-weight:600;line-height:1.6;}
+
+    /* ── COUNTDOWN ── */
+    .lpv-countdown{display:flex;justify-content:center;align-items:flex-start;gap:6px;margin:20px 0;}
+    .lpv-cd-unit{text-align:center;min-width:52px;}
+    .lpv-cd-num{font-family:'Arial Black',sans-serif;font-weight:900;
+      font-size:clamp(32px,9vw,58px);color:${vars.accent};line-height:1;
+      font-variant-numeric:tabular-nums;}
+    .lpv-cd-label{font-size:10px;font-weight:800;letter-spacing:2px;
+      color:rgba(255,255,255,.38);margin-top:4px;}
+    .lpv-cd-sep{font-size:clamp(26px,7vw,46px);font-weight:900;color:rgba(${a},.35);
+      padding-top:4px;line-height:1;}
+    .lpv-cd-expired{text-align:center;font-size:16px;font-weight:800;
+      color:rgba(255,255,255,.45);padding:20px 0;}
+
+    /* ── STICKY CTA ── */
+    .lpv-sticky{position:fixed;bottom:0;left:0;right:0;z-index:55;pointer-events:none;
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+      background:linear-gradient(180deg,transparent,rgba(0,0,0,.88) 28%);}
+    .lpv-sticky-inner{pointer-events:auto;display:flex;flex-direction:column;
+      align-items:center;gap:4px;max-width:480px;margin:0 auto;}
+    .lpv-sticky-btn{display:flex;align-items:center;justify-content:center;width:100%;
+      border-radius:999px;padding:14px 32px;font-weight:900;font-size:17px;
+      color:#3a2c08;background:${GOLD};box-shadow:0 8px 28px ${GOLD_SHADOW};
+      text-decoration:none;border:none;cursor:pointer;transition:transform .15s;}
+    .lpv-sticky-btn:active{transform:scale(.97);}
+    .lpv-sticky-sub{font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-align:center;}
 
     /* ── PRODUCT PRIZES ── */
     .lpv-prizes{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto;}
@@ -230,22 +288,28 @@ function css(vars: { bg: string; accent: string }) {
   `
 }
 
+// ─── Section Components ────────────────────────────────────────────────────────
+
 function HeroSection({ c }: { c: Record<string, unknown> }) {
   const gems = (c.gems as { color: string }[]) || []
   return (
     <section className="lpv-hero">
+      {bool(c.bg_video_url) && (
+        <video src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
+          autoPlay muted loop playsInline className="h-vid" />
+      )}
       <div className="h-bg" /><div className="h-beam" /><div className="h-veil" />
-      {c.eyebrow && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
-      {c.title && <h1 className="lpv-title">{c.title as string}</h1>}
+      {bool(c.eyebrow) && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
+      {bool(c.title) && <h1 className="lpv-title">{c.title as string}</h1>}
       {gems.length > 0 && (
         <div className="lpv-gems">
           {gems.map((g, i) => <i key={i} style={{ background: g.color, color: g.color }} />)}
         </div>
       )}
-      {c.subtitle && <p className="lpv-sub">{c.subtitle as string}</p>}
-      {c.highlight_text && <div className="lpv-arasa">{c.highlight_text as string}</div>}
-      {c.badge_text && <div className="lpv-badge">● {c.badge_text as string}</div>}
-      {c.cta_url && (
+      {bool(c.subtitle) && <p className="lpv-sub">{c.subtitle as string}</p>}
+      {bool(c.highlight_text) && <div className="lpv-arasa">{c.highlight_text as string}</div>}
+      {bool(c.badge_text) && <div className="lpv-badge">● {c.badge_text as string}</div>}
+      {bool(c.cta_url) && (
         <Link href={c.cta_url as string} className="lpv-cta-btn">
           ▶ {(c.cta_text as string) || '立即參加'}
         </Link>
@@ -258,9 +322,9 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
 function TextSection({ c }: { c: Record<string, unknown> }) {
   return (
     <section className="lpv-sec">
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
-      {c.body && <p className="lpv-body">{c.body as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.body) && <p className="lpv-body">{c.body as string}</p>}
     </section>
   )
 }
@@ -269,9 +333,9 @@ function StepsSection({ c }: { c: Record<string, unknown> }) {
   const steps = (c.steps as { title: string; description: string }[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
-      <div className="lpv-flow" style={{ gap: 0 }}>
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-flow">
         {steps.map((s, i) => (
           <div key={i}>
             <div className="lpv-flowrow">
@@ -290,15 +354,16 @@ function StepsSection({ c }: { c: Record<string, unknown> }) {
 }
 
 function CardsSection({ c }: { c: Record<string, unknown> }) {
-  type CardItem = { tag: string; variant: string; title: string; subtitle: string; value: string; unit: string; extras: string[] }
+  type CardItem = { tag: string; variant: string; title: string; subtitle: string; value: string; unit: string; extras: string[]; image_url?: string }
   const cards = (c.cards as CardItem[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-cards">
         {cards.map((card, i) => (
           <div key={i} className={`lpv-card ${card.variant === 'grand' ? 'grand' : 'star'}`}>
+            {card.image_url && <img src={card.image_url} alt={card.title || ''} className="lpv-card-img" />}
             {card.tag && <span className="lpv-card-tag">{card.tag}</span>}
             {card.title && <div className="lpv-card-title">{card.title}</div>}
             {card.subtitle && <div className="lpv-card-sub">{card.subtitle}</div>}
@@ -313,7 +378,7 @@ function CardsSection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
-      {c.note && <p className="lpv-note">{c.note as string}</p>}
+      {bool(c.note) && <p className="lpv-note">{c.note as string}</p>}
     </section>
   )
 }
@@ -322,9 +387,9 @@ function HighlightSection({ c }: { c: Record<string, unknown> }) {
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
       <div className="lpv-highlight-box">
-        {c.title && <div className="ht">{c.title as string}</div>}
-        {c.body && <div className="hb">{c.body as string}</div>}
-        {c.footer && <div className="hf">{c.footer as string}</div>}
+        {bool(c.title) && <div className="ht">{c.title as string}</div>}
+        {bool(c.body) && <div className="hb">{c.body as string}</div>}
+        {bool(c.footer) && <div className="hf">{c.footer as string}</div>}
       </div>
     </section>
   )
@@ -344,12 +409,12 @@ function StatsSection({ c }: { c: Record<string, unknown> }) {
   const stats = (c.stats as { v: string; l: string; color?: string }[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-stats">
         {stats.map((s, i) => (
           <div key={i} className="lpv-stat">
-            <div className="sv" style={{ color: s.color || 'var(--accent)' }}>{s.v}</div>
+            <div className="sv" style={{ color: s.color || undefined }}>{s.v}</div>
             <div className="sl">{s.l}</div>
           </div>
         ))}
@@ -363,19 +428,19 @@ function FukuroSection({ c }: { c: Record<string, unknown> }) {
   const isAccent = c.variant === 'accent'
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className={`lpv-fukuro-wrap${isAccent ? ' accent' : ''}`}>
-        {c.ft && <div className="fft">{c.ft as string}</div>}
-        {c.fb && <div className="ffb">{c.fb as string}</div>}
-        {c.fb2 && <div className="ffb2">{c.fb2 as string}</div>}
+        {bool(c.ft) && <div className="fft">{c.ft as string}</div>}
+        {bool(c.fb) && <div className="ffb">{c.fb as string}</div>}
+        {bool(c.fb2) && <div className="ffb2">{c.fb2 as string}</div>}
         {chips.length > 0 && (
           <div className="lpv-chips">
             {chips.map((chip, i) => <span key={i} className="lpv-chip">{chip}</span>)}
           </div>
         )}
       </div>
-      {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
     </section>
   )
 }
@@ -385,8 +450,8 @@ function RelSection({ c }: { c: Record<string, unknown> }) {
   const rows = (c.rows as RelRow[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-rel">
         {rows.map((row, i) => (
           <div key={i} className="lpv-relrow">
@@ -398,7 +463,7 @@ function RelSection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
-      {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
     </section>
   )
 }
@@ -408,8 +473,8 @@ function RuleSection({ c }: { c: Record<string, unknown> }) {
   const rules = (c.rules as RuleItem[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-rule">
         {rules.map((rule, i) => (
           <div key={i} className="lpv-rc">
@@ -418,8 +483,147 @@ function RuleSection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
-      {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
     </section>
+  )
+}
+
+function TableSection({ c }: { c: Record<string, unknown> }) {
+  const columns = (c.columns as string[]) || []
+  const rows = (c.rows as string[][]) || []
+  const hi = c.highlight_col as number | undefined
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-tblwrap">
+        <table className="lpv-tbl">
+          {columns.length > 0 && (
+            <thead><tr>
+              {columns.map((col, i) => (
+                <th key={i} className={hi !== undefined && hi === i ? 'hi' : ''}>{col}</th>
+              ))}
+            </tr></thead>
+          )}
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => (
+                  ci === 0
+                    ? <th key={ci}>{cell}</th>
+                    : <td key={ci} className={hi !== undefined && hi === ci ? 'hi' : ''}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {bool(c.note) && <p className="lpv-note" style={{ marginTop: 14 }}>{c.note as string}</p>}
+    </section>
+  )
+}
+
+function GallerySection({ c }: { c: Record<string, unknown> }) {
+  type GItem = { media_type: 'image' | 'video'; url: string; poster?: string; caption?: string }
+  const items = (c.items as GItem[]) || []
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-gallery">
+        {items.map((item, i) => (
+          <div key={i} className="lpv-gitem">
+            {item.media_type === 'video'
+              ? <video src={item.url} poster={item.poster || undefined} muted loop playsInline preload="metadata" />
+              : <img src={item.url} alt={item.caption || ''} loading="lazy" />}
+            {item.caption && <div className="lpv-gcap">{item.caption}</div>}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FeaturesSection({ c }: { c: Record<string, unknown> }) {
+  type FItem = { icon: string; title: string; desc: string }
+  const items = (c.items as FItem[]) || []
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-features">
+        {items.map((item, i) => (
+          <div key={i} className="lpv-feat">
+            {item.icon && (
+              (item.icon.startsWith('http') || item.icon.startsWith('/'))
+                ? <div className="lpv-feat-icon"><img src={item.icon} alt="" /></div>
+                : <div className="lpv-feat-icon">{item.icon}</div>
+            )}
+            {item.title && <div className="lpv-feat-title">{item.title}</div>}
+            {item.desc && <div className="lpv-feat-desc">{item.desc}</div>}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CountdownSection({ c }: { c: Record<string, unknown> }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const targetAt = c.target_at as string
+  if (!targetAt) return null
+
+  const diff = new Date(targetAt).getTime() - now
+  const expired = diff <= 0
+  const days  = expired ? 0 : Math.floor(diff / 86400000)
+  const hours = expired ? 0 : Math.floor((diff % 86400000) / 3600000)
+  const mins  = expired ? 0 : Math.floor((diff % 3600000) / 60000)
+  const secs  = expired ? 0 : Math.floor((diff % 60000) / 1000)
+  const pad   = (n: number) => String(n).padStart(2, '0')
+
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {expired ? (
+        <p className="lpv-cd-expired">{(c.expired_text as string) || '活動已結束'}</p>
+      ) : (
+        <div className="lpv-countdown">
+          <div className="lpv-cd-unit"><div className="lpv-cd-num">{pad(days)}</div><div className="lpv-cd-label">天</div></div>
+          <div className="lpv-cd-sep">:</div>
+          <div className="lpv-cd-unit"><div className="lpv-cd-num">{pad(hours)}</div><div className="lpv-cd-label">時</div></div>
+          <div className="lpv-cd-sep">:</div>
+          <div className="lpv-cd-unit"><div className="lpv-cd-num">{pad(mins)}</div><div className="lpv-cd-label">分</div></div>
+          <div className="lpv-cd-sep">:</div>
+          <div className="lpv-cd-unit"><div className="lpv-cd-num">{pad(secs)}</div><div className="lpv-cd-label">秒</div></div>
+        </div>
+      )}
+      {!expired && bool(c.cta_url) && (
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <Link href={c.cta_url as string} className="lpv-cta-btn">
+            ▶ {(c.cta_text as string) || '立即參加'}
+          </Link>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function StickyCtaSection({ c }: { c: Record<string, unknown> }) {
+  return (
+    <div className="lpv-sticky">
+      <div className="lpv-sticky-inner">
+        {c.url
+          ? <Link href={c.url as string} className="lpv-sticky-btn">▶ {(c.text as string) || '立即參加'}</Link>
+          : <button className="lpv-sticky-btn">▶ {(c.text as string) || '立即參加'}</button>}
+        {bool(c.sub_text) && <div className="lpv-sticky-sub">{c.sub_text as string}</div>}
+      </div>
+    </div>
   )
 }
 
@@ -427,8 +631,8 @@ function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolv
   const prizes = resolved?.prizes || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
-      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       {resolved?.product && (
         <p className="lpv-h2s" style={{ marginTop: 0, marginBottom: 16, opacity: 0.45 }}>
           {resolved.product.name}
@@ -453,6 +657,8 @@ function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolv
     </section>
   )
 }
+
+// ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function LpRenderer({ slug }: { slug: string }) {
   const router = useRouter()
@@ -496,9 +702,10 @@ export default function LpRenderer({ slug }: { slug: string }) {
   )
 
   const { event, sections } = data
+  const stickySection = sections.find(s => s.type === 'sticky_cta')
 
   return (
-    <div className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color }}>
+    <div className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
       <style>{css({ bg: event.bg_color, accent: event.accent_color })}</style>
       <div className="lpv-topbar">
         <button onClick={() => router.back()} className="lpv-topbtn" aria-label="返回">
@@ -514,16 +721,22 @@ export default function LpRenderer({ slug }: { slug: string }) {
           case 'text':        return <TextSection        key={sec.id} c={sec.content} />
           case 'steps':       return <StepsSection       key={sec.id} c={sec.content} />
           case 'cards':       return <CardsSection       key={sec.id} c={sec.content} />
-          case 'stats':       return <StatsSection        key={sec.id} c={sec.content} />
-          case 'fukuro':      return <FukuroSection       key={sec.id} c={sec.content} />
-          case 'rel':         return <RelSection          key={sec.id} c={sec.content} />
-          case 'rule':        return <RuleSection         key={sec.id} c={sec.content} />
+          case 'stats':       return <StatsSection       key={sec.id} c={sec.content} />
+          case 'fukuro':      return <FukuroSection      key={sec.id} c={sec.content} />
+          case 'rel':         return <RelSection         key={sec.id} c={sec.content} />
+          case 'rule':        return <RuleSection        key={sec.id} c={sec.content} />
+          case 'table':       return <TableSection       key={sec.id} c={sec.content} />
+          case 'gallery':     return <GallerySection     key={sec.id} c={sec.content} />
+          case 'features':    return <FeaturesSection    key={sec.id} c={sec.content} />
+          case 'countdown':   return <CountdownSection   key={sec.id} c={sec.content} />
+          case 'sticky_cta':  return null  // rendered separately below
           case 'highlight':   return <HighlightSection   key={sec.id} c={sec.content} />
           case 'cta':         return <CtaSection         key={sec.id} c={sec.content} />
           case 'product_ref': return <ProductRefSection  key={sec.id} c={sec.content} resolved={sec.resolved} />
           default:            return null
         }
       })}
+      {stickySection && <StickyCtaSection c={stickySection.content} />}
     </div>
   )
 }

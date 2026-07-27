@@ -12,7 +12,7 @@ interface Event {
   is_active: boolean; start_at: string | null; end_at: string | null
 }
 interface Section { id: string; type: SectionType; sort_order: number; content: Record<string, unknown> }
-type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule'
+type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule' | 'table' | 'gallery' | 'features' | 'countdown' | 'sticky_cta'
 interface Product { id: number; name: string }
 
 const TYPE_LABELS: Record<SectionType, string> = {
@@ -24,6 +24,11 @@ const TYPE_LABELS: Record<SectionType, string> = {
   fukuro: '重點框＋標籤',
   rel: '排名比較列',
   rule: '2×2 規則格',
+  table: '比較表格',
+  gallery: '圖片/影片相簿',
+  features: '特色 4 格',
+  countdown: '倒數計時器',
+  sticky_cta: '懸浮 CTA 按鈕',
   highlight: '重點強調框',
   cta: '底部大按鈕',
   product_ref: '商品獎品清單',
@@ -33,16 +38,25 @@ const TYPE_DESC: Record<SectionType, string> = {
   hero: '活動標題、副標、CTA 按鈕，進場第一屏',
   text: '自由標題＋內文，用於活動說明',
   steps: '1→2→3 編號步驟，說明玩法流程',
-  cards: 'SS賞/S賞 等獎品卡，支援一般/豪華兩種樣式',
+  cards: 'SS賞/S賞 等獎品卡，支援一般/豪華兩種樣式，可加圖片',
   stats: '4格大數字指標，展示機率/人數/倍率等關鍵數據',
   fukuro: '帶 chip 標籤的大重點框 + 底部虛線注意事項（預設金色）',
   rel: '名稱 ＋ 數值（金色）＋ 說明，適合稀有度/賠率排名比較',
   rule: '2×2 規則卡片格，各格有彩色標題＋說明，適合規則/優惠重點',
+  table: '多欄比較表，支援標頭列與強調欄（第幾欄發光）',
+  gallery: '2×N 格圖片或影片相簿（R2 URL），底部可加說明文字',
+  features: '4格特色卡，icon（emoji或URL）+ 標題 + 說明文字',
+  countdown: '活動倒數計時，自動更新秒數；到期後顯示自訂文字',
+  sticky_cta: '頁面底部懸浮的金色 CTA 按鈕，全局唯一，每頁只加一次',
   highlight: '帶邊框的重點框，適合優惠條款或特別說明',
   cta: '底部全寬大按鈕，點擊導向商品頁',
   product_ref: '選一個商品 ID，自動抓取獎品清單顯示',
 }
-const ALL_TYPES: SectionType[] = ['hero', 'text', 'stats', 'steps', 'cards', 'rel', 'rule', 'fukuro', 'highlight', 'cta', 'product_ref']
+const ALL_TYPES: SectionType[] = [
+  'hero', 'text', 'stats', 'steps', 'cards', 'rel', 'rule', 'fukuro',
+  'table', 'gallery', 'features', 'countdown', 'sticky_cta',
+  'highlight', 'cta', 'product_ref',
+]
 
 const PRESETS = [
   { label: '暗金', bg: '#0a0610', accent: '#ffd24a' },
@@ -62,6 +76,11 @@ function defaultContent(type: SectionType): Record<string, unknown> {
     case 'fukuro': return { h2: '', subtitle: '', ft: '', fb: '', fb2: '', chips: [], callout: '', variant: 'gold' }
     case 'rel': return { h2: '', subtitle: '', rows: [{ name: '', value: '', desc: '', name_color: '' }], callout: '' }
     case 'rule': return { h2: '', subtitle: '', rules: [{ title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }], callout: '' }
+    case 'table': return { h2: '', subtitle: '', columns: ['方案', '一般', '優惠', '活動'], rows: [['代幣數', '', '', ''], ['售價', '', '', '']], highlight_col: 3, note: '' }
+    case 'gallery': return { h2: '', subtitle: '', layout: 'grid', items: [{ media_type: 'image', url: '', poster: '', caption: '' }] }
+    case 'features': return { h2: '', subtitle: '', items: [{ icon: '🎁', title: '', desc: '' }, { icon: '⚡', title: '', desc: '' }, { icon: '🔥', title: '', desc: '' }, { icon: '✨', title: '', desc: '' }] }
+    case 'countdown': return { h2: '活動倒數', subtitle: '', target_at: '', expired_text: '活動已結束，敬請期待下次！', cta_text: '立即參加', cta_url: '/' }
+    case 'sticky_cta': return { text: '立即參加', url: '/', sub_text: '限時優惠・每人限購一次' }
     case 'highlight': return { title: '', body: '', footer: '' }
     case 'cta': return { text: '立即參加', url: '/' }
     case 'product_ref': return { h2: '商品獎品', subtitle: '', product_id: '' }
@@ -92,6 +111,11 @@ function HeroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
       <div className="grid grid-cols-2 gap-3">
         <Field label="CTA 按鈕文字"><input className={inputCls} value={c.cta_text as string} onChange={e => set('cta_text', e.target.value)} /></Field>
         <Field label="CTA 連結 URL"><input className={inputCls} value={c.cta_url as string} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
+      </div>
+      <div className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
+        <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">背景影片（可選，P3功能）</span>
+        <Field label="影片 URL（R2/CDN mp4）"><input className={inputCls} value={c.bg_video_url as string || ''} onChange={e => set('bg_video_url', e.target.value)} placeholder="https://r2.ggb.com.tw/videos/xxx.mp4" /></Field>
+        <Field label="Poster 圖（影片載入前顯示）"><input className={inputCls} value={c.bg_poster_url as string || ''} onChange={e => set('bg_poster_url', e.target.value)} placeholder="https://..." /></Field>
       </div>
     </div>
   )
@@ -258,13 +282,13 @@ function StepsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
 }
 
 function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
-  type CardItem = { tag: string; variant: string; title: string; subtitle: string; value: string; unit: string; extras: string[] }
+  type CardItem = { tag: string; variant: string; title: string; subtitle: string; value: string; unit: string; extras: string[]; image_url?: string }
   const cards = (c.cards as CardItem[]) || []
   const setCard = (i: number, k: string, v: unknown) => {
     const next = cards.map((card, idx) => idx === i ? { ...card, [k]: v } : card)
     onChange({ ...c, cards: next })
   }
-  const addCard = () => onChange({ ...c, cards: [...cards, { tag: '', variant: 'star', title: '', subtitle: '', value: '', unit: '', extras: [] }] })
+  const addCard = () => onChange({ ...c, cards: [...cards, { tag: '', variant: 'star', title: '', subtitle: '', value: '', unit: '', extras: [], image_url: '' }] })
   const removeCard = (i: number) => onChange({ ...c, cards: cards.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
@@ -284,6 +308,7 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
                 <option value="grand">豪華（accent 發光）</option>
               </select>
             </div>
+            <input className={inputCls} placeholder="圖片 URL（可選，顯示在卡片頂部）" value={card.image_url || ''} onChange={e => setCard(i, 'image_url', e.target.value)} />
             <input className={inputCls} placeholder="卡片標題" value={card.title} onChange={e => setCard(i, 'title', e.target.value)} />
             <input className={inputCls} placeholder="副說明" value={card.subtitle} onChange={e => setCard(i, 'subtitle', e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
@@ -297,6 +322,163 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
         <button onClick={addCard} className="text-xs text-primary font-bold hover:underline">+ 新增卡片</button>
       </div>
       <Field label="底部備註"><textarea className={textareaCls} rows={2} value={c.note as string} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
+    </div>
+  )
+}
+
+function TableForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  const columns = (c.columns as string[]) || []
+  const rows = (c.rows as string[][]) || []
+
+  const setCol = (i: number, v: string) => {
+    const next = [...columns]; next[i] = v; onChange({ ...c, columns: next })
+  }
+  const addCol = () => onChange({ ...c, columns: [...columns, ''], rows: rows.map(r => [...r, '']) })
+  const removeCol = (i: number) => onChange({ ...c, columns: columns.filter((_, ci) => ci !== i), rows: rows.map(r => r.filter((_, ci) => ci !== i)) })
+
+  const setCell = (ri: number, ci: number, v: string) => {
+    const next = rows.map((r, idx) => idx === ri ? r.map((c_, j) => j === ci ? v : c_) : r)
+    onChange({ ...c, rows: next })
+  }
+  const addRow = () => onChange({ ...c, rows: [...rows, Array(columns.length).fill('')] })
+  const removeRow = (i: number) => onChange({ ...c, rows: rows.filter((_, ri) => ri !== i) })
+
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="強調欄（第幾欄，0起算；空白=無）">
+        <input type="number" className={inputCls} value={c.highlight_col as number ?? ''} min={0}
+          onChange={e => onChange({ ...c, highlight_col: e.target.value === '' ? undefined : Number(e.target.value) })} />
+      </Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">表頭欄位</label>
+        <div className="flex flex-wrap gap-2">
+          {columns.map((col, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <input className={inputCls + ' w-28'} value={col} placeholder={`欄${i+1}`} onChange={e => setCol(i, e.target.value)} />
+              <button onClick={() => removeCol(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-5">×</button>
+            </div>
+          ))}
+          <button onClick={addCol} className="text-xs text-primary font-bold hover:underline self-center">+ 加欄</button>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">資料列（第一格為列標題）</label>
+        {rows.map((row, ri) => (
+          <div key={ri} className="flex items-center gap-1 flex-wrap">
+            {row.map((cell, ci) => (
+              <input key={ci} className={inputCls + ' w-28'} value={cell} placeholder={ci === 0 ? '列標題' : `欄${ci+1}`}
+                onChange={e => setCell(ri, ci, e.target.value)} />
+            ))}
+            <button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 text-lg leading-none w-5">×</button>
+          </div>
+        ))}
+        <button onClick={addRow} className="text-xs text-primary font-bold hover:underline">+ 加列</button>
+      </div>
+      <Field label="底部備註"><input className={inputCls} value={c.note as string || ''} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
+    </div>
+  )
+}
+
+function GalleryForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  type GItem = { media_type: 'image' | 'video'; url: string; poster?: string; caption?: string }
+  const items = (c.items as GItem[]) || []
+  const setItem = (i: number, k: string, v: string) => {
+    const next = items.map((item, idx) => idx === i ? { ...item, [k]: v } : item)
+    onChange({ ...c, items: next })
+  }
+  const addItem = () => onChange({ ...c, items: [...items, { media_type: 'image', url: '', poster: '', caption: '' }] })
+  const removeItem = (i: number) => onChange({ ...c, items: items.filter((_, idx) => idx !== i) })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">媒體項目</label>
+        {items.map((item, i) => (
+          <div key={i} className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
+            <div className="flex items-center justify-between">
+              <select className={inputCls + ' w-28'} value={item.media_type} onChange={e => setItem(i, 'media_type', e.target.value)}>
+                <option value="image">圖片</option>
+                <option value="video">影片</option>
+              </select>
+              <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-sm">刪除</button>
+            </div>
+            <input className={inputCls} placeholder="URL（R2 圖片 or mp4）" value={item.url} onChange={e => setItem(i, 'url', e.target.value)} />
+            {item.media_type === 'video' && (
+              <input className={inputCls} placeholder="Poster 圖 URL（影片封面）" value={item.poster || ''} onChange={e => setItem(i, 'poster', e.target.value)} />
+            )}
+            <input className={inputCls} placeholder="說明文字（可選）" value={item.caption || ''} onChange={e => setItem(i, 'caption', e.target.value)} />
+          </div>
+        ))}
+        <button onClick={addItem} className="text-xs text-primary font-bold hover:underline">+ 新增媒體</button>
+      </div>
+    </div>
+  )
+}
+
+function FeaturesForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  type FItem = { icon: string; title: string; desc: string }
+  const items = (c.items as FItem[]) || []
+  const setItem = (i: number, k: string, v: string) => {
+    const next = items.map((item, idx) => idx === i ? { ...item, [k]: v } : item)
+    onChange({ ...c, items: next })
+  }
+  const addItem = () => onChange({ ...c, items: [...items, { icon: '⭐', title: '', desc: '' }] })
+  const removeItem = (i: number) => onChange({ ...c, items: items.filter((_, idx) => idx !== i) })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">特色項目（建議 4 個）</label>
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2 items-start border border-neutral-100 rounded-lg p-2 bg-neutral-50">
+            <input className={inputCls + ' w-20'} placeholder="emoji / URL" value={item.icon} onChange={e => setItem(i, 'icon', e.target.value)} />
+            <div className="flex-1 space-y-2">
+              <input className={inputCls} placeholder="標題" value={item.title} onChange={e => setItem(i, 'title', e.target.value)} />
+              <input className={inputCls} placeholder="說明" value={item.desc} onChange={e => setItem(i, 'desc', e.target.value)} />
+            </div>
+            <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none mt-1">×</button>
+          </div>
+        ))}
+        <button onClick={addItem} className="text-xs text-primary font-bold hover:underline">+ 新增特色</button>
+      </div>
+    </div>
+  )
+}
+
+function CountdownForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="目標時間（ISO 8601）">
+        <input type="datetime-local" className={inputCls}
+          value={c.target_at ? new Date(c.target_at as string).toISOString().slice(0, 16) : ''}
+          onChange={e => set('target_at', e.target.value ? new Date(e.target.value).toISOString() : '')} />
+      </Field>
+      <Field label="到期後顯示文字"><input className={inputCls} value={c.expired_text as string || ''} onChange={e => set('expired_text', e.target.value)} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="CTA 按鈕文字（未到期顯示）"><input className={inputCls} value={c.cta_text as string || ''} onChange={e => set('cta_text', e.target.value)} /></Field>
+        <Field label="CTA 連結 URL"><input className={inputCls} value={c.cta_url as string || ''} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
+      </div>
+    </div>
+  )
+}
+
+function StickyCtaForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  const set = (k: string, v: string) => onChange({ ...c, [k]: v })
+  return (
+    <div className="space-y-3">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-semibold">
+        每個活動頁只能加一個 sticky_cta，它會固定在畫面底部，不跟其他 sections 一起捲動。
+      </div>
+      <Field label="按鈕文字"><input className={inputCls} value={c.text as string || ''} onChange={e => set('text', e.target.value)} placeholder="立即參加" /></Field>
+      <Field label="連結 URL"><input className={inputCls} value={c.url as string || ''} onChange={e => set('url', e.target.value)} placeholder="/shop/xxx" /></Field>
+      <Field label="小字說明（按鈕下方）"><input className={inputCls} value={c.sub_text as string || ''} onChange={e => set('sub_text', e.target.value)} placeholder="限時優惠・每人限購一次" /></Field>
     </div>
   )
 }
@@ -358,6 +540,8 @@ function SectionRow({ section, idx, total, products, onSave, onDelete, onMoveUp,
   const formMap: Record<SectionType, React.FC<{ c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }>> = {
     hero: HeroForm, text: TextForm, steps: StepsForm, cards: CardsForm,
     stats: StatsForm, fukuro: FukuroForm, rel: RelForm, rule: RuleForm,
+    table: TableForm, gallery: GalleryForm, features: FeaturesForm,
+    countdown: CountdownForm, sticky_cta: StickyCtaForm,
     highlight: HighlightForm, cta: CtaForm,
     product_ref: (props) => <ProductRefForm {...props} products={products} />,
   }
