@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Share2 } from 'lucide-react'
@@ -235,9 +235,12 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-gitem{position:relative;border-radius:14px;overflow:hidden;border:1px solid ${borderMid};
       background:${cardDarker};aspect-ratio:9/11;}
     .lpv-gitem img,.lpv-gitem video{width:100%;height:100%;object-fit:cover;}
-    .lpv-gcap{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;
-      background:linear-gradient(180deg,transparent,rgba(0,0,0,.82));
-      font-size:11px;font-weight:700;color:rgba(255,255,255,.85);}
+    .lpv-gcap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;
+      background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));}
+    .lpv-gcn{font-weight:900;font-size:15px;}
+    .lpv-gbadge{position:absolute;top:8px;left:8px;font-size:9px;font-weight:900;
+      letter-spacing:1px;padding:3px 8px;border-radius:999px;
+      background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);}
 
     /* ── FEATURES ── */
     .lpv-features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:720px;margin:0 auto;}
@@ -292,10 +295,17 @@ function css(vars: { bg: string; accent: string }) {
 
 function HeroSection({ c }: { c: Record<string, unknown> }) {
   const gems = (c.gems as { color: string }[]) || []
+  const videoRef = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    v.muted = true
+    v.play().catch(() => {})
+  }, [])
   return (
     <section className="lpv-hero">
       {bool(c.bg_video_url) && (
-        <video src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
+        <video ref={videoRef} src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
           autoPlay muted loop playsInline className="h-vid" />
       )}
       <div className="h-bg" /><div className="h-beam" /><div className="h-veil" />
@@ -524,8 +534,12 @@ function TableSection({ c }: { c: Record<string, unknown> }) {
 }
 
 function GallerySection({ c }: { c: Record<string, unknown> }) {
-  type GItem = { media_type: 'image' | 'video'; url: string; poster?: string; caption?: string }
+  type GItem = { media_type: 'image' | 'video'; url: string; poster?: string; caption?: string; badge?: string; color?: string }
   const items = (c.items as GItem[]) || []
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+  useEffect(() => {
+    videoRefs.current.forEach(v => v?.play().catch(() => {}))
+  }, [])
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
       {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
@@ -534,9 +548,17 @@ function GallerySection({ c }: { c: Record<string, unknown> }) {
         {items.map((item, i) => (
           <div key={i} className="lpv-gitem">
             {item.media_type === 'video'
-              ? <video src={item.url} poster={item.poster || undefined} muted loop playsInline preload="metadata" />
+              ? <video ref={el => { videoRefs.current[i] = el }} src={item.url}
+                  poster={item.poster || undefined} autoPlay muted loop playsInline preload="auto" />
               : <img src={item.url} alt={item.caption || ''} loading="lazy" />}
-            {item.caption && <div className="lpv-gcap">{item.caption}</div>}
+            {item.badge && (
+              <span className="lpv-gbadge" style={{ color: item.color || undefined }}>{item.badge}</span>
+            )}
+            {item.caption && (
+              <div className="lpv-gcap">
+                <div className="lpv-gcn" style={{ color: item.color || undefined }}>{item.caption}</div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -664,6 +686,8 @@ export default function LpRenderer({ slug }: { slug: string }) {
   const router = useRouter()
   const [data, setData] = useState<{ event: EventData; sections: Section[] } | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [showSticky, setShowSticky] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch(`/api/events/${slug}`)
@@ -671,6 +695,14 @@ export default function LpRenderer({ slug }: { slug: string }) {
       .then(d => setData(d))
       .catch(() => setNotFound(true))
   }, [slug])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onScroll = () => setShowSticky(el.scrollTop > el.clientHeight * 0.75)
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
 
   const handleShare = async (title?: string) => {
     const url = window.location.href
@@ -705,7 +737,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
   const stickySection = sections.find(s => s.type === 'sticky_cta')
 
   return (
-    <div className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
+    <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
       <style>{css({ bg: event.bg_color, accent: event.accent_color })}</style>
       <div className="lpv-topbar">
         <button onClick={() => router.back()} className="lpv-topbtn" aria-label="返回">
@@ -736,7 +768,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
           default:            return null
         }
       })}
-      {stickySection && <StickyCtaSection c={stickySection.content} />}
+      {stickySection && showSticky && <StickyCtaSection c={stickySection.content} />}
     </div>
   )
 }

@@ -31,173 +31,174 @@ const EMPTY_FORM = { slug: '', title: '', bg_color: '#0a0610', accent_color: '#c
 function buildTemplateSections(title: string) {
   const A = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/lp-assets/zetcho`
   return [
-    // 1. 全屏主視覺 — 影片背景 hero
+    // 1. Hero
     {
       type: 'hero',
       content: {
-        eyebrow: 'GGB SPECIAL EVENT',
+        eyebrow: 'SLOT TYPE D',
         title,
-        subtitle: '期間限定・即抽即開・限量到手為止',
-        highlight_text: '🔥 超稀有大賞等你來拿',
-        badge_text: '熱烈進行中',
-        cta_text: '立即參加',
+        subtitle: '対決を制せ。突入＝絶頂RUSH。\nカードが、連チャンで降りそそぐ。',
+        highlight_text: '機械割 90〜114% / 1突入 平均5連・カードを連チャン獲得',
+        badge_text: '',
+        cta_text: '今すぐ遊ぶ',
         cta_url: '/',
         bg_video_url: `${A}/banchou-buildup.mp4`,
-        bg_poster_url: `${A}/slot-d-wide.png`,
-        gems: [
-          { color: '#c026d3' }, { color: '#e879f9' }, { color: '#86198f' }, { color: '#a21caf' }, { color: '#d946ef' },
-        ],
+        bg_poster_url: '',
+        gems: [],
       },
     },
-    // 2. SPEC 數字區
+    // 2. SPEC
     {
       type: 'stats',
       content: {
         h2: 'SPEC',
-        subtitle: '活動數據一覽',
+        subtitle: '荒い連チャン型・絶頂RUSH',
         stats: [
-          { v: '80口', l: '本次活動總量', color: '#c026d3' },
-          { v: '1賞', l: '最高大賞', color: '#e879f9' },
-          { v: '即抽', l: '即時開獎', color: '#a21caf' },
-          { v: '24H', l: '全天候服務', color: '#d946ef' },
+          { v: 'カード', l: '対決勝利で景品カード獲得', color: '#ffd24a' },
+          { v: '平均5連', l: '継続80%・1突入で複数枚', color: '#e879f9' },
+          { v: '突入確定', l: '対決成立＝絶頂RUSH確定', color: '#e879f9' },
+          { v: '90-114%', l: '機械割（設定で変動）', color: '#ffd24a' },
         ],
       },
     },
-    // 3. 亮點特色
-    {
-      type: 'features',
-      content: {
-        h2: '活動特色',
-        subtitle: '為什麼要參加這次活動',
-        items: [
-          { icon: '🎰', title: '即抽即開', desc: '扣除代幣後立即抽獎，秒看結果' },
-          { icon: '🏆', title: '超豪華大賞', desc: '最高大賞只有一個，稀有度拉滿' },
-          { icon: '📦', title: '自動入倉庫', desc: '中獎品項直接入帳，方便管理' },
-          { icon: '🚚', title: '安全出貨', desc: '填寫地址即可出貨，台灣全境到府' },
-        ],
-      },
-    },
-    // 4. 賞等價格表
-    {
-      type: 'table',
-      content: {
-        h2: '賞等一覽',
-        subtitle: '本次活動獎品明細',
-        columns: ['賞等', '獎品名稱', '數量', '機率'],
-        rows: [
-          ['🏅 A 賞', '請填入獎品名稱', '1個', '1/80'],
-          ['🥈 B 賞', '請填入獎品名稱', '3個', '3/80'],
-          ['🥉 C 賞', '請填入獎品名稱', '6個', '6/80'],
-          ['🎁 D 賞', '請填入獎品名稱', '10個', '10/80'],
-          ['✨ 大賞', '請填入獎品名稱', '1個', '1/80'],
-        ],
-        highlight_col: 3,
-        note: '※ 機率以本活動實際設定為準，詳見活動頁面',
-      },
-    },
-    // 5. 遊玩流程
+    // 3. 流れ
     {
       type: 'steps',
       content: {
-        h2: '遊玩方式',
-        subtitle: '簡單四步驟，輕鬆參與',
+        h2: '絶頂RUSH の流れ',
+        subtitle: '対決を制すれば、勝つたびにカード。継続が続く限り連チャン',
         steps: [
-          { title: 'STEP 1｜儲值代幣', description: '前往儲值頁面，選擇適合的代幣方案' },
-          { title: 'STEP 2｜進入活動', description: '從活動列表點入，確認賞等與機率' },
-          { title: 'STEP 3｜即抽即開獎', description: '選擇抽獎數量，立即扣除代幣並看結果' },
-          { title: 'STEP 4｜申請出貨', description: '到我的倉庫選品，填寫地址完成配送' },
+          { title: '通常スピン', description: '小役でコイン。対決(突入)を待つ' },
+          { title: '対決成立＝突入確定', description: '成立した瞬間、絶頂RUSHが確定（全連を事前確定）' },
+          { title: '勝利＝カード獲得', description: '1連ごとに景品カードを獲得' },
+          { title: '継続！', description: '継続率80%。相手の格＝継続期待度★' },
+          { title: '敗北＝RUSH終了 → リザルト', description: '獲得した連数・カードを総まとめ' },
         ],
       },
     },
-    // 6. 獎品卡片
+    // 4. 継続期待度
     {
-      type: 'cards',
+      type: 'rel',
       content: {
-        h2: '獎品展示',
-        subtitle: '各賞等獎品搶先看',
-        note: '※ 圖片僅供參考，實際以活動頁面為準',
-        cards: [
-          { tag: 'A 賞', variant: 'star', title: '限定頂級獎品', subtitle: '請填入實際獎品名稱與說明', value: '1', unit: '個', extras: [] },
-          { tag: 'B 賞', variant: 'star', title: '人氣精選獎品', subtitle: '請填入實際獎品名稱與說明', value: '3', unit: '個', extras: [] },
-          { tag: 'C 賞', variant: 'star', title: '超值好禮', subtitle: '請填入實際獎品名稱與說明', value: '6', unit: '個', extras: [] },
-          { tag: '✨ 大賞', variant: 'grand', title: '絶頂豪華大賞', subtitle: '全場唯一，強者才能拿到', value: '1', unit: '個', extras: ['活動期間僅此一個', '可至會員中心查看紀錄'] },
+        h2: '継続期待度＝相手の格',
+        subtitle: '相手の格は継続のヒント。弱い相手ほど継続に期待（★が多い）\n※連数は突入時に確定済み。相手・★は結果を示すヒント演出です',
+        rows: [
+          { name: 'チンピラ', name_color: '#ff7a7a', value: '★★★★½', desc: '最弱＝勝ちやすい＝期待大' },
+          { name: '番格', name_color: '#f59e0b', value: '★★★★☆', desc: 'やや強い' },
+          { name: '頭', name_color: '#ff8a3d', value: '★★★☆☆', desc: '強敵・低期待' },
+          { name: '総番', name_color: '#c026d3', value: '★★☆☆☆', desc: '最強＝勝ちにくい。撃破で次回確定' },
         ],
+        callout: '普段は弱い相手をサクサク撃破して継続。だが強敵(総番)が出れば一見ピンチ ―― そこで勝てば次回確定のプレミア。',
       },
     },
-    // 7. 影片畫廊
+    // 5. 継続確定の法則
     {
-      type: 'gallery',
+      type: 'rule',
       content: {
-        h2: '精彩片段',
-        subtitle: '看看其他玩家的開獎瞬間',
-        layout: 'grid',
-        items: [
-          { media_type: 'video', url: `${A}/banchou-buildup.mp4`, poster: `${A}/slot-d-wide.png`, caption: '活動開場' },
-          { media_type: 'video', url: `${A}/banchou-win.mp4`, poster: '', caption: '中獎瞬間' },
-          { media_type: 'video', url: `${A}/banchou-win-god.mp4`, poster: '', caption: '神級大賞' },
-          { media_type: 'video', url: `${A}/zetcho_reversal.mp4`, poster: '', caption: '絶頂逆転' },
-          { media_type: 'video', url: `${A}/banchou-win-strong.mp4`, poster: '', caption: '強力連發' },
-          { media_type: 'video', url: `${A}/banchou-yokoku-strong.mp4`, poster: '', caption: '下次預告' },
+        h2: '継続確定の法則',
+        subtitle: 'この演出が出れば次回継続が確定。連はすべて事前確定済み＝嘘の煽りなし',
+        rules: [
+          { title: '強敵撃破', title_color: '#c026d3', desc: '低期待の総番(★2)に勝てば次回確定' },
+          { title: '逆転・復活', title_color: '#5aff9a', desc: '敗北→暗転→復活。逆転勝ち＝次回確定' },
+          { title: '金の帯', title_color: '#ffd24a', desc: '対決前に金帯「継続確定」が出れば確定' },
+          { title: '「次回確定」表示', title_color: '#ff4d5a', desc: 'その名の通り、出れば次回継続が確定' },
         ],
       },
     },
-    // 8. 活動亮點框（fukuro）
+    // 6. 絶頂直撃
     {
       type: 'fukuro',
       content: {
-        h2: '本次活動特別企劃',
-        subtitle: '期間限定 · 只有這裡有',
-        ft: '▶ 特別加碼',
-        fb: '活動期間購買指定數量，享有額外回饋代幣！\n詳細條件請見活動頁面說明。',
-        fb2: '🎁 限時加碼，代幣回饋 10%！',
-        chips: ['即抽即開獎', '超稀有大賞', '期間限定', '每日補貨'],
-        callout: '⚠ 注意：活動獎品數量有限，售完為止。實際機率以活動頁面標示為準。',
+        h2: '絶頂直撃',
+        subtitle: '待てないアナタへ ―― コインを払えば、抽選を経ず即・絶頂RUSH突入',
+        ft: 'コインで即・絶頂RUSH突入',
+        fb: '中身は通常の絶頂RUSHと同一（継続80%・平均約5連）。連数は引き運次第。',
+        fb2: 'さらに 直撃1回ごとに ガチャ券 +4枚（買ったレートの券）',
+        chips: ['20Cベット：6,034C', '50Cベット：15,084C', '100Cベット：30,167C', '200Cベット：60,334C', '600Cベット：181,000C'],
+        callout: '絶頂直撃は「突入を購入」する機能です。獲得カード・連数は運で変動し、支払ったコインを下回る場合もあります。一撃を保証するものではありません。',
       },
     },
-    // 9. 活動倒數
+    // 7. 設定推測
     {
-      type: 'countdown',
+      type: 'table',
       content: {
-        h2: '活動倒數',
-        subtitle: '把握時間，機會不等人',
-        target_at: '',
-        expired_text: '活動已結束，期待下次再見！',
-        cta_text: '立即參加',
-        cta_url: '/',
+        h2: '設定推測',
+        subtitle: '絶頂RUSHの中身は全設定共通 ―― 設定差は「対決(突入)頻度」だけ',
+        columns: ['', '設定1', '設定2', '設定3', '設定4', '設定5', '設定6'],
+        rows: [
+          ['機械割', '90%', '95%', '100%', '104%', '109%', '114%'],
+          ['対決(突入)間隔', '1/420', '1/390', '1/364', '1/346', '1/325', '1/307'],
+          ['継続率', '80%', '80%', '80%', '80%', '80%', '80%'],
+        ],
+        highlight_col: 6,
+        note: '※ 高設定ほど対決(絶頂突入)が出やすい。継続率・カード価値は全設定共通＝絶頂の中身に設定差なし。',
       },
     },
-    // 10. 注意事項
+    // 8. 通常時の小役
     {
-      type: 'highlight',
+      type: 'table',
       content: {
-        title: '活動注意事項',
-        body: '1. 本活動限台灣地區玩家參與。\n2. 每人不限購買次數，但大賞全場限量一個，先到先得。\n3. 活動期間如遇系統維護，將暫停受理，恢復後繼續。\n4. 抽獎結果即時確定，不可撤銷。\n5. 獎品出貨以申請時間排程，約 7-14 個工作天到貨。\n\n請至後台填入實際活動規則與注意事項。',
-        footer: '如有疑問請聯繫客服，我們會盡快回覆',
+        h2: '通常時の小役',
+        subtitle: '通常スピンの小役はコイン払い戻し（カードは対決＝絶頂RUSHのみ）',
+        columns: ['役', '20C', '50C', '100C', '200C', '600C'],
+        rows: [
+          ['強レア', '100C', '250C', '500C', '1,000C', '3,000C'],
+          ['チャンス目', '60C', '150C', '300C', '600C', '1,800C'],
+          ['チェリー', '40C', '100C', '200C', '400C', '1,200C'],
+          ['ベル', '26C', '65C', '130C', '260C', '780C'],
+          ['ハズレ', '1C', '3C', '5C', '10C', '30C'],
+          ['対決（絶頂突入）', '→ 絶頂RUSH（カード連チャン）', '', '', '', ''],
+        ],
+        highlight_col: 0,
+        note: '※ コインはサイト内通貨。数値は1スピンあたりの払い戻し目安です。',
       },
     },
-    // 11. 補充說明
+    // 9. 演出ギャラリー
     {
-      type: 'text',
+      type: 'gallery',
       content: {
-        h2: '關於本活動',
-        body: '本次活動由 GGB 獨家引進，精選高人氣品牌聯名商品，數量稀少，每位玩家都有機會拿到超值獎品。活動採即抽即開獎制度，公平公正，歡迎所有玩家參與！\n\n請至後台填入實際活動簡介。',
+        h2: '絶頂RUSH 演出',
+        subtitle: '対戦相手 → 鍔迫り合い → 勝利＝カード → 継続！ 強敵撃破・逆転は次回確定',
+        layout: 'grid',
+        items: [
+          { media_type: 'video', url: `${A}/banchou-buildup.mp4`, poster: '', caption: '絶頂突入', badge: '突入', color: '#e879f9' },
+          { media_type: 'video', url: `${A}/banchou-win.mp4`, poster: '', caption: '勝利＝カード', badge: '連', color: '#ffd24a' },
+          { media_type: 'video', url: `${A}/banchou-win-god.mp4`, poster: '', caption: '圧勝', badge: '激アツ', color: '#ff4d5a' },
+          { media_type: 'video', url: `${A}/zetcho_reversal.mp4`, poster: '', caption: '逆転・復活', badge: '次回確定', color: '#5aff9a' },
+          { media_type: 'video', url: `${A}/banchou-win-strong.mp4`, poster: '', caption: '勝利・強', badge: '強', color: '#ff9a3d' },
+          { media_type: 'video', url: `${A}/banchou-yokoku-strong.mp4`, poster: '', caption: '対決煽り', badge: '煽り', color: '#a855f7' },
+        ],
+        callout: '連数・カードは突入の瞬間に確定しています。演出はアツさ・結果の格を表現するもので、演出によって結果が変わることはありません（離脱・リロードでも獲得は保証）。',
       },
     },
-    // 12. 大按鈕 CTA
+    // 10. 事前確定式
+    {
+      type: 'fukuro',
+      content: {
+        h2: '',
+        subtitle: '',
+        ft: '事前確定式 ―― 突入で全連ロック',
+        fb: '対決成立の瞬間に全連＋全カードを1トランザクションで確定。最低1連保証。後乗せ・吸い込みは一切なし。途中で閉じても獲得は保証されます。',
+        fb2: '',
+        chips: ['突入＝確定', '最低1連保証', '後乗せなし', '吸い込みなし'],
+        callout: '',
+      },
+    },
+    // 11. 最終 CTA
     {
       type: 'cta',
       content: {
-        text: '立即參加活動',
+        text: '今すぐ遊ぶ',
         url: '/',
       },
     },
-    // 13. 底部固定列
+    // 12. 底部固定
     {
       type: 'sticky_cta',
       content: {
-        text: '立即參加',
+        text: '今すぐ遊ぶ',
         url: '/',
-        sub_text: '限量 80 口 · 即抽即開獎',
+        sub_text: '突入＝絶頂RUSH確定 · 平均5連',
       },
     },
   ]
