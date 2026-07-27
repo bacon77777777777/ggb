@@ -92,12 +92,14 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-gems i{width:14px;height:14px;border-radius:999px;display:block;
       box-shadow:0 0 14px currentColor,0 0 28px currentColor;}
     .lpv-sub{position:relative;z-index:1;margin-top:18px;font-size:clamp(14px,4vw,19px);
-      font-weight:700;color:rgba(255,255,255,.78);max-width:560px;line-height:1.7;}
+      font-weight:700;color:#ecd8f0;max-width:580px;line-height:1.7;}
+    .lpv-sub-b{background:${titleGrad};-webkit-background-clip:text;background-clip:text;
+      color:transparent;font-weight:900;font-size:1.15em;}
     .lpv-arasa{position:relative;z-index:1;margin-top:22px;display:inline-block;
       padding:9px 22px;border-radius:8px;font-weight:900;font-size:clamp(13px,3.6vw,16px);
-      color:rgba(255,255,255,.92);background:rgba(0,0,0,.4);
-      border:2px dashed ${borderStrong};
-      box-shadow:0 0 18px ${glow20};letter-spacing:.5px;}
+      color:#f3e0ff;background:${cardDarker};
+      border:2px dashed ${vars.accent};
+      box-shadow:0 0 18px rgba(${a},0.4);letter-spacing:1px;}
     .lpv-badge{position:relative;z-index:1;margin-top:16px;font-size:11px;letter-spacing:3px;
       color:${vars.accent};font-weight:800;opacity:.8;
       animation:lpvPulse 2.4s ease-in-out infinite;}
@@ -302,6 +304,8 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
     v.muted = true
     v.play().catch(() => {})
   }, [])
+  const subRaw = str(c.subtitle)
+  const [subHi, subRest] = subRaw.includes('\n') ? subRaw.split('\n') : [null, subRaw]
   return (
     <section className="lpv-hero">
       {bool(c.bg_video_url) && (
@@ -316,7 +320,13 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
           {gems.map((g, i) => <i key={i} style={{ background: g.color, color: g.color }} />)}
         </div>
       )}
-      {bool(c.subtitle) && <p className="lpv-sub">{c.subtitle as string}</p>}
+      {bool(subRaw) && (
+        <p className="lpv-sub">
+          {subHi && <b className="lpv-sub-b">{subHi}</b>}
+          {subHi && subRest && <br />}
+          {subRest}
+        </p>
+      )}
       {bool(c.highlight_text) && <div className="lpv-arasa">{c.highlight_text as string}</div>}
       {bool(c.badge_text) && <div className="lpv-badge">● {c.badge_text as string}</div>}
       {bool(c.cta_url) && (
