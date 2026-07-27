@@ -54,7 +54,7 @@ function MobileTabbarInner() {
 
   const { theme } = useTheme();
 
-  if (isSecondaryPage || isNewsDetail) {
+  if (isSecondaryPage || isNewsDetail || pathname.startsWith('/events/')) {
     return null;
   }
 

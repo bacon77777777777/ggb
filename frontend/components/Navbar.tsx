@@ -508,6 +508,7 @@ function NavbarInner() {
   // Hide Navbar on Mission page and Auth pages (Login, Register, Forgot Password)
   // Auth pages have their own custom top navigation
   if (pathname === '/mission' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') return null;
+  if (pathname.startsWith('/events/')) return null;
 
   const handleBack = () => {
     // 1. Handle special paths

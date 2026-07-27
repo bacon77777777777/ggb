@@ -2,7 +2,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import FooterWrapper from '@/components/FooterWrapper';
 import MobileTabbar from '@/components/MobileTabbar';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -125,9 +125,7 @@ export default function RootLayout({
                   <main className="flex-grow">
                     <PathnameKeyed>{children}</PathnameKeyed>
                   </main>
-                  <div className="hidden md:block">
-                    <Footer />
-                  </div>
+                  <FooterWrapper />
                   <MobileTabbar />
                 </FeatureFlagsProvider>
               </ToastProvider>
