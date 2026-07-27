@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
     }).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  await logAdminAction({ adminId: admin.username, action: 'update_event', detail: { id, slug: body.slug }, ip: req.headers.get('x-forwarded-for') ?? '' })
+  await logAdminAction({ adminId: admin.adminId, action: 'update_event', detail: { id, slug: body.slug }, ip: req.headers.get('x-forwarded-for') ?? '' })
   return NextResponse.json(data)
 }
 
@@ -40,6 +40,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params
   const { error } = await getSupabaseAdmin().from('events').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  await logAdminAction({ adminId: admin.username, action: 'delete_event', detail: { id }, ip: req.headers.get('x-forwarded-for') ?? '' })
+  await logAdminAction({ adminId: admin.adminId, action: 'delete_event', detail: { id }, ip: req.headers.get('x-forwarded-for') ?? '' })
   return NextResponse.json({ ok: true })
 }
