@@ -680,7 +680,7 @@ export default function EventEditPage() {
                   <option value="light">淺色</option>
                 </select>
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">主題色</label>
                 <div className="flex items-center gap-2 mt-0.5">
                   <input type="color" value={meta.accent_color || '#c026d3'} onChange={e => setMeta(m => ({ ...m, accent_color: e.target.value }))} className="w-9 h-9 rounded-lg cursor-pointer border border-neutral-200" />
