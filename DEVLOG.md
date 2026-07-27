@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.07.27i｜2026-07-27｜LP 淺色模式優化 + 輪播圖/公告站內連結
+
+### LP 淺色模式視覺優化
+- 卡片背景調淡（darkening 值從 -42/-58 降至 -28/-38，border 從 -88/-115 降至 -58/-76）
+- 淺色模式所有文字 opacity 調深（body .70→.82，次要文字 .42→.58 等）
+- 卡片內 accent 說明文字（`.rd`、`.rds`、`.sl`、`.feat-desc`）opacity 提升至 .82/.85
+- Section 標題改用深色漸層系統（`sectionTitleGrad`），淺色模式暗紫→主題色→暗紫，不再出現淺色漸層在白底上看不清
+- `.lpv-pp` / `.lpv-gold` 在淺色模式加 `filter:drop-shadow(0 1px 2px rgba(0,0,0,.22))` 提升可讀性
+- 修正 `logAdminAction` 呼叫格式（object 參數）
+
+### 輪播圖 / 公告站內連結優化
+- 輪播圖：`isInternalUrl()` 判斷，站內連結用 Next.js `<Link>` SPA 跳轉，外部連結才開新分頁
+- 公告內文 `linkify()`：同樣邏輯，站內 URL → `<Link>`，外部 URL → `<a target="_blank">`
+
 ## v2026.07.27h｜2026-07-27｜活動 LP 深色/淺色主題切換
 
 ### 主題模式（theme_mode）
