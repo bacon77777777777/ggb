@@ -184,20 +184,38 @@ function css(vars: { bg: string; accent: string }) {
       font-size:clamp(20px,5.6vw,30px);}
     .lpv-stat .sl{font-size:11px;color:rgba(${a},0.65);font-weight:700;margin-top:6px;letter-spacing:.3px;}
 
-    /* ── FUKURO ── */
-    .lpv-fukuro-wrap{border-radius:16px;border:1px solid ${borderStrong};
-      background:linear-gradient(180deg,${cardDark},rgba(0,0,0,.5));
+    /* ── FUKURO ── default is gold/warm like zetcho; accent variant overrides */
+    .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
+      background:linear-gradient(180deg,rgba(255,160,80,.09),rgba(${br},${bg_},${bb},.65));
       padding:26px 18px;text-align:center;max-width:680px;margin:0 auto;}
+    .lpv-fukuro-wrap.accent{border-color:${borderMid};
+      background:linear-gradient(180deg,rgba(${a},.12),rgba(${br},${bg_},${bb},.65));}
     .lpv-fukuro-wrap .fft{font-weight:900;font-size:clamp(19px,5.2vw,28px);}
-    .lpv-fukuro-wrap .ffb{margin:12px auto 0;color:rgba(255,255,255,.7);font-size:13px;
+    .lpv-fukuro-wrap .ffb{margin:12px auto 0;color:rgba(255,255,255,.78);font-size:13px;
       line-height:1.85;font-weight:600;max-width:580px;white-space:pre-wrap;}
-    .lpv-fukuro-wrap .ffb2{margin-top:10px;color:${vars.accent};font-size:13px;font-weight:800;}
-    .lpv-chips{margin-top:14px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;}
+    .lpv-fukuro-wrap .ffb2{margin-top:10px;color:#ffd24a;font-size:13px;font-weight:800;}
+    .lpv-chips{margin-top:14px;display:flex;flex-wrap:wrap;justify-content:center;gap:0;}
     .lpv-chip{display:inline-block;margin:4px;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:800;
-      color:${vars.accent};border:1px solid rgba(${a},0.40);background:rgba(0,0,0,.3);}
+      color:#ffd24a;border:1px solid #6a4a1e;background:rgba(0,0,0,.3);}
     .lpv-callout{max-width:680px;margin:22px auto 0;padding:14px 16px;border-radius:12px;
-      border:1px dashed rgba(${a},0.40);background:rgba(0,0,0,.25);
-      color:rgba(255,255,255,.72);font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
+      border:1px dashed rgb(${e1r},${Math.round(e1g*.7)},${e1b});background:rgba(0,0,0,.25);
+      color:rgba(255,255,255,.78);font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
+
+    /* ── REL (ranking/comparison rows like zetcho zcl-rel) ── */
+    .lpv-rel{display:flex;flex-direction:column;gap:8px;max-width:620px;margin:0 auto;}
+    .lpv-relrow{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:10px;
+      padding:12px 14px;border-radius:12px;border:1px solid ${borderMid};
+      background:linear-gradient(180deg,${cardDark},${cardDarker});}
+    .lpv-relrow .rnm{font-weight:900;font-size:15px;}
+    .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:#ffd24a;}
+    .lpv-relrow .rds{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:2px;}
+
+    /* ── RULE (2×2 rule grid like zetcho zcl-rule) ── */
+    .lpv-rule{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;margin:0 auto;}
+    .lpv-rc{border-radius:12px;border:1px solid ${borderMid};
+      background:linear-gradient(180deg,${cardDark},${cardDarker});padding:16px 14px;}
+    .lpv-rc .rt{font-weight:900;font-size:16px;}
+    .lpv-rc .rd{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:5px;line-height:1.6;}
 
     /* ── PRODUCT PRIZES ── */
     .lpv-prizes{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto;}
@@ -342,11 +360,12 @@ function StatsSection({ c }: { c: Record<string, unknown> }) {
 
 function FukuroSection({ c }: { c: Record<string, unknown> }) {
   const chips = (c.chips as string[]) || []
+  const isAccent = c.variant === 'accent'
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
       {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
       {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
-      <div className="lpv-fukuro-wrap">
+      <div className={`lpv-fukuro-wrap${isAccent ? ' accent' : ''}`}>
         {c.ft && <div className="fft">{c.ft as string}</div>}
         {c.fb && <div className="ffb">{c.fb as string}</div>}
         {c.fb2 && <div className="ffb2">{c.fb2 as string}</div>}
@@ -355,6 +374,49 @@ function FukuroSection({ c }: { c: Record<string, unknown> }) {
             {chips.map((chip, i) => <span key={i} className="lpv-chip">{chip}</span>)}
           </div>
         )}
+      </div>
+      {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
+    </section>
+  )
+}
+
+function RelSection({ c }: { c: Record<string, unknown> }) {
+  type RelRow = { name: string; name_color?: string; value: string; desc?: string }
+  const rows = (c.rows as RelRow[]) || []
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-rel">
+        {rows.map((row, i) => (
+          <div key={i} className="lpv-relrow">
+            <span className="rnm" style={{ color: row.name_color || undefined }}>{row.name}</span>
+            <span>
+              <span className="rst">{row.value}</span>
+              {row.desc && <div className="rds">{row.desc}</div>}
+            </span>
+          </div>
+        ))}
+      </div>
+      {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
+    </section>
+  )
+}
+
+function RuleSection({ c }: { c: Record<string, unknown> }) {
+  type RuleItem = { title: string; title_color?: string; desc: string }
+  const rules = (c.rules as RuleItem[]) || []
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 0 }}>
+      {c.h2 && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      {c.subtitle && <p className="lpv-h2s">{c.subtitle as string}</p>}
+      <div className="lpv-rule">
+        {rules.map((rule, i) => (
+          <div key={i} className="lpv-rc">
+            <div className="rt" style={{ color: rule.title_color || undefined }}>{rule.title}</div>
+            <div className="rd">{rule.desc}</div>
+          </div>
+        ))}
       </div>
       {c.callout && <div className="lpv-callout">{c.callout as string}</div>}
     </section>
@@ -454,6 +516,8 @@ export default function LpRenderer({ slug }: { slug: string }) {
           case 'cards':       return <CardsSection       key={sec.id} c={sec.content} />
           case 'stats':       return <StatsSection        key={sec.id} c={sec.content} />
           case 'fukuro':      return <FukuroSection       key={sec.id} c={sec.content} />
+          case 'rel':         return <RelSection          key={sec.id} c={sec.content} />
+          case 'rule':        return <RuleSection         key={sec.id} c={sec.content} />
           case 'highlight':   return <HighlightSection   key={sec.id} c={sec.content} />
           case 'cta':         return <CtaSection         key={sec.id} c={sec.content} />
           case 'product_ref': return <ProductRefSection  key={sec.id} c={sec.content} resolved={sec.resolved} />

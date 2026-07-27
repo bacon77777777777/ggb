@@ -12,12 +12,21 @@ interface Event {
   is_active: boolean; start_at: string | null; end_at: string | null
 }
 interface Section { id: string; type: SectionType; sort_order: number; content: Record<string, unknown> }
-type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref'
+type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule'
 interface Product { id: number; name: string }
 
 const TYPE_LABELS: Record<SectionType, string> = {
-  hero: '全屏主視覺', text: '標題＋說明文字', steps: '流程步驟',
-  cards: '獎品卡片', highlight: '重點強調框', cta: '底部大按鈕', product_ref: '商品獎品清單',
+  hero: '全屏主視覺',
+  text: '標題＋說明文字',
+  steps: '流程步驟',
+  cards: '獎品卡片',
+  stats: '數字指標格',
+  fukuro: '重點框＋標籤',
+  rel: '排名比較列',
+  rule: '2×2 規則格',
+  highlight: '重點強調框',
+  cta: '底部大按鈕',
+  product_ref: '商品獎品清單',
 }
 
 const TYPE_DESC: Record<SectionType, string> = {
@@ -25,11 +34,15 @@ const TYPE_DESC: Record<SectionType, string> = {
   text: '自由標題＋內文，用於活動說明',
   steps: '1→2→3 編號步驟，說明玩法流程',
   cards: 'SS賞/S賞 等獎品卡，支援一般/豪華兩種樣式',
+  stats: '4格大數字指標，展示機率/人數/倍率等關鍵數據',
+  fukuro: '帶 chip 標籤的大重點框 + 底部虛線注意事項（預設金色）',
+  rel: '名稱 ＋ 數值（金色）＋ 說明，適合稀有度/賠率排名比較',
+  rule: '2×2 規則卡片格，各格有彩色標題＋說明，適合規則/優惠重點',
   highlight: '帶邊框的重點框，適合優惠條款或特別說明',
   cta: '底部全寬大按鈕，點擊導向商品頁',
   product_ref: '選一個商品 ID，自動抓取獎品清單顯示',
 }
-const ALL_TYPES: SectionType[] = ['hero', 'text', 'steps', 'cards', 'highlight', 'cta', 'product_ref']
+const ALL_TYPES: SectionType[] = ['hero', 'text', 'stats', 'steps', 'cards', 'rel', 'rule', 'fukuro', 'highlight', 'cta', 'product_ref']
 
 const PRESETS = [
   { label: '暗金', bg: '#0a0610', accent: '#ffd24a' },
@@ -45,6 +58,10 @@ function defaultContent(type: SectionType): Record<string, unknown> {
     case 'text': return { h2: '', subtitle: '', body: '' }
     case 'steps': return { h2: '遊玩方式', subtitle: '', steps: [{ title: '', description: '' }] }
     case 'cards': return { h2: '獎品', subtitle: '', note: '', cards: [{ tag: '', variant: 'star', title: '', subtitle: '', value: '', unit: '', extras: [] }] }
+    case 'stats': return { h2: '', subtitle: '', stats: [{ v: '', l: '' }, { v: '', l: '' }, { v: '', l: '' }, { v: '', l: '' }] }
+    case 'fukuro': return { h2: '', subtitle: '', ft: '', fb: '', fb2: '', chips: [], callout: '', variant: 'gold' }
+    case 'rel': return { h2: '', subtitle: '', rows: [{ name: '', value: '', desc: '', name_color: '' }], callout: '' }
+    case 'rule': return { h2: '', subtitle: '', rules: [{ title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }, { title: '', desc: '', title_color: '' }], callout: '' }
     case 'highlight': return { title: '', body: '', footer: '' }
     case 'cta': return { text: '立即參加', url: '/' }
     case 'product_ref': return { h2: '商品獎品', subtitle: '', product_id: '' }
@@ -67,10 +84,10 @@ function HeroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
   const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
   return (
     <div className="space-y-3">
-      <Field label="Eyebrow（小標籤）"><input className={inputCls} value={c.eyebrow as string} onChange={e => set('eyebrow', e.target.value)} placeholder="SLOT EVENT" /></Field>
+      <Field label="Eyebrow（小標籤）"><input className={inputCls} value={c.eyebrow as string} onChange={e => set('eyebrow', e.target.value)} placeholder="GGB EVENT" /></Field>
       <Field label="大標題"><input className={inputCls} value={c.title as string} onChange={e => set('title', e.target.value)} placeholder="夏日轉蛋祭" /></Field>
       <Field label="副標題"><textarea className={textareaCls} rows={2} value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
-      <Field label="強調文字（框內）"><input className={inputCls} value={c.highlight_text as string} onChange={e => set('highlight_text', e.target.value)} placeholder="儲值加碼 2倍票券" /></Field>
+      <Field label="強調文字（虛線框）"><input className={inputCls} value={c.highlight_text as string} onChange={e => set('highlight_text', e.target.value)} placeholder="儲值加碼 2倍票券" /></Field>
       <Field label="狀態 Badge"><input className={inputCls} value={c.badge_text as string} onChange={e => set('badge_text', e.target.value)} placeholder="進行中 / 2026.07.27" /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="CTA 按鈕文字"><input className={inputCls} value={c.cta_text as string} onChange={e => set('cta_text', e.target.value)} /></Field>
@@ -87,6 +104,126 @@ function TextForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
       <Field label="標題 H2"><input className={inputCls} value={c.h2 as string} onChange={e => set('h2', e.target.value)} /></Field>
       <Field label="副標"><input className={inputCls} value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
       <Field label="內文"><textarea className={textareaCls} rows={5} value={c.body as string} onChange={e => set('body', e.target.value)} /></Field>
+    </div>
+  )
+}
+
+function StatsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  const stats = (c.stats as { v: string; l: string; color?: string }[]) || []
+  const setStat = (i: number, k: string, v: string) => {
+    const next = stats.map((s, idx) => idx === i ? { ...s, [k]: v } : s)
+    onChange({ ...c, stats: next })
+  }
+  const addStat = () => onChange({ ...c, stats: [...stats, { v: '', l: '' }] })
+  const removeStat = (i: number) => onChange({ ...c, stats: stats.filter((_, idx) => idx !== i) })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} placeholder="活動數據" /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">指標（最多 4 個，2 欄或 4 欄排列）</label>
+        {stats.map((s, i) => (
+          <div key={i} className="flex gap-2 items-center border border-neutral-100 rounded-lg p-2 bg-neutral-50">
+            <input className={inputCls + ' flex-1'} placeholder="數值（如 100+）" value={s.v} onChange={e => setStat(i, 'v', e.target.value)} />
+            <input className={inputCls + ' flex-1'} placeholder="說明（如 參與獎品）" value={s.l} onChange={e => setStat(i, 'l', e.target.value)} />
+            <input type="color" value={s.color || '#ffd24a'} onChange={e => setStat(i, 'color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none" title="數值顏色" />
+            <button onClick={() => removeStat(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none">×</button>
+          </div>
+        ))}
+        <button onClick={addStat} className="text-xs text-primary font-bold hover:underline">+ 新增指標</button>
+      </div>
+    </div>
+  )
+}
+
+function FukuroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
+  const chips = (c.chips as string[]) || []
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="框底色風格">
+        <select className={inputCls} value={c.variant as string || 'gold'} onChange={e => set('variant', e.target.value)}>
+          <option value="gold">金/橙（預設）— 適合優惠/特賣</option>
+          <option value="accent">主題色 — 適合特別說明</option>
+        </select>
+      </Field>
+      <div className="border border-neutral-200 rounded-xl p-3 space-y-3 bg-neutral-50">
+        <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">框內容</span>
+        <Field label="框內大標題 (ft)"><input className={inputCls} value={c.ft as string || ''} onChange={e => set('ft', e.target.value)} placeholder="限時優惠標題" /></Field>
+        <Field label="說明文字 (fb)"><textarea className={textareaCls} rows={3} value={c.fb as string || ''} onChange={e => set('fb', e.target.value)} placeholder="詳細說明..." /></Field>
+        <Field label="強調第二行 (fb2, accent 色)"><input className={inputCls} value={c.fb2 as string || ''} onChange={e => set('fb2', e.target.value)} placeholder="如：額外贈送 4 張票券" /></Field>
+        <Field label="Chip 標籤（每行一個）">
+          <textarea className={textareaCls} rows={3} value={chips.join('\n')} placeholder={'20代幣包\n50代幣包\n100代幣包'} onChange={e => set('chips', e.target.value.split('\n').filter(Boolean))} />
+        </Field>
+      </div>
+      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={3} value={c.callout as string || ''} onChange={e => set('callout', e.target.value)} placeholder="⚠ 注意：..." /></Field>
+    </div>
+  )
+}
+
+function RelForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  type RelRow = { name: string; value: string; desc?: string; name_color?: string }
+  const rows = (c.rows as RelRow[]) || []
+  const setRow = (i: number, k: string, v: string) => {
+    const next = rows.map((r, idx) => idx === i ? { ...r, [k]: v } : r)
+    onChange({ ...c, rows: next })
+  }
+  const addRow = () => onChange({ ...c, rows: [...rows, { name: '', value: '', desc: '', name_color: '' }] })
+  const removeRow = (i: number) => onChange({ ...c, rows: rows.filter((_, idx) => idx !== i) })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">比較列（左欄名稱，右欄金色數值＋說明）</label>
+        {rows.map((r, i) => (
+          <div key={i} className="border border-neutral-100 rounded-lg p-3 bg-neutral-50 space-y-2">
+            <div className="flex gap-2 items-center">
+              <input type="color" value={r.name_color || '#ff7a7a'} onChange={e => setRow(i, 'name_color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none" title="名稱顏色" />
+              <input className={inputCls + ' flex-1'} placeholder="名稱（如：S賞）" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} />
+              <input className={inputCls + ' flex-1'} placeholder="數值/等級（如：★★★★）" value={r.value} onChange={e => setRow(i, 'value', e.target.value)} />
+              <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none">×</button>
+            </div>
+            <input className={inputCls} placeholder="說明（如：最高稀有度）" value={r.desc || ''} onChange={e => setRow(i, 'desc', e.target.value)} />
+          </div>
+        ))}
+        <button onClick={addRow} className="text-xs text-primary font-bold hover:underline">+ 新增列</button>
+      </div>
+      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
+    </div>
+  )
+}
+
+function RuleForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  type RuleItem = { title: string; desc: string; title_color?: string }
+  const rules = (c.rules as RuleItem[]) || []
+  const setRule = (i: number, k: string, v: string) => {
+    const next = rules.map((r, idx) => idx === i ? { ...r, [k]: v } : r)
+    onChange({ ...c, rules: next })
+  }
+  const addRule = () => onChange({ ...c, rules: [...rules, { title: '', desc: '', title_color: '' }] })
+  const removeRule = (i: number) => onChange({ ...c, rules: rules.filter((_, idx) => idx !== i) })
+  return (
+    <div className="space-y-3">
+      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">規則卡（2欄排列，標題＋說明，偶數格數效果最佳）</label>
+        {rules.map((r, i) => (
+          <div key={i} className="flex gap-2 items-start border border-neutral-100 rounded-lg p-2 bg-neutral-50">
+            <input type="color" value={r.title_color || '#c026d3'} onChange={e => setRule(i, 'title_color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none mt-0.5" title="標題顏色" />
+            <div className="flex-1 space-y-2">
+              <input className={inputCls} placeholder="標題（如：最高稀有）" value={r.title} onChange={e => setRule(i, 'title', e.target.value)} />
+              <input className={inputCls} placeholder="說明（如：每 100 抽必得一張 SS 賞）" value={r.desc} onChange={e => setRule(i, 'desc', e.target.value)} />
+            </div>
+            <button onClick={() => removeRule(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none mt-1">×</button>
+          </div>
+        ))}
+        <button onClick={addRule} className="text-xs text-primary font-bold hover:underline">+ 新增規則</button>
+      </div>
+      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
     </div>
   )
 }
@@ -143,8 +280,8 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
             <div className="grid grid-cols-2 gap-2">
               <input className={inputCls} placeholder="標籤（SS賞 / 大賞）" value={card.tag} onChange={e => setCard(i, 'tag', e.target.value)} />
               <select className={inputCls} value={card.variant} onChange={e => setCard(i, 'variant', e.target.value)}>
-                <option value="star">一般（紫）</option>
-                <option value="grand">豪華（金）</option>
+                <option value="star">一般</option>
+                <option value="grand">豪華（accent 發光）</option>
               </select>
             </div>
             <input className={inputCls} placeholder="卡片標題" value={card.title} onChange={e => setCard(i, 'title', e.target.value)} />
@@ -218,12 +355,13 @@ function SectionRow({ section, idx, total, products, onSave, onDelete, onMoveUp,
     finally { setSaving(false) }
   }
 
-  const FormComponent = {
+  const formMap: Record<SectionType, React.FC<{ c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }>> = {
     hero: HeroForm, text: TextForm, steps: StepsForm, cards: CardsForm,
+    stats: StatsForm, fukuro: FukuroForm, rel: RelForm, rule: RuleForm,
     highlight: HighlightForm, cta: CtaForm,
-    product_ref: (props: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) =>
-      <ProductRefForm {...props} products={products} />,
-  }[section.type]
+    product_ref: (props) => <ProductRefForm {...props} products={products} />,
+  }
+  const FormComponent = formMap[section.type]
 
   return (
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -241,7 +379,7 @@ function SectionRow({ section, idx, total, products, onSave, onDelete, onMoveUp,
       </div>
       {open && (
         <div className="border-t border-neutral-100 px-4 py-4 bg-neutral-50 space-y-4">
-          <FormComponent c={content} onChange={setContent} />
+          {FormComponent && <FormComponent c={content} onChange={setContent} />}
           <div className="flex justify-end">
             <button onClick={handleSave} disabled={saving}
               className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60">
@@ -345,7 +483,7 @@ export default function EventEditPage() {
                 <input className={inputCls} value={meta.title || ''} onChange={e => setMeta(m => ({ ...m, title: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Slug（/lp/___）</label>
+                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Slug（/events/___）</label>
                 <input className={inputCls + ' font-mono'} value={meta.slug || ''} onChange={e => setMeta(m => ({ ...m, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} />
               </div>
             </div>
@@ -413,7 +551,7 @@ export default function EventEditPage() {
                 + 新增 Section
               </button>
               {showAddMenu && (
-                <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden min-w-[160px]">
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden min-w-[220px]">
                   {ALL_TYPES.map(type => (
                     <button key={type} onClick={() => addSection(type)}
                       className="w-full text-left px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
