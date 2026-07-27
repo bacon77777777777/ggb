@@ -346,11 +346,11 @@ export default function EventsPage() {
       {/* New Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            <div className="px-6 pt-6 pb-4 border-b border-neutral-100">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
+            <div className="px-6 pt-6 pb-4 border-b border-neutral-100 flex-none">
               <h2 className="text-lg font-bold text-neutral-900">新增活動</h2>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">活動標題</label>
                 <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -429,7 +429,7 @@ export default function EventsPage() {
                 )}
               </div>
             </div>
-            <div className="px-6 pb-6 flex justify-end gap-3">
+            <div className="px-6 pb-6 flex justify-end gap-3 border-t border-neutral-100 pt-4 flex-none">
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors">取消</button>
               <button onClick={handleCreate} disabled={isSaving}
                 className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60">
