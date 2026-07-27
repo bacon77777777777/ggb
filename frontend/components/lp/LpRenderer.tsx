@@ -69,7 +69,6 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const a = `${ar},${ag},${ab}`
 
   // Card surfaces — lift for dark, darken for light
-  // Light mode needs aggressive darkening because white bg makes small diffs invisible
   const c1r = isDark ? clamp(br+8+ar*0.04)   : clamp(br-42+ar*0.14)
   const c1g = isDark ? clamp(bg_+8+ag*0.04)  : clamp(bg_-42+ag*0.09)
   const c1b = isDark ? clamp(bb+8+ab*0.04)   : clamp(bb-42+ab*0.14)
@@ -108,14 +107,14 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
 
   // Theme-sensitive text / surface tokens
   const textColor      = isDark ? '#fff' : '#111'
-  const textBody       = isDark ? 'rgba(255,255,255,.72)' : 'rgba(0,0,0,.70)'
-  const textFaint45    = isDark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.42)'
-  const textFaint38    = isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)'
-  const textFaint28    = isDark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.32)'
-  const textSemi65     = isDark ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.62)'
-  const textSemi85     = isDark ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.82)'
-  const textSemi68     = isDark ? 'rgba(255,255,255,.68)' : 'rgba(0,0,0,.68)'
-  const textSemi42     = isDark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.42)'
+  const textBody       = isDark ? 'rgba(255,255,255,.72)' : 'rgba(0,0,0,.82)'
+  const textFaint45    = isDark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.58)'
+  const textFaint38    = isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.52)'
+  const textFaint28    = isDark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.45)'
+  const textSemi65     = isDark ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.72)'
+  const textSemi85     = isDark ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.88)'
+  const textSemi68     = isDark ? 'rgba(255,255,255,.68)' : 'rgba(0,0,0,.78)'
+  const textSemi42     = isDark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.55)'
   const overlayFaint   = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
   // Hero is ALWAYS dark regardless of theme (cinematic section)
   const heroBg         = isDark ? 'transparent' : '#0a0610'
@@ -223,7 +222,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-flowno{font-family:'Arial Black',sans-serif;font-weight:900;font-size:22px;
       color:${accentLight};width:30px;text-align:center;flex:none;}
     .lpv-ft{font-weight:900;font-size:15px;}
-    .lpv-fd{font-size:11px;color:${textFaint45};font-weight:600;margin-top:2px;line-height:1.5;}
+    .lpv-fd{font-size:11px;color:${textFaint38};font-weight:600;margin-top:2px;line-height:1.5;}
     .lpv-flowarr{text-align:center;color:rgba(${a},0.35);font-size:14px;line-height:1.2;padding:3px 0;}
 
     /* ── CARDS ── */
@@ -279,7 +278,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       padding:22px 14px;text-align:center;}
     .lpv-stat .sv{font-family:'Arial Black','Noto Sans JP',sans-serif;font-weight:900;
       font-size:clamp(20px,5.6vw,30px);}
-    .lpv-stat .sl{font-size:11px;color:rgba(${a},0.65);font-weight:700;margin-top:6px;letter-spacing:.3px;}
+    .lpv-stat .sl{font-size:11px;color:rgba(${a},${isDark?'0.65':'0.85'});font-weight:700;margin-top:6px;letter-spacing:.3px;}
 
     /* ── FUKURO ── default gold/warm; .accent overrides to theme colour */
     .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
@@ -305,14 +304,14 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       background:linear-gradient(180deg,${cardDark},${cardDarker});}
     .lpv-relrow .rnm{font-weight:900;font-size:15px;}
     .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:${relValueColor};}
-    .lpv-relrow .rds{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:2px;}
+    .lpv-relrow .rds{font-size:11px;color:rgba(${a},${isDark?'.6':'.82'});font-weight:600;margin-top:2px;}
 
     /* ── RULE ── */
     .lpv-rule{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;margin:0 auto;}
     .lpv-rc{border-radius:12px;border:1px solid ${borderMid};
       background:linear-gradient(180deg,${cardDark},${cardDarker});padding:16px 14px;}
     .lpv-rc .rt{font-weight:900;font-size:16px;}
-    .lpv-rc .rd{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:5px;line-height:1.6;}
+    .lpv-rc .rd{font-size:11px;color:rgba(${a},${isDark?'.6':'.82'});font-weight:600;margin-top:5px;line-height:1.6;}
 
     /* ── TABLE ── */
     .lpv-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
@@ -346,7 +345,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-feat-icon{font-size:32px;margin-bottom:10px;line-height:1;}
     .lpv-feat-icon img{width:40px;height:40px;object-fit:contain;margin:0 auto;}
     .lpv-feat-title{font-weight:900;font-size:15px;margin-bottom:6px;}
-    .lpv-feat-desc{font-size:11px;color:rgba(${a},.65);font-weight:600;line-height:1.6;}
+    .lpv-feat-desc{font-size:11px;color:rgba(${a},${isDark?'.65':'.85'});font-weight:600;line-height:1.6;}
 
     /* ── COUNTDOWN ── */
     .lpv-countdown{display:flex;justify-content:center;align-items:flex-start;gap:6px;margin:20px 0;}
