@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
 
 type Rarity = 'SSR' | 'SR' | 'R' | 'N';
 
@@ -347,10 +347,10 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
               className="relative z-10 w-full h-full flex items-center justify-center bg-black"
             >
               {isLoadingVideo && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/50 backdrop-blur-sm">
-                  <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black gap-4">
+                  <BattleLoadingChars />
                   <motion.p
-                    className="text-white font-bold tracking-widest"
+                    className="text-white/60 text-xs font-black tracking-widest"
                     animate={{ y: [0, -6, 0] }}
                     transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
                   >
