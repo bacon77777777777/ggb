@@ -11,6 +11,7 @@ interface Event {
   bg_color: string; accent_color: string
   is_active: boolean; start_at: string | null; end_at: string | null
   linked_category_id: string | null
+  theme_mode: 'dark' | 'light'
 }
 interface Section { id: string; type: SectionType; sort_order: number; content: Record<string, unknown> }
 type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule' | 'table' | 'gallery' | 'features' | 'countdown' | 'sticky_cta'
@@ -59,12 +60,19 @@ const ALL_TYPES: SectionType[] = [
   'highlight', 'cta', 'product_ref',
 ]
 
-const PRESETS = [
+const DARK_PRESETS = [
+  { label: '暗紫（預設）', bg: '#0a0610', accent: '#c026d3' },
   { label: '暗金', bg: '#0a0610', accent: '#ffd24a' },
-  { label: '暗紫', bg: '#0a0214', accent: '#c026d3' },
   { label: '暗紅', bg: '#0f0505', accent: '#ef4444' },
   { label: '暗藍', bg: '#020b18', accent: '#38bdf8' },
 ]
+const LIGHT_PRESETS = [
+  { label: '純白紫', bg: '#ffffff', accent: '#c026d3' },
+  { label: '淡紫', bg: '#f8f0ff', accent: '#9333ea' },
+  { label: '淡金', bg: '#fffbf0', accent: '#d97706' },
+  { label: '淡藍', bg: '#f0f7ff', accent: '#2563eb' },
+]
+const THEME_BG: Record<'dark' | 'light', string> = { dark: '#0a0610', light: '#ffffff' }
 
 // ─── Default content per type ─────────────────────────────────────────────────
 function defaultContent(type: SectionType): Record<string, unknown> {
@@ -675,14 +683,26 @@ export default function EventEditPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-neutral-500 mb-2">主題色</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-neutral-500">主題色</label>
+                <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-0.5">
+                  <button onClick={() => setMeta(m => ({ ...m, theme_mode: 'dark', bg_color: THEME_BG.dark }))}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${(meta.theme_mode ?? 'dark') === 'dark' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                    深色
+                  </button>
+                  <button onClick={() => setMeta(m => ({ ...m, theme_mode: 'light', bg_color: THEME_BG.light }))}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${(meta.theme_mode ?? 'dark') === 'light' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                    淺色
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-4 gap-2 mb-3">
-                {PRESETS.map(p => (
+                {((meta.theme_mode ?? 'dark') === 'dark' ? DARK_PRESETS : LIGHT_PRESETS).map(p => (
                   <button key={p.label} onClick={() => setMeta(m => ({ ...m, bg_color: p.bg, accent_color: p.accent }))}
-                    className={`rounded-xl h-10 relative overflow-hidden border-2 transition-all ${meta.bg_color === p.bg ? 'border-primary' : 'border-transparent'}`}
+                    className={`rounded-xl h-10 relative overflow-hidden border-2 transition-all ${meta.bg_color === p.bg && meta.accent_color === p.accent ? 'border-primary' : 'border-neutral-200'}`}
                     style={{ background: p.bg }}>
                     <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 30%, ${p.accent}66, transparent 70%)` }} />
-                    <span className="absolute bottom-0.5 left-0 right-0 text-center text-[9px] font-bold text-white/70">{p.label}</span>
+                    <span className={`absolute bottom-0.5 left-0 right-0 text-center text-[9px] font-bold ${(meta.theme_mode ?? 'dark') === 'dark' ? 'text-white/70' : 'text-neutral-600'}`}>{p.label}</span>
                   </button>
                 ))}
               </div>
@@ -694,7 +714,7 @@ export default function EventEditPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-neutral-400 font-semibold">主色</span>
-                  <input type="color" value={meta.accent_color || '#ffd24a'} onChange={e => setMeta(m => ({ ...m, accent_color: e.target.value }))} className="w-7 h-7 rounded cursor-pointer border-0" />
+                  <input type="color" value={meta.accent_color || '#c026d3'} onChange={e => setMeta(m => ({ ...m, accent_color: e.target.value }))} className="w-7 h-7 rounded cursor-pointer border-0" />
                   <span className="text-xs font-mono text-neutral-400">{meta.accent_color}</span>
                 </div>
               </div>

@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.27h｜2026-07-27｜活動 LP 深色/淺色主題切換
+
+### 主題模式（theme_mode）
+- DB migration 349：`events.theme_mode text DEFAULT 'dark' CHECK (IN ('dark','light'))`
+- 後台 events API（POST/PUT）儲存 `theme_mode`
+- **活動新增彈窗**：簡化為「深色/淺色」切換 + 單一主題色調色盤，背景色自動對應主題
+- **活動編輯頁**：新增深色/淺色切換按鈕 + 對應預設配色（暗紫/暗金/暗紅/暗藍 vs 純白紫/淡紫/淡金/淡藍）
+- **LP 渲染器**：`css()` 函數全面支援 theme，所有 hardcoded 白色文字/黑色背景改為動態 token，light mode 套用反向色系（淺底深字、卡片略深、hero veil 反轉）
+
+---
+
 ## v2026.07.27g｜2026-07-27｜活動 LP 完善 + 分類清單連動 + 商品頁新增分類欄位
 
 ### 活動 LP 視覺修正

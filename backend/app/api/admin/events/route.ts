@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       start_at: body.start_at || null,
       end_at: body.end_at || null,
       linked_category_id: body.linked_category_id || null,
+      theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await logAdminAction(req, admin.username, 'create_event', { slug: body.slug, title: body.title })

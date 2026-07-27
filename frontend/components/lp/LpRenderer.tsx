@@ -44,6 +44,7 @@ interface EventData {
   bg_color: string; accent_color: string
   is_active: boolean; start_at: string | null; end_at: string | null
   linked_category_id: string | null
+  theme_mode: 'dark' | 'light'
 }
 interface Prize { id: number; level: string; name: string; image_url: string | null; total: number; remaining: number; probability: number; recycle_value: number | null }
 interface Section {
@@ -61,49 +62,94 @@ function hexRgb(hex: string): [number, number, number] {
 }
 const clamp = (v: number) => Math.min(255, Math.max(0, Math.round(v)))
 
-function css(vars: { bg: string; accent: string }) {
+function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
+  const isDark = (vars.theme ?? 'dark') === 'dark'
   const [ar,ag,ab] = hexRgb(vars.accent)
   const [br,bg_,bb] = hexRgb(vars.bg)
   const a = `${ar},${ag},${ab}`
 
-  // Solid card colours — bg lifted + small accent tint → dark tinted surface (like zetcho #180a1e / #0c0610)
-  const c1r = clamp(br+8+ar*0.04), c1g = clamp(bg_+8+ag*0.04), c1b = clamp(bb+8+ab*0.04)
-  const c2r = clamp(br+3+ar*0.02), c2g = clamp(bg_+3+ag*0.02), c2b = clamp(bb+3+ab*0.02)
-  const e1r = clamp(br+28+ar*0.08), e1g = clamp(bg_+18+ag*0.08), e1b = clamp(bb+28+ab*0.08)
-  const e2r = clamp(br+48+ar*0.14), e2g = clamp(bg_+32+ag*0.14), e2b = clamp(bb+48+ab*0.14)
+  // Card surfaces — lift for dark, darken for light
+  const c1r = isDark ? clamp(br+8+ar*0.04)  : clamp(br-10+ar*0.06)
+  const c1g = isDark ? clamp(bg_+8+ag*0.04) : clamp(bg_-10+ag*0.04)
+  const c1b = isDark ? clamp(bb+8+ab*0.04)  : clamp(bb-10+ab*0.06)
+  const c2r = isDark ? clamp(br+3+ar*0.02)  : clamp(br-18+ar*0.08)
+  const c2g = isDark ? clamp(bg_+3+ag*0.02) : clamp(bg_-18+ag*0.06)
+  const c2b = isDark ? clamp(bb+3+ab*0.02)  : clamp(bb-18+ab*0.08)
+  const e1r = isDark ? clamp(br+28+ar*0.08) : clamp(br-40+ar*0.12)
+  const e1g = isDark ? clamp(bg_+18+ag*0.08): clamp(bg_-32+ag*0.10)
+  const e1b = isDark ? clamp(bb+28+ab*0.08) : clamp(bb-40+ab*0.12)
+  const e2r = isDark ? clamp(br+48+ar*0.14) : clamp(br-70+ar*0.18)
+  const e2g = isDark ? clamp(bg_+32+ag*0.14): clamp(bg_-55+ag*0.15)
+  const e2b = isDark ? clamp(bb+48+ab*0.14) : clamp(bb-70+ab*0.18)
   const cardDark   = `rgb(${c1r},${c1g},${c1b})`
   const cardDarker = `rgb(${c2r},${c2g},${c2b})`
   const borderMid    = `rgb(${e1r},${e1g},${e1b})`
   const borderStrong = `rgb(${e2r},${e2g},${e2b})`
 
-  // Lightened accent (like zetcho's #e879f9 vs base #c026d3)
-  const accentLight = `rgb(${clamp(ar+(255-ar)*.50)},${clamp(ag+(255-ag)*.32)},${clamp(ab+(255-ab)*.18)})`
-  // Muted subtitle colour (like zetcho's #c69ad0 — heavy green-channel lift, slight saturation drop)
-  const subtitleColor = `rgb(${clamp(ar+(255-ar)*.03)},${clamp(ag+(255-ag)*.55)},${clamp(ab+(255-ab)*.01)})`
+  // Accent variants
+  const accentLight = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.50)},${clamp(ag+(255-ag)*.32)},${clamp(ab+(255-ab)*.18)})`
+    : vars.accent
+  const subtitleColor = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.03)},${clamp(ag+(255-ag)*.55)},${clamp(ab+(255-ab)*.01)})`
+    : `rgb(${clamp(ar*.65)},${clamp(ag*.55)},${clamp(ab*.65)})`
 
   // rgba glows / shadows
   const glow40 = `rgba(${a},0.40)`
   const glow20 = `rgba(${a},0.20)`
   const glow08 = `rgba(${a},0.08)`
 
-  // 4-stop title gradient (zetcho --pp pattern)
-  const tL = `rgb(${clamp(ar+(255-ar)*.75)},${clamp(ag+(255-ag)*.75)},${clamp(ab+(255-ab)*.75)})`
-  const tB = `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
-  const tD = `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
+  // Title gradient
+  const tL = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.75)},${clamp(ag+(255-ag)*.75)},${clamp(ab+(255-ab)*.75)})`
+    : `rgb(${clamp(ar*.85)},${clamp(ag*.72)},${clamp(ab*.85)})`
+  const tB = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
+    : vars.accent
+  const tD = isDark
+    ? `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
+    : `rgb(${clamp(ar*.40)},${clamp(ag*.35)},${clamp(ab*.40)})`
   const titleGrad = `linear-gradient(180deg,${tL},${tB} 46%,${tD} 64%,${vars.accent})`
 
-  // Gold — fixed like zetcho's --gold
+  // Theme-sensitive text / surface tokens
+  const textColor      = isDark ? '#fff' : '#111'
+  const textBody       = isDark ? 'rgba(255,255,255,.72)' : 'rgba(0,0,0,.70)'
+  const textFaint45    = isDark ? 'rgba(255,255,255,.45)' : 'rgba(0,0,0,.42)'
+  const textFaint38    = isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)'
+  const textFaint28    = isDark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.32)'
+  const textSemi65     = isDark ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.62)'
+  const textSemi85     = isDark ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.82)'
+  const textSemi68     = isDark ? 'rgba(255,255,255,.68)' : 'rgba(0,0,0,.68)'
+  const textSemi42     = isDark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.42)'
+  const overlayFaint   = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
+  const heroVeilStop   = isDark ? 'rgba(10,6,16,.65)' : 'rgba(250,248,255,.65)'
+  const heroSubColor   = isDark ? '#ecd8f0' : '#4a2060'
+  const arasaColor     = isDark ? '#f3e0ff' : '#2a1040'
+  const topbtnBg       = isDark ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.75)'
+  const calloutBg      = isDark ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.05)'
+  const calloutColor   = isDark ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.75)'
+  const highlightBg    = isDark ? `linear-gradient(180deg,${cardDark},rgba(0,0,0,.5))` : `linear-gradient(180deg,${cardDark},rgba(255,255,255,.5))`
+  const hlTitleGrad    = isDark ? `linear-gradient(180deg,#fff,${vars.accent})` : `linear-gradient(180deg,#111,${vars.accent})`
+  const hlFooterBorder = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.10)'
+  const hlFooterColor  = isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)'
+  const cardNumGrad    = isDark ? `linear-gradient(180deg,#fff 20%,${vars.accent})` : `linear-gradient(180deg,#111 20%,${vars.accent})`
+  const chipBg         = isDark ? 'rgba(0,0,0,.3)' : 'rgba(0,0,0,.08)'
+  const stickyBg       = isDark ? 'linear-gradient(180deg,transparent,rgba(0,0,0,.88) 28%)' : 'linear-gradient(180deg,transparent,rgba(255,255,255,.92) 28%)'
+  const imgPlaceholder = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
+  const scrollColor    = isDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.25)'
+
+  // Gold — fixed
   const GOLD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)'
   const GOLD_SHADOW = 'rgba(255,210,74,0.5)'
 
   return `
-    .lpv{background:${vars.bg};color:#fff;min-height:100svh;overflow-x:hidden;
+    .lpv{background:${vars.bg};color:${textColor};min-height:100svh;overflow-x:hidden;
       font-family:'Noto Sans JP',system-ui,sans-serif;}
     .lpv-topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;
       justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;}
     .lpv-topbtn{pointer-events:auto;margin:8px;width:36px;height:36px;border-radius:999px;
-      background:rgba(0,0,0,.3);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;color:#fff;
+      background:${topbtnBg};backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      display:flex;align-items:center;justify-content:center;color:${textColor};
       border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;}
     .lpv-topbtn:hover{opacity:.75;}
 
@@ -117,7 +163,7 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-hero .h-beam{position:absolute;top:-22%;left:50%;transform:translateX(-50%);
       width:130%;height:56%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(36px);}
     .lpv-hero .h-veil{position:absolute;inset:0;
-      background:radial-gradient(120% 92% at 50% 34%,transparent,rgba(10,6,16,.65) 55%,${vars.bg} 92%);}
+      background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,${vars.bg} 92%);}
     .lpv-eyebrow{position:relative;z-index:1;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
     .lpv-title{position:relative;z-index:1;font-family:'Arial Black','Noto Sans JP',sans-serif;
@@ -129,12 +175,12 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-gems i{width:14px;height:14px;border-radius:999px;display:block;
       box-shadow:0 0 14px currentColor,0 0 28px currentColor;}
     .lpv-sub{position:relative;z-index:1;margin-top:18px;font-size:clamp(14px,4vw,19px);
-      font-weight:700;color:#ecd8f0;max-width:580px;line-height:1.7;}
+      font-weight:700;color:${heroSubColor};max-width:580px;line-height:1.7;}
     .lpv-sub-b{background:${titleGrad};-webkit-background-clip:text;background-clip:text;
       color:transparent;font-weight:900;font-size:1.15em;}
     .lpv-arasa{position:relative;z-index:1;margin-top:22px;display:inline-block;
       padding:9px 22px;border-radius:8px;font-weight:900;font-size:clamp(13px,3.6vw,16px);
-      color:#f3e0ff;background:${cardDarker};
+      color:${arasaColor};background:${cardDarker};
       border:2px dashed ${vars.accent};
       box-shadow:0 0 18px rgba(${a},0.4);letter-spacing:1px;}
     .lpv-badge{position:relative;z-index:1;margin-top:16px;font-size:11px;letter-spacing:3px;
@@ -148,17 +194,17 @@ function css(vars: { bg: string; accent: string }) {
       transition:transform .15s;}
     .lpv-cta-btn:active{transform:scale(.97);}
     .lpv-scroll{position:absolute;bottom:18px;left:0;right:0;z-index:1;font-size:11px;
-      letter-spacing:3px;color:rgba(255,255,255,.3);animation:lpvBob 1.8s ease-in-out infinite;text-align:center;}
+      letter-spacing:3px;color:${scrollColor};animation:lpvBob 1.8s ease-in-out infinite;text-align:center;}
     @keyframes lpvBob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 
     /* ── SECTIONS ── */
     .lpv-sec{padding:64px 18px;max-width:1000px;margin:0 auto;}
-    .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:#fff;}
+    .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:${textColor};}
     .lpv-h2s{text-align:center;font-size:13px;margin-top:8px;margin-bottom:34px;
       font-weight:700;letter-spacing:.5px;line-height:1.7;color:${subtitleColor};}
     .lpv-pp{background:${titleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;}
     .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;}
-    .lpv-body{font-size:15px;color:rgba(255,255,255,.72);line-height:1.9;white-space:pre-wrap;}
+    .lpv-body{font-size:15px;color:${textBody};line-height:1.9;white-space:pre-wrap;}
 
     /* ── STEPS ── */
     .lpv-flow{display:flex;flex-direction:column;gap:0;max-width:560px;margin:0 auto;}
@@ -168,7 +214,7 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-flowno{font-family:'Arial Black',sans-serif;font-weight:900;font-size:22px;
       color:${accentLight};width:30px;text-align:center;flex:none;}
     .lpv-ft{font-weight:900;font-size:15px;}
-    .lpv-fd{font-size:11px;color:rgba(255,255,255,.45);font-weight:600;margin-top:2px;line-height:1.5;}
+    .lpv-fd{font-size:11px;color:${textFaint45};font-weight:600;margin-top:2px;line-height:1.5;}
     .lpv-flowarr{text-align:center;color:rgba(${a},0.35);font-size:14px;line-height:1.2;padding:3px 0;}
 
     /* ── CARDS ── */
@@ -183,29 +229,29 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-card-img{width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:12px;}
     .lpv-card-tag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:1.5px;
       padding:3px 12px;border-radius:999px;margin-bottom:12px;
-      background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);}
+      background:${overlayFaint};color:${textSemi65};}
     .lpv-card.grand .lpv-card-tag{background:${cardDark};color:${vars.accent};}
     .lpv-card-title{font-weight:900;font-size:17px;}
-    .lpv-card-sub{font-size:11px;color:rgba(255,255,255,.42);margin-top:4px;}
+    .lpv-card-sub{font-size:11px;color:${textSemi42};margin-top:4px;}
     .lpv-card-num{font-weight:900;font-size:clamp(28px,8vw,42px);line-height:1.05;margin-top:10px;
-      background:linear-gradient(180deg,#fff 20%,${vars.accent});
+      background:${cardNumGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;}
     .lpv-card-unit{font-size:14px;font-weight:900;}
-    .lpv-card-extras{margin-top:8px;font-size:12px;color:rgba(255,255,255,.45);font-weight:600;line-height:1.6;}
-    .lpv-note{text-align:center;color:rgba(255,255,255,.28);font-size:11px;margin-top:12px;line-height:1.7;}
+    .lpv-card-extras{margin-top:8px;font-size:12px;color:${textFaint45};font-weight:600;line-height:1.6;}
+    .lpv-note{text-align:center;color:${textFaint28};font-size:11px;margin-top:12px;line-height:1.7;}
 
     /* ── HIGHLIGHT BOX ── */
     .lpv-highlight-box{border-radius:16px;border:1px solid ${borderStrong};
-      background:linear-gradient(180deg,${cardDark},rgba(0,0,0,.5));
+      background:${highlightBg};
       padding:28px 20px;text-align:center;max-width:640px;margin:0 auto;
       box-shadow:0 0 40px ${glow08};}
     .lpv-highlight-box .ht{font-weight:900;font-size:clamp(18px,5vw,26px);
-      background:linear-gradient(180deg,#fff,${vars.accent});
+      background:${hlTitleGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;}
-    .lpv-highlight-box .hb{margin:14px auto 0;color:rgba(255,255,255,.68);
+    .lpv-highlight-box .hb{margin:14px auto 0;color:${textSemi68};
       font-size:14px;line-height:1.9;font-weight:600;max-width:520px;white-space:pre-wrap;}
-    .lpv-highlight-box .hf{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);
-      font-size:12px;color:rgba(255,255,255,.38);font-weight:600;}
+    .lpv-highlight-box .hf{margin-top:16px;padding-top:14px;border-top:1px solid ${hlFooterBorder};
+      font-size:12px;color:${hlFooterColor};font-weight:600;}
 
     /* ── CTA FOOTER ── */
     .lpv-footer{padding:80px 18px 80px;max-width:600px;margin:0 auto;text-align:center;
@@ -233,15 +279,15 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-fukuro-wrap.accent{border-color:${borderMid};
       background:linear-gradient(180deg,rgba(${a},.12),rgba(${br},${bg_},${bb},.65));}
     .lpv-fukuro-wrap .fft{font-weight:900;font-size:clamp(19px,5.2vw,28px);}
-    .lpv-fukuro-wrap .ffb{margin:12px auto 0;color:rgba(255,255,255,.78);font-size:13px;
+    .lpv-fukuro-wrap .ffb{margin:12px auto 0;color:${calloutColor};font-size:13px;
       line-height:1.85;font-weight:600;max-width:580px;white-space:pre-wrap;}
     .lpv-fukuro-wrap .ffb2{margin-top:10px;color:#ffd24a;font-size:13px;font-weight:800;}
     .lpv-chips{margin-top:14px;display:flex;flex-wrap:wrap;justify-content:center;gap:0;}
     .lpv-chip{display:inline-block;margin:4px;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:800;
-      color:#ffd24a;border:1px solid #6a4a1e;background:rgba(0,0,0,.3);}
+      color:#ffd24a;border:1px solid #6a4a1e;background:${chipBg};}
     .lpv-callout{max-width:680px;margin:22px auto 0;padding:14px 16px;border-radius:12px;
-      border:1px dashed rgb(${e1r},${Math.round(e1g*.7)},${e1b});background:rgba(0,0,0,.25);
-      color:rgba(255,255,255,.78);font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
+      border:1px dashed rgb(${e1r},${Math.round(e1g*.7)},${e1b});background:${calloutBg};
+      color:${calloutColor};font-size:12.5px;font-weight:700;line-height:1.85;text-align:left;}
 
     /* ── REL ── */
     .lpv-rel{display:flex;flex-direction:column;gap:8px;max-width:620px;margin:0 auto;}
@@ -264,9 +310,9 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-tbl{width:100%;min-width:400px;border-collapse:collapse;font-size:clamp(10px,2.6vw,13px);}
     .lpv-tbl th,.lpv-tbl td{padding:9px 6px;text-align:center;border:1px solid ${borderMid};}
     .lpv-tbl thead th{background:${cardDark};color:${accentLight};font-weight:800;}
-    .lpv-tbl tbody th{background:${cardDarker};color:rgba(255,255,255,.65);font-weight:800;
+    .lpv-tbl tbody th{background:${cardDarker};color:${textSemi65};font-weight:800;
       text-align:left;padding-left:10px;white-space:nowrap;}
-    .lpv-tbl td{color:rgba(255,255,255,.85);font-weight:700;font-variant-numeric:tabular-nums;}
+    .lpv-tbl td{color:${textSemi85};font-weight:700;font-variant-numeric:tabular-nums;}
     .lpv-tbl .hi{background:rgba(${a},.10);color:${accentLight};font-weight:900;}
     .lpv-tbl thead th.hi{color:${vars.accent};}
 
@@ -300,16 +346,16 @@ function css(vars: { bg: string; accent: string }) {
       font-size:clamp(32px,9vw,58px);color:${vars.accent};line-height:1;
       font-variant-numeric:tabular-nums;}
     .lpv-cd-label{font-size:10px;font-weight:800;letter-spacing:2px;
-      color:rgba(255,255,255,.38);margin-top:4px;}
+      color:${textFaint38};margin-top:4px;}
     .lpv-cd-sep{font-size:clamp(26px,7vw,46px);font-weight:900;color:rgba(${a},.35);
       padding-top:4px;line-height:1;}
     .lpv-cd-expired{text-align:center;font-size:16px;font-weight:800;
-      color:rgba(255,255,255,.45);padding:20px 0;}
+      color:${textFaint45};padding:20px 0;}
 
     /* ── STICKY CTA ── */
     .lpv-sticky{position:fixed;bottom:0;left:0;right:0;z-index:55;pointer-events:none;
       padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-      background:linear-gradient(180deg,transparent,rgba(0,0,0,.88) 28%);}
+      background:${stickyBg};}
     .lpv-sticky-inner{pointer-events:auto;display:flex;flex-direction:column;
       align-items:center;gap:4px;max-width:480px;margin:0 auto;}
     .lpv-sticky-btn{display:flex;align-items:center;justify-content:center;width:100%;
@@ -317,18 +363,18 @@ function css(vars: { bg: string; accent: string }) {
       color:#3a2c08;background:${GOLD};box-shadow:0 8px 28px ${GOLD_SHADOW};
       text-decoration:none;border:none;cursor:pointer;transition:transform .15s;}
     .lpv-sticky-btn:active{transform:scale(.97);}
-    .lpv-sticky-sub{font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-align:center;}
+    .lpv-sticky-sub{font-size:11px;font-weight:700;color:${textFaint38};text-align:center;}
 
     /* ── PRODUCT PRIZES ── */
     .lpv-prizes{display:flex;flex-direction:column;gap:8px;max-width:640px;margin:0 auto;}
     .lpv-prize-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
       border:1px solid ${borderMid};background:linear-gradient(180deg,${cardDark},${cardDarker});}
-    .lpv-prize-img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.08);flex:none;}
-    .lpv-prize-img-placeholder{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.08);flex:none;
+    .lpv-prize-img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:${imgPlaceholder};flex:none;}
+    .lpv-prize-img-placeholder{width:44px;height:44px;border-radius:8px;background:${imgPlaceholder};flex:none;
       display:flex;align-items:center;justify-content:center;font-size:18px;}
     .lpv-prize-level{font-weight:900;font-size:13px;color:${vars.accent};min-width:32px;}
     .lpv-prize-name{font-size:14px;font-weight:700;flex:1;}
-    .lpv-prize-meta{font-size:11px;color:rgba(255,255,255,.38);text-align:right;font-weight:600;}
+    .lpv-prize-meta{font-size:11px;color:${textFaint38};text-align:right;font-weight:600;}
   `
 }
 
@@ -846,7 +892,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
 
   return (
     <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
-      <style>{css({ bg: event.bg_color, accent: event.accent_color })}</style>
+      <style>{css({ bg: event.bg_color, accent: event.accent_color, theme: event.theme_mode })}</style>
       <div className="lpv-topbar">
         <button onClick={() => router.back()} className="lpv-topbtn" aria-label="返回">
           <ChevronLeft size={20} strokeWidth={2.5} />

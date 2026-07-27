@@ -19,14 +19,12 @@ interface Event {
   created_at: string
 }
 
-const PRESETS = [
-  { label: '暗紫（預設）', bg: '#0a0610', accent: '#c026d3' },
-  { label: '暗金', bg: '#0a0610', accent: '#ffd24a' },
-  { label: '暗紅', bg: '#0f0505', accent: '#ef4444' },
-  { label: '暗藍', bg: '#020b18', accent: '#38bdf8' },
-]
+const THEME_BG: Record<'dark' | 'light', string> = {
+  dark: '#0a0610',
+  light: '#ffffff',
+}
 
-const EMPTY_FORM = { slug: '', title: '', bg_color: '#0a0610', accent_color: '#c026d3', is_active: true, start_at: '', end_at: '', linked_category_id: '' }
+const EMPTY_FORM = { slug: '', title: '', bg_color: '#0a0610', accent_color: '#c026d3', is_active: true, start_at: '', end_at: '', linked_category_id: '', theme_mode: 'dark' as 'dark' | 'light' }
 
 function buildTemplateSections(title: string) {
   const A = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/lp-assets/zetcho`
@@ -364,32 +362,25 @@ export default function EventsPage() {
                     placeholder="summer-gacha-2026" className="flex-1 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-2">主題色</label>
-                <div className="grid grid-cols-4 gap-2 mb-3">
-                  {PRESETS.map(p => (
-                    <button key={p.label} onClick={() => setForm(f => ({ ...f, bg_color: p.bg, accent_color: p.accent }))}
-                      className={`rounded-xl h-12 relative overflow-hidden border-2 transition-all ${form.bg_color === p.bg ? 'border-primary scale-105' : 'border-transparent'}`}
-                      style={{ background: p.bg }}>
-                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 30%, ${p.accent}66, transparent 70%)` }} />
-                      <span className="absolute bottom-1 left-0 right-0 text-center text-[10px] font-bold text-white/80">{p.label}</span>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-neutral-500 mb-2">風格</label>
+                  <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-0.5 w-fit">
+                    <button onClick={() => setForm(f => ({ ...f, theme_mode: 'dark', bg_color: THEME_BG.dark }))}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${form.theme_mode === 'dark' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                      深色
                     </button>
-                  ))}
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-semibold text-neutral-400 mb-1">背景色</label>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={form.bg_color} onChange={e => setForm(f => ({ ...f, bg_color: e.target.value }))} className="w-8 h-8 rounded cursor-pointer border-0" />
-                      <span className="text-xs font-mono text-neutral-500">{form.bg_color}</span>
-                    </div>
+                    <button onClick={() => setForm(f => ({ ...f, theme_mode: 'light', bg_color: THEME_BG.light }))}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${form.theme_mode === 'light' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                      淺色
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-semibold text-neutral-400 mb-1">主色</label>
-                    <div className="flex items-center gap-2">
-                      <input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-8 h-8 rounded cursor-pointer border-0" />
-                      <span className="text-xs font-mono text-neutral-500">{form.accent_color}</span>
-                    </div>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-neutral-500 mb-2">主題色</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-9 h-9 rounded-lg cursor-pointer border border-neutral-200" />
+                    <span className="text-xs font-mono text-neutral-500">{form.accent_color}</span>
                   </div>
                 </div>
               </div>
