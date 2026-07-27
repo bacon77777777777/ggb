@@ -159,7 +159,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-hero .h-beam{position:absolute;top:-22%;left:50%;transform:translateX(-50%);
       width:130%;height:56%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(36px);}
     .lpv-hero .h-veil{position:absolute;inset:0;
-      background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,${vars.bg} 92%);}
+      background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
     .lpv-eyebrow{position:relative;z-index:1;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
     .lpv-title{position:relative;z-index:1;font-family:'Arial Black','Noto Sans JP',sans-serif;
