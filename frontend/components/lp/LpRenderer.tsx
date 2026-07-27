@@ -125,7 +125,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const heroVeilStop   = isDark ? 'rgba(10,6,16,.65)' : 'rgba(250,248,255,.65)'
   const heroSubColor   = isDark ? '#ecd8f0' : '#4a2060'
   const arasaColor     = isDark ? '#f3e0ff' : '#2a1040'
-  const topbtnBg       = isDark ? 'rgba(0,0,0,.3)' : 'rgba(255,255,255,.75)'
+  void isDark // topbar is always dark; no theme-dependent token needed
   const calloutBg      = isDark ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.05)'
   const calloutColor   = isDark ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.75)'
   const highlightBg    = isDark ? `linear-gradient(180deg,${cardDark},rgba(0,0,0,.5))` : `linear-gradient(180deg,${cardDark},rgba(255,255,255,.5))`
@@ -146,10 +146,11 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv{background:${vars.bg};color:${textColor};min-height:100svh;overflow-x:hidden;
       font-family:'Noto Sans JP',system-ui,sans-serif;}
     .lpv-topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;
-      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;}
+      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;
+      background:rgba(10,6,16,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
     .lpv-topbtn{pointer-events:auto;margin:8px;width:36px;height:36px;border-radius:999px;
-      background:${topbtnBg};backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;color:${textColor};
+      background:rgba(255,255,255,.12);
+      display:flex;align-items:center;justify-content:center;color:#fff;
       border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;}
     .lpv-topbtn:hover{opacity:.75;}
 
