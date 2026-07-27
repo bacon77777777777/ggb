@@ -770,12 +770,13 @@ export default function EditProductPage() {
                     </div>
                   </div>
                 )}
-                <div className="flex items-center pb-1.5">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.isHot} onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}
-                      className="w-4 h-4 text-primary focus:ring-primary rounded border border-neutral-300" />
-                    <span className="text-xs font-medium text-neutral-600">熱賣商品</span>
-                  </label>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
+                  <select value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                    <option value="0">否</option>
+                    <option value="1">是</option>
+                  </select>
                 </div>
               </div>
 
