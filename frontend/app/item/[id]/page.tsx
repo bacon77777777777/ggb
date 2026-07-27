@@ -356,6 +356,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
+  const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
@@ -1011,6 +1012,17 @@ export default function ProductDetailPage() {
         setSupplierName(null);
       }
 
+      // Fetch categories this product belongs to (menu_products → categories)
+      const { data: menuRows } = await supabase
+        .from('menu_products')
+        .select('categories(id, name)')
+        .eq('product_id', productId)
+      setProductCategories(
+        (menuRows || [])
+          .map((r: Record<string, unknown>) => r.categories as { id: string; name: string } | null)
+          .filter((c): c is { id: string; name: string } => !!c)
+      )
+
       const { data: prizesData, error: prizesError } = await supabase
         .from('product_prizes')
         .select('*')
@@ -1550,6 +1562,28 @@ export default function ProductDetailPage() {
                     <span className="text-neutral-900 dark:text-neutral-50 font-black">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* 分類清單 */}
+              <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">分類</span>
+                {productCategories.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {productCategories.map(cat => (
+                      <button key={cat.id} type="button"
+                        onClick={() => {
+                          sessionStorage.setItem('gachago:home_state', JSON.stringify({ activePrimaryTab: `menu:${cat.id}` }))
+                          sessionStorage.setItem('gachago:home_restore', '1')
+                          router.push('/')
+                        }}
+                        className="px-3 py-0.5 rounded-full text-xs font-bold border border-primary/40 text-primary bg-primary/5 hover:bg-primary/15 transition-colors">
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">-</span>
+                )}
               </div>
 
               <div className="pt-1">
@@ -2132,6 +2166,28 @@ export default function ProductDetailPage() {
                     <span className="text-neutral-900 dark:text-neutral-50 font-black">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* 分類清單 */}
+              <div className="flex justify-between items-center text-sm py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+                <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">分類</span>
+                {productCategories.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {productCategories.map(cat => (
+                      <button key={cat.id} type="button"
+                        onClick={() => {
+                          sessionStorage.setItem('gachago:home_state', JSON.stringify({ activePrimaryTab: `menu:${cat.id}` }))
+                          sessionStorage.setItem('gachago:home_restore', '1')
+                          router.push('/')
+                        }}
+                        className="px-3 py-0.5 rounded-full text-xs font-bold border border-primary/40 text-primary bg-primary/5 hover:bg-primary/15 transition-colors">
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-neutral-900 dark:text-neutral-50 font-black">-</span>
+                )}
               </div>
 
               <div className="pt-1">

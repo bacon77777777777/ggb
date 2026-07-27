@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Share2 } from 'lucide-react'
+import ProductCard from '@/components/ProductCard'
 
 interface EventData {
   id: string; slug: string; title: string
@@ -726,33 +727,25 @@ function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolv
 
 interface RelProduct { id: number; name: string; image_url: string | null; type: string; remaining: number; price: number; special_price: number | null }
 
-function RelatedProductsSection({ products, accent }: { products: RelProduct[]; accent: string }) {
+function RelatedProductsSection({ products }: { products: RelProduct[] }) {
   if (!products.length) return null
   return (
     <section className="lpv-sec" style={{ paddingTop: 40, paddingBottom: 60 }}>
       <h2 className="lpv-h2" style={{ marginBottom: 20 }}>相關商品</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, maxWidth: 680, margin: '0 auto' }}>
-        {products.map(p => (
-          <a key={p.id} href={`/shop/${p.id}`}
-            style={{ borderRadius: 14, overflow: 'hidden', textDecoration: 'none', color: 'inherit',
-              border: `1px solid rgba(255,255,255,.1)`, background: 'rgba(255,255,255,.04)',
-              display: 'flex', flexDirection: 'column' }}>
-            <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: 'rgba(0,0,0,.3)' }}>
-              {p.image_url
-                ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🎁</div>}
-            </div>
-            <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontWeight: 800, fontSize: 13, lineHeight: 1.35, WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', display: '-webkit-box', overflow: 'hidden' }}>{p.name}</div>
-              <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 900, fontSize: 15, color: accent }}>
-                  {p.special_price ?? p.price} <span style={{ fontSize: 10, fontWeight: 700, opacity: .7 }}>幣</span>
-                </span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', fontWeight: 700 }}>剩 {p.remaining}</span>
-              </div>
-            </div>
-          </a>
-        ))}
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <div className="grid grid-cols-2 gap-3">
+          {products.map(p => (
+            <ProductCard
+              key={p.id}
+              id={p.id}
+              name={p.name}
+              image={p.image_url || ''}
+              price={p.special_price ?? p.price}
+              remaining={p.remaining}
+              type={p.type as 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom'}
+            />
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -856,7 +849,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
         }
       })}
       {relProducts.length > 0 && (
-        <RelatedProductsSection products={relProducts} accent={event.accent_color} />
+        <RelatedProductsSection products={relProducts} />
       )}
       {stickySection && showSticky && <StickyCtaSection c={stickySection.content} />}
     </div>
