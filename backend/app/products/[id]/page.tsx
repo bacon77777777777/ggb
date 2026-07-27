@@ -748,26 +748,21 @@ export default function EditProductPage() {
                 </div>
                 {allCategories.length > 0 && (
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單</label>
-                    <div className="flex flex-wrap gap-2">
-                      {allCategories.map(cat => {
-                        const checked = formData.selectedCategoryIds.includes(cat.id)
-                        return (
-                          <label key={cat.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all ${
-                            checked ? 'bg-primary text-white border-primary' : 'bg-white text-neutral-600 border-neutral-300 hover:border-primary'
-                          }`}>
-                            <input type="checkbox" className="sr-only" checked={checked}
-                              onChange={() => setFormData(p => ({
-                                ...p,
-                                selectedCategoryIds: checked
-                                  ? p.selectedCategoryIds.filter(id => id !== cat.id)
-                                  : [...p.selectedCategoryIds, cat.id]
-                              }))} />
-                            {cat.name}
-                          </label>
-                        )
-                      })}
-                    </div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單（可多選）</label>
+                    <select multiple value={formData.selectedCategoryIds}
+                      onChange={e => setFormData(p => ({
+                        ...p,
+                        selectedCategoryIds: Array.from(e.target.selectedOptions).map(o => o.value)
+                      }))}
+                      className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                      style={{ minHeight: Math.min(allCategories.length, 5) * 28 + 8 }}>
+                      {allCategories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                    {formData.selectedCategoryIds.length > 0 && (
+                      <p className="text-[11px] text-neutral-400 mt-1">已選：{formData.selectedCategoryIds.map(id => allCategories.find(c => c.id === id)?.name).filter(Boolean).join('、')}</p>
+                    )}
                   </div>
                 )}
                 <div>

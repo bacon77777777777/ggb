@@ -405,22 +405,19 @@ export default function EventsPage() {
                     className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
               </div>
-              {availableCategories.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
-                    分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableCategories.map(cat => (
-                      <button key={cat.id} type="button"
-                        onClick={() => setForm(f => ({ ...f, linked_category_id: f.linked_category_id === cat.id ? '' : cat.id }))}
-                        className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-colors ${form.linked_category_id === cat.id ? 'bg-primary text-white border-primary' : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-primary'}`}>
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
+                  分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
+                </label>
+                <select value={form.linked_category_id}
+                  onChange={e => setForm(f => ({ ...f, linked_category_id: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="">不連結分類</option>
+                  {availableCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="px-6 pb-6 flex justify-end gap-3 border-t border-neutral-100 pt-4 flex-none">
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors">取消</button>

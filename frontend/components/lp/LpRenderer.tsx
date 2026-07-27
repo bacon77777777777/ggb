@@ -4,7 +4,40 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Share2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
+
+const LP_LOADING_CHARS = [
+  '/loading/1.svg', '/loading/2.svg', '/loading/3.svg', '/loading/4.svg',
+  '/loading/5.svg', '/loading/6.svg', '/loading/7.svg', '/loading/8.svg',
+]
+
+function LpLoadingScreen({ bg }: { bg?: string }) {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % LP_LOADING_CHARS.length), 400)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: bg || '#0a0610', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+      <div style={{ width: 80, height: 90, position: 'relative' }}>
+        <AnimatePresence mode="wait">
+          <motion.div key={idx} style={{ position: 'absolute', inset: 0 }}
+            initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ duration: 0.1, ease: 'easeOut' }}>
+            <motion.img src={LP_LOADING_CHARS[idx]} width={80} height={90} alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              animate={{ y: [0, -10, 0] }} transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      <motion.span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.15em', color: 'rgba(255,255,255,.4)' }}
+        animate={{ y: [0, -6, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}>
+        載入中
+      </motion.span>
+    </div>
+  )
+}
 
 interface EventData {
   id: string; slug: string; title: string
@@ -806,12 +839,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
     </div>
   )
 
-  if (!data) return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#0a0610', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid rgba(255,255,255,.15)', borderTopColor: '#ffd24a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
+  if (!data) return <LpLoadingScreen />
 
   const { event, sections } = data
   const stickySection = sections.find(s => s.type === 'sticky_cta')

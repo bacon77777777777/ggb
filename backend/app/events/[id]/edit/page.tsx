@@ -711,25 +711,19 @@ export default function EventEditPage() {
                   onChange={e => setMeta(m => ({ ...m, end_at: e.target.value || null }))} />
               </div>
             </div>
-            {availableCategories.length > 0 && (
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
-                  分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {availableCategories.map(cat => (
-                    <button key={cat.id} type="button"
-                      onClick={() => setMeta(m => ({ ...m, linked_category_id: m.linked_category_id === cat.id ? null : cat.id }))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                        meta.linked_category_id === cat.id
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-neutral-600 border-neutral-300 hover:border-primary'
-                      }`}
-                    >{cat.name}</button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
+                分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
+              </label>
+              <select value={meta.linked_category_id || ''}
+                onChange={e => setMeta(m => ({ ...m, linked_category_id: e.target.value || null }))}
+                className={inputCls}>
+                <option value="">不連結分類</option>
+                {availableCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={meta.is_active ?? true} onChange={e => setMeta(m => ({ ...m, is_active: e.target.checked }))} className="w-4 h-4 accent-primary" />
