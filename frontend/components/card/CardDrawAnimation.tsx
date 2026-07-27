@@ -175,7 +175,7 @@ function CardLoadingOverlay() {
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
       >
-        資源下載中
+        載入中
       </motion.p>
     </div>
   );

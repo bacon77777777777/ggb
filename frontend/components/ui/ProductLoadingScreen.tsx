@@ -59,7 +59,7 @@ export function ProductLoadingScreen() {
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
         >
-          載入商品中
+          載入中
         </motion.span>
 
       </div>
