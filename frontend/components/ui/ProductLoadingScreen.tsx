@@ -54,22 +54,13 @@ export function ProductLoadingScreen() {
           </AnimatePresence>
         </div>
 
-        {/* Loading text + bouncing dots */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black tracking-widest text-neutral-400 dark:text-neutral-500">
-            載入商品中
-          </span>
-          <div className="flex gap-[3px] items-end pb-0.5">
-            {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                className="w-[5px] h-[5px] rounded-full bg-neutral-300 dark:bg-neutral-600"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 0.65, delay: i * 0.13, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            ))}
-          </div>
-        </div>
+        <motion.span
+          className="text-xs font-black tracking-widest text-neutral-400 dark:text-neutral-500"
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          載入商品中
+        </motion.span>
 
       </div>
     </div>

@@ -170,7 +170,13 @@ function CardLoadingOverlay() {
           transition={{ duration: 0.1, ease: 'easeOut' }}
         />
       </AnimatePresence>
-      <p className="text-white/60 text-xs font-black tracking-widest">資源下載中</p>
+      <motion.p
+        className="text-white/60 text-xs font-black tracking-widest"
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        資源下載中
+      </motion.p>
     </div>
   );
 }

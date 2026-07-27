@@ -327,7 +327,13 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
             className="relative z-10 w-full h-full flex flex-col items-center justify-center bg-black gap-4"
           >
             <BattleLoadingChars />
-            <p className="text-white/60 text-xs font-black tracking-widest">資源下載中</p>
+            <motion.p
+              className="text-white/60 text-xs font-black tracking-widest"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              資源下載中
+            </motion.p>
           </motion.div>
         )}
 
@@ -343,7 +349,13 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
               {isLoadingVideo && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/50 backdrop-blur-sm">
                   <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
-                  <p className="text-white font-bold tracking-widest">載入動畫中...</p>
+                  <motion.p
+                    className="text-white font-bold tracking-widest"
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    載入動畫中
+                  </motion.p>
                 </div>
               )}
               <video
