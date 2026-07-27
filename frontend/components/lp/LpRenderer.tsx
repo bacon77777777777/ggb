@@ -69,18 +69,19 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const a = `${ar},${ag},${ab}`
 
   // Card surfaces — lift for dark, darken for light
-  const c1r = isDark ? clamp(br+8+ar*0.04)  : clamp(br-10+ar*0.06)
-  const c1g = isDark ? clamp(bg_+8+ag*0.04) : clamp(bg_-10+ag*0.04)
-  const c1b = isDark ? clamp(bb+8+ab*0.04)  : clamp(bb-10+ab*0.06)
-  const c2r = isDark ? clamp(br+3+ar*0.02)  : clamp(br-18+ar*0.08)
-  const c2g = isDark ? clamp(bg_+3+ag*0.02) : clamp(bg_-18+ag*0.06)
-  const c2b = isDark ? clamp(bb+3+ab*0.02)  : clamp(bb-18+ab*0.08)
-  const e1r = isDark ? clamp(br+28+ar*0.08) : clamp(br-40+ar*0.12)
-  const e1g = isDark ? clamp(bg_+18+ag*0.08): clamp(bg_-32+ag*0.10)
-  const e1b = isDark ? clamp(bb+28+ab*0.08) : clamp(bb-40+ab*0.12)
-  const e2r = isDark ? clamp(br+48+ar*0.14) : clamp(br-70+ar*0.18)
-  const e2g = isDark ? clamp(bg_+32+ag*0.14): clamp(bg_-55+ag*0.15)
-  const e2b = isDark ? clamp(bb+48+ab*0.14) : clamp(bb-70+ab*0.18)
+  // Light mode needs aggressive darkening because white bg makes small diffs invisible
+  const c1r = isDark ? clamp(br+8+ar*0.04)   : clamp(br-42+ar*0.14)
+  const c1g = isDark ? clamp(bg_+8+ag*0.04)  : clamp(bg_-42+ag*0.09)
+  const c1b = isDark ? clamp(bb+8+ab*0.04)   : clamp(bb-42+ab*0.14)
+  const c2r = isDark ? clamp(br+3+ar*0.02)   : clamp(br-58+ar*0.18)
+  const c2g = isDark ? clamp(bg_+3+ag*0.02)  : clamp(bg_-58+ag*0.11)
+  const c2b = isDark ? clamp(bb+3+ab*0.02)   : clamp(bb-58+ab*0.18)
+  const e1r = isDark ? clamp(br+28+ar*0.08)  : clamp(br-88+ar*0.22)
+  const e1g = isDark ? clamp(bg_+18+ag*0.08) : clamp(bg_-72+ag*0.14)
+  const e1b = isDark ? clamp(bb+28+ab*0.08)  : clamp(bb-88+ab*0.22)
+  const e2r = isDark ? clamp(br+48+ar*0.14)  : clamp(br-115+ar*0.28)
+  const e2g = isDark ? clamp(bg_+32+ag*0.14) : clamp(bg_-92+ag*0.18)
+  const e2b = isDark ? clamp(bb+48+ab*0.14)  : clamp(bb-115+ab*0.28)
   const cardDark   = `rgb(${c1r},${c1g},${c1b})`
   const cardDarker = `rgb(${c2r},${c2g},${c2b})`
   const borderMid    = `rgb(${e1r},${e1g},${e1b})`
@@ -135,6 +136,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const chipColor      = isDark ? '#ffd24a' : '#7a4e00'
   const chipBorder     = isDark ? '#6a4a1e' : '#c47a10'
   const ffb2Color      = isDark ? '#ffd24a' : '#8a5500'
+  const relValueColor  = isDark ? '#ffd24a' : '#8a5500'
   const fukuroBg       = isDark
     ? `linear-gradient(180deg,rgba(255,160,80,.09),rgba(${br},${bg_},${bb},.65))`
     : `linear-gradient(180deg,rgba(255,140,60,.14),rgba(255,220,190,.35))`
@@ -302,7 +304,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       padding:12px 14px;border-radius:12px;border:1px solid ${borderMid};
       background:linear-gradient(180deg,${cardDark},${cardDarker});}
     .lpv-relrow .rnm{font-weight:900;font-size:15px;}
-    .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:#ffd24a;}
+    .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:${relValueColor};}
     .lpv-relrow .rds{font-size:11px;color:rgba(${a},.6);font-weight:600;margin-top:2px;}
 
     /* ── RULE ── */
