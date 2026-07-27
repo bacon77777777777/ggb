@@ -397,6 +397,7 @@ async function generateAndSeedComments(
 
     const tone = CATEGORY_TONE[category] ?? CATEGORY_TONE.general
     const n    = 3 + Math.floor(Math.random() * 3) // 3~5 則
+    const negCount = Math.random() < 0.7 ? 1 : 0  // 70% 機率有 1 則負面/酸民留言
 
     const msg = await claude.messages.create({
       model:      'claude-haiku-4-5-20251001',
@@ -404,14 +405,15 @@ async function generateAndSeedComments(
       messages: [{
         role: 'user',
         content:
-`你是台灣熱愛日本動漫景品、扭蛋、一番賞的社群用戶。根據以下文章，用台灣網友口吻寫 ${n} 則留言。
+`你是台灣社群上各種類型的用戶混合體。根據以下文章，用台灣網友口吻寫 ${n} 則留言。
 
 規則：
-- 繁體中文，可加少量 emoji（1則可以加，其他不要加）
+- 繁體中文，可加少量 emoji（最多 1 則加 emoji，其他不要加）
 - 文章類型：${tone}
 - 字數極短：絕大多數 1~8 個字元（如「好想要」「哇」「先等等」「有點貴」「衝了」「太可愛了」），偶爾 1 則最多 15 字元
 - 不要寫完整句子，只寫短感嘆或反應
 - 不要直接複製標題文字
+- 必須包含 ${negCount} 則負面/酸民留言（如「沒興趣」「普通」「又貴了」「買不起」「太醜了」「早知道」「差評」「騙人的」），其他則正面或中性
 - 只回傳 JSON array of strings，不含任何其他說明文字
 
 標題：${title}
@@ -552,8 +554,8 @@ export async function POST(req: NextRequest) {
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
         existing.add(realUrl); sessionTitles.push(tokenize(draft.title))
+        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
-        void generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? feed.category)
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++
       } else {
@@ -637,8 +639,8 @@ export async function POST(req: NextRequest) {
         results.articles.push(draft.title)
         existing.add(realUrl)
         sessionTitles.push(tokenize(draft.title))  // 加入本次 session 比對池
+        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
         void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
-        void generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, draft.category ?? category)
         perQuery++
       } else if (error.code === '23505') {
         results.skipped++; results.skipReasons.duplicate++

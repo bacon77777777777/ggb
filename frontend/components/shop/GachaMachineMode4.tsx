@@ -146,10 +146,6 @@ export function GachaMachineMode4({
 
   useEffect(() => {
     applyShakeImpulseRef.current = () => {
-      if (pushSoundMode === 'auto') {
-        const audio = autoPushSoundRef.current;
-        if (audio) { audio.pause(); audio.currentTime = 0; void audio.play().catch(() => {}); }
-      }
       lastShakeTimeRef.current = performance.now() / 1000;
       const next = eggsRef.current.map((egg) => {
         const a = Math.random() * Math.PI * 2;
@@ -158,11 +154,15 @@ export function GachaMachineMode4({
       eggsRef.current = next;
       setEggs(next);
     };
-  }, [pushSoundMode]);
+  }, []);
 
   useEffect(() => {
     const timeouts: number[] = [];
     if (isShaking && !prevIsShakingForImpulseRef.current && applyShakeImpulseRef.current) {
+      if (pushSoundMode === 'auto') {
+        const audio = autoPushSoundRef.current;
+        if (audio) { audio.pause(); audio.currentTime = 0; void audio.play().catch(() => {}); }
+      }
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
       for (let i = 0; i < repeats; i++) {

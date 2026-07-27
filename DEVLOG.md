@@ -4,6 +4,25 @@
 
 ---
 
+## v2026.07.27a｜2026-07-27｜IP 角色載入動畫 STG 修正 + 多項 UX 優化
+
+### 修正 Staging 載入 IP 圖丟失
+- `frontend/public/loading/1-8.svg` + `ip.svg` 補入 git，STG 環境不再缺圖
+
+### 首頁 Tab 重複點擊回綜合最上方
+- `MobileTabbar.tsx`：點首頁 Tab 時若已在 `/`，派送 `ggb:resetHome` 事件
+- `app/page.tsx`：監聽 `ggb:resetHome`，重設 `activePrimaryTab='all'` 並滾回頂部
+
+### 轉蛋音效重疊修正（GachaMachineVisual / Mode2 / Mode3 / Mode4）
+- 音效移出 `applyShakeImpulseRef`，改在 shake 週期開始時播一次
+- `shakeRepeats=2` 時只播一次 `gacha.mp3`，不再因兩次 impulse 重疊播音
+
+### 新聞留言第一篇有留言 + 加入酸民留言
+- `generateAndSeedComments` 改 `await`，並移至 `seed_bot_engagement_for_article` 前執行，避免 bot 先種留言導致 AI 留言跳過
+- 留言 prompt 新增 70% 機率含 1 則負面/酸民留言（「沒興趣」「普通」「又貴了」等）
+
+---
+
 ## v2026.07.22i｜2026-07-22｜Loading 頁面 IP 角色彈跳動畫
 
 ### 載入頁面全新 IP 角色動效

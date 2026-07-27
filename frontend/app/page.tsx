@@ -203,6 +203,15 @@ export default function Home() {
   }, [fetchData]);
 
   useEffect(() => {
+    const handler = () => {
+      setActivePrimaryTab('all');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('ggb:resetHome', handler);
+    return () => window.removeEventListener('ggb:resetHome', handler);
+  }, []);
+
+  useEffect(() => {
     const c1 = trackPageView();
     const c2 = trackScrollDepth();
     return () => { c1(); c2(); };

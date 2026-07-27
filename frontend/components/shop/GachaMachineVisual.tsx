@@ -213,14 +213,6 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
   useEffect(() => {
     applyShakeImpulseRef.current = () => {
-      if (pushSoundMode === 'auto') {
-        const audio = autoPushSoundRef.current;
-        if (audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          void audio.play().catch(() => {});
-        }
-      }
       lastShakeTimeRef.current = performance.now() / 1000;
       const next = eggsRef.current.map((egg) => {
         const angle = Math.random() * Math.PI * 2;
@@ -234,12 +226,16 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       eggsRef.current = next;
       setEggs(next);
     };
-  }, [pushSoundMode]);
+  }, []);
 
   useEffect(() => {
     const timeouts: number[] = [];
 
     if (isShaking && !prevIsShaking.current && applyShakeImpulseRef.current) {
+      if (pushSoundMode === 'auto') {
+        const audio = autoPushSoundRef.current;
+        if (audio) { audio.pause(); audio.currentTime = 0; void audio.play().catch(() => {}); }
+      }
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
       const jitter = 0;
