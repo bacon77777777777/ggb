@@ -3,7 +3,6 @@ export { default as Footer } from './Footer'
 export { default as MobileTabbar } from './MobileTabbar'
 export { default as ProductCard } from './ProductCard'
 export { default as HeroBanner } from './HeroBanner'
-export { default as FloatingCheckIn } from './FloatingCheckIn'
 export { IchibanTicket } from './IchibanTicket'
 
 // UI Components

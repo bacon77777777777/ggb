@@ -4,6 +4,14 @@
 
 ---
 
+## v2026.07.27b｜2026-07-27｜Loading 文字統一改「載入中」浮動效果
+
+### Loading 文字優化
+- 所有 loading 畫面文字統一為「載入中」（ProductLoadingScreen / CardDrawAnimation / GachaBattleEffect）
+- 移除 ProductLoadingScreen 三個彈跳圓點，改為文字上下浮動（`y: 0 → -6 → 0`，0.8s loop）
+
+---
+
 ## v2026.07.27a｜2026-07-27｜IP 角色載入動畫 STG 修正 + 多項 UX 優化
 
 ### 修正 Staging 載入 IP 圖丟失

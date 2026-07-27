@@ -59,7 +59,6 @@ function NavbarInner() {
     pathname === '/exchange' ||
     pathname === '/news' ||
     pathname === '/ranking' ||
-    pathname === '/check-in' ||
     (pathname === '/profile' && !activeTab);
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
@@ -269,7 +268,6 @@ function NavbarInner() {
     if (pathname === '/market') return '交換';
     if (pathname === '/ranking') return '排行榜';
     if (pathname.startsWith('/fairness')) return '公平性驗證';
-    if (pathname === '/check-in') return '每日簽到';
     if (pathname.endsWith('/select')) return '選擇籤號';
     if (pathname.endsWith('/confirm')) return '確認購買';
     if (isSellDetailPage) return productName || '販售';
@@ -295,7 +293,6 @@ function NavbarInner() {
       if (tab === 'follows') return '我的關注';
       if (tab === 'settings') return '設定';
       if (tab === 'market') return '交易所管理';
-      if (tab === 'check-in') return '每日簽到';
       return '個人中心';
     }
     return '';
@@ -553,7 +550,7 @@ function NavbarInner() {
         className={cn(
           isProductDetailPage && "fixed left-0 right-0",
           (
-            (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market', 'check-in'].includes(activeTab as string))) ||
+            (pathname === '/profile' && (!activeTab || ['warehouse', 'delivery', 'draw-history', 'topup-history', 'follows', 'market'].includes(activeTab as string))) ||
             isTicketSelectionPage ||
             isSearchPage ||
             isExchangeManagePage ||
