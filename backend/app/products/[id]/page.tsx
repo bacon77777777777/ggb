@@ -31,13 +31,55 @@ import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import { useRouter, useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { generateTXID, calculateTXIDHash } from '@/utils/drawLogicClient'
 import { supabase } from '@/lib/supabaseClient'
 import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
+
+function CategoryMultiSelect({ categories, selected, onChange }: {
+  categories: { id: string; name: string }[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  const toggle = (id: string) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
+  const label = selected.length === 0 ? '選擇分類' : selected.map(id => categories.find(c => c.id === id)?.name).filter(Boolean).join('、')
+  return (
+    <div className="col-span-2 relative" ref={ref}>
+      <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單</label>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm hover:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary transition-colors text-left">
+        <span className={selected.length === 0 ? 'text-neutral-400' : 'text-neutral-800 truncate'}>{label}</span>
+        <span className="text-neutral-400 ml-2 flex-none">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">
+          {categories.map(cat => (
+            <label key={cat.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 cursor-pointer">
+              <input type="checkbox" checked={selected.includes(cat.id)} onChange={() => toggle(cat.id)}
+                className="w-4 h-4 accent-primary rounded" />
+              <span className="text-sm text-neutral-700">{cat.name}</span>
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <div className="px-3 py-1.5 border-t border-neutral-100">
+              <button type="button" onClick={() => onChange([])} className="text-xs text-red-400 hover:text-red-600">清除全部</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function EditProductPage() {
   const { toast } = useToast()
@@ -747,23 +789,11 @@ export default function EditProductPage() {
                     placeholder="寶可夢、鬼滅之刃..." />
                 </div>
                 {allCategories.length > 0 && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單（可多選）</label>
-                    <select multiple value={formData.selectedCategoryIds}
-                      onChange={e => setFormData(p => ({
-                        ...p,
-                        selectedCategoryIds: Array.from(e.target.selectedOptions).map(o => o.value)
-                      }))}
-                      className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                      style={{ minHeight: Math.min(allCategories.length, 5) * 28 + 8 }}>
-                      {allCategories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                    {formData.selectedCategoryIds.length > 0 && (
-                      <p className="text-[11px] text-neutral-400 mt-1">已選：{formData.selectedCategoryIds.map(id => allCategories.find(c => c.id === id)?.name).filter(Boolean).join('、')}</p>
-                    )}
-                  </div>
+                  <CategoryMultiSelect
+                    categories={allCategories}
+                    selected={formData.selectedCategoryIds}
+                    onChange={ids => setFormData(p => ({ ...p, selectedCategoryIds: ids }))}
+                  />
                 )}
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
