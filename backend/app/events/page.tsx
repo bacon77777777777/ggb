@@ -89,7 +89,7 @@ export default function EventsPage() {
     <AdminLayout pageTitle="活動 LP 管理">
       <PageCard>
         <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-neutral-500">建立活動 Landing Page，前台路徑：/lp/[slug]</p>
+          <p className="text-sm text-neutral-500">建立活動 Landing Page，前台路徑：/events/[slug]</p>
           <button onClick={() => setIsModalOpen(true)}
             className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors">
             + 新增活動
@@ -116,14 +116,14 @@ export default function EventsPage() {
                     <span className="text-sm font-bold text-neutral-900 truncate">{item.title}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-neutral-400">
-                    <span className="font-mono">/lp/{item.slug}</span>
+                    <span className="font-mono">/events/{item.slug}</span>
                     {item.start_at && <span>· {formatDateTime(item.start_at)} 起</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => toggleActive(item)}
                     className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${item.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}>
-                    {item.is_active ? '上架' : '下架'}
+                    {item.is_active ? '上架中' : '已下架'}
                   </button>
                   <Link href={`/events/${item.id}/edit`}
                     className="text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 font-semibold hover:bg-neutral-200 transition-colors">

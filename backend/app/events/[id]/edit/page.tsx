@@ -16,8 +16,18 @@ type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | '
 interface Product { id: number; name: string }
 
 const TYPE_LABELS: Record<SectionType, string> = {
-  hero: '🦸 Hero', text: '📝 文字區', steps: '🔢 流程步驟',
-  cards: '🃏 獎品卡', highlight: '✨ 強調框', cta: '🔘 CTA 按鈕', product_ref: '📦 商品獎品',
+  hero: '全屏主視覺', text: '標題＋說明文字', steps: '流程步驟',
+  cards: '獎品卡片', highlight: '重點強調框', cta: '底部大按鈕', product_ref: '商品獎品清單',
+}
+
+const TYPE_DESC: Record<SectionType, string> = {
+  hero: '活動標題、副標、CTA 按鈕，進場第一屏',
+  text: '自由標題＋內文，用於活動說明',
+  steps: '1→2→3 編號步驟，說明玩法流程',
+  cards: 'SS賞/S賞 等獎品卡，支援一般/豪華兩種樣式',
+  highlight: '帶邊框的重點框，適合優惠條款或特別說明',
+  cta: '底部全寬大按鈕，點擊導向商品頁',
+  product_ref: '選一個商品 ID，自動抓取獎品清單顯示',
 }
 const ALL_TYPES: SectionType[] = ['hero', 'text', 'steps', 'cards', 'highlight', 'cta', 'product_ref']
 
@@ -382,8 +392,8 @@ export default function EventEditPage() {
                 <span className="text-sm font-semibold text-neutral-700">上架中</span>
               </label>
               <div className="flex items-center gap-3">
-                <a href={`/lp/${event.slug}`} target="_blank" rel="noopener"
-                  className="text-xs text-primary font-semibold hover:underline">/lp/{event.slug} ↗</a>
+                <a href={`${process.env.NEXT_PUBLIC_FRONTEND_URL}/events/${event.slug}`} target="_blank" rel="noopener"
+                  className="text-xs text-primary font-semibold hover:underline">/events/{event.slug} ↗</a>
                 <button onClick={saveMeta} disabled={savingMeta}
                   className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60">
                   {savingMeta ? '儲存中...' : '儲存設定'}
@@ -406,8 +416,9 @@ export default function EventEditPage() {
                 <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden min-w-[160px]">
                   {ALL_TYPES.map(type => (
                     <button key={type} onClick={() => addSection(type)}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-neutral-50 transition-colors font-semibold text-neutral-700">
-                      {TYPE_LABELS[type]}
+                      className="w-full text-left px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0">
+                      <div className="text-sm font-bold text-neutral-800">{TYPE_LABELS[type]}</div>
+                      <div className="text-xs text-neutral-400 mt-0.5">{TYPE_DESC[type]}</div>
                     </button>
                   ))}
                 </div>
