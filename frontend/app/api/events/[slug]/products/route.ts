@@ -6,21 +6,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
   const { data: event } = await supabase
-    .from('events').select('linked_tag').eq('slug', slug).eq('is_active', true).single()
+    .from('events').select('linked_category_id').eq('slug', slug).eq('is_active', true).single()
 
-  if (!event?.linked_tag) return NextResponse.json([])
+  if (!event?.linked_category_id) return NextResponse.json([])
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, name, image_url, type, remaining, price, special_price, is_active')
-    .contains('tags', [event.linked_tag])
-    .eq('is_active', true)
-    .order('id', { ascending: false })
+  const { data: rows } = await supabase
+    .from('menu_products')
+    .select('products(id, name, image_url, type, remaining, price, special_price, is_active)')
+    .eq('menu_id', event.linked_category_id)
+    .order('sort_order', { ascending: false })
     .limit(12)
 
-  return NextResponse.json(products || [])
+  const products = (rows || [])
+    .map((r: Record<string, unknown>) => r.products)
+    .filter((p): p is NonNullable<typeof p> => !!p && (p as Record<string, unknown>).is_active === true)
+
+  return NextResponse.json(products)
 }

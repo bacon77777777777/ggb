@@ -9,7 +9,7 @@ interface EventData {
   id: string; slug: string; title: string
   bg_color: string; accent_color: string
   is_active: boolean; start_at: string | null; end_at: string | null
-  linked_tag: string | null
+  linked_category_id: string | null
 }
 interface Prize { id: number; level: string; name: string; image_url: string | null; total: number; remaining: number; probability: number; recycle_value: number | null }
 interface Section {
@@ -773,7 +773,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
       .then(d => {
         setData(d)
-        if (d.event?.linked_tag) {
+        if (d.event?.linked_category_id) {
           fetch(`/api/events/${slug}/products`)
             .then(r => r.ok ? r.json() : [])
             .then(setRelProducts)

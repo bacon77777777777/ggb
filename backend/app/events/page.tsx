@@ -26,7 +26,7 @@ const PRESETS = [
   { label: '暗藍', bg: '#020b18', accent: '#38bdf8' },
 ]
 
-const EMPTY_FORM = { slug: '', title: '', bg_color: '#0a0610', accent_color: '#c026d3', is_active: true, start_at: '', end_at: '', linked_tag: '' }
+const EMPTY_FORM = { slug: '', title: '', bg_color: '#0a0610', accent_color: '#c026d3', is_active: true, start_at: '', end_at: '', linked_category_id: '' }
 
 function buildTemplateSections(title: string) {
   const A = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/lp-assets/zetcho`
@@ -226,7 +226,7 @@ export default function EventsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null)
-  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [availableCategories, setAvailableCategories] = useState<Array<{ id: string; name: string }>>([])
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -292,7 +292,7 @@ export default function EventsPage() {
           <p className="text-sm text-neutral-500">建立活動 Landing Page，前台路徑：/events/[slug]</p>
           <button onClick={() => {
               setIsModalOpen(true)
-              fetch('/api/admin/products/tags').then(r => r.ok ? r.json() : []).then(setAvailableTags).catch(() => {})
+              fetch('/api/admin/categories').then(r => r.ok ? r.json() : []).then(setAvailableCategories).catch(() => {})
             }}
             className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors">
             + 新增活動
@@ -405,29 +405,22 @@ export default function EventsPage() {
                     className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
-                  相關商品標籤 <span className="font-normal text-neutral-400">（選填，下方自動顯示同標籤商品）</span>
-                </label>
-                <input list="tag-suggestions" type="text" value={form.linked_tag}
-                  onChange={e => setForm(f => ({ ...f, linked_tag: e.target.value }))}
-                  placeholder="夏日狂熱祭"
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                <datalist id="tag-suggestions">
-                  {availableTags.map(t => <option key={t} value={t} />)}
-                </datalist>
-                {availableTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {availableTags.map(t => (
-                      <button key={t} type="button"
-                        onClick={() => setForm(f => ({ ...f, linked_tag: t }))}
-                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${form.linked_tag === t ? 'bg-primary/10 border-primary text-primary' : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:border-neutral-400'}`}>
-                        {t}
+              {availableCategories.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
+                    分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableCategories.map(cat => (
+                      <button key={cat.id} type="button"
+                        onClick={() => setForm(f => ({ ...f, linked_category_id: f.linked_category_id === cat.id ? '' : cat.id }))}
+                        className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-colors ${form.linked_category_id === cat.id ? 'bg-primary text-white border-primary' : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-primary'}`}>
+                        {cat.name}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             <div className="px-6 pb-6 flex justify-end gap-3 border-t border-neutral-100 pt-4 flex-none">
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors">取消</button>

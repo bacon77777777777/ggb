@@ -73,8 +73,7 @@ export default function EditProductPage() {
     txidHash: '',
     seed: '',
     selectedTagIds: [] as string[],
-    campaignTags: [] as string[],
-    campaignTagInput: '',
+    selectedCategoryIds: [] as string[],
   })
 
   const isLastOneLevel = (level: string) => {
@@ -134,6 +133,7 @@ export default function EditProductPage() {
   const [productCode, setProductCode] = useState<string>('')
   const [deletedPrizeIds, setDeletedPrizeIds] = useState<string[]>([])
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
+  const [allCategories, setAllCategories] = useState<Array<{ id: string; name: string }>>([])
 
   // State for small item library
   const [showSmallItemLibrary, setShowSmallItemLibrary] = useState(false)
@@ -147,6 +147,14 @@ export default function EditProductPage() {
     fetch('/api/admin/suppliers')
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setSuppliers(data) })
+      .catch(() => {})
+  }, [])
+
+  // Fetch categories (分類清單)
+  useEffect(() => {
+    fetch('/api/admin/categories')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAllCategories(data) })
       .catch(() => {})
   }, [])
 
@@ -273,8 +281,11 @@ export default function EditProductPage() {
             .from('product_tag_links')
             .select('tag_id')
             .eq('product_id', productId)
-
           const tagIds = tags ? tags.map((t: any) => t.tag_id) : []
+
+          // Fetch existing category memberships (分類清單)
+          const catRes = await fetch(`/api/admin/products/${productId}/categories`)
+          const categoryIds: string[] = catRes.ok ? await catRes.json() : []
 
           const loaded = {
             name: product.name,
@@ -295,7 +306,7 @@ export default function EditProductPage() {
             barcode: product.barcode || '',
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
-            campaignTags: product.tags || [],
+            selectedCategoryIds: categoryIds,
             machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '',
@@ -418,7 +429,6 @@ export default function EditProductPage() {
         barcode: formData.barcode || null,
         series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
-        tags: formData.campaignTags,
         machine_theme: formData.machineTheme || null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
@@ -495,6 +505,13 @@ export default function EditProductPage() {
       } catch (err) {
         console.error('Failed to broadcast product updates', err)
       }
+
+      // Save category memberships (分類清單)
+      await fetch(`/api/admin/products/${productId}/categories`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryIds: formData.selectedCategoryIds }),
+      })
 
       addLog('修改商品', '商品管理', `修改商品「${formData.name}」`, 'success')
       router.push('/products')
@@ -729,42 +746,30 @@ export default function EditProductPage() {
                     className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
                     placeholder="寶可夢、鬼滅之刃..." />
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">活動標籤</label>
-                  <div className="flex gap-2 mb-2">
-                    <input type="text" value={formData.campaignTagInput}
-                      onChange={e => setFormData(p => ({ ...p, campaignTagInput: e.target.value }))}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ',') {
-                          e.preventDefault()
-                          const t = formData.campaignTagInput.trim()
-                          if (t && !formData.campaignTags.includes(t))
-                            setFormData(p => ({ ...p, campaignTags: [...p.campaignTags, t], campaignTagInput: '' }))
-                          else setFormData(p => ({ ...p, campaignTagInput: '' }))
-                        }
-                      }}
-                      className="flex-1 px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="夏日狂熱祭（按 Enter 新增）" />
-                    <button type="button"
-                      onClick={() => {
-                        const t = formData.campaignTagInput.trim()
-                        if (t && !formData.campaignTags.includes(t))
-                          setFormData(p => ({ ...p, campaignTags: [...p.campaignTags, t], campaignTagInput: '' }))
-                      }}
-                      className="px-3 py-1.5 text-xs font-semibold bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">新增</button>
-                  </div>
-                  {formData.campaignTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {formData.campaignTags.map(t => (
-                        <span key={t} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold">
-                          {t}
-                          <button type="button" onClick={() => setFormData(p => ({ ...p, campaignTags: p.campaignTags.filter(x => x !== t) }))}
-                            className="ml-0.5 text-primary/60 hover:text-primary transition-colors">×</button>
-                        </span>
-                      ))}
+                {allCategories.length > 0 && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">分類清單</label>
+                    <div className="flex flex-wrap gap-2">
+                      {allCategories.map(cat => {
+                        const checked = formData.selectedCategoryIds.includes(cat.id)
+                        return (
+                          <label key={cat.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all ${
+                            checked ? 'bg-primary text-white border-primary' : 'bg-white text-neutral-600 border-neutral-300 hover:border-primary'
+                          }`}>
+                            <input type="checkbox" className="sr-only" checked={checked}
+                              onChange={() => setFormData(p => ({
+                                ...p,
+                                selectedCategoryIds: checked
+                                  ? p.selectedCategoryIds.filter(id => id !== cat.id)
+                                  : [...p.selectedCategoryIds, cat.id]
+                              }))} />
+                            {cat.name}
+                          </label>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 <div className="flex items-center pb-1.5">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={formData.isHot} onChange={(e) => setFormData({ ...formData, isHot: e.target.checked })}

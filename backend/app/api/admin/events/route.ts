@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       is_active: body.is_active ?? true,
       start_at: body.start_at || null,
       end_at: body.end_at || null,
-      linked_tag: body.linked_tag || null,
+      linked_category_id: body.linked_category_id || null,
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await logAdminAction(req, admin.username, 'create_event', { slug: body.slug, title: body.title })
