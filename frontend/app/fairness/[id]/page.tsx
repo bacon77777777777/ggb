@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { IpLoader } from '@/components/ui/IpLoader';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
 import { calculateSeedHash, verifyDraw, determinePrize } from '@/utils/drawLogicClient';
@@ -323,10 +324,7 @@ async function verifyDraw(seed: string, nonce: number, expectedHash: string) {
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
         {isLoading && (
           <div className="min-h-[70vh] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-neutral-500 dark:text-neutral-400">
-              <div className="w-8 h-8 border-2 border-neutral-300 dark:border-neutral-700 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs font-black tracking-widest">載入公平性驗證中...</span>
-            </div>
+            <IpLoader />
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui';
+import { IpLoader } from '@/components/ui/IpLoader';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { 
@@ -83,7 +84,7 @@ export default function TopupPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <IpLoader />
       </div>
     );
   }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { X, Ticket, ChevronRight, Coins, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
+import { IpLoader } from '@/components/ui/IpLoader';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui';
@@ -452,9 +453,8 @@ export function PurchaseConfirmationModal({
                 /* Coupon Selection View */
                 <div className="p-4 space-y-3">
                   {loadingCoupons ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
-                      <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                      <span className="text-sm">載入優惠券中...</span>
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <IpLoader />
                     </div>
                   ) : coupons.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-neutral-400">

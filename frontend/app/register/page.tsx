@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { IpLoader } from '@/components/ui/IpLoader';
 
 function RegisterRedirect() {
   const router = useRouter();
@@ -17,7 +18,7 @@ function RegisterRedirect() {
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-white dark:bg-neutral-950">
-      <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      <IpLoader />
     </div>
   );
 }

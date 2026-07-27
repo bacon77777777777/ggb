@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
 import { TicketSelector, Ticket } from '@/components/shop/TicketSelector';
 import { Button } from '@/components/ui';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { IpLoader } from '@/components/ui/IpLoader';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { PurchaseConfirmation } from '@/components/shop/PurchaseConfirmation';
@@ -767,10 +768,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
   if (isLoading) return (
     <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-3 text-white">
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="text-xs font-black tracking-widest">載入機台中...</span>
-      </div>
+      <IpLoader dark />
     </div>
   );
   if (!product) return <div className="min-h-[50vh] flex items-center justify-center">Product not found</div>;
@@ -781,10 +779,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   if (isProductEnded && drawnResults.length === 0) {
     return (
       <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-3 text-white">
-          <Loader2 className="w-8 h-8 animate-spin" />
-          <span className="text-xs font-black tracking-widest">載入中...</span>
-        </div>
+        <IpLoader dark />
       </div>
     );
   }

@@ -24,7 +24,7 @@ import {
   User,
   ChevronDown,
   X,
-  Loader2,
+  Loader2, // used in button inline states
   CreditCard,
   Copy,
   Ticket,
@@ -49,6 +49,7 @@ import Image from 'next/image';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { IpLoader } from '@/components/ui/IpLoader';
 
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
@@ -2189,7 +2190,7 @@ function ProfileContent() {
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <IpLoader />
       </div>
     );
   }
@@ -2348,7 +2349,7 @@ function ProfileContent() {
                 }}
               >
                 {isLoadingData ? (
-                  <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                  <div className="flex justify-center py-10"><IpLoader /></div>
                 ) : activeWarehouseTab === 'all' ? (
                   filteredWarehouseItems.length === 0 ? (
                     <div className="py-20 text-center text-neutral-400">

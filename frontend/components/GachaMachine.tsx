@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation, Variants } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
+import { IpLoader } from '@/components/ui/IpLoader';
 import Image from 'next/image';
 
 // Types
@@ -364,8 +365,8 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
             <div className="absolute bottom-4 left-8 w-[80px] h-[80px] rounded-full bg-neutral-200/20 flex items-center justify-center">
               {isLoading && state === 'IDLE' ? (
                 /* Loading state */
-                <div className="w-[80px] h-[80px] rounded-full bg-neutral-900 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
-                  <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="flex items-center justify-center">
+                  <IpLoader size="sm" dark />
                 </div>
               ) : (
                 /* Regular knob */
