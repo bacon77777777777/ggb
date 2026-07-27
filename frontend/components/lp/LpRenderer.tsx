@@ -304,6 +304,16 @@ function H2({ c }: { c: Record<string, unknown> }) {
   const t = c.h2 as string
   if (c.h2_type === 'pp') return <h2 className="lpv-h2"><span className="lpv-pp">{t}</span></h2>
   if (c.h2_type === 'gold') return <h2 className="lpv-h2"><span className="lpv-gold">{t}</span></h2>
+  const hl = c.h2_highlight as { text: string; type: 'pp' | 'gold' } | undefined
+  if (hl) {
+    const idx = t.indexOf(hl.text)
+    if (idx >= 0) {
+      const before = t.slice(0, idx)
+      const after = t.slice(idx + hl.text.length)
+      const cls = hl.type === 'gold' ? 'lpv-gold' : 'lpv-pp'
+      return <h2 className="lpv-h2">{before}<span className={cls}>{hl.text}</span>{after}</h2>
+    }
+  }
   return <h2 className="lpv-h2">{t}</h2>
 }
 

@@ -82,7 +82,7 @@ function buildTemplateSections(title: string) {
       type: 'rel',
       content: {
         h2: '継続期待度＝相手の格',
-        h2_type: 'pp',
+        h2_highlight: { text: '継続期待度', type: 'pp' },
         subtitle: '相手の格は継続のヒント。弱い相手ほど継続に期待（★が多い）\n※連数は突入時に確定済み。相手・★は結果を示すヒント演出です',
         rows: [
           { name: 'チンピラ', name_color: '#ff7a7a', value: '★★★★½', desc: '最弱＝勝ちやすい＝期待大' },
@@ -98,6 +98,7 @@ function buildTemplateSections(title: string) {
       type: 'rule',
       content: {
         h2: '継続確定の法則',
+        h2_highlight: { text: '確定', type: 'gold' },
         subtitle: 'この演出が出れば次回継続が確定。連はすべて事前確定済み＝嘘の煽りなし',
         rules: [
           { title: '強敵撃破', title_color: '#c026d3', desc: '低期待の総番(★2)に勝てば次回確定' },
@@ -144,7 +145,7 @@ function buildTemplateSections(title: string) {
       type: 'table',
       content: {
         h2: '通常時の小役',
-        h2_type: 'pp',
+        h2_highlight: { text: '小役', type: 'pp' },
         subtitle: '通常スピンの小役はコイン払い戻し（カードは対決＝絶頂RUSHのみ）',
         columns: ['役', '20C', '50C', '100C', '200C', '600C'],
         rows: [
