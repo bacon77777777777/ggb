@@ -12,6 +12,22 @@ interface Banner {
   link: string;
 }
 
+const INTERNAL_HOSTS = ['www.ggb.com.tw', 'ggb.com.tw', 'staging.ggb.com.tw']
+
+function isInternalUrl(url: string): boolean {
+  if (!url || url === '#') return true
+  if (url.startsWith('/')) return true
+  try {
+    return INTERNAL_HOSTS.includes(new URL(url).hostname)
+  } catch { return false }
+}
+
+function toInternalPath(url: string): string {
+  if (url.startsWith('/') || url === '#') return url
+  try { return new URL(url).pathname + new URL(url).search + new URL(url).hash }
+  catch { return url }
+}
+
 const DEFAULT_BANNER: Banner = {
   id: '__default__',
   image: '/images/banner_defaulet.png',
@@ -74,17 +90,23 @@ export default function HeroBanner({ banners, onBannerClick }: { banners: Banner
             index === current ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <Link href={banner.link} className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
-            <Image
-              src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
-              alt="Banner"
-              fill
-              className="object-fill select-none"
-              draggable={false}
-              unoptimized
-              onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
-            />
-          </Link>
+            {isInternalUrl(banner.link) ? (
+            <Link href={toInternalPath(banner.link)} className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
+              <Image
+                src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
+                alt="Banner" fill className="object-fill select-none" draggable={false} unoptimized
+                onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
+              />
+            </Link>
+          ) : (
+            <a href={banner.link} target="_blank" rel="noopener noreferrer" className="block w-full h-full relative" onClick={() => onBannerClick?.(banner)}>
+              <Image
+                src={brokenIds.has(banner.id) || !banner.image ? '/images/banner_defaulet.png' : banner.image}
+                alt="Banner" fill className="object-fill select-none" draggable={false} unoptimized
+                onError={() => setBrokenIds(prev => new Set(prev).add(banner.id))}
+              />
+            </a>
+          )}
         </div>
       ))}
 
