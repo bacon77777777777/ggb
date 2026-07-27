@@ -9,6 +9,7 @@ interface EventData {
   id: string; slug: string; title: string
   bg_color: string; accent_color: string
   is_active: boolean; start_at: string | null; end_at: string | null
+  linked_tag: string | null
 }
 interface Prize { id: number; level: string; name: string; image_url: string | null; total: number; remaining: number; probability: number; recycle_value: number | null }
 interface Section {
@@ -721,6 +722,42 @@ function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolv
   )
 }
 
+// ─── Related Products ──────────────────────────────────────────────────────────
+
+interface RelProduct { id: number; name: string; image_url: string | null; type: string; remaining: number; price: number; special_price: number | null }
+
+function RelatedProductsSection({ products, accent }: { products: RelProduct[]; accent: string }) {
+  if (!products.length) return null
+  return (
+    <section className="lpv-sec" style={{ paddingTop: 40, paddingBottom: 60 }}>
+      <h2 className="lpv-h2" style={{ marginBottom: 20 }}>相關商品</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, maxWidth: 680, margin: '0 auto' }}>
+        {products.map(p => (
+          <a key={p.id} href={`/shop/${p.id}`}
+            style={{ borderRadius: 14, overflow: 'hidden', textDecoration: 'none', color: 'inherit',
+              border: `1px solid rgba(255,255,255,.1)`, background: 'rgba(255,255,255,.04)',
+              display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: 'rgba(0,0,0,.3)' }}>
+              {p.image_url
+                ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🎁</div>}
+            </div>
+            <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, lineHeight: 1.35, WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', display: '-webkit-box', overflow: 'hidden' }}>{p.name}</div>
+              <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 900, fontSize: 15, color: accent }}>
+                  {p.special_price ?? p.price} <span style={{ fontSize: 10, fontWeight: 700, opacity: .7 }}>幣</span>
+                </span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', fontWeight: 700 }}>剩 {p.remaining}</span>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function LpRenderer({ slug }: { slug: string }) {
@@ -728,12 +765,21 @@ export default function LpRenderer({ slug }: { slug: string }) {
   const [data, setData] = useState<{ event: EventData; sections: Section[] } | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [showSticky, setShowSticky] = useState(false)
+  const [relProducts, setRelProducts] = useState<RelProduct[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch(`/api/events/${slug}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json() })
-      .then(d => setData(d))
+      .then(d => {
+        setData(d)
+        if (d.event?.linked_tag) {
+          fetch(`/api/events/${slug}/products`)
+            .then(r => r.ok ? r.json() : [])
+            .then(setRelProducts)
+            .catch(() => {})
+        }
+      })
       .catch(() => setNotFound(true))
   }, [slug])
 
@@ -809,6 +855,9 @@ export default function LpRenderer({ slug }: { slug: string }) {
           default:            return null
         }
       })}
+      {relProducts.length > 0 && (
+        <RelatedProductsSection products={relProducts} accent={event.accent_color} />
+      )}
       {stickySection && showSticky && <StickyCtaSection c={stickySection.content} />}
     </div>
   )

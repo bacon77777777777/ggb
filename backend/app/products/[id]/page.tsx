@@ -73,6 +73,8 @@ export default function EditProductPage() {
     txidHash: '',
     seed: '',
     selectedTagIds: [] as string[],
+    campaignTags: [] as string[],
+    campaignTagInput: '',
   })
 
   const isLastOneLevel = (level: string) => {
@@ -293,6 +295,7 @@ export default function EditProductPage() {
             barcode: product.barcode || '',
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
+            campaignTags: product.tags || [],
             machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '',
@@ -415,6 +418,7 @@ export default function EditProductPage() {
         barcode: formData.barcode || null,
         series: formData.series || null,
         supplier_id: formData.supplierId ? parseInt(formData.supplierId) : null,
+        tags: formData.campaignTags,
         machine_theme: formData.machineTheme || null,
         rarity: formData.rarity,
         ended_at: formData.status === 'ended' ? formData.endedAt : null,
@@ -724,6 +728,42 @@ export default function EditProductPage() {
                   <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
                     placeholder="寶可夢、鬼滅之刃..." />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">活動標籤</label>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" value={formData.campaignTagInput}
+                      onChange={e => setFormData(p => ({ ...p, campaignTagInput: e.target.value }))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault()
+                          const t = formData.campaignTagInput.trim()
+                          if (t && !formData.campaignTags.includes(t))
+                            setFormData(p => ({ ...p, campaignTags: [...p.campaignTags, t], campaignTagInput: '' }))
+                          else setFormData(p => ({ ...p, campaignTagInput: '' }))
+                        }
+                      }}
+                      className="flex-1 px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="夏日狂熱祭（按 Enter 新增）" />
+                    <button type="button"
+                      onClick={() => {
+                        const t = formData.campaignTagInput.trim()
+                        if (t && !formData.campaignTags.includes(t))
+                          setFormData(p => ({ ...p, campaignTags: [...p.campaignTags, t], campaignTagInput: '' }))
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">新增</button>
+                  </div>
+                  {formData.campaignTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {formData.campaignTags.map(t => (
+                        <span key={t} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold">
+                          {t}
+                          <button type="button" onClick={() => setFormData(p => ({ ...p, campaignTags: p.campaignTags.filter(x => x !== t) }))}
+                            className="ml-0.5 text-primary/60 hover:text-primary transition-colors">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center pb-1.5">
                   <label className="flex items-center gap-2 cursor-pointer">
