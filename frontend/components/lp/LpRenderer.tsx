@@ -43,6 +43,8 @@ function css(vars: { bg: string; accent: string }) {
 
   // Lightened accent (like zetcho's #e879f9 vs base #c026d3)
   const accentLight = `rgb(${clamp(ar+(255-ar)*.50)},${clamp(ag+(255-ag)*.32)},${clamp(ab+(255-ab)*.18)})`
+  // Muted subtitle colour (like zetcho's #c69ad0 — heavy green-channel lift, slight saturation drop)
+  const subtitleColor = `rgb(${clamp(ar+(255-ar)*.03)},${clamp(ag+(255-ag)*.55)},${clamp(ab+(255-ab)*.01)})`
 
   // rgba glows / shadows
   const glow40 = `rgba(${a},0.40)`
@@ -118,7 +120,9 @@ function css(vars: { bg: string; accent: string }) {
     .lpv-sec{padding:64px 18px;max-width:1000px;margin:0 auto;}
     .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:#fff;}
     .lpv-h2s{text-align:center;font-size:13px;margin-top:8px;margin-bottom:34px;
-      font-weight:700;letter-spacing:.5px;line-height:1.7;color:rgba(${a},0.75);}
+      font-weight:700;letter-spacing:.5px;line-height:1.7;color:${subtitleColor};}
+    .lpv-pp{background:${titleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;}
+    .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;}
     .lpv-body{font-size:15px;color:rgba(255,255,255,.72);line-height:1.9;white-space:pre-wrap;}
 
     /* ── STEPS ── */
@@ -295,6 +299,14 @@ function css(vars: { bg: string; accent: string }) {
 
 // ─── Section Components ────────────────────────────────────────────────────────
 
+function H2({ c }: { c: Record<string, unknown> }) {
+  if (!bool(c.h2)) return null
+  const t = c.h2 as string
+  if (c.h2_type === 'pp') return <h2 className="lpv-h2"><span className="lpv-pp">{t}</span></h2>
+  if (c.h2_type === 'gold') return <h2 className="lpv-h2"><span className="lpv-gold">{t}</span></h2>
+  return <h2 className="lpv-h2">{t}</h2>
+}
+
 function HeroSection({ c }: { c: Record<string, unknown> }) {
   const gems = (c.gems as { color: string }[]) || []
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -342,7 +354,7 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
 function TextSection({ c }: { c: Record<string, unknown> }) {
   return (
     <section className="lpv-sec">
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       {bool(c.body) && <p className="lpv-body">{c.body as string}</p>}
     </section>
@@ -353,7 +365,7 @@ function StepsSection({ c }: { c: Record<string, unknown> }) {
   const steps = (c.steps as { title: string; description: string }[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-flow">
         {steps.map((s, i) => (
@@ -378,7 +390,7 @@ function CardsSection({ c }: { c: Record<string, unknown> }) {
   const cards = (c.cards as CardItem[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-cards">
         {cards.map((card, i) => (
@@ -418,6 +430,8 @@ function HighlightSection({ c }: { c: Record<string, unknown> }) {
 function CtaSection({ c }: { c: Record<string, unknown> }) {
   return (
     <div className="lpv-footer">
+      <H2 c={c} />
+      {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       {c.url
         ? <Link href={c.url as string} className="lpv-footer-btn">▶ {(c.text as string) || '立即參加'}</Link>
         : <div className="lpv-footer-btn">▶ {(c.text as string) || '立即參加'}</div>}
@@ -429,7 +443,7 @@ function StatsSection({ c }: { c: Record<string, unknown> }) {
   const stats = (c.stats as { v: string; l: string; color?: string }[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-stats">
         {stats.map((s, i) => (
@@ -446,12 +460,13 @@ function StatsSection({ c }: { c: Record<string, unknown> }) {
 function FukuroSection({ c }: { c: Record<string, unknown> }) {
   const chips = (c.chips as string[]) || []
   const isAccent = c.variant === 'accent'
+  const ftCls = c.ft_type === 'pp' ? 'fft lpv-pp' : c.ft_type === 'gold' ? 'fft lpv-gold' : 'fft'
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className={`lpv-fukuro-wrap${isAccent ? ' accent' : ''}`}>
-        {bool(c.ft) && <div className="fft">{c.ft as string}</div>}
+        {bool(c.ft) && <div className={ftCls}>{c.ft as string}</div>}
         {bool(c.fb) && <div className="ffb">{c.fb as string}</div>}
         {bool(c.fb2) && <div className="ffb2">{c.fb2 as string}</div>}
         {chips.length > 0 && (
@@ -470,7 +485,7 @@ function RelSection({ c }: { c: Record<string, unknown> }) {
   const rows = (c.rows as RelRow[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-rel">
         {rows.map((row, i) => (
@@ -493,7 +508,7 @@ function RuleSection({ c }: { c: Record<string, unknown> }) {
   const rules = (c.rules as RuleItem[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-rule">
         {rules.map((rule, i) => (
@@ -514,7 +529,7 @@ function TableSection({ c }: { c: Record<string, unknown> }) {
   const hi = c.highlight_col as number | undefined
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-tblwrap">
         <table className="lpv-tbl">
@@ -550,9 +565,10 @@ function GallerySection({ c }: { c: Record<string, unknown> }) {
   useEffect(() => {
     videoRefs.current.forEach(v => v?.play().catch(() => {}))
   }, [])
+  const calloutBorder = c.callout_border as string | undefined
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-gallery">
         {items.map((item, i) => (
@@ -572,6 +588,11 @@ function GallerySection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
+      {bool(c.callout) && (
+        <div className="lpv-callout" style={calloutBorder ? { borderColor: calloutBorder } : undefined}>
+          {c.callout as string}
+        </div>
+      )}
     </section>
   )
 }
@@ -581,7 +602,7 @@ function FeaturesSection({ c }: { c: Record<string, unknown> }) {
   const items = (c.items as FItem[]) || []
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       <div className="lpv-features">
         {items.map((item, i) => (
@@ -620,7 +641,7 @@ function CountdownSection({ c }: { c: Record<string, unknown> }) {
 
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
-      {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
+      <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
       {expired ? (
         <p className="lpv-cd-expired">{(c.expired_text as string) || '活動已結束'}</p>

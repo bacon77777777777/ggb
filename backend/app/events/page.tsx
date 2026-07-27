@@ -52,6 +52,7 @@ function buildTemplateSections(title: string) {
       type: 'stats',
       content: {
         h2: 'SPEC',
+        h2_type: 'pp',
         subtitle: '荒い連チャン型・絶頂RUSH',
         stats: [
           { v: 'カード', l: '対決勝利で景品カード獲得', color: '#ffd24a' },
@@ -81,6 +82,7 @@ function buildTemplateSections(title: string) {
       type: 'rel',
       content: {
         h2: '継続期待度＝相手の格',
+        h2_type: 'pp',
         subtitle: '相手の格は継続のヒント。弱い相手ほど継続に期待（★が多い）\n※連数は突入時に確定済み。相手・★は結果を示すヒント演出です',
         rows: [
           { name: 'チンピラ', name_color: '#ff7a7a', value: '★★★★½', desc: '最弱＝勝ちやすい＝期待大' },
@@ -110,8 +112,11 @@ function buildTemplateSections(title: string) {
       type: 'fukuro',
       content: {
         h2: '絶頂直撃',
+        h2_type: 'pp',
         subtitle: '待てないアナタへ ―― コインを払えば、抽選を経ず即・絶頂RUSH突入',
         ft: 'コインで即・絶頂RUSH突入',
+        ft_type: 'pp',
+        variant: 'accent',
         fb: '中身は通常の絶頂RUSHと同一（継続80%・平均約5連）。連数は引き運次第。',
         fb2: 'さらに 直撃1回ごとに ガチャ券 +4枚（買ったレートの券）',
         chips: ['20Cベット：6,034C', '50Cベット：15,084C', '100Cベット：30,167C', '200Cベット：60,334C', '600Cベット：181,000C'],
@@ -139,6 +144,7 @@ function buildTemplateSections(title: string) {
       type: 'table',
       content: {
         h2: '通常時の小役',
+        h2_type: 'pp',
         subtitle: '通常スピンの小役はコイン払い戻し（カードは対決＝絶頂RUSHのみ）',
         columns: ['役', '20C', '50C', '100C', '200C', '600C'],
         rows: [
@@ -158,6 +164,7 @@ function buildTemplateSections(title: string) {
       type: 'gallery',
       content: {
         h2: '絶頂RUSH 演出',
+        h2_type: 'pp',
         subtitle: '対戦相手 → 鍔迫り合い → 勝利＝カード → 継続！ 強敵撃破・逆転は次回確定',
         layout: 'grid',
         items: [
@@ -168,6 +175,7 @@ function buildTemplateSections(title: string) {
           { media_type: 'video', url: `${A}/banchou-win-strong.mp4`, poster: '', caption: '勝利・強', badge: '強', color: '#ff9a3d' },
           { media_type: 'video', url: `${A}/banchou-yokoku-strong.mp4`, poster: '', caption: '対決煽り', badge: '煽り', color: '#a855f7' },
         ],
+        callout_border: '#6a4a1e',
         callout: '連数・カードは突入の瞬間に確定しています。演出はアツさ・結果の格を表現するもので、演出によって結果が変わることはありません（離脱・リロードでも獲得は保証）。',
       },
     },
@@ -178,6 +186,7 @@ function buildTemplateSections(title: string) {
         h2: '',
         subtitle: '',
         ft: '事前確定式 ―― 突入で全連ロック',
+        ft_type: 'gold',
         fb: '対決成立の瞬間に全連＋全カードを1トランザクションで確定。最低1連保証。後乗せ・吸い込みは一切なし。途中で閉じても獲得は保証されます。',
         fb2: '',
         chips: ['突入＝確定', '最低1連保証', '後乗せなし', '吸い込みなし'],
@@ -188,6 +197,9 @@ function buildTemplateSections(title: string) {
     {
       type: 'cta',
       content: {
+        h2: '絶頂は、連チャンする。',
+        h2_type: 'pp',
+        subtitle: '対決を制し、絶頂の頂きへ。',
         text: '今すぐ遊ぶ',
         url: '/',
       },
