@@ -69,18 +69,18 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const a = `${ar},${ag},${ab}`
 
   // Card surfaces — lift for dark, darken for light
-  const c1r = isDark ? clamp(br+8+ar*0.04)   : clamp(br-42+ar*0.14)
-  const c1g = isDark ? clamp(bg_+8+ag*0.04)  : clamp(bg_-42+ag*0.09)
-  const c1b = isDark ? clamp(bb+8+ab*0.04)   : clamp(bb-42+ab*0.14)
-  const c2r = isDark ? clamp(br+3+ar*0.02)   : clamp(br-58+ar*0.18)
-  const c2g = isDark ? clamp(bg_+3+ag*0.02)  : clamp(bg_-58+ag*0.11)
-  const c2b = isDark ? clamp(bb+3+ab*0.02)   : clamp(bb-58+ab*0.18)
-  const e1r = isDark ? clamp(br+28+ar*0.08)  : clamp(br-88+ar*0.22)
-  const e1g = isDark ? clamp(bg_+18+ag*0.08) : clamp(bg_-72+ag*0.14)
-  const e1b = isDark ? clamp(bb+28+ab*0.08)  : clamp(bb-88+ab*0.22)
-  const e2r = isDark ? clamp(br+48+ar*0.14)  : clamp(br-115+ar*0.28)
-  const e2g = isDark ? clamp(bg_+32+ag*0.14) : clamp(bg_-92+ag*0.18)
-  const e2b = isDark ? clamp(bb+48+ab*0.14)  : clamp(bb-115+ab*0.28)
+  const c1r = isDark ? clamp(br+8+ar*0.04)   : clamp(br-28+ar*0.14)
+  const c1g = isDark ? clamp(bg_+8+ag*0.04)  : clamp(bg_-28+ag*0.09)
+  const c1b = isDark ? clamp(bb+8+ab*0.04)   : clamp(bb-28+ab*0.14)
+  const c2r = isDark ? clamp(br+3+ar*0.02)   : clamp(br-38+ar*0.18)
+  const c2g = isDark ? clamp(bg_+3+ag*0.02)  : clamp(bg_-38+ag*0.11)
+  const c2b = isDark ? clamp(bb+3+ab*0.02)   : clamp(bb-38+ab*0.18)
+  const e1r = isDark ? clamp(br+28+ar*0.08)  : clamp(br-58+ar*0.22)
+  const e1g = isDark ? clamp(bg_+18+ag*0.08) : clamp(bg_-48+ag*0.14)
+  const e1b = isDark ? clamp(bb+28+ab*0.08)  : clamp(bb-58+ab*0.22)
+  const e2r = isDark ? clamp(br+48+ar*0.14)  : clamp(br-76+ar*0.28)
+  const e2g = isDark ? clamp(bg_+32+ag*0.14) : clamp(bg_-62+ag*0.18)
+  const e2b = isDark ? clamp(bb+48+ab*0.14)  : clamp(bb-76+ab*0.28)
   const cardDark   = `rgb(${c1r},${c1g},${c1b})`
   const cardDarker = `rgb(${c2r},${c2g},${c2b})`
   const borderMid    = `rgb(${e1r},${e1g},${e1b})`
@@ -104,6 +104,13 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const tB = `rgb(${clamp(ar+(255-ar)*.28)},${clamp(ag+(255-ag)*.28)},${clamp(ab+(255-ab)*.28)})`
   const tD = `rgb(${clamp(ar*.60)},${clamp(ag*.60)},${clamp(ab*.60)})`
   const titleGrad = `linear-gradient(180deg,${tL},${tB} 46%,${tD} 64%,${vars.accent})`
+  // Section title gradient — darker in light mode so text stays readable on white bg
+  const stL = isDark ? tL : `rgb(${clamp(ar*.55)},${clamp(ag*.40)},${clamp(ab*.55)})`
+  const stM = isDark ? tB : vars.accent
+  const stD = isDark ? tD : `rgb(${clamp(ar*.78)},${clamp(ag*.62)},${clamp(ab*.78)})`
+  const sectionTitleGrad = isDark ? titleGrad : `linear-gradient(180deg,${stL},${stM} 50%,${stD})`
+  // Shadow for gradient text in light mode (filter:drop-shadow works with background-clip:text)
+  const gradTextShadow = isDark ? '' : 'filter:drop-shadow(0 1px 2px rgba(0,0,0,.22));'
 
   // Theme-sensitive text / surface tokens
   const textColor      = isDark ? '#fff' : '#111'
@@ -210,8 +217,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:${textColor};}
     .lpv-h2s{text-align:center;font-size:13px;margin-top:8px;margin-bottom:34px;
       font-weight:700;letter-spacing:.5px;line-height:1.7;color:${subtitleColor};}
-    .lpv-pp{background:${titleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;}
-    .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;}
+    .lpv-pp{background:${sectionTitleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
+    .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
     .lpv-body{font-size:15px;color:${textBody};line-height:1.9;white-space:pre-wrap;}
 
     /* ── STEPS ── */
