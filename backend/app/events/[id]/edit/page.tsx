@@ -10,6 +10,7 @@ interface Event {
   id: string; slug: string; title: string
   bg_color: string; accent_color: string
   is_active: boolean; start_at: string | null; end_at: string | null
+  linked_tag: string | null
 }
 interface Section { id: string; type: SectionType; sort_order: number; content: Record<string, unknown> }
 type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule' | 'table' | 'gallery' | 'features' | 'countdown' | 'sticky_cta'
@@ -587,6 +588,7 @@ export default function EventEditPage() {
   const [savingMeta, setSavingMeta] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [meta, setMeta] = useState<Partial<Event>>({})
+  const [availableTags, setAvailableTags] = useState<string[]>([])
 
   const load = useCallback(async () => {
     const [evtRes, secRes, prodRes] = await Promise.all([
@@ -598,6 +600,7 @@ export default function EventEditPage() {
     setSections(Array.isArray(secRes) ? secRes : [])
     setProducts(Array.isArray(prodRes) ? prodRes : [])
     setIsLoading(false)
+    fetch('/api/admin/products/tags').then(r => r.json()).then(t => setAvailableTags(Array.isArray(t) ? t : [])).catch(() => {})
   }, [id])
 
   useEffect(() => { load() }, [load])
@@ -707,6 +710,33 @@ export default function EventEditPage() {
                 <input type="datetime-local" className={inputCls} value={meta.end_at ? new Date(meta.end_at).toISOString().slice(0, 16) : ''}
                   onChange={e => setMeta(m => ({ ...m, end_at: e.target.value || null }))} />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-500 mb-1.5">相關商品標籤（選填）</label>
+              <input
+                className={inputCls + ' font-mono'}
+                list="edit-tags-list"
+                value={meta.linked_tag || ''}
+                onChange={e => setMeta(m => ({ ...m, linked_tag: e.target.value || null }))}
+                placeholder="輸入標籤名稱，留空則不顯示相關商品"
+              />
+              <datalist id="edit-tags-list">
+                {availableTags.map(t => <option key={t} value={t} />)}
+              </datalist>
+              {availableTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {availableTags.map(t => (
+                    <button key={t} type="button"
+                      onClick={() => setMeta(m => ({ ...m, linked_tag: m.linked_tag === t ? null : t }))}
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all ${
+                        meta.linked_tag === t
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-neutral-600 border-neutral-300 hover:border-primary'
+                      }`}
+                    >{t}</button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
