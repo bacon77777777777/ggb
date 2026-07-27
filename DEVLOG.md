@@ -4,6 +4,31 @@
 
 ---
 
+## v2026.07.27g｜2026-07-27｜活動 LP 完善 + 分類清單連動 + 商品頁新增分類欄位
+
+### 活動 LP 視覺修正
+- H2 標題支援局部漸層（`h2_highlight`）與全體漸層（`h2_type`）
+- fukuro section 標題支援漸層（`ft_type`）
+- gallery callout 支援自訂邊框色（`callout_border`）
+- section subtitle 顏色調整（偏紫色，接近 zetcho）
+- LP loading 動畫改為 IP 角色 SVG 循環（禁止自製 spinner）
+- LP 相關商品改用 `ProductCard`（同猜你喜歡小卡樣式）
+
+### 分類清單連動（activities × products × LP）
+- **DB** migration 347：`products.tags text[]`（保留但不用）、migration 348：`events.linked_category_id uuid FK → categories`
+- 商品編輯：分類清單改自訂 checkbox dropdown（`menu_products` 多對多）
+- 活動新增/編輯：分類清單改 `<select>` 單選下拉
+- 新後台 API：`/api/admin/products/[id]/categories`（GET/PUT）
+- 前台 LP 底部「相關商品」：依 `linked_category_id → menu_products` 撈商品
+- 商品詳情頁：新增「分類」欄位，顯示所屬分類 pill，點擊跳回首頁對應 tab
+
+### 其他
+- 活動新增彈窗加寬（`max-w-xl`）並加 scroll 避免超出視窗
+- 熱賣商品改為下拉選單（是/否，預設否）
+- CLAUDE.md 新增前台 UI 慣例（loading / 商品卡不得自創）
+
+---
+
 ## v2026.07.27f｜2026-07-27｜活動 LP — 新增 5 種 section + zetcho 模板 + 影片背景
 
 ### 新功能：LP section 擴充
