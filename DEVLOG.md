@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.27d｜2026-07-27｜活動 LP 模組系統（後台編輯器 + 前台渲染器）
+
+### 新功能：活動 Landing Page 模組
+- **DB**：migration 343 — `events` 表 + `event_sections` 表（PROD + STG 同步）
+- **後台 API**：`/api/admin/events` CRUD + `/api/admin/events/[id]/sections` CRUD + reorder
+- **後台 `/events`**：活動列表，主題色預覽（暗金/暗紫/暗紅/暗藍 + 自訂 hex），新增/刪除
+- **後台 `/events/[id]/edit`**：Section 編輯器，7 種 section type（hero/text/steps/cards/highlight/cta/product_ref）
+- **`product_ref` section**：選商品 ID → 前台自動拉 `product_prizes` 渲染獎品清單（半動態）
+- **前台 `/api/events/[slug]`**：公開 API，server-side 解析 product_ref
+- **前台 `/lp/[slug]`**：全螢幕沈浸式 LP 渲染器，複刻 pokekatsu 暗色系視覺風格，inline CSS 主題變數
+
+---
+
 ## v2026.07.27c｜2026-07-27｜公告系統（前後台完整功能）
 
 ### 新功能：公告管理系統
