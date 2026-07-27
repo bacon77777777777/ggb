@@ -118,6 +118,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const overlayFaint   = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
   // Hero is ALWAYS dark regardless of theme (cinematic section)
   const heroBg         = isDark ? 'transparent' : '#0a0610'
+  // Card surface computed from the hero's fixed dark bg (10,6,16)
+  const heroCardDarker = `rgb(${clamp(10+3+ar*0.02)},${clamp(6+3+ag*0.02)},${clamp(16+3+ab*0.02)})`
   const heroVeilStop   = 'rgba(10,6,16,.65)'
   const heroSubColor   = '#ecd8f0'
   const arasaColor     = '#f3e0ff'
@@ -176,7 +178,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       color:transparent;font-weight:900;font-size:1.15em;}
     .lpv-arasa{position:relative;z-index:1;margin-top:22px;display:inline-block;
       padding:9px 22px;border-radius:8px;font-weight:900;font-size:clamp(13px,3.6vw,16px);
-      color:${arasaColor};background:${cardDarker};
+      color:${arasaColor};background:${heroCardDarker};
       border:2px dashed ${vars.accent};
       box-shadow:0 0 18px rgba(${a},0.4);letter-spacing:1px;}
     .lpv-badge{position:relative;z-index:1;margin-top:16px;font-size:11px;letter-spacing:3px;
