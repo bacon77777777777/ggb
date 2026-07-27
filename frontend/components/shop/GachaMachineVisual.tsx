@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
@@ -33,6 +33,7 @@ interface Egg {
 
 const useDropSound = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastPlayRef = useRef<number>(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -49,13 +50,15 @@ const useDropSound = () => {
     };
   }, []);
 
-  const play = () => {
+  const play = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPlayRef.current < 500) return;
+    lastPlayRef.current = now;
     const audio = audioRef.current;
     if (!audio) return;
-    audio.pause();
     audio.currentTime = 0;
     void audio.play().catch(() => {});
-  };
+  }, []);
 
   return play;
 };
@@ -153,6 +156,8 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
   const manualPushSoundRef = useRef<HTMLAudioElement | null>(null);
   const autoPushSoundRef = useRef<HTMLAudioElement | null>(null);
+  const lastAutoPlayRef = useRef<number>(0);
+  const lastManualPlayRef = useRef<number>(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -233,8 +238,12 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
     if (isShaking && !prevIsShaking.current && applyShakeImpulseRef.current) {
       if (pushSoundMode === 'auto') {
-        const audio = autoPushSoundRef.current;
-        if (audio) { audio.pause(); audio.currentTime = 0; void audio.play().catch(() => {}); }
+        const now = Date.now();
+        if (now - lastAutoPlayRef.current >= 500) {
+          lastAutoPlayRef.current = now;
+          const audio = autoPushSoundRef.current;
+          if (audio) { audio.currentTime = 0; void audio.play().catch(() => {}); }
+        }
       }
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
@@ -537,10 +546,11 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         }}
         onClick={() => {
           if (isSoldOut || disableButtons) return;
-          const audio = manualPushSoundRef.current;
-          if (audio) {
-            audio.currentTime = 0;
-            void audio.play().catch(() => {});
+          const now = Date.now();
+          if (now - lastManualPlayRef.current >= 500) {
+            lastManualPlayRef.current = now;
+            const audio = manualPushSoundRef.current;
+            if (audio) { audio.currentTime = 0; void audio.play().catch(() => {}); }
           }
           if (onPush) onPush();
         }}
