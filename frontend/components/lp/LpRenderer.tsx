@@ -146,10 +146,9 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv{background:${vars.bg};color:${textColor};min-height:100svh;overflow-x:hidden;
       font-family:'Noto Sans JP',system-ui,sans-serif;}
     .lpv-topbar{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:center;
-      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;
-      background:rgba(10,6,16,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+      justify-content:space-between;padding:env(safe-area-inset-top) 0 0;pointer-events:none;}
     .lpv-topbtn{pointer-events:auto;margin:8px;width:36px;height:36px;border-radius:999px;
-      background:rgba(255,255,255,.12);
+      background:rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
       display:flex;align-items:center;justify-content:center;color:#fff;
       border:none;cursor:pointer;transition:opacity .15s;text-decoration:none;}
     .lpv-topbtn:hover{opacity:.75;}
