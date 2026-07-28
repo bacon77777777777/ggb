@@ -229,14 +229,18 @@ export default function SlotPage() {
             <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" placeholder="例：超級挑戰機" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">描述</label>
-            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-none" rows={2} />
+            <label className="block text-sm font-medium text-neutral-700 mb-2">檔次 G幣 *</label>
+            <input type="text" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" placeholder="以逗號分隔，例：100,500,1000" />
+            {(() => {
+              const tiers = form.price_per_spin.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => n > 0)
+              return tiers.length > 0 ? (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {tiers.map(c => <span key={c} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{c} G</span>)}
+                </div>
+              ) : null
+            })()}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">檔次 G幣 *</label>
-              <input type="text" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" placeholder="以逗號分隔，例：100,500,1000" />
-            </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 觸發率 (0-1)</label>
               <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={0.01} min={0} max={1} />
