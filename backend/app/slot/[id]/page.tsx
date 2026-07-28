@@ -221,22 +221,6 @@ export default function SlotDetailPage() {
             <Field label="機台名稱">
               <input type="text" className={INPUT} value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="檔次 G幣">
-              <input
-                type="text"
-                className={INPUT}
-                placeholder="以逗號分隔，例：10,20,50,100,200,500,1000"
-                value={tierInput}
-                onChange={e => setTierInput(e.target.value)}
-              />
-              {currentTiers.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {currentTiers.map(t => (
-                    <span key={t.coins} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{t.coins} G</span>
-                  ))}
-                </div>
-              )}
-            </Field>
             <Field label="RUSH 觸發率 (0–1)">
               <input type="number" step="0.01" className={INPUT} value={machineForm.trigger_rate ?? ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) }))} />
             </Field>
@@ -261,6 +245,24 @@ export default function SlotDetailPage() {
                 <span className="text-sm text-neutral-600">{machineForm.is_active ? '上架中' : '已下架'}</span>
               </div>
             </Field>
+            <div className="col-span-1 md:col-span-2">
+              <Field label="檔次 G幣">
+                <input
+                  type="text"
+                  className={INPUT}
+                  placeholder="以逗號分隔，例：10,20,50,100,200,500,1000"
+                  value={tierInput}
+                  onChange={e => setTierInput(e.target.value)}
+                />
+                {currentTiers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {currentTiers.map(t => (
+                      <span key={t.coins} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{t.coins} G</span>
+                    ))}
+                  </div>
+                )}
+              </Field>
+            </div>
           </div>
         </PageCard>
 
