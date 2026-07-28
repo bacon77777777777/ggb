@@ -50,6 +50,7 @@ interface ProductPrize {
   id: number
   name: string
   level: string
+  image_url: string | null
   product_id: number
   products: { name: string; type: string } | null
 }
@@ -119,7 +120,7 @@ export default function SlotDetailPage() {
     if (!showAddPool) return
     supabase
       .from('product_prizes')
-      .select('id, name, level, product_id, products(name, type)')
+      .select('id, name, level, image_url, product_id, products(name, type)')
       .ilike('name', prizeSearch ? `%${prizeSearch}%` : '%')
       .limit(30)
       .then(({ data }) => setPrizes((data ?? []) as unknown as ProductPrize[]))
@@ -355,14 +356,29 @@ export default function SlotDetailPage() {
                     <button
                       key={prize.id}
                       onClick={() => { setPoolForm(p => ({ ...p, product_prize_id: String(prize.id) })); setSelectedPrize(prize) }}
-                      className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center justify-between ${
-                        isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-neutral-50 text-neutral-700'
+                      className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-3 ${
+                        isSelected ? 'bg-primary/10' : 'hover:bg-neutral-50'
                       }`}
                     >
-                      <span className="font-medium">{prize.name}</span>
-                      <span className={`text-xs ml-2 shrink-0 ${isSelected ? 'text-primary/70' : 'text-neutral-400'}`}>
-                        {(['gacha', 'blindbox', 'slot'].includes(prize.products?.type ?? '')) ? '普通' : prize.level} · {prize.products?.name ?? ''}
-                      </span>
+                      <img
+                        src={prize.image_url || '/images/item.png'}
+                        alt=""
+                        className="w-10 h-10 object-cover rounded-lg shrink-0 bg-neutral-100"
+                      />
+                      {(() => {
+                        const pType = prize.products?.type ?? ''
+                        const isSimple = ['gacha', 'blindbox', 'slot'].includes(pType)
+                        const displayLevel = isSimple ? '普通' : prize.level
+                        return (
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0 whitespace-nowrap">
+                            {displayLevel}
+                          </span>
+                        )
+                      })()}
+                      <div className="flex flex-col min-w-0">
+                        <span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-neutral-800'}`}>{prize.name}</span>
+                        <span className="text-xs text-neutral-400 truncate">{prize.products?.name ?? ''}</span>
+                      </div>
                     </button>
                   )
                 })}
