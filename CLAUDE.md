@@ -245,6 +245,33 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
 
 ---
 
+## 後台 UI 設計慣例（Design System — 絕對禁止自創畫面）
+
+後台有完整的 Design System，**所有後台頁面必須使用以下元件，不可自己用 tailwind 組出類似效果的替代品**：
+
+```tsx
+import { AdminLayout, PageCard, Modal, SearchToolbar, SortableTableHeader } from '@/components'
+import Badge from '@/components/ui/Badge'
+import Switch from '@/components/ui/Switch'
+import { useToast } from '@/contexts/ToastContext'
+```
+
+- **AdminLayout**：所有後台頁面的最外層容器，傳 `pageTitle`
+- **PageCard**：內容卡片，取代自訂的 `bg-white rounded-xl border...` 區塊
+- **Modal**：彈窗，傳 `isOpen` / `onClose` / `title`。**禁止自製 fixed inset-0 overlay**
+- **SearchToolbar**：列表頁的搜尋列 + 新增按鈕 + 篩選 + 密度 + 欄位開關，全部整合在這個元件
+- **SortableTableHeader**：可排序的 `<th>`
+- **Badge**：稀有度、標籤等小標籤（有 `color` prop：gray/blue/purple/amber/green/red）
+- **Switch**：上架/啟用切換開關（取代自製 toggle）
+- **useToast()**：成功/失敗訊息，用 `toast('訊息')` / `toast('訊息', 'error')`
+- **Input 統一樣式**：`w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm`
+- **Table 統一樣式**：thead `bg-neutral-50 border-b border-neutral-200`、tbody `divide-y divide-neutral-100`、行 `hover:bg-neutral-50 transition-colors`
+- **Button 統一樣式**：主要 `px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60`、次要 `px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors`
+
+**寫新頁面前必看參考**：`backend/app/slot/page.tsx`（列表 + 篩選 + modal）、`backend/app/slot/prizes/page.tsx`（同類型 CRUD）。
+
+---
+
 ## 前台 UI 設計慣例
 
 - **Loading 動畫**：一律使用 `ProductLoadingScreen`（`frontend/components/ui/ProductLoadingScreen.tsx`）或其相同邏輯（cycling IP character SVGs at `frontend/public/loading/1-8.svg` + framer-motion float）。**禁止自創 spinner、骨架屏或其他 loading 動畫**。
