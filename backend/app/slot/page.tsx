@@ -224,46 +224,44 @@ export default function SlotPage() {
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="新增挑戰機台">
         <div className="space-y-4">
-          <Field label="機台名稱 *">
-            <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="input-base" placeholder="例：超級挑戰機" />
-          </Field>
-          <Field label="描述">
-            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="input-base resize-none" rows={2} />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="每次消耗 G幣 *">
-              <input type="number" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="input-base" min={1} />
-            </Field>
-            <Field label="RUSH 觸發率 (0-1)">
-              <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="input-base" step={0.01} min={0} max={1} />
-            </Field>
-            <Field label="RUSH 延續率 (0-1)">
-              <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="input-base" step={0.01} min={0} max={1} />
-            </Field>
-            <Field label="RUSH 最少連中">
-              <input type="number" value={form.min_rush_hits} onChange={e => setForm(p => ({ ...p, min_rush_hits: e.target.value }))} className="input-base" min={1} />
-            </Field>
-            <Field label="保底轉數">
-              <input type="number" value={form.floor_spin_count} onChange={e => setForm(p => ({ ...p, floor_spin_count: e.target.value }))} className="input-base" min={1} />
-            </Field>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">機台名稱 *</label>
+            <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" placeholder="例：超級挑戰機" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">描述</label>
+            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-none" rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">每次消耗 G幣 *</label>
+              <input type="number" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 觸發率 (0-1)</label>
+              <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={0.01} min={0} max={1} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 延續率 (0-1)</label>
+              <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={0.01} min={0} max={1} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 最少連中</label>
+              <input type="number" value={form.min_rush_hits} onChange={e => setForm(p => ({ ...p, min_rush_hits: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">保底轉數</label>
+              <input type="number" value={form.floor_spin_count} onChange={e => setForm(p => ({ ...p, floor_spin_count: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setShowCreate(false)} className="btn-ghost">取消</button>
-            <button onClick={handleCreate} disabled={saving || !form.name} className="btn-primary">
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">取消</button>
+            <button onClick={handleCreate} disabled={saving || !form.name} className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60">
               {saving ? '建立中...' : '建立機台'}
             </button>
           </div>
         </div>
       </Modal>
     </AdminLayout>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-neutral-500 mb-1">{label}</label>
-      {children}
-    </div>
   )
 }
