@@ -4,6 +4,14 @@
 
 ---
 
+## v2026.07.28a｜2026-07-28｜修復轉蛋音效重疊播放兩次
+
+### 修復轉蛋機音效/動畫雙重觸發
+- 新增 `animTimersRef` 追蹤所有動畫 setTimeout，中止路徑（錯誤/完抽/關閉結果）先 `clearAnimTimers()` 再重設 state，防止 ghost 計時器在錯誤後仍觸發掉蛋音效（drop sound ghost replay）
+- `runTrialAnimation` 開頭也先 clearAnimTimers，防止快速重複點擊累積計時器
+
+---
+
 ## v2026.07.27i｜2026-07-27｜LP 淺色模式優化 + 輪播圖/公告站內連結
 
 ### LP 淺色模式視覺優化

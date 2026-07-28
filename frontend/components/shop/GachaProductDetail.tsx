@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Database } from '@/types/database.types';
 import { GachaMachineVisual } from './GachaMachineVisual';
 import { GachaMachineModern } from './GachaMachineModern';
@@ -81,6 +81,12 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   const [isMachineLoaded, setIsMachineLoaded] = useState(false);
   const [isEggBoxImageMode, setIsEggBoxImageMode] = useState(false);
   const [forceGoldEgg, setForceGoldEgg] = useState(false);
+
+  const animTimersRef = useRef<number[]>([]);
+  const clearAnimTimers = () => {
+    animTimersRef.current.forEach(id => window.clearTimeout(id));
+    animTimersRef.current = [];
+  };
 
   const hasHighTierPending = useMemo(() => {
     if (wonPrizes.length === 0) return false;
@@ -167,6 +173,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
         if (latest) {
           latestRemaining = latest.remaining ?? latestRemaining;
           if (latest.status === 'ended' || latestRemaining <= 0) {
+            clearAnimTimers();
             setMachineState('idle');
             showToast('商品已完抽', 'info');
             setIsProcessing(false);
@@ -275,6 +282,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
           ? msgCandidate.trim()
           : (error instanceof Error ? error.message : '');
       console.error(`Purchase error: ${errorMessage}${rawSummary ? ` | raw=${rawSummary}` : ''}`);
+      clearAnimTimers();
       setMachineState('idle');
       showToast(errorMessage, 'error');
     } finally {
@@ -283,16 +291,19 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   };
 
   const runTrialAnimation = () => {
+    clearAnimTimers();
     setPushSoundMode('auto');
     setShakeRepeats(2);
     setMachineState('shaking');
-    setTimeout(() => {
+    const t1 = window.setTimeout(() => {
       setMachineState('dropping');
-      setTimeout(() => {
+      const t2 = window.setTimeout(() => {
         setMachineState('waiting');
         setHasPendingResult(true);
       }, 800);
+      animTimersRef.current.push(t2);
     }, 2000);
+    animTimersRef.current.push(t1);
   };
 
   const runGachaAnimation = () => {
@@ -300,15 +311,14 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   };
 
   const handleResultClose = () => {
+    clearAnimTimers();
     setShowResultModal(false);
     setWonPrizes([]);
     setHasPendingResult(false);
     setForceGoldEgg(false);
-    // Force refresh profile to update balance
     if (refreshProfile) {
       refreshProfile();
     }
-    // After closing modal, ensure we are back to idle state and not navigating unexpectedly
     setMachineState('idle');
   };
 
