@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Coins, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { ChallengeSkeleton } from '@/components/Skeletons';
 
 interface SlotMachine {
   id: number;
@@ -30,7 +30,7 @@ export default function ChallengePage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  if (isLoading) return <ProductLoadingScreen />;
+  if (isLoading) return <ChallengeSkeleton />;
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-28">

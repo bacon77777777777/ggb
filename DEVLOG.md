@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.29a｜2026-07-29｜前台頁面 Skeleton 灰色載入骨架
+
+### 前台
+- 新增 `ChallengeSkeleton`、`ChallengeDetailSkeleton`、`MissionSkeleton` 三個灰色骨架元件至 `Skeletons.tsx`
+- `challenge/page.tsx`：替換 `ProductLoadingScreen` → `ChallengeSkeleton`（灰色卡片列表）
+- `challenge/[id]/page.tsx`：替換 `ProductLoadingScreen` → `ChallengeDetailSkeleton`（機台視覺 + 控制列 + 獎池）
+- `mission/page.tsx`（簽到）：替換 `IpLoader` → `MissionSkeleton`（banner + 日曆 + 任務清單）
+- `profile/page.tsx`（會員）：替換 `IpLoader` → `ProfileSkeleton`（auth 載入階段）；倉庫 tab 內聯 spinner → 灰色骨架列
+
+---
+
 ## v2026.07.28f｜2026-07-28｜挑戰機台品項系統 + 前台獎池修正 + UI 統一
 
 ### 後台（挑戰機台）

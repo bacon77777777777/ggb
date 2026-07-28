@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import { ChallengeDetailSkeleton } from '@/components/Skeletons';
 
 // ── 影片素材（暫用 events/1 現有素材）────────────────────────────────────
 const BASE_VIDEO = 'https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho'
@@ -331,7 +331,7 @@ export default function MachinePage() {
     setDirectConfirm(false);
   };
 
-  if (isLoading) return <ProductLoadingScreen />;
+  if (isLoading) return <ChallengeDetailSkeleton />;
   if (!machine) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-neutral-500 bg-neutral-50 dark:bg-neutral-950">
