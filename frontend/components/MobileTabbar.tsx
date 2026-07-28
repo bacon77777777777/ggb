@@ -75,9 +75,9 @@ function MobileTabbarInner() {
 
   const tabs: Array<{ name: string; href: string; isCenter?: boolean }> = [
     { name: '首頁', href: '/' },
+    { name: '挑戰', href: '/challenge' },
     { name: '情報', href: '/news' },
     { name: '簽到', href: '/mission' },
-    { name: '挑戰', href: '/challenge' },
     { name: '會員', href: '/profile' },
   ];
 
