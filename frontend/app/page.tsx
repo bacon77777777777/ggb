@@ -1751,6 +1751,26 @@ export default function Home() {
           <Plus className="w-6 h-6 stroke-[2]" />
         </Link>
       )}
+
+      {/* 排行榜浮動按鈕 — 右下角 */}
+      <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col gap-1.5 md:hidden">
+        <Link
+          href="/ranking"
+          aria-label="消費排行榜"
+          className="flex flex-col items-center justify-center w-[52px] h-[52px] rounded-l-2xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform border border-white/10"
+        >
+          <span className="text-2xl leading-none">🏆</span>
+          <span className="text-[9px] text-white/80 font-bold mt-0.5">排行榜</span>
+        </Link>
+        <Link
+          href="/ranking"
+          aria-label="抽數排行榜"
+          className="flex flex-col items-center justify-center w-[52px] h-[52px] rounded-l-2xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform border border-white/10"
+        >
+          <span className="text-2xl leading-none">🥇</span>
+          <span className="text-[9px] text-white/80 font-bold mt-0.5">抽數榜</span>
+        </Link>
+      </div>
     </div>
   );
 }

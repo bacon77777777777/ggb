@@ -67,7 +67,6 @@ function MobileTabbarInner() {
 
   const tabImgMap: Record<string, number> = {
     '/': 1,
-    '/ranking': 2,
     '/news': 3,
     '/mission': 4,
     '/profile': 5,
@@ -75,7 +74,6 @@ function MobileTabbarInner() {
 
   const tabs: Array<{ name: string; href: string; isCenter?: boolean }> = [
     { name: '首頁', href: '/' },
-    { name: '排行榜', href: '/ranking' },
     { name: '情報', href: '/news' },
     { name: '簽到', href: '/mission' },
     { name: '會員', href: '/profile' },
