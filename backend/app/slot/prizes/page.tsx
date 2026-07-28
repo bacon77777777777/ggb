@@ -179,8 +179,7 @@ export default function SlotPrizesPage() {
       if (statusFilter === 'active' && !p.is_active) return false
       if (statusFilter === 'inactive' && p.is_active) return false
       if (levelFilter !== 'all' && p.level !== levelFilter) return false
-      if (supplierFilter === 'ggb' && p.supplier_id != null) return false
-      if (supplierFilter !== 'all' && supplierFilter !== 'ggb' && String(p.supplier_id) !== supplierFilter) return false
+      if (supplierFilter !== 'all' && String(p.supplier_id) !== supplierFilter) return false
       return true
     })
     .sort((a, b) => {
@@ -223,7 +222,6 @@ export default function SlotPrizesPage() {
               onChange: setSupplierFilter,
               options: [
                 { value: 'all', label: '全部廠商' },
-                { value: 'ggb', label: 'GGB 自有' },
                 ...suppliers.map(s => ({ value: String(s.id), label: s.name })),
               ],
             },
@@ -302,10 +300,7 @@ export default function SlotPrizesPage() {
                     )}
                     {show('supplier') && (
                       <td className={`${dc} whitespace-nowrap text-neutral-700`}>
-                        {p.suppliers?.name
-                          ? <span>{p.suppliers.name}</span>
-                          : <span className="text-neutral-400 text-xs">GGB 自有</span>
-                        }
+                        {p.suppliers?.name ?? <span className="text-neutral-300">—</span>}
                       </td>
                     )}
                     {show('remaining') && (
@@ -361,12 +356,12 @@ export default function SlotPrizesPage() {
               onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))}
               className={INPUT}
             >
-              <option value="">GGB 自有（無廠商）</option>
+              <option value="">— 不指定廠商 —</option>
               {suppliers.map(s => (
                 <option key={s.id} value={String(s.id)}>{s.name}</option>
               ))}
             </select>
-            <p className="text-xs text-neutral-400 mt-1">廠商談好可循環利用的品項請選廠商；GGB 自購備貨請留空</p>
+            <p className="text-xs text-neutral-400 mt-1">廠商談好可循環利用的品項請選廠商</p>
           </div>
 
           <div>
