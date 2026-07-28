@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { name, description, image_url, price_per_spin, trigger_rate, continue_rate, min_rush_hits, floor_spin_count, supplier_id } = body
+  const { name, description, image_url, price_per_spin, trigger_rate, continue_rate, min_rush_hits, floor_spin_count, supplier_id, guaranteed_prize } = body
 
   if (!name || !price_per_spin) {
     return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 })
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       min_rush_hits: parseInt(min_rush_hits ?? '3'),
       floor_spin_count: parseInt(floor_spin_count ?? '30'),
       supplier_id: supplier_id ?? null,
+      guaranteed_prize: guaranteed_prize ?? true,
       is_active: false,
     })
     .select()

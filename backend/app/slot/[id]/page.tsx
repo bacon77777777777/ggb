@@ -39,6 +39,7 @@ interface SlotMachine {
   floor_spin_count: number
   is_active: boolean
   sort_order: number
+  guaranteed_prize: boolean
   bet_tiers: BetTier[]
 }
 
@@ -297,6 +298,15 @@ export default function SlotDetailPage() {
                   onCheckedChange={v => setMachineForm(p => ({ ...p, is_active: v }))}
                 />
                 <span className="text-sm text-neutral-600">{machineForm.is_active ? '上架中' : '已下架'}</span>
+              </div>
+            </Field>
+            <Field label="必得實物模式" tooltip="開啟後，每次挑戰必定獲得一件實物獎品（在前台顯示「必得實物」標章）。" tooltipSide="left">
+              <div className="flex items-center gap-2 mt-1">
+                <Switch
+                  checked={machineForm.guaranteed_prize ?? true}
+                  onCheckedChange={v => setMachineForm(p => ({ ...p, guaranteed_prize: v }))}
+                />
+                <span className="text-sm text-neutral-600">{(machineForm.guaranteed_prize ?? true) ? '開啟' : '關閉'}</span>
               </div>
             </Field>
             <div className="col-span-1 md:col-span-2">

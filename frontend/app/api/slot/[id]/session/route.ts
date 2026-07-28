@@ -22,7 +22,7 @@ export async function GET(
 
     const { data } = await supabase
       .from('slot_sessions')
-      .select('state, rush_hits_remaining, spins_since_rush, total_spins')
+      .select('state, rush_hits_remaining, spins_since_rush, total_spins, locked_bet')
       .eq('user_id', session.user.id)
       .eq('machine_id', machineId)
       .single()
