@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
 import PageCard from '@/components/PageCard'
 import Badge from '@/components/ui/Badge'
+import Switch from '@/components/ui/Switch'
 import Modal from '@/components/Modal'
 import SearchToolbar from '@/components/SearchToolbar'
 import { useToast } from '@/contexts/ToastContext'
@@ -33,6 +34,15 @@ const DEFAULT_FORM = {
   floor_spin_count: '30',
 }
 
+const COLUMNS = [
+  { key: 'name',         label: '機台名稱' },
+  { key: 'price',        label: '每次 G幣' },
+  { key: 'trigger_rate', label: 'RUSH 觸發率' },
+  { key: 'floor',        label: '保底轉數' },
+  { key: 'status',       label: '上架' },
+  { key: 'operations',   label: '操作' },
+]
+
 export default function SlotPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -42,7 +52,11 @@ export default function SlotPage() {
   const [form, setForm] = useState(DEFAULT_FORM)
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
+    Object.fromEntries(COLUMNS.map(c => [c.key, true]))
+  )
 
   const fetchMachines = async () => {
     setIsLoading(true)
@@ -81,7 +95,10 @@ export default function SlotPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !machine.is_active }),
     })
-    if (res.ok) { toast(machine.is_active ? '已下架' : '已上架'); fetchMachines() }
+    if (res.ok) {
+      toast(machine.is_active ? '已下架' : '已上架')
+      setMachines(prev => prev.map(m => m.id === machine.id ? { ...m, is_active: !m.is_active } : m))
+    }
   }
 
   const handleDelete = async (machine: SlotMachine) => {
@@ -90,11 +107,15 @@ export default function SlotPage() {
     if (res.ok) { toast('已刪除'); fetchMachines() }
   }
 
-  const filtered = machines.filter(m =>
-    !searchQuery || m.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filtered = machines.filter(m => {
+    if (searchQuery && !m.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    if (statusFilter === 'active' && !m.is_active) return false
+    if (statusFilter === 'inactive' && m.is_active) return false
+    return true
+  })
 
   const tdPy = tableDensity === 'compact' ? 'py-2' : tableDensity === 'normal' ? 'py-3' : 'py-4'
+  const show = (key: string) => visibleColumns[key] !== false
 
   return (
     <AdminLayout pageTitle="挑戰機台">
@@ -109,50 +130,68 @@ export default function SlotPage() {
           showDensity={true}
           density={tableDensity}
           onDensityChange={setTableDensity}
-          showFilter={false}
-          showColumnToggle={false}
+          showFilter={true}
+          filterOptions={[
+            {
+              key: 'status',
+              label: '上架狀態',
+              type: 'select',
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '上架中' },
+                { value: 'inactive', label: '已下架' },
+              ],
+            },
+          ]}
+          showColumnToggle={true}
+          columns={COLUMNS.map(c => ({ key: c.key, label: c.label, visible: visibleColumns[c.key] }))}
+          onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
         />
 
         {isLoading ? (
           <div className="py-12 text-center text-sm text-neutral-400">載入中...</div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-neutral-400">
-            {searchQuery ? '找不到符合的機台' : '尚無機台，點擊右上角新增'}
+            {searchQuery || statusFilter !== 'all' ? '找不到符合的機台' : '尚無機台，點擊右上角新增'}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-neutral-200">
                 <tr className="text-left text-xs text-neutral-500">
-                  <th className="pb-3 pr-4 font-medium">機台名稱</th>
-                  <th className="pb-3 pr-4 font-medium">每次 G幣</th>
-                  <th className="pb-3 pr-4 font-medium">RUSH 觸發率</th>
-                  <th className="pb-3 pr-4 font-medium">保底轉數</th>
-                  <th className="pb-3 pr-4 font-medium">狀態</th>
-                  <th className="pb-3 font-medium">操作</th>
+                  {show('name')         && <th className="pb-3 pr-4 font-medium">機台名稱</th>}
+                  {show('price')        && <th className="pb-3 pr-4 font-medium">每次 G幣</th>}
+                  {show('trigger_rate') && <th className="pb-3 pr-4 font-medium">RUSH 觸發率</th>}
+                  {show('floor')        && <th className="pb-3 pr-4 font-medium">保底轉數</th>}
+                  {show('status')       && <th className="pb-3 pr-4 font-medium">上架</th>}
+                  {show('operations')   && <th className="pb-3 font-medium">操作</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {filtered.map(machine => (
                   <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className={`${tdPy} pr-4 font-medium text-neutral-900`}>{machine.name || '（未命名）'}</td>
-                    <td className={`${tdPy} pr-4 text-amber-600 font-bold`}>{machine.price_per_spin}</td>
-                    <td className={`${tdPy} pr-4 text-neutral-600`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>
-                    <td className={`${tdPy} pr-4 text-neutral-600`}>{machine.floor_spin_count}</td>
-                    <td className={`${tdPy} pr-4`}>
-                      <Badge color={machine.is_active ? 'green' : 'gray'}>
-                        {machine.is_active ? '上架中' : '下架'}
-                      </Badge>
-                    </td>
-                    <td className={`${tdPy}`}>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium">編輯</button>
-                        <button onClick={() => toggleActive(machine)} className="text-neutral-500 hover:text-neutral-800 text-sm font-medium">
-                          {machine.is_active ? '下架' : '上架'}
-                        </button>
-                        <button onClick={() => handleDelete(machine)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
-                      </div>
-                    </td>
+                    {show('name')         && <td className={`${tdPy} pr-4 font-medium text-neutral-900`}>{machine.name || '（未命名）'}</td>}
+                    {show('price')        && <td className={`${tdPy} pr-4 text-amber-600 font-bold`}>{machine.price_per_spin}</td>}
+                    {show('trigger_rate') && <td className={`${tdPy} pr-4 text-neutral-600`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>}
+                    {show('floor')        && <td className={`${tdPy} pr-4 text-neutral-600`}>{machine.floor_spin_count}</td>}
+                    {show('status')       && (
+                      <td className={`${tdPy} pr-4`}>
+                        <Switch
+                          checked={machine.is_active}
+                          onCheckedChange={() => toggleActive(machine)}
+                        />
+                      </td>
+                    )}
+                    {show('operations')   && (
+                      <td className={`${tdPy}`}>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium">編輯</button>
+                          <button onClick={() => handleDelete(machine)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
