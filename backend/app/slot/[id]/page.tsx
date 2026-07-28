@@ -163,23 +163,26 @@ export default function SlotDetailPage() {
     if (res.ok) { toast('已移除'); fetchData() }
   }
 
-  if (isLoading) return <AdminLayout><div className="p-8 text-center text-gray-400">載入中...</div></AdminLayout>
-  if (!machine) return <AdminLayout><div className="p-8 text-center text-gray-400">機台不存在</div></AdminLayout>
+  if (isLoading) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">載入中...</div></AdminLayout>
+  if (!machine) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">機台不存在</div></AdminLayout>
 
   const machineTiers: BetTier[] = machineForm.bet_tiers ?? machine.bet_tiers ?? DEFAULT_BET_TIERS
 
   return (
-    <AdminLayout>
+    <AdminLayout pageTitle={machine.name || '挑戰機台'}>
       <div className="space-y-6">
-        <button onClick={() => router.push('/slot')} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          ← 返回機台列表
-        </button>
+        <div className="flex items-center justify-between">
+          <button onClick={() => router.push('/slot')} className="text-sm text-neutral-500 hover:text-neutral-700">
+            ← 返回機台列表
+          </button>
+          <button onClick={handleSaveMachine} disabled={savingMachine} className="btn-primary">
+            {savingMachine ? '儲存中...' : '儲存設定'}
+          </button>
+        </div>
 
         {/* Machine settings */}
         <PageCard>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">⚡ {machine.name} — 機台設定</h2>
-          </div>
+          <h3 className="text-sm font-semibold text-neutral-700 mb-4">機台設定</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="機台名稱">
               <input type="text" className="input-base" value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
@@ -261,73 +264,66 @@ export default function SlotDetailPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end">
-            <button onClick={handleSaveMachine} disabled={savingMachine} className="btn-primary">
-              {savingMachine ? '儲存中...' : '儲存設定'}
-            </button>
-          </div>
         </PageCard>
 
         {/* Pool items */}
-        <PageCard>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">獎池管理</h2>
+        <PageCard noPadding>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
+            <h3 className="text-sm font-semibold text-neutral-700">獎池管理</h3>
             <button onClick={() => setShowAddPool(true)} className="btn-primary">
               + 加入獎品
             </button>
           </div>
 
           {pool.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">獎池尚無品項</div>
+            <div className="py-8 text-center text-sm text-neutral-400">獎池尚無品項</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 dark:border-gray-700">
-                <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
-                  <th className="pb-2 pr-3 font-medium">獎品</th>
-                  <th className="pb-2 pr-3 font-medium">等級</th>
-                  <th className="pb-2 pr-3 font-medium">權重</th>
-                  <th className="pb-2 pr-3 font-medium">最低檔次</th>
-                  <th className="pb-2 pr-3 font-medium">庫存</th>
-                  <th className="pb-2 pr-3 font-medium">屬性</th>
-                  <th className="pb-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {pool.map(item => {
-                  const tierName = item.min_bet
-                    ? (machineTiers.find(t => t.coins === item.min_bet)?.label ?? `${item.min_bet}G`)
-                    : null
-                  return (
-                    <tr key={item.id}>
-                      <td className="py-2 pr-3">
-                        <div className="font-medium text-gray-900 dark:text-white text-xs">{item.product_prizes?.name ?? '—'}</div>
-                        <div className="text-xs text-gray-400">{item.product_prizes?.products?.name ?? ''}</div>
-                      </td>
-                      <td className="py-2 pr-3 max-w-[80px]">
-                        <span className="text-xs text-neutral-500 block truncate" title={item.product_prizes?.level ?? ''}>{item.product_prizes?.level ?? '—'}</span>
-                      </td>
-                      <td className="py-2 pr-3 text-gray-700 dark:text-gray-300 font-bold">{item.weight}</td>
-                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400 text-xs">
-                        {tierName ? <Badge color="blue">{tierName}↑</Badge> : <span className="text-green-500">全檔</span>}
-                      </td>
-                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">
-                        {item.remaining === null ? <span className="text-green-500">∞</span> : item.remaining}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div className="flex flex-wrap gap-1">
-                          {item.is_floor && <Badge color="amber">保底</Badge>}
-                          {item.rush_only && <Badge color="purple">Rush</Badge>}
-                          {item.normal_only && <Badge color="gray">Normal</Badge>}
-                        </div>
-                      </td>
-                      <td className="py-2">
-                        <button onClick={() => handleDeletePool(item.id)} className="text-xs text-red-400 hover:text-red-600">刪除</button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    {['獎品', '等級', '權重', '最低檔次', '庫存', '屬性', ''].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {pool.map(item => {
+                    const tierName = item.min_bet
+                      ? (machineTiers.find(t => t.coins === item.min_bet)?.label ?? `${item.min_bet}G`)
+                      : null
+                    return (
+                      <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-neutral-900 text-sm">{item.product_prizes?.name ?? '—'}</div>
+                          <div className="text-xs text-neutral-400">{item.product_prizes?.products?.name ?? ''}</div>
+                        </td>
+                        <td className="px-4 py-3 max-w-[80px]">
+                          <span className="text-xs text-neutral-500 block truncate" title={item.product_prizes?.level ?? ''}>{item.product_prizes?.level ?? '—'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-neutral-700 font-bold">{item.weight}</td>
+                        <td className="px-4 py-3">
+                          {tierName ? <Badge color="blue">{tierName}↑</Badge> : <span className="text-xs text-green-600">全檔</span>}
+                        </td>
+                        <td className="px-4 py-3 text-neutral-600">
+                          {item.remaining === null ? <span className="text-green-600">∞</span> : item.remaining}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {item.is_floor && <Badge color="amber">保底</Badge>}
+                            {item.rush_only && <Badge color="purple">Rush</Badge>}
+                            {item.normal_only && <Badge color="gray">Normal</Badge>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleDeletePool(item.id)} className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors">刪除</button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </PageCard>
       </div>
