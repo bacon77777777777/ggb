@@ -46,7 +46,7 @@ function MobileTabbarInner() {
   const activeTab = searchParams.get('tab');
   const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
 
-  const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/ranking', '/challenge'];
+  const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/challenge'];
   // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
   const isNewsDetail = pathname.startsWith('/news/') && pathname !== '/news';
   const isMainTabPath = mainTabPaths.includes(pathname);
