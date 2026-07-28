@@ -139,12 +139,12 @@ export default function SlotPage() {
                       </Badge>
                     </td>
                     <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">編輯</button>
-                        <button onClick={() => toggleActive(machine)} className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium whitespace-nowrap">編輯</button>
+                        <button onClick={() => toggleActive(machine)} className="text-sm font-medium whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
                           {machine.is_active ? '下架' : '上架'}
                         </button>
-                        <button onClick={() => handleDelete(machine)} className="text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400">刪</button>
+                        <button onClick={() => handleDelete(machine)} className="text-red-500 hover:text-red-700 text-sm font-medium whitespace-nowrap">刪除</button>
                       </div>
                     </td>
                   </tr>
@@ -195,7 +195,7 @@ export default function SlotPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-neutral-500 mb-1">{label}</label>
       {children}
     </div>
   )

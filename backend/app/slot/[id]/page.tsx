@@ -208,56 +208,57 @@ export default function SlotDetailPage() {
                 <span className="text-sm">上架中</span>
               </label>
             </Field>
-          </div>
 
-          {/* Bet tiers editor */}
-          <div className="mt-4 md:col-span-2">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">下注檔次</label>
-            <div className="space-y-2">
-              {(machineForm.bet_tiers ?? DEFAULT_BET_TIERS).map((tier, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    className="input-base flex-1"
-                    placeholder="名稱（如：小注）"
-                    value={tier.label}
-                    onChange={e => {
-                      const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
-                      tiers[i] = { ...tiers[i], label: e.target.value }
-                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                    }}
-                  />
-                  <input
-                    type="number"
-                    className="input-base w-28"
-                    placeholder="G幣"
-                    min={1}
-                    value={tier.coins}
-                    onChange={e => {
-                      const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
-                      tiers[i] = { ...tiers[i], coins: parseInt(e.target.value) || 0 }
-                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const tiers = (machineForm.bet_tiers ?? DEFAULT_BET_TIERS).filter((_, j) => j !== i)
-                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                    }}
-                    className="text-xs text-red-400 hover:text-red-600"
-                  >刪</button>
-                </div>
-              ))}
+            {/* Bet tiers editor — col-span-2 so it fills the row */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-xs font-medium text-neutral-500 mb-2">下注檔次</label>
+              <div className="space-y-2">
+                {(machineForm.bet_tiers ?? DEFAULT_BET_TIERS).map((tier, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="input-base w-36"
+                      placeholder="名稱（如：小注）"
+                      value={tier.label}
+                      onChange={e => {
+                        const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
+                        tiers[i] = { ...tiers[i], label: e.target.value }
+                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                      }}
+                    />
+                    <input
+                      type="number"
+                      className="input-base w-24"
+                      placeholder="G幣"
+                      min={1}
+                      value={tier.coins}
+                      onChange={e => {
+                        const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
+                        tiers[i] = { ...tiers[i], coins: parseInt(e.target.value) || 0 }
+                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                      }}
+                    />
+                    <span className="text-xs text-neutral-400">G幣</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tiers = (machineForm.bet_tiers ?? DEFAULT_BET_TIERS).filter((_, j) => j !== i)
+                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                      }}
+                      className="text-red-400 hover:text-red-600 text-sm font-medium"
+                    >刪除</button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS), { label: '', coins: 100 }]
+                  setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                }}
+                className="mt-2 text-sm text-primary hover:underline"
+              >+ 新增檔次</button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS), { label: '', coins: 100 }]
-                setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-              }}
-              className="mt-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
-            >+ 新增檔次</button>
           </div>
 
           <div className="mt-4 flex justify-end">
@@ -271,7 +272,7 @@ export default function SlotDetailPage() {
         <PageCard>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold text-gray-900 dark:text-white">獎池管理</h2>
-            <button onClick={() => setShowAddPool(true)} className="flex items-center gap-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm transition-colors">
+            <button onClick={() => setShowAddPool(true)} className="btn-primary">
               + 加入獎品
             </button>
           </div>
@@ -302,8 +303,8 @@ export default function SlotDetailPage() {
                         <div className="font-medium text-gray-900 dark:text-white text-xs">{item.product_prizes?.name ?? '—'}</div>
                         <div className="text-xs text-gray-400">{item.product_prizes?.products?.name ?? ''}</div>
                       </td>
-                      <td className="py-2 pr-3">
-                        <span className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{item.product_prizes?.level ?? '—'}</span>
+                      <td className="py-2 pr-3 max-w-[80px]">
+                        <span className="text-xs text-neutral-500 block truncate" title={item.product_prizes?.level ?? ''}>{item.product_prizes?.level ?? '—'}</span>
                       </td>
                       <td className="py-2 pr-3 text-gray-700 dark:text-gray-300 font-bold">{item.weight}</td>
                       <td className="py-2 pr-3 text-gray-600 dark:text-gray-400 text-xs">
@@ -335,7 +336,7 @@ export default function SlotDetailPage() {
       <Modal isOpen={showAddPool} onClose={() => setShowAddPool(false)} title="加入獎品到獎池">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">搜尋獎品</label>
+            <label className="block text-xs font-medium text-neutral-500 mb-1">搜尋獎品</label>
             <input
               type="text"
               className="input-base"
@@ -416,7 +417,7 @@ export default function SlotDetailPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-neutral-500 mb-1">{label}</label>
       {children}
     </div>
   )
