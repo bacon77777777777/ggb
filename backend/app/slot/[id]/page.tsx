@@ -8,6 +8,20 @@ import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 import { supabase } from '@/lib/supabaseClient'
 
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
+      {show && (
+        <div className="absolute left-0 top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface BetTier {
   label: string
   coins: number
@@ -252,28 +266,28 @@ export default function SlotDetailPage() {
         <PageCard>
           <h3 className="text-sm font-semibold text-neutral-700 mb-4">機台設定</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="機台名稱">
+            <Field label="機台名稱" tooltip="顯示在前台挑戰頁的機台標題。">
               <input type="text" className={INPUT} value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="RUSH 觸發率 %">
+            <Field label="RUSH 觸發率 %" tooltip="每轉結束後觸發 RUSH 模式的機率。設 15 表示每轉有 15% 機率進入 RUSH，未觸發則累積保底計數。">
               <div className="relative">
                 <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.trigger_rate != null ? Math.round(machineForm.trigger_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) / 100 }))} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
               </div>
             </Field>
-            <Field label="RUSH 延續率 %">
+            <Field label="RUSH 延續率 %" tooltip="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。">
               <div className="relative">
                 <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.continue_rate != null ? Math.round(machineForm.continue_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) / 100 }))} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
               </div>
             </Field>
-            <Field label="RUSH 保底連數" hint="觸發後前 N 次保證連中 RUSH 獎池，之後才看延續率">
+            <Field label="RUSH 保底連數" tooltip="觸發 RUSH 後，前 N 轉保證從 RUSH 獎池抽品項，之後才開始看延續率決定是否繼續。設 3 代表最少連中 3 次大獎。">
               <input type="number" min={1} className={INPUT} value={machineForm.min_rush_hits ?? ''} onChange={e => setMachineForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))} />
             </Field>
-            <Field label="保底轉數">
+            <Field label="保底轉數" tooltip="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。">
               <input type="number" className={INPUT} value={machineForm.floor_spin_count ?? ''} onChange={e => setMachineForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))} />
             </Field>
-            <Field label="排序順序">
+            <Field label="排序順序" tooltip="數字越小越靠前，用於前台機台排列順序。">
               <input type="number" className={INPUT} value={machineForm.sort_order ?? ''} onChange={e => setMachineForm(p => ({ ...p, sort_order: parseInt(e.target.value) }))} />
             </Field>
             <Field label="上架狀態">
@@ -532,11 +546,13 @@ export default function SlotDetailPage() {
   )
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-neutral-400 mb-2">{hint}</p>}
+      <div className="flex items-center gap-1 mb-2">
+        <label className="text-sm font-medium text-neutral-700">{label}</label>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       {children}
     </div>
   )
