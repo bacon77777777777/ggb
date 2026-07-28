@@ -18,6 +18,8 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 
 interface RankingRpcItem {
   user_id: string;
@@ -273,6 +275,13 @@ export default function RankingPage() {
 
   return (
     <>
+    {/* 頂部導航（同文章內頁風格）*/}
+    <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 pt-[env(safe-area-inset-top)] pointer-events-none">
+      <Link href="/"
+        className="pointer-events-auto m-2 w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+        <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+      </Link>
+    </div>
     <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center">
       <div 
         className="overflow-hidden"

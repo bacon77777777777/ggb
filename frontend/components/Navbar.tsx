@@ -85,7 +85,7 @@ function NavbarInner() {
     (pathname === '/profile' && !activeTab);
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
-  const isProductDetailPage = /^\/(?:item|blindbox|gacha|card)\/[^/]+$/.test(pathname) || isSellDetailPage;
+  const isProductDetailPage = /^\/(?:item|blindbox|gacha|card|challenge)\/[^/]+$/.test(pathname) || isSellDetailPage;
   const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|card)\/[^/]+$/);
   const isItemPage = /^\/item\/[^/]+$/.test(pathname);
   const rulesPath = rulesPageMatch
@@ -508,6 +508,7 @@ function NavbarInner() {
   // Hide Navbar on Mission page and Auth pages (Login, Register, Forgot Password)
   // Auth pages have their own custom top navigation
   if (pathname === '/mission' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') return null;
+  if (pathname.startsWith('/events/')) return null;
 
   const handleBack = () => {
     // 1. Handle special paths

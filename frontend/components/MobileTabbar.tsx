@@ -46,7 +46,7 @@ function MobileTabbarInner() {
   const activeTab = searchParams.get('tab');
   const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
 
-  const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/ranking'];
+  const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/challenge'];
   // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
   const isNewsDetail = pathname.startsWith('/news/') && pathname !== '/news';
   const isMainTabPath = mainTabPaths.includes(pathname);
@@ -54,7 +54,7 @@ function MobileTabbarInner() {
 
   const { theme } = useTheme();
 
-  if (isSecondaryPage || isNewsDetail) {
+  if (isSecondaryPage || isNewsDetail || pathname.startsWith('/events/')) {
     return null;
   }
 
@@ -67,15 +67,15 @@ function MobileTabbarInner() {
 
   const tabImgMap: Record<string, number> = {
     '/': 1,
-    '/ranking': 2,
     '/news': 3,
     '/mission': 4,
     '/profile': 5,
+    '/challenge': 6,
   };
 
   const tabs: Array<{ name: string; href: string; isCenter?: boolean }> = [
     { name: '首頁', href: '/' },
-    { name: '排行榜', href: '/ranking' },
+    { name: '挑戰', href: '/challenge' },
     { name: '情報', href: '/news' },
     { name: '簽到', href: '/mission' },
     { name: '會員', href: '/profile' },

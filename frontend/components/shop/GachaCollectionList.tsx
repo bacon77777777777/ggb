@@ -105,7 +105,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       {/* 總覽 */}
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
         <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-          <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">
+          <h2 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">
             總覽
           </h2>
         </div>
@@ -163,13 +163,15 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       </div>
 
       {/* 商品資訊 */}
-      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
-        <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-          商品資訊
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+        <div className="px-3 sm:px-6 py-2 sm:py-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
+          <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">
+            商品資訊
+          </h3>
+        </div>
+        <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
           {infoRows.map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+            <div key={label} className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-6">
               <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
                 {label}
               </span>
@@ -179,7 +181,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
             </div>
           ))}
         </div>
-        <div className="pt-1">
+        <div className="px-3 sm:px-6 py-3 sm:py-5">
           <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">
             注意事項
           </p>

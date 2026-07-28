@@ -4,6 +4,95 @@
 
 ---
 
+## v2026.07.28f｜2026-07-28｜挑戰機台品項系統 + 前台獎池修正 + UI 統一
+
+### 後台（挑戰機台）
+- `slot/prizes/page.tsx`：品項管理頁全面設計系統化（Modal 圖片改上傳、廠商/庫存必填、移除描述）
+- `AdminLayout.tsx`：修正子路徑標題/麵包屑 bug（`/slot/prizes` 誤顯示「機台管理」，改為精確比對優先）
+- 挑戰機台獎池設計：一等獎庫存=1、二/三等獎各 2 品項、挑戰獎作保底（移除重複一般池條目）
+- RUSH tab 顯示邏輯修正：改為 `!normal_only && !is_floor`（與 RPC 一致，共用品項也顯示在 RUSH）
+
+### 前台（挑戰機 / 商品詳情）
+- `challenge/[id]/page.tsx`：獎池支援 `slot_prizes`（補 interface、COALESCE `product_prizes ?? slot_prizes`）
+- `api/slot/machines/[id]/route.ts`：pool query 補 join `slot_prizes`
+- 修正 `regularPool` / `rushPool` 過濾條件，加入 `|| item.slot_prizes`
+- `GachaCollectionList.tsx`：商品資訊卡分隔線改滿邊（`overflow-hidden` + `divide-y`）、標題風格統一
+- `item/[id]/page.tsx`：商品資訊卡同步改滿邊分隔線、移除 `border-dashed`（4 處）
+
+---
+
+## v2026.07.28e｜2026-07-28｜挑戰機台後台 UI 整理 + 賞等標籤修正
+
+### 後台（挑戰機台）
+- `slot/[id]/page.tsx`：下注檔次編輯器改為結構化列表（名稱 + G幣 + 刪除），移除 JSON textarea
+- 移除每次 G幣欄位冗長的相容說明文字
+
+### 前台（倉庫 / 抽獎紀錄 / 市集）
+- `profile/page.tsx`：賞等標籤加入 `slot` 型商品的正規化（顯示「普通」，不顯示品項名）
+- 市集在售 / 交易記錄兩區塊補上賞等正規化（先前漏掉）
+
+---
+
+## v2026.07.28d｜2026-07-28｜挑戰機台下注檔次（Plan C Tier-Gated Pool）
+
+### DB（migration 353，PROD + STG 同步）
+- `slot_machines.bet_tiers JSONB`：每台機台自訂檔次陣列（預設：小注100 / 中注500 / 大注1000 G幣）
+- `slot_pool_items.min_bet INT NULL`：獎品最低下注門檻（NULL＝全檔可抽）
+- `slot_sessions.locked_bet INT NULL`：RUSH 期間鎖定玩家下注額，防止中途換檔
+- `play_slot_locked(p_machine_id, p_bet)`：升版雙參數版，舊單參數版 DROP，新增 tier 驗證 + min_bet 過濾 + RUSH 鎖档邏輯
+
+### 前台
+- `/api/slot/machines/[id]`：pool select 加 `min_bet`、移除 `weight`（防玩家從 DevTools 推算賠率）
+- `/api/slot/[id]/spin`：讀 request body `bet`，傳 `p_bet` 至 RPC
+- `/challenge/[id]`：新增 `← 小注 100 →` 檔次選擇器、RUSH 中鎖定提示、獎池預覽 strip（低於當前檔次的品項自動 dim + 顯示最低需求標籤）、localStorage 記憶上次選檔
+
+### 後台
+- `slot/[id]` 機台設定頁：新增 `bet_tiers` JSON 編輯器（textarea，儲存前驗證格式）
+- 獎池新增 modal：`min_bet` 改為下拉選單（從機台 bet_tiers 動態生成選項）
+- 獎池列表：`最低檔次` 欄位顯示 badge（全檔/小注↑/中注↑ 等）
+
+---
+
+## v2026.07.28c｜2026-07-28｜挑戰功能 P0 — 拉霸機台核心架構
+
+### DB（migration 350/351，PROD + STG 同步）
+- `slot_machines`：機台設定（trigger_rate / continue_rate / min_rush_hits / floor_spin_count）
+- `slot_pool_items`：獎池品項，支援 is_floor / rush_only / normal_only / 無限庫存
+- `slot_sessions`：玩家進度追蹤（state: normal/rush、RUSH 計數、保底計數）
+- 新增 products.type 允許值 `slot`
+- Seed 吉吉比廠商 + 吉吉比感謝貼紙庫 + 感謝貼紙保底品
+- `play_slot_locked` RPC：原子扣幣 → 狀態機 → 加權抽選 → draw_record 入庫 → 回傳結果 JSON
+
+### 前台
+- `/challenge` 挑戰列表頁（機台大廳）
+- `/challenge/[id]` 機台房間（spin、RUSH 觸發動畫、保底進度條、獎品彈窗）
+- API 路由：`/api/slot/machines`、`/api/slot/machines/[id]`、`/api/slot/[id]/spin`、`/api/slot/[id]/session`
+- 底部導航「挑戰」tab 已連結至 `/challenge`
+
+### 後台
+- 後台側邊欄新增「挑戰機台」入口（/slot）
+- 機台列表頁：建立 / 上架 / 下架 / 刪除
+- 機台詳情頁：編輯參數 + 獎池管理（加入品項、設定權重/庫存/屬性）
+
+---
+
+## v2026.07.28b｜2026-07-28｜排行榜移至首頁右下角浮動按鈕
+
+### 底部導覽調整
+- 移除底部 tab bar 的「排行榜」tab，改為 4 tabs（首頁/情報/簽到/會員）
+- 首頁右下角新增兩個浮動按鈕（🏆 排行榜 / 🥇 抽數榜），連結至 `/ranking`
+- 按鈕貼右邊緣、圓角左側，半透明黑底 + backdrop-blur，位於 tab bar 上方
+
+---
+
+## v2026.07.28a｜2026-07-28｜修復轉蛋音效重疊播放兩次
+
+### 修復轉蛋機音效/動畫雙重觸發
+- 新增 `animTimersRef` 追蹤所有動畫 setTimeout，中止路徑（錯誤/完抽/關閉結果）先 `clearAnimTimers()` 再重設 state，防止 ghost 計時器在錯誤後仍觸發掉蛋音效（drop sound ghost replay）
+- `runTrialAnimation` 開頭也先 clearAnimTimers，防止快速重複點擊累積計時器
+
+---
+
 ## v2026.07.27i｜2026-07-27｜LP 淺色模式優化 + 輪播圖/公告站內連結
 
 ### LP 淺色模式視覺優化

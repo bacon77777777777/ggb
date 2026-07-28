@@ -30,6 +30,6 @@ export async function POST(req: NextRequest) {
       theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  await logAdminAction({ adminId: admin.username, action: 'create_event', detail: { slug: body.slug, title: body.title }, ip: req.headers.get('x-forwarded-for') ?? '' })
+  await logAdminAction({ adminId: admin.adminId, action: 'create_event', detail: { slug: body.slug, title: body.title }, ip: req.headers.get('x-forwarded-for') ?? '' })
   return NextResponse.json(data)
 }

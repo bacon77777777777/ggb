@@ -1,286 +1,252 @@
 'use client'
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, CopyableID } from '@/components'
+import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
-import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+
+const PRODUCT_TYPE_LABELS: Record<string, { label: string; color: 'gray' | 'blue' | 'purple' | 'amber' | 'green' | 'red' }> = {
+  gacha:     { label: '轉蛋', color: 'blue' },
+  blindbox:  { label: '盒玩', color: 'purple' },
+  ichiban:   { label: '一番賞', color: 'amber' },
+  card:      { label: '抽卡', color: 'green' },
+  custom:    { label: '自製賞', color: 'gray' },
+}
 
 interface DismantledItem {
   id: string
   created_at: string
   product_name: string
+  product_type: string
   prize_name: string
   prize_level: string
   recycle_value: number
+  supplier_id: number | null
+  supplier_name: string
   user_name: string
   user_id: string
 }
 
+interface Supplier {
+  id: number
+  name: string
+}
+
+const COLUMNS = [
+  { key: 'date',          label: '日期' },
+  { key: 'prize',         label: '品項' },
+  { key: 'product_type',  label: '類型' },
+  { key: 'supplier',      label: '廠商' },
+  { key: 'recycle_value', label: '退幣(G)' },
+  { key: 'user',          label: '會員' },
+  { key: 'uuid',          label: 'UUID' },
+]
+
 export default function DismantledPage() {
-  const router = useRouter()
   const [items, setItems] = useState<DismantledItem[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [supplierFilter, setSupplierFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [sortField, setSortField] = useState<string>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { tableDensity, setTableDensity } = useTablePrefs('dismantled', 'compact', {})
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
+    Object.fromEntries(COLUMNS.map(c => [c.key, true]))
+  )
 
-  // Fetch data from Supabase
   useEffect(() => {
-    const fetchDismantledItems = async () => {
+    const fetch_ = async () => {
       try {
         setLoading(true)
-        const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
-        const botIds = botRows?.map((r: any) => r.id) ?? []
-
-        let query = supabase
-          .from('draw_records')
-          .select(`
-            id,
-            created_at,
-            product_prizes ( name, level, recycle_value ),
-            products ( name, price ),
-            users ( id, name, email )
-          `)
-          .eq('status', 'dismantled')
-          .order('created_at', { ascending: false })
-
-        if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('Error fetching dismantled items:', error)
-          return
-        }
-
-        if (data) {
-          const mappedItems: DismantledItem[] = data.map((item: any) => {
-            // Re-calculate recycle value based on new rules if needed, 
-            // but for admin view, showing DB value is safer, 
-            // or we can replicate the logic. 
-            // Given the migration 034 updates the DB value, we should trust the DB value.
-            // However, for items before migration execution, the DB value might be old.
-            // But since I cannot run migration, I should probably apply logic here too?
-            // User requested "Show Dismantled Items", listing "Tokens Obtained".
-            // If I apply logic here, it might differ from what user sees if migration isn't run.
-            // But for now, let's use DB value as primary.
-            
-            return {
-              id: item.id.toString(),
-              created_at: item.created_at,
-              product_name: item.products?.name || '未知系列',
-              prize_name: item.product_prizes?.name || '未知獎品',
-              prize_level: item.product_prizes?.level || '?',
-              recycle_value: item.product_prizes?.recycle_value || 0,
-              user_name: item.users?.name || item.users?.email || '未知用戶',
-              user_id: item.users?.id || ''
-            }
-          })
-          setItems(mappedItems)
-        }
+        const res = await fetch('/api/admin/dismantled')
+        const json = await res.json()
+        setItems(json.items ?? [])
+        setSuppliers(json.suppliers ?? [])
       } catch (err) {
-        console.error('Unexpected error:', err)
+        console.error(err)
       } finally {
         setLoading(false)
       }
     }
-
-    fetchDismantledItems()
+    fetch_()
   }, [])
-
-  // Filter Data
-  const filteredItems = useMemo(() => {
-    let result = items
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(item =>
-        item.prize_name.toLowerCase().includes(query) ||
-        item.product_name.toLowerCase().includes(query) ||
-        item.user_name.toLowerCase().includes(query) ||
-        item.user_id.toLowerCase().includes(query)
-      )
-    }
-
-    return result
-  }, [items, searchQuery])
-
-  // Sort Data
-  const sortedItems = useMemo(() => {
-    return [...filteredItems].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortField) {
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
-        case 'recycle_value':
-          aValue = a.recycle_value
-          bValue = b.recycle_value
-          break
-        default:
-          aValue = a[sortField as keyof DismantledItem]
-          bValue = b[sortField as keyof DismantledItem]
-      }
-
-      if (typeof aValue === 'string') {
-        return sortDirection === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      } else {
-        return sortDirection === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
-      }
-    })
-  }, [filteredItems, sortField, sortDirection])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
     } else {
       setSortField(field)
       setSortDirection('asc')
     }
   }
 
-  // Density Classes
   const getDensityClasses = () => {
     switch (tableDensity) {
-      case 'compact': return 'py-2 px-2'
-      case 'normal': return 'py-3 px-4'
+      case 'compact':     return 'py-2 px-2'
+      case 'normal':      return 'py-3 px-4'
       case 'comfortable': return 'py-4 px-6'
     }
   }
 
+  const filtered = useMemo(() => {
+    return items.filter(item => {
+      if (supplierFilter !== 'all' && String(item.supplier_id) !== supplierFilter) return false
+      if (typeFilter !== 'all' && item.product_type !== typeFilter) return false
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        if (
+          !item.prize_name.toLowerCase().includes(q) &&
+          !item.product_name.toLowerCase().includes(q) &&
+          !item.user_name.toLowerCase().includes(q) &&
+          !item.user_id.toLowerCase().includes(q) &&
+          !item.supplier_name.toLowerCase().includes(q)
+        ) return false
+      }
+      return true
+    })
+  }, [items, searchQuery, supplierFilter, typeFilter])
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let av: any, bv: any
+      switch (sortField) {
+        case 'created_at':    av = a.created_at;    bv = b.created_at;    break
+        case 'prize_name':    av = a.prize_name;    bv = b.prize_name;    break
+        case 'supplier':      av = a.supplier_name; bv = b.supplier_name; break
+        case 'recycle_value': av = a.recycle_value; bv = b.recycle_value; break
+        case 'user':          av = a.user_name;     bv = b.user_name;     break
+        default:              av = a.created_at;    bv = b.created_at
+      }
+      if (typeof av === 'string') return sortDirection === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      return sortDirection === 'asc' ? av - bv : bv - av
+    })
+  }, [filtered, sortField, sortDirection])
+
+  const show = (key: string) => visibleColumns[key] !== false
+  const dc = getDensityClasses()
+
+  const totalTokens = filtered.reduce((sum, i) => sum + i.recycle_value, 0)
+
+  const supplierFilterOptions = [
+    { value: 'all', label: '全部廠商' },
+    ...suppliers.map(s => ({ value: String(s.id), label: s.name })),
+  ]
+
+  const typeFilterOptions = [
+    { value: 'all', label: '全部類型' },
+    ...Object.entries(PRODUCT_TYPE_LABELS).map(([v, { label }]) => ({ value: v, label })),
+  ]
+
   return (
-    <AdminLayout
-      pageTitle="回收池 / 分解品管理"
-    >
+    <AdminLayout pageTitle="回收池 / 分解品管理">
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatsCard
-            title="總分解數量"
-            value={items.length}
-          />
-          <StatsCard
-            title="總發放代幣"
-            value={items.reduce((sum, item) => sum + item.recycle_value, 0)}
-            unit="G"
-          />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatsCard title="總分解數量" value={filtered.length} />
+          <StatsCard title="總退還代幣" value={totalTokens} unit="G" />
         </div>
 
-        {/* Table Section */}
         <PageCard>
           <SearchToolbar
-            searchPlaceholder="搜尋獎項、會員名稱、UUID..."
+            searchPlaceholder="搜尋品項、商品、會員、廠商..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'supplier',
+                label: '廠商',
+                type: 'select',
+                value: supplierFilter,
+                onChange: setSupplierFilter,
+                options: supplierFilterOptions,
+              },
+              {
+                key: 'type',
+                label: '商品類型',
+                type: 'select',
+                value: typeFilter,
+                onChange: setTypeFilter,
+                options: typeFilterOptions,
+              },
+            ]}
+            showColumnToggle={true}
+            columns={COLUMNS.map(c => ({ key: c.key, label: c.label, visible: visibleColumns[c.key] }))}
+            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
           />
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <SortableTableHeader
-                    sortKey="created_at"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    日期
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="prize_name"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    獎項名稱
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="prize_level"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    等級
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="recycle_value"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    獲得代幣(G)
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="user_name"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    會員名稱
-                  </SortableTableHeader>
-                  <SortableTableHeader
-                    sortKey="user_id"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    className="py-3 px-4"
-                  >
-                    UUID
-                  </SortableTableHeader>
+                  {show('date')          && <SortableTableHeader sortKey="created_at"    currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>日期</SortableTableHeader>}
+                  {show('prize')         && <SortableTableHeader sortKey="prize_name"    currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>品項</SortableTableHeader>}
+                  {show('product_type')  && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>類型</th>}
+                  {show('supplier')      && <SortableTableHeader sortKey="supplier"      currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>廠商</SortableTableHeader>}
+                  {show('recycle_value') && <SortableTableHeader sortKey="recycle_value" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>退幣(G)</SortableTableHeader>}
+                  {show('user')          && <SortableTableHeader sortKey="user"          currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>會員</SortableTableHeader>}
+                  {show('uuid')          && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>UUID</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200">
+              <tbody className="divide-y divide-neutral-100">
                 {loading ? (
-                  <TableSkeleton rows={6} cols={6} />
-                ) : sortedItems.length === 0 ? (
-                  <TableEmpty colSpan={6} />
+                  <TableSkeleton rows={6} cols={COLUMNS.length} />
+                ) : sorted.length === 0 ? (
+                  <TableEmpty colSpan={COLUMNS.length} />
                 ) : (
-                  sortedItems.map((item) => (
-                    <tr key={item.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                      <td className={`${getDensityClasses()} text-neutral-600 whitespace-nowrap`}>
-                        {formatDateTime(item.created_at)}
-                      </td>
-                      <td className={`${getDensityClasses()} font-medium text-neutral-900`}>
-                        <div className="flex flex-col">
-                          <span>{item.prize_name}</span>
-                          <span className="text-xs text-neutral-500">{item.product_name}</span>
-                        </div>
-                      </td>
-                      <td className={`${getDensityClasses()}`}>
-                        <span className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded text-xs font-medium border border-neutral-200">
-                          {item.prize_level}
-                        </span>
-                      </td>
-                      <td className={`${getDensityClasses()} font-mono text-primary font-medium`}>
-                        {item.recycle_value}
-                      </td>
-                      <td className={`${getDensityClasses()} text-neutral-900`}>
-                        {item.user_name}
-                      </td>
-                      <td className={`${getDensityClasses()} text-xs text-neutral-700`}>
-                        <CopyableID id={item.user_id} />
-                      </td>
-                    </tr>
-                  ))
+                  sorted.map(item => {
+                    const typeInfo = PRODUCT_TYPE_LABELS[item.product_type]
+                    return (
+                      <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                        {show('date') && (
+                          <td className={`${dc} text-neutral-500 whitespace-nowrap text-xs`}>
+                            {formatDateTime(item.created_at)}
+                          </td>
+                        )}
+                        {show('prize') && (
+                          <td className={`${dc}`}>
+                            <div className="font-medium text-neutral-900">{item.prize_name}</div>
+                            <div className="text-xs text-neutral-400 mt-0.5">{item.product_name}</div>
+                          </td>
+                        )}
+                        {show('product_type') && (
+                          <td className={`${dc} whitespace-nowrap`}>
+                            {typeInfo
+                              ? <Badge color={typeInfo.color}>{typeInfo.label}</Badge>
+                              : <span className="text-xs text-neutral-400">{item.product_type || '—'}</span>
+                            }
+                          </td>
+                        )}
+                        {show('supplier') && (
+                          <td className={`${dc} text-neutral-700 whitespace-nowrap text-sm`}>
+                            {item.supplier_name}
+                          </td>
+                        )}
+                        {show('recycle_value') && (
+                          <td className={`${dc} whitespace-nowrap tabular-nums font-medium ${item.recycle_value > 0 ? 'text-primary' : 'text-neutral-400'}`}>
+                            {item.recycle_value > 0 ? `+${item.recycle_value}` : '—'}
+                          </td>
+                        )}
+                        {show('user') && (
+                          <td className={`${dc} text-neutral-900 whitespace-nowrap`}>
+                            {item.user_name}
+                          </td>
+                        )}
+                        {show('uuid') && (
+                          <td className={`${dc}`}>
+                            <CopyableID id={item.user_id} />
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
