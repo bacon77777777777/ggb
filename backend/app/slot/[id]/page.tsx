@@ -73,7 +73,7 @@ interface ProductPrize {
 
 // pool_band: tier coins as string ('100') or 'rush'
 const EMPTY_POOL_FORM = {
-  product_prize_id: '',
+  product_prize_ids: [] as string[],  // 多選
   weight: '100',
   pool_band: '',   // required
   is_floor: false,
@@ -111,7 +111,7 @@ export default function SlotDetailPage() {
   const [savingPool, setSavingPool] = useState(false)
   const [prizes, setPrizes] = useState<ProductPrize[]>([])
   const [prizeSearch, setPrizeSearch] = useState('')
-  const [selectedPrize, setSelectedPrize] = useState<ProductPrize | null>(null)
+  const [selectedPrizes, setSelectedPrizes] = useState<ProductPrize[]>([])
   const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
   const [tierInput, setTierInput] = useState('')
   const [savingMachine, setSavingMachine] = useState(false)
@@ -172,38 +172,43 @@ export default function SlotDetailPage() {
 
   const openAddModal = () => {
     setPoolForm({ ...EMPTY_POOL_FORM, pool_band: poolTab })
-    setSelectedPrize(null)
+    setSelectedPrizes([])
     setPrizeSearch('')
     setShowAddPool(true)
   }
 
   const closeAddModal = () => {
     setShowAddPool(false)
-    setSelectedPrize(null)
+    setSelectedPrizes([])
     setPrizeSearch('')
   }
 
   const handleAddPool = async () => {
     if (!poolForm.pool_band) { toast('請選擇歸屬獎池', 'error'); return }
+    if (poolForm.product_prize_ids.length === 0) { toast('請選擇至少一件獎品', 'error'); return }
     setSavingPool(true)
     try {
       const isRush = poolForm.pool_band === 'rush'
-      const res = await fetch(`/api/admin/slot/machines/${id}/pool`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_prize_id: poolForm.product_prize_id,
-          weight: poolForm.weight,
-          min_bet: isRush ? null : parseInt(poolForm.pool_band),
-          is_floor: poolForm.is_floor,
-          rush_only: isRush,
-          normal_only: false,
-          remaining: poolForm.remaining === '' ? null : parseInt(poolForm.remaining),
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      toast('獎品已加入獎池')
+      const results = await Promise.all(
+        poolForm.product_prize_ids.map(pid =>
+          fetch(`/api/admin/slot/machines/${id}/pool`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_prize_id: pid,
+              weight: poolForm.weight,
+              min_bet: isRush ? null : parseInt(poolForm.pool_band),
+              is_floor: poolForm.is_floor,
+              rush_only: isRush,
+              normal_only: false,
+              remaining: poolForm.remaining === '' ? null : parseInt(poolForm.remaining),
+            }),
+          }).then(r => r.json())
+        )
+      )
+      const failed = results.filter((r: any) => r.error)
+      if (failed.length > 0) throw new Error(failed[0].error)
+      toast(`${poolForm.product_prize_ids.length} 件獎品已加入獎池`)
       closeAddModal()
       fetchData()
     } catch (e: any) {
@@ -414,37 +419,79 @@ export default function SlotDetailPage() {
       <Modal isOpen={showAddPool} onClose={closeAddModal} title="加入獎品到獎池">
         <div className="space-y-4">
 
-          {/* Prize search */}
+          {/* Pool band — required, first */}
+          <Field label="歸屬獎池 *">
+            <select
+              className={INPUT}
+              value={poolForm.pool_band}
+              onChange={e => setPoolForm(p => ({ ...p, pool_band: e.target.value }))}
+            >
+              <option value="">— 選擇歸屬獎池 —</option>
+              {currentTiers.map(tier => (
+                <option key={tier.coins} value={String(tier.coins)}>
+                  {tier.coins} G 檔次（普通獎池）
+                </option>
+              ))}
+              <option value="rush">🔥 RUSH 獎池</option>
+            </select>
+            <p className="mt-1 text-xs text-neutral-400">
+              普通獎池：每轉都可能抽到。RUSH 獎池：僅 RUSH 連莊時出現。
+            </p>
+          </Field>
+
+          {/* Prize search + multi-select */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">搜尋獎品</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-neutral-700">搜尋獎品</label>
+              {selectedPrizes.length > 0 && (
+                <span className="text-xs text-primary font-bold">已選 {selectedPrizes.length} 件</span>
+              )}
+            </div>
             <input
               type="text"
               className={INPUT}
               placeholder="輸入名稱搜尋..."
               value={prizeSearch}
-              onChange={e => { setPrizeSearch(e.target.value); setSelectedPrize(null); setPoolForm(p => ({ ...p, product_prize_id: '', remaining: '' })) }}
+              onChange={e => setPrizeSearch(e.target.value)}
             />
             {prizes.length > 0 && (
               <div className="mt-2 max-h-44 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
                 {prizes.map(prize => {
-                  const isSelected = poolForm.product_prize_id === String(prize.id)
+                  const isSelected = poolForm.product_prize_ids.includes(String(prize.id))
                   const pType = prize.products?.type ?? ''
                   const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : prize.level
                   return (
                     <button
                       key={prize.id}
                       onClick={() => {
+                        const pid = String(prize.id)
                         setPoolForm(p => ({
                           ...p,
-                          product_prize_id: String(prize.id),
-                          remaining: prize.remaining != null ? String(prize.remaining) : '',
+                          product_prize_ids: isSelected
+                            ? p.product_prize_ids.filter(x => x !== pid)
+                            : [...p.product_prize_ids, pid],
+                          // 單選時自動帶入庫存；多選時清空讓使用者自填
+                          remaining: !isSelected && p.product_prize_ids.length === 0
+                            ? (prize.remaining != null ? String(prize.remaining) : '')
+                            : p.remaining,
                         }))
-                        setSelectedPrize(prize)
+                        setSelectedPrizes(prev =>
+                          isSelected ? prev.filter(x => x.id !== prize.id) : [...prev, prize]
+                        )
                       }}
                       className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-3 ${
                         isSelected ? 'bg-primary/10' : 'hover:bg-neutral-50'
                       }`}
                     >
+                      <div className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                        isSelected ? 'bg-primary border-primary' : 'border-neutral-300'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                       <img
                         src={prize.image_url || '/images/item.png'}
                         alt=""
@@ -465,36 +512,25 @@ export default function SlotDetailPage() {
                 })}
               </div>
             )}
-            {selectedPrize && (
-              <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
-                <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-sm text-primary font-medium">{selectedPrize.name}</span>
-                <span className="text-xs text-neutral-400 ml-auto">{selectedPrize.products?.name}</span>
+            {selectedPrizes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selectedPrizes.map(p => (
+                  <span key={p.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                    {p.name}
+                    <button
+                      onClick={() => {
+                        const pid = String(p.id)
+                        setPoolForm(prev => ({ ...prev, product_prize_ids: prev.product_prize_ids.filter(x => x !== pid) }))
+                        setSelectedPrizes(prev => prev.filter(x => x.id !== p.id))
+                      }}
+                      className="ml-0.5 text-primary/60 hover:text-primary"
+                    >×</button>
+                  </span>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Pool band — required */}
-          <Field label="歸屬獎池 *">
-            <select
-              className={INPUT}
-              value={poolForm.pool_band}
-              onChange={e => setPoolForm(p => ({ ...p, pool_band: e.target.value }))}
-            >
-              <option value="">— 選擇歸屬獎池 —</option>
-              {currentTiers.map(tier => (
-                <option key={tier.coins} value={String(tier.coins)}>
-                  {tier.coins} G 檔次（普通獎池）
-                </option>
-              ))}
-              <option value="rush">🔥 RUSH 獎池</option>
-            </select>
-            <p className="mt-1 text-xs text-neutral-400">
-              普通獎池：每轉都可能抽到。RUSH 獎池：僅 RUSH 連莊時出現。
-            </p>
-          </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="權重">
@@ -514,7 +550,7 @@ export default function SlotDetailPage() {
                 value={poolForm.remaining}
                 onChange={e => setPoolForm(p => ({ ...p, remaining: e.target.value }))}
                 min={0}
-                placeholder={selectedPrize?.remaining != null ? `商品庫存 ${selectedPrize.remaining}` : '無限'}
+                placeholder={selectedPrizes.length === 1 && selectedPrizes[0].remaining != null ? `商品庫存 ${selectedPrizes[0].remaining}` : '無限'}
               />
               <p className="mt-1 text-xs text-neutral-400">選獎品後自動帶入；空白＝不設上限</p>
             </Field>
@@ -534,7 +570,7 @@ export default function SlotDetailPage() {
             <button onClick={closeAddModal} className={BTN_GHOST}>取消</button>
             <button
               onClick={handleAddPool}
-              disabled={savingPool || !poolForm.product_prize_id || !poolForm.pool_band}
+              disabled={savingPool || poolForm.product_prize_ids.length === 0 || !poolForm.pool_band}
               className={BTN_PRIMARY}
             >
               {savingPool ? '新增中...' : '加入獎池'}

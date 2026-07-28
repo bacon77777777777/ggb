@@ -21,6 +21,11 @@ function InfoTooltip({ text, side = 'right' }: { text: string; side?: 'left' | '
   )
 }
 
+interface BetTier {
+  label: string
+  coins: number
+}
+
 interface SlotMachine {
   id: number
   name: string
@@ -32,6 +37,7 @@ interface SlotMachine {
   floor_spin_count: number
   is_active: boolean
   sort_order: number
+  bet_tiers: BetTier[]
 }
 
 const DEFAULT_FORM = {
@@ -211,7 +217,7 @@ export default function SlotPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   {show('name')         && <SortableTableHeader sortKey="name"         currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>機台名稱</SortableTableHeader>}
-                  {show('price')        && <SortableTableHeader sortKey="price"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>每次 G幣</SortableTableHeader>}
+                  {show('price')        && <SortableTableHeader sortKey="price"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>檔次 G幣</SortableTableHeader>}
                   {show('trigger_rate') && <SortableTableHeader sortKey="trigger_rate" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>RUSH 觸發率</SortableTableHeader>}
                   {show('floor')        && <SortableTableHeader sortKey="floor"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>保底轉數</SortableTableHeader>}
                   {show('status')       && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>上架</th>}
@@ -222,7 +228,15 @@ export default function SlotPage() {
                 {filtered.map(machine => (
                   <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
                     {show('name')         && <td className={`${dc} text-sm font-medium text-neutral-900 whitespace-nowrap`}>{machine.name || '（未命名）'}</td>}
-                    {show('price')        && <td className={`${dc} text-sm text-amber-600 font-bold whitespace-nowrap`}>{machine.price_per_spin}</td>}
+                    {show('price') && (
+                      <td className={`${dc} whitespace-nowrap`}>
+                        <div className="flex flex-wrap gap-1">
+                          {(machine.bet_tiers?.length ? machine.bet_tiers : [{ coins: machine.price_per_spin }]).map((t, i) => (
+                            <span key={i} className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded">{t.coins} G</span>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                     {show('trigger_rate') && <td className={`${dc} text-sm text-neutral-600 whitespace-nowrap`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>}
                     {show('floor')        && <td className={`${dc} text-sm text-neutral-600 whitespace-nowrap`}>{machine.floor_spin_count}</td>}
                     {show('status')       && <td className={`${dc} whitespace-nowrap`}><Switch checked={machine.is_active} onCheckedChange={() => toggleActive(machine)} /></td>}
