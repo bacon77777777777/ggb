@@ -4,8 +4,6 @@ import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, C
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useMemo, useEffect } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
-import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/navigation'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 
@@ -21,7 +19,6 @@ interface DismantledItem {
 }
 
 export default function DismantledPage() {
-  const router = useRouter()
   const [items, setItems] = useState<DismantledItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -29,60 +26,13 @@ export default function DismantledPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { tableDensity, setTableDensity } = useTablePrefs('dismantled', 'compact', {})
 
-  // Fetch data from Supabase
   useEffect(() => {
     const fetchDismantledItems = async () => {
       try {
         setLoading(true)
-        const { data: botRows } = await supabase.from('users').select('id').eq('is_bot', true)
-        const botIds = botRows?.map((r: any) => r.id) ?? []
-
-        let query = supabase
-          .from('draw_records')
-          .select(`
-            id,
-            created_at,
-            product_prizes ( name, level, recycle_value ),
-            products ( name, price ),
-            users ( id, name, email )
-          `)
-          .eq('status', 'dismantled')
-          .order('created_at', { ascending: false })
-
-        if (botIds.length > 0) query = query.not('user_id', 'in', `(${botIds.join(',')})`)
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('Error fetching dismantled items:', error)
-          return
-        }
-
-        if (data) {
-          const mappedItems: DismantledItem[] = data.map((item: any) => {
-            // Re-calculate recycle value based on new rules if needed, 
-            // but for admin view, showing DB value is safer, 
-            // or we can replicate the logic. 
-            // Given the migration 034 updates the DB value, we should trust the DB value.
-            // However, for items before migration execution, the DB value might be old.
-            // But since I cannot run migration, I should probably apply logic here too?
-            // User requested "Show Dismantled Items", listing "Tokens Obtained".
-            // If I apply logic here, it might differ from what user sees if migration isn't run.
-            // But for now, let's use DB value as primary.
-            
-            return {
-              id: item.id.toString(),
-              created_at: item.created_at,
-              product_name: item.products?.name || '未知系列',
-              prize_name: item.product_prizes?.name || '未知獎品',
-              prize_level: item.product_prizes?.level || '?',
-              recycle_value: item.product_prizes?.recycle_value || 0,
-              user_name: item.users?.name || item.users?.email || '未知用戶',
-              user_id: item.users?.id || ''
-            }
-          })
-          setItems(mappedItems)
-        }
+        const res = await fetch('/api/admin/dismantled')
+        const json = await res.json()
+        setItems(json.items ?? [])
       } catch (err) {
         console.error('Unexpected error:', err)
       } finally {
