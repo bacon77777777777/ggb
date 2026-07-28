@@ -255,14 +255,20 @@ export default function SlotDetailPage() {
             <Field label="機台名稱">
               <input type="text" className={INPUT} value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="RUSH 觸發率 (0–1)">
-              <input type="number" step="0.01" className={INPUT} value={machineForm.trigger_rate ?? ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) }))} />
+            <Field label="RUSH 觸發率 %">
+              <div className="relative">
+                <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.trigger_rate != null ? Math.round(machineForm.trigger_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) / 100 }))} />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+              </div>
             </Field>
-            <Field label="RUSH 延續率 (0–1)">
-              <input type="number" step="0.01" className={INPUT} value={machineForm.continue_rate ?? ''} onChange={e => setMachineForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) }))} />
+            <Field label="RUSH 延續率 %">
+              <div className="relative">
+                <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.continue_rate != null ? Math.round(machineForm.continue_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) / 100 }))} />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+              </div>
             </Field>
-            <Field label="RUSH 最少連中次數">
-              <input type="number" className={INPUT} value={machineForm.min_rush_hits ?? ''} onChange={e => setMachineForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))} />
+            <Field label="RUSH 保底連數" hint="觸發後前 N 次保證連中 RUSH 獎池，之後才看延續率">
+              <input type="number" min={1} className={INPUT} value={machineForm.min_rush_hits ?? ''} onChange={e => setMachineForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))} />
             </Field>
             <Field label="保底轉數">
               <input type="number" className={INPUT} value={machineForm.floor_spin_count ?? ''} onChange={e => setMachineForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))} />
@@ -526,10 +532,11 @@ export default function SlotDetailPage() {
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-neutral-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>
+      {hint && <p className="text-xs text-neutral-400 mb-2">{hint}</p>}
       {children}
     </div>
   )

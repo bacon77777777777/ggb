@@ -25,8 +25,8 @@ const DEFAULT_FORM = {
   description: '',
   image_url: '',
   price_per_spin: '100',
-  trigger_rate: '0.15',
-  continue_rate: '0.60',
+  trigger_rate: '15',
+  continue_rate: '60',
   min_rush_hits: '3',
   floor_spin_count: '30',
 }
@@ -90,7 +90,11 @@ export default function SlotPage() {
       const res = await fetch('/api/admin/slot/machines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          trigger_rate: parseFloat(form.trigger_rate) / 100,
+          continue_rate: parseFloat(form.continue_rate) / 100,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -242,15 +246,22 @@ export default function SlotPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 觸發率 (0-1)</label>
-              <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={0.01} min={0} max={1} />
+              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 觸發率 %</label>
+              <div className="relative">
+                <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} placeholder="15" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 延續率 (0-1)</label>
-              <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={0.01} min={0} max={1} />
+              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 延續率 %</label>
+              <div className="relative">
+                <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} placeholder="60" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 最少連中</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">RUSH 保底連數</label>
+              <p className="text-xs text-neutral-400 mb-2">觸發後保證連中 N 次，之後才看延續率</p>
               <input type="number" value={form.min_rush_hits} onChange={e => setForm(p => ({ ...p, min_rush_hits: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
             </div>
             <div>
