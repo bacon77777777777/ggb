@@ -16,7 +16,7 @@ export async function GET(
     supabase.from('slot_machines').select('*, suppliers(name)').eq('id', id).single(),
     supabase
       .from('slot_pool_items')
-      .select('*, product_prizes(id, name, level, image_url, product_id, products(name, type))')
+      .select('*, product_prizes(id, name, level, image_url, product_id, remaining, products(name, type))')
       .eq('machine_id', id)
       .order('weight', { ascending: false }),
   ])
