@@ -97,7 +97,11 @@ function MobileTabbarInner() {
           {tabs.map((tab) => {
             const isActive = pathname === tab.href || (tab.href === '/profile' && pathname.startsWith('/profile'));
             const imgIdx = tabImgMap[tab.href] || 1;
-            const imgSrc = `/images/topbar/${imgIdx}${isActive ? 'b' : 'a'}.png`;
+            // 挑戰 tab 的 a/b 命名與其他 tab 相反
+            const suffix = tab.href === '/challenge'
+              ? (isActive ? 'a' : 'b')
+              : (isActive ? 'b' : 'a');
+            const imgSrc = `/images/topbar/${imgIdx}${suffix}.png`;
 
             return (
               <Link
