@@ -89,71 +89,62 @@ export default function SlotPage() {
 
   return (
     <AdminLayout pageTitle="挑戰機台">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-500">管理所有挑戰機台設定與獎池</p>
+      <PageCard>
+        <div className="flex items-center justify-between mb-6">
+          <div />
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+            className="btn-primary"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新增機台
+            + 新增機台
           </button>
         </div>
 
-        <PageCard noPadding>
-          {isLoading ? (
-            <div className="py-12 text-center text-sm text-neutral-400">載入中...</div>
-          ) : machines.length === 0 ? (
-            <div className="py-12 text-center text-sm text-neutral-400">尚無機台，點擊右上角新增</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['機台名稱', '每次 G幣', 'RUSH 觸發率', '保底轉數', '狀態', '操作'].map(h => (
-                      <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
+        {isLoading ? (
+          <div className="py-12 text-center text-sm text-neutral-400">載入中...</div>
+        ) : machines.length === 0 ? (
+          <div className="py-12 text-center text-sm text-neutral-400">尚無機台，點擊右上角新增</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-neutral-200">
+                <tr className="text-left text-xs text-neutral-500">
+                  <th className="pb-3 pr-4 font-medium">機台名稱</th>
+                  <th className="pb-3 pr-4 font-medium">每次 G幣</th>
+                  <th className="pb-3 pr-4 font-medium">RUSH 觸發率</th>
+                  <th className="pb-3 pr-4 font-medium">保底轉數</th>
+                  <th className="pb-3 pr-4 font-medium">狀態</th>
+                  <th className="pb-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {machines.map(machine => (
+                  <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
+                    <td className="py-3 pr-4 font-medium text-neutral-900">{machine.name || '（未命名）'}</td>
+                    <td className="py-3 pr-4 text-amber-600 font-bold">{machine.price_per_spin}</td>
+                    <td className="py-3 pr-4 text-neutral-600">{(machine.trigger_rate * 100).toFixed(0)}%</td>
+                    <td className="py-3 pr-4 text-neutral-600">{machine.floor_spin_count}</td>
+                    <td className="py-3 pr-4">
+                      <Badge color={machine.is_active ? 'green' : 'gray'}>
+                        {machine.is_active ? '上架中' : '下架'}
+                      </Badge>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium">編輯</button>
+                        <button onClick={() => toggleActive(machine)} className="text-neutral-500 hover:text-neutral-800 text-sm font-medium">
+                          {machine.is_active ? '下架' : '上架'}
+                        </button>
+                        <button onClick={() => handleDelete(machine)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {machines.map(machine => (
-                    <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-neutral-900">{machine.name || '（未命名）'}</td>
-                      <td className="px-4 py-3 text-amber-600 font-bold">{machine.price_per_spin}</td>
-                      <td className="px-4 py-3 text-neutral-600">{(machine.trigger_rate * 100).toFixed(0)}%</td>
-                      <td className="px-4 py-3 text-neutral-600">{machine.floor_spin_count}</td>
-                      <td className="px-4 py-3">
-                        <Badge color={machine.is_active ? 'green' : 'gray'}>
-                          {machine.is_active ? '上架中' : '下架'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => router.push(`/slot/${machine.id}`)}
-                            className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                          >編輯</button>
-                          <button
-                            onClick={() => toggleActive(machine)}
-                            className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                          >{machine.is_active ? '下架' : '上架'}</button>
-                          <button
-                            onClick={() => handleDelete(machine)}
-                            className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                          >刪除</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </PageCard>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </PageCard>
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="新增挑戰機台">
         <div className="space-y-4">
