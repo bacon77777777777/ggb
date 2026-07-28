@@ -54,12 +54,6 @@ interface ProductPrize {
   products: { name: string; type: string } | null
 }
 
-const DEFAULT_BET_TIERS: BetTier[] = [
-  { label: '小注', coins: 100 },
-  { label: '中注', coins: 500 },
-  { label: '大注', coins: 1000 },
-]
-
 const EMPTY_POOL_FORM = {
   product_prize_id: '',
   weight: '100',
@@ -73,6 +67,20 @@ const EMPTY_POOL_FORM = {
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
 const BTN_GHOST = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
+
+function parseTierInput(raw: string): BetTier[] {
+  return raw
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(Number)
+    .filter(n => n > 0)
+    .map(c => ({ label: String(c), coins: c }))
+}
+
+function tiersToInput(tiers: BetTier[]): string {
+  return tiers.map(t => t.coins).join(',')
+}
 
 export default function SlotDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -89,15 +97,19 @@ export default function SlotDetailPage() {
   const [prizeSearch, setPrizeSearch] = useState('')
   const [selectedPrize, setSelectedPrize] = useState<ProductPrize | null>(null)
   const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
+  const [tierInput, setTierInput] = useState('')
   const [savingMachine, setSavingMachine] = useState(false)
 
   const fetchData = async () => {
     setIsLoading(true)
     const res = await fetch(`/api/admin/slot/machines/${id}`)
     const data = await res.json()
-    setMachine(data.machine)
+    const m: SlotMachine = data.machine
+    setMachine(m)
     setPool(data.pool ?? [])
-    setMachineForm({ ...data.machine })
+    setMachineForm({ ...m })
+    const existingTiers: BetTier[] = m.bet_tiers ?? []
+    setTierInput(existingTiers.length > 0 ? tiersToInput(existingTiers) : String(m.price_per_spin ?? 100))
     setIsLoading(false)
   }
 
@@ -114,18 +126,19 @@ export default function SlotDetailPage() {
   }, [showAddPool, prizeSearch])
 
   const handleSaveMachine = async () => {
-    const bet_tiers = machineForm.bet_tiers ?? DEFAULT_BET_TIERS
-    if (!bet_tiers.length) { toast('至少需要一個下注檔次', 'error'); return }
-    for (const t of bet_tiers) {
-      if (!t.label || !t.coins) { toast('每個檔次需有名稱和 G幣數', 'error'); return }
-    }
+    const tiers = parseTierInput(tierInput)
+    if (!tiers.length) { toast('至少需要一個檔次 G幣', 'error'); return }
 
     setSavingMachine(true)
     try {
       const res = await fetch(`/api/admin/slot/machines/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(machineForm),
+        body: JSON.stringify({
+          ...machineForm,
+          bet_tiers: tiers,
+          price_per_spin: tiers[0].coins,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -174,7 +187,7 @@ export default function SlotDetailPage() {
   if (isLoading) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">載入中...</div></AdminLayout>
   if (!machine) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">機台不存在</div></AdminLayout>
 
-  const machineTiers: BetTier[] = machineForm.bet_tiers ?? machine.bet_tiers ?? DEFAULT_BET_TIERS
+  const currentTiers = parseTierInput(tierInput)
 
   return (
     <AdminLayout
@@ -208,8 +221,21 @@ export default function SlotDetailPage() {
             <Field label="機台名稱">
               <input type="text" className={INPUT} value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="每次 G幣">
-              <input type="number" className={INPUT} value={machineForm.price_per_spin ?? ''} onChange={e => setMachineForm(p => ({ ...p, price_per_spin: parseInt(e.target.value) }))} />
+            <Field label="檔次 G幣">
+              <input
+                type="text"
+                className={INPUT}
+                placeholder="以逗號分隔，例：10,20,50,100,200,500,1000"
+                value={tierInput}
+                onChange={e => setTierInput(e.target.value)}
+              />
+              {currentTiers.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {currentTiers.map(t => (
+                    <span key={t.coins} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{t.coins} G</span>
+                  ))}
+                </div>
+              )}
             </Field>
             <Field label="RUSH 觸發率 (0–1)">
               <input type="number" step="0.01" className={INPUT} value={machineForm.trigger_rate ?? ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) }))} />
@@ -235,59 +261,6 @@ export default function SlotDetailPage() {
                 <span className="text-sm text-neutral-600">{machineForm.is_active ? '上架中' : '已下架'}</span>
               </div>
             </Field>
-
-            {/* Bet tiers */}
-            <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">下注檔次</label>
-              <div className="border border-neutral-200 rounded-lg overflow-hidden">
-                {(machineForm.bet_tiers ?? DEFAULT_BET_TIERS).map((tier, i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 last:border-b-0 bg-white">
-                    <input
-                      type="text"
-                      className="px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm w-32"
-                      placeholder="名稱（如：小注）"
-                      value={tier.label}
-                      onChange={e => {
-                        const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
-                        tiers[i] = { ...tiers[i], label: e.target.value }
-                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                      }}
-                    />
-                    <input
-                      type="number"
-                      className="px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm w-24"
-                      placeholder="G幣"
-                      min={1}
-                      value={tier.coins}
-                      onChange={e => {
-                        const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
-                        tiers[i] = { ...tiers[i], coins: parseInt(e.target.value) || 0 }
-                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                      }}
-                    />
-                    <span className="text-xs text-neutral-400 shrink-0">G幣</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tiers = (machineForm.bet_tiers ?? DEFAULT_BET_TIERS).filter((_, j) => j !== i)
-                        setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                      }}
-                      className="ml-auto text-sm text-red-500 hover:text-red-700 font-medium"
-                    >刪除</button>
-                  </div>
-                ))}
-                <div className="px-4 py-2 bg-neutral-50">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS), { label: '', coins: 100 }]
-                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
-                    }}
-                    className="text-sm text-primary hover:text-primary-dark font-medium"
-                  >+ 新增檔次</button>
-                </div>
-              </div>
-            </div>
           </div>
         </PageCard>
 
@@ -315,7 +288,7 @@ export default function SlotDetailPage() {
                 <tbody className="divide-y divide-neutral-100">
                   {pool.map(item => {
                     const tierName = item.min_bet
-                      ? (machineTiers.find(t => t.coins === item.min_bet)?.label ?? `${item.min_bet}G`)
+                      ? (currentTiers.find(t => t.coins === item.min_bet)?.label ?? `${item.min_bet}G`)
                       : null
                     const rawLevel = item.product_prizes?.level ?? '—'
                     const pType = item.product_prizes?.products?.type ?? ''
@@ -386,7 +359,7 @@ export default function SlotDetailPage() {
                     >
                       <span className="font-medium">{prize.name}</span>
                       <span className={`text-xs ml-2 shrink-0 ${isSelected ? 'text-primary/70' : 'text-neutral-400'}`}>
-                        {prize.level} · {prize.products?.name ?? ''}
+                        {(['gacha', 'blindbox', 'slot'].includes(prize.products?.type ?? '')) ? '普通' : prize.level} · {prize.products?.name ?? ''}
                       </span>
                     </button>
                   )
@@ -420,9 +393,9 @@ export default function SlotDetailPage() {
               onChange={e => setPoolForm(p => ({ ...p, min_bet: e.target.value }))}
             >
               <option value="">全檔可抽</option>
-              {machineTiers.map(tier => (
+              {currentTiers.map(tier => (
                 <option key={tier.coins} value={String(tier.coins)}>
-                  {tier.label}（{tier.coins} G幣）以上
+                  {tier.coins} G幣 以上
                 </option>
               ))}
             </select>
