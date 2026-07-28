@@ -33,7 +33,7 @@ const DEFAULT_FORM = {
 
 const COLUMNS = [
   { key: 'name',         label: '機台名稱' },
-  { key: 'price',        label: '每次 G幣' },
+  { key: 'price',        label: '檔次 G幣' },
   { key: 'trigger_rate', label: 'RUSH 觸發率' },
   { key: 'floor',        label: '保底轉數' },
   { key: 'status',       label: '上架' },
@@ -234,8 +234,8 @@ export default function SlotPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">每次消耗 G幣 *</label>
-              <input type="number" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
+              <label className="block text-sm font-medium text-neutral-700 mb-2">檔次 G幣 *</label>
+              <input type="text" value={form.price_per_spin} onChange={e => setForm(p => ({ ...p, price_per_spin: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" placeholder="以逗號分隔，例：100,500,1000" />
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">RUSH 觸發率 (0-1)</label>
