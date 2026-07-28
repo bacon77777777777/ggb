@@ -261,7 +261,7 @@ export default function SlotPage() {
               const tiers = form.price_per_spin.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => n > 0)
               return tiers.length > 0 ? (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {tiers.map(c => <span key={c} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{c} G</span>)}
+                  {tiers.map((c, i) => <span key={`${i}-${c}`} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{c} G</span>)}
                 </div>
               ) : null
             })()}
