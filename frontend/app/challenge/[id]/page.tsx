@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Coins, ArrowLeft, Zap, Trophy, RotateCcw,
-  ChevronLeft, ChevronRight, ChevronDown, Lock,
+  Coins, Zap, Trophy, RotateCcw,
+  ChevronLeft, ChevronRight, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +58,6 @@ interface SlotSession {
 interface SpinResult {
   success: boolean;
   new_balance: number;
-  draw_record_id: number;
   bet: number;
   prize: {
     pool_item_id: number;
@@ -80,7 +79,6 @@ const LEVEL_COLORS: Record<string, string> = {
   'A': 'from-yellow-400 to-amber-500',
   'B': 'from-violet-400 to-purple-600',
   'C': 'from-sky-400 to-blue-500',
-  'D': 'from-neutral-400 to-neutral-500',
   'Last One': 'from-rose-400 to-red-600',
   'LAST ONE': 'from-rose-400 to-red-600',
 };
@@ -100,7 +98,6 @@ export default function MachinePage() {
   const [lastResult, setLastResult] = useState<SpinResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tierIndex, setTierIndex] = useState(0);
-  const [showExplanation, setShowExplanation] = useState(false);
   const [winCount, setWinCount] = useState(0);
   const [isAuto, setIsAuto] = useState(false);
   const isAutoRef = useRef(false);
@@ -108,6 +105,13 @@ export default function MachinePage() {
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
+
+  const syncSession = useCallback(() => {
+    fetch(`/api/slot/${id}/session`)
+      .then(r => r.json())
+      .then(d => { if (d.session) setSession(d.session); })
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     const machineId = parseInt(id);
@@ -121,7 +125,6 @@ export default function MachinePage() {
         setPool(machineData.pool ?? []);
         const s: SlotSession = sessionData.session ?? null;
         setSession(s);
-
         if (m && Array.isArray(m.bet_tiers) && m.bet_tiers.length > 0) {
           if (s?.state === 'rush' && s.locked_bet != null) {
             const idx = m.bet_tiers.findIndex(t => t.coins === s.locked_bet);
@@ -141,7 +144,6 @@ export default function MachinePage() {
 
   const tiers: BetTier[] = machine?.bet_tiers ?? [];
   const currentTier: BetTier = tiers[tierIndex] ?? { label: '小注', coins: machine?.price_per_spin ?? 100 };
-
   const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
   const isRushLocked = isRushActive;
 
@@ -154,22 +156,11 @@ export default function MachinePage() {
     });
   }, [isRushLocked, tiers, machine]);
 
-  const startReelSpin = () => {
-    reelTimerRef.current = setInterval(() => {}, 50);
-  };
-
-  const stopReelSpin = () => {
-    if (reelTimerRef.current) {
-      clearInterval(reelTimerRef.current);
-      reelTimerRef.current = null;
-    }
-  };
-
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
     setError(null);
     setSpinState('spinning');
-    startReelSpin();
+    if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
     try {
       const res = await fetch(`/api/slot/${id}/spin`, {
@@ -178,18 +169,13 @@ export default function MachinePage() {
         body: JSON.stringify({ bet: currentTier.coins }),
       });
       const data: SpinResult = await res.json();
-
       await new Promise(r => setTimeout(r, 1200));
-      stopReelSpin();
+      if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
       if (!res.ok || data.error) {
-        setError(data.error ?? '挑戰失敗');
+        setError(data.error ?? '挑戰失敗，請稍後再試');
         setSpinState('idle');
-        // Error recovery: re-sync session
-        fetch(`/api/slot/${id}/session`)
-          .then(r => r.json())
-          .then(d => { if (d.session) setSession(d.session); })
-          .catch(() => {});
+        syncSession();
         return;
       }
 
@@ -211,26 +197,20 @@ export default function MachinePage() {
 
       if (refreshProfile) refreshProfile();
 
-      // Auto-close in auto mode
       if (isAutoRef.current) {
         autoCloseTimerRef.current = setTimeout(() => {
           if (isAutoRef.current) {
             setLastResult(null);
             setSpinState('idle');
-            setTimeout(() => {
-              if (isAutoRef.current) handleSpin();
-            }, 600);
+            setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
           }
         }, 2000);
       }
     } catch {
-      stopReelSpin();
+      if (reelTimerRef.current) clearInterval(reelTimerRef.current);
       setError('連線失敗，已自動復原，請再試一次');
       setSpinState('idle');
-      fetch(`/api/slot/${id}/session`)
-        .then(r => r.json())
-        .then(d => { if (d.session) setSession(d.session); })
-        .catch(() => {});
+      syncSession();
     }
   };
 
@@ -240,11 +220,6 @@ export default function MachinePage() {
     setLastResult(null);
     setSpinState('idle');
   };
-
-  const floorProgress = session ? Math.min((session.spins_since_rush / (machine?.floor_spin_count ?? 30)) * 100, 100) : 0;
-
-  const rushPool = pool.filter(item => item.rush_only && item.product_prizes);
-  const normalPool = pool.filter(item => !item.rush_only && item.product_prizes);
 
   if (isLoading) return <ProductLoadingScreen />;
   if (!machine) {
@@ -258,47 +233,42 @@ export default function MachinePage() {
 
   const userTokens = (user as any)?.tokens ?? 0;
   const isLowBalance = userTokens < currentTier.coins;
+  const floorProgress = session
+    ? Math.min((session.spins_since_rush / machine.floor_spin_count) * 100, 100)
+    : 0;
 
-  // ── Shared renderers ──────────────────────────────────────────
+  // Pool: non-rush items sorted (unlocked first, locked at bottom)
+  const regularPool = pool
+    .filter(item => !item.rush_only && item.product_prizes)
+    .sort((a, b) => {
+      const aLocked = a.min_bet != null && a.min_bet > currentTier.coins;
+      const bLocked = b.min_bet != null && b.min_bet > currentTier.coins;
+      if (aLocked !== bLocked) return Number(aLocked) - Number(bLocked);
+      return (a.min_bet ?? 0) - (b.min_bet ?? 0);
+    });
+  const rushPool = pool.filter(item => item.rush_only && item.product_prizes);
 
-  const renderTopNav = (compact = false) => (
-    <div className={cn(
-      "flex items-center justify-between px-4 pb-3",
-      compact ? "pt-4" : "pt-[max(env(safe-area-inset-top),14px)]"
-    )}>
-      <button
-        onClick={() => router.back()}
-        className="w-9 h-9 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 active:scale-90 transition-transform"
-      >
-        <ArrowLeft className="w-4 h-4" />
-      </button>
-      <h1 className="text-sm font-bold text-neutral-900 dark:text-white truncate max-w-[180px]">{machine.name}</h1>
-      <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 text-sm font-bold">
-        <Coins className="w-4 h-4" />
-        <span>{user ? userTokens.toLocaleString() : '—'}</span>
-      </div>
-    </div>
-  );
+  // ── shared renderers ──────────────────────────────────────
 
-  const renderDrums = () => (
-    <div className={cn(
-      "relative mx-4 rounded-2xl overflow-hidden border-2 transition-colors duration-500",
-      isRushActive
-        ? "border-yellow-400/40 bg-yellow-950/60"
-        : "border-neutral-200/50 dark:border-white/10 bg-neutral-900/60 dark:bg-black/50",
-    )} style={{ aspectRatio: '4/3' }}>
-      {machine.image_url ? (
-        <Image src={machine.image_url} alt={machine.name} fill className={cn("object-cover transition-opacity duration-500", isRushActive ? "opacity-40" : "opacity-50")} />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Zap className="w-20 h-20 text-violet-400/30" />
-        </div>
+  const renderMachineVisual = () => (
+    <div
+      className={cn(
+        "relative mx-0 overflow-hidden border-y transition-colors duration-500",
+        isRushActive
+          ? "border-yellow-200 dark:border-yellow-700 bg-yellow-950/60"
+          : "border-neutral-100 dark:border-neutral-800 bg-neutral-900/70"
+      )}
+      style={{ aspectRatio: '4/3' }}
+    >
+      {machine.image_url && (
+        <Image src={machine.image_url} alt={machine.name} fill
+          className={cn("object-cover transition-opacity duration-500", isRushActive ? "opacity-30" : "opacity-40")} />
       )}
 
-      {/* Drum slots */}
-      <div className="absolute inset-0 flex items-center justify-center gap-3 px-4">
+      {/* Drums */}
+      <div className="absolute inset-0 flex items-center justify-center gap-3 px-6">
         {[0, 1, 2].map(i => (
-          <div key={i} className="flex-1 h-[68%] rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
+          <div key={i} className="flex-1 h-[65%] rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
             <motion.div
               animate={spinState === 'spinning' ? { y: [0, -40, 0, 40, 0] } : { y: 0 }}
               transition={spinState === 'spinning'
@@ -306,26 +276,18 @@ export default function MachinePage() {
                 : { duration: 0.2 }}
               className="text-4xl select-none"
             >
-              {spinState === 'result' && lastResult
-                ? ['🎁', '⭐', '💎'][i]
-                : ['🎰', '🎯', '🎲'][i]}
+              {spinState === 'result' && lastResult ? ['🎁', '⭐', '💎'][i] : ['🎰', '🎯', '🎲'][i]}
             </motion.div>
           </div>
         ))}
       </div>
 
-      {spinState === 'spinning' && (
-        <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />
-      )}
-
-      {/* RUSH inline banner inside visual */}
+      {/* RUSH pill */}
       <AnimatePresence>
         {isRushActive && (
           <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1.5 bg-yellow-400 rounded-full shadow-lg shadow-yellow-900/50"
+            initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
+            className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-yellow-400 rounded-full shadow-lg"
           >
             <Zap className="w-3.5 h-3.5 text-yellow-950" />
             <span className="text-yellow-950 font-black text-sm tracking-widest">RUSH</span>
@@ -333,31 +295,26 @@ export default function MachinePage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
 
-  const renderStatusBar = () => (
-    <div className="flex justify-between items-center px-5 py-2">
-      <div className="text-xs text-neutral-400 dark:text-neutral-500">
-        累計 <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{session?.total_spins ?? 0}</span> 次
-      </div>
-      <div className="text-xs text-neutral-400 dark:text-neutral-500">
-        WIN <span className="font-mono font-medium text-emerald-500">{winCount}</span>
-      </div>
-      <div className="text-xs text-neutral-400 dark:text-neutral-500">
-        <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{currentTier.coins}</span> G/轉
-      </div>
+      {spinState === 'spinning' && <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />}
     </div>
   );
 
   const renderControls = () => (
-    <div className="px-4 pb-4 space-y-2.5">
-      {/* Tier selector + SPIN + AUTO */}
+    <div className="px-4 py-4 space-y-2.5">
+      {/* Status row */}
+      <div className="flex justify-between text-xs text-neutral-400">
+        <span>累計 <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{session?.total_spins ?? 0}</span> 次</span>
+        <span>WIN <span className="font-mono font-medium text-emerald-500">{winCount}</span></span>
+        <span><span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{currentTier.coins}</span> G/轉</span>
+      </div>
+
+      {/* −SPIN+ AUTO */}
       <div className="flex items-center gap-2">
         <button
           onClick={() => changeTier(-1)}
           disabled={isRushLocked || tierIndex === 0}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 font-bold text-xl disabled:opacity-25 active:scale-90 transition-all"
+          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -367,9 +324,9 @@ export default function MachinePage() {
           disabled={spinState !== 'idle' || !user}
           whileTap={{ scale: 0.97 }}
           className={cn(
-            "flex-1 py-3 rounded-xl font-black text-base tracking-wide transition-all shadow-md",
+            "flex-1 py-3 rounded-xl font-black text-base tracking-wide shadow-md transition-all",
             isRushActive
-              ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-950 shadow-yellow-900/30"
+              ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-950 shadow-yellow-900/20"
               : "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-violet-900/20",
             spinState !== 'idle' && "opacity-60 cursor-not-allowed"
           )}
@@ -381,15 +338,13 @@ export default function MachinePage() {
               </motion.span>
               挑戰中...
             </span>
-          ) : (
-            `SPIN  ${currentTier.coins} G`
-          )}
+          ) : `SPIN  ${currentTier.coins} G`}
         </motion.button>
 
         <button
           onClick={() => changeTier(1)}
           disabled={isRushLocked || tierIndex === tiers.length - 1}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 font-bold text-xl disabled:opacity-25 active:scale-90 transition-all"
+          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -398,28 +353,25 @@ export default function MachinePage() {
           onClick={() => setIsAuto(v => !v)}
           className={cn(
             "h-12 px-3 rounded-xl text-xs font-bold transition-all",
-            isAuto
-              ? "bg-amber-400 text-amber-950 shadow-md"
-              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
+            isAuto ? "bg-amber-400 text-amber-950 shadow-md" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
           )}
         >
           AUTO
         </button>
       </div>
 
-      {/* Balance */}
+      {/* Balance row */}
       <div className="flex items-center justify-center gap-2 text-xs">
+        <Coins className="w-3.5 h-3.5 text-amber-500" />
         <span className={cn("text-neutral-400", isLowBalance && "text-red-400 font-medium")}>
           1回 {currentTier.coins.toLocaleString()} G ｜ 残高 {userTokens.toLocaleString()} G
         </span>
         {isLowBalance && (
-          <button onClick={() => router.push('/topup')} className="text-primary underline text-xs font-medium">儲值</button>
+          <button onClick={() => router.push('/topup')} className="text-primary underline font-medium">儲值</button>
         )}
       </div>
 
-      {error && (
-        <p className="text-center text-red-400 text-xs">{error}</p>
-      )}
+      {error && <p className="text-center text-red-400 text-xs">{error}</p>}
 
       <p className="text-center text-[10px] text-neutral-300 dark:text-neutral-600">
         進行挑戰即視為同意<span className="underline cursor-pointer" onClick={() => router.push('/terms')}>服務條款</span>。未滿 18 歲禁止。
@@ -427,276 +379,260 @@ export default function MachinePage() {
     </div>
   );
 
-  const renderInfoSection = () => (
-    <div className="px-4 py-5 border-t border-neutral-100 dark:border-neutral-800 space-y-4">
-      {/* Name + type badge */}
-      <div className="flex items-start gap-2">
-        <div className="flex-1">
-          <h2 className="text-lg font-black text-neutral-900 dark:text-white leading-tight">{machine.name}</h2>
-          {machine.description && <p className="text-sm text-neutral-500 mt-1">{machine.description}</p>}
-        </div>
-        <span className="shrink-0 mt-0.5 px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-          挑戰機台
-        </span>
+  // Matches GachaCollectionList "總覽" table style
+  const renderPrizePool = () => (
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+      {/* Header */}
+      <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30 flex items-center justify-between">
+        <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">
+          {currentTier.coins}G 獎池
+        </h2>
+        {isRushActive && (
+          <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
+            ⚡ RUSH 模式
+          </span>
+        )}
       </div>
 
-      {/* Tier badges */}
-      {tiers.length > 0 && (
-        <div>
-          <div className="text-xs font-medium text-neutral-400 mb-2">下注檔位</div>
-          <div className="flex flex-wrap gap-1.5">
-            {tiers.map((tier, idx) => (
-              <button
-                key={tier.coins}
-                onClick={() => { if (!isRushLocked) setTierIndex(idx); }}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-bold transition-colors",
-                  idx === tierIndex
-                    ? "bg-primary text-white"
-                    : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                )}
-              >
-                {tier.coins} G
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Floor progress */}
-      {session && (
-        <div>
-          <div className="flex justify-between text-xs text-neutral-400 mb-1.5">
-            <span>保底進度</span>
-            <span className="font-mono">{session.spins_since_rush} / {machine.floor_spin_count}</span>
-          </div>
-          <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-violet-400 to-amber-400 rounded-full"
-              animate={{ width: `${floorProgress}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* RUSH rules */}
-      <div className="rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 p-3.5">
-        <div className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2.5 flex items-center gap-1">
-          <Zap className="w-3 h-3" />
-          RUSH 規則
-        </div>
-        <div className="grid grid-cols-2 gap-y-2">
-          {[
-            ['觸發率', `${(machine.trigger_rate * 100).toFixed(0)}%`],
-            ['連莊率', `${(machine.continue_rate * 100).toFixed(0)}%`],
-            ['最少連數', `${machine.min_rush_hits} 連`],
-            ['保底轉數', `${machine.floor_spin_count} 轉`],
-          ].map(([label, value]) => (
-            <div key={label} className="contents">
-              <span className="text-xs text-neutral-500">{label}</span>
-              <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 text-right">{value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Gameplay explanation */}
-      <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
-        <button
-          onClick={() => setShowExplanation(v => !v)}
-          className="w-full flex items-center justify-between text-sm font-medium text-neutral-600 dark:text-neutral-300 py-0.5"
-        >
-          <span>什麼是挑戰機台？</span>
-          <ChevronDown className={cn("w-4 h-4 transition-transform", showExplanation && "rotate-180")} />
-        </button>
-        <AnimatePresence>
-          {showExplanation && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-3 space-y-2.5">
-                {[
-                  { color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300', text: '每次消耗 G 幣挑戰，必得一件實物獎品' },
-                  { color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300', text: '機率觸發 RUSH 連莊，連續獲得多件大獎' },
-                  { color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300', text: '獎品進倉庫，可選擇出貨配送或分解換 G 幣' },
-                ].map((step, i) => (
-                  <div key={i} className="flex gap-2.5 items-start">
-                    <span className={cn("w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-black mt-0.5", step.color)}>
-                      {i + 1}
-                    </span>
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">{step.text}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+      {/* Normal pool */}
+      <table className="w-full text-left table-fixed">
+        <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+          {regularPool.length === 0 && (
+            <tr><td colSpan={2} className="px-4 py-6 text-center text-sm text-neutral-400">尚無品項</td></tr>
           )}
-        </AnimatePresence>
-      </div>
+          {regularPool.map(item => {
+            const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
+            const pType = item.product_prizes?.products?.type ?? '';
+            const rawLevel = item.product_prizes?.level ?? '';
+            const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
+            return (
+              <tr key={item.id} className={cn("transition-colors", isLocked ? "opacity-35" : "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50")}>
+                <td className="px-2 sm:px-6 py-1.5 sm:py-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
+                      {item.product_prizes?.image_url ? (
+                        <Image src={item.product_prizes.image_url} alt={item.product_prizes.name} fill className="object-cover" unoptimized />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full">
+                          <Trophy className="w-4 h-4 text-neutral-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                      {displayLevel && (
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold whitespace-nowrap flex-shrink-0">
+                          {displayLevel}
+                        </span>
+                      )}
+                      <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
+                        {item.product_prizes?.name}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[80px] sm:w-[100px] align-middle">
+                  {isLocked ? (
+                    <span className="flex items-center justify-end gap-1 text-[12px] text-neutral-400 font-bold">
+                      <Lock className="w-3 h-3" />{item.min_bet}G↑
+                    </span>
+                  ) : item.is_floor ? (
+                    <span className="text-[12px] sm:text-[13px] font-black text-violet-500">保底</span>
+                  ) : (
+                    <span className="text-[12px] sm:text-[13px] font-black text-neutral-300 dark:text-neutral-600">—</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* RUSH pool section */}
+      {rushPool.length > 0 && (
+        <>
+          <div className="px-2 sm:px-6 py-2 border-t border-neutral-100 dark:border-neutral-800 bg-amber-50/50 dark:bg-amber-900/10">
+            <span className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</span>
+          </div>
+          <table className="w-full text-left table-fixed">
+            <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+              {rushPool.map(item => {
+                const pType = item.product_prizes?.products?.type ?? '';
+                const rawLevel = item.product_prizes?.level ?? '';
+                const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
+                return (
+                  <tr key={item.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-900/10 transition-colors">
+                    <td className="px-2 sm:px-6 py-1.5 sm:py-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
+                          {item.product_prizes?.image_url ? (
+                            <Image src={item.product_prizes.image_url} alt={item.product_prizes.name} fill className="object-cover" unoptimized />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full">
+                              <Trophy className="w-4 h-4 text-amber-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                          {displayLevel && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold whitespace-nowrap flex-shrink-0">
+                              {displayLevel}
+                            </span>
+                          )}
+                          <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
+                            {item.product_prizes?.name}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[80px] sm:w-[100px] align-middle">
+                      {item.is_floor ? (
+                        <span className="text-[12px] sm:text-[13px] font-black text-violet-500">保底</span>
+                      ) : (
+                        <span className="text-[12px] sm:text-[13px] font-black text-amber-500">RUSH</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 
-  const renderPrizeCard = (item: SlotPoolItem) => {
-    const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
-    const pType = item.product_prizes?.products?.type ?? '';
-    const rawLevel = item.product_prizes?.level ?? '';
-    const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
-
+  // Matches GachaCollectionList "商品資訊" card style
+  const renderMachineInfo = () => {
+    const infoRows = [
+      { label: '類別', value: '挑戰機台' },
+      { label: 'RUSH 觸發率', value: `${(machine.trigger_rate * 100).toFixed(0)}%` },
+      { label: 'RUSH 連莊率', value: `${(machine.continue_rate * 100).toFixed(0)}%` },
+      { label: '最少連數', value: `${machine.min_rush_hits} 連` },
+      { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
+    ];
     return (
-      <div
-        key={item.id}
-        className={cn(
-          "bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800 transition-opacity duration-300",
-          isLocked && "opacity-45"
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
+        <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+          {machine.name}
+        </h3>
+
+        {/* Tier badges */}
+        {tiers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+            <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">下注檔位</span>
+            <div className="flex flex-wrap gap-1.5 ml-auto">
+              {tiers.map((tier, idx) => (
+                <button
+                  key={tier.coins}
+                  onClick={() => { if (!isRushLocked) setTierIndex(idx); }}
+                  className={cn(
+                    "px-3 py-0.5 rounded-full text-xs font-black transition-colors",
+                    idx === tierIndex
+                      ? "bg-primary text-white"
+                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200"
+                  )}
+                >
+                  {tier.coins} G
+                </button>
+              ))}
+            </div>
+          </div>
         )}
-      >
-        <div className="relative aspect-square bg-neutral-50 dark:bg-neutral-800">
-          {item.product_prizes?.image_url ? (
-            <Image
-              src={item.product_prizes.image_url}
-              alt={item.product_prizes.name}
-              fill
-              className="object-contain p-2"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full">
-              <Trophy className="w-8 h-8 text-neutral-300" />
-            </div>
-          )}
 
-          {isLocked && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 backdrop-blur-[2px]">
-              <Lock className="w-5 h-5 text-white mb-0.5" />
-              <span className="text-white text-[10px] font-bold leading-none">{item.min_bet}G↑</span>
+        {/* Floor progress */}
+        {session && (
+          <div className="py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+            <div className="flex justify-between text-[13px] font-black mb-2">
+              <span className="text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">保底進度</span>
+              <span className="text-neutral-900 dark:text-neutral-50">{session.spins_since_rush} / {machine.floor_spin_count}</span>
             </div>
-          )}
+            <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-violet-400 to-amber-400 rounded-full"
+                animate={{ width: `${floorProgress}%` }}
+                transition={{ duration: 0.4 }}
+              />
+            </div>
+          </div>
+        )}
 
-          {item.is_floor && !isLocked && (
-            <div className="absolute top-1.5 right-1.5 bg-violet-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold leading-none">
-              保底
+        {/* Info rows */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
+          {infoRows.map(({ label, value }) => (
+            <div key={label} className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+              <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">{label}</span>
+              <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">{value}</span>
             </div>
-          )}
+          ))}
         </div>
 
-        <div className="p-2">
-          {displayLevel && (
-            <span className="inline-block mb-1 px-1.5 py-0.5 text-[9px] rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold leading-none">
-              {displayLevel}
-            </span>
-          )}
-          <p className="text-[11px] font-medium text-neutral-800 dark:text-neutral-200 leading-tight line-clamp-2">
-            {item.product_prizes?.name}
-          </p>
-          {(item.product_prizes?.recycle_value ?? 0) > 0 && (
-            <p className="text-[10px] text-neutral-400 mt-0.5 flex items-center gap-0.5">
-              <Coins className="w-2.5 h-2.5" />
-              {item.product_prizes!.recycle_value} G
-            </p>
-          )}
+        {/* Notes */}
+        <div className="pt-1">
+          <p className="text-[13px] sm:text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-2">注意事項</p>
+          <ol className="space-y-1 list-decimal list-inside">
+            {[
+              '每次挑戰必得一件實物獎品。',
+              '抽出後即確認結果，不可退款或更換。',
+              '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
+              '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
+              'RUSH 觸發後連續獲得多件大獎，最少連中次數有所保證。',
+            ].map((text, i) => (
+              <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">{text}</li>
+            ))}
+          </ol>
         </div>
       </div>
     );
   };
 
-  const renderPrizePool = () => (
-    <div className="px-4 py-5 space-y-6">
-      {rushPool.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-base font-black text-neutral-900 dark:text-white">🔥 RUSH 獎池</h2>
-            <span className="text-xs text-neutral-400 font-medium">{rushPool.length} 件</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {rushPool.map(renderPrizeCard)}
-          </div>
-        </div>
-      )}
-
-      {normalPool.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-base font-black text-neutral-900 dark:text-white">一般獎池</h2>
-            <span className="text-xs text-neutral-400 font-medium">{normalPool.length} 件</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {normalPool.map(renderPrizeCard)}
-          </div>
-        </div>
-      )}
-
-      {pool.length === 0 && (
-        <p className="text-center text-sm text-neutral-400 py-8">尚未設定獎池</p>
-      )}
-
-      <p className="text-[11px] text-neutral-400 text-center leading-relaxed pb-2">
-        中獎時依機率獲得上列獎品；本機台每轉必得一件實物。
-      </p>
-    </div>
-  );
-
-  // ── Page layout ──────────────────────────────────────────────
+  // ── layout ───────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen pt-14 md:pt-0 bg-neutral-50 dark:bg-neutral-950">
 
-      {/* ── Mobile / tablet (< 1024px) ── */}
+      {/* Mobile / tablet (< 1024px) */}
       <div className="block lg:hidden pb-8">
         {/* Machine card */}
-        <div className="bg-white dark:bg-neutral-900 shadow-sm">
-          {renderTopNav(false)}
-          {renderDrums()}
-          {renderStatusBar()}
+        <div className="bg-white dark:bg-neutral-900 shadow-sm border-b border-neutral-100 dark:border-neutral-800">
+          {renderMachineVisual()}
           {renderControls()}
         </div>
 
-        {/* Info section */}
-        <div className="mt-2 bg-white dark:bg-neutral-900 shadow-sm">
-          {renderInfoSection()}
-        </div>
-
-        {/* Prize pool */}
-        <div className="mt-2 bg-white dark:bg-neutral-900 shadow-sm">
+        {/* Prize pool + machine info — same padding/style as GachaCollectionList */}
+        <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2 space-y-2">
           {renderPrizePool()}
+          {renderMachineInfo()}
         </div>
       </div>
 
-      {/* ── Desktop (≥ 1024px) ── */}
+      {/* Desktop (≥ 1024px) */}
       <div className="hidden lg:block pb-12">
-        <div className="max-w-7xl mx-auto px-4 pt-20 pb-6">
+        <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
           <div className="grid grid-cols-12 gap-6 items-start">
 
-            {/* Left: sticky machine + info */}
-            <div className="col-span-4 sticky top-20">
+            {/* Left: sticky machine */}
+            <div className="col-span-4 sticky top-4">
               <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                {renderTopNav(true)}
-                {renderDrums()}
-                {renderStatusBar()}
+                {renderMachineVisual()}
                 {renderControls()}
-                {renderInfoSection()}
               </div>
             </div>
 
-            {/* Right: prize pool */}
-            <div className="col-span-8">
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800">
-                {renderPrizePool()}
-              </div>
+            {/* Right: prize pool + info */}
+            <div className="col-span-8 space-y-4">
+              {renderPrizePool()}
+              {renderMachineInfo()}
             </div>
 
           </div>
         </div>
       </div>
 
-      {/* ── RUSH triggered overlay ── */}
+      {/* RUSH triggered overlay */}
       <AnimatePresence>
         {spinState === 'rush' && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
           >
             <motion.div
@@ -706,47 +642,33 @@ export default function MachinePage() {
               className="text-center"
             >
               <div className="text-8xl mb-4">⚡</div>
-              <div className="text-yellow-400 font-black text-4xl tracking-widest drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]">
-                RUSH!!
-              </div>
-              <div className="text-white/70 text-sm mt-2">
-                {lastResult?.is_floor ? '保底觸發！' : '觸發連續大獎！'}
-              </div>
+              <div className="text-yellow-400 font-black text-4xl tracking-widest drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]">RUSH!!</div>
+              <div className="text-white/70 text-sm mt-2">{lastResult?.is_floor ? '保底觸發！' : '觸發連續大獎！'}</div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Prize result modal ── */}
+      {/* Prize result modal */}
       <AnimatePresence>
         {spinState === 'result' && lastResult && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
             onClick={handleClose}
           >
             <motion.div
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
               className="mx-6 w-full max-w-xs bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
             >
-              <div className={cn(
-                "h-2 w-full bg-gradient-to-r",
-                LEVEL_COLORS[lastResult.prize.level] ?? 'from-neutral-600 to-neutral-700'
-              )} />
-
+              <div className={cn("h-2 w-full bg-gradient-to-r", LEVEL_COLORS[lastResult.prize.level] ?? 'from-neutral-600 to-neutral-700')} />
               <div className="p-6 text-center">
                 {lastResult.rush_triggered && (
                   <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-xs font-bold">
-                    <Zap className="w-3 h-3" />
-                    RUSH 獎勵
+                    <Zap className="w-3 h-3" />RUSH 獎勵
                   </div>
                 )}
-
                 <div className="relative w-32 h-32 mx-auto mb-4 rounded-2xl overflow-hidden bg-neutral-800">
                   {lastResult.prize.image_url ? (
                     <Image src={lastResult.prize.image_url} alt={lastResult.prize.name} fill className="object-contain p-2" />
@@ -756,37 +678,24 @@ export default function MachinePage() {
                     </div>
                   )}
                 </div>
-
                 <div className="inline-block px-2 py-0.5 rounded bg-white/10 text-white/60 text-xs font-mono mb-2">
                   {lastResult.prize.level}
                 </div>
-
                 <h3 className="text-white font-bold text-lg">{lastResult.prize.name}</h3>
                 <p className="text-white/50 text-xs mt-1">已放入倉庫</p>
-
                 <div className="mt-4 flex items-center justify-center gap-4 text-xs text-white/40">
                   <span>累計 {lastResult.session.total_spins} 次</span>
                   {lastResult.session.state === 'rush' && (
                     <span className="text-yellow-400">⚡ RUSH 剩餘 ×{lastResult.session.rush_hits_remaining}</span>
                   )}
                 </div>
-
-                {isAuto && (
-                  <p className="mt-3 text-amber-400/70 text-xs font-medium">AUTO 中，2 秒後繼續…</p>
-                )}
+                {isAuto && <p className="mt-3 text-amber-400/70 text-xs font-medium">AUTO 中，2 秒後繼續…</p>}
               </div>
-
               <div className="px-6 pb-6 flex gap-3">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 py-3 rounded-xl bg-white/10 text-white/80 text-sm font-bold active:bg-white/20"
-                >
+                <button onClick={handleClose} className="flex-1 py-3 rounded-xl bg-white/10 text-white/80 text-sm font-bold active:bg-white/20">
                   繼續挑戰
                 </button>
-                <button
-                  onClick={() => router.push('/item')}
-                  className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold active:bg-violet-700"
-                >
+                <button onClick={() => router.push('/item')} className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold active:bg-violet-700">
                   查看倉庫
                 </button>
               </div>

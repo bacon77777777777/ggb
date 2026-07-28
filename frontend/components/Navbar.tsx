@@ -85,7 +85,7 @@ function NavbarInner() {
     (pathname === '/profile' && !activeTab);
   const isInnerPage = !isHomePage && !isMainTab;
   const isSellDetailPage = /^\/sell\/[^/]+$/.test(pathname) && pathname !== '/sell/new';
-  const isProductDetailPage = /^\/(?:item|blindbox|gacha|card)\/[^/]+$/.test(pathname) || isSellDetailPage;
+  const isProductDetailPage = /^\/(?:item|blindbox|gacha|card|challenge)\/[^/]+$/.test(pathname) || isSellDetailPage;
   const rulesPageMatch = pathname.match(/^\/(gacha|blindbox|card)\/[^/]+$/);
   const isItemPage = /^\/item\/[^/]+$/.test(pathname);
   const rulesPath = rulesPageMatch
