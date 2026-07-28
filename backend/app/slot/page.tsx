@@ -7,13 +7,13 @@ import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 
-function InfoTooltip({ text }: { text: string }) {
+function InfoTooltip({ text, side = 'right' }: { text: string; side?: 'left' | 'right' }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
       {show && (
-        <div className="absolute right-0 top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+        <div className={`absolute ${side === 'left' ? 'right-0' : 'left-0'} top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none`}>
           {text}
         </div>
       )}
@@ -39,10 +39,10 @@ const DEFAULT_FORM = {
   description: '',
   image_url: '',
   price_per_spin: '100',
-  trigger_rate: '15',
-  continue_rate: '60',
-  min_rush_hits: '3',
-  floor_spin_count: '30',
+  trigger_rate: '',
+  continue_rate: '',
+  min_rush_hits: '',
+  floor_spin_count: '',
 }
 
 const COLUMNS = [
@@ -271,17 +271,17 @@ export default function SlotPage() {
                 <InfoTooltip text="每轉結束後觸發 RUSH 模式的機率。設 15 表示每轉有 15% 機率進入 RUSH，未觸發則累積保底計數。" />
               </div>
               <div className="relative">
-                <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} placeholder="15" />
+                <input type="number" value={form.trigger_rate} onChange={e => setForm(p => ({ ...p, trigger_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
               </div>
             </div>
             <div>
               <div className="flex items-center gap-1 mb-2">
                 <label className="text-sm font-medium text-neutral-700">RUSH 延續率 %</label>
-                <InfoTooltip text="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。" />
+                <InfoTooltip text="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。" side="left" />
               </div>
               <div className="relative">
-                <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} placeholder="60" />
+                <input type="number" value={form.continue_rate} onChange={e => setForm(p => ({ ...p, continue_rate: e.target.value }))} className="w-full px-3 py-2 pr-8 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" step={1} min={0} max={100} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function SlotPage() {
             <div>
               <div className="flex items-center gap-1 mb-2">
                 <label className="text-sm font-medium text-neutral-700">保底轉數</label>
-                <InfoTooltip text="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。" />
+                <InfoTooltip text="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。" side="left" />
               </div>
               <input type="number" value={form.floor_spin_count} onChange={e => setForm(p => ({ ...p, floor_spin_count: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
             </div>

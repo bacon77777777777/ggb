@@ -8,13 +8,13 @@ import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 import { supabase } from '@/lib/supabaseClient'
 
-function InfoTooltip({ text }: { text: string }) {
+function InfoTooltip({ text, side = 'right' }: { text: string; side?: 'left' | 'right' }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
       {show && (
-        <div className="absolute right-0 top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+        <div className={`absolute ${side === 'left' ? 'right-0' : 'left-0'} top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none`}>
           {text}
         </div>
       )}
@@ -275,7 +275,7 @@ export default function SlotDetailPage() {
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
               </div>
             </Field>
-            <Field label="RUSH 延續率 %" tooltip="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。">
+            <Field label="RUSH 延續率 %" tooltip="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。" tooltipSide="left">
               <div className="relative">
                 <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.continue_rate != null ? Math.round(machineForm.continue_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) / 100 }))} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
@@ -284,7 +284,7 @@ export default function SlotDetailPage() {
             <Field label="RUSH 保底連數" tooltip="觸發 RUSH 後，前 N 轉保證從 RUSH 獎池抽品項，之後才開始看延續率決定是否繼續。設 3 代表最少連中 3 次大獎。">
               <input type="number" min={1} className={INPUT} value={machineForm.min_rush_hits ?? ''} onChange={e => setMachineForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))} />
             </Field>
-            <Field label="保底轉數" tooltip="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。">
+            <Field label="保底轉數" tooltip="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。" tooltipSide="left">
               <input type="number" className={INPUT} value={machineForm.floor_spin_count ?? ''} onChange={e => setMachineForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))} />
             </Field>
             <Field label="排序順序" tooltip="數字越小越靠前，用於前台機台排列順序。">
@@ -546,12 +546,12 @@ export default function SlotDetailPage() {
   )
 }
 
-function Field({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
+function Field({ label, tooltip, tooltipSide = 'right', children }: { label: string; tooltip?: string; tooltipSide?: 'left' | 'right'; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center gap-1 mb-2">
         <label className="text-sm font-medium text-neutral-700">{label}</label>
-        {tooltip && <InfoTooltip text={tooltip} />}
+        {tooltip && <InfoTooltip text={tooltip} side={tooltipSide} />}
       </div>
       {children}
     </div>
