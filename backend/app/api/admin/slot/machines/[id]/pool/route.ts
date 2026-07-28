@@ -33,7 +33,7 @@ export async function POST(
 
   const { id } = await params
   const body = await request.json()
-  const { product_prize_id, weight, is_floor, rush_only, normal_only, remaining } = body
+  const { product_prize_id, weight, min_bet, is_floor, rush_only, normal_only, remaining } = body
 
   if (!product_prize_id) {
     return NextResponse.json({ error: '請選擇獎品' }, { status: 400 })
@@ -55,6 +55,7 @@ export async function POST(
       machine_id: parseInt(id),
       product_prize_id: parseInt(product_prize_id),
       weight: parseInt(weight ?? '100'),
+      min_bet: min_bet === null || min_bet === undefined || min_bet === '' ? null : parseInt(min_bet),
       is_floor: is_floor ?? false,
       rush_only: rush_only ?? false,
       normal_only: normal_only ?? false,

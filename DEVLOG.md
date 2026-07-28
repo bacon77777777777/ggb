@@ -4,6 +4,26 @@
 
 ---
 
+## v2026.07.28d｜2026-07-28｜挑戰機台下注檔次（Plan C Tier-Gated Pool）
+
+### DB（migration 353，PROD + STG 同步）
+- `slot_machines.bet_tiers JSONB`：每台機台自訂檔次陣列（預設：小注100 / 中注500 / 大注1000 G幣）
+- `slot_pool_items.min_bet INT NULL`：獎品最低下注門檻（NULL＝全檔可抽）
+- `slot_sessions.locked_bet INT NULL`：RUSH 期間鎖定玩家下注額，防止中途換檔
+- `play_slot_locked(p_machine_id, p_bet)`：升版雙參數版，舊單參數版 DROP，新增 tier 驗證 + min_bet 過濾 + RUSH 鎖档邏輯
+
+### 前台
+- `/api/slot/machines/[id]`：pool select 加 `min_bet`、移除 `weight`（防玩家從 DevTools 推算賠率）
+- `/api/slot/[id]/spin`：讀 request body `bet`，傳 `p_bet` 至 RPC
+- `/challenge/[id]`：新增 `← 小注 100 →` 檔次選擇器、RUSH 中鎖定提示、獎池預覽 strip（低於當前檔次的品項自動 dim + 顯示最低需求標籤）、localStorage 記憶上次選檔
+
+### 後台
+- `slot/[id]` 機台設定頁：新增 `bet_tiers` JSON 編輯器（textarea，儲存前驗證格式）
+- 獎池新增 modal：`min_bet` 改為下拉選單（從機台 bet_tiers 動態生成選項）
+- 獎池列表：`最低檔次` 欄位顯示 badge（全檔/小注↑/中注↑ 等）
+
+---
+
 ## v2026.07.28c｜2026-07-28｜挑戰功能 P0 — 拉霸機台核心架構
 
 ### DB（migration 350/351，PROD + STG 同步）

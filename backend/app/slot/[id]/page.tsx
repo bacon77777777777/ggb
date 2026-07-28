@@ -7,6 +7,11 @@ import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import { supabase } from '@/lib/supabaseClient'
 
+interface BetTier {
+  label: string
+  coins: number
+}
+
 interface SlotMachine {
   id: number
   name: string
@@ -19,11 +24,13 @@ interface SlotMachine {
   floor_spin_count: number
   is_active: boolean
   sort_order: number
+  bet_tiers: BetTier[]
 }
 
 interface PoolItem {
   id: number
   weight: number
+  min_bet: number | null
   is_floor: boolean
   rush_only: boolean
   normal_only: boolean
@@ -46,9 +53,16 @@ interface ProductPrize {
   products: { name: string } | null
 }
 
+const DEFAULT_BET_TIERS: BetTier[] = [
+  { label: '小注', coins: 100 },
+  { label: '中注', coins: 500 },
+  { label: '大注', coins: 1000 },
+]
+
 const EMPTY_POOL_FORM = {
   product_prize_id: '',
   weight: '100',
+  min_bet: '',
   is_floor: false,
   rush_only: false,
   normal_only: false,
@@ -68,8 +82,9 @@ export default function SlotDetailPage() {
   const [savingPool, setSavingPool] = useState(false)
   const [prizes, setPrizes] = useState<ProductPrize[]>([])
   const [prizeSearch, setPrizeSearch] = useState('')
-  const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
+  const [machineForm, setMachineForm] = useState<Partial<SlotMachine> & { bet_tiers_json?: string }>({})
   const [savingMachine, setSavingMachine] = useState(false)
+  const [betTiersJsonError, setBetTiersJsonError] = useState<string | null>(null)
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -77,7 +92,10 @@ export default function SlotDetailPage() {
     const data = await res.json()
     setMachine(data.machine)
     setPool(data.pool ?? [])
-    setMachineForm(data.machine ?? {})
+    setMachineForm({
+      ...data.machine,
+      bet_tiers_json: JSON.stringify(data.machine?.bet_tiers ?? DEFAULT_BET_TIERS, null, 2),
+    })
     setIsLoading(false)
   }
 
@@ -94,12 +112,28 @@ export default function SlotDetailPage() {
   }, [showAddPool, prizeSearch])
 
   const handleSaveMachine = async () => {
+    // Validate + parse bet_tiers JSON
+    let parsedTiers: BetTier[] = DEFAULT_BET_TIERS
+    try {
+      parsedTiers = JSON.parse(machineForm.bet_tiers_json ?? '[]')
+      if (!Array.isArray(parsedTiers) || parsedTiers.length === 0) throw new Error('至少需要一個檔次')
+      for (const t of parsedTiers) {
+        if (!t.label || typeof t.coins !== 'number') throw new Error('每個檔次需有 label 和 coins')
+      }
+      setBetTiersJsonError(null)
+    } catch (e: any) {
+      setBetTiersJsonError(e.message)
+      return
+    }
+
     setSavingMachine(true)
     try {
+      const payload = { ...machineForm, bet_tiers: parsedTiers }
+      delete (payload as any).bet_tiers_json
       const res = await fetch(`/api/admin/slot/machines/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(machineForm),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -120,6 +154,7 @@ export default function SlotDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...poolForm,
+          min_bet: poolForm.min_bet === '' ? null : parseInt(poolForm.min_bet),
           remaining: poolForm.remaining === '' ? null : poolForm.remaining,
         }),
       })
@@ -145,6 +180,8 @@ export default function SlotDetailPage() {
   if (isLoading) return <AdminLayout><div className="p-8 text-center text-gray-400">載入中...</div></AdminLayout>
   if (!machine) return <AdminLayout><div className="p-8 text-center text-gray-400">機台不存在</div></AdminLayout>
 
+  const machineTiers: BetTier[] = machine.bet_tiers ?? DEFAULT_BET_TIERS
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -161,7 +198,7 @@ export default function SlotDetailPage() {
             <Field label="機台名稱">
               <input type="text" className="input-base" value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="每次 G幣">
+            <Field label="每次 G幣（相容舊版，建議改用下注檔次）">
               <input type="number" className="input-base" value={machineForm.price_per_spin ?? ''} onChange={e => setMachineForm(p => ({ ...p, price_per_spin: parseInt(e.target.value) }))} />
             </Field>
             <Field label="RUSH 觸發率 (0–1)">
@@ -186,6 +223,29 @@ export default function SlotDetailPage() {
               </label>
             </Field>
           </div>
+
+          {/* Bet tiers editor */}
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              下注檔次（JSON 陣列）
+              <span className="ml-2 text-gray-400 font-normal">格式：{`[{"label":"小注","coins":100}, ...]`}</span>
+            </label>
+            <textarea
+              className={`input-base font-mono text-xs h-28 resize-none ${betTiersJsonError ? 'border-red-400' : ''}`}
+              value={machineForm.bet_tiers_json ?? ''}
+              onChange={e => {
+                setMachineForm(p => ({ ...p, bet_tiers_json: e.target.value }))
+                setBetTiersJsonError(null)
+              }}
+            />
+            {betTiersJsonError && (
+              <p className="text-xs text-red-400 mt-1">{betTiersJsonError}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              目前：{machineTiers.map(t => `${t.label}(${t.coins}G)`).join(' · ')}
+            </p>
+          </div>
+
           <div className="mt-4 flex justify-end">
             <button onClick={handleSaveMachine} disabled={savingMachine} className="btn-primary">
               {savingMachine ? '儲存中...' : '儲存設定'}
@@ -211,37 +271,46 @@ export default function SlotDetailPage() {
                   <th className="pb-2 pr-3 font-medium">獎品</th>
                   <th className="pb-2 pr-3 font-medium">等級</th>
                   <th className="pb-2 pr-3 font-medium">權重</th>
+                  <th className="pb-2 pr-3 font-medium">最低檔次</th>
                   <th className="pb-2 pr-3 font-medium">庫存</th>
                   <th className="pb-2 pr-3 font-medium">屬性</th>
                   <th className="pb-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {pool.map(item => (
-                  <tr key={item.id}>
-                    <td className="py-2 pr-3">
-                      <div className="font-medium text-gray-900 dark:text-white text-xs">{item.product_prizes?.name ?? '—'}</div>
-                      <div className="text-xs text-gray-400">{item.product_prizes?.products?.name ?? ''}</div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <span className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{item.product_prizes?.level ?? '—'}</span>
-                    </td>
-                    <td className="py-2 pr-3 text-gray-700 dark:text-gray-300 font-bold">{item.weight}</td>
-                    <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">
-                      {item.remaining === null ? <span className="text-green-500">∞</span> : item.remaining}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div className="flex flex-wrap gap-1">
-                        {item.is_floor && <Badge color="amber">保底</Badge>}
-                        {item.rush_only && <Badge color="purple">Rush</Badge>}
-                        {item.normal_only && <Badge color="gray">Normal</Badge>}
-                      </div>
-                    </td>
-                    <td className="py-2">
-                      <button onClick={() => handleDeletePool(item.id)} className="text-xs text-red-400 hover:text-red-600">刪除</button>
-                    </td>
-                  </tr>
-                ))}
+                {pool.map(item => {
+                  const tierName = item.min_bet
+                    ? (machineTiers.find(t => t.coins === item.min_bet)?.label ?? `${item.min_bet}G`)
+                    : null
+                  return (
+                    <tr key={item.id}>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium text-gray-900 dark:text-white text-xs">{item.product_prizes?.name ?? '—'}</div>
+                        <div className="text-xs text-gray-400">{item.product_prizes?.products?.name ?? ''}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{item.product_prizes?.level ?? '—'}</span>
+                      </td>
+                      <td className="py-2 pr-3 text-gray-700 dark:text-gray-300 font-bold">{item.weight}</td>
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400 text-xs">
+                        {tierName ? <Badge color="blue">{tierName}↑</Badge> : <span className="text-green-500">全檔</span>}
+                      </td>
+                      <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">
+                        {item.remaining === null ? <span className="text-green-500">∞</span> : item.remaining}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="flex flex-wrap gap-1">
+                          {item.is_floor && <Badge color="amber">保底</Badge>}
+                          {item.rush_only && <Badge color="purple">Rush</Badge>}
+                          {item.normal_only && <Badge color="gray">Normal</Badge>}
+                        </div>
+                      </td>
+                      <td className="py-2">
+                        <button onClick={() => handleDeletePool(item.id)} className="text-xs text-red-400 hover:text-red-600">刪除</button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
@@ -287,6 +356,21 @@ export default function SlotDetailPage() {
               <input type="number" className="input-base" value={poolForm.remaining} onChange={e => setPoolForm(p => ({ ...p, remaining: e.target.value }))} min={0} placeholder="無限" />
             </Field>
           </div>
+
+          <Field label="最低下注檔次（空白＝全檔可抽）">
+            <select
+              className="input-base"
+              value={poolForm.min_bet}
+              onChange={e => setPoolForm(p => ({ ...p, min_bet: e.target.value }))}
+            >
+              <option value="">全檔可抽</option>
+              {machineTiers.map(tier => (
+                <option key={tier.coins} value={String(tier.coins)}>
+                  {tier.label}（{tier.coins} G幣）以上
+                </option>
+              ))}
+            </select>
+          </Field>
 
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">

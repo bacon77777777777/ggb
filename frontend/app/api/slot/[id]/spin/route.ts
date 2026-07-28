@@ -22,6 +22,16 @@ export async function POST(
       return NextResponse.json({ error: '操作太頻繁，請稍候再試' }, { status: 429 })
     }
 
+    let bet: number | undefined;
+    try {
+      const body = await request.json();
+      bet = typeof body?.bet === 'number' ? body.bet : undefined;
+    } catch { /* no body */ }
+
+    if (!bet) {
+      return NextResponse.json({ error: '請指定下注檔次' }, { status: 400 })
+    }
+
     const userSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -32,6 +42,7 @@ export async function POST(
 
     const { data, error } = await userSupabase.rpc('play_slot_locked', {
       p_machine_id: machineId,
+      p_bet: bet,
     })
 
     if (error) throw error

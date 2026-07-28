@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, ArrowLeft, Zap, Trophy, RotateCcw } from 'lucide-react';
+import { Coins, ArrowLeft, Zap, Trophy, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+
+interface BetTier {
+  label: string;
+  coins: number;
+}
 
 interface SlotMachine {
   id: number;
@@ -19,6 +24,23 @@ interface SlotMachine {
   continue_rate: number;
   min_rush_hits: number;
   floor_spin_count: number;
+  bet_tiers: BetTier[];
+}
+
+interface SlotPoolItem {
+  id: number;
+  min_bet: number | null;
+  is_floor: boolean;
+  rush_only: boolean;
+  normal_only: boolean;
+  remaining: number | null;
+  product_prizes: {
+    id: number;
+    name: string;
+    level: string;
+    image_url: string | null;
+    recycle_value: number;
+  } | null;
 }
 
 interface SlotSession {
@@ -26,12 +48,14 @@ interface SlotSession {
   rush_hits_remaining: number;
   spins_since_rush: number;
   total_spins: number;
+  locked_bet: number | null;
 }
 
 interface SpinResult {
   success: boolean;
   new_balance: number;
   draw_record_id: number;
+  bet: number;
   prize: {
     pool_item_id: number;
     prize_id: number;
@@ -57,20 +81,22 @@ const LEVEL_COLORS: Record<string, string> = {
   'LAST ONE': 'from-rose-400 to-red-600',
 };
 
+const TIER_LS_KEY = (machineId: number) => `ggb_slot_tier_${machineId}`;
+
 export default function MachinePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
+  const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [spinState, setSpinState] = useState<SpinState>('idle');
   const [lastResult, setLastResult] = useState<SpinResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tierIndex, setTierIndex] = useState(0);
 
-  // Reel animation
-  const [reelAngle, setReelAngle] = useState(0);
   const reelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -80,17 +106,47 @@ export default function MachinePage() {
       fetch(`/api/slot/${machineId}/session`).then(r => r.json()),
     ])
       .then(([machineData, sessionData]) => {
-        setMachine(machineData.machine ?? null);
-        setSession(sessionData.session ?? null);
+        const m: SlotMachine = machineData.machine ?? null;
+        setMachine(m);
+        setPool(machineData.pool ?? []);
+        const s: SlotSession = sessionData.session ?? null;
+        setSession(s);
+
+        // Restore saved tier from localStorage, honouring RUSH lock
+        if (m && Array.isArray(m.bet_tiers) && m.bet_tiers.length > 0) {
+          if (s?.state === 'rush' && s.locked_bet != null) {
+            const idx = m.bet_tiers.findIndex(t => t.coins === s.locked_bet);
+            if (idx >= 0) setTierIndex(idx);
+          } else {
+            const saved = localStorage.getItem(TIER_LS_KEY(m.id));
+            if (saved) {
+              const idx = m.bet_tiers.findIndex(t => t.coins === parseInt(saved));
+              if (idx >= 0) setTierIndex(idx);
+            }
+          }
+        }
       })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [id]);
 
+  const tiers: BetTier[] = machine?.bet_tiers ?? [];
+  const currentTier: BetTier = tiers[tierIndex] ?? { label: '小注', coins: machine?.price_per_spin ?? 100 };
+
+  const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
+  const isRushLocked = isRushActive;
+
+  const changeTier = useCallback((delta: number) => {
+    if (isRushLocked || tiers.length <= 1) return;
+    setTierIndex(prev => {
+      const next = Math.max(0, Math.min(tiers.length - 1, prev + delta));
+      if (machine) localStorage.setItem(TIER_LS_KEY(machine.id), String(tiers[next].coins));
+      return next;
+    });
+  }, [isRushLocked, tiers, machine]);
+
   const startReelSpin = () => {
-    reelTimerRef.current = setInterval(() => {
-      setReelAngle(a => a + 30);
-    }, 50);
+    reelTimerRef.current = setInterval(() => {}, 50); // tick kept for future use
   };
 
   const stopReelSpin = () => {
@@ -107,10 +163,13 @@ export default function MachinePage() {
     startReelSpin();
 
     try {
-      const res = await fetch(`/api/slot/${id}/spin`, { method: 'POST' });
+      const res = await fetch(`/api/slot/${id}/spin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bet: currentTier.coins }),
+      });
       const data: SpinResult = await res.json();
 
-      // Ensure at least 1.2s of animation
       await new Promise(r => setTimeout(r, 1200));
       stopReelSpin();
 
@@ -123,16 +182,21 @@ export default function MachinePage() {
       setLastResult(data);
       setSession(data.session);
 
+      // Sync tierIndex if RUSH locked the bet server-side
+      if (data.session.state === 'rush' && data.session.locked_bet != null && tiers.length > 0) {
+        const idx = tiers.findIndex(t => t.coins === data.session.locked_bet);
+        if (idx >= 0) setTierIndex(idx);
+      }
+
       if (data.rush_triggered) {
         setSpinState('rush');
-        // After rush reveal, show prize
         setTimeout(() => setSpinState('result'), 2000);
       } else {
         setSpinState('result');
       }
 
       if (refreshProfile) refreshProfile();
-    } catch (e: any) {
+    } catch {
       stopReelSpin();
       setError('連線失敗，請重試');
       setSpinState('idle');
@@ -154,8 +218,16 @@ export default function MachinePage() {
     );
   }
 
-  const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
   const floorProgress = session ? Math.min((session.spins_since_rush / machine.floor_spin_count) * 100, 100) : 0;
+
+  // Non-floor pool items for preview (sorted: unlocked first)
+  const previewItems = pool
+    .filter(item => !item.is_floor && item.product_prizes)
+    .sort((a, b) => {
+      const aLocked = a.min_bet != null && a.min_bet > currentTier.coins;
+      const bLocked = b.min_bet != null && b.min_bet > currentTier.coins;
+      return Number(aLocked) - Number(bLocked);
+    });
 
   return (
     <div className={cn(
@@ -179,8 +251,8 @@ export default function MachinePage() {
         </div>
       </div>
 
-      {/* Machine image / Reel visual */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col items-center px-6 py-2">
         {/* RUSH banner */}
         <AnimatePresence>
           {isRushActive && (
@@ -188,7 +260,7 @@ export default function MachinePage() {
               initial={{ scale: 0, rotate: -10 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0 }}
-              className="mb-4 px-6 py-2 bg-yellow-400 rounded-full shadow-lg shadow-yellow-900/50"
+              className="mb-3 px-6 py-2 bg-yellow-400 rounded-full shadow-lg shadow-yellow-900/50"
             >
               <span className="text-yellow-950 font-black text-lg tracking-widest">
                 ⚡ RUSH ⚡
@@ -227,15 +299,50 @@ export default function MachinePage() {
             ))}
           </div>
 
-          {/* Spinning overlay */}
           {spinState === 'spinning' && (
             <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />
           )}
         </div>
 
+        {/* Prize preview strip */}
+        {previewItems.length > 0 && (
+          <div className="mt-3 w-full max-w-xs overflow-x-auto scrollbar-none">
+            <div className="flex gap-2 pb-1" style={{ width: 'max-content' }}>
+              {previewItems.map(item => {
+                const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
+                const tierForItem = tiers.find(t => t.coins === item.min_bet);
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs whitespace-nowrap transition-opacity",
+                      isLocked
+                        ? "opacity-30 border-white/10 text-white/40"
+                        : "border-white/20 text-white/80"
+                    )}
+                  >
+                    <span className={cn(
+                      "font-mono text-[10px] px-1 rounded",
+                      item.product_prizes?.level === 'A' ? "bg-yellow-500/30 text-yellow-300" :
+                      item.product_prizes?.level === 'B' ? "bg-violet-500/30 text-violet-300" :
+                      "bg-white/10 text-white/50"
+                    )}>
+                      {item.product_prizes?.level}
+                    </span>
+                    <span>{item.product_prizes?.name}</span>
+                    {isLocked && tierForItem && (
+                      <span className="text-white/30">{tierForItem.label}↑</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Floor progress */}
         {session && (
-          <div className="mt-4 w-full max-w-xs">
+          <div className="mt-3 w-full max-w-xs">
             <div className="flex justify-between text-xs text-white/50 mb-1">
               <span>保底進度</span>
               <span>{session.spins_since_rush} / {machine.floor_spin_count}</span>
@@ -252,11 +359,48 @@ export default function MachinePage() {
       </div>
 
       {/* Bottom controls */}
-      <div className="px-6 pb-[max(env(safe-area-inset-bottom),24px)] pt-4 space-y-3">
+      <div className="px-6 pb-[max(env(safe-area-inset-bottom),24px)] pt-3 space-y-3">
         {error && (
           <p className="text-center text-red-400 text-sm">{error}</p>
         )}
 
+        {/* Tier selector */}
+        {tiers.length > 0 && (
+          <div className={cn(
+            "flex items-center gap-2 rounded-xl px-3 py-2 border transition-colors",
+            isRushLocked
+              ? "bg-yellow-900/30 border-yellow-500/30"
+              : "bg-white/5 border-white/10"
+          )}>
+            <button
+              onClick={() => changeTier(-1)}
+              disabled={isRushLocked || tierIndex === 0}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex-1 text-center">
+              {isRushLocked ? (
+                <span className="text-yellow-400/70 text-xs font-medium">⚡ RUSH 檔次鎖定</span>
+              ) : null}
+              <div className={cn("flex items-center justify-center gap-2", isRushLocked && "mt-0.5")}>
+                <span className="text-white font-bold text-sm">{currentTier.label}</span>
+                <span className="text-amber-300 text-sm font-mono">{currentTier.coins} G幣</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => changeTier(1)}
+              disabled={isRushLocked || tierIndex === tiers.length - 1}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Spin button */}
         <motion.button
           onClick={handleSpin}
           disabled={spinState !== 'idle'}
@@ -279,7 +423,7 @@ export default function MachinePage() {
           ) : (
             <span className="flex items-center justify-center gap-2">
               <Zap className="w-5 h-5" />
-              挑戰！ ({machine.price_per_spin} G幣)
+              挑戰！
             </span>
           )}
         </motion.button>
@@ -329,7 +473,6 @@ export default function MachinePage() {
               onClick={e => e.stopPropagation()}
               className="mx-6 w-full max-w-xs bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
             >
-              {/* Prize level gradient header */}
               <div className={cn(
                 "h-2 w-full bg-gradient-to-r",
                 LEVEL_COLORS[lastResult.prize.level] ?? 'from-neutral-600 to-neutral-700'
@@ -343,7 +486,6 @@ export default function MachinePage() {
                   </div>
                 )}
 
-                {/* Prize image */}
                 <div className="relative w-32 h-32 mx-auto mb-4 rounded-2xl overflow-hidden bg-neutral-800">
                   {lastResult.prize.image_url ? (
                     <Image src={lastResult.prize.image_url} alt={lastResult.prize.name} fill className="object-contain p-2" />
@@ -361,7 +503,6 @@ export default function MachinePage() {
                 <h3 className="text-white font-bold text-lg">{lastResult.prize.name}</h3>
                 <p className="text-white/50 text-xs mt-1">已放入倉庫</p>
 
-                {/* Session info */}
                 <div className="mt-4 flex items-center justify-center gap-4 text-xs text-white/40">
                   <span>累計 {lastResult.session.total_spins} 次</span>
                   {lastResult.session.state === 'rush' && (

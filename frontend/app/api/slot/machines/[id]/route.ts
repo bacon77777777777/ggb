@@ -25,11 +25,11 @@ export async function GET(
       supabase
         .from('slot_pool_items')
         .select(`
-          id, weight, is_floor, rush_only, normal_only, remaining,
+          id, min_bet, is_floor, rush_only, normal_only, remaining,
           product_prizes (id, name, level, image_url, recycle_value)
         `)
         .eq('machine_id', machineId)
-        .order('weight', { ascending: false }),
+        .order('id', { ascending: true }),
     ])
 
     if (machineRes.error || !machineRes.data) {
