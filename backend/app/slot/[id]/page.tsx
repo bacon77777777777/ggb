@@ -41,7 +41,7 @@ interface PoolItem {
     level: string
     image_url: string | null
     product_id: number
-    products: { name: string } | null
+    products: { name: string; type: string } | null
   } | null
 }
 
@@ -50,7 +50,7 @@ interface ProductPrize {
   name: string
   level: string
   product_id: number
-  products: { name: string } | null
+  products: { name: string; type: string } | null
 }
 
 const DEFAULT_BET_TIERS: BetTier[] = [
@@ -312,7 +312,12 @@ export default function SlotDetailPage() {
                           <div className="text-xs text-neutral-400">{item.product_prizes?.products?.name ?? ''}</div>
                         </td>
                         <td className="px-4 py-3 max-w-[80px]">
-                          <span className="text-xs text-neutral-500 block truncate" title={item.product_prizes?.level ?? ''}>{item.product_prizes?.level ?? '—'}</span>
+                          {(() => {
+                            const rawLevel = item.product_prizes?.level ?? '—'
+                            const pType = item.product_prizes?.products?.type ?? ''
+                            const displayLevel = (['gacha', 'blindbox', 'slot'].includes(pType)) ? '普通' : rawLevel
+                            return <span className="text-xs text-neutral-500 block truncate">{displayLevel}</span>
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-neutral-700 font-bold">{item.weight}</td>
                         <td className="px-4 py-3">
