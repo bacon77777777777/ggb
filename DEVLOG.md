@@ -4,6 +4,29 @@
 
 ---
 
+## v2026.07.28c｜2026-07-28｜挑戰功能 P0 — 拉霸機台核心架構
+
+### DB（migration 350/351，PROD + STG 同步）
+- `slot_machines`：機台設定（trigger_rate / continue_rate / min_rush_hits / floor_spin_count）
+- `slot_pool_items`：獎池品項，支援 is_floor / rush_only / normal_only / 無限庫存
+- `slot_sessions`：玩家進度追蹤（state: normal/rush、RUSH 計數、保底計數）
+- 新增 products.type 允許值 `slot`
+- Seed 吉吉比廠商 + 吉吉比感謝貼紙庫 + 感謝貼紙保底品
+- `play_slot_locked` RPC：原子扣幣 → 狀態機 → 加權抽選 → draw_record 入庫 → 回傳結果 JSON
+
+### 前台
+- `/challenge` 挑戰列表頁（機台大廳）
+- `/challenge/[id]` 機台房間（spin、RUSH 觸發動畫、保底進度條、獎品彈窗）
+- API 路由：`/api/slot/machines`、`/api/slot/machines/[id]`、`/api/slot/[id]/spin`、`/api/slot/[id]/session`
+- 底部導航「挑戰」tab 已連結至 `/challenge`
+
+### 後台
+- 後台側邊欄新增「挑戰機台」入口（/slot）
+- 機台列表頁：建立 / 上架 / 下架 / 刪除
+- 機台詳情頁：編輯參數 + 獎池管理（加入品項、設定權重/庫存/屬性）
+
+---
+
 ## v2026.07.28b｜2026-07-28｜排行榜移至首頁右下角浮動按鈕
 
 ### 底部導覽調整

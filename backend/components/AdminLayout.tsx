@@ -646,6 +646,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',
+    '/slot': 'products',
     '/draws': 'draws',
     '/orders': 'orders',
     '/refund-requests': 'header_refunds',
@@ -728,6 +729,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '抽獎管理',
         items: [
           { name: '商品管理', path: '/products', icon: IconProducts },
+          { name: '挑戰機台', path: '/slot', icon: IconBolt },
           { name: '消費紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
           { name: '退款申請', path: '/refund-requests', icon: IconRefund },
