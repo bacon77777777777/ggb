@@ -302,23 +302,11 @@ export default function SlotPage() {
               <input type="number" value={form.floor_spin_count} onChange={e => setForm(p => ({ ...p, floor_spin_count: e.target.value }))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" min={1} />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.guaranteed_prize}
-                onChange={e => setForm(p => ({ ...p, guaranteed_prize: e.target.checked }))}
-                className="w-4 h-4 accent-primary"
-              />
-              <span className="text-sm font-medium text-neutral-700">必得實物模式</span>
-              <InfoTooltip text="開啟後，每次挑戰必定獲得一件實物獎品（在前台顯示「必得實物」標章）。" />
-            </label>
-            <div className="flex gap-3">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">取消</button>
-              <button onClick={handleCreate} disabled={saving || !form.name} className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60">
-                {saving ? '建立中...' : '建立機台'}
-              </button>
-            </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">取消</button>
+            <button onClick={handleCreate} disabled={saving || !form.name} className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60">
+              {saving ? '建立中...' : '建立機台'}
+            </button>
           </div>
         </div>
       </Modal>

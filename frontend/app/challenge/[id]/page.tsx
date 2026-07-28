@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, Zap, Trophy, RotateCcw,
-  ChevronLeft, ChevronRight, Lock, ShieldCheck,
+  ChevronLeft, ChevronRight, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +42,6 @@ interface SlotMachine {
   continue_rate: number;
   min_rush_hits: number;
   floor_spin_count: number;
-  guaranteed_prize: boolean;
   bet_tiers: BetTier[];
 }
 
@@ -631,16 +630,9 @@ export default function MachinePage() {
     ];
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
-        <div className="flex items-start justify-between gap-2 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-          <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">
-            {machine.name}
-          </h3>
-          {machine.guaranteed_prize !== false && (
-            <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-black">
-              <ShieldCheck className="w-3 h-3" />必得實物
-            </span>
-          )}
-        </div>
+        <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
+          {machine.name}
+        </h3>
 
         {tiers.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
