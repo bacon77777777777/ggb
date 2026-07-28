@@ -40,6 +40,7 @@ interface SlotPoolItem {
     level: string;
     image_url: string | null;
     recycle_value: number;
+    products: { type: string } | null;
   } | null;
 }
 
@@ -311,6 +312,9 @@ export default function MachinePage() {
               {previewItems.map(item => {
                 const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
                 const tierForItem = tiers.find(t => t.coins === item.min_bet);
+                const pType = item.product_prizes?.products?.type ?? '';
+                const rawLevel = item.product_prizes?.level ?? '';
+                const showLevel = !(['gacha', 'blindbox', 'slot'].includes(pType)) && rawLevel;
                 return (
                   <div
                     key={item.id}
@@ -321,14 +325,16 @@ export default function MachinePage() {
                         : "border-white/20 text-white/80"
                     )}
                   >
-                    <span className={cn(
-                      "font-mono text-[10px] px-1 rounded",
-                      item.product_prizes?.level === 'A' ? "bg-yellow-500/30 text-yellow-300" :
-                      item.product_prizes?.level === 'B' ? "bg-violet-500/30 text-violet-300" :
-                      "bg-white/10 text-white/50"
-                    )}>
-                      {item.product_prizes?.level}
-                    </span>
+                    {showLevel && (
+                      <span className={cn(
+                        "font-mono text-[10px] px-1 rounded",
+                        rawLevel === 'A' ? "bg-yellow-500/30 text-yellow-300" :
+                        rawLevel === 'B' ? "bg-violet-500/30 text-violet-300" :
+                        "bg-white/10 text-white/50"
+                      )}>
+                        {rawLevel}
+                      </span>
+                    )}
                     <span>{item.product_prizes?.name}</span>
                     {isLocked && tierForItem && (
                       <span className="text-white/30">{tierForItem.label}↑</span>
