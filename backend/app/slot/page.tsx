@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import PageCard from '@/components/PageCard'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/Modal'
+import SearchToolbar from '@/components/SearchToolbar'
 import { useToast } from '@/contexts/ToastContext'
 
 interface SlotMachine {
@@ -40,6 +41,8 @@ export default function SlotPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState(DEFAULT_FORM)
   const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
 
   const fetchMachines = async () => {
     setIsLoading(true)
@@ -87,23 +90,35 @@ export default function SlotPage() {
     if (res.ok) { toast('已刪除'); fetchMachines() }
   }
 
+  const filtered = machines.filter(m =>
+    !searchQuery || m.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const tdPy = tableDensity === 'compact' ? 'py-2' : tableDensity === 'normal' ? 'py-3' : 'py-4'
+
   return (
     <AdminLayout pageTitle="挑戰機台">
       <PageCard>
-        <div className="flex items-center justify-between mb-6">
-          <div />
-          <button
-            onClick={() => setShowCreate(true)}
-            className="btn-primary"
-          >
-            + 新增機台
-          </button>
-        </div>
+        <SearchToolbar
+          searchPlaceholder="搜尋機台名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          showAddButton={true}
+          addButtonText="+ 新增機台"
+          onAddClick={() => setShowCreate(true)}
+          showDensity={true}
+          density={tableDensity}
+          onDensityChange={setTableDensity}
+          showFilter={false}
+          showColumnToggle={false}
+        />
 
         {isLoading ? (
           <div className="py-12 text-center text-sm text-neutral-400">載入中...</div>
-        ) : machines.length === 0 ? (
-          <div className="py-12 text-center text-sm text-neutral-400">尚無機台，點擊右上角新增</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center text-sm text-neutral-400">
+            {searchQuery ? '找不到符合的機台' : '尚無機台，點擊右上角新增'}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -118,18 +133,18 @@ export default function SlotPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {machines.map(machine => (
+                {filtered.map(machine => (
                   <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="py-3 pr-4 font-medium text-neutral-900">{machine.name || '（未命名）'}</td>
-                    <td className="py-3 pr-4 text-amber-600 font-bold">{machine.price_per_spin}</td>
-                    <td className="py-3 pr-4 text-neutral-600">{(machine.trigger_rate * 100).toFixed(0)}%</td>
-                    <td className="py-3 pr-4 text-neutral-600">{machine.floor_spin_count}</td>
-                    <td className="py-3 pr-4">
+                    <td className={`${tdPy} pr-4 font-medium text-neutral-900`}>{machine.name || '（未命名）'}</td>
+                    <td className={`${tdPy} pr-4 text-amber-600 font-bold`}>{machine.price_per_spin}</td>
+                    <td className={`${tdPy} pr-4 text-neutral-600`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>
+                    <td className={`${tdPy} pr-4 text-neutral-600`}>{machine.floor_spin_count}</td>
+                    <td className={`${tdPy} pr-4`}>
                       <Badge color={machine.is_active ? 'green' : 'gray'}>
                         {machine.is_active ? '上架中' : '下架'}
                       </Badge>
                     </td>
-                    <td className="py-3">
+                    <td className={`${tdPy}`}>
                       <div className="flex items-center gap-3">
                         <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium">編輯</button>
                         <button onClick={() => toggleActive(machine)} className="text-neutral-500 hover:text-neutral-800 text-sm font-medium">
