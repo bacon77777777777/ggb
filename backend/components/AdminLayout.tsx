@@ -646,7 +646,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settlement-snapshots': 'settlement_snapshots',
     // 抽獎管理
     '/products': 'products',
-    '/slot': 'products',
+    // 挑戰機台
+    '/slot': 'slot',
+    '/slot/prizes': 'slot_prizes',
     '/draws': 'draws',
     '/orders': 'orders',
     '/refund-requests': 'header_refunds',
@@ -729,7 +731,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '抽獎管理',
         items: [
           { name: '商品管理', path: '/products', icon: IconProducts },
-          { name: '挑戰機台', path: '/slot', icon: IconBolt },
           { name: '消費紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
           { name: '退款申請', path: '/refund-requests', icon: IconRefund },
@@ -769,6 +770,14 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '客服工單', path: '/cs-management/tickets', icon: IconChat },
           { name: '操作手冊', path: '/cs-management/sop', icon: IconBook },
+        ],
+      },
+      {
+        id: 'challenge',
+        title: '挑戰機台',
+        items: [
+          { name: '機台管理', path: '/slot', icon: IconBolt },
+          { name: '品項管理', path: '/slot/prizes', icon: IconProducts },
         ],
       },
       {

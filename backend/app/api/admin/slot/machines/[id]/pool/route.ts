@@ -15,7 +15,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('slot_pool_items')
-    .select('*, product_prizes(id, name, level, image_url, product_id, products(name))')
+    .select('*, product_prizes(id, name, level, image_url, product_id, products(name)), slot_prizes(id, name, level, image_url, remaining)')
     .eq('machine_id', id)
     .order('weight', { ascending: false })
 
@@ -33,34 +33,33 @@ export async function POST(
 
   const { id } = await params
   const body = await request.json()
-  const { product_prize_id, weight, min_bet, is_floor, rush_only, normal_only, remaining } = body
+  const { slot_prize_id, product_prize_id, weight, min_bet, is_floor, rush_only, normal_only, remaining } = body
 
-  if (!product_prize_id) {
+  if (!slot_prize_id && !product_prize_id) {
     return NextResponse.json({ error: '請選擇獎品' }, { status: 400 })
   }
 
   const supabase = getSupabaseAdmin()
 
-  // Validate prize exists
-  const { data: prize } = await supabase
-    .from('product_prizes')
-    .select('id')
-    .eq('id', product_prize_id)
-    .single()
-  if (!prize) return NextResponse.json({ error: '獎品不存在' }, { status: 400 })
+  const insertRow: Record<string, unknown> = {
+    machine_id: parseInt(id),
+    weight: parseInt(weight ?? '100'),
+    min_bet: min_bet === null || min_bet === undefined || min_bet === '' ? null : parseInt(min_bet),
+    is_floor: is_floor ?? false,
+    rush_only: rush_only ?? false,
+    normal_only: normal_only ?? false,
+    remaining: remaining === null || remaining === '' ? null : parseInt(remaining),
+  }
+
+  if (slot_prize_id) {
+    insertRow.slot_prize_id = parseInt(slot_prize_id)
+  } else {
+    insertRow.product_prize_id = parseInt(product_prize_id)
+  }
 
   const { data, error } = await supabase
     .from('slot_pool_items')
-    .insert({
-      machine_id: parseInt(id),
-      product_prize_id: parseInt(product_prize_id),
-      weight: parseInt(weight ?? '100'),
-      min_bet: min_bet === null || min_bet === undefined || min_bet === '' ? null : parseInt(min_bet),
-      is_floor: is_floor ?? false,
-      rush_only: rush_only ?? false,
-      normal_only: normal_only ?? false,
-      remaining: remaining === null || remaining === '' ? null : parseInt(remaining),
-    })
+    .insert(insertRow)
     .select()
     .single()
 

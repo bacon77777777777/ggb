@@ -6,7 +6,6 @@ import { AdminLayout, PageCard, Modal } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
-import { supabase } from '@/lib/supabaseClient'
 
 function InfoTooltip({ text, side = 'right' }: { text: string; side?: 'left' | 'right' }) {
   const [show, setShow] = useState(false)
@@ -50,25 +49,17 @@ interface PoolItem {
   rush_only: boolean
   normal_only: boolean
   remaining: number | null
-  product_prizes: {
-    id: number
-    name: string
-    level: string
-    image_url: string | null
-    product_id: number
-    remaining: number | null
-    products: { name: string; type: string } | null
-  } | null
+  product_prizes: { id: number; name: string; level: string; image_url: string | null; remaining: number | null } | null
+  slot_prizes: { id: number; name: string; level: string; image_url: string | null; remaining: number | null } | null
 }
 
-interface ProductPrize {
+interface SlotPrizeItem {
   id: number
   name: string
   level: string
   image_url: string | null
-  product_id: number
   remaining: number | null
-  products: { name: string; type: string } | null
+  is_active: boolean
 }
 
 // pool_band: tier coins as string ('100') or 'rush'
@@ -109,9 +100,9 @@ export default function SlotDetailPage() {
   const [showAddPool, setShowAddPool] = useState(false)
   const [poolForm, setPoolForm] = useState(EMPTY_POOL_FORM)
   const [savingPool, setSavingPool] = useState(false)
-  const [prizes, setPrizes] = useState<ProductPrize[]>([])
+  const [prizes, setPrizes] = useState<SlotPrizeItem[]>([])
   const [prizeSearch, setPrizeSearch] = useState('')
-  const [selectedPrizes, setSelectedPrizes] = useState<ProductPrize[]>([])
+  const [selectedPrizes, setSelectedPrizes] = useState<SlotPrizeItem[]>([])
   const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
   const [tierInput, setTierInput] = useState('')
   const [savingMachine, setSavingMachine] = useState(false)
@@ -136,12 +127,15 @@ export default function SlotDetailPage() {
 
   useEffect(() => {
     if (!showAddPool) return
-    supabase
-      .from('product_prizes')
-      .select('id, name, level, image_url, product_id, remaining, products(name, type)')
-      .ilike('name', prizeSearch ? `%${prizeSearch}%` : '%')
-      .limit(30)
-      .then(({ data }) => setPrizes((data ?? []) as unknown as ProductPrize[]))
+    fetch('/api/admin/slot/prizes')
+      .then(r => r.json())
+      .then(json => {
+        const all: SlotPrizeItem[] = json.prizes ?? []
+        const filtered = prizeSearch
+          ? all.filter(p => p.name.includes(prizeSearch))
+          : all
+        setPrizes(filtered.filter(p => p.is_active).slice(0, 50))
+      })
   }, [showAddPool, prizeSearch])
 
   const handleSaveMachine = async () => {
@@ -195,7 +189,7 @@ export default function SlotDetailPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              product_prize_id: pid,
+              slot_prize_id: pid,
               weight: poolForm.weight,
               min_bet: isRush ? null : parseInt(poolForm.pool_band),
               is_floor: poolForm.is_floor,
@@ -374,15 +368,18 @@ export default function SlotDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {tabItems.map(item => {
-                    const rawLevel = item.product_prizes?.level ?? '—'
-                    const pType = item.product_prizes?.products?.type ?? ''
-                    const displayLevel = (['gacha', 'blindbox', 'slot'].includes(pType)) ? '普通' : rawLevel
-                    const prizeRemaining = item.product_prizes?.remaining
+                    const prize = item.slot_prizes ?? item.product_prizes
+                    const displayLevel = prize?.level ?? '—'
+                    const prizeRemaining = prize?.remaining
                     return (
                       <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-neutral-900 text-sm">{item.product_prizes?.name ?? '—'}</div>
-                          <div className="text-xs text-neutral-400">{item.product_prizes?.products?.name ?? ''}</div>
+                          <div className="flex items-center gap-2">
+                            {prize?.image_url && (
+                              <img src={prize.image_url} alt="" className="w-8 h-8 object-cover rounded" />
+                            )}
+                            <div className="font-medium text-neutral-900 text-sm">{prize?.name ?? '—'}</div>
+                          </div>
                         </td>
                         <td className="px-4 py-3 max-w-[80px]">
                           <span className="text-xs text-neutral-500 block truncate">{displayLevel}</span>
@@ -454,12 +451,10 @@ export default function SlotDetailPage() {
               value={prizeSearch}
               onChange={e => setPrizeSearch(e.target.value)}
             />
-            {prizes.length > 0 && (
+            {prizes.length > 0 ? (
               <div className="mt-2 max-h-44 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
                 {prizes.map(prize => {
                   const isSelected = poolForm.product_prize_ids.includes(String(prize.id))
-                  const pType = prize.products?.type ?? ''
-                  const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : prize.level
                   return (
                     <button
                       key={prize.id}
@@ -470,7 +465,6 @@ export default function SlotDetailPage() {
                           product_prize_ids: isSelected
                             ? p.product_prize_ids.filter(x => x !== pid)
                             : [...p.product_prize_ids, pid],
-                          // 單選時自動帶入庫存；多選時清空讓使用者自填
                           remaining: !isSelected && p.product_prize_ids.length === 0
                             ? (prize.remaining != null ? String(prize.remaining) : '')
                             : p.remaining,
@@ -498,18 +492,19 @@ export default function SlotDetailPage() {
                         className="w-10 h-10 object-cover rounded-lg shrink-0 bg-neutral-100"
                       />
                       <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0 whitespace-nowrap">
-                        {displayLevel}
+                        {prize.level}
                       </span>
-                      <div className="flex flex-col min-w-0">
-                        <span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-neutral-800'}`}>{prize.name}</span>
-                        <span className="text-xs text-neutral-400 truncate">{prize.products?.name ?? ''}</span>
-                      </div>
+                      <span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-neutral-800'}`}>{prize.name}</span>
                       {prize.remaining != null && (
                         <span className="ml-auto text-xs text-neutral-400 shrink-0">庫存 {prize.remaining}</span>
                       )}
                     </button>
                   )
                 })}
+              </div>
+            ) : (
+              <div className="mt-2 py-4 text-center text-xs text-neutral-400">
+                尚無品項。請先至「品項管理」建立挑戰機台專用品項。
               </div>
             )}
             {selectedPrizes.length > 0 && (
