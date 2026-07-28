@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import AdminLayout from '@/components/AdminLayout'
-import PageCard from '@/components/PageCard'
+import { AdminLayout, PageCard, Modal, SearchToolbar, SortableTableHeader } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
-import Modal from '@/components/Modal'
-import SearchToolbar from '@/components/SearchToolbar'
 import { useToast } from '@/contexts/ToastContext'
 
 interface SlotMachine {
@@ -54,6 +51,8 @@ export default function SlotPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
+  const [sortField, setSortField] = useState('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
     Object.fromEntries(COLUMNS.map(c => [c.key, true]))
   )
@@ -67,6 +66,23 @@ export default function SlotPage() {
   }
 
   useEffect(() => { fetchMachines() }, [])
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const getDensityClasses = () => {
+    switch (tableDensity) {
+      case 'compact':     return 'py-2 px-2'
+      case 'normal':      return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  }
 
   const handleCreate = async () => {
     setSaving(true)
@@ -107,15 +123,28 @@ export default function SlotPage() {
     if (res.ok) { toast('已刪除'); fetchMachines() }
   }
 
-  const filtered = machines.filter(m => {
-    if (searchQuery && !m.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    if (statusFilter === 'active' && !m.is_active) return false
-    if (statusFilter === 'inactive' && m.is_active) return false
-    return true
-  })
+  const filtered = machines
+    .filter(m => {
+      if (searchQuery && !m.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      if (statusFilter === 'active' && !m.is_active) return false
+      if (statusFilter === 'inactive' && m.is_active) return false
+      return true
+    })
+    .sort((a, b) => {
+      let av: any, bv: any
+      switch (sortField) {
+        case 'name':         av = a.name ?? ''; bv = b.name ?? ''; break
+        case 'price':        av = a.price_per_spin; bv = b.price_per_spin; break
+        case 'trigger_rate': av = a.trigger_rate; bv = b.trigger_rate; break
+        case 'floor':        av = a.floor_spin_count; bv = b.floor_spin_count; break
+        default:             av = a.name ?? ''; bv = b.name ?? ''
+      }
+      if (typeof av === 'string') return sortDirection === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      return sortDirection === 'asc' ? av - bv : bv - av
+    })
 
-  const tdPy = tableDensity === 'compact' ? 'py-2' : tableDensity === 'normal' ? 'py-3' : 'py-4'
   const show = (key: string) => visibleColumns[key] !== false
+  const dc = getDensityClasses()
 
   return (
     <AdminLayout pageTitle="挑戰機台">
@@ -139,8 +168,8 @@ export default function SlotPage() {
               value: statusFilter,
               onChange: setStatusFilter,
               options: [
-                { value: 'all', label: '全部狀態' },
-                { value: 'active', label: '上架中' },
+                { value: 'all',      label: '全部狀態' },
+                { value: 'active',   label: '上架中' },
                 { value: 'inactive', label: '已下架' },
               ],
             },
@@ -159,33 +188,26 @@ export default function SlotPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-neutral-200">
-                <tr className="text-left text-xs text-neutral-500">
-                  {show('name')         && <th className="pb-3 pr-4 font-medium">機台名稱</th>}
-                  {show('price')        && <th className="pb-3 pr-4 font-medium">每次 G幣</th>}
-                  {show('trigger_rate') && <th className="pb-3 pr-4 font-medium">RUSH 觸發率</th>}
-                  {show('floor')        && <th className="pb-3 pr-4 font-medium">保底轉數</th>}
-                  {show('status')       && <th className="pb-3 pr-4 font-medium">上架</th>}
-                  {show('operations')   && <th className="pb-3 font-medium">操作</th>}
+              <thead className="bg-neutral-50 border-b border-neutral-200">
+                <tr>
+                  {show('name')         && <SortableTableHeader sortKey="name"         currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>機台名稱</SortableTableHeader>}
+                  {show('price')        && <SortableTableHeader sortKey="price"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>每次 G幣</SortableTableHeader>}
+                  {show('trigger_rate') && <SortableTableHeader sortKey="trigger_rate" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>RUSH 觸發率</SortableTableHeader>}
+                  {show('floor')        && <SortableTableHeader sortKey="floor"        currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>保底轉數</SortableTableHeader>}
+                  {show('status')       && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>上架</th>}
+                  {show('operations')   && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>操作</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {filtered.map(machine => (
                   <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                    {show('name')         && <td className={`${tdPy} pr-4 font-medium text-neutral-900`}>{machine.name || '（未命名）'}</td>}
-                    {show('price')        && <td className={`${tdPy} pr-4 text-amber-600 font-bold`}>{machine.price_per_spin}</td>}
-                    {show('trigger_rate') && <td className={`${tdPy} pr-4 text-neutral-600`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>}
-                    {show('floor')        && <td className={`${tdPy} pr-4 text-neutral-600`}>{machine.floor_spin_count}</td>}
-                    {show('status')       && (
-                      <td className={`${tdPy} pr-4`}>
-                        <Switch
-                          checked={machine.is_active}
-                          onCheckedChange={() => toggleActive(machine)}
-                        />
-                      </td>
-                    )}
+                    {show('name')         && <td className={`${dc} text-sm font-medium text-neutral-900 whitespace-nowrap`}>{machine.name || '（未命名）'}</td>}
+                    {show('price')        && <td className={`${dc} text-sm text-amber-600 font-bold whitespace-nowrap`}>{machine.price_per_spin}</td>}
+                    {show('trigger_rate') && <td className={`${dc} text-sm text-neutral-600 whitespace-nowrap`}>{(machine.trigger_rate * 100).toFixed(0)}%</td>}
+                    {show('floor')        && <td className={`${dc} text-sm text-neutral-600 whitespace-nowrap`}>{machine.floor_spin_count}</td>}
+                    {show('status')       && <td className={`${dc} whitespace-nowrap`}><Switch checked={machine.is_active} onCheckedChange={() => toggleActive(machine)} /></td>}
                     {show('operations')   && (
-                      <td className={`${tdPy}`}>
+                      <td className={`${dc} whitespace-nowrap`}>
                         <div className="flex items-center gap-3">
                           <button onClick={() => router.push(`/slot/${machine.id}`)} className="text-primary text-sm font-medium">編輯</button>
                           <button onClick={() => handleDelete(machine)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
