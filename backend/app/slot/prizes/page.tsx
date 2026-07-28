@@ -20,6 +20,8 @@ const LEVEL_COLORS: Record<string, 'gray' | 'blue' | 'purple' | 'amber'> = {
   ultra_rare:  'amber',
 }
 
+interface Supplier { id: number; name: string }
+
 interface SlotPrize {
   id: number
   name: string
@@ -27,6 +29,8 @@ interface SlotPrize {
   image_url: string | null
   description: string | null
   remaining: number | null
+  supplier_id: number | null
+  suppliers: Supplier | null
   is_active: boolean
   created_at: string
 }
@@ -37,14 +41,16 @@ const EMPTY_FORM = {
   image_url: '',
   description: '',
   remaining: '',
+  supplier_id: '',
 }
 
 const COLUMNS = [
-  { key: 'image',     label: '圖片' },
-  { key: 'name',      label: '品項名稱' },
-  { key: 'level',     label: '稀有度' },
-  { key: 'remaining', label: '庫存' },
-  { key: 'status',    label: '上架' },
+  { key: 'image',      label: '圖片' },
+  { key: 'name',       label: '品項名稱' },
+  { key: 'level',      label: '稀有度' },
+  { key: 'supplier',   label: '廠商' },
+  { key: 'remaining',  label: '庫存' },
+  { key: 'status',     label: '上架' },
   { key: 'operations', label: '操作' },
 ]
 
@@ -53,6 +59,7 @@ const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outli
 export default function SlotPrizesPage() {
   const { toast } = useToast()
   const [prizes, setPrizes] = useState<SlotPrize[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -62,9 +69,10 @@ export default function SlotPrizesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [levelFilter, setLevelFilter] = useState('all')
+  const [supplierFilter, setSupplierFilter] = useState('all')
   const [tableDensity, setTableDensity] = useState<'compact' | 'normal' | 'comfortable'>('compact')
-  const [sortField, setSortField] = useState('name')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [sortField, setSortField] = useState('created_at')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
     Object.fromEntries(COLUMNS.map(c => [c.key, true]))
   )
@@ -74,18 +82,15 @@ export default function SlotPrizesPage() {
     const res = await fetch('/api/admin/slot/prizes')
     const json = await res.json()
     setPrizes(json.prizes ?? [])
+    setSuppliers(json.suppliers ?? [])
     setIsLoading(false)
   }, [])
 
   useEffect(() => { fetchPrizes() }, [fetchPrizes])
 
   const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
+    if (sortField === field) setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDirection('asc') }
   }
 
   const getDensityClasses = () => {
@@ -110,6 +115,7 @@ export default function SlotPrizesPage() {
       image_url: p.image_url ?? '',
       description: p.description ?? '',
       remaining: p.remaining != null ? String(p.remaining) : '',
+      supplier_id: p.supplier_id != null ? String(p.supplier_id) : '',
     })
     setShowModal(true)
   }
@@ -128,6 +134,7 @@ export default function SlotPrizesPage() {
           image_url: form.image_url.trim() || null,
           description: form.description.trim() || null,
           remaining: form.remaining !== '' ? parseInt(form.remaining) : null,
+          supplier_id: form.supplier_id !== '' ? parseInt(form.supplier_id) : null,
         }),
       })
       const data = await res.json()
@@ -168,19 +175,22 @@ export default function SlotPrizesPage() {
 
   const filtered = prizes
     .filter(p => {
-      if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase()) && !(p.suppliers?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())) return false
       if (statusFilter === 'active' && !p.is_active) return false
       if (statusFilter === 'inactive' && p.is_active) return false
       if (levelFilter !== 'all' && p.level !== levelFilter) return false
+      if (supplierFilter === 'ggb' && p.supplier_id != null) return false
+      if (supplierFilter !== 'all' && supplierFilter !== 'ggb' && String(p.supplier_id) !== supplierFilter) return false
       return true
     })
     .sort((a, b) => {
       let av: any, bv: any
       switch (sortField) {
-        case 'name':      av = a.name ?? ''; bv = b.name ?? ''; break
-        case 'level':     av = a.level ?? ''; bv = b.level ?? ''; break
+        case 'name':      av = a.name ?? '';   bv = b.name ?? '';   break
+        case 'level':     av = a.level ?? '';  bv = b.level ?? '';  break
+        case 'supplier':  av = a.suppliers?.name ?? ''; bv = b.suppliers?.name ?? ''; break
         case 'remaining': av = a.remaining ?? 99999; bv = b.remaining ?? 99999; break
-        default:          av = a.name ?? ''; bv = b.name ?? ''
+        default:          av = a.created_at;   bv = b.created_at
       }
       if (typeof av === 'string') return sortDirection === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDirection === 'asc' ? av - bv : bv - av
@@ -194,7 +204,7 @@ export default function SlotPrizesPage() {
     <AdminLayout pageTitle="品項管理">
       <PageCard>
         <SearchToolbar
-          searchPlaceholder="搜尋品項名稱..."
+          searchPlaceholder="搜尋品項名稱、廠商..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           showAddButton={true}
@@ -206,15 +216,15 @@ export default function SlotPrizesPage() {
           showFilter={true}
           filterOptions={[
             {
-              key: 'status',
-              label: '上架狀態',
+              key: 'supplier',
+              label: '廠商',
               type: 'select',
-              value: statusFilter,
-              onChange: setStatusFilter,
+              value: supplierFilter,
+              onChange: setSupplierFilter,
               options: [
-                { value: 'all',      label: '全部狀態' },
-                { value: 'active',   label: '上架中' },
-                { value: 'inactive', label: '已下架' },
+                { value: 'all', label: '全部廠商' },
+                { value: 'ggb', label: 'GGB 自有' },
+                ...suppliers.map(s => ({ value: String(s.id), label: s.name })),
               ],
             },
             {
@@ -228,6 +238,18 @@ export default function SlotPrizesPage() {
                 ...LEVEL_OPTIONS.map(o => ({ value: o.value, label: o.label })),
               ],
             },
+            {
+              key: 'status',
+              label: '上架狀態',
+              type: 'select',
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: [
+                { value: 'all',      label: '全部狀態' },
+                { value: 'active',   label: '上架中' },
+                { value: 'inactive', label: '已下架' },
+              ],
+            },
           ]}
           showColumnToggle={true}
           columns={COLUMNS.map(c => ({ key: c.key, label: c.label, visible: visibleColumns[c.key] }))}
@@ -238,7 +260,7 @@ export default function SlotPrizesPage() {
           <div className="py-12 text-center text-sm text-neutral-400">載入中...</div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-neutral-400">
-            {searchQuery || statusFilter !== 'all' || levelFilter !== 'all'
+            {searchQuery || statusFilter !== 'all' || levelFilter !== 'all' || supplierFilter !== 'all'
               ? '找不到符合的品項'
               : '尚無品項，點擊右上角新增'}
           </div>
@@ -248,8 +270,9 @@ export default function SlotPrizesPage() {
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
                   {show('image')      && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>圖片</th>}
-                  {show('name')       && <SortableTableHeader sortKey="name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>品項名稱</SortableTableHeader>}
-                  {show('level')      && <SortableTableHeader sortKey="level" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>稀有度</SortableTableHeader>}
+                  {show('name')       && <SortableTableHeader sortKey="name"      currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>品項名稱</SortableTableHeader>}
+                  {show('level')      && <SortableTableHeader sortKey="level"     currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>稀有度</SortableTableHeader>}
+                  {show('supplier')   && <SortableTableHeader sortKey="supplier"  currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>廠商</SortableTableHeader>}
                   {show('remaining')  && <SortableTableHeader sortKey="remaining" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={dc}>庫存</SortableTableHeader>}
                   {show('status')     && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>上架</th>}
                   {show('operations') && <th className={`${dc} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>操作</th>}
@@ -275,6 +298,14 @@ export default function SlotPrizesPage() {
                     {show('level') && (
                       <td className={`${dc} whitespace-nowrap`}>
                         <Badge color={LEVEL_COLORS[p.level] ?? 'gray'}>{levelLabel(p.level)}</Badge>
+                      </td>
+                    )}
+                    {show('supplier') && (
+                      <td className={`${dc} whitespace-nowrap text-neutral-700`}>
+                        {p.suppliers?.name
+                          ? <span>{p.suppliers.name}</span>
+                          : <span className="text-neutral-400 text-xs">GGB 自有</span>
+                        }
                       </td>
                     )}
                     {show('remaining') && (
@@ -321,6 +352,21 @@ export default function SlotPrizesPage() {
               placeholder="例：特製帆布袋"
               className={INPUT}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">廠商</label>
+            <select
+              value={form.supplier_id}
+              onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))}
+              className={INPUT}
+            >
+              <option value="">GGB 自有（無廠商）</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={String(s.id)}>{s.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-neutral-400 mt-1">廠商談好可循環利用的品項請選廠商；GGB 自購備貨請留空</p>
           </div>
 
           <div>
