@@ -1227,7 +1227,7 @@ function ProfileContent() {
             const preorderAvailableAt = null;
 
             const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
-            const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
+            const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             recycleValue = 10;
@@ -1273,7 +1273,7 @@ function ProfileContent() {
           const items = (data as unknown as DbDrawRecord[]).map((item) => {
             const productType = item.products?.type || 'unknown';
             const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
-            const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
+            const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             return {
@@ -1315,23 +1315,28 @@ function ProfileContent() {
 
         if (listingsError) throw listingsError;
 
-        const activeListings = (listingsData as unknown as DbListing[]).map((item) => ({
-          id: item.id.toString(),
-          draw_record_id: item.draw_records?.id,
-          price: item.price,
-          status: item.status,
-          created_at: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
-          updated_at: new Date(item.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
-          raw_updated_at: new Date(item.updated_at),
-          product: {
-            name: item.draw_records?.product_prizes?.name || '未知',
-            image: item.draw_records?.product_prizes?.image_url || 'https://placehold.co/400',
-            grade: item.draw_records?.product_prizes?.level || '?',
-            series: item.draw_records?.products?.name || '未知',
-            type: item.draw_records?.products?.type || 'unknown'
-          },
-          type: 'sell' as const
-        }));
+        const activeListings = (listingsData as unknown as DbListing[]).map((item) => {
+          const listingProductType = item.draw_records?.products?.type || 'unknown';
+          const listingRawGrade = item.draw_records?.product_prizes?.level || '?';
+          const listingGrade = (['gacha', 'blindbox', 'slot'].includes(listingProductType)) ? '普通' : listingRawGrade;
+          return {
+            id: item.id.toString(),
+            draw_record_id: item.draw_records?.id,
+            price: item.price,
+            status: item.status,
+            created_at: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+            updated_at: new Date(item.updated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+            raw_updated_at: new Date(item.updated_at),
+            product: {
+              name: item.draw_records?.product_prizes?.name || '未知',
+              image: item.draw_records?.product_prizes?.image_url || 'https://placehold.co/400',
+              grade: listingGrade,
+              series: item.draw_records?.products?.name || '未知',
+              type: listingProductType,
+            },
+            type: 'sell' as const
+          };
+        });
 
         setMarketListings(activeListings);
 
@@ -1358,6 +1363,9 @@ function ProfileContent() {
 
         const transactions = (txData as unknown as DbMarketplaceTransaction[]).map((tx) => {
             const isSeller = tx.seller_id === user.id;
+            const txProductType = tx.draw_records?.products?.type || 'unknown';
+            const txRawGrade = tx.draw_records?.product_prizes?.level || '?';
+            const txGrade = (['gacha', 'blindbox', 'slot'].includes(txProductType)) ? '普通' : txRawGrade;
             return {
                 id: tx.id.toString(),
                 price: tx.price,
@@ -1368,9 +1376,9 @@ function ProfileContent() {
                 product: {
                     name: tx.draw_records?.product_prizes?.name || '未知',
                     image: tx.draw_records?.product_prizes?.image_url || 'https://placehold.co/400',
-                    grade: tx.draw_records?.product_prizes?.level || '?',
+                    grade: txGrade,
                     series: tx.draw_records?.products?.name || '未知',
-                    type: tx.draw_records?.products?.type || 'unknown'
+                    type: txProductType,
                 },
                 type: isSeller ? 'sell' : 'buy',
                 counterparty: isSeller ? (tx.buyer?.name || '未知買家') : (tx.seller?.name || '未知賣家')
@@ -1429,7 +1437,7 @@ function ProfileContent() {
              items: (order.draw_records || []).map((dh) => {
                const productType = (dh as any).products?.type || 'unknown';
                const rawGrade = dh.product_prizes?.level || '?';
-               const grade = (['gacha', 'blindbox'].includes(productType)) ? '普通' : rawGrade;
+               const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
                return {
                  grade,
                  name: dh.product_prizes?.name || '未知',

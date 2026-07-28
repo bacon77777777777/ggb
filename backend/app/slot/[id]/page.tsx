@@ -82,9 +82,8 @@ export default function SlotDetailPage() {
   const [savingPool, setSavingPool] = useState(false)
   const [prizes, setPrizes] = useState<ProductPrize[]>([])
   const [prizeSearch, setPrizeSearch] = useState('')
-  const [machineForm, setMachineForm] = useState<Partial<SlotMachine> & { bet_tiers_json?: string }>({})
+  const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
   const [savingMachine, setSavingMachine] = useState(false)
-  const [betTiersJsonError, setBetTiersJsonError] = useState<string | null>(null)
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -92,10 +91,7 @@ export default function SlotDetailPage() {
     const data = await res.json()
     setMachine(data.machine)
     setPool(data.pool ?? [])
-    setMachineForm({
-      ...data.machine,
-      bet_tiers_json: JSON.stringify(data.machine?.bet_tiers ?? DEFAULT_BET_TIERS, null, 2),
-    })
+    setMachineForm({ ...data.machine })
     setIsLoading(false)
   }
 
@@ -112,28 +108,18 @@ export default function SlotDetailPage() {
   }, [showAddPool, prizeSearch])
 
   const handleSaveMachine = async () => {
-    // Validate + parse bet_tiers JSON
-    let parsedTiers: BetTier[] = DEFAULT_BET_TIERS
-    try {
-      parsedTiers = JSON.parse(machineForm.bet_tiers_json ?? '[]')
-      if (!Array.isArray(parsedTiers) || parsedTiers.length === 0) throw new Error('至少需要一個檔次')
-      for (const t of parsedTiers) {
-        if (!t.label || typeof t.coins !== 'number') throw new Error('每個檔次需有 label 和 coins')
-      }
-      setBetTiersJsonError(null)
-    } catch (e: any) {
-      setBetTiersJsonError(e.message)
-      return
+    const bet_tiers = machineForm.bet_tiers ?? DEFAULT_BET_TIERS
+    if (!bet_tiers.length) { toast('至少需要一個下注檔次', 'error'); return }
+    for (const t of bet_tiers) {
+      if (!t.label || !t.coins) { toast('每個檔次需有名稱和 G幣數', 'error'); return }
     }
 
     setSavingMachine(true)
     try {
-      const payload = { ...machineForm, bet_tiers: parsedTiers }
-      delete (payload as any).bet_tiers_json
       const res = await fetch(`/api/admin/slot/machines/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(machineForm),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -180,7 +166,7 @@ export default function SlotDetailPage() {
   if (isLoading) return <AdminLayout><div className="p-8 text-center text-gray-400">載入中...</div></AdminLayout>
   if (!machine) return <AdminLayout><div className="p-8 text-center text-gray-400">機台不存在</div></AdminLayout>
 
-  const machineTiers: BetTier[] = machine.bet_tiers ?? DEFAULT_BET_TIERS
+  const machineTiers: BetTier[] = machineForm.bet_tiers ?? machine.bet_tiers ?? DEFAULT_BET_TIERS
 
   return (
     <AdminLayout>
@@ -198,7 +184,7 @@ export default function SlotDetailPage() {
             <Field label="機台名稱">
               <input type="text" className="input-base" value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
             </Field>
-            <Field label="每次 G幣（相容舊版，建議改用下注檔次）">
+            <Field label="每次 G幣">
               <input type="number" className="input-base" value={machineForm.price_per_spin ?? ''} onChange={e => setMachineForm(p => ({ ...p, price_per_spin: parseInt(e.target.value) }))} />
             </Field>
             <Field label="RUSH 觸發率 (0–1)">
@@ -225,25 +211,53 @@ export default function SlotDetailPage() {
           </div>
 
           {/* Bet tiers editor */}
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              下注檔次（JSON 陣列）
-              <span className="ml-2 text-gray-400 font-normal">格式：{`[{"label":"小注","coins":100}, ...]`}</span>
-            </label>
-            <textarea
-              className={`input-base font-mono text-xs h-28 resize-none ${betTiersJsonError ? 'border-red-400' : ''}`}
-              value={machineForm.bet_tiers_json ?? ''}
-              onChange={e => {
-                setMachineForm(p => ({ ...p, bet_tiers_json: e.target.value }))
-                setBetTiersJsonError(null)
+          <div className="mt-4 md:col-span-2">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">下注檔次</label>
+            <div className="space-y-2">
+              {(machineForm.bet_tiers ?? DEFAULT_BET_TIERS).map((tier, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    className="input-base flex-1"
+                    placeholder="名稱（如：小注）"
+                    value={tier.label}
+                    onChange={e => {
+                      const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
+                      tiers[i] = { ...tiers[i], label: e.target.value }
+                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                    }}
+                  />
+                  <input
+                    type="number"
+                    className="input-base w-28"
+                    placeholder="G幣"
+                    min={1}
+                    value={tier.coins}
+                    onChange={e => {
+                      const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS)]
+                      tiers[i] = { ...tiers[i], coins: parseInt(e.target.value) || 0 }
+                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tiers = (machineForm.bet_tiers ?? DEFAULT_BET_TIERS).filter((_, j) => j !== i)
+                      setMachineForm(p => ({ ...p, bet_tiers: tiers }))
+                    }}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >刪</button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const tiers = [...(machineForm.bet_tiers ?? DEFAULT_BET_TIERS), { label: '', coins: 100 }]
+                setMachineForm(p => ({ ...p, bet_tiers: tiers }))
               }}
-            />
-            {betTiersJsonError && (
-              <p className="text-xs text-red-400 mt-1">{betTiersJsonError}</p>
-            )}
-            <p className="text-xs text-gray-400 mt-1">
-              目前：{machineTiers.map(t => `${t.label}(${t.coins}G)`).join(' · ')}
-            </p>
+              className="mt-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+            >+ 新增檔次</button>
           </div>
 
           <div className="mt-4 flex justify-end">
