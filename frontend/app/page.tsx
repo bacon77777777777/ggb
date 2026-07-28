@@ -1756,9 +1756,9 @@ export default function Home() {
       <Link
         href="/ranking"
         aria-label="排行榜"
-        className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform border border-white/10 md:hidden"
+        className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform border border-white/10 md:hidden overflow-visible"
       >
-        <Image src="/images/topbar/2b.png" alt="排行榜" width={26} height={26} />
+        <Image src="/images/topbar/2b.png" alt="排行榜" width={44} height={44} className="drop-shadow-lg" />
       </Link>
     </div>
   );
