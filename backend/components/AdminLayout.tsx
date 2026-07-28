@@ -997,11 +997,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
               <div>
                 {/* 優先使用側邊欄菜單中的名稱，確保與側邊欄同步 */}
                 <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-                  {flatMenuItems.find((item) => {
-                    if (item.path === pathname) return true
-                    if (pathname.startsWith(item.path + '/')) return true
-                    return false
-                  })?.name || pageTitle || '後台管理'}
+                  {(
+                    flatMenuItems.find(item => item.path === pathname) ??
+                    flatMenuItems.find(item => pathname.startsWith(item.path + '/'))
+                  )?.name || pageTitle || '後台管理'}
                   {PAGE_INFO[pathname] && (
                     <span className="relative group inline-flex items-center">
                       <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
@@ -1020,7 +1019,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {(() => {
                   const crumbs: Breadcrumb[] = breadcrumbs ?? (() => {
                     for (const group of menuGroups) {
-                      const item = group.items.find(i => i.path === pathname || pathname.startsWith(i.path + '/'))
+                      const item = group.items.find(i => i.path === pathname) ?? group.items.find(i => pathname.startsWith(i.path + '/'))
                       if (item) return [{ label: group.title }, { label: item.name }]
                     }
                     return []

@@ -60,6 +60,12 @@ interface SlotPoolItem {
     recycle_value: number;
     products: { type: string } | null;
   } | null;
+  slot_prizes: {
+    id: number;
+    name: string;
+    level: string;
+    image_url: string | null;
+  } | null;
 }
 
 interface SlotSession {
@@ -343,14 +349,14 @@ export default function MachinePage() {
     : 0;
 
   const regularPool = pool
-    .filter(item => !item.rush_only && item.product_prizes)
+    .filter(item => !item.rush_only && (item.product_prizes || item.slot_prizes))
     .sort((a, b) => {
       const aLocked = a.min_bet != null && a.min_bet > currentTier.coins;
       const bLocked = b.min_bet != null && b.min_bet > currentTier.coins;
       if (aLocked !== bLocked) return Number(aLocked) - Number(bLocked);
       return (a.min_bet ?? 0) - (b.min_bet ?? 0);
     });
-  const rushPool = pool.filter(item => item.rush_only && item.product_prizes);
+  const rushPool = pool.filter(item => item.rush_only && (item.product_prizes || item.slot_prizes));
 
   // ── renderers ──────────────────────────────────────────────
 
@@ -521,17 +527,18 @@ export default function MachinePage() {
             <tr><td colSpan={2} className="px-4 py-6 text-center text-sm text-neutral-400">尚無品項</td></tr>
           )}
           {regularPool.map(item => {
+            const prize = item.product_prizes ?? item.slot_prizes;
             const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
             const pType = item.product_prizes?.products?.type ?? '';
-            const rawLevel = item.product_prizes?.level ?? '';
+            const rawLevel = prize?.level ?? '';
             const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
             return (
               <tr key={item.id} className={cn("transition-colors", isLocked ? "opacity-35" : "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50")}>
                 <td className="px-2 sm:px-6 py-1.5 sm:py-3">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                      {item.product_prizes?.image_url ? (
-                        <Image src={item.product_prizes.image_url} alt={item.product_prizes.name} fill className="object-cover" unoptimized />
+                      {prize?.image_url ? (
+                        <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
                       ) : (
                         <div className="flex items-center justify-center w-full h-full">
                           <Trophy className="w-4 h-4 text-neutral-300" />
@@ -545,7 +552,7 @@ export default function MachinePage() {
                         </span>
                       )}
                       <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
-                        {item.product_prizes?.name}
+                        {prize?.name}
                       </span>
                     </div>
                   </div>
@@ -575,16 +582,17 @@ export default function MachinePage() {
           <table className="w-full text-left table-fixed">
             <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
               {rushPool.map(item => {
+                const prize = item.product_prizes ?? item.slot_prizes;
                 const pType = item.product_prizes?.products?.type ?? '';
-                const rawLevel = item.product_prizes?.level ?? '';
+                const rawLevel = prize?.level ?? '';
                 const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
                 return (
                   <tr key={item.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-900/10 transition-colors">
                     <td className="px-2 sm:px-6 py-1.5 sm:py-3">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                          {item.product_prizes?.image_url ? (
-                            <Image src={item.product_prizes.image_url} alt={item.product_prizes.name} fill className="object-cover" unoptimized />
+                          {prize?.image_url ? (
+                            <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
                           ) : (
                             <div className="flex items-center justify-center w-full h-full">
                               <Trophy className="w-4 h-4 text-amber-300" />
@@ -598,7 +606,7 @@ export default function MachinePage() {
                             </span>
                           )}
                           <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
-                            {item.product_prizes?.name}
+                            {prize?.name}
                           </span>
                         </div>
                       </div>

@@ -26,7 +26,8 @@ export async function GET(
         .from('slot_pool_items')
         .select(`
           id, min_bet, is_floor, rush_only, normal_only, remaining,
-          product_prizes (id, name, level, image_url, recycle_value, products(type))
+          product_prizes (id, name, level, image_url, recycle_value, products(type)),
+          slot_prizes (id, name, level, image_url)
         `)
         .eq('machine_id', machineId)
         .order('id', { ascending: true }),

@@ -231,7 +231,7 @@ export default function SlotDetailPage() {
 
   const getTabItems = (tab: string) =>
     tab === 'rush'
-      ? pool.filter(p => p.rush_only)
+      ? pool.filter(p => !p.normal_only && !p.is_floor)   // RUSH 池：非僅限普通、非保底（含共用品項）
       : pool.filter(p => !p.rush_only && (p.min_bet == null || String(p.min_bet) === tab))
 
   const tabItems = getTabItems(poolTab)

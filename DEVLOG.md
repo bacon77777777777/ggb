@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.28f｜2026-07-28｜挑戰機台品項系統 + 前台獎池修正 + UI 統一
+
+### 後台（挑戰機台）
+- `slot/prizes/page.tsx`：品項管理頁全面設計系統化（Modal 圖片改上傳、廠商/庫存必填、移除描述）
+- `AdminLayout.tsx`：修正子路徑標題/麵包屑 bug（`/slot/prizes` 誤顯示「機台管理」，改為精確比對優先）
+- 挑戰機台獎池設計：一等獎庫存=1、二/三等獎各 2 品項、挑戰獎作保底（移除重複一般池條目）
+- RUSH tab 顯示邏輯修正：改為 `!normal_only && !is_floor`（與 RPC 一致，共用品項也顯示在 RUSH）
+
+### 前台（挑戰機 / 商品詳情）
+- `challenge/[id]/page.tsx`：獎池支援 `slot_prizes`（補 interface、COALESCE `product_prizes ?? slot_prizes`）
+- `api/slot/machines/[id]/route.ts`：pool query 補 join `slot_prizes`
+- 修正 `regularPool` / `rushPool` 過濾條件，加入 `|| item.slot_prizes`
+- `GachaCollectionList.tsx`：商品資訊卡分隔線改滿邊（`overflow-hidden` + `divide-y`）、標題風格統一
+- `item/[id]/page.tsx`：商品資訊卡同步改滿邊分隔線、移除 `border-dashed`（4 處）
+
+---
+
 ## v2026.07.28e｜2026-07-28｜挑戰機台後台 UI 整理 + 賞等標籤修正
 
 ### 後台（挑戰機台）

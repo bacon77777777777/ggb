@@ -1,23 +1,33 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { AdminLayout, PageCard, Modal, SearchToolbar, SortableTableHeader } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 
 const LEVEL_OPTIONS = [
-  { value: 'normal',     label: '普通' },
-  { value: 'rare',       label: '稀有' },
-  { value: 'super_rare', label: 'SR' },
-  { value: 'ultra_rare', label: 'UR' },
+  { value: '一等獎', label: '一等獎' },
+  { value: '二等獎', label: '二等獎' },
+  { value: '三等獎', label: '三等獎' },
+  { value: '四等獎', label: '四等獎' },
+  { value: '五等獎', label: '五等獎' },
+  { value: '六等獎', label: '六等獎' },
+  { value: '七等獎', label: '七等獎' },
+  { value: '八等獎', label: '八等獎' },
+  { value: '挑戰獎', label: '挑戰獎' },
 ]
 
-const LEVEL_COLORS: Record<string, 'gray' | 'blue' | 'purple' | 'amber'> = {
-  normal:      'gray',
-  rare:        'blue',
-  super_rare:  'purple',
-  ultra_rare:  'amber',
+const LEVEL_COLORS: Record<string, 'gray' | 'blue' | 'purple' | 'amber' | 'red'> = {
+  '一等獎': 'amber',
+  '二等獎': 'purple',
+  '三等獎': 'blue',
+  '四等獎': 'blue',
+  '五等獎': 'gray',
+  '六等獎': 'gray',
+  '七等獎': 'gray',
+  '八等獎': 'gray',
+  '挑戰獎': 'red',
 }
 
 interface Supplier { id: number; name: string }
@@ -27,7 +37,6 @@ interface SlotPrize {
   name: string
   level: string
   image_url: string | null
-  description: string | null
   remaining: number | null
   supplier_id: number | null
   suppliers: Supplier | null
@@ -37,9 +46,8 @@ interface SlotPrize {
 
 const EMPTY_FORM = {
   name: '',
-  level: 'normal',
+  level: '一等獎',
   image_url: '',
-  description: '',
   remaining: '',
   supplier_id: '',
 }
@@ -63,6 +71,8 @@ export default function SlotPrizesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
@@ -76,6 +86,7 @@ export default function SlotPrizesPage() {
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(
     Object.fromEntries(COLUMNS.map(c => [c.key, true]))
   )
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchPrizes = useCallback(async () => {
     setIsLoading(true)
@@ -101,9 +112,16 @@ export default function SlotPrizesPage() {
     }
   }
 
+  function resetImageState() {
+    setImageFile(null)
+    setImagePreview('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    resetImageState()
     setShowModal(true)
   }
 
@@ -113,17 +131,42 @@ export default function SlotPrizesPage() {
       name: p.name,
       level: p.level,
       image_url: p.image_url ?? '',
-      description: p.description ?? '',
       remaining: p.remaining != null ? String(p.remaining) : '',
       supplier_id: p.supplier_id != null ? String(p.supplier_id) : '',
     })
+    resetImageState()
+    setImagePreview(p.image_url ?? '')
     setShowModal(true)
   }
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
+    }
+  }
+
   async function handleSave() {
-    if (!form.name.trim()) return
+    if (!form.name.trim()) { toast('請填寫品項名稱', 'error'); return }
+    if (!form.supplier_id) { toast('請選擇廠商', 'error'); return }
+    if (form.remaining === '') { toast('請填寫庫存數量', 'error'); return }
     setSaving(true)
     try {
+      let finalImageUrl = form.image_url
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop() || 'jpg'
+        const fileName = `slot-prize-${Date.now()}.${fileExt}`
+        const uploadForm = new FormData()
+        uploadForm.append('file', imageFile)
+        uploadForm.append('bucket', 'products')
+        uploadForm.append('path', fileName)
+        const uploadRes = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
+        const uploadJson = await uploadRes.json()
+        if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
+        finalImageUrl = String(uploadJson?.publicUrl || '')
+      }
+
       const url = editingId ? `/api/admin/slot/prizes/${editingId}` : '/api/admin/slot/prizes'
       const res = await fetch(url, {
         method: editingId ? 'PATCH' : 'POST',
@@ -131,10 +174,9 @@ export default function SlotPrizesPage() {
         body: JSON.stringify({
           name: form.name.trim(),
           level: form.level,
-          image_url: form.image_url.trim() || null,
-          description: form.description.trim() || null,
-          remaining: form.remaining !== '' ? parseInt(form.remaining) : null,
-          supplier_id: form.supplier_id !== '' ? parseInt(form.supplier_id) : null,
+          image_url: finalImageUrl || null,
+          remaining: parseInt(form.remaining),
+          supplier_id: parseInt(form.supplier_id),
         }),
       })
       const data = await res.json()
@@ -290,7 +332,6 @@ export default function SlotPrizesPage() {
                     {show('name') && (
                       <td className={`${dc} font-medium text-neutral-900 whitespace-nowrap`}>
                         <div>{p.name}</div>
-                        {p.description && <div className="text-xs text-neutral-400 font-normal mt-0.5 truncate max-w-xs">{p.description}</div>}
                       </td>
                     )}
                     {show('level') && (
@@ -350,18 +391,19 @@ export default function SlotPrizesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">廠商</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              廠商 <span className="text-red-500">*</span>
+            </label>
             <select
               value={form.supplier_id}
               onChange={e => setForm(f => ({ ...f, supplier_id: e.target.value }))}
               className={INPUT}
             >
-              <option value="">— 不指定廠商 —</option>
+              <option value="">— 請選擇廠商 —</option>
               {suppliers.map(s => (
                 <option key={s.id} value={String(s.id)}>{s.name}</option>
               ))}
             </select>
-            <p className="text-xs text-neutral-400 mt-1">廠商談好可循環利用的品項請選廠商</p>
           </div>
 
           <div>
@@ -378,37 +420,31 @@ export default function SlotPrizesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">圖片網址</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">品項圖片</label>
             <input
-              type="text"
-              value={form.image_url}
-              onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
-              placeholder="https://..."
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
               className={INPUT}
             />
+            {imagePreview && (
+              <img src={imagePreview} alt="預覽" className="mt-2 w-full h-32 object-cover rounded-lg" />
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">描述</label>
-            <textarea
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              rows={2}
-              className={INPUT + ' resize-none'}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">庫存數量</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              庫存數量 <span className="text-red-500">*</span>
+            </label>
             <input
               type="number"
               min="0"
               value={form.remaining}
               onChange={e => setForm(f => ({ ...f, remaining: e.target.value }))}
-              placeholder="留空 = 無限"
+              placeholder="請輸入庫存數量"
               className={INPUT}
             />
-            <p className="text-xs text-neutral-400 mt-1">留空表示無限庫存</p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -417,7 +453,7 @@ export default function SlotPrizesPage() {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !form.name.trim()}
+              disabled={saving}
               className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
             >
               {saving ? '儲存中...' : '儲存'}
