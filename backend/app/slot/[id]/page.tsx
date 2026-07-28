@@ -90,7 +90,7 @@ export default function SlotDetailPage() {
       .select('id, name, level, product_id, products(name)')
       .ilike('name', prizeSearch ? `%${prizeSearch}%` : '%')
       .limit(30)
-      .then(({ data }) => setPrizes((data ?? []) as ProductPrize[]))
+      .then(({ data }) => setPrizes((data ?? []) as unknown as ProductPrize[]))
   }, [showAddPool, prizeSearch])
 
   const handleSaveMachine = async () => {
