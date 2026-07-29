@@ -466,7 +466,7 @@ export default function SlotThemeDetailPage() {
                 <Field label="RUSH 延續率">
                   <div className="relative">
                     <input type="number" step={0.01} min={0} max={99.99} className={INPUT + ' pr-8'}
-                      value={continueR > 0 ? parseFloat((continueR * 100).toFixed(2)) : ''}
+                      value={continueR > 0 ? (continueR * 100).toFixed(2) : ''}
                       onChange={e => setForm(prev => ({ ...prev, continue_rate: parseFloat(e.target.value) / 100 }))}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
