@@ -114,8 +114,25 @@ export default function SlotThemeDetailPage() {
 
   const directAttackCosts = parsedTiers.map(t => ({
     coins: t.coins,
-    cost: t.coins * (form.floor_spin_count ?? 302),
+    cost: t.coins * (form.floor_spin_count ?? 70),
   }))
+
+  // RTP 估算（僅計算普通旋轉幣值回報部分，不含 RUSH 實體獎品）
+  const rtpCoinOnly = (() => {
+    const p = form.trigger_rate ?? 0
+    const N = form.floor_spin_count ?? 70
+    if (p <= 0 || N <= 0 || spinReturns.length === 0) return null
+    const totalWeight = spinReturns.reduce((s, r) => s + r.weight, 0)
+    const avgMultiplier = spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / totalWeight
+    // E[normal spins per cycle] ≈ E[spins until trigger] = [1-(1-p)^N]/p
+    const eSpins = (1 - Math.pow(1 - p, N)) / p
+    const eRushHits = form.min_rush_hits != null && form.continue_rate != null
+      ? form.min_rush_hits + form.continue_rate / (1 - form.continue_rate)
+      : 1
+    // 普通旋轉回報（天井後重置，E[normal]=eSpins-1 ≈ eSpins for large N）
+    const coinRtp = ((eSpins - eRushHits) * avgMultiplier) / (eSpins)
+    return { coinRtp, eSpins: eSpins.toFixed(1), avgMultiplier: avgMultiplier.toFixed(3) }
+  })()
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -413,7 +430,7 @@ export default function SlotThemeDetailPage() {
                     onChange={e => setForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))}
                   />
                 </Field>
-                <Field label="天井轉數">
+                <Field label="保底轉數">
                   <input type="number" className={INPUT} min={1}
                     value={form.floor_spin_count ?? ''}
                     onChange={e => setForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))}
@@ -426,13 +443,28 @@ export default function SlotThemeDetailPage() {
                   <div className="text-neutral-500">平均 RUSH 連數</div>
                   <div className="font-bold text-neutral-800 text-base">{avgRushHits} 連</div>
                 </div>
-                {directAttackCosts.slice(0, 3).map(({ coins, cost }) => (
-                  <div key={coins}>
-                    <div className="text-neutral-500">直頂費用 ({coins.toLocaleString()}G)</div>
-                    <div className="font-bold text-neutral-800 text-base">{cost.toLocaleString()} G</div>
+                <div>
+                  <div className="text-neutral-500">平均保底間距</div>
+                  <div className="font-bold text-neutral-800 text-base">{rtpCoinOnly?.eSpins ?? '—'} 轉</div>
+                </div>
+                <div>
+                  <div className="text-neutral-500">普通回報率（不含RUSH）</div>
+                  <div className="font-bold text-neutral-800 text-base">
+                    {rtpCoinOnly ? `${(rtpCoinOnly.coinRtp * 100).toFixed(1)}%` : '—'}
                   </div>
-                ))}
+                </div>
               </div>
+              {/* 直頂費用（全部檔次）*/}
+              {directAttackCosts.length > 0 && (
+                <div className="mt-2 p-3 bg-neutral-50 rounded-xl grid grid-cols-2 md:grid-cols-5 gap-4 text-xs">
+                  {directAttackCosts.map(({ coins, cost }) => (
+                    <div key={coins}>
+                      <div className="text-neutral-500">直頂費用 ({coins.toLocaleString()}G)</div>
+                      <div className="font-bold text-neutral-800 text-base">{cost.toLocaleString()} G</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </PageCard>
 
             {/* 普通旋轉返還 */}
