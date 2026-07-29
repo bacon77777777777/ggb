@@ -211,12 +211,12 @@ function MachineCard({
 
         {/* Tier switcher — stop propagation so clicking pill doesn't open modal */}
         {tiers.length > 1 && (
-          <div className="flex gap-1 mt-1.5 flex-wrap">
+          <div className="flex gap-0.5 mt-1.5 overflow-hidden">
             {tiers.map((t, i) => (
               <button key={t.coins}
                 onClick={e => { e.stopPropagation(); setTierIdx(i); }}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[11px] font-black transition-colors',
+                  'px-1.5 py-0.5 rounded text-[10px] font-black transition-colors whitespace-nowrap flex-shrink-0',
                   tierIdx === i
                     ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-900'
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
@@ -274,13 +274,13 @@ export default function ChallengePage() {
     })();
   }, []);
 
+  // 用 slot_themes.name 分組（無主題則 fallback machine_theme）
+  const themeKey = (m: SlotMachine) => m.slot_themes?.name || m.machine_theme || '其他';
+
   // Build tabs
   const themes = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const m of machines) {
-      const t = m.machine_theme || '其他';
-      counts[t] = (counts[t] ?? 0) + 1;
-    }
+    for (const m of machines) counts[themeKey(m)] = (counts[themeKey(m)] ?? 0) + 1;
     return [
       { name: '全部', count: machines.length },
       ...Object.entries(counts).map(([name, count]) => ({ name, count })),
@@ -290,7 +290,7 @@ export default function ChallengePage() {
   const filtered = useMemo(() =>
     activeTheme === '全部'
       ? machines
-      : machines.filter(m => (m.machine_theme || '其他') === activeTheme),
+      : machines.filter(m => themeKey(m) === activeTheme),
     [machines, activeTheme]
   );
 
@@ -299,7 +299,7 @@ export default function ChallengePage() {
     const map = new Map<number, number>();
     const grouped: Record<string, SlotMachine[]> = {};
     for (const m of machines) {
-      const t = m.machine_theme || '其他';
+      const t = themeKey(m);
       grouped[t] = [...(grouped[t] ?? []), m];
     }
     for (const arr of Object.values(grouped)) arr.forEach((m, i) => map.set(m.id, i + 1));

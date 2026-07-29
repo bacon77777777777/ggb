@@ -12,19 +12,19 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 
-// ── 影片素材（暫用 events/1 現有素材）────────────────────────────────────
-const BASE_VIDEO = 'https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho'
-const VIDEOS = {
-  rush_entry:      `${BASE_VIDEO}/banchou-buildup.mp4`,
-  rush_win:        `${BASE_VIDEO}/banchou-win.mp4`,
-  rush_win_strong: `${BASE_VIDEO}/banchou-win-strong.mp4`,
-  rush_win_god:    `${BASE_VIDEO}/banchou-win-god.mp4`,
+interface ThemeVideos {
+  video_rush_entry:        string | null;
+  video_rush_anticipation: string | null;
+  video_rush_win:          string | null;
+  video_rush_win_strong:   string | null;
+  video_rush_win_god:      string | null;
+  video_rush_revival:      string | null;
 }
 
-function pickRushWinVideo(level: string): string {
-  if (level === 'A' || level === 'Last One' || level === 'LAST ONE') return VIDEOS.rush_win_god
-  if (level === 'B') return VIDEOS.rush_win_strong
-  return VIDEOS.rush_win
+function pickRushWinVideo(videos: ThemeVideos, videoType: string): string | null {
+  if (videoType === 'win_god')    return videos.video_rush_win_god
+  if (videoType === 'win_strong') return videos.video_rush_win_strong
+  return videos.video_rush_win
 }
 
 interface BetTier {
@@ -43,6 +43,7 @@ interface SlotMachine {
   min_rush_hits: number;
   floor_spin_count: number;
   bet_tiers: BetTier[];
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null } | null;
 }
 
 interface SlotPoolItem {
@@ -91,6 +92,7 @@ interface SpinResult {
     level: string;
     image_url: string;
     recycle_value: number;
+    video_type?: string;
   };
   session: SlotSession;
   rush_triggered: boolean;
@@ -752,9 +754,12 @@ export default function MachinePage() {
             {/* 影片本體 */}
             <video
               key={videoPhase}
-              src={videoPhase === 'rush_entry'
-                ? VIDEOS.rush_entry
-                : pickRushWinVideo(lastResult?.prize.level ?? '')}
+              src={(videoPhase === 'rush_entry'
+                ? machine.slot_themes?.video_rush_entry
+                : pickRushWinVideo(
+                    machine.slot_themes ?? { video_rush_entry:null,video_rush_anticipation:null,video_rush_win:null,video_rush_win_strong:null,video_rush_win_god:null,video_rush_revival:null },
+                    lastResult?.prize.video_type ?? 'win'
+                  )) ?? undefined}
               autoPlay
               muted
               playsInline

@@ -18,7 +18,12 @@ export async function GET(
     const [machineRes, poolRes] = await Promise.all([
       supabase
         .from('slot_machines')
-        .select('*')
+        .select(`*, slot_themes(
+          id, name, image_url,
+          video_rush_entry, video_rush_anticipation,
+          video_rush_win, video_rush_win_strong,
+          video_rush_win_god, video_rush_revival
+        )`)
         .eq('id', machineId)
         .eq('is_active', true)
         .single(),
