@@ -202,7 +202,7 @@ function TierSelectModal({
                               ? <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
                               : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-5 h-5 text-neutral-300" /></div>}
                           </div>
-                          <div className="mt-px h-[2.4em] flex items-center justify-center w-full px-0.5">
+                          <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
                             <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{prize?.name}</p>
                           </div>
                           {val > 0 && <p className="text-[9px] font-black text-primary tabular-nums text-center">{val.toLocaleString()} G</p>}
@@ -231,7 +231,7 @@ function TierSelectModal({
                             ? <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
                             : <div className="flex items-center justify-center w-full h-full"><Coins className="w-5 h-5 text-amber-400" /></div>}
                         </div>
-                        <div className="mt-px h-[2.4em] flex items-center justify-center w-full px-0.5">
+                        <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
                           <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
                         </div>
                         {ret != null && <p className="text-[9px] font-black text-primary tabular-nums text-center">{ret.toLocaleString()} G</p>}
