@@ -27,13 +27,57 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('slot_pool_items')
-    .select('id, min_bet, remaining, display_name, slot_prizes(id, name, image_url, level)')
+    .select('id, min_bet, remaining, display_name, slot_prizes(id, name, image_url, level, recycle_value)')
     .eq('machine_id', firstId)
     .eq('rush_only', true)
     .order('min_bet', { ascending: true, nullsFirst: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ items: data ?? [] })
+}
+
+// PATCH: 更新獎品回收幣值（同步到此主題所有機台的同名 slot_prizes）
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await requireAdminSession()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const { prize_name, recycle_value } = await request.json()
+  if (!prize_name || recycle_value == null)
+    return NextResponse.json({ error: '缺少 prize_name 或 recycle_value' }, { status: 400 })
+
+  const supabase = getSupabaseAdmin()
+
+  // 找出此主題所有機台的 rush pool items 中符合該名稱的 slot_prize_id
+  const { data: machines } = await supabase
+    .from('slot_machines').select('id').eq('theme_id', id)
+
+  if (!machines || machines.length === 0)
+    return NextResponse.json({ success: true })
+
+  const machineIds = machines.map((m: { id: number }) => m.id)
+
+  const { data: items } = await supabase
+    .from('slot_pool_items')
+    .select('slot_prize_id')
+    .in('machine_id', machineIds)
+    .eq('rush_only', true)
+    .not('slot_prize_id', 'is', null)
+
+  const prizeIds = (items ?? []).map((i: { slot_prize_id: number }) => i.slot_prize_id).filter(Boolean)
+  if (prizeIds.length === 0) return NextResponse.json({ success: true })
+
+  const { error } = await supabase
+    .from('slot_prizes')
+    .update({ recycle_value: parseInt(String(recycle_value)) })
+    .in('id', prizeIds)
+    .eq('name', prize_name)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
 }
 
 // POST: 新增 rush 獎品到此主題的所有機台

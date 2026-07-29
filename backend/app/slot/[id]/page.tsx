@@ -32,7 +32,7 @@ interface PoolItem {
   min_bet: number | null
   remaining: number | null
   display_name: string | null
-  slot_prizes: { id: number; name: string; image_url: string | null; level: string } | null
+  slot_prizes: { id: number; name: string; image_url: string | null; level: string; recycle_value: number } | null
 }
 interface SlotPrize {
   id: number; name: string; image_url: string | null; level: string
@@ -110,6 +110,7 @@ export default function SlotThemeDetailPage() {
   const [addForm, setAddForm]             = useState({ min_bet: '', remaining: '' })
   const [savingPrize, setSavingPrize]     = useState(false)
   const savingPrizeLock = useRef(false)
+  const [editingRecycle, setEditingRecycle] = useState<{ name: string; value: string } | null>(null)
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -151,6 +152,17 @@ export default function SlotThemeDetailPage() {
 
   const stats = calcStats(p, N, minHits, continueR)
   const rtpColor = !stats ? '' : stats.coinRtp > 0.7 ? 'text-red-600' : stats.coinRtp > 0.5 ? 'text-amber-600' : 'text-green-600'
+
+  // 各檔次完整 RTP（含 RUSH 實體獎品回收幣值）
+  const tierRtpList = stats ? parsedTiers.map(t => {
+    const eligible  = poolItems.filter(p => p.min_bet == null || p.min_bet <= t.coins)
+    const totalRecycle = eligible.reduce((s, p) => s + (p.slot_prizes?.recycle_value ?? 0), 0)
+    const avgRecycle   = eligible.length > 0 ? totalRecycle / eligible.length : 0
+    const prizeRtp     = avgRecycle > 0 ? (stats.eHits / stats.eSpins) * (avgRecycle / t.coins) : null
+    const totalRtp     = stats.coinRtp + (prizeRtp ?? 0)
+    return { tier: t.coins, prizeRtp, totalRtp, avgRecycle, prizeCount: eligible.length }
+  }) : []
+  const hasRecycleData = poolItems.some(p => (p.slot_prizes?.recycle_value ?? 0) > 0)
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -252,6 +264,24 @@ export default function SlotThemeDetailPage() {
     )
     if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
     else toast('移除失敗', 'error')
+  }
+
+  const handleSaveRecycleValue = async () => {
+    if (!editingRecycle) return
+    const val = parseInt(editingRecycle.value)
+    if (isNaN(val) || val < 0) { toast('請輸入有效數字', 'error'); return }
+    const res = await fetch(`/api/admin/slot/themes/${id}/pool`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prize_name: editingRecycle.name, recycle_value: val }),
+    })
+    if (res.ok) {
+      toast('回收幣值已更新')
+      setEditingRecycle(null)
+      fetchPoolItems()
+    } else {
+      toast('更新失敗', 'error')
+    }
   }
 
   const handleAddMachine = async () => {
@@ -446,6 +476,7 @@ export default function SlotThemeDetailPage() {
 
               {/* 自動計算結果 */}
               {stats ? (
+                <>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-neutral-50 rounded-xl p-4 text-center">
                     <div className="text-xs text-neutral-500 mb-1">回報率（幣值返還）</div>
@@ -469,6 +500,37 @@ export default function SlotThemeDetailPage() {
                     </div>
                   </div>
                 </div>
+                {/* 各檔次完整 RTP */}
+                {tierRtpList.length > 0 && (
+                  <div className="bg-neutral-50 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-neutral-500">各檔次完整 RTP（含 RUSH 獎品回收幣值）</p>
+                      {!hasRecycleData && (
+                        <span className="text-[10px] text-amber-600">⚠ 請至 RUSH獎池 tab 設定各品項的回收幣值</span>
+                      )}
+                    </div>
+                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(tierRtpList.length, 5)}, 1fr)` }}>
+                      {tierRtpList.map(({ tier, totalRtp, prizeRtp, avgRecycle, prizeCount }) => {
+                        const color = !prizeRtp ? 'text-neutral-400'
+                          : totalRtp > 0.9 ? 'text-red-600'
+                          : totalRtp > 0.7 ? 'text-amber-600'
+                          : 'text-green-600'
+                        return (
+                          <div key={tier} className="bg-white rounded-lg p-3 text-center border border-neutral-100">
+                            <div className="text-[10px] text-neutral-400 mb-1">{tier.toLocaleString()} G</div>
+                            <div className={`font-black text-xl ${color}`}>
+                              {prizeRtp ? `${(totalRtp * 100).toFixed(1)}%` : '—'}
+                            </div>
+                            {avgRecycle > 0 && (
+                              <div className="text-[10px] text-neutral-400 mt-0.5">均獎 {avgRecycle.toFixed(0)} G</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                </>
               ) : (
                 <div className="bg-neutral-50 rounded-xl p-4 text-sm text-neutral-400 text-center">
                   填入觸發率與連數後自動計算
@@ -520,15 +582,17 @@ export default function SlotThemeDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr>
-                        {['圖片', '名稱', '最低投注', '庫存（每台）', '操作'].map(h => (
+                        {['圖片', '名稱', '最低投注', '回收幣值', '庫存（每台）', '操作'].map(h => (
                           <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
                       {filteredItems.map(item => {
-                        const prizeName = item.slot_prizes?.name ?? item.display_name ?? '—'
-                        const prizeImg  = item.slot_prizes?.image_url ?? '/images/item.png'
+                        const prizeName    = item.slot_prizes?.name ?? item.display_name ?? '—'
+                        const prizeImg     = item.slot_prizes?.image_url ?? '/images/item.png'
+                        const recycleVal   = item.slot_prizes?.recycle_value ?? 0
+                        const isEditingThis = editingRecycle?.name === prizeName
                         return (
                           <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
                             <td className="px-4 py-3">
@@ -541,6 +605,28 @@ export default function SlotThemeDetailPage() {
                               {item.min_bet != null
                                 ? <Badge color="amber">{item.min_bet.toLocaleString()} G+</Badge>
                                 : <span className="text-xs text-neutral-400">全檔次</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {isEditingThis ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number" min={0} autoFocus
+                                    className="w-24 px-2 py-1 border border-primary rounded text-sm"
+                                    value={editingRecycle!.value}
+                                    onChange={e => setEditingRecycle({ name: prizeName, value: e.target.value })}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveRecycleValue(); if (e.key === 'Escape') setEditingRecycle(null) }}
+                                  />
+                                  <button onClick={handleSaveRecycleValue} className="text-xs text-green-600 font-bold px-1">✓</button>
+                                  <button onClick={() => setEditingRecycle(null)} className="text-xs text-neutral-400 px-1">✕</button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingRecycle({ name: prizeName, value: String(recycleVal) })}
+                                  className="text-sm text-neutral-700 hover:text-primary font-mono"
+                                >
+                                  {recycleVal > 0 ? `${recycleVal.toLocaleString()} G` : <span className="text-neutral-300">— 點選設定</span>}
+                                </button>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-neutral-600">
                               {item.remaining != null ? item.remaining : <span className="text-green-600 font-bold">∞</span>}
