@@ -8,9 +8,20 @@ import HeroBanner from '@/components/HeroBanner';
 import { BannerSkeleton } from '@/components/Skeletons';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-import { X } from 'lucide-react';
+import { X, Trophy, Coins } from 'lucide-react';
 
 interface BetTier { label: string; coins: number }
+
+interface SlotPoolItem {
+  id: number;
+  rush_only: boolean;
+  coin_return: boolean | null;
+  return_multiplier: number | null;
+  display_name: string | null;
+  remaining: number | null;
+  product_prizes: { id: number; name: string; image_url: string | null; recycle_value: number } | null;
+  slot_prizes: { id: number; name: string; image_url: string | null; recycle_value: number } | null;
+}
 
 interface SlotTheme {
   id: number;
@@ -90,17 +101,27 @@ function TierSelectModal({
 }) {
   const tiers = machine.bet_tiers ?? [];
   const [selected, setSelected] = useState(tiers[0]?.coins ?? 100);
+  const [pool, setPool] = useState<SlotPoolItem[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/slot/machines/${machine.id}`)
+      .then(r => r.json())
+      .then(d => setPool(d.pool ?? []))
+      .catch(() => {});
+  }, [machine.id]);
+
+  const rushPool     = pool.filter(i => i.rush_only);
+  const coinReturns  = pool.filter(i => !i.rush_only && i.coin_return);
+  const physicalItems = rushPool;
 
   return (
     <AnimatePresence>
-      {/* Backdrop — z-[60] 蓋過底部導航 */}
       <motion.div
         key="backdrop"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
         className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
       />
-      {/* Panel — z-[61] */}
       <motion.div
         key="panel"
         initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
@@ -108,68 +129,123 @@ function TierSelectModal({
         className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col max-h-[90vh] overflow-hidden"
       >
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
-          <h3 className="font-black text-base text-neutral-900 dark:text-white">選擇入場檔次</h3>
-          <button onClick={onClose}
-            className="p-1 -mr-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 active:scale-95 transition-transform">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Machine info */}
-          <div className="flex gap-3 p-3 pb-2">
-            <div className="relative w-12 h-12 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-100 dark:border-neutral-700">
+        <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-100 dark:border-neutral-700">
               <Image
-                src={machine.image_url || machine.slot_themes?.image_url || '/images/item.png'}
+                src={machine.image_url || '/images/slot/item.png'}
                 alt={machine.name} fill className="object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
               />
             </div>
-            <div className="flex-1 min-w-0 py-0.5">
-              <h3 className="font-black text-base text-neutral-900 dark:text-white leading-tight">
-                {machine.name}
-              </h3>
-              <p className="text-sm text-neutral-400">#{machineNumber}</p>
+            <h3 className="font-black text-base text-neutral-900 dark:text-white truncate">
+              {machine.name}
+            </h3>
+          </div>
+          <button onClick={onClose}
+            className="p-1 -mr-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 active:scale-95 transition-transform shrink-0 ml-2">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 pt-3 pb-2">
+            {/* 入場檔次 — single row, no wrap */}
+            <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-2">入場檔次</p>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+              {tiers.map(tier => (
+                <button key={tier.coins} onClick={() => setSelected(tier.coins)}
+                  className={cn(
+                    'h-8 px-3 rounded-lg border font-black text-sm transition-all active:scale-95 whitespace-nowrap shrink-0',
+                    selected === tier.coins
+                      ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white'
+                      : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200'
+                  )}
+                >
+                  {tier.coins} G
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="px-3 pb-3 space-y-2">
-            {/* Tier selection */}
-            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between p-3">
-              <span className="text-[13px] font-bold text-neutral-700 dark:text-neutral-300">入場檔次</span>
-              <div className="flex items-center gap-2">
-                {tiers.map(tier => (
-                  <button key={tier.coins} onClick={() => setSelected(tier.coins)}
-                    className={cn(
-                      'h-9 px-4 rounded-xl border font-black text-sm transition-all active:scale-95',
-                      selected === tier.coins
-                        ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white'
-                        : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200'
-                    )}
-                  >
-                    {tier.coins}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* 獎池總覽 */}
+          <div className="px-4 pb-4 mt-2">
+            <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-3">獎池總覽</p>
 
-            {/* Cost summary */}
-            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 space-y-2">
-              <div className="flex justify-between items-center text-[13px] font-bold text-neutral-500 dark:text-neutral-400">
-                <span>每次入場費用</span>
-                <span className="text-neutral-900 dark:text-neutral-100 font-amount tabular-nums">{selected.toLocaleString()} G幣</span>
-              </div>
-            </div>
+            {/* RUSH 獎品 4欄格狀 */}
+            {physicalItems.length > 0 && (() => {
+              const rushValues = physicalItems.map(item => {
+                if (item.slot_prizes?.recycle_value) return Math.floor(selected * item.slot_prizes.recycle_value / 100);
+                if (item.product_prizes?.recycle_value) return item.product_prizes.recycle_value;
+                return 0;
+              }).filter(v => v > 0);
+              const rMin = rushValues.length ? Math.min(...rushValues) : 0;
+              const rMax = rushValues.length ? Math.max(...rushValues) : 0;
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</p>
+                    {rMin > 0 && (
+                      <p className="text-[10px] font-black text-primary tabular-nums">
+                        {rMin.toLocaleString()} ～ {rMax.toLocaleString()} G
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 mb-4">
+                    {physicalItems.map(item => {
+                      const prize = item.product_prizes ?? item.slot_prizes;
+                      const baseVal = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
+                      const displayVal = item.slot_prizes ? Math.floor(selected * baseVal / 100) : baseVal;
+                      return (
+                        <div key={item.id} className="flex flex-col items-center">
+                          <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
+                            {prize?.image_url
+                              ? <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
+                              : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-5 h-5 text-neutral-300" /></div>}
+                          </div>
+                          <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 mt-0.5 w-full">{prize?.name}</p>
+                          {displayVal > 0 && <p className="text-[9px] font-black text-primary tabular-nums text-center">{displayVal.toLocaleString()} G</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* 普通旋轉返還 */}
+            {coinReturns.length > 0 && (
+              <>
+                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2">普通旋轉返還</p>
+                <div className="space-y-0">
+                  {coinReturns.map((item, idx) => {
+                    const prize = item.slot_prizes;
+                    const ret = item.return_multiplier != null ? Math.floor(selected * item.return_multiplier) : null;
+                    const name = item.display_name ?? prize?.name ?? '返還';
+                    return (
+                      <div key={item.id} className={cn('flex items-center gap-2.5 py-2', idx < coinReturns.length - 1 && 'border-b border-neutral-50 dark:border-neutral-800')}>
+                        <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
+                          {prize?.image_url
+                            ? <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
+                            : <div className="flex items-center justify-center w-full h-full"><Coins className="w-4 h-4 text-amber-400" /></div>}
+                        </div>
+                        <span className="flex-1 text-sm font-bold text-neutral-800 dark:text-neutral-100">{name}</span>
+                        {ret != null && <span className="text-sm font-black text-primary tabular-nums shrink-0">{ret.toLocaleString()} G</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] shrink-0">
           <button onClick={() => onConfirm(selected)}
             className="w-full h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform">
-            確認入場 {selected.toLocaleString()} G幣
+            確認入場 {selected.toLocaleString()} G
           </button>
         </div>
       </motion.div>
@@ -196,7 +272,7 @@ function MachineCard({
       {/* Image — aspect-square like ProductCard */}
       <div className="aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 rounded-t-[8px] relative flex-shrink-0">
         <Image
-          src={machine.image_url || machine.slot_themes?.image_url || '/images/item.png'}
+          src={machine.image_url || '/images/slot/item.png'}
           alt={machine.name} fill className="object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
         />
@@ -204,10 +280,13 @@ function MachineCard({
 
       {/* Content */}
       <div className="p-2 flex flex-col flex-1">
-        {/* Name */}
-        <p className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25]">
-          {machine.name} <span className="text-primary font-black">#{number}</span>
-        </p>
+        {/* Name + Number */}
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-1 leading-[1.25] flex-1 min-w-0">
+            {machine.name}
+          </p>
+          <span className="text-[14px] font-black text-primary shrink-0">#{number}</span>
+        </div>
 
         {/* Tier switcher — stop propagation so clicking pill doesn't open modal */}
         {tiers.length > 1 && (

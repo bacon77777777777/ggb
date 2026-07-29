@@ -513,6 +513,10 @@ function NavbarInner() {
 
   const handleBack = () => {
     // 1. Handle special paths
+    if (pathname.startsWith('/challenge/')) {
+      router.push('/challenge');
+      return;
+    }
     if (pathname === '/topup/success') {
       router.replace('/profile?tab=topup-history');
       return;

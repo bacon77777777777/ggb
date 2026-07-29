@@ -69,6 +69,7 @@ interface SlotPoolItem {
     name: string;
     level: string;
     image_url: string | null;
+    recycle_value: number;
   } | null;
 }
 
@@ -353,7 +354,7 @@ export default function MachinePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-neutral-500 bg-neutral-50 dark:bg-neutral-950">
         <p>機台不存在</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm underline text-primary">返回</button>
+        <button onClick={() => router.push('/challenge')} className="mt-4 text-sm underline text-primary">返回</button>
       </div>
     );
   }
@@ -530,12 +531,15 @@ export default function MachinePage() {
     const coinReturnPool = regularPool.filter(item => item.coin_return);
     const normalPhysicalPool = regularPool.filter(item => !item.coin_return);
 
-    // 格狀品項卡：圖片 + 名稱 + 回收價值
+    // 格狀品項卡：圖片 + 名稱（居中）+ 價值（居中，按檔次縮放）
     const renderGridCard = (item: SlotPoolItem) => {
       const prize = item.product_prizes ?? item.slot_prizes;
-      const recycleValue = item.product_prizes?.recycle_value;
+      const baseValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
+      const displayValue = item.slot_prizes
+        ? Math.floor(currentTier.coins * baseValue / 100)
+        : baseValue;
       return (
-        <div key={item.id} className="flex flex-col">
+        <div key={item.id} className="flex flex-col items-center">
           <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
             {prize?.image_url ? (
               <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-cover" unoptimized />
@@ -545,17 +549,26 @@ export default function MachinePage() {
               </div>
             )}
           </div>
-          <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 px-0.5">
+          <p className="mt-1 text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">
             {prize?.name}
           </p>
-          {recycleValue != null && recycleValue > 0 && (
-            <p className="text-[11px] font-black text-primary tabular-nums px-0.5">
-              {recycleValue.toLocaleString()} G
+          {displayValue > 0 && (
+            <p className="text-[9px] font-black text-primary tabular-nums text-center">
+              {displayValue.toLocaleString()} G
             </p>
           )}
         </div>
       );
     };
+
+    // 計算 RUSH 獎池價值區間（按當前檔次縮放）
+    const rushValues = rushPool.map(item => {
+      if (item.slot_prizes?.recycle_value) return Math.floor(currentTier.coins * item.slot_prizes.recycle_value / 100);
+      if (item.product_prizes?.recycle_value) return item.product_prizes.recycle_value;
+      return 0;
+    }).filter(v => v > 0);
+    const rushMinVal = rushValues.length ? Math.min(...rushValues) : 0;
+    const rushMaxVal = rushValues.length ? Math.max(...rushValues) : 0;
 
     const physicalItems = [...rushPool, ...normalPhysicalPool];
     const hasContent = physicalItems.length > 0 || coinReturnPool.length > 0;
@@ -579,7 +592,14 @@ export default function MachinePage() {
         {/* ── RUSH 獎池 ── */}
         {physicalItems.length > 0 && (
           <div className="px-4 pt-3 pb-4">
-            <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-3">🔥 RUSH 獎池</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</p>
+              {rushMinVal > 0 && (
+                <p className="text-xs font-black text-primary tabular-nums">
+                  {rushMinVal.toLocaleString()} ～ {rushMaxVal.toLocaleString()} G
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-4 gap-2">
               {physicalItems.map(item => renderGridCard(item))}
             </div>
