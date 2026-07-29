@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient as createSsrClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
@@ -11,7 +10,17 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('slot_machines')
-      .select('id, name, description, image_url, price_per_spin, is_active, sort_order')
+      .select(`
+        id, name, description, image_url, price_per_spin, is_active,
+        sort_order, bet_tiers, floor_spin_count, trigger_rate,
+        machine_theme, event_slug, theme_id, machine_number,
+        slot_themes(
+          id, name, image_url, event_slug,
+          video_rush_entry, video_rush_anticipation,
+          video_rush_win, video_rush_win_strong,
+          video_rush_win_god, video_rush_revival
+        )
+      `)
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
 

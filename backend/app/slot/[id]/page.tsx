@@ -1,574 +1,668 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AdminLayout, PageCard, Modal } from '@/components'
-import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
+import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 
-function InfoTooltip({ text, side = 'right' }: { text: string; side?: 'left' | 'right' }) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
-      {show && (
-        <div className={`absolute ${side === 'left' ? 'right-0' : 'left-0'} top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none`}>
-          {text}
-        </div>
-      )}
-    </div>
-  )
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface SpinReturn { name: string; multiplier: number; weight: number }
+interface BetTier { coins: number }
+interface SlotTheme {
+  id: number; name: string; machine_count: number
+  event_slug: string | null; supplier_id: number | null; image_url: string | null
+  bet_tiers: BetTier[]; spin_returns: SpinReturn[]
+  trigger_rate: number; continue_rate: number; min_rush_hits: number; floor_spin_count: number
+  video_rush_entry: string | null; video_rush_anticipation: string | null
+  video_rush_win: string | null; video_rush_win_strong: string | null
+  video_rush_win_god: string | null; video_rush_revival: string | null
+  is_active: boolean; sort_order: number
+  suppliers: { name: string } | null
+}
+interface ThemePrize {
+  id: number; theme_id: number; name: string; image_url: string | null
+  weight: number; video_type: string; per_machine_stock: number | null
+  sort_order: number; is_active: boolean
+}
+interface Machine {
+  id: number; machine_number: number; is_active: boolean
+  slot_pool_items: { id: number; coin_return: boolean; rush_only: boolean }[]
 }
 
-interface BetTier {
-  label: string
-  coins: number
-}
-
-interface SlotMachine {
-  id: number
-  name: string
-  description: string | null
-  image_url: string | null
-  price_per_spin: number
-  trigger_rate: number
-  continue_rate: number
-  min_rush_hits: number
-  floor_spin_count: number
-  is_active: boolean
-  sort_order: number
-  bet_tiers: BetTier[]
-}
-
-interface PoolItem {
-  id: number
-  weight: number
-  min_bet: number | null
-  is_floor: boolean
-  rush_only: boolean
-  normal_only: boolean
-  remaining: number | null
-  product_prizes: { id: number; name: string; level: string; image_url: string | null; remaining: number | null } | null
-  slot_prizes: { id: number; name: string; level: string; image_url: string | null; remaining: number | null } | null
-}
-
-interface SlotPrizeItem {
-  id: number
-  name: string
-  level: string
-  image_url: string | null
-  remaining: number | null
-  is_active: boolean
-}
-
-// pool_band: tier coins as string ('100') or 'rush'
-const EMPTY_POOL_FORM = {
-  product_prize_ids: [] as string[],  // 多選
-  weight: '100',
-  pool_band: '',   // required
-  is_floor: false,
-  remaining: '',
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
-const BTN_GHOST = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
+const BTN_GHOST   = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
 
-function parseTierInput(raw: string): BetTier[] {
-  return raw
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(Number)
-    .filter(n => n > 0)
-    .map(c => ({ label: String(c), coins: c }))
-}
+const DEFAULT_SPIN_RETURNS: SpinReturn[] = [
+  { name: '強レア',    multiplier: 5,    weight: 50   },
+  { name: 'チャンス目', multiplier: 3,    weight: 100  },
+  { name: 'チェリー',  multiplier: 2,    weight: 200  },
+  { name: 'ベル',      multiplier: 1.3,  weight: 500  },
+  { name: 'ハズレ',    multiplier: 0.05, weight: 1150 },
+]
 
-function tiersToInput(tiers: BetTier[]): string {
-  return tiers.map(t => t.coins).join(',')
-}
+const VIDEO_SLOTS = [
+  { key: 'video_rush_entry',        label: '突入演出',   badge: '突入',   desc: 'RUSH 觸發進場動畫' },
+  { key: 'video_rush_anticipation', label: '對決煽り',   badge: '煽り',   desc: '每連開始前緊張演出' },
+  { key: 'video_rush_win',          label: '普通勝利',   badge: '連',     desc: 'RUSH 普通品項獲得' },
+  { key: 'video_rush_win_strong',   label: '強勝利',     badge: '強',     desc: '中高價值品項獲得' },
+  { key: 'video_rush_win_god',      label: '壓勝',       badge: '激アツ', desc: '最高價值品項獲得' },
+  { key: 'video_rush_revival',      label: '逆轉復活',   badge: '次回確定', desc: 'RUSH 繼續確定演出' },
+]
 
-export default function SlotDetailPage() {
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export default function SlotThemeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
 
-  const [machine, setMachine] = useState<SlotMachine | null>(null)
-  const [pool, setPool] = useState<PoolItem[]>([])
+  const [theme, setTheme] = useState<SlotTheme | null>(null)
+  const [prizes, setPrizes] = useState<ThemePrize[]>([])
+  const [machines, setMachines] = useState<Machine[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showAddPool, setShowAddPool] = useState(false)
-  const [poolForm, setPoolForm] = useState(EMPTY_POOL_FORM)
-  const [savingPool, setSavingPool] = useState(false)
-  const [prizes, setPrizes] = useState<SlotPrizeItem[]>([])
-  const [prizeSearch, setPrizeSearch] = useState('')
-  const [selectedPrizes, setSelectedPrizes] = useState<SlotPrizeItem[]>([])
-  const [machineForm, setMachineForm] = useState<Partial<SlotMachine>>({})
-  const [tierInput, setTierInput] = useState('')
-  const [savingMachine, setSavingMachine] = useState(false)
-  const [poolTab, setPoolTab] = useState<string>('') // initialised after machine loads
+  const [activeTab, setActiveTab] = useState<'settings' | 'prizes' | 'videos' | 'machines'>('settings')
+  const [saving, setSaving] = useState(false)
+
+  // Theme form state
+  const [form, setForm] = useState<Partial<SlotTheme>>({})
+  const [betTiersInput, setBetTiersInput] = useState('')
+  const [spinReturns, setSpinReturns] = useState<SpinReturn[]>(DEFAULT_SPIN_RETURNS)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
+
+  // Prize modal
+  const [showAddPrize, setShowAddPrize] = useState(false)
+  const [editingPrize, setEditingPrize] = useState<ThemePrize | null>(null)
+  const [prizeForm, setPrizeForm] = useState({ name: '', image_url: '', weight: '100', video_type: 'win', per_machine_stock: '' })
+  const [prizeImageFile, setPrizeImageFile] = useState<File | null>(null)
+  const [prizeImagePreview, setPrizeImagePreview] = useState('')
+  const [savingPrize, setSavingPrize] = useState(false)
+  const savingPrizeLock = useRef(false)
 
   const fetchData = async () => {
     setIsLoading(true)
-    const res = await fetch(`/api/admin/slot/machines/${id}`)
+    const res = await fetch(`/api/admin/slot/themes/${id}`)
     const data = await res.json()
-    const m: SlotMachine = data.machine
-    setMachine(m)
-    setPool(data.pool ?? [])
-    setMachineForm({ ...m })
-    const existingTiers: BetTier[] = m.bet_tiers ?? []
-    setTierInput(existingTiers.length > 0 ? tiersToInput(existingTiers) : String(m.price_per_spin ?? 100))
-    // Default to first tier tab
-    setPoolTab(existingTiers.length > 0 ? String(existingTiers[0].coins) : 'rush')
+    const t: SlotTheme = data.theme
+    setTheme(t)
+    setPrizes(data.prizes ?? [])
+    setMachines(data.machines ?? [])
+    setForm({ ...t })
+    setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
+    setSpinReturns(t.spin_returns?.length ? t.spin_returns : DEFAULT_SPIN_RETURNS)
+    setImagePreview(t.image_url ?? '')
     setIsLoading(false)
   }
 
   useEffect(() => { fetchData() }, [id])
 
-  useEffect(() => {
-    if (!showAddPool) return
-    fetch('/api/admin/slot/prizes')
-      .then(r => r.json())
-      .then(json => {
-        const all: SlotPrizeItem[] = json.prizes ?? []
-        const filtered = prizeSearch
-          ? all.filter(p => p.name.includes(prizeSearch))
-          : all
-        setPrizes(filtered.filter(p => p.is_active).slice(0, 50))
-      })
-  }, [showAddPool, prizeSearch])
+  // ── Computed ───────────────────────────────────────────────────────────────
 
-  const handleSaveMachine = async () => {
-    const tiers = parseTierInput(tierInput)
-    if (!tiers.length) { toast('至少需要一個檔次 G幣', 'error'); return }
+  const parsedTiers = betTiersInput
+    .split(',').map(s => s.trim()).filter(Boolean).map(Number)
+    .filter(n => n > 0).map(c => ({ coins: c }))
 
-    setSavingMachine(true)
+  const avgRushHits = form.min_rush_hits != null && form.continue_rate != null
+    ? (form.min_rush_hits + form.continue_rate / (1 - form.continue_rate)).toFixed(1)
+    : '—'
+
+  const directAttackCosts = parsedTiers.map(t => ({
+    coins: t.coins,
+    cost: t.coins * (form.floor_spin_count ?? 302),
+  }))
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (parsedTiers.length === 0) { toast('請設定至少一個投注檔次', 'error'); return }
+    if (parsedTiers.length > 5)   { toast('投注檔次最多 5 個', 'error'); return }
+    setSaving(true)
     try {
-      const res = await fetch(`/api/admin/slot/machines/${id}`, {
+      let finalImageUrl = form.image_url ?? ''
+      if (imageFile) {
+        const uploadForm = new FormData()
+        uploadForm.append('file', imageFile)
+        uploadForm.append('bucket', 'products')
+        uploadForm.append('path', `slot-theme-${id}-${Date.now()}.${(imageFile.name.split('.').pop() || 'jpg')}`)
+        const uploadRes = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
+        const uploadJson = await uploadRes.json().catch(() => ({}))
+        if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
+        finalImageUrl = String(uploadJson?.publicUrl || '')
+      }
+
+      const res = await fetch(`/api/admin/slot/themes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...machineForm,
-          bet_tiers: tiers,
-          price_per_spin: tiers[0].coins,
+          ...form,
+          bet_tiers: parsedTiers,
+          spin_returns: spinReturns,
+          image_url: finalImageUrl || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       toast('儲存成功')
-      setMachine(data.machine)
+      setTheme(data.theme)
+      setImageFile(null)
     } catch (e: any) {
       toast(e.message ?? '儲存失敗', 'error')
     } finally {
-      setSavingMachine(false)
+      setSaving(false)
     }
   }
 
-  const openAddModal = () => {
-    setPoolForm({ ...EMPTY_POOL_FORM, pool_band: poolTab })
-    setSelectedPrizes([])
-    setPrizeSearch('')
-    setShowAddPool(true)
+  const handleSaveVideos = async (updates: Record<string, string | null>) => {
+    const res = await fetch(`/api/admin/slot/themes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (res.ok) { toast('影片儲存成功'); fetchData() }
+    else toast('儲存失敗', 'error')
   }
 
-  const closeAddModal = () => {
-    setShowAddPool(false)
-    setSelectedPrizes([])
-    setPrizeSearch('')
+  const openAddPrize = (prize?: ThemePrize) => {
+    if (prize) {
+      setEditingPrize(prize)
+      setPrizeForm({
+        name: prize.name, image_url: prize.image_url ?? '',
+        weight: String(prize.weight), video_type: prize.video_type,
+        per_machine_stock: prize.per_machine_stock != null ? String(prize.per_machine_stock) : '',
+      })
+      setPrizeImagePreview(prize.image_url ?? '')
+    } else {
+      setEditingPrize(null)
+      setPrizeForm({ name: '', image_url: '', weight: '100', video_type: 'win', per_machine_stock: '' })
+      setPrizeImagePreview('')
+    }
+    setPrizeImageFile(null)
+    setShowAddPrize(true)
   }
 
-  const handleAddPool = async () => {
-    if (!poolForm.pool_band) { toast('請選擇歸屬獎池', 'error'); return }
-    if (poolForm.product_prize_ids.length === 0) { toast('請選擇至少一件獎品', 'error'); return }
-    setSavingPool(true)
+  const handleSavePrize = async () => {
+    if (savingPrizeLock.current) return
+    if (!prizeForm.name) { toast('請填入獎品名稱', 'error'); return }
+    savingPrizeLock.current = true
+    setSavingPrize(true)
     try {
-      const isRush = poolForm.pool_band === 'rush'
-      const results = await Promise.all(
-        poolForm.product_prize_ids.map(pid =>
-          fetch(`/api/admin/slot/machines/${id}/pool`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              slot_prize_id: pid,
-              weight: poolForm.weight,
-              min_bet: isRush ? null : parseInt(poolForm.pool_band),
-              is_floor: poolForm.is_floor,
-              rush_only: isRush,
-              normal_only: false,
-              remaining: poolForm.remaining === '' ? null : parseInt(poolForm.remaining),
-            }),
-          }).then(r => r.json())
-        )
-      )
-      const failed = results.filter((r: any) => r.error)
-      if (failed.length > 0) throw new Error(failed[0].error)
-      toast(`${poolForm.product_prize_ids.length} 件獎品已加入獎池`)
-      closeAddModal()
+      let finalImageUrl = prizeForm.image_url
+      if (prizeImageFile) {
+        const uploadForm = new FormData()
+        uploadForm.append('file', prizeImageFile)
+        uploadForm.append('bucket', 'products')
+        uploadForm.append('path', `slot-prize-${id}-${Date.now()}.${(prizeImageFile.name.split('.').pop() || 'jpg')}`)
+        const uploadRes = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
+        const uploadJson = await uploadRes.json().catch(() => ({}))
+        if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
+        finalImageUrl = String(uploadJson?.publicUrl || '')
+      }
+
+      const payload = {
+        name: prizeForm.name,
+        image_url: finalImageUrl || null,
+        weight: parseInt(prizeForm.weight) || 100,
+        video_type: prizeForm.video_type,
+        per_machine_stock: prizeForm.per_machine_stock === '' ? null : parseInt(prizeForm.per_machine_stock),
+      }
+
+      if (editingPrize) {
+        const res = await fetch(`/api/admin/slot/themes/${id}/prizes/${editingPrize.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || '更新失敗')
+      } else {
+        const res = await fetch(`/api/admin/slot/themes/${id}/prizes`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || '新增失敗')
+      }
+      toast(editingPrize ? '已更新' : '獎品已加入')
+      setShowAddPrize(false)
       fetchData()
     } catch (e: any) {
-      toast(e.message ?? '新增失敗', 'error')
+      toast(e.message ?? '儲存失敗', 'error')
     } finally {
-      setSavingPool(false)
+      savingPrizeLock.current = false
+      setSavingPrize(false)
     }
   }
 
-  const handleDeletePool = async (itemId: number) => {
+  const handleDeletePrize = async (prizeId: number) => {
     if (!confirm('確定移除此獎品？')) return
-    const res = await fetch(`/api/admin/slot/machines/${id}/pool?item_id=${itemId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/admin/slot/themes/${id}/prizes/${prizeId}`, { method: 'DELETE' })
     if (res.ok) { toast('已移除'); fetchData() }
+    else toast('移除失敗', 'error')
   }
 
-  if (isLoading) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">載入中...</div></AdminLayout>
-  if (!machine) return <AdminLayout pageTitle="挑戰機台"><div className="p-8 text-center text-neutral-400">機台不存在</div></AdminLayout>
+  const handleAddMachine = async () => {
+    const res = await fetch(`/api/admin/slot/themes/${id}/machines`, { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) { toast(`#${data.machine.machine_number} 已加入`); fetchData() }
+    else toast(data.error ?? '新增失敗', 'error')
+  }
 
-  const currentTiers = parseTierInput(tierInput)
+  const handleRemoveMachine = async (machineId: number) => {
+    if (!confirm('確定移除此機台？機台將下架並解除關聯，歷史 session 保留。')) return
+    const res = await fetch(`/api/admin/slot/themes/${id}/machines?machine_id=${machineId}`, { method: 'DELETE' })
+    if (res.ok) { toast('已移除'); fetchData() }
+    else toast('移除失敗', 'error')
+  }
 
-  // Pool tabs: each tier + RUSH
-  const poolBands = [
-    ...currentTiers.map(t => ({ key: String(t.coins), label: `${t.coins} G` })),
-    { key: 'rush', label: '🔥 RUSH' },
-  ]
+  const handleToggleMachine = async (machine: Machine) => {
+    const res = await fetch(`/api/admin/slot/machines/${machine.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !machine.is_active }),
+    })
+    if (res.ok) {
+      setMachines(prev => prev.map(m => m.id === machine.id ? { ...m, is_active: !m.is_active } : m))
+      toast(machine.is_active ? '已下架' : '已上架')
+    }
+  }
 
-  const getTabItems = (tab: string) =>
-    tab === 'rush'
-      ? pool.filter(p => !p.normal_only && !p.is_floor)   // RUSH 池：非僅限普通、非保底（含共用品項）
-      : pool.filter(p => !p.rush_only && (p.min_bet == null || String(p.min_bet) === tab))
+  if (isLoading) return <AdminLayout pageTitle="主題設定"><div className="p-8 text-center text-neutral-400">載入中...</div></AdminLayout>
+  if (!theme) return <AdminLayout pageTitle="主題設定"><div className="p-8 text-center text-neutral-400">找不到主題</div></AdminLayout>
 
-  const tabItems = getTabItems(poolTab)
+  const TABS = [
+    { key: 'settings', label: '主題設定' },
+    { key: 'prizes',   label: `RUSH獎池 (${prizes.length})` },
+    { key: 'videos',   label: '特效影片' },
+    { key: 'machines', label: `機台管理 (${machines.length})` },
+  ] as const
 
   return (
     <AdminLayout
-      pageTitle={machine.name || '挑戰機台'}
+      pageTitle={theme.name}
       breadcrumbs={[
-        { label: '挑戰機台', href: '/slot' },
-        { label: machine.name || '機台設定', href: `/slot/${id}` },
+        { label: '挑戰機台主題', href: '/slot' },
+        { label: theme.name, href: `/slot/${id}` },
       ]}
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* Top bar */}
         <div className="flex items-center justify-between">
           <button
-            type="button"
             onClick={() => router.back()}
-            className="px-4 py-2 bg-white border-2 border-neutral-200 rounded-full hover:border-neutral-300 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+            className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             返回
           </button>
-          <button onClick={handleSaveMachine} disabled={savingMachine} className={BTN_PRIMARY}>
-            {savingMachine ? '儲存中...' : '儲存設定'}
-          </button>
+          {activeTab === 'settings' && (
+            <button onClick={handleSave} disabled={saving} className={BTN_PRIMARY}>
+              {saving ? '儲存中...' : '儲存設定'}
+            </button>
+          )}
         </div>
 
-        {/* Machine settings */}
-        <PageCard>
-          <h3 className="text-sm font-semibold text-neutral-700 mb-4">機台設定</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="機台名稱" tooltip="顯示在前台挑戰頁的機台標題。">
-              <input type="text" className={INPUT} value={machineForm.name ?? ''} onChange={e => setMachineForm(p => ({ ...p, name: e.target.value }))} />
-            </Field>
-            <Field label="RUSH 觸發率 %" tooltip="每轉結束後觸發 RUSH 模式的機率。設 15 表示每轉有 15% 機率進入 RUSH，未觸發則累積保底計數。">
+        {/* Tab bar */}
+        <div className="border-b border-neutral-200 flex gap-0">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ═══ Tab: 主題設定 ═══════════════════════════════════════════════════ */}
+        {activeTab === 'settings' && (
+          <div className="space-y-5">
+            {/* 基本資訊 */}
+            <PageCard>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-4">基本資訊</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="主題名稱 *">
+                  <input type="text" className={INPUT} value={form.name ?? ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                </Field>
+                <Field label="活動頁連結（event_slug）">
+                  <input type="text" className={INPUT} placeholder="例：1（對應 /events/1）" value={form.event_slug ?? ''} onChange={e => setForm(p => ({ ...p, event_slug: e.target.value || null }))} />
+                </Field>
+                <Field label="廠商 ID">
+                  <input type="number" className={INPUT} value={form.supplier_id ?? ''} onChange={e => setForm(p => ({ ...p, supplier_id: parseInt(e.target.value) || null }))} />
+                </Field>
+                <Field label="排序">
+                  <input type="number" className={INPUT} value={form.sort_order ?? 0} onChange={e => setForm(p => ({ ...p, sort_order: parseInt(e.target.value) }))} />
+                </Field>
+                <Field label="上架狀態">
+                  <div className="flex items-center gap-2 mt-1">
+                    <Switch checked={form.is_active ?? false} onCheckedChange={v => setForm(p => ({ ...p, is_active: v }))} />
+                    <span className="text-sm text-neutral-600">{form.is_active ? '上架中' : '已下架'}</span>
+                  </div>
+                </Field>
+                <Field label="主題圖片（選填）">
+                  <input type="file" accept="image/*" onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)) }
+                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  {imagePreview && (
+                    <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
+                      <img src={imagePreview} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </Field>
+              </div>
+            </PageCard>
+
+            {/* 投注檔次 */}
+            <PageCard>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-4">投注檔次（最多 5 個）</h3>
               <div className="relative">
-                <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.trigger_rate != null ? Math.round(machineForm.trigger_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) / 100 }))} />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
-              </div>
-            </Field>
-            <Field label="RUSH 延續率 %" tooltip="保底連數結束後，每轉繼續 RUSH 的機率。設 60 表示 60% 機率繼續再抽一轉 RUSH 獎池，40% 機率 RUSH 結束。" tooltipSide="left">
-              <div className="relative">
-                <input type="number" min={0} max={100} step={1} className={INPUT + ' pr-8'} value={machineForm.continue_rate != null ? Math.round(machineForm.continue_rate * 100) : ''} onChange={e => setMachineForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) / 100 }))} />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
-              </div>
-            </Field>
-            <Field label="RUSH 保底連數" tooltip="觸發 RUSH 後，前 N 轉保證從 RUSH 獎池抽品項，之後才開始看延續率決定是否繼續。設 3 代表最少連中 3 次大獎。">
-              <input type="number" min={1} className={INPUT} value={machineForm.min_rush_hits ?? ''} onChange={e => setMachineForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))} />
-            </Field>
-            <Field label="保底轉數" tooltip="連轉 N 次都沒觸發 RUSH，則下一轉必定觸發。防止玩家長時間抽不到 RUSH。" tooltipSide="left">
-              <input type="number" className={INPUT} value={machineForm.floor_spin_count ?? ''} onChange={e => setMachineForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))} />
-            </Field>
-            <Field label="排序順序" tooltip="數字越小越靠前，用於前台機台排列順序。">
-              <input type="number" className={INPUT} value={machineForm.sort_order ?? ''} onChange={e => setMachineForm(p => ({ ...p, sort_order: parseInt(e.target.value) }))} />
-            </Field>
-            <Field label="上架狀態">
-              <div className="flex items-center gap-2 mt-1">
-                <Switch
-                  checked={machineForm.is_active ?? false}
-                  onCheckedChange={v => setMachineForm(p => ({ ...p, is_active: v }))}
-                />
-                <span className="text-sm text-neutral-600">{machineForm.is_active ? '上架中' : '已下架'}</span>
-              </div>
-            </Field>
-            <div className="col-span-1 md:col-span-2">
-              <Field label="檔次 G幣">
                 <input
                   type="text"
-                  className={INPUT}
-                  placeholder="以逗號分隔，例：10,20,50,100,200,500,1000"
-                  value={tierInput}
-                  onChange={e => setTierInput(e.target.value)}
+                  className={INPUT + (parsedTiers.length > 5 ? ' border-red-400' : '') + ' pr-12'}
+                  placeholder="以逗號分隔，例：100,500,1000"
+                  value={betTiersInput}
+                  onChange={e => setBetTiersInput(e.target.value)}
                 />
-                {currentTiers.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {currentTiers.map(t => (
-                      <span key={t.coins} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{t.coins} G</span>
-                    ))}
-                  </div>
-                )}
-              </Field>
-            </div>
-          </div>
-        </PageCard>
-
-        {/* Pool management */}
-        <PageCard noPadding>
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-            <h3 className="text-sm font-semibold text-neutral-700">獎池管理</h3>
-            <button onClick={openAddModal} className={BTN_PRIMARY}>+ 加入獎品</button>
-          </div>
-
-          {/* Tier tabs */}
-          {poolBands.length > 0 && (
-            <div className="flex gap-0 border-b border-neutral-200 px-4 overflow-x-auto scrollbar-none">
-              {poolBands.map(band => {
-                const count = getTabItems(band.key).length
-                const isActive = poolTab === band.key
-                return (
-                  <button
-                    key={band.key}
-                    onClick={() => setPoolTab(band.key)}
-                    className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
-                      isActive
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-neutral-500 hover:text-neutral-700'
-                    }`}
-                  >
-                    {band.label}
-                    <span className={`ml-1.5 text-xs ${isActive ? 'text-primary/70' : 'text-neutral-400'}`}>
-                      ({count})
+                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold ${parsedTiers.length > 5 ? 'text-red-500' : 'text-neutral-400'}`}>
+                  {parsedTiers.length}/5
+                </span>
+              </div>
+              {parsedTiers.length > 0 && parsedTiers.length <= 5 && (
+                <div className="flex gap-1.5 mt-2">
+                  {parsedTiers.map((t, i) => (
+                    <span key={i} className="text-sm px-3 py-1 bg-amber-50 text-amber-700 font-bold rounded-full">
+                      {t.coins.toLocaleString()} G
                     </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Pool table */}
-          {tabItems.length === 0 ? (
-            <div className="py-8 text-center text-sm text-neutral-400">此獎池尚無品項</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['獎品', '等級', '權重', '庫存（商品）', '屬性', ''].map((h, i) => (
-                      <th key={i} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {tabItems.map(item => {
-                    const prize = item.slot_prizes ?? item.product_prizes
-                    const displayLevel = prize?.level ?? '—'
-                    const prizeRemaining = prize?.remaining
-                    return (
-                      <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {prize?.image_url && (
-                              <img src={prize.image_url} alt="" className="w-8 h-8 object-cover rounded" />
-                            )}
-                            <div className="font-medium text-neutral-900 text-sm">{prize?.name ?? '—'}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 max-w-[80px]">
-                          <span className="text-xs text-neutral-500 block truncate">{displayLevel}</span>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-700 font-bold">{item.weight}</td>
-                        <td className="px-4 py-3 text-neutral-600">
-                          {prizeRemaining === null || prizeRemaining === undefined
-                            ? <span className="text-green-600">∞</span>
-                            : prizeRemaining}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {item.is_floor && <Badge color="amber">保底</Badge>}
-                            {item.rush_only && <Badge color="purple">Rush</Badge>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleDeletePool(item.id)}
-                            className="text-red-500 hover:text-red-700 text-sm font-medium"
-                          >刪除</button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </PageCard>
-      </div>
-
-      {/* Add pool item modal */}
-      <Modal isOpen={showAddPool} onClose={closeAddModal} title="加入獎品到獎池">
-        <div className="space-y-4">
-
-          {/* Pool band — required, first */}
-          <Field label="歸屬獎池 *">
-            <select
-              className={INPUT}
-              value={poolForm.pool_band}
-              onChange={e => setPoolForm(p => ({ ...p, pool_band: e.target.value }))}
-            >
-              <option value="">— 選擇歸屬獎池 —</option>
-              {currentTiers.map(tier => (
-                <option key={tier.coins} value={String(tier.coins)}>
-                  {tier.coins} G 檔次（普通獎池）
-                </option>
-              ))}
-              <option value="rush">🔥 RUSH 獎池</option>
-            </select>
-            <p className="mt-1 text-xs text-neutral-400">
-              普通獎池：每轉都可能抽到。RUSH 獎池：僅 RUSH 連莊時出現。
-            </p>
-          </Field>
-
-          {/* Prize search + multi-select */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-neutral-700">搜尋獎品</label>
-              {selectedPrizes.length > 0 && (
-                <span className="text-xs text-primary font-bold">已選 {selectedPrizes.length} 件</span>
+                  ))}
+                </div>
               )}
-            </div>
-            <input
-              type="text"
-              className={INPUT}
-              placeholder="輸入名稱搜尋..."
-              value={prizeSearch}
-              onChange={e => setPrizeSearch(e.target.value)}
-            />
-            {prizes.length > 0 ? (
-              <div className="mt-2 max-h-44 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
-                {prizes.map(prize => {
-                  const isSelected = poolForm.product_prize_ids.includes(String(prize.id))
-                  return (
-                    <button
-                      key={prize.id}
-                      onClick={() => {
-                        const pid = String(prize.id)
-                        setPoolForm(p => ({
-                          ...p,
-                          product_prize_ids: isSelected
-                            ? p.product_prize_ids.filter(x => x !== pid)
-                            : [...p.product_prize_ids, pid],
-                          remaining: !isSelected && p.product_prize_ids.length === 0
-                            ? (prize.remaining != null ? String(prize.remaining) : '')
-                            : p.remaining,
-                        }))
-                        setSelectedPrizes(prev =>
-                          isSelected ? prev.filter(x => x.id !== prize.id) : [...prev, prize]
-                        )
-                      }}
-                      className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-3 ${
-                        isSelected ? 'bg-primary/10' : 'hover:bg-neutral-50'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-primary border-primary' : 'border-neutral-300'
-                      }`}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <img
-                        src={prize.image_url || '/images/item.png'}
-                        alt=""
-                        className="w-10 h-10 object-cover rounded-lg shrink-0 bg-neutral-100"
-                      />
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0 whitespace-nowrap">
-                        {prize.level}
-                      </span>
-                      <span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-neutral-800'}`}>{prize.name}</span>
-                      {prize.remaining != null && (
-                        <span className="ml-auto text-xs text-neutral-400 shrink-0">庫存 {prize.remaining}</span>
-                      )}
-                    </button>
-                  )
-                })}
+            </PageCard>
+
+            {/* 機率設定 */}
+            <PageCard>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-4">機率設定</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="RUSH 觸發率 %">
+                  <div className="relative">
+                    <input type="number" className={INPUT + ' pr-8'} step={0.01} min={0} max={100}
+                      value={form.trigger_rate != null ? (form.trigger_rate * 100).toFixed(2) : ''}
+                      onChange={e => setForm(p => ({ ...p, trigger_rate: parseFloat(e.target.value) / 100 }))}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+                  </div>
+                </Field>
+                <Field label="RUSH 延續率 %">
+                  <div className="relative">
+                    <input type="number" className={INPUT + ' pr-8'} step={1} min={0} max={99}
+                      value={form.continue_rate != null ? Math.round(form.continue_rate * 100) : ''}
+                      onChange={e => setForm(p => ({ ...p, continue_rate: parseFloat(e.target.value) / 100 }))}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+                  </div>
+                </Field>
+                <Field label="RUSH 最少連數">
+                  <input type="number" className={INPUT} min={1}
+                    value={form.min_rush_hits ?? ''}
+                    onChange={e => setForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))}
+                  />
+                </Field>
+                <Field label="保底轉數">
+                  <input type="number" className={INPUT} min={1}
+                    value={form.floor_spin_count ?? ''}
+                    onChange={e => setForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))}
+                  />
+                </Field>
               </div>
-            ) : (
-              <div className="mt-2 py-4 text-center text-xs text-neutral-400">
-                尚無品項。請先至「品項管理」建立挑戰機台專用品項。
-              </div>
-            )}
-            {selectedPrizes.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {selectedPrizes.map(p => (
-                  <span key={p.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                    {p.name}
-                    <button
-                      onClick={() => {
-                        const pid = String(p.id)
-                        setPoolForm(prev => ({ ...prev, product_prize_ids: prev.product_prize_ids.filter(x => x !== pid) }))
-                        setSelectedPrizes(prev => prev.filter(x => x.id !== p.id))
-                      }}
-                      className="ml-0.5 text-primary/60 hover:text-primary"
-                    >×</button>
-                  </span>
+              {/* 計算結果 */}
+              <div className="mt-4 p-3 bg-neutral-50 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <div className="text-neutral-500">平均 RUSH 連數</div>
+                  <div className="font-bold text-neutral-800 text-base">{avgRushHits} 連</div>
+                </div>
+                {directAttackCosts.slice(0, 3).map(({ coins, cost }) => (
+                  <div key={coins}>
+                    <div className="text-neutral-500">直頂費用 ({coins.toLocaleString()}G)</div>
+                    <div className="font-bold text-neutral-800 text-base">{cost.toLocaleString()} G</div>
+                  </div>
                 ))}
               </div>
-            )}
+            </PageCard>
+
+            {/* 普通旋轉返還 */}
+            <PageCard>
+              <h3 className="text-sm font-semibold text-neutral-700 mb-1">普通旋轉返還（5 種符號）</h3>
+              <p className="text-xs text-neutral-400 mb-4">不在 RUSH 中時，按照權重抽到對應符號，返還 投注 × 倍率 G 幣。</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                      {['符號名稱', '倍率（× 投注）', '權重', `100G 投注返還`, `500G 投注返還`].map(h => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {spinReturns.map((sr, i) => (
+                      <tr key={i} className="hover:bg-neutral-50">
+                        <td className="px-3 py-2">
+                          <input type="text" className="w-full px-2 py-1 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={sr.name}
+                            onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="relative w-24">
+                            <input type="number" step={0.01} min={0}
+                              className="w-full px-2 py-1 pr-4 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                              value={sr.multiplier}
+                              onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, multiplier: parseFloat(e.target.value) } : r))}
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400">×</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input type="number" min={1}
+                            className="w-20 px-2 py-1 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={sr.weight}
+                            onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, weight: parseInt(e.target.value) } : r))}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-neutral-700 font-bold tabular-nums">
+                          {Math.floor(100 * sr.multiplier).toLocaleString()} G
+                        </td>
+                        <td className="px-3 py-2 text-neutral-700 font-bold tabular-nums">
+                          {Math.floor(500 * sr.multiplier).toLocaleString()} G
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-neutral-400">
+                總權重：{spinReturns.reduce((s, r) => s + r.weight, 0).toLocaleString()}
+                　加權平均倍率：{(spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / spinReturns.reduce((s, r) => s + r.weight, 0)).toFixed(3)}×
+              </p>
+            </PageCard>
           </div>
+        )}
 
+        {/* ═══ Tab: RUSH獎池 ══════════════════════════════════════════════════ */}
+        {activeTab === 'prizes' && (
+          <div className="space-y-4">
+            <PageCard noPadding>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
+                <div>
+                  <h3 className="text-sm font-semibold text-neutral-700">RUSH 獎池模板</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">每次新增機台時，此模板的品項會自動複製一份到該機台</p>
+                </div>
+                <button onClick={() => openAddPrize()} className={BTN_PRIMARY}>+ 加入獎品</button>
+              </div>
 
+              {prizes.length === 0 ? (
+                <div className="py-12 text-center text-sm text-neutral-400">尚無 RUSH 獎品，點擊右上角新增</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-neutral-50 border-b border-neutral-200">
+                      <tr>
+                        {['圖片', '名稱', '權重', '演出類型', '每台庫存', '操作'].map(h => (
+                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {prizes.map(prize => (
+                        <tr key={prize.id} className="hover:bg-neutral-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200">
+                              <img src={prize.image_url || '/images/item.png'} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-neutral-900">{prize.name}</td>
+                          <td className="px-4 py-3 font-bold text-neutral-700">{prize.weight}</td>
+                          <td className="px-4 py-3">
+                            <Badge color={prize.video_type === 'win_god' ? 'red' : prize.video_type === 'win_strong' ? 'amber' : 'blue'}>
+                              {prize.video_type === 'win_god' ? '激アツ（壓勝）' : prize.video_type === 'win_strong' ? '強勝利' : '普通勝利'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-600">
+                            {prize.per_machine_stock ?? <span className="text-green-600">∞</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <button onClick={() => openAddPrize(prize)} className="text-primary text-sm font-medium">編輯</button>
+                              <button onClick={() => handleDeletePrize(prize.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </PageCard>
+          </div>
+        )}
+
+        {/* ═══ Tab: 特效影片 ══════════════════════════════════════════════════ */}
+        {activeTab === 'videos' && (
+          <VideoTab theme={theme} onSave={handleSaveVideos} />
+        )}
+
+        {/* ═══ Tab: 機台管理 ══════════════════════════════════════════════════ */}
+        {activeTab === 'machines' && (
+          <div className="space-y-4">
+            <PageCard noPadding>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
+                <div>
+                  <h3 className="text-sm font-semibold text-neutral-700">機台列表</h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">各台機器的 RUSH 獎池庫存獨立計算</p>
+                </div>
+                <button onClick={handleAddMachine} className={BTN_PRIMARY}>+ 增加機台</button>
+              </div>
+
+              {machines.length === 0 ? (
+                <div className="py-12 text-center text-sm text-neutral-400">尚無機台</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-neutral-50 border-b border-neutral-200">
+                      <tr>
+                        {['編號', 'RUSH獎池品項', '普通返還品項', '上架', '前台連結', '操作'].map(h => (
+                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {machines.map(machine => {
+                        const rushCount   = machine.slot_pool_items?.filter(p => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter(p => p.coin_return).length ?? 0
+                        return (
+                          <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <span className="text-lg font-black text-neutral-700">#{machine.machine_number}</span>
+                              <span className="ml-2 text-xs text-neutral-400">ID: {machine.id}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {rushCount > 0
+                                ? <Badge color="purple">{rushCount} 件</Badge>
+                                : <span className="text-xs text-neutral-400">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {returnCount > 0
+                                ? <Badge color="blue">{returnCount} 種</Badge>
+                                : <span className="text-xs text-neutral-400">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Switch checked={machine.is_active} onCheckedChange={() => handleToggleMachine(machine)} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <a href={`/challenge?machine=${machine.id}`} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline">
+                                前台預覽 ↗
+                              </a>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button onClick={() => handleRemoveMachine(machine.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </PageCard>
+          </div>
+        )}
+      </div>
+
+      {/* ─── 加入獎品 Modal ─────────────────────────────────────────────────── */}
+      <Modal isOpen={showAddPrize} onClose={() => setShowAddPrize(false)} title={editingPrize ? '編輯獎品' : '加入 RUSH 獎品'}>
+        <div className="space-y-4">
+          <Field label="獎品名稱 *">
+            <input type="text" className={INPUT} value={prizeForm.name} onChange={e => setPrizeForm(p => ({ ...p, name: e.target.value }))} placeholder="例：ピカチュウex SAR" />
+          </Field>
+          <Field label="獎品圖片">
+            <input type="file" accept="image/*" onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) { setPrizeImageFile(f); setPrizeImagePreview(URL.createObjectURL(f)) }
+            }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+            {prizeImagePreview && (
+              <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
+                <img src={prizeImagePreview} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="權重">
-              <input
-                type="number"
-                className={INPUT}
-                value={poolForm.weight}
-                onChange={e => setPoolForm(p => ({ ...p, weight: e.target.value }))}
-                min={1}
-              />
-              <p className="mt-1 text-xs text-neutral-400">越高越容易抽中（相對機率）</p>
+              <input type="number" className={INPUT} min={1} value={prizeForm.weight} onChange={e => setPrizeForm(p => ({ ...p, weight: e.target.value }))} />
+              <p className="mt-1 text-xs text-neutral-400">越高越容易被抽到</p>
             </Field>
-            <Field label="庫存（連動商品）">
-              <input
-                type="number"
-                className={INPUT}
-                value={poolForm.remaining}
-                onChange={e => setPoolForm(p => ({ ...p, remaining: e.target.value }))}
-                min={0}
-                placeholder={selectedPrizes.length === 1 && selectedPrizes[0].remaining != null ? `商品庫存 ${selectedPrizes[0].remaining}` : '無限'}
-              />
-              <p className="mt-1 text-xs text-neutral-400">選獎品後自動帶入；空白＝不設上限</p>
+            <Field label="每台庫存">
+              <input type="number" className={INPUT} min={0} value={prizeForm.per_machine_stock} onChange={e => setPrizeForm(p => ({ ...p, per_machine_stock: e.target.value }))} placeholder="空白 = 不限" />
+              <p className="mt-1 text-xs text-neutral-400">每台機器各自的庫存量</p>
             </Field>
           </div>
-
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={poolForm.is_floor}
-              onChange={e => setPoolForm(p => ({ ...p, is_floor: e.target.checked }))}
-              className="w-4 h-4 rounded accent-primary"
-            />
-            <span className="text-sm text-neutral-700">保底品（超過保底轉數必中）</span>
-          </label>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={closeAddModal} className={BTN_GHOST}>取消</button>
-            <button
-              onClick={handleAddPool}
-              disabled={savingPool || poolForm.product_prize_ids.length === 0 || !poolForm.pool_band}
-              className={BTN_PRIMARY}
-            >
-              {savingPool ? '新增中...' : '加入獎池'}
+          <Field label="獲得演出">
+            <select className={INPUT} value={prizeForm.video_type} onChange={e => setPrizeForm(p => ({ ...p, video_type: e.target.value }))}>
+              <option value="win">普通勝利（連）</option>
+              <option value="win_strong">強勝利（強）</option>
+              <option value="win_god">壓勝（激アツ）</option>
+            </select>
+          </Field>
+          <div className="flex justify-end gap-3 pt-2 border-t">
+            <button onClick={() => setShowAddPrize(false)} className={BTN_GHOST}>取消</button>
+            <button onClick={handleSavePrize} disabled={savingPrize || !prizeForm.name} className={BTN_PRIMARY}>
+              {savingPrize ? '儲存中...' : editingPrize ? '更新' : '加入'}
             </button>
           </div>
         </div>
@@ -577,14 +671,108 @@ export default function SlotDetailPage() {
   )
 }
 
-function Field({ label, tooltip, tooltipSide = 'right', children }: { label: string; tooltip?: string; tooltipSide?: 'left' | 'right'; children: React.ReactNode }) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-1 mb-2">
-        <label className="text-sm font-medium text-neutral-700">{label}</label>
-        {tooltip && <InfoTooltip text={tooltip} side={tooltipSide} />}
-      </div>
+      <label className="block text-sm font-medium text-neutral-700 mb-1.5">{label}</label>
       {children}
+    </div>
+  )
+}
+
+function VideoTab({ theme, onSave }: { theme: SlotTheme; onSave: (updates: Record<string, string | null>) => void }) {
+  const { toast } = useToast()
+  const [videos, setVideos] = useState<Record<string, string | null>>({
+    video_rush_entry:        theme.video_rush_entry,
+    video_rush_anticipation: theme.video_rush_anticipation,
+    video_rush_win:          theme.video_rush_win,
+    video_rush_win_strong:   theme.video_rush_win_strong,
+    video_rush_win_god:      theme.video_rush_win_god,
+    video_rush_revival:      theme.video_rush_revival,
+  })
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const handleVideoUpload = async (key: string, file: File) => {
+    setUploading(key)
+    try {
+      const ext = file.name.split('.').pop() || 'mp4'
+      const uploadForm = new FormData()
+      uploadForm.append('file', file)
+      uploadForm.append('bucket', 'lp-assets')
+      uploadForm.append('path', `slot-theme-${theme.id}/${key}-${Date.now()}.${ext}`)
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || '上傳失敗')
+      setVideos(prev => ({ ...prev, [key]: String(json?.publicUrl || '') }))
+      toast(`${key} 上傳成功`)
+    } catch (e: any) {
+      toast(e.message ?? '上傳失敗', 'error')
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave(videos)
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {VIDEO_SLOTS.map(slot => {
+          const url = videos[slot.key]
+          const isUploading = uploading === slot.key
+          return (
+            <PageCard key={slot.key}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  slot.key.includes('entry') ? 'bg-purple-100 text-purple-700' :
+                  slot.key.includes('anticipation') ? 'bg-neutral-100 text-neutral-700' :
+                  slot.key.includes('god') ? 'bg-red-100 text-red-700' :
+                  slot.key.includes('strong') ? 'bg-amber-100 text-amber-700' :
+                  slot.key.includes('revival') ? 'bg-green-100 text-green-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>{slot.badge}</span>
+                <span className="text-sm font-semibold text-neutral-700">{slot.label}</span>
+              </div>
+              <p className="text-xs text-neutral-400 mb-3">{slot.desc}</p>
+
+              {url ? (
+                <div className="mb-3">
+                  <video src={url} className="w-full rounded-lg bg-black aspect-video object-contain" controls muted playsInline />
+                  <button onClick={() => setVideos(prev => ({ ...prev, [slot.key]: null }))}
+                    className="mt-1 text-xs text-red-500 hover:text-red-700">
+                    移除影片
+                  </button>
+                </div>
+              ) : (
+                <div className="aspect-video bg-neutral-100 rounded-lg flex items-center justify-center mb-3 border-2 border-dashed border-neutral-200">
+                  <span className="text-xs text-neutral-400">{isUploading ? '上傳中...' : '尚未設定'}</span>
+                </div>
+              )}
+
+              <label className="block w-full">
+                <span className="block w-full text-center px-3 py-2 text-xs text-primary border border-primary rounded-lg hover:bg-primary/5 cursor-pointer transition-colors">
+                  {isUploading ? '上傳中...' : url ? '重新上傳' : '上傳影片'}
+                </span>
+                <input type="file" accept="video/*" className="hidden" disabled={!!uploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(slot.key, f) }}
+                />
+              </label>
+            </PageCard>
+          )
+        })}
+      </div>
+      <div className="flex justify-end">
+        <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60">
+          {saving ? '儲存中...' : '儲存影片設定'}
+        </button>
+      </div>
     </div>
   )
 }

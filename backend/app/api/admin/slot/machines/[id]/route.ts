@@ -37,11 +37,16 @@ export async function PATCH(
 
   const allowed = ['name', 'description', 'image_url', 'price_per_spin', 'trigger_rate',
     'continue_rate', 'min_rush_hits', 'floor_spin_count', 'is_active', 'sort_order', 'supplier_id',
-    'guaranteed_prize']
+    'guaranteed_prize', 'bet_tiers', 'machine_theme', 'event_slug']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]
   }
+
+  if (Array.isArray(updates.bet_tiers) && (updates.bet_tiers as unknown[]).length > 5) {
+    return NextResponse.json({ error: '檔次最多 5 個' }, { status: 400 })
+  }
+
   updates.updated_at = new Date().toISOString()
 
   const supabase = getSupabaseAdmin()

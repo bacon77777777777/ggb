@@ -72,6 +72,7 @@ interface SlotSession {
   state: 'normal' | 'rush';
   rush_hits_remaining: number;
   spins_since_rush: number;
+  tier_progress: Record<string, number> | null;
   total_spins: number;
   locked_bet: number | null;
 }
@@ -105,12 +106,18 @@ const LEVEL_COLORS: Record<string, string> = {
   'LAST ONE': 'from-rose-400 to-red-600',
 };
 
-const TIER_LS_KEY = (machineId: number) => `ggb_slot_tier_${machineId}`;
-
 export default function MachinePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
+
+  // Read pre-selected bet from URL (?bet=100), set on entry from challenge list
+  const [preSelectedBet, setPreSelectedBet] = useState<number | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const b = params.get('bet');
+    if (b) setPreSelectedBet(parseInt(b));
+  }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
@@ -160,9 +167,11 @@ export default function MachinePage() {
             const idx = m.bet_tiers.findIndex(t => t.coins === s.locked_bet);
             if (idx >= 0) setTierIndex(idx);
           } else {
-            const saved = localStorage.getItem(TIER_LS_KEY(m.id));
-            if (saved) {
-              const idx = m.bet_tiers.findIndex(t => t.coins === parseInt(saved));
+            // Prefer URL ?bet param over localStorage
+            const urlBet = new URLSearchParams(window.location.search).get('bet');
+            const betToFind = urlBet ? parseInt(urlBet) : null;
+            if (betToFind) {
+              const idx = m.bet_tiers.findIndex(t => t.coins === betToFind);
               if (idx >= 0) setTierIndex(idx);
             }
           }
@@ -176,20 +185,23 @@ export default function MachinePage() {
   const currentTier: BetTier = tiers[tierIndex] ?? { label: '小注', coins: machine?.price_per_spin ?? 100 };
   const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
   const isRushLocked = isRushActive;
+  // Tier locked when entering from challenge list via ?bet= param
+  const isTierLocked = !!preSelectedBet || isRushLocked;
 
-  // 直撃費用：max(min_rush_hits, floor_spin_count - spins_since_rush) × bet
+  // Per-tier floor progress (from tier_progress[currentBet])
+  const spinsThisTier = session?.tier_progress?.[String(currentTier.coins)]
+    ?? session?.spins_since_rush
+    ?? 0;
+
+  // 直撃費用：max(min_rush_hits, floor_spin_count - spinsThisTier) × bet
   const directCost = machine
-    ? Math.max(machine.min_rush_hits, machine.floor_spin_count - (session?.spins_since_rush ?? 0)) * currentTier.coins
+    ? Math.max(machine.min_rush_hits, machine.floor_spin_count - spinsThisTier) * currentTier.coins
     : 0;
 
   const changeTier = useCallback((delta: number) => {
-    if (isRushLocked || tiers.length <= 1) return;
-    setTierIndex(prev => {
-      const next = Math.max(0, Math.min(tiers.length - 1, prev + delta));
-      if (machine) localStorage.setItem(TIER_LS_KEY(machine.id), String(tiers[next].coins));
-      return next;
-    });
-  }, [isRushLocked, tiers, machine]);
+    if (isTierLocked || tiers.length <= 1) return;
+    setTierIndex(prev => Math.max(0, Math.min(tiers.length - 1, prev + delta)));
+  }, [isTierLocked, tiers]);
 
   const handleVideoEnd = useCallback(() => {
     if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
@@ -419,7 +431,7 @@ export default function MachinePage() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => changeTier(-1)}
-          disabled={isRushLocked || tierIndex === 0}
+          disabled={isTierLocked || tierIndex === 0}
           className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -449,7 +461,7 @@ export default function MachinePage() {
 
         <button
           onClick={() => changeTier(1)}
-          disabled={isRushLocked || tierIndex === tiers.length - 1}
+          disabled={isTierLocked || tierIndex === tiers.length - 1}
           className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
         >
           <ChevronRight className="w-5 h-5" />
@@ -649,7 +661,7 @@ export default function MachinePage() {
               {tiers.map((tier, idx) => (
                 <button
                   key={tier.coins}
-                  onClick={() => { if (!isRushLocked) setTierIndex(idx); }}
+                  onClick={() => { if (!isTierLocked) setTierIndex(idx); }}
                   className={cn(
                     "px-3 py-0.5 rounded-full text-xs font-black transition-colors",
                     idx === tierIndex
