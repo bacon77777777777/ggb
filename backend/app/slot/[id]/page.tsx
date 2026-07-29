@@ -505,7 +505,7 @@ export default function SlotThemeDetailPage() {
                     className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
                       tierFilter === minBet ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                     }`}>
-                    {minBet != null ? `${minBet.toLocaleString()} G+` : '全檔次'}&nbsp;
+                    {minBet != null ? minBet.toLocaleString() : '全檔次'}&nbsp;
                     ({poolItems.filter(p => p.min_bet === minBet).length})
                   </button>
                 ))}
