@@ -249,6 +249,7 @@ export default function SlotPrizesPage() {
   const dc = getDensityClasses()
   const levelLabel = (level: string) => LEVEL_OPTIONS.find(o => o.value === level)?.label ?? level
 
+  // prizes are already deduplicated by the API (one unique name per prize_type)
   const rushCount      = prizes.filter(p => p.prize_type === 'rush').length
   const coinReturnCount = prizes.filter(p => p.prize_type === 'coin_return').length
 
