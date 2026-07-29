@@ -97,6 +97,8 @@ export default function SlotThemeDetailPage() {
   const [saving, setSaving] = useState(false)
 
   const [form, setForm]                   = useState<Partial<SlotTheme>>({})
+  const [triggerRateStr, setTriggerRateStr]   = useState('')
+  const [continueRateStr, setContinueRateStr] = useState('')
   const [betTiersInput, setBetTiersInput] = useState('')
   const [machineImageFile, setMachineImageFile]       = useState<File | null>(null)
   const [machineImagePreview, setMachineImagePreview] = useState('')
@@ -126,6 +128,8 @@ export default function SlotThemeDetailPage() {
     setMachines(data.machines ?? [])
     setPoolItems(poolData.items ?? [])
     setForm({ ...t })
+    setTriggerRateStr((t.trigger_rate  ?? 0) > 0 ? ((t.trigger_rate  ?? 0) * 100).toFixed(2) : '')
+    setContinueRateStr((t.continue_rate ?? 0) > 0 ? ((t.continue_rate ?? 0) * 100).toFixed(2) : '')
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setMachineImagePreview(t.image_url ?? '')
     setIsLoading(false)
@@ -445,8 +449,14 @@ export default function SlotThemeDetailPage() {
                 <Field label="觸發率（每轉）">
                   <div className="relative">
                     <input type="number" step={0.01} min={0.01} max={100} className={INPUT + ' pr-8'}
-                      value={p > 0 ? (p * 100).toFixed(2) : ''}
-                      onChange={e => setForm(prev => ({ ...prev, trigger_rate: parseFloat(e.target.value) / 100 }))}
+                      value={triggerRateStr}
+                      onChange={e => setTriggerRateStr(e.target.value)}
+                      onBlur={e => {
+                        const v = parseFloat(e.target.value)
+                        const val = isNaN(v) ? 0 : Math.min(100, Math.max(0, v))
+                        setForm(prev => ({ ...prev, trigger_rate: val / 100 }))
+                        setTriggerRateStr(val > 0 ? val.toFixed(2) : '')
+                      }}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
                   </div>
@@ -478,8 +488,14 @@ export default function SlotThemeDetailPage() {
                 <Field label="RUSH 延續率">
                   <div className="relative">
                     <input type="number" step={0.01} min={0} max={99.99} className={INPUT + ' pr-8'}
-                      value={continueR > 0 ? (continueR * 100).toFixed(2) : ''}
-                      onChange={e => setForm(prev => ({ ...prev, continue_rate: parseFloat(e.target.value) / 100 }))}
+                      value={continueRateStr}
+                      onChange={e => setContinueRateStr(e.target.value)}
+                      onBlur={e => {
+                        const v = parseFloat(e.target.value)
+                        const val = isNaN(v) ? 0 : Math.min(99.99, Math.max(0, v))
+                        setForm(prev => ({ ...prev, continue_rate: val / 100 }))
+                        setContinueRateStr(val > 0 ? val.toFixed(2) : '')
+                      }}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
                   </div>
