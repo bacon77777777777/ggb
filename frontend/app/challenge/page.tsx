@@ -133,7 +133,7 @@ function TierSelectModal({
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-100 dark:border-neutral-700">
               <Image
-                src={machine.image_url || '/images/slot/item.png'}
+                src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
                 alt={machine.name} fill className="object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
               />
@@ -272,7 +272,7 @@ function MachineCard({
       {/* Image — aspect-square like ProductCard */}
       <div className="aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 rounded-t-[8px] relative flex-shrink-0">
         <Image
-          src={machine.image_url || '/images/slot/item.png'}
+          src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
           alt={machine.name} fill className="object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
         />
