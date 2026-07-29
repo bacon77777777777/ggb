@@ -149,7 +149,7 @@ function TierSelectModal({
                         : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200'
                     )}
                   >
-                    {tier.label}
+                    {tier.coins}
                   </button>
                 ))}
               </div>
@@ -222,7 +222,7 @@ function MachineCard({
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
                 )}
               >
-                {t.label}
+                {t.coins}
               </button>
             ))}
           </div>
