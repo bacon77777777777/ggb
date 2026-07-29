@@ -546,7 +546,7 @@ export default function MachinePage() {
               </div>
             )}
           </div>
-          <div className="mt-1 h-[2.6em] flex items-center justify-center w-full px-0.5">
+          <div className="mt-px h-[2.4em] flex items-center justify-center w-full px-0.5">
             <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">
               {prize?.name}
             </p>
@@ -627,7 +627,7 @@ export default function MachinePage() {
                           </div>
                         )}
                       </div>
-                      <div className="mt-1 h-[2.6em] flex items-center justify-center w-full px-0.5">
+                      <div className="mt-px h-[2.4em] flex items-center justify-center w-full px-0.5">
                         <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
                       </div>
                       {ret != null && (

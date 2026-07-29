@@ -135,6 +135,8 @@ export default function SlotPrizesPage() {
     setForm({
       name: p.name,
       level: p.level,
+      prize_type: p.prize_type ?? 'rush',
+      recycle_value: p.recycle_value != null ? String(p.recycle_value) : '',
       image_url: p.image_url ?? '',
       remaining: p.remaining != null ? String(p.remaining) : '',
       supplier_id: p.supplier_id != null ? String(p.supplier_id) : '',
