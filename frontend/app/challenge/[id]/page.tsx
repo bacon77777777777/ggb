@@ -97,7 +97,7 @@ interface SpinResult {
   };
   session: SlotSession;
   rush_triggered: boolean;
-  is_floor: boolean;
+  is_ceiling: boolean;
   error?: string;
 }
 
@@ -652,7 +652,8 @@ export default function MachinePage() {
       { label: '主題', value: machine.name },
       { label: '檔次', value: `${currentTier.coins} G` },
       { label: '最少連數', value: `${machine.min_rush_hits} 連` },
-      { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
+      { label: '天井轉數', value: `${machine.floor_spin_count} 轉` },
+      { label: '天井進度', value: `${Math.min(spinsThisTier, machine.floor_spin_count)} / ${machine.floor_spin_count}` },
     ];
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
@@ -677,7 +678,7 @@ export default function MachinePage() {
               '抽出後即確認結果，不可退款或更換。',
               '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
               '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
-              'RUSH 觸發後連續獲得多件大獎，最少連中次數有所保證。',
+              'RUSH 可於任意轉隨機觸發；累積至天井轉數必定觸發。',
               '直撃費用一經扣除不予退還，RUSH 中無法再次直撃。',
             ].map((text, i) => (
               <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">{text}</li>
