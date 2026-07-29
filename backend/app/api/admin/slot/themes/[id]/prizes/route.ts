@@ -30,7 +30,7 @@ export async function POST(
 
   const { id } = await params
   const body = await request.json()
-  const { name, image_url, weight = 100, video_type = 'win', per_machine_stock, sort_order = 0 } = body
+  const { name, image_url, weight = 100, video_type = 'win', per_machine_stock, min_bet, sort_order = 0 } = body
 
   if (!name) return NextResponse.json({ error: '請填入獎品名稱' }, { status: 400 })
 
@@ -42,6 +42,7 @@ export async function POST(
       name, image_url: image_url ?? null,
       weight, video_type,
       per_machine_stock: per_machine_stock ?? null,
+      min_bet: min_bet ?? null,
       sort_order,
     })
     .select()

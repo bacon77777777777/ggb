@@ -11,7 +11,7 @@ export async function PATCH(
 
   const { prizeId } = await params
   const body = await request.json()
-  const allowed = ['name', 'image_url', 'weight', 'video_type', 'per_machine_stock', 'sort_order', 'is_active']
+  const allowed = ['name', 'image_url', 'weight', 'video_type', 'per_machine_stock', 'min_bet', 'sort_order', 'is_active']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]
