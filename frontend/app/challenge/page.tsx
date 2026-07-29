@@ -127,7 +127,7 @@ function TierSelectModal({
         key="panel"
         initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col max-h-[90vh] overflow-hidden"
+        className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col max-h-[75vh] overflow-hidden"
       >
         {/* Header */}
         <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3 shrink-0">
