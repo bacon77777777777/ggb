@@ -12,6 +12,7 @@ export async function GET() {
     supabase
       .from('slot_prizes')
       .select('*, suppliers(id, name)')
+      .order('prize_type', { ascending: true })
       .order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, name').order('name'),
   ])

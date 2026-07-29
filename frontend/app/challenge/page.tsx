@@ -15,6 +15,7 @@ interface BetTier { label: string; coins: number }
 interface SlotPoolItem {
   id: number;
   rush_only: boolean;
+  min_bet: number | null;
   coin_return: boolean | null;
   return_multiplier: number | null;
   display_name: string | null;
@@ -110,9 +111,9 @@ function TierSelectModal({
       .catch(() => {});
   }, [machine.id]);
 
-  const rushPool     = pool.filter(i => i.rush_only);
   const coinReturns  = pool.filter(i => !i.rush_only && i.coin_return);
-  const physicalItems = rushPool;
+  // 只顯示當前檔次的 RUSH 品項（min_bet 等於選中金額）
+  const physicalItems = pool.filter(i => i.rush_only && i.min_bet === selected);
 
   return (
     <AnimatePresence>
@@ -173,13 +174,11 @@ function TierSelectModal({
           <div className="px-4 pb-4 mt-2">
             <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-3">獎池總覽</p>
 
-            {/* RUSH 獎品 4欄格狀 */}
+            {/* RUSH 獎品 4欄格狀 — 只顯示當前檔次品項 */}
             {physicalItems.length > 0 && (() => {
-              const rushValues = physicalItems.map(item => {
-                if (item.slot_prizes?.recycle_value) return Math.floor(selected * item.slot_prizes.recycle_value / 100);
-                if (item.product_prizes?.recycle_value) return item.product_prizes.recycle_value;
-                return 0;
-              }).filter(v => v > 0);
+              const rushValues = physicalItems
+                .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0)
+                .filter(v => v > 0);
               const rMin = rushValues.length ? Math.min(...rushValues) : 0;
               const rMax = rushValues.length ? Math.max(...rushValues) : 0;
               return (
@@ -195,8 +194,7 @@ function TierSelectModal({
                   <div className="grid grid-cols-4 gap-1.5 mb-4">
                     {physicalItems.map(item => {
                       const prize = item.product_prizes ?? item.slot_prizes;
-                      const baseVal = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
-                      const displayVal = item.slot_prizes ? Math.floor(selected * baseVal / 100) : baseVal;
+                      const val = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
                       return (
                         <div key={item.id} className="flex flex-col items-center">
                           <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
@@ -204,8 +202,10 @@ function TierSelectModal({
                               ? <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
                               : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-5 h-5 text-neutral-300" /></div>}
                           </div>
-                          <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 mt-0.5 w-full">{prize?.name}</p>
-                          {displayVal > 0 && <p className="text-[9px] font-black text-primary tabular-nums text-center">{displayVal.toLocaleString()} G</p>}
+                          <div className="mt-0.5 h-[2.6em] flex items-center justify-center w-full px-0.5">
+                            <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{prize?.name}</p>
+                          </div>
+                          {val > 0 && <p className="text-[9px] font-black text-primary tabular-nums text-center">{val.toLocaleString()} G</p>}
                         </div>
                       );
                     })}
@@ -215,23 +215,26 @@ function TierSelectModal({
             })()}
 
             {/* 普通旋轉返還 */}
+            {/* 普通旋轉返還 — 4 欄 grid，同 RUSH 排版 */}
             {coinReturns.length > 0 && (
               <>
                 <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2">普通旋轉返還</p>
-                <div className="space-y-0">
-                  {coinReturns.map((item, idx) => {
+                <div className="grid grid-cols-4 gap-1.5">
+                  {coinReturns.map(item => {
                     const prize = item.slot_prizes;
-                    const ret = item.return_multiplier != null ? Math.floor(selected * item.return_multiplier) : null;
                     const name = item.display_name ?? prize?.name ?? '返還';
+                    const ret = item.return_multiplier != null ? Math.floor(selected * item.return_multiplier) : null;
                     return (
-                      <div key={item.id} className={cn('flex items-center gap-2.5 py-2', idx < coinReturns.length - 1 && 'border-b border-neutral-50 dark:border-neutral-800')}>
-                        <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
+                      <div key={item.id} className="flex flex-col items-center">
+                        <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
                           {prize?.image_url
                             ? <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
-                            : <div className="flex items-center justify-center w-full h-full"><Coins className="w-4 h-4 text-amber-400" /></div>}
+                            : <div className="flex items-center justify-center w-full h-full"><Coins className="w-5 h-5 text-amber-400" /></div>}
                         </div>
-                        <span className="flex-1 text-sm font-bold text-neutral-800 dark:text-neutral-100">{name}</span>
-                        {ret != null && <span className="text-sm font-black text-primary tabular-nums shrink-0">{ret.toLocaleString()} G</span>}
+                        <div className="mt-0.5 h-[2.6em] flex items-center justify-center w-full px-0.5">
+                          <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
+                        </div>
+                        {ret != null && <p className="text-[9px] font-black text-primary tabular-nums text-center">{ret.toLocaleString()} G</p>}
                       </div>
                     );
                   })}

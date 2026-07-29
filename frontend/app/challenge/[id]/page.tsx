@@ -531,13 +531,10 @@ export default function MachinePage() {
     const coinReturnPool = regularPool.filter(item => item.coin_return);
     const normalPhysicalPool = regularPool.filter(item => !item.coin_return);
 
-    // 格狀品項卡：圖片 + 名稱（居中）+ 價值（居中，按檔次縮放）
+    // 格狀品項卡：圖片 + 名稱（居中）+ 價值（固定值，不縮放）
     const renderGridCard = (item: SlotPoolItem) => {
       const prize = item.product_prizes ?? item.slot_prizes;
-      const baseValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
-      const displayValue = item.slot_prizes
-        ? Math.floor(currentTier.coins * baseValue / 100)
-        : baseValue;
+      const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
       return (
         <div key={item.id} className="flex flex-col items-center">
           <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
@@ -549,9 +546,11 @@ export default function MachinePage() {
               </div>
             )}
           </div>
-          <p className="mt-1 text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">
-            {prize?.name}
-          </p>
+          <div className="mt-1 h-[2.6em] flex items-center justify-center w-full px-0.5">
+            <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">
+              {prize?.name}
+            </p>
+          </div>
           {displayValue > 0 && (
             <p className="text-[9px] font-black text-primary tabular-nums text-center">
               {displayValue.toLocaleString()} G
@@ -561,16 +560,15 @@ export default function MachinePage() {
       );
     };
 
-    // 計算 RUSH 獎池價值區間（按當前檔次縮放）
-    const rushValues = rushPool.map(item => {
-      if (item.slot_prizes?.recycle_value) return Math.floor(currentTier.coins * item.slot_prizes.recycle_value / 100);
-      if (item.product_prizes?.recycle_value) return item.product_prizes.recycle_value;
-      return 0;
-    }).filter(v => v > 0);
+    // 只顯示當前檔次的 RUSH 品項（min_bet == currentTier.coins）
+    const tieredRushPool = rushPool.filter(item => item.min_bet === currentTier.coins);
+    const rushValues = tieredRushPool
+      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0)
+      .filter(v => v > 0);
     const rushMinVal = rushValues.length ? Math.min(...rushValues) : 0;
     const rushMaxVal = rushValues.length ? Math.max(...rushValues) : 0;
 
-    const physicalItems = [...rushPool, ...normalPhysicalPool];
+    const physicalItems = [...tieredRushPool, ...normalPhysicalPool];
     const hasContent = physicalItems.length > 0 || coinReturnPool.length > 0;
 
     return (
@@ -606,45 +604,42 @@ export default function MachinePage() {
           </div>
         )}
 
-        {/* ── 普通旋轉返還 ── 每種符號各一行，統一在同容器內 */}
+        {/* ── 普通旋轉返還 ── 4 欄 grid，同 RUSH 排版 */}
         {coinReturnPool.length > 0 && (
           <div className={physicalItems.length > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}>
-            <div className="px-4 pt-3 pb-1">
-              <p className="text-xs font-black text-neutral-400 uppercase tracking-wider mb-1">普通旋轉返還</p>
-            </div>
-            {coinReturnPool.map((item, idx) => {
-              const prize = item.slot_prizes;
-              const returnAmount = item.return_multiplier != null
-                ? Math.floor(currentTier.coins * item.return_multiplier)
-                : null;
-              const name = item.display_name ?? prize?.name ?? '返還';
-              return (
-                <div key={item.id} className={cn(
-                  'flex items-center gap-3 px-4 py-3',
-                  idx < coinReturnPool.length - 1 && 'border-b border-neutral-50 dark:border-neutral-800'
-                )}>
-                  {/* 小圖 */}
-                  <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
-                    {prize?.image_url ? (
-                      <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
-                    ) : (
-                      <div className="flex items-center justify-center w-full h-full">
-                        <Coins className="w-5 h-5 text-amber-400" />
+            <div className="px-4 pt-3 pb-4">
+              <p className="text-xs font-black text-neutral-400 uppercase tracking-wider mb-3">普通旋轉返還</p>
+              <div className="grid grid-cols-4 gap-2">
+                {coinReturnPool.map(item => {
+                  const prize = item.slot_prizes;
+                  const name = item.display_name ?? prize?.name ?? '返還';
+                  const ret = item.return_multiplier != null
+                    ? Math.floor(currentTier.coins * item.return_multiplier)
+                    : null;
+                  return (
+                    <div key={item.id} className="flex flex-col items-center">
+                      <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
+                        {prize?.image_url ? (
+                          <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full">
+                            <Coins className="w-6 h-6 text-amber-400" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {/* 名稱 */}
-                  <span className="flex-1 font-bold text-neutral-800 dark:text-neutral-100 text-sm">{name}</span>
-                  {/* 返還金額 */}
-                  {returnAmount != null && (
-                    <span className="font-black text-primary tabular-nums text-sm">
-                      {returnAmount.toLocaleString()} G
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-            <div className="pb-2" />
+                      <div className="mt-1 h-[2.6em] flex items-center justify-center w-full px-0.5">
+                        <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
+                      </div>
+                      {ret != null && (
+                        <p className="text-[9px] font-black text-primary tabular-nums text-center">
+                          {ret.toLocaleString()} G
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
