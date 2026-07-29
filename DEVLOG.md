@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.29d｜2026-07-29｜RUSH獎池賞等管理 + STG 普通返還補齊
+
+### 後台（挑戰機台）
+- `slot/[id]/page.tsx`：RUSH獎池表格新增「稀有度」欄（Badge 顯示一/二/三等獎）
+- `slot/[id]/page.tsx`：新增「✦ 自動分配賞等」按鈕 — 依 recycle_value desc 排序，每檔次各分三等（10%一等/20%二等/70%三等），批次 PATCH
+- `api/admin/slot/themes/[id]/pool/route.ts`：PATCH 路由擴充支援 `level` 欄位更新
+- 特效影片小灰字改為「一等獎品項獲得」/「二等獎品項獲得」/「三等獎品項獲得」
+
+### DB（STG）
+- `375_stg_coin_return_pool_items.sql`：補 STG 5 台機台的普通旋轉返還品項（神域共鳴/命運之瞳/緋色幸運/黃金序章）
+
+---
+
 ## v2026.07.29c｜2026-07-29｜挑戰機台後台 RUSH 機率設定 UX 修正
 
 ### 後台（挑戰機台）
