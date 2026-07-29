@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.29c｜2026-07-29｜挑戰機台後台 RUSH 機率設定 UX 修正
+
+### 後台（挑戰機台）
+- `slot/prizes/page.tsx` + `api/admin/slot/prizes/route.ts`：品項管理去重 — API 層依名稱 DISTINCT，從 160 筆（32 × 5 台）收歸 32 筆；PATCH/DELETE 同步更新所有同名副本
+- `slot/[id]/page.tsx`：RUSH 延續率輸入支援小數點後兩位（`step=0.01`）
+- `slot/[id]/page.tsx`：觸發率/延續率 input 顯示統一為 `0.XX` 格式
+- `slot/[id]/page.tsx`：觸發率/延續率 改用 local string state + onBlur 套格式，修正退格鍵被 toFixed 覆蓋的問題
+- `slot/[id]/page.tsx`：保底轉數超出有效範圍（N > 3/p）時顯示紅字提示「自然均值 X 轉，建議 ≤ Y」
+
+---
+
 ## v2026.07.29b｜2026-07-29｜排行榜+文章返回/分享按鈕對齊 events 風格
 
 ### 前台
