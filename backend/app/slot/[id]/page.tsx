@@ -448,11 +448,11 @@ export default function SlotThemeDetailPage() {
               {stats ? (
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-neutral-50 rounded-xl p-4 text-center">
-                    <div className="text-xs text-neutral-500 mb-1">普通轉幣值回報率</div>
+                    <div className="text-xs text-neutral-500 mb-1">回報率（幣值返還）</div>
                     <div className={`font-black text-2xl ${rtpColor}`}>
                       {Math.max(0, stats.coinRtp * 100).toFixed(1)}%
                     </div>
-                    <div className="text-[10px] text-neutral-400 mt-0.5">保底轉數越高此值越高</div>
+                    <div className="text-[10px] text-neutral-400 mt-0.5">不含 RUSH 實體獎品</div>
                   </div>
                   <div className="bg-neutral-50 rounded-xl p-4 text-center">
                     <div className="text-xs text-neutral-500 mb-1">平均觸發 RUSH 轉數</div>
