@@ -4,6 +4,21 @@
 
 ---
 
+## v2026.07.29e｜2026-07-29｜已知問題記錄
+
+### ⚠ 已知問題（待修）
+
+**挑戰機台前台：普通旋轉也會彈出恭喜獲得彈窗**
+- 現況：每次 spin API 回傳後一律 `setSpinState('result')` → 觸發全螢幕結果 modal
+- 正確行為：
+  - 普通旋轉（coin_return）→ 靜默或幣值 toast，不彈窗
+  - RUSH 觸發瞬間 → 突入演出影片（video_rush_entry）→ 彈窗
+  - RUSH 每連 → 對決煽り（video_rush_anticipation）→ 依賞等播勝利影片（普通/強/壓勝）→ 彈窗
+  - RUSH 繼續確定 → 逆轉復活（video_rush_revival）
+- 修正位置：`frontend/app/challenge/[id]/page.tsx` `handleSpin()`，非 RUSH 狀態改 `setSpinState('idle')`
+
+---
+
 ## v2026.07.29d｜2026-07-29｜RUSH獎池賞等管理 + STG 普通返還補齊
 
 ### 後台（挑戰機台）
