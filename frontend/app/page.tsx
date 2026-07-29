@@ -146,6 +146,7 @@ export default function Home() {
             .from('banners')
             .select('*')
             .eq('is_active', true)
+            .eq('page', 'home')
             .order('sort_order', { ascending: true }) as unknown as Promise<BannersQueryResult>,
           'banners'
         );
