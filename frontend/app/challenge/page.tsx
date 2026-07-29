@@ -153,11 +153,11 @@ function TierSelectModal({
           <div className="px-4 pt-3 pb-2">
             {/* 入場檔次 — single row, no wrap */}
             <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-2">入場檔次</p>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+            <div className="flex gap-1.5 w-full">
               {tiers.map(tier => (
                 <button key={tier.coins} onClick={() => setSelected(tier.coins)}
                   className={cn(
-                    'h-8 px-3 rounded-lg border font-black text-sm transition-all active:scale-95 whitespace-nowrap shrink-0',
+                    'flex-1 min-w-0 h-8 rounded-lg border font-black text-xs transition-all active:scale-95 whitespace-nowrap',
                     selected === tier.coins
                       ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white'
                       : 'bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200'
