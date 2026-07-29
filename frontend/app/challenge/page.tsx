@@ -288,14 +288,15 @@ function MachineCard({
           <span className="text-[14px] font-black text-primary shrink-0">#{number}</span>
         </div>
 
-        {/* Tier switcher — stop propagation so clicking pill doesn't open modal */}
+        {/* Tier switcher */}
         {tiers.length > 1 && (
-          <div className="flex gap-0.5 mt-1.5 overflow-hidden">
+          <div className="flex gap-[3px] mt-1.5 w-full">
             {tiers.map((t, i) => (
               <button key={t.coins}
                 onClick={e => { e.stopPropagation(); setTierIdx(i); }}
+                style={{ fontSize: '9px' }}
                 className={cn(
-                  'px-1.5 py-0.5 rounded text-[10px] font-black transition-colors whitespace-nowrap flex-shrink-0',
+                  'flex-1 min-w-0 py-0.5 rounded font-black transition-colors whitespace-nowrap',
                   tierIdx === i
                     ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-900'
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
@@ -309,11 +310,6 @@ function MachineCard({
 
         {/* Sparkline */}
         <Sparkline seed={sparkSeed} className="h-8 my-1.5" />
-
-        {/* Bottom — border-t like ProductCard */}
-        <div className="mt-auto pt-2 border-t border-neutral-100 dark:border-neutral-800 text-[11px] text-neutral-400">
-          {tiers[tierIdx]?.coins.toLocaleString() ?? machine.price_per_spin} G幣/次
-        </div>
       </div>
     </div>
   );
