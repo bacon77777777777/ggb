@@ -288,6 +288,40 @@ export default function SlotThemeDetailPage() {
     }
   }
 
+  const handleAutoAssignLevels = async () => {
+    // Group by tier, sort each group by recycle_value desc, then assign 一/二/三等獎 (10%/20%/70%)
+    const tiers = [...new Set(poolItems.map(i => i.min_bet))]
+    const assignments: { name: string; level: string }[] = []
+
+    for (const tier of tiers) {
+      const group = [...poolItems.filter(i => i.min_bet === tier)]
+        .sort((a, b) => (b.slot_prizes?.recycle_value ?? 0) - (a.slot_prizes?.recycle_value ?? 0))
+      const N = group.length
+      const godCount    = Math.max(1, Math.round(N * 0.1))
+      const strongCount = Math.max(1, Math.round(N * 0.2))
+      group.forEach((item, idx) => {
+        const name = item.slot_prizes?.name ?? item.display_name ?? ''
+        if (!name) return
+        const level = idx < godCount ? '一等獎' : idx < godCount + strongCount ? '二等獎' : '三等獎'
+        assignments.push({ name, level })
+      })
+    }
+
+    // Deduplicate by name
+    const unique = new Map<string, string>()
+    assignments.forEach(a => unique.set(a.name, a.level))
+
+    await Promise.all([...unique.entries()].map(([prize_name, level]) =>
+      fetch(`/api/admin/slot/themes/${id}/pool`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prize_name, level }),
+      })
+    ))
+    toast('已自動分配賞等')
+    fetchPoolItems()
+  }
+
   const handleAddMachine = async () => {
     const res  = await fetch(`/api/admin/slot/themes/${id}/machines`, { method: 'POST' })
     const data = await res.json()
@@ -579,7 +613,12 @@ export default function SlotThemeDetailPage() {
                     顯示所有機台的實際獎池。<span className="font-medium text-amber-600">最低投注</span> = 玩家需投注 ≥ 此金額才可獲得。
                   </p>
                 </div>
-                <button onClick={openAddPrize} className={BTN_PRIMARY}>+ 加入獎品</button>
+                <div className="flex gap-2">
+                  <button onClick={handleAutoAssignLevels} className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                    ✦ 自動分配賞等
+                  </button>
+                  <button onClick={openAddPrize} className={BTN_PRIMARY}>+ 加入獎品</button>
+                </div>
               </div>
 
               {/* 檔次篩選 */}
@@ -610,7 +649,7 @@ export default function SlotThemeDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr>
-                        {['圖片', '名稱', '最低投注', '回收幣值', '庫存（每台）', '操作'].map(h => (
+                        {['圖片', '名稱', '稀有度', '最低投注', '回收幣值', '庫存（每台）', '操作'].map(h => (
                           <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -629,6 +668,15 @@ export default function SlotThemeDetailPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 font-medium text-neutral-900">{prizeName}</td>
+                            <td className="px-4 py-3">
+                              {(() => {
+                                const lv = item.slot_prizes?.level
+                                if (lv === '一等獎') return <Badge color="amber">一等獎</Badge>
+                                if (lv === '二等獎') return <Badge color="blue">二等獎</Badge>
+                                if (lv === '三等獎') return <Badge color="gray">三等獎</Badge>
+                                return <span className="text-xs text-neutral-300">—</span>
+                              })()}
+                            </td>
                             <td className="px-4 py-3">
                               {item.min_bet != null
                                 ? <Badge color="amber">{item.min_bet.toLocaleString()} G+</Badge>

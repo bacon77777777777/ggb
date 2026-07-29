@@ -45,9 +45,10 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { prize_name, recycle_value } = await request.json()
-  if (!prize_name || recycle_value == null)
-    return NextResponse.json({ error: '缺少 prize_name 或 recycle_value' }, { status: 400 })
+  const body = await request.json()
+  const { prize_name, recycle_value, level } = body
+  if (!prize_name || (recycle_value == null && level == null))
+    return NextResponse.json({ error: '缺少 prize_name 及更新欄位' }, { status: 400 })
 
   const supabase = getSupabaseAdmin()
 
@@ -70,9 +71,13 @@ export async function PATCH(
   const prizeIds = (items ?? []).map((i: { slot_prize_id: number }) => i.slot_prize_id).filter(Boolean)
   if (prizeIds.length === 0) return NextResponse.json({ success: true })
 
+  const updates: Record<string, unknown> = {}
+  if (recycle_value != null) updates.recycle_value = parseInt(String(recycle_value))
+  if (level != null) updates.level = String(level)
+
   const { error } = await supabase
     .from('slot_prizes')
-    .update({ recycle_value: parseInt(String(recycle_value)) })
+    .update(updates)
     .in('id', prizeIds)
     .eq('name', prize_name)
 
