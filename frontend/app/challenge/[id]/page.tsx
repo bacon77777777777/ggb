@@ -539,7 +539,7 @@ export default function MachinePage() {
         <div key={item.id} className="flex flex-col items-center">
           <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
             {prize?.image_url ? (
-              <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-cover" unoptimized />
+              <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
             ) : (
               <div className="flex items-center justify-center w-full h-full">
                 <Trophy className="w-7 h-7 text-neutral-300" />
@@ -620,7 +620,7 @@ export default function MachinePage() {
                     <div key={item.id} className="flex flex-col items-center">
                       <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
                         {prize?.image_url ? (
-                          <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
+                          <Image src={prize.image_url} alt={name} fill className="object-contain" unoptimized />
                         ) : (
                           <div className="flex items-center justify-center w-full h-full">
                             <Coins className="w-6 h-6 text-amber-400" />

@@ -199,7 +199,7 @@ function TierSelectModal({
                         <div key={item.id} className="flex flex-col items-center">
                           <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
                             {prize?.image_url
-                              ? <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
+                              ? <Image src={prize.image_url} alt={prize.name} fill className="object-contain" unoptimized />
                               : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-5 h-5 text-neutral-300" /></div>}
                           </div>
                           <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
@@ -228,7 +228,7 @@ function TierSelectModal({
                       <div key={item.id} className="flex flex-col items-center">
                         <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
                           {prize?.image_url
-                            ? <Image src={prize.image_url} alt={name} fill className="object-cover" unoptimized />
+                            ? <Image src={prize.image_url} alt={name} fill className="object-contain" unoptimized />
                             : <div className="flex items-center justify-center w-full h-full"><Coins className="w-5 h-5 text-amber-400" /></div>}
                         </div>
                         <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
