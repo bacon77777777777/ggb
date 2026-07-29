@@ -537,7 +537,7 @@ export default function MachinePage() {
       const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
       return (
         <div key={item.id} className="flex flex-col items-center">
-          <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
+          <div className="aspect-square w-full relative rounded-xl overflow-hidden">
             {prize?.image_url ? (
               <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
             ) : (
@@ -618,7 +618,7 @@ export default function MachinePage() {
                     : null;
                   return (
                     <div key={item.id} className="flex flex-col items-center">
-                      <div className="aspect-square w-full relative rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800">
+                      <div className="aspect-square w-full relative rounded-xl overflow-hidden">
                         {prize?.image_url ? (
                           <Image src={prize.image_url} alt={name} fill className="object-contain" unoptimized />
                         ) : (
@@ -649,51 +649,16 @@ export default function MachinePage() {
   const renderMachineInfo = () => {
     const infoRows = [
       { label: '類別', value: '挑戰機台' },
+      { label: '主題', value: machine.name },
+      { label: '檔次', value: `${currentTier.coins} G` },
       { label: '最少連數', value: `${machine.min_rush_hits} 連` },
       { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
     ];
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
         <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-          {machine.name}
+          機台資訊
         </h3>
-
-        {tiers.length > 0 && (
-          <div className="flex items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-            <div className="flex flex-wrap gap-1.5">
-              {tiers.map((tier, idx) => (
-                <button
-                  key={tier.coins}
-                  onClick={() => { if (!isTierLocked) setTierIndex(idx); }}
-                  className={cn(
-                    "px-3 py-0.5 rounded-full text-xs font-black transition-colors",
-                    idx === tierIndex
-                      ? "bg-primary text-white"
-                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200"
-                  )}
-                >
-                  {tier.coins} G
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {session && (
-          <div className="py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-            <div className="flex justify-between text-[13px] font-black mb-2">
-              <span className="text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">保底進度</span>
-              <span className="text-neutral-900 dark:text-neutral-50">{session.spins_since_rush} / {machine.floor_spin_count}</span>
-            </div>
-            <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-violet-400 to-amber-400 rounded-full"
-                animate={{ width: `${floorProgress}%` }}
-                transition={{ duration: 0.4 }}
-              />
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
           {infoRows.map(({ label, value }) => (

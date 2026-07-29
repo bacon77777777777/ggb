@@ -197,7 +197,7 @@ function TierSelectModal({
                       const val = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
                       return (
                         <div key={item.id} className="flex flex-col items-center">
-                          <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
+                          <div className="aspect-square w-full rounded-lg overflow-hidden relative">
                             {prize?.image_url
                               ? <Image src={prize.image_url} alt={prize.name} fill className="object-contain" unoptimized />
                               : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-5 h-5 text-neutral-300" /></div>}
@@ -226,7 +226,7 @@ function TierSelectModal({
                     const ret = item.return_multiplier != null ? Math.floor(selected * item.return_multiplier) : null;
                     return (
                       <div key={item.id} className="flex flex-col items-center">
-                        <div className="aspect-square w-full rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-800 relative">
+                        <div className="aspect-square w-full rounded-lg overflow-hidden relative">
                           {prize?.image_url
                             ? <Image src={prize.image_url} alt={name} fill className="object-contain" unoptimized />
                             : <div className="flex items-center justify-center w-full h-full"><Coins className="w-5 h-5 text-amber-400" /></div>}
