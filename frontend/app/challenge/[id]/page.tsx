@@ -591,7 +591,7 @@ export default function MachinePage() {
         {physicalItems.length > 0 && (
           <div className="px-4 pt-3 pb-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</p>
+              <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">RUSH 獎池</p>
               {rushMinVal > 0 && (
                 <p className="text-xs font-black text-primary tabular-nums">
                   {rushMinVal.toLocaleString()} ～ {rushMaxVal.toLocaleString()} G

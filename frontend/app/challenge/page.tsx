@@ -184,7 +184,7 @@ function TierSelectModal({
               return (
                 <>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</p>
+                    <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">RUSH 獎池</p>
                     {rMin > 0 && (
                       <p className="text-[10px] font-black text-primary tabular-nums">
                         {rMin.toLocaleString()} ～ {rMax.toLocaleString()} G
