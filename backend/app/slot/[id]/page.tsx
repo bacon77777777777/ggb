@@ -469,58 +469,107 @@ export default function SlotThemeDetailPage() {
 
             {/* 普通旋轉返還 */}
             <PageCard>
-              <h3 className="text-sm font-semibold text-neutral-700 mb-1">普通旋轉返還（5 種符號）</h3>
-              <p className="text-xs text-neutral-400 mb-4">不在 RUSH 中時，按照權重抽到對應符號，返還 投注 × 倍率 G 幣。</p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      {['符號名稱', '倍率（× 投注）', '權重', `100G 投注返還`, `500G 投注返還`].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {spinReturns.map((sr, i) => (
-                      <tr key={i} className="hover:bg-neutral-50">
-                        <td className="px-3 py-2">
-                          <input type="text" className="w-full px-2 py-1 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                            value={sr.name}
-                            onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+              <h3 className="text-sm font-semibold text-neutral-700 mb-1">普通旋轉返還</h3>
+              <p className="text-xs text-neutral-400 mb-3">
+                每轉先判斷 RUSH 觸發（{form.trigger_rate != null ? (form.trigger_rate * 100).toFixed(2) : '?'}%），
+                未觸發時（{form.trigger_rate != null ? ((1 - form.trigger_rate) * 100).toFixed(2) : '?'}% 機率）
+                依下表權重返還 G 幣。整體出現率 = (1 − 觸發率) × 權重佔比。
+              </p>
+
+              {/* 符號設定 + 機率 */}
+              <div className="space-y-2 mb-4">
+                {(() => {
+                  const totalW = spinReturns.reduce((s, r) => s + r.weight, 0)
+                  const p = form.trigger_rate ?? 0
+                  return spinReturns.map((sr, i) => {
+                    const globalProb = totalW > 0 ? (1 - p) * (sr.weight / totalW) * 100 : 0
+                    return (
+                      <div key={i} className="grid grid-cols-[1fr_80px_80px_80px] gap-2 items-center">
+                        <input type="text"
+                          className="px-2 py-1.5 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={sr.name}
+                          onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                        />
+                        <div className="relative">
+                          <input type="number" step={0.01} min={0}
+                            className="w-full px-2 py-1.5 pr-5 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={sr.multiplier}
+                            onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, multiplier: parseFloat(e.target.value) } : r))}
                           />
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="relative w-24">
-                            <input type="number" step={0.01} min={0}
-                              className="w-full px-2 py-1 pr-4 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                              value={sr.multiplier}
-                              onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, multiplier: parseFloat(e.target.value) } : r))}
-                            />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400">×</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400">×</span>
+                        </div>
+                        <div className="relative">
                           <input type="number" min={1}
-                            className="w-20 px-2 py-1 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full px-2 py-1.5 pr-5 border border-neutral-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                             value={sr.weight}
                             onChange={e => setSpinReturns(prev => prev.map((r, j) => j === i ? { ...r, weight: parseInt(e.target.value) } : r))}
                           />
-                        </td>
-                        <td className="px-3 py-2 text-neutral-700 font-bold tabular-nums">
-                          {Math.floor(100 * sr.multiplier).toLocaleString()} G
-                        </td>
-                        <td className="px-3 py-2 text-neutral-700 font-bold tabular-nums">
-                          {Math.floor(500 * sr.multiplier).toLocaleString()} G
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400">w</span>
+                        </div>
+                        <div className="text-right text-xs font-bold text-neutral-600 tabular-nums">
+                          {globalProb.toFixed(2)}%
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
+                {/* 欄位標題 */}
+                <div className="grid grid-cols-[1fr_80px_80px_80px] gap-2 mt-1">
+                  <div className="text-[10px] text-neutral-400 pl-1">符號名稱</div>
+                  <div className="text-[10px] text-neutral-400 text-center">倍率</div>
+                  <div className="text-[10px] text-neutral-400 text-center">權重</div>
+                  <div className="text-[10px] text-neutral-400 text-right">整體出現率</div>
+                </div>
               </div>
-              <p className="mt-2 text-xs text-neutral-400">
+
+              {/* RUSH 行（唯讀對照） */}
+              <div className="mb-3 p-2 bg-amber-50 rounded-lg border border-amber-100">
+                <div className="grid grid-cols-[1fr_80px_80px_80px] gap-2 items-center text-xs">
+                  <span className="font-bold text-amber-700">⚡ RUSH 觸發</span>
+                  <span className="text-center text-amber-600 font-bold">實體獎品</span>
+                  <span className="text-center text-neutral-400">—</span>
+                  <span className="text-right font-bold text-amber-700 tabular-nums">
+                    {form.trigger_rate != null ? (form.trigger_rate * 100).toFixed(2) : '?'}%
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-neutral-400 mb-3">
                 總權重：{spinReturns.reduce((s, r) => s + r.weight, 0).toLocaleString()}
-                {' '}加權平均倍率：{(spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / spinReturns.reduce((s, r) => s + r.weight, 0)).toFixed(3)}×
+                加權平均倍率：{spinReturns.reduce((s, r) => s + r.weight, 0) > 0
+                  ? (spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / spinReturns.reduce((s, r) => s + r.weight, 0)).toFixed(3)
+                  : '—'}×
               </p>
+
+              {/* 各檔次返還對照 */}
+              {parsedTiers.length > 0 && (
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-neutral-50 border-b border-neutral-200">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-neutral-500 font-semibold">符號</th>
+                        {parsedTiers.map(t => (
+                          <th key={t.coins} className="text-right px-3 py-2 text-neutral-500 font-semibold whitespace-nowrap">
+                            {t.coins.toLocaleString()} G 投注
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {spinReturns.map((sr, i) => (
+                        <tr key={i} className="hover:bg-neutral-50">
+                          <td className="px-3 py-2 text-neutral-700 font-medium">{sr.name || `符號 ${i+1}`}</td>
+                          {parsedTiers.map(t => (
+                            <td key={t.coins} className="px-3 py-2 text-right text-neutral-700 font-bold tabular-nums">
+                              {Math.floor(t.coins * sr.multiplier).toLocaleString()} G
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </PageCard>
           </div>
         )}
