@@ -73,8 +73,6 @@ export default function SlotThemeDetailPage() {
   const [form, setForm] = useState<Partial<SlotTheme>>({})
   const [betTiersInput, setBetTiersInput] = useState('')
   const [spinReturns, setSpinReturns] = useState<SpinReturn[]>(DEFAULT_SPIN_RETURNS)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState('')
 
   // Prize modal
   const [showAddPrize, setShowAddPrize] = useState(false)
@@ -96,7 +94,6 @@ export default function SlotThemeDetailPage() {
     setForm({ ...t })
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setSpinReturns(t.spin_returns?.length ? t.spin_returns : DEFAULT_SPIN_RETURNS)
-    setImagePreview(t.image_url ?? '')
     setIsLoading(false)
   }
 
@@ -124,18 +121,6 @@ export default function SlotThemeDetailPage() {
     if (parsedTiers.length > 5)   { toast('投注檔次最多 5 個', 'error'); return }
     setSaving(true)
     try {
-      let finalImageUrl = form.image_url ?? ''
-      if (imageFile) {
-        const uploadForm = new FormData()
-        uploadForm.append('file', imageFile)
-        uploadForm.append('bucket', 'products')
-        uploadForm.append('path', `slot-theme-${id}-${Date.now()}.${(imageFile.name.split('.').pop() || 'jpg')}`)
-        const uploadRes = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
-        const uploadJson = await uploadRes.json().catch(() => ({}))
-        if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
-        finalImageUrl = String(uploadJson?.publicUrl || '')
-      }
-
       const res = await fetch(`/api/admin/slot/themes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -143,14 +128,12 @@ export default function SlotThemeDetailPage() {
           ...form,
           bet_tiers: parsedTiers,
           spin_returns: spinReturns,
-          image_url: finalImageUrl || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       toast('儲存成功')
       setTheme(data.theme)
-      setImageFile(null)
     } catch (e: any) {
       toast(e.message ?? '儲存失敗', 'error')
     } finally {
@@ -346,17 +329,6 @@ export default function SlotThemeDetailPage() {
                     <span className="text-sm text-neutral-600">{form.is_active ? '上架中' : '已下架'}</span>
                   </div>
                 </Field>
-                <Field label="主題圖片（選填）">
-                  <input type="file" accept="image/*" onChange={e => {
-                    const f = e.target.files?.[0]
-                    if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)) }
-                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
-                  {imagePreview && (
-                    <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
-                      <img src={imagePreview} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                </Field>
               </div>
             </PageCard>
 
@@ -488,7 +460,7 @@ export default function SlotThemeDetailPage() {
               </div>
               <p className="mt-2 text-xs text-neutral-400">
                 總權重：{spinReturns.reduce((s, r) => s + r.weight, 0).toLocaleString()}
-                　加權平均倍率：{(spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / spinReturns.reduce((s, r) => s + r.weight, 0)).toFixed(3)}×
+                {' '}加權平均倍率：{(spinReturns.reduce((s, r) => s + r.multiplier * r.weight, 0) / spinReturns.reduce((s, r) => s + r.weight, 0)).toFixed(3)}×
               </p>
             </PageCard>
           </div>
