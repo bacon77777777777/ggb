@@ -427,50 +427,28 @@ export default function SlotThemeDetailPage() {
 
               {/* 自動計算結果 */}
               {stats ? (
-                <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">自動計算結果</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-xs text-neutral-500 mb-0.5">平均保底間距</div>
-                      <div className="font-black text-neutral-800 text-xl">
-                        {stats.eSpins < 1/p * 0.99 ? stats.eSpins.toFixed(1) : `≈${(1/p).toFixed(0)}`}
-                        <span className="text-sm font-medium ml-1">轉</span>
-                      </div>
-                      {N > 300 && <div className="text-[10px] text-amber-500">保底幾乎沒用</div>}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-neutral-50 rounded-xl p-4 text-center">
+                    <div className="text-xs text-neutral-500 mb-1">幣值 RTP</div>
+                    <div className={`font-black text-2xl ${rtpColor}`}>
+                      {(stats.coinRtp * 100).toFixed(1)}%
                     </div>
-                    <div>
-                      <div className="text-xs text-neutral-500 mb-0.5">平均 RUSH 連數</div>
-                      <div className="font-black text-neutral-800 text-xl">
-                        {stats.eHits.toFixed(1)}
-                        <span className="text-sm font-medium ml-1">連</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-neutral-500 mb-0.5">幣值回報率</div>
-                      <div className={`font-black text-xl ${rtpColor}`}>
-                        {(stats.coinRtp * 100).toFixed(1)}%
-                      </div>
-                      <div className="text-[10px] text-neutral-400">不含RUSH獎品</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-neutral-500 mb-0.5">直頂上限</div>
-                      <div className="text-xs space-y-0.5 mt-1">
-                        {parsedTiers.slice(0, 3).map(t => (
-                          <div key={t.coins} className="flex justify-between text-neutral-700">
-                            <span>{t.coins.toLocaleString()}G</span>
-                            <span className="font-bold">{(t.coins * N).toLocaleString()} G</span>
-                          </div>
-                        ))}
-                        {parsedTiers.length > 3 && (
-                          <div className="text-neutral-400 text-[10px]">+{parsedTiers.length - 3} 個檔次</div>
-                        )}
-                      </div>
+                    {N > 300 && <div className="text-[10px] text-amber-500 mt-0.5">保底幾乎沒用</div>}
+                  </div>
+                  <div className="bg-neutral-50 rounded-xl p-4 text-center">
+                    <div className="text-xs text-neutral-500 mb-1">平均觸發 RUSH 轉數</div>
+                    <div className="font-black text-neutral-800 text-2xl">
+                      {stats.eSpins < 1/p * 0.99 ? stats.eSpins.toFixed(1) : `≈${(1/p).toFixed(0)}`}
+                      <span className="text-sm font-medium ml-1">轉</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-neutral-400">
-                    幣值回報率 = 普通旋轉返還期望值 ÷ 投注，約 {(FIXED_AVG_MULT * 100).toFixed(1)}% × (1 − RUSH佔用轉數比)。
-                    實際 RTP 還需加上 RUSH 實體獎品的回收值，通常整體 RTP ≈ 70%。
-                  </p>
+                  <div className="bg-neutral-50 rounded-xl p-4 text-center">
+                    <div className="text-xs text-neutral-500 mb-1">平均 RUSH 連數</div>
+                    <div className="font-black text-neutral-800 text-2xl">
+                      {stats.eHits.toFixed(1)}
+                      <span className="text-sm font-medium ml-1">連</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-neutral-50 rounded-xl p-4 text-sm text-neutral-400 text-center">
