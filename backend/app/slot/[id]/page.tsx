@@ -452,10 +452,22 @@ export default function SlotThemeDetailPage() {
                   </div>
                 </Field>
                 <Field label="保底轉數">
-                  <input type="number" min={1} max={999} className={INPUT}
+                  <input type="number" min={1} className={INPUT}
                     value={N > 0 ? N : ''}
                     onChange={e => setForm(prev => ({ ...prev, floor_spin_count: parseInt(e.target.value) }))}
                   />
+                  {p > 0 && N > 0 && (() => {
+                    const naturalMean = Math.round(1 / p)
+                    const effectiveCap = Math.round(naturalMean * 3)
+                    if (N > effectiveCap) {
+                      return (
+                        <p className="mt-1 text-xs text-red-500">
+                          保底幾乎不觸發（自然均值 {naturalMean.toLocaleString()} 轉，建議 ≤ {effectiveCap.toLocaleString()}）
+                        </p>
+                      )
+                    }
+                    return null
+                  })()}
                 </Field>
                 <Field label="RUSH 保底連數">
                   <input type="number" min={1} max={10} className={INPUT}
