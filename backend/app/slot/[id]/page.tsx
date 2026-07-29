@@ -27,6 +27,16 @@ interface ThemePrize {
   weight: number; video_type: string; per_machine_stock: number | null
   min_bet: number | null; sort_order: number; is_active: boolean
 }
+interface PoolItem {
+  id: number
+  min_bet: number | null
+  remaining: number | null
+  display_name: string | null
+  slot_prizes: { id: number; name: string; image_url: string | null; level: string } | null
+}
+interface SlotPrize {
+  id: number; name: string; image_url: string | null; level: string
+}
 interface Machine {
   id: number; machine_number: number; is_active: boolean
   slot_pool_items: { id: number; coin_return: boolean; rush_only: boolean }[]
@@ -80,6 +90,7 @@ export default function SlotThemeDetailPage() {
 
   const [theme, setTheme]       = useState<SlotTheme | null>(null)
   const [prizes, setPrizes]     = useState<ThemePrize[]>([])
+  const [poolItems, setPoolItems] = useState<PoolItem[]>([])
   const [machines, setMachines] = useState<Machine[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'settings' | 'prizes' | 'videos' | 'machines'>('settings')
@@ -91,27 +102,38 @@ export default function SlotThemeDetailPage() {
   const [machineImagePreview, setMachineImagePreview] = useState('')
 
   // RUSH 獎池 modal
-  const [tierFilter, setTierFilter]     = useState<number | null>(null)
-  const [showAddPrize, setShowAddPrize] = useState(false)
-  const [editingPrize, setEditingPrize] = useState<ThemePrize | null>(null)
-  const [prizeForm, setPrizeForm]       = useState({ name: '', image_url: '', video_type: 'win', per_machine_stock: '', min_bet: '' })
-  const [prizeImageFile, setPrizeImageFile]       = useState<File | null>(null)
-  const [prizeImagePreview, setPrizeImagePreview] = useState('')
-  const [savingPrize, setSavingPrize]             = useState(false)
+  const [tierFilter, setTierFilter]       = useState<number | null>(null)
+  const [showAddPrize, setShowAddPrize]   = useState(false)
+  const [availablePrizes, setAvailablePrizes] = useState<SlotPrize[]>([])
+  const [prizeSearch, setPrizeSearch]     = useState('')
+  const [selectedPrize, setSelectedPrize] = useState<SlotPrize | null>(null)
+  const [addForm, setAddForm]             = useState({ min_bet: '', remaining: '' })
+  const [savingPrize, setSavingPrize]     = useState(false)
   const savingPrizeLock = useRef(false)
 
   const fetchData = async () => {
     setIsLoading(true)
-    const res  = await fetch(`/api/admin/slot/themes/${id}`)
-    const data = await res.json()
+    const [themeRes, poolRes] = await Promise.all([
+      fetch(`/api/admin/slot/themes/${id}`),
+      fetch(`/api/admin/slot/themes/${id}/pool`),
+    ])
+    const data     = await themeRes.json()
+    const poolData = await poolRes.json()
     const t: SlotTheme = data.theme
     setTheme(t)
     setPrizes(data.prizes ?? [])
     setMachines(data.machines ?? [])
+    setPoolItems(poolData.items ?? [])
     setForm({ ...t })
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setMachineImagePreview(t.image_url ?? '')
     setIsLoading(false)
+  }
+
+  const fetchPoolItems = async () => {
+    const res  = await fetch(`/api/admin/slot/themes/${id}/pool`)
+    const data = await res.json()
+    setPoolItems(data.items ?? [])
   }
 
   useEffect(() => { fetchData() }, [id])
@@ -173,67 +195,62 @@ export default function SlotThemeDetailPage() {
     else toast('儲存失敗', 'error')
   }
 
-  const openAddPrize = (prize?: ThemePrize) => {
-    if (prize) {
-      setEditingPrize(prize)
-      setPrizeForm({
-        name: prize.name, image_url: prize.image_url ?? '', video_type: prize.video_type,
-        per_machine_stock: prize.per_machine_stock != null ? String(prize.per_machine_stock) : '',
-        min_bet: prize.min_bet != null ? String(prize.min_bet) : '',
-      })
-      setPrizeImagePreview(prize.image_url ?? '')
-    } else {
-      setEditingPrize(null)
-      setPrizeForm({ name: '', image_url: '', video_type: 'win', per_machine_stock: '', min_bet: tierFilter != null ? String(tierFilter) : '' })
-      setPrizeImagePreview('')
+  const openAddPrize = () => {
+    setSelectedPrize(null)
+    setPrizeSearch('')
+    setAddForm({ min_bet: tierFilter != null ? String(tierFilter) : '', remaining: '' })
+    // 載入品項清單
+    if (availablePrizes.length === 0) {
+      fetch('/api/admin/slot/prizes')
+        .then(r => r.json())
+        .then(d => {
+          // 去重（同名只取一筆）
+          const seen = new Set<string>()
+          const unique = (d.prizes ?? []).filter((p: SlotPrize) => {
+            if (seen.has(p.name)) return false
+            seen.add(p.name); return true
+          })
+          setAvailablePrizes(unique)
+        })
     }
-    setPrizeImageFile(null)
     setShowAddPrize(true)
   }
 
-  const handleSavePrize = async () => {
+  const handleAddPrize = async () => {
     if (savingPrizeLock.current) return
-    if (!prizeForm.name) { toast('請填入獎品名稱', 'error'); return }
+    if (!selectedPrize) { toast('請選擇品項', 'error'); return }
     savingPrizeLock.current = true
     setSavingPrize(true)
     try {
-      let finalImageUrl = prizeForm.image_url
-      if (prizeImageFile) {
-        const uploadForm = new FormData()
-        uploadForm.append('file', prizeImageFile)
-        uploadForm.append('bucket', 'products')
-        uploadForm.append('path', `slot-prize-${id}-${Date.now()}.${prizeImageFile.name.split('.').pop() || 'jpg'}`)
-        const uploadRes  = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
-        const uploadJson = await uploadRes.json().catch(() => ({}))
-        if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
-        finalImageUrl = String(uploadJson?.publicUrl || '')
-      }
       const payload = {
-        name:              prizeForm.name,
-        image_url:         finalImageUrl || null,
-        video_type:        prizeForm.video_type,
-        per_machine_stock: prizeForm.per_machine_stock === '' ? null : parseInt(prizeForm.per_machine_stock),
-        min_bet:           prizeForm.min_bet === '' ? null : parseInt(prizeForm.min_bet),
+        slot_prize_id: selectedPrize.id,
+        display_name:  selectedPrize.name,
+        min_bet:       addForm.min_bet === '' ? null : parseInt(addForm.min_bet),
+        remaining:     addForm.remaining === '' ? null : parseInt(addForm.remaining),
       }
-      const url    = editingPrize ? `/api/admin/slot/themes/${id}/prizes/${editingPrize.id}` : `/api/admin/slot/themes/${id}/prizes`
-      const method = editingPrize ? 'PATCH' : 'POST'
-      const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (!res.ok) throw new Error((await res.json()).error || '儲存失敗')
-      toast(editingPrize ? '已更新' : '獎品已加入')
+      const res = await fetch(`/api/admin/slot/themes/${id}/pool`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || '新增失敗')
+      toast('獎品已加入所有機台')
       setShowAddPrize(false)
-      fetchData()
+      fetchPoolItems()
     } catch (e: any) {
-      toast(e.message ?? '儲存失敗', 'error')
+      toast(e.message ?? '新增失敗', 'error')
     } finally {
       savingPrizeLock.current = false
       setSavingPrize(false)
     }
   }
 
-  const handleDeletePrize = async (prizeId: number) => {
-    if (!confirm('確定移除此獎品？')) return
-    const res = await fetch(`/api/admin/slot/themes/${id}/prizes/${prizeId}`, { method: 'DELETE' })
-    if (res.ok) { toast('已移除'); fetchData() }
+  const handleDeletePoolItem = async (item: PoolItem) => {
+    if (!confirm('確定從所有機台移除此獎品？')) return
+    const res = await fetch(
+      `/api/admin/slot/themes/${id}/pool?pool_item_id=${item.id}`,
+      { method: 'DELETE' }
+    )
+    if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
     else toast('移除失敗', 'error')
   }
 
@@ -272,8 +289,11 @@ export default function SlotThemeDetailPage() {
     { key: 'machines', label: `機台 (${machines.length})` },
   ] as const
 
-  const tierOptions    = [...new Set(prizes.map(p => p.min_bet))].sort((a, b) => (a ?? 0) - (b ?? 0))
-  const filteredPrizes = tierFilter == null ? prizes : prizes.filter(p => p.min_bet === tierFilter)
+  const tierOptions      = [...new Set(poolItems.map(p => p.min_bet))].sort((a, b) => (a ?? 0) - (b ?? 0))
+  const filteredItems    = tierFilter == null ? poolItems : poolItems.filter(p => p.min_bet === tierFilter)
+  const filteredPrizesSearch = availablePrizes.filter(p =>
+    !prizeSearch || p.name.toLowerCase().includes(prizeSearch.toLowerCase())
+  )
 
   return (
     <AdminLayout
@@ -406,7 +426,6 @@ export default function SlotThemeDetailPage() {
                     value={N > 0 ? N : ''}
                     onChange={e => setForm(prev => ({ ...prev, floor_spin_count: parseInt(e.target.value) }))}
                   />
-                  {N > 300 && <p className="mt-1 text-[11px] text-amber-500">轉數過高，保底效果很弱</p>}
                 </Field>
                 <Field label="RUSH 保底連數">
                   <input type="number" min={1} max={10} className={INPUT}
@@ -429,11 +448,11 @@ export default function SlotThemeDetailPage() {
               {stats ? (
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-neutral-50 rounded-xl p-4 text-center">
-                    <div className="text-xs text-neutral-500 mb-1">幣值 RTP</div>
+                    <div className="text-xs text-neutral-500 mb-1">普通轉幣值回報率</div>
                     <div className={`font-black text-2xl ${rtpColor}`}>
-                      {(stats.coinRtp * 100).toFixed(1)}%
+                      {Math.max(0, stats.coinRtp * 100).toFixed(1)}%
                     </div>
-                    {N > 300 && <div className="text-[10px] text-amber-500 mt-0.5">保底幾乎沒用</div>}
+                    <div className="text-[10px] text-neutral-400 mt-0.5">保底轉數越高此值越高</div>
                   </div>
                   <div className="bg-neutral-50 rounded-xl p-4 text-center">
                     <div className="text-xs text-neutral-500 mb-1">平均觸發 RUSH 轉數</div>
@@ -465,12 +484,12 @@ export default function SlotThemeDetailPage() {
             <PageCard noPadding>
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
                 <div>
-                  <h3 className="text-sm font-semibold text-neutral-700">RUSH 獎池模板</h3>
+                  <h3 className="text-sm font-semibold text-neutral-700">RUSH 獎池</h3>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    每次新增機台時自動複製。<span className="font-medium text-amber-600">最低投注</span> = 玩家需投注 ≥ 此金額才能獲得此獎品。
+                    顯示所有機台的實際獎池。<span className="font-medium text-amber-600">最低投注</span> = 玩家需投注 ≥ 此金額才可獲得。
                   </p>
                 </div>
-                <button onClick={() => openAddPrize()} className={BTN_PRIMARY}>+ 加入獎品</button>
+                <button onClick={openAddPrize} className={BTN_PRIMARY}>+ 加入獎品</button>
               </div>
 
               {/* 檔次篩選 */}
@@ -479,7 +498,7 @@ export default function SlotThemeDetailPage() {
                   className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
                     tierFilter == null ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}>
-                  全部 ({prizes.length})
+                  全部 ({poolItems.length})
                 </button>
                 {tierOptions.map(minBet => (
                   <button key={String(minBet)} onClick={() => setTierFilter(minBet)}
@@ -487,55 +506,51 @@ export default function SlotThemeDetailPage() {
                       tierFilter === minBet ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                     }`}>
                     {minBet != null ? `${minBet.toLocaleString()} G+` : '全檔次'}&nbsp;
-                    ({prizes.filter(p => p.min_bet === minBet).length})
+                    ({poolItems.filter(p => p.min_bet === minBet).length})
                   </button>
                 ))}
               </div>
 
-              {filteredPrizes.length === 0 ? (
+              {filteredItems.length === 0 ? (
                 <div className="py-12 text-center text-sm text-neutral-400">
-                  {prizes.length === 0 ? '尚無獎品，點擊右上角新增' : '此檔次無獎品'}
+                  {poolItems.length === 0 ? '尚無獎品，點擊右上角從品項管理新增' : '此檔次無獎品'}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr>
-                        {['圖片', '名稱', '最低投注', '演出', '每台庫存', '操作'].map(h => (
+                        {['圖片', '名稱', '最低投注', '庫存（每台）', '操作'].map(h => (
                           <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                      {filteredPrizes.map(prize => (
-                        <tr key={prize.id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200">
-                              <img src={prize.image_url || '/images/item.png'} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-neutral-900">{prize.name}</td>
-                          <td className="px-4 py-3">
-                            {prize.min_bet != null
-                              ? <Badge color="amber">{prize.min_bet.toLocaleString()} G+</Badge>
-                              : <span className="text-xs text-neutral-400">全檔次</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge color={prize.video_type === 'win_god' ? 'red' : prize.video_type === 'win_strong' ? 'amber' : 'blue'}>
-                              {prize.video_type === 'win_god' ? '壓勝' : prize.video_type === 'win_strong' ? '強勝利' : '普通'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-neutral-600">
-                            {prize.per_machine_stock ?? <span className="text-green-600 font-bold">∞</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex gap-3">
-                              <button onClick={() => openAddPrize(prize)} className="text-primary text-sm font-medium">編輯</button>
-                              <button onClick={() => handleDeletePrize(prize.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">刪除</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredItems.map(item => {
+                        const prizeName = item.slot_prizes?.name ?? item.display_name ?? '—'
+                        const prizeImg  = item.slot_prizes?.image_url ?? '/images/item.png'
+                        return (
+                          <tr key={item.id} className="hover:bg-neutral-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200">
+                                <img src={prizeImg} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-neutral-900">{prizeName}</td>
+                            <td className="px-4 py-3">
+                              {item.min_bet != null
+                                ? <Badge color="amber">{item.min_bet.toLocaleString()} G+</Badge>
+                                : <span className="text-xs text-neutral-400">全檔次</span>}
+                            </td>
+                            <td className="px-4 py-3 text-neutral-600">
+                              {item.remaining != null ? item.remaining : <span className="text-green-600 font-bold">∞</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button onClick={() => handleDeletePoolItem(item)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -607,51 +622,66 @@ export default function SlotThemeDetailPage() {
       </div>
 
       {/* ─── 加入獎品 Modal ─────────────────────────────────────────────────── */}
-      <Modal isOpen={showAddPrize} onClose={() => setShowAddPrize(false)}
-        title={editingPrize ? '編輯獎品' : '加入 RUSH 獎品'}>
+      <Modal isOpen={showAddPrize} onClose={() => setShowAddPrize(false)} title="加入 RUSH 獎品">
         <div className="space-y-4">
-          <Field label="獎品名稱">
-            <input type="text" className={INPUT} value={prizeForm.name}
-              onChange={e => setPrizeForm(p => ({ ...p, name: e.target.value }))} placeholder="例：限定帆布托特包" />
-          </Field>
-          <Field label="獎品圖片">
-            <input type="file" accept="image/*" onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) { setPrizeImageFile(f); setPrizeImagePreview(URL.createObjectURL(f)) }
-            }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
-            {prizeImagePreview && (
-              <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
-                <img src={prizeImagePreview} alt="" className="w-full h-full object-cover" />
+          {/* 品項搜尋選擇 */}
+          <Field label="選擇品項">
+            <input
+              type="text"
+              className={INPUT}
+              placeholder="搜尋品項名稱..."
+              value={prizeSearch}
+              onChange={e => { setPrizeSearch(e.target.value); setSelectedPrize(null) }}
+            />
+            {prizeSearch && !selectedPrize && filteredPrizesSearch.length > 0 && (
+              <div className="mt-1 border border-neutral-200 rounded-lg bg-white shadow-sm max-h-48 overflow-y-auto">
+                {filteredPrizesSearch.slice(0, 20).map(p => (
+                  <button key={p.id} type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-neutral-50 text-left"
+                    onClick={() => { setSelectedPrize(p); setPrizeSearch(p.name) }}>
+                    <img src={p.image_url ?? '/images/item.png'} alt="" className="w-8 h-8 rounded object-cover bg-neutral-100 flex-shrink-0" />
+                    <span className="text-sm text-neutral-800">{p.name}</span>
+                  </button>
+                ))}
               </div>
             )}
+            {selectedPrize && (
+              <div className="mt-2 flex items-center gap-3 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+                <img src={selectedPrize.image_url ?? '/images/item.png'} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-neutral-800">{selectedPrize.name}</div>
+                </div>
+                <button type="button" onClick={() => { setSelectedPrize(null); setPrizeSearch('') }}
+                  className="text-xs text-neutral-400 hover:text-neutral-600">✕</button>
+              </div>
+            )}
+            {prizeSearch && !selectedPrize && filteredPrizesSearch.length === 0 && (
+              <p className="mt-1 text-xs text-neutral-400 px-1">找不到相符品項</p>
+            )}
           </Field>
-          <Field label="最低投注檔次">
-            <select className={INPUT} value={prizeForm.min_bet}
-              onChange={e => setPrizeForm(p => ({ ...p, min_bet: e.target.value }))}>
-              <option value="">全檔次皆可獲得</option>
-              {parsedTiers.map(t => (
-                <option key={t.coins} value={String(t.coins)}>{t.coins.toLocaleString()} G 以上</option>
-              ))}
-            </select>
-          </Field>
+
           <div className="grid grid-cols-2 gap-4">
-            <Field label="每台庫存">
-              <input type="number" className={INPUT} min={0} value={prizeForm.per_machine_stock}
-                onChange={e => setPrizeForm(p => ({ ...p, per_machine_stock: e.target.value }))} placeholder="空白 = 不限" />
-            </Field>
-            <Field label="獲得演出">
-              <select className={INPUT} value={prizeForm.video_type}
-                onChange={e => setPrizeForm(p => ({ ...p, video_type: e.target.value }))}>
-                <option value="win">普通勝利</option>
-                <option value="win_strong">強勝利</option>
-                <option value="win_god">壓勝（激アツ）</option>
+            <Field label="投注檔次">
+              <select className={INPUT} value={addForm.min_bet}
+                onChange={e => setAddForm(p => ({ ...p, min_bet: e.target.value }))}>
+                <option value="">全檔次皆可</option>
+                {parsedTiers.map(t => (
+                  <option key={t.coins} value={String(t.coins)}>{t.coins.toLocaleString()} G 以上</option>
+                ))}
               </select>
             </Field>
+            <Field label="每台庫存">
+              <input type="number" className={INPUT} min={0}
+                value={addForm.remaining}
+                onChange={e => setAddForm(p => ({ ...p, remaining: e.target.value }))}
+                placeholder="空白 = 不限" />
+            </Field>
           </div>
+
           <div className="flex justify-end gap-3 pt-2 border-t">
             <button onClick={() => setShowAddPrize(false)} className={BTN_GHOST}>取消</button>
-            <button onClick={handleSavePrize} disabled={savingPrize || !prizeForm.name} className={BTN_PRIMARY}>
-              {savingPrize ? '儲存中...' : editingPrize ? '更新' : '加入'}
+            <button onClick={handleAddPrize} disabled={savingPrize || !selectedPrize} className={BTN_PRIMARY}>
+              {savingPrize ? '新增中...' : '加入'}
             </button>
           </div>
         </div>
