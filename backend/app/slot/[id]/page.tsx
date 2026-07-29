@@ -61,9 +61,9 @@ const FIXED_AVG_MULT = FIXED_COIN_RETURNS.reduce((s, r) => s + r.multiplier * r.
 const VIDEO_SLOTS = [
   { key: 'video_rush_entry',        label: '突入演出',   badge: '突入',     desc: 'RUSH 觸發進場動畫' },
   { key: 'video_rush_anticipation', label: '對決煽り',   badge: '煽り',     desc: '每連開始前緊張演出' },
-  { key: 'video_rush_win',          label: '普通勝利',   badge: '連',       desc: 'RUSH 普通品項獲得' },
-  { key: 'video_rush_win_strong',   label: '強勝利',     badge: '強',       desc: '中高價值品項獲得' },
-  { key: 'video_rush_win_god',      label: '壓勝',       badge: '激アツ',   desc: '最高價值品項獲得' },
+  { key: 'video_rush_win',          label: '普通勝利',   badge: '連',       desc: '三等獎品項獲得' },
+  { key: 'video_rush_win_strong',   label: '強勝利',     badge: '強',       desc: '二等獎品項獲得' },
+  { key: 'video_rush_win_god',      label: '壓勝',       badge: '激アツ',   desc: '一等獎品項獲得' },
   { key: 'video_rush_revival',      label: '逆轉復活',   badge: '次回確定', desc: 'RUSH 繼續確定演出' },
 ]
 
