@@ -195,7 +195,7 @@ export default function SlotThemesPage() {
                         <td className="px-4 py-3 text-xs text-neutral-500">
                           <div>觸發 {(theme.trigger_rate * 100).toFixed(2)}%</div>
                           <div>延續 {(theme.continue_rate * 100).toFixed(0)}%</div>
-                          <div>保底 {theme.floor_spin_count} 轉</div>
+                          <div>天井 {theme.floor_spin_count} 轉</div>
                         </td>
                         {/* 上架 */}
                         <td className="px-4 py-3">

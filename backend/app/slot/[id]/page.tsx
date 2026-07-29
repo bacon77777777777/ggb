@@ -413,7 +413,7 @@ export default function SlotThemeDetailPage() {
                     onChange={e => setForm(p => ({ ...p, min_rush_hits: parseInt(e.target.value) }))}
                   />
                 </Field>
-                <Field label="保底轉數">
+                <Field label="天井轉數">
                   <input type="number" className={INPUT} min={1}
                     value={form.floor_spin_count ?? ''}
                     onChange={e => setForm(p => ({ ...p, floor_spin_count: parseInt(e.target.value) }))}
