@@ -4,6 +4,16 @@
 
 ---
 
+## v2026.07.30a｜2026-07-30｜挑戰機台 UI 細節優化
+
+### 改動
+- 確認入場彈窗機台名稱後顯示 `#N`（機台編號）
+- 挑戰機台內頁與確認入場彈窗：RUSH 獎池右上角幣值範圍字放大加粗（`text-sm font-black`）
+- 挑戰機台內頁與確認入場彈窗：普通旋轉返還區塊新增右上角幣值範圍（依當前檔次 × return_multiplier 計算）
+- STG spin 報錯修復：`draw_records_status_check` constraint 加入 `coin_return` 值（migration 376，同步 STG + PROD）
+
+---
+
 ## v2026.07.29e｜2026-07-29｜已知問題記錄
 
 ### ⚠ 已知問題（待修）

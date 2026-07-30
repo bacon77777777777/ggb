@@ -593,7 +593,7 @@ export default function MachinePage() {
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">RUSH 獎池</p>
               {rushMinVal > 0 && (
-                <p className="text-xs font-black text-primary tabular-nums">
+                <p className="text-sm font-black text-primary tabular-nums">
                   {rushMinVal.toLocaleString()} ～ {rushMaxVal.toLocaleString()} G
                 </p>
               )}
@@ -605,10 +605,21 @@ export default function MachinePage() {
         )}
 
         {/* ── 普通旋轉返還 ── 4 欄 grid，同 RUSH 排版 */}
-        {coinReturnPool.length > 0 && (
+        {coinReturnPool.length > 0 && (() => {
+          const crMults = coinReturnPool.map(i => i.return_multiplier ?? 0).filter(v => v > 0);
+          const crMin = crMults.length ? Math.floor(currentTier.coins * Math.min(...crMults)) : 0;
+          const crMax = crMults.length ? Math.floor(currentTier.coins * Math.max(...crMults)) : 0;
+          return (
           <div className={physicalItems.length > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}>
             <div className="px-4 pt-3 pb-4">
-              <p className="text-xs font-black text-neutral-400 uppercase tracking-wider mb-3">普通旋轉返還</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-black text-neutral-400 uppercase tracking-wider">普通旋轉返還</p>
+                {crMin > 0 && (
+                  <p className="text-sm font-black text-primary tabular-nums">
+                    {crMin.toLocaleString()} ～ {crMax.toLocaleString()} G
+                  </p>
+                )}
+              </div>
               <div className="grid grid-cols-4 gap-2">
                 {coinReturnPool.map(item => {
                   const prize = item.slot_prizes;
@@ -641,7 +652,8 @@ export default function MachinePage() {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     );
   };

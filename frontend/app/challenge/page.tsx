@@ -140,7 +140,7 @@ function TierSelectModal({
               />
             </div>
             <h3 className="font-black text-base text-neutral-900 dark:text-white truncate">
-              {machine.name}
+              {machine.name} <span className="text-primary">#{machineNumber}</span>
             </h3>
           </div>
           <button onClick={onClose}
@@ -186,7 +186,7 @@ function TierSelectModal({
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">RUSH 獎池</p>
                     {rMin > 0 && (
-                      <p className="text-[10px] font-black text-primary tabular-nums">
+                      <p className="text-sm font-black text-primary tabular-nums">
                         {rMin.toLocaleString()} ～ {rMax.toLocaleString()} G
                       </p>
                     )}
@@ -214,11 +214,21 @@ function TierSelectModal({
               );
             })()}
 
-            {/* 普通旋轉返還 */}
             {/* 普通旋轉返還 — 4 欄 grid，同 RUSH 排版 */}
-            {coinReturns.length > 0 && (
+            {coinReturns.length > 0 && (() => {
+              const crMults = coinReturns.map(i => i.return_multiplier ?? 0).filter(v => v > 0);
+              const crMin = crMults.length ? Math.floor(selected * Math.min(...crMults)) : 0;
+              const crMax = crMults.length ? Math.floor(selected * Math.max(...crMults)) : 0;
+              return (
               <>
-                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-2">普通旋轉返還</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">普通旋轉返還</p>
+                  {crMin > 0 && (
+                    <p className="text-sm font-black text-primary tabular-nums">
+                      {crMin.toLocaleString()} ～ {crMax.toLocaleString()} G
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {coinReturns.map(item => {
                     const prize = item.slot_prizes;
@@ -240,7 +250,8 @@ function TierSelectModal({
                   })}
                 </div>
               </>
-            )}
+              );
+            })()}
           </div>
         </div>
 
