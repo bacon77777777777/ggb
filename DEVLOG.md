@@ -4,6 +4,21 @@
 
 ---
 
+## v2026.07.30e｜2026-07-30｜挑戰機台模組化：新增 classic 純機台效果類型
+
+### 改動
+- DB：`slot_themes` 新增 `machine_type` 欄位（`video` | `classic`，預設 `video`）
+- 後台主題設定：「機台模組」選擇器，radio 按鈕切換 video / classic
+- 後台 API：`machine_type` 加入 PATCH 允許欄位
+- 新增 `SlotMachineClassic.tsx` — 基於 v15 原生機台效果：
+  - 多層發光燈（8區 mask + screen blend）
+  - 蓋章系統（stampFx + ring impact，左連 7 階梯震動）
+  - 聽牌模式（前兩輪 777 時第三輪多轉 1500ms + 心跳音效）
+  - RUSH 皮膚（main_rush.png overlay）
+  - 大当り連中文字（5 等級：lv1 金 → lv5 彩虹，streak 驅動）
+  - Web Audio API 音效（clack/clunk/thud/winJingle/coinBurst）
+- `page.tsx`：`rushStreak` state、`machineType` 條件渲染、classic 模式跳過影片直接播機台動畫
+
 ## v2026.07.30d｜2026-07-30｜修正 RUSH 突入影片後不應立即彈出結果
 
 ### 改動

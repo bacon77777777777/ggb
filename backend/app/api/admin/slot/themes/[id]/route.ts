@@ -43,7 +43,7 @@ export async function PATCH(
     'min_rush_hits', 'floor_spin_count',
     'video_rush_entry', 'video_rush_anticipation', 'video_rush_win',
     'video_rush_win_strong', 'video_rush_win_god', 'video_rush_revival',
-    'is_active', 'sort_order',
+    'is_active', 'sort_order', 'machine_type',
   ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {

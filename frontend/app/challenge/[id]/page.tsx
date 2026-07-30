@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
+import SlotMachineClassic from '@/components/challenge/SlotMachineClassic';
 
 interface ThemeVideos {
   video_rush_entry:        string | null;
@@ -44,7 +45,7 @@ interface SlotMachine {
   min_rush_hits: number;
   floor_spin_count: number;
   bet_tiers: BetTier[];
-  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null } | null;
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null } | null;
 }
 
 interface SlotPoolItem {
@@ -139,6 +140,7 @@ export default function MachinePage() {
   const [isAuto, setIsAuto] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
   const [jackpot, setJackpot] = useState(false);
+  const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
 
   const isAutoRef = useRef(false);
@@ -267,9 +269,11 @@ export default function MachinePage() {
       const isJackpot = data.rush_triggered || wasInRushRef.current;
       setJackpot(isJackpot);
 
-      const showVideo = !isAutoRef.current;
+      const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+      const showVideo = !isAutoRef.current && !isClassic;
 
       if (data.rush_triggered) {
+        setRushStreak(1);
         // 觸發 RUSH → 突入演出；此轉無 RUSH 獎池品項，影片後回 idle
         if (showVideo) {
           setVideoPhase('rush_entry');
@@ -277,11 +281,12 @@ export default function MachinePage() {
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
         } else {
-          // auto 模式：跳過影片，直接 idle，讓 auto timer 繼續下一轉
+          // classic / auto 模式：機台自行播放jackpot動畫，直接 idle
           setLastResult(null);
           setSpinState('idle');
         }
       } else if (data.session.state === 'rush') {
+        setRushStreak(prev => prev + 1);
         // RUSH 中每一轉 → WIN 演出
         if (showVideo) {
           setVideoPhase('rush_win');
@@ -292,6 +297,7 @@ export default function MachinePage() {
           setSpinState('result');
         }
       } else {
+        setRushStreak(0);
         // 普通旋轉（coin_return）→ 不彈恭喜彈窗，直接回 idle
         setSpinState('idle');
       }
@@ -328,16 +334,27 @@ export default function MachinePage() {
     setDirectLoading(true);
     setError(null);
 
+    const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+    if (isClassic) {
+      // Classic 模式：先啟動滾輪視覺，再等 API
+      setJackpot(false);
+      setSpinState('spinning');
+    }
+
     try {
-      const res = await fetch(`/api/slot/${id}/direct`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bet: currentTier.coins }),
-      });
-      const data = await res.json();
+      const [res] = await Promise.all([
+        fetch(`/api/slot/${id}/direct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bet: currentTier.coins }),
+        }),
+        isClassic ? new Promise(r => setTimeout(r, 800)) : Promise.resolve(),
+      ]);
+      const data = await (res as Response).json();
 
       if (!res.ok || data.error) {
         setError(data.error ?? '直撃失敗');
+        if (isClassic) setSpinState('idle');
         return;
       }
 
@@ -348,15 +365,23 @@ export default function MachinePage() {
       }
       if (refreshProfile) refreshProfile();
 
-      // 直撃只進入 RUSH，無品項結果 → video 結束後回 idle
-      setLastResult(null);
-      setVideoPhase('rush_entry');
-      setSpinState('video');
-      if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
-      videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
-
+      if (isClassic) {
+        // Classic 模式：機台播放 jackpot 動畫，直接回 idle
+        setJackpot(true);
+        setRushStreak(1);
+        setLastResult(null);
+        setSpinState('idle');
+      } else {
+        // 直撃只進入 RUSH，無品項結果 → video 結束後回 idle
+        setLastResult(null);
+        setVideoPhase('rush_entry');
+        setSpinState('video');
+        if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+        videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
+      }
     } catch {
       setError('直撃失敗，請稍後再試');
+      if (isClassic) setSpinState('idle');
     } finally {
       setDirectLoading(false);
     }
@@ -367,6 +392,7 @@ export default function MachinePage() {
     setIsAuto(false);
     setLastResult(null);
     setJackpot(false);
+    setRushStreak(0);
     setSpinState('idle');
   };
 
@@ -399,7 +425,23 @@ export default function MachinePage() {
 
   // ── renderers ──────────────────────────────────────────────
 
-  const renderMachineVisual = () => (
+  const machineType = machine.slot_themes?.machine_type ?? 'video';
+
+  const renderMachineVisual = () => machineType === 'classic' ? (
+    <SlotMachineClassic
+      spinState={spinState}
+      isRushActive={isRushActive}
+      rushHitsRemaining={session?.rush_hits_remaining ?? 0}
+      isAuto={isAuto}
+      spinsThisTier={spinsThisTier}
+      floorSpinCount={machine.floor_spin_count}
+      jackpot={jackpot}
+      rushStreak={rushStreak}
+      onSpin={handleSpin}
+      onDirect={handleDirect}
+      onAutoToggle={() => setIsAuto(v => !v)}
+    />
+  ) : (
     <SlotMachineVisual
       spinState={spinState}
       isRushActive={isRushActive}

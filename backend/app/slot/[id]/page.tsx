@@ -20,6 +20,7 @@ interface SlotTheme {
   video_rush_win: string | null; video_rush_win_strong: string | null
   video_rush_win_god: string | null; video_rush_revival: string | null
   is_active: boolean; sort_order: number
+  machine_type: 'video' | 'classic'
   suppliers: { name: string } | null
 }
 interface ThemePrize {
@@ -445,6 +446,34 @@ export default function SlotThemeDetailPage() {
                       <img src={machineImagePreview} alt="" className="w-full h-full object-cover" />
                     </div>
                   )}
+                </Field>
+              </div>
+              <div className="mt-4">
+                <Field label="機台模組">
+                  <div className="flex gap-3 mt-1">
+                    {([
+                      { value: 'video',   label: '影片帶入',  desc: '突入/連中/勝利影片演出' },
+                      { value: 'classic', label: '純機台效果', desc: '滾輪動畫 + 蓋章 + 音效' },
+                    ] as const).map(opt => (
+                      <label key={opt.value}
+                        className={`flex-1 flex items-start gap-2.5 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          (form.machine_type ?? 'video') === opt.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <input type="radio" name="machine_type" value={opt.value}
+                          checked={(form.machine_type ?? 'video') === opt.value}
+                          onChange={() => setForm(p => ({ ...p, machine_type: opt.value }))}
+                          className="mt-0.5 accent-primary shrink-0"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-neutral-800">{opt.label}</p>
+                          <p className="text-xs text-neutral-400 mt-0.5">{opt.desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </Field>
               </div>
             </PageCard>
