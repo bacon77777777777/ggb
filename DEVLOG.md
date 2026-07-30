@@ -4,6 +4,13 @@
 
 ---
 
+## v2026.07.30d｜2026-07-30｜修正 RUSH 突入影片後不應立即彈出結果
+
+### 改動
+- 新增 `videoPhaseRef` 追蹤當前影片 phase
+- `handleVideoEnd`：rush_entry 影片結束 → 清除 lastResult + 回 idle（不彈結果彈窗）；rush_win 影片結束 → 正常顯示結果
+- auto 模式觸發 RUSH 時：skip 影片直接回 idle，讓 auto timer 繼續執行第一轉 RUSH spin
+
 ## v2026.07.30c｜2026-07-30｜挑戰機台互動優化 + 滾輪兩段式動畫
 
 ### 改動

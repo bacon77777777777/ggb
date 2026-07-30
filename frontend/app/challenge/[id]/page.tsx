@@ -147,9 +147,11 @@ export default function MachinePage() {
   const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResultRef = useRef<SpinResult | null>(null);
   const wasInRushRef = useRef(false);
+  const videoPhaseRef = useRef<VideoPhase>(null);
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
+  useEffect(() => { videoPhaseRef.current = videoPhase; }, [videoPhase]);
 
   const syncSession = useCallback(() => {
     fetch(`/api/slot/${id}/session`)
@@ -213,8 +215,16 @@ export default function MachinePage() {
 
   const handleVideoEnd = useCallback(() => {
     if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+    const phase = videoPhaseRef.current;
     setVideoPhase(null);
-    setSpinState(lastResultRef.current ? 'result' : 'idle');
+    if (phase === 'rush_entry') {
+      // 突入影片結束：進入 RUSH 狀態，此轉無 RUSH 獎池品項，回 idle 等玩家繼續轉
+      setLastResult(null);
+      setSpinState('idle');
+    } else {
+      // RUSH WIN 影片結束：顯示品項結果
+      setSpinState(lastResultRef.current ? 'result' : 'idle');
+    }
   }, []);
 
   const handleSpin = async () => {
@@ -260,14 +270,16 @@ export default function MachinePage() {
       const showVideo = !isAutoRef.current;
 
       if (data.rush_triggered) {
-        // 觸發 RUSH → 突入演出
+        // 觸發 RUSH → 突入演出；此轉無 RUSH 獎池品項，影片後回 idle
         if (showVideo) {
           setVideoPhase('rush_entry');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
         } else {
-          setSpinState('result');
+          // auto 模式：跳過影片，直接 idle，讓 auto timer 繼續下一轉
+          setLastResult(null);
+          setSpinState('idle');
         }
       } else if (data.session.state === 'rush') {
         // RUSH 中每一轉 → WIN 演出
