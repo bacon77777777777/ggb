@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.30f｜2026-07-30｜老虎機 UI 大幅優化
+
+### 改動
+- 結果彈窗改白色風格（與轉蛋彈窗統一：bg-white、深色文字、primary 按鈕）
+- +XG 出現時機延後至三個轉輪全部停定後才顯示，顏色改回金黃（#facc15）+ Impact 字體
+- 大当り!! 漸層改水平（90deg），使中文字與 !! 色調一致
+- 機台按鈕加上文字標籤：自動 / SPIN / 直衝
+- 普通機台隱藏 light_rush 看板；改顯示 LED 計分板（累計 N次 ★ RUSH N次）於同位置
+- 計分板定位移至 light_rush.png 正後方（top:27.15%）
+- RUSH 剩餘浮層移除，控制列底部 RUSH 計數移除
+- 隱藏機台下方控制區塊（SPIN/AUTO/tier 選擇列），由機台內按鈕取代
+- winCount 只計算真正的 RUSH 得獎次數（RUSH 中抽品 + RUSH 退出）
+- 機台佔用系統：occupy / heartbeat / vacate API + 倒計時浮層
+- stopReels/finish 防禦性修正：捕捉 jackpot 值避免皮膚時機錯誤
+
+---
+
 ## v2026.07.30e｜2026-07-30｜挑戰機台模組化：新增 classic 純機台效果類型
 
 ### 改動

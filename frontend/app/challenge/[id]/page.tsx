@@ -832,9 +832,6 @@ export default function MachinePage() {
           <div className="bg-black shadow-sm">
             {renderMachineVisual()}
           </div>
-          <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
-            {renderControls()}
-          </div>
         </div>
         <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2 space-y-2">
           {renderPrizePool()}
@@ -852,7 +849,6 @@ export default function MachinePage() {
                   {renderMachineVisual()}
                 </div>
                 <div className="bg-white dark:bg-neutral-900">
-                  {renderControls()}
                 </div>
               </div>
             </div>
