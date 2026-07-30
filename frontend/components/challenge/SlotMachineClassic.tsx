@@ -692,6 +692,8 @@ export default function SlotMachineClassic({
       // UI 準備：lever pull + blur。不做 JS reel 動畫，等 API 返回後 stopping 才開始
       stage.classList.add('smvc-spinning');
       stage.classList.remove('smvc-rushmode');
+      // 非 RUSH 轉時移除 rush skin，避免 RUSH 結束後 skin 殘留到下一轉
+      if (!isRushActive) stage.classList.remove('smvc-rushskin');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
       if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
