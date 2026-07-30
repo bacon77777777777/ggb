@@ -307,16 +307,18 @@ export default function MachinePage() {
           setSpinState('stopping');
         }
       } else {
-        setRushStreak(0);
         if (isClassic) {
           // classic：stopReels 跑完後回 idle
+          // setRushStreak(0) 放在 animDoneRef 裡，確保 finish(true) 能正確讀到 streak 再歸零
           animDoneRef.current = () => {
+            setRushStreak(0);
             setSpinState('idle');
             if (refreshProfile) refreshProfile();
             if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
           };
           setSpinState('stopping');
         } else {
+          setRushStreak(0);
           setSpinState('idle');
           if (refreshProfile) refreshProfile();
           if (isAutoRef.current) {

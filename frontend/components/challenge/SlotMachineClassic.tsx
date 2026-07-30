@@ -453,6 +453,17 @@ export default function SlotMachineClassic({
       strip.innerHTML = html;
     });
     sync();
+    // Randomize initial reel positions (avoid 777 on load)
+    {
+      const h = rowH.current || 80;
+      let t: number[];
+      do { t = [0, 1, 2].map(() => Math.floor(Math.random() * N)); }
+      while (t[0] === SEVEN && t[1] === SEVEN && t[2] === SEVEN);
+      offsets.current = t.map(s => s * h);
+      stripEls.current.forEach((el, i) => {
+        if (el) el.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
+      });
+    }
     window.addEventListener('resize', sync);
     // Init rush skin if already in RUSH on mount
     if (isRushActive) stageRef.current?.classList.add('smvc-rushskin');
@@ -686,8 +697,9 @@ export default function SlotMachineClassic({
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
       reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
-    } else if (spinState === 'stopping' && prevSpin.current === 'spinning') {
+    } else if (spinState === 'stopping') {
       // API 返回，開始 ease-out 動畫（同 v16 的 spin()）
+      // animGen++ in stopReels cancels any previous RAF loop automatically
       stopReels(jackpotRef.current, () => {
         finish(jackpotRef.current);
         onAnimDone?.();
