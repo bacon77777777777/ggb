@@ -13,6 +13,8 @@ export interface SlotMachineClassicProps {
   floorSpinCount: number;
   jackpot: boolean;
   rushStreak: number;
+  winCount: number;
+  totalSpins: number;
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
@@ -107,7 +109,7 @@ const SMVC_CSS = `
 .smvc-mrush {
   inset:0; z-index:1;
   background:url('/images/slot/machine/main_rush.png') center/100% 100% no-repeat;
-  opacity:0; transition:opacity .3s;
+  opacity:0;
 }
 .smvc-stage.smvc-rushskin .smvc-mrush { opacity:1; }
 
@@ -201,20 +203,19 @@ const SMVC_CSS = `
 .smvc-stage.smvc-rushskin .smvc-lit-bulbs { animation:smvc-bulbBlink .34s steps(2) infinite; }
 .smvc-stage.smvc-rushmode .smvc-lit       { animation:smvc-litStrobe .14s steps(2) infinite !important; }
 
-/* ── RUSH sign ── */
+/* ── RUSH sign (hidden in normal mode) ── */
 .smvc-rushsign {
   position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%; z-index:5;
   background:url('/images/slot/machine/light_rush.png') center/100% 100% no-repeat;
-  animation:smvc-signPulse 2.4s ease-in-out infinite; transform-origin:center;
+  opacity:0; transform-origin:center;
 }
 @keyframes smvc-signPulse {
   0%,100%{opacity:.72; filter:drop-shadow(0 0 .3cqw rgba(255,190,60,.4));}
   50%    {opacity:1;   filter:drop-shadow(0 0 1.6cqw rgba(255,200,70,.95));}
 }
-.smvc-stage.smvc-spinning .smvc-rushsign { animation-duration:.85s; }
 @keyframes smvc-signJitter { 25%{transform:translate(.18cqw,-.14cqw);} 75%{transform:translate(-.18cqw,.14cqw);} }
-.smvc-stage.smvc-rushskin .smvc-rushsign { animation:smvc-signPulse 1.1s ease-in-out infinite,smvc-signJitter .14s linear infinite; }
-.smvc-stage.smvc-rushmode .smvc-rushsign { animation:smvc-signStrobe .15s steps(2) infinite,smvc-signJitter .1s linear infinite; }
+.smvc-stage.smvc-rushskin .smvc-rushsign { opacity:1; animation:smvc-signPulse 1.1s ease-in-out infinite,smvc-signJitter .14s linear infinite; }
+.smvc-stage.smvc-rushmode .smvc-rushsign { opacity:1; animation:smvc-signStrobe .15s steps(2) infinite,smvc-signJitter .1s linear infinite; }
 @keyframes smvc-signStrobe {
   0%  {opacity:1; transform:scale(1.06); filter:drop-shadow(0 0 2.2cqw #ffd84d) brightness(1.5);}
   50% {opacity:.25; transform:scale(1);}
@@ -238,6 +239,11 @@ const SMVC_CSS = `
   color:#fff35e; text-shadow:0 0 1cqw #ff2a00,0 0 3cqw #ffb300;
 }
 @keyframes smvc-strobeTxt { 0%{opacity:1;} 50%{opacity:.15;} }
+.smvc-marquee.smvc-score .smvc-marquee-txt {
+  animation:none; margin:auto; transform:none;
+  font-size:3.4cqw; color:#4dff91; letter-spacing:.25cqw;
+  text-shadow:0 0 .6cqw #00cc55,0 0 2cqw rgba(0,180,60,.8);
+}
 .smvc-marquee::after {
   content:""; position:absolute; inset:0; pointer-events:none;
   background:radial-gradient(rgba(0,0,0,.55) 28%,transparent 32%);
@@ -351,6 +357,7 @@ const SMVC_CSS = `
   font-size:15cqw; font-weight:900; letter-spacing:1cqw; white-space:nowrap;
   background:linear-gradient(#fff8c2,#ffd400 40%,#ff7a00 70%,#ffd400);
   -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:.55cqw rgba(200,80,0,.75); paint-order:stroke fill;
   filter:drop-shadow(0 0 1.5cqw #ff3c00) drop-shadow(.5cqw .8cqw 0 rgba(80,20,0,.9));
   animation:smvc-winpop .5s cubic-bezier(.2,2.4,.4,1) both,smvc-winstrobe .16s steps(2) .5s infinite;
 }
@@ -410,6 +417,7 @@ const SMVC_CSS = `
 export default function SlotMachineClassic({
   spinState, isRushActive, rushHitsRemaining, isAuto,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
+  winCount, totalSpins,
   onSpin, onDirect, onAutoToggle, onAnimDone,
 }: SlotMachineClassicProps) {
   const stageRef   = useRef<HTMLDivElement>(null);
@@ -474,11 +482,13 @@ export default function SlotMachineClassic({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep rush skin in sync if finish() was aborted mid-animation
+  // Keep rush skin in sync — but NOT during spinning/stopping (finish() handles that timing)
   useEffect(() => {
     if (!stageRef.current) return;
-    if (isRushActive) stageRef.current.classList.add('smvc-rushskin');
-  }, [isRushActive]);
+    if (isRushActive && spinState !== 'spinning' && spinState !== 'stopping') {
+      stageRef.current.classList.add('smvc-rushskin');
+    }
+  }, [isRushActive, spinState]);
 
   const sync = useCallback(() => {
     const h = reelEls.current[0]?.clientHeight ?? 80;
@@ -698,7 +708,7 @@ export default function SlotMachineClassic({
       // 非 RUSH 轉時移除 rush skin，避免 RUSH 結束後 skin 殘留到下一轉
       if (!isRushActive) stage.classList.remove('smvc-rushskin');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
-      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
+      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win', 'smvc-score');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
       reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
@@ -726,6 +736,19 @@ export default function SlotMachineClassic({
     const btn = stageRef.current?.querySelector('.smvc-btn-auto');
     btn?.classList.toggle('smvc-on', isAuto);
   }, [isAuto]);
+
+  // LED scoreboard in idle non-rush state
+  useEffect(() => {
+    const marquee = marqueeEl.current;
+    const txt = marqueeTxt.current;
+    if (!marquee || !txt) return;
+    if (spinState === 'idle' && !isRushActive) {
+      marquee.classList.add('smvc-score');
+      txt.textContent = `累計 ${totalSpins}次  ★  RUSH ${winCount}次`;
+    } else {
+      marquee.classList.remove('smvc-score');
+    }
+  }, [spinState, isRushActive, winCount, totalSpins]);
 
   const floorPct = Math.min((spinsThisTier / Math.max(floorSpinCount, 1)) * 100, 100);
 
@@ -782,8 +805,8 @@ export default function SlotMachineClassic({
         {/* Bigwin text */}
         <div ref={bigwinEl} className="smvc-bigwin"><span>大当り!!</span></div>
 
-        {/* RUSH remaining overlay */}
-        {isRushActive && (
+        {/* RUSH remaining overlay — only show when reels have settled */}
+        {isRushActive && spinState !== 'spinning' && spinState !== 'stopping' && (
           <div style={{
             position: 'absolute', bottom: '22%', left: '50%', transform: 'translateX(-50%)',
             zIndex: 8, pointerEvents: 'none', whiteSpace: 'nowrap',
