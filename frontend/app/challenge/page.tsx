@@ -51,6 +51,7 @@ interface SlotMachine {
   event_slug: string | null;
   theme_id: number | null;
   machine_number: number | null;
+  rush_state: string | null;
   slot_themes: SlotTheme | null;
 }
 
@@ -290,6 +291,13 @@ function MachineCard({
           alt={machine.name} fill className="object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
         />
+        {machine.rush_state === 'rush' && (
+          <div className="absolute inset-0 bg-black/65 flex items-center justify-center">
+            <span className="text-white font-black text-sm tracking-[0.15em] animate-pulse select-none">
+              機台使用中
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
