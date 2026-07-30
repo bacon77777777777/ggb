@@ -273,7 +273,7 @@ export default function MachinePage() {
       const showVideo = !isAutoRef.current && !isClassic;
 
       if (data.rush_triggered) {
-        setRushStreak(1);
+        setRushStreak(prev => prev + 1);
         // 觸發 RUSH → 突入演出
         if (showVideo) {
           setVideoPhase('rush_entry');
@@ -308,8 +308,9 @@ export default function MachinePage() {
         }
       } else {
         if (isClassic) {
-          // classic：stopReels 跑完後回 idle
-          // setRushStreak(0) 放在 animDoneRef 裡，確保 finish(true) 能正確讀到 streak 再歸零
+          // isJackpot=true → RUSH 退出（wasInRushRef），先遞增讓 finish(true) 讀到正確 streak 再歸零
+          // isJackpot=false → 普通旋轉，直接歸零
+          if (isJackpot) setRushStreak(prev => prev + 1);
           animDoneRef.current = () => {
             setRushStreak(0);
             setSpinState('idle');
