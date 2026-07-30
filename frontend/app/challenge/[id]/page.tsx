@@ -103,7 +103,7 @@ interface SpinResult {
   error?: string;
 }
 
-type SpinState = 'idle' | 'spinning' | 'video' | 'result';
+type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 type VideoPhase = 'rush_entry' | 'rush_win' | null;
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -150,6 +150,7 @@ export default function MachinePage() {
   const lastResultRef = useRef<SpinResult | null>(null);
   const wasInRushRef = useRef(false);
   const videoPhaseRef = useRef<VideoPhase>(null);
+  const animDoneRef = useRef<(() => void) | null>(null);
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
@@ -245,7 +246,6 @@ export default function MachinePage() {
         body: JSON.stringify({ bet: currentTier.coins }),
       });
       const data: SpinResult = await res.json();
-      await new Promise(r => setTimeout(r, 1200));
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
       if (!res.ok || data.error) {
@@ -274,16 +274,21 @@ export default function MachinePage() {
 
       if (data.rush_triggered) {
         setRushStreak(1);
-        // 觸發 RUSH → 突入演出；此轉無 RUSH 獎池品項，影片後回 idle
+        // 觸發 RUSH → 突入演出
         if (showVideo) {
           setVideoPhase('rush_entry');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
         } else {
-          // classic / auto 模式：機台自行播放jackpot動畫，直接 idle
-          setLastResult(null);
-          setSpinState('idle');
+          // classic / auto：stopReels 跑完後回 idle，不彈結果
+          animDoneRef.current = () => {
+            setLastResult(null);
+            setSpinState('idle');
+            if (refreshProfile) refreshProfile();
+            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+          };
+          setSpinState('stopping');
         }
       } else if (data.session.state === 'rush') {
         setRushStreak(prev => prev + 1);
@@ -294,24 +299,36 @@ export default function MachinePage() {
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 6000);
         } else {
-          setSpinState('result');
+          // classic：stopReels 跑完後彈結果
+          animDoneRef.current = () => {
+            setSpinState('result');
+            if (refreshProfile) refreshProfile();
+          };
+          setSpinState('stopping');
         }
       } else {
         setRushStreak(0);
-        // 普通旋轉（coin_return）→ 不彈恭喜彈窗，直接回 idle
-        setSpinState('idle');
-      }
-
-      if (refreshProfile) refreshProfile();
-
-      if (isAutoRef.current) {
-        autoCloseTimerRef.current = setTimeout(() => {
-          if (isAutoRef.current) {
-            setLastResult(null);
+        if (isClassic) {
+          // classic：stopReels 跑完後回 idle
+          animDoneRef.current = () => {
             setSpinState('idle');
-            setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+            if (refreshProfile) refreshProfile();
+            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+          };
+          setSpinState('stopping');
+        } else {
+          setSpinState('idle');
+          if (refreshProfile) refreshProfile();
+          if (isAutoRef.current) {
+            autoCloseTimerRef.current = setTimeout(() => {
+              if (isAutoRef.current) {
+                setLastResult(null);
+                setSpinState('idle');
+                setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+              }
+            }, 2000);
           }
-        }, 2000);
+        }
       }
     } catch {
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
@@ -440,10 +457,11 @@ export default function MachinePage() {
       onSpin={handleSpin}
       onDirect={handleDirect}
       onAutoToggle={() => setIsAuto(v => !v)}
+      onAnimDone={() => { animDoneRef.current?.(); animDoneRef.current = null; }}
     />
   ) : (
     <SlotMachineVisual
-      spinState={spinState}
+      spinState={spinState as 'idle' | 'spinning' | 'video' | 'result'}
       isRushActive={isRushActive}
       rushHitsRemaining={session?.rush_hits_remaining ?? 0}
       isAuto={isAuto}
@@ -485,7 +503,7 @@ export default function MachinePage() {
             spinState !== 'idle' && "opacity-60 cursor-not-allowed"
           )}
         >
-          {spinState === 'spinning' ? (
+          {(spinState === 'spinning' || spinState === 'stopping') ? (
             <span className="flex items-center justify-center gap-2">
               <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: 'linear' }}>
                 <RotateCcw className="w-4 h-4" />

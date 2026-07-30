@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 
-type SpinState = 'idle' | 'spinning' | 'video' | 'result';
+type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 
 export interface SlotMachineClassicProps {
   spinState: SpinState;
@@ -16,6 +16,7 @@ export interface SlotMachineClassicProps {
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
+  onAnimDone?: () => void;
 }
 
 // ── Audio (module-level singleton) ──────────────────────────────────────────
@@ -409,7 +410,7 @@ const SMVC_CSS = `
 export default function SlotMachineClassic({
   spinState, isRushActive, rushHitsRemaining, isAuto,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
-  onSpin, onDirect, onAutoToggle,
+  onSpin, onDirect, onAutoToggle, onAnimDone,
 }: SlotMachineClassicProps) {
   const stageRef   = useRef<HTMLDivElement>(null);
   const reelEls    = useRef<(HTMLDivElement | null)[]>([null, null, null]);
@@ -426,7 +427,6 @@ export default function SlotMachineClassic({
   const prevSpin      = useRef<SpinState>('idle');
   const jackpotRef    = useRef(false);
   const rushStreakRef  = useRef(0);
-  const isFastSpin    = useRef(false); // flag to cancel startFastSpin when stopReels takes over
   const animGen       = useRef(0);     // generation counter: 每次新動畫遞增，讓舊 stopReels RAF 自動停止
 
   // Keep refs in sync — declared before spinState effect so ordering is guaranteed
@@ -599,7 +599,6 @@ export default function SlotMachineClassic({
   }, [coinBurst]);
 
   const stopReels = useCallback((isJackpot: boolean, onDone: () => void) => {
-    isFastSpin.current = false; // 停止 startFastSpin loop
     cancelAnimationFrame(rafId.current);
     const myGen = ++animGen.current; // 讓舊的 stopReels RAF 在下一 frame 自動停止
     const rh = rowH.current;
@@ -623,10 +622,13 @@ export default function SlotMachineClassic({
     const starts = [...offsets.current];
     const t0 = performance.now();
     const settled = [false, false, false];
+    let lastTick = 0;
 
     function frame(now: number) {
       if (animGen.current !== myGen) return; // 被新動畫取代，立即停止
       const el = now - t0;
+      // 轉動音效（同 v16）
+      if (el - lastTick > 90) { lastTick = el; sBeep(90 + Math.random() * 40, 0.03, 'sawtooth', 0.05); }
       let allDone = true;
 
       for (let i = 0; i < 3; i++) {
@@ -670,44 +672,32 @@ export default function SlotMachineClassic({
     rafId.current = requestAnimationFrame(frame);
   }, [stampFx]);
 
-  const startFastSpin = useCallback(() => {
-    const nrh = N * rowH.current;
-    // 初速與 v16 相同：ease'(0)×dist/dur = 4×(3×N×rowH)/1400ms ≈ 51.4 rowH/s
-    const speed = rowH.current * 51.4 * (1 + Math.random() * 0.05);
-    animGen.current++; // 作廢任何仍在跑的 stopReels RAF
-    isFastSpin.current = true;
-    let lastTime = 0;
-    let lastTick = 0;
-    function frame(now: number) {
-      if (!isFastSpin.current) return; // stopReels 取消後停止本 loop
-      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 1 / 60;
-      lastTime = now;
-      offsets.current = offsets.current.map(o => (o + speed * dt) % nrh);
-      stripEls.current.forEach((s, i) => {
-        if (s) s.style.transform = `translateY(${-(offsets.current[i])}px)`;
-      });
-      reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
-      if (now - lastTick > 90) { lastTick = now; sBeep(90 + Math.random() * 40, 0.03, 'sawtooth', 0.05); }
-      rafId.current = requestAnimationFrame(frame);
-    }
-    rafId.current = requestAnimationFrame(frame);
-  }, []);
-
-  // Main spinState effect
+  // Main spinState effect — 照 v16：spinning 只做 UI 準備，stopping 才跑 stopReels
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
 
     if (spinState === 'spinning') {
+      // UI 準備：lever pull + blur。不做 JS reel 動畫，等 API 返回後 stopping 才開始
       stage.classList.add('smvc-spinning');
       stage.classList.remove('smvc-rushmode');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
       if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
+      reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
-      startFastSpin();
-    } else if (prevSpin.current === 'spinning') {
-      stopReels(jackpotRef.current, () => finish(jackpotRef.current));
+    } else if (spinState === 'stopping' && prevSpin.current === 'spinning') {
+      // API 返回，開始 ease-out 動畫（同 v16 的 spin()）
+      stopReels(jackpotRef.current, () => {
+        finish(jackpotRef.current);
+        onAnimDone?.();
+      });
+    } else if (spinState === 'idle' && prevSpin.current === 'spinning') {
+      // 錯誤路徑：API 失敗，直接清理不跑動畫
+      animGen.current++;
+      cancelAnimationFrame(rafId.current);
+      reelEls.current.forEach(r => r?.classList.remove('smvc-blur'));
+      stage.classList.remove('smvc-spinning');
     }
 
     prevSpin.current = spinState;
