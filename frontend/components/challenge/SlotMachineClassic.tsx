@@ -221,6 +221,22 @@ const SMVC_CSS = `
   50% {opacity:.25; transform:scale(1);}
 }
 
+/* ── Scoreboard (behind rush sign, idle non-rush state) ── */
+.smvc-scoreboard {
+  position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%;
+  z-index:4; display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
+  font-weight:900; font-size:3.4cqw; letter-spacing:.3cqw; white-space:nowrap;
+  color:#4dff91; text-shadow:0 0 .8cqw #00cc55,0 0 2.4cqw rgba(0,200,80,.85);
+  transition:opacity .25s;
+}
+.smvc-scoreboard::after {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(rgba(0,0,0,.5) 28%,transparent 32%);
+  background-size:.85cqw .85cqw;
+}
+
 /* ── Marquee ── */
 .smvc-marquee {
   position:absolute; left:24.93%; top:14.59%; width:50%; height:7.83%;
@@ -239,11 +255,6 @@ const SMVC_CSS = `
   color:#fff35e; text-shadow:0 0 1cqw #ff2a00,0 0 3cqw #ffb300;
 }
 @keyframes smvc-strobeTxt { 0%{opacity:1;} 50%{opacity:.15;} }
-.smvc-marquee.smvc-score .smvc-marquee-txt {
-  animation:none; margin:auto; transform:none;
-  font-size:3.4cqw; color:#4dff91; letter-spacing:.25cqw;
-  text-shadow:0 0 .6cqw #00cc55,0 0 2cqw rgba(0,180,60,.8);
-}
 .smvc-marquee::after {
   content:""; position:absolute; inset:0; pointer-events:none;
   background:radial-gradient(rgba(0,0,0,.55) 28%,transparent 32%);
@@ -435,6 +446,8 @@ export default function SlotMachineClassic({
   const marqueeEl  = useRef<HTMLDivElement>(null);
   const marqueeTxt = useRef<HTMLDivElement>(null);
   const flashEl    = useRef<HTMLDivElement>(null);
+
+  const scoreboardEl  = useRef<HTMLDivElement>(null);
 
   const offsets       = useRef([0, 0, 0]);
   const rowH          = useRef(80);
@@ -715,7 +728,7 @@ export default function SlotMachineClassic({
       // 非 RUSH 轉時移除 rush skin，避免 RUSH 結束後 skin 殘留到下一轉
       if (!isRushActive) stage.classList.remove('smvc-rushskin');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
-      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win', 'smvc-score');
+      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
       reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
@@ -745,16 +758,15 @@ export default function SlotMachineClassic({
     btn?.classList.toggle('smvc-on', isAuto);
   }, [isAuto]);
 
-  // LED scoreboard in idle non-rush state
+  // LED scoreboard — shown in rush sign panel area when idle + not in rush
   useEffect(() => {
-    const marquee = marqueeEl.current;
-    const txt = marqueeTxt.current;
-    if (!marquee || !txt) return;
+    const sb = scoreboardEl.current;
+    if (!sb) return;
     if (spinState === 'idle' && !isRushActive) {
-      marquee.classList.add('smvc-score');
-      txt.textContent = `累計 ${totalSpins}次  ★  RUSH ${winCount}次`;
+      sb.textContent = `累計 ${totalSpins}次  ★  RUSH ${winCount}次`;
+      sb.style.opacity = '1';
     } else {
-      marquee.classList.remove('smvc-score');
+      sb.style.opacity = '0';
     }
   }, [spinState, isRushActive, winCount, totalSpins]);
 
@@ -776,6 +788,9 @@ export default function SlotMachineClassic({
         <div className="smvc-lit smvc-lit-barR   smvc-layer" />
         <div className="smvc-lit smvc-lit-reelfr smvc-layer" />
         <div className="smvc-lit smvc-lit-deck   smvc-layer" />
+
+        {/* Scoreboard (behind rush sign) */}
+        <div ref={scoreboardEl} className="smvc-scoreboard" />
 
         {/* RUSH sign */}
         <div className="smvc-rushsign smvc-layer" />
