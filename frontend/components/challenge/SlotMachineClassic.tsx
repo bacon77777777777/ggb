@@ -182,8 +182,8 @@ const SMVC_CSS = `
 .smvc-lit-deck {
   -webkit-mask-image:radial-gradient(ellipse at center,#000 50%,transparent 80%);
   mask-image:radial-gradient(ellipse at center,#000 50%,transparent 80%);
-  -webkit-mask-size:70% 15%; mask-size:70% 15%;
-  -webkit-mask-position:50% 82.35%; mask-position:50% 82.35%;
+  -webkit-mask-size:70.9% 15.7%; mask-size:70.9% 15.7%;
+  -webkit-mask-position:51.20% 89.56%; mask-position:51.20% 89.56%;
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   animation:smvc-litPulse 4.6s ease-in-out infinite; animation-delay:.35s;
 }
@@ -319,10 +319,10 @@ const SMVC_CSS = `
 .smvc-lever     { position:absolute; left:5.07%; top:50.32%; height:30.47%; z-index:6; pointer-events:none; }
 .smvc-lf { position:absolute; left:0; top:0; height:100%; background:center/100% 100% no-repeat; opacity:0; }
 .smvc-lf.smvc-show { opacity:1; }
-.smvc-lf1 { width:calc(69/284*100%); aspect-ratio:69/284; background-image:url('/images/slot/machine/1.png'); }
-.smvc-lf2 { width:calc(73/284*100%); aspect-ratio:73/284; background-image:url('/images/slot/machine/2.png'); }
-.smvc-lf3 { width:calc(74/284*100%); aspect-ratio:74/284; background-image:url('/images/slot/machine/3.png'); }
-.smvc-lf4 { width:calc(70/284*100%); aspect-ratio:70/284; background-image:url('/images/slot/machine/4.png'); }
+.smvc-lf1 { width:9.20cqw; background-image:url('/images/slot/machine/1.png'); }
+.smvc-lf2 { width:9.73cqw; background-image:url('/images/slot/machine/2.png'); }
+.smvc-lf3 { width:9.87cqw; background-image:url('/images/slot/machine/3.png'); }
+.smvc-lf4 { width:9.33cqw; background-image:url('/images/slot/machine/4.png'); }
 
 /* ── Buttons ── */
 .smvc-btn { position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat; }
@@ -420,12 +420,14 @@ export default function SlotMachineClassic({
   const marqueeTxt = useRef<HTMLDivElement>(null);
   const flashEl    = useRef<HTMLDivElement>(null);
 
-  const offsets      = useRef([0, 0, 0]);
-  const rowH         = useRef(80);
-  const rafId        = useRef(0);
-  const prevSpin     = useRef<SpinState>('idle');
-  const jackpotRef   = useRef(false);
-  const rushStreakRef = useRef(0);
+  const offsets       = useRef([0, 0, 0]);
+  const rowH          = useRef(80);
+  const rafId         = useRef(0);
+  const prevSpin      = useRef<SpinState>('idle');
+  const jackpotRef    = useRef(false);
+  const rushStreakRef  = useRef(0);
+  const isFastSpin    = useRef(false); // flag to cancel startFastSpin when stopReels takes over
+  const animGen       = useRef(0);     // generation counter: 每次新動畫遞增，讓舊 stopReels RAF 自動停止
 
   // Keep refs in sync — declared before spinState effect so ordering is guaranteed
   useEffect(() => { jackpotRef.current = jackpot; }, [jackpot]);
@@ -460,6 +462,12 @@ export default function SlotMachineClassic({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep rush skin in sync if finish() was aborted mid-animation
+  useEffect(() => {
+    if (!stageRef.current) return;
+    if (isRushActive) stageRef.current.classList.add('smvc-rushskin');
+  }, [isRushActive]);
 
   const sync = useCallback(() => {
     const h = reelEls.current[0]?.clientHeight ?? 80;
@@ -591,7 +599,9 @@ export default function SlotMachineClassic({
   }, [coinBurst]);
 
   const stopReels = useCallback((isJackpot: boolean, onDone: () => void) => {
+    isFastSpin.current = false; // 停止 startFastSpin loop
     cancelAnimationFrame(rafId.current);
+    const myGen = ++animGen.current; // 讓舊的 stopReels RAF 在下一 frame 自動停止
     const rh = rowH.current;
     const nrh = N * rh;
     const cycle = REP * nrh;
@@ -615,6 +625,7 @@ export default function SlotMachineClassic({
     const settled = [false, false, false];
 
     function frame(now: number) {
+      if (animGen.current !== myGen) return; // 被新動畫取代，立即停止
       const el = now - t0;
       let allDone = true;
 
@@ -661,10 +672,17 @@ export default function SlotMachineClassic({
 
   const startFastSpin = useCallback(() => {
     const nrh = N * rowH.current;
-    const speed = rowH.current * (0.9 + Math.random() * 0.24);
+    // 初速與 v16 相同：ease'(0)×dist/dur = 4×(3×N×rowH)/1400ms ≈ 51.4 rowH/s
+    const speed = rowH.current * 51.4 * (1 + Math.random() * 0.05);
+    animGen.current++; // 作廢任何仍在跑的 stopReels RAF
+    isFastSpin.current = true;
+    let lastTime = 0;
     let lastTick = 0;
     function frame(now: number) {
-      offsets.current = offsets.current.map(o => (o + speed * 0.016) % nrh);
+      if (!isFastSpin.current) return; // stopReels 取消後停止本 loop
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 1 / 60;
+      lastTime = now;
+      offsets.current = offsets.current.map(o => (o + speed * dt) % nrh);
       stripEls.current.forEach((s, i) => {
         if (s) s.style.transform = `translateY(${-(offsets.current[i])}px)`;
       });

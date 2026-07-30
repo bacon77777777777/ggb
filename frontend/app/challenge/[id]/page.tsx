@@ -392,7 +392,7 @@ export default function MachinePage() {
     setIsAuto(false);
     setLastResult(null);
     setJackpot(false);
-    setRushStreak(0);
+    // 不重置 rushStreak — 由 handleSpin else 分支（普通轉）才歸零
     setSpinState('idle');
   };
 
