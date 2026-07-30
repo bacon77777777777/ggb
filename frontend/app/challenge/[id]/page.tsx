@@ -157,6 +157,7 @@ export default function MachinePage() {
   const wasInRushRef = useRef(false);
   const videoPhaseRef = useRef<VideoPhase>(null);
   const animDoneRef = useRef<(() => void) | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
@@ -173,6 +174,28 @@ export default function MachinePage() {
       .then(r => r.json())
       .then(d => { if (d.session) setSession(d.session); })
       .catch(() => {});
+  }, [id]);
+
+  // 機台佔用：進入時 occupy，每 20 秒 heartbeat，離開時 vacate
+  useEffect(() => {
+    const occupy = () => fetch(`/api/slot/${id}/occupy`, { method: 'POST' }).catch(() => {});
+    const heartbeat = () => fetch(`/api/slot/${id}/heartbeat`, { method: 'POST' }).catch(() => {});
+    const vacate = () => fetch(`/api/slot/${id}/vacate`, { method: 'POST', keepalive: true }).catch(() => {});
+
+    occupy();
+    heartbeatRef.current = setInterval(heartbeat, 20_000);
+
+    const onHide = () => { if (document.visibilityState === 'hidden') vacate(); };
+    const onShow = () => { if (document.visibilityState === 'visible') occupy(); };
+    document.addEventListener('visibilitychange', onHide);
+    document.addEventListener('visibilitychange', onShow);
+
+    return () => {
+      clearInterval(heartbeatRef.current ?? undefined);
+      document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('visibilitychange', onShow);
+      vacate();
+    };
   }, [id]);
 
   useEffect(() => {

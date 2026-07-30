@@ -52,6 +52,9 @@ interface SlotMachine {
   theme_id: number | null;
   machine_number: number | null;
   rush_state: string | null;
+  occupant_id: string | null;
+  occupant_active_until: string | null;
+  occupancy_expires_at: string | null;
   slot_themes: SlotTheme | null;
 }
 
@@ -268,13 +271,60 @@ function TierSelectModal({
   );
 }
 
+// ── Occupancy Overlay ─────────────────────────────────────────────────────────
+
+function OccupancyOverlay({
+  occupantId, occupantActiveUntil, occupancyExpiresAt, currentUserId,
+}: {
+  occupantId: string | null;
+  occupantActiveUntil: string | null;
+  occupancyExpiresAt: string | null;
+  currentUserId: string | null;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!occupantId) return null;
+  const expiresAt = occupancyExpiresAt ? new Date(occupancyExpiresAt).getTime() : 0;
+  if (expiresAt <= now) return null;
+
+  const isMine = occupantId === currentUserId;
+  if (isMine) {
+    return (
+      <div className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
+        <span className="text-white font-black text-sm tracking-wide select-none">回到機台</span>
+      </div>
+    );
+  }
+
+  const activeUntil = occupantActiveUntil ? new Date(occupantActiveUntil).getTime() : 0;
+  if (activeUntil > now) {
+    return (
+      <div className="absolute inset-0 bg-black/65 flex items-center justify-center pointer-events-none">
+        <span className="text-white font-black text-sm tracking-[0.15em] animate-pulse select-none">使用中</span>
+      </div>
+    );
+  }
+
+  const secondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+  return (
+    <div className="absolute inset-0 bg-black/55 flex items-center justify-center pointer-events-none">
+      <span className="text-white font-black text-sm select-none">{secondsLeft}秒後可進入</span>
+    </div>
+  );
+}
+
 // ── Machine Card (matches ProductCard) ───────────────────────────────────────
 
 function MachineCard({
-  machine, number, onEnter,
+  machine, number, currentUserId, onEnter,
 }: {
   machine: SlotMachine;
   number: number;
+  currentUserId: string | null;
   onEnter: () => void;
 }) {
   const tiers = machine.bet_tiers ?? [];
@@ -291,13 +341,12 @@ function MachineCard({
           alt={machine.name} fill className="object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
         />
-        {machine.rush_state === 'rush' && (
-          <div className="absolute inset-0 bg-black/65 flex items-center justify-center">
-            <span className="text-white font-black text-sm tracking-[0.15em] animate-pulse select-none">
-              機台使用中
-            </span>
-          </div>
-        )}
+        <OccupancyOverlay
+          occupantId={machine.occupant_id}
+          occupantActiveUntil={machine.occupant_active_until}
+          occupancyExpiresAt={machine.occupancy_expires_at}
+          currentUserId={currentUserId}
+        />
       </div>
 
       {/* Content */}
@@ -349,15 +398,31 @@ export default function ChallengePage() {
   const [bannersLoading, setBannersLoading] = useState(true);
   const [activeTheme, setActiveTheme] = useState('全部');
   const [entering, setEntering] = useState<SlotMachine | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
+  // 取得當前使用者 ID（顯示「回到機台」用）
   useEffect(() => {
-    fetch('/api/slot/machines')
-      .then(r => r.json())
-      .then(d => setMachines(d.machines ?? []))
-      .catch(console.error)
-      .finally(() => setMachinesLoading(false));
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUserId(data.session?.user?.id ?? null);
+    });
+  }, []);
 
+  // 機台列表：首次載入 + 每 5 秒輪詢更新佔用狀態
+  useEffect(() => {
+    let alive = true;
+    const fetchMachines = () =>
+      fetch('/api/slot/machines')
+        .then(r => r.json())
+        .then(d => { if (alive) setMachines(d.machines ?? []); })
+        .catch(console.error);
+
+    fetchMachines().finally(() => { if (alive) setMachinesLoading(false); });
+    const timer = setInterval(fetchMachines, 5000);
+    return () => { alive = false; clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
     ;(async () => {
       try {
         const { data } = await supabase.from('banners')
@@ -468,7 +533,24 @@ export default function ChallengePage() {
                   key={machine.id}
                   machine={machine}
                   number={themeIndexMap.get(machine.id) ?? 1}
-                  onEnter={() => setEntering(machine)}
+                  currentUserId={currentUserId}
+                  onEnter={() => {
+                    const now = Date.now();
+                    const expiresAt = machine.occupancy_expires_at
+                      ? new Date(machine.occupancy_expires_at).getTime() : 0;
+                    const isMine = machine.occupant_id === currentUserId;
+                    const isOccupied = machine.occupant_id && expiresAt > now && !isMine;
+
+                    if (isOccupied) return; // 他人使用中或寬限期，不可進入
+
+                    if (isMine && expiresAt > now) {
+                      // 我的寬限期 → 直接回到機台
+                      router.push(`/challenge/${machine.id}`);
+                      return;
+                    }
+
+                    setEntering(machine);
+                  }}
                 />
               ))}
             </div>

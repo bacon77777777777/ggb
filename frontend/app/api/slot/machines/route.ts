@@ -14,6 +14,7 @@ export async function GET() {
         id, name, description, image_url, price_per_spin, is_active,
         sort_order, bet_tiers, floor_spin_count, trigger_rate,
         machine_theme, event_slug, theme_id, machine_number, rush_state,
+        occupant_id, occupant_active_until, occupancy_expires_at,
         slot_themes(
           id, name, image_url, event_slug,
           video_rush_entry, video_rush_anticipation,
