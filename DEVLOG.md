@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.07.30b｜2026-07-30｜挑戰機台上半部機台美術移植
+
+### 改動
+- 新增 `SlotMachineVisual` 元件（`frontend/components/challenge/SlotMachineVisual.tsx`）
+- 移植 ggb-slot-v8.html 機台效果至前台 React：main.png 背景、light_rush.png 亮牌、拉桿 4 格動畫、三個滾輪、AUTO/SPIN/RUSH 三按鈕圖像
+- RUSH 模式：機台快速頻閃 + RUSH 亮牌閃爍 + 橘色 RUSH badge + SPIN 按鈕橘色脈動
+- 觸發 RUSH 時：白光閃 + 機台抖動 + G 幣爆炸粒子 + 大当り!! 覆蓋文字 + 跑馬燈切換
+- 保底進度條：滾輪正上方顯示此檔次累積轉數進度
+- 尺寸以 750×932 為基準，container-query 比例完美縮放
+- 移除舊版 emoji 滾輪佔位設計
+
+---
+
 ## v2026.07.30a｜2026-07-30｜挑戰機台 UI 細節優化
 
 ### 改動

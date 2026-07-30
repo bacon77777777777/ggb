@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
 
 interface ThemeVideos {
   video_rush_entry:        string | null;
@@ -379,51 +380,18 @@ export default function MachinePage() {
   // ── renderers ──────────────────────────────────────────────
 
   const renderMachineVisual = () => (
-    <div
-      className={cn(
-        "relative mx-0 overflow-hidden border-y transition-colors duration-500",
-        isRushActive
-          ? "border-yellow-200 dark:border-yellow-700 bg-yellow-950/60"
-          : "border-neutral-100 dark:border-neutral-800 bg-neutral-900/70"
-      )}
-      style={{ aspectRatio: '4/3' }}
-    >
-      {machine.image_url && (
-        <Image src={machine.image_url} alt={machine.name} fill
-          className={cn("object-cover transition-opacity duration-500", isRushActive ? "opacity-30" : "opacity-40")} />
-      )}
-
-      <div className="absolute inset-0 flex items-center justify-center gap-3 px-6">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="flex-1 h-[65%] rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
-            <motion.div
-              animate={spinState === 'spinning' ? { y: [0, -40, 0, 40, 0] } : { y: 0 }}
-              transition={spinState === 'spinning'
-                ? { duration: 0.3, repeat: Infinity, delay: i * 0.05 }
-                : { duration: 0.2 }}
-              className="text-4xl select-none"
-            >
-              {spinState === 'result' && lastResult ? ['🎁', '⭐', '💎'][i] : ['🎰', '🎯', '🎲'][i]}
-            </motion.div>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {isRushActive && (
-          <motion.div
-            initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
-            className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-yellow-400 rounded-full shadow-lg"
-          >
-            <Zap className="w-3.5 h-3.5 text-yellow-950" />
-            <span className="text-yellow-950 font-black text-sm tracking-widest">RUSH</span>
-            <span className="text-yellow-800 text-sm font-bold">×{session?.rush_hits_remaining}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {spinState === 'spinning' && <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />}
-    </div>
+    <SlotMachineVisual
+      spinState={spinState}
+      isRushActive={isRushActive}
+      rushHitsRemaining={session?.rush_hits_remaining ?? 0}
+      isAuto={isAuto}
+      spinsThisTier={spinsThisTier}
+      floorSpinCount={machine.floor_spin_count}
+      rushTriggered={lastResult?.rush_triggered ?? false}
+      onSpin={handleSpin}
+      onDirect={handleDirect}
+      onAutoToggle={() => setIsAuto(v => !v)}
+    />
   );
 
   const renderControls = () => (
