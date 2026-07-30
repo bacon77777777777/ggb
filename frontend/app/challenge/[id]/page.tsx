@@ -527,10 +527,11 @@ export default function MachinePage() {
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none select-none"
           >
             <span className="font-black tabular-nums" style={{
-              fontSize: '2.2rem',
-              color: '#EE4D2D',
-              textShadow: '0 0 12px rgba(238,77,45,0.85), 0 2px 4px rgba(0,0,0,0.8)',
+              fontSize: '2.6rem',
+              color: '#facc15',
+              textShadow: '0 0 16px rgba(250,200,0,0.95), 0 0 8px #ff8c00, 0 2px 4px rgba(0,0,0,0.85)',
               letterSpacing: '-0.02em',
+              fontFamily: 'Impact, "Arial Black", sans-serif',
             }}>
               +{coinReturnDisplay.amount}G
             </span>
@@ -557,7 +558,6 @@ export default function MachinePage() {
     <div className="px-4 py-4 space-y-2.5">
       <div className="flex justify-between text-xs text-neutral-400">
         <span>累計 <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{session?.total_spins ?? 0}</span> 次</span>
-        <span>RUSH <span className="font-mono font-medium text-emerald-500">{winCount}</span></span>
         <span><span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{currentTier.coins}</span> G/轉</span>
       </div>
 

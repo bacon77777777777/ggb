@@ -332,11 +332,18 @@ const SMVC_CSS = `
 .smvc-lf4 { width:9.33cqw; background-image:url('/images/slot/machine/4.png'); }
 
 /* ── Buttons ── */
-.smvc-btn { position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat; }
-.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png'); }
-.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png');
+.smvc-btn {
+  position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat;
+  display:flex; align-items:center; justify-content:center;
+  font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
+  font-weight:900; letter-spacing:.06cqw; pointer-events:all;
+  text-shadow:0 0 .6cqw rgba(255,140,0,.9),0 1px 2px rgba(0,0,0,.8);
+  color:#ffe8a0;
+}
+.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:2.7cqw; }
+.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:3.2cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
-.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); }
+.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:2.7cqw; }
 @keyframes smvc-invite {
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
   50%    {filter:drop-shadow(0 0 1.6cqw rgba(255,220,120,.95)) brightness(1.12);}
@@ -355,27 +362,27 @@ const SMVC_CSS = `
 .smvc-bigwin span {
   font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
   font-size:15cqw; font-weight:900; letter-spacing:1cqw; white-space:nowrap;
-  background:linear-gradient(#fff8c2,#ffd400 40%,#ff7a00 70%,#ffd400);
+  background:linear-gradient(90deg,#fff3a0 0%,#ffd400 25%,#ff8800 55%,#ff3800 80%,#ffd400 100%);
   -webkit-background-clip:text; background-clip:text; color:transparent;
-  -webkit-text-stroke:.55cqw rgba(200,80,0,.75); paint-order:stroke fill;
+  -webkit-text-stroke:.55cqw rgba(180,60,0,.7); paint-order:stroke fill;
   filter:drop-shadow(0 0 1.5cqw #ff3c00) drop-shadow(.5cqw .8cqw 0 rgba(80,20,0,.9));
   animation:smvc-winpop .5s cubic-bezier(.2,2.4,.4,1) both,smvc-winstrobe .16s steps(2) .5s infinite;
 }
 .smvc-bigwin.smvc-lv2 span {
   font-size:16.5cqw;
-  background-image:linear-gradient(#ffe9a8,#ff9d00 35%,#ff3d00 75%,#ff9d00);
+  background-image:linear-gradient(90deg,#fff0a0 0%,#ff9d00 30%,#ff3d00 65%,#ff9d00 100%);
   filter:drop-shadow(0 0 1.8cqw #ff5500) drop-shadow(.5cqw .8cqw 0 rgba(90,15,0,.9));
   animation:smvc-winpop .45s cubic-bezier(.2,2.4,.4,1) both,smvc-winstrobe .13s steps(2) .45s infinite;
 }
 .smvc-bigwin.smvc-lv3 span {
   font-size:18cqw;
-  background-image:linear-gradient(#ffd0d8,#ff3d6e 40%,#d4006a 75%,#ff3d6e);
+  background-image:linear-gradient(90deg,#ffd0e8 0%,#ff3d6e 35%,#d4006a 70%,#ff3d6e 100%);
   filter:drop-shadow(0 0 2.2cqw #ff0055) drop-shadow(.5cqw .8cqw 0 rgba(80,0,40,.9));
   animation:smvc-winpop .4s cubic-bezier(.2,2.6,.4,1) both,smvc-winstrobe .11s steps(2) .4s infinite;
 }
 .smvc-bigwin.smvc-lv4 span {
   font-size:19cqw;
-  background-image:linear-gradient(#e9c8ff,#b44dff 40%,#6a00e8 75%,#b44dff);
+  background-image:linear-gradient(90deg,#f0d0ff 0%,#b44dff 35%,#6a00e8 70%,#b44dff 100%);
   filter:drop-shadow(0 0 2.6cqw #9d2bff) drop-shadow(.5cqw .8cqw 0 rgba(40,0,80,.9));
   animation:smvc-winpop .38s cubic-bezier(.2,2.8,.4,1) both,smvc-winstrobe .1s steps(2) .38s infinite;
 }
@@ -714,9 +721,10 @@ export default function SlotMachineClassic({
       leverPull();
     } else if (spinState === 'stopping') {
       // API 返回，開始 ease-out 動畫（同 v16 的 spin()）
-      // animGen++ in stopReels cancels any previous RAF loop automatically
-      stopReels(jackpotRef.current, () => {
-        finish(jackpotRef.current);
+      // 捕捉 jackpot 值，避免 ref 在動畫期間被覆蓋
+      const jp = jackpotRef.current;
+      stopReels(jp, () => {
+        finish(jp);
         onAnimDone?.();
       });
     } else if (spinState === 'idle' && prevSpin.current === 'spinning') {
@@ -798,24 +806,14 @@ export default function SlotMachineClassic({
         </div>
 
         {/* Buttons */}
-        <div className="smvc-btn smvc-btn-auto" onClick={onAutoToggle} />
-        <div className="smvc-btn smvc-btn-spin" onClick={onSpin} />
-        <div className="smvc-btn smvc-btn-rush" onClick={onDirect} />
+        <div className="smvc-btn smvc-btn-auto" onClick={onAutoToggle}>自動</div>
+        <div className="smvc-btn smvc-btn-spin" onClick={onSpin}>SPIN</div>
+        <div className="smvc-btn smvc-btn-rush" onClick={onDirect}>直衝</div>
 
         {/* Bigwin text */}
         <div ref={bigwinEl} className="smvc-bigwin"><span>大当り!!</span></div>
 
-        {/* RUSH remaining overlay — only show when reels have settled */}
-        {isRushActive && spinState !== 'spinning' && spinState !== 'stopping' && (
-          <div style={{
-            position: 'absolute', bottom: '22%', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 8, pointerEvents: 'none', whiteSpace: 'nowrap',
-            color: '#ffd84d', fontWeight: 900, fontSize: '3.2cqw',
-            textShadow: '0 0 1cqw rgba(255,100,0,.9)',
-          }}>
-            ⚡ RUSH 剩餘 ×{rushHitsRemaining}
-          </div>
-        )}
+        {/* RUSH remaining: removed — shown in LED scoreboard / marquee area */}
 
         {/* Floor progress bar */}
         {!isRushActive && (
