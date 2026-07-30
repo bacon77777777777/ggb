@@ -575,22 +575,25 @@ export default function SlotMachineClassic({
       const txt = marqueeTxt.current;
       if (marquee) marquee.classList.add('smvc-win');
 
-      const label = streak <= 1 ? '大当り!!' : cn(streak) + '連中！';
-      if (txt) txt.textContent = streak <= 1 ? '大当り RUSH !!' : label.replace('！', ' RUSH !!');
+      // streak=0 → RUSH 突入（顯示 "RUSH!!"），streak>=1 → 大当り!!/ 二連中！etc.
+      const isEntry = streak === 0;
+      const label = isEntry ? 'RUSH!!' : (streak <= 1 ? '大当り!!' : cn(streak) + '連中！');
+      const marqueeLabel = isEntry ? '★ RUSH 突入 ★ GGB ★' : (streak <= 1 ? '大当り RUSH !!' : label.replace('！', ' RUSH !!'));
+      if (txt) txt.textContent = marqueeLabel;
 
       const bw = bigwinEl.current;
       if (bw) {
         const span = bw.querySelector('span') as HTMLElement;
         if (span) span.textContent = label;
-        bw.className = 'smvc-bigwin smvc-show' + (streak > 1 ? ` smvc-lv${Math.min(streak, 5)}` : '');
+        bw.className = 'smvc-bigwin smvc-show' + (!isEntry && streak > 1 ? ` smvc-lv${Math.min(streak, 5)}` : '');
       }
 
-      const mult = Math.min(1 + (streak - 1) * 0.12, 1.6);
+      const mult = isEntry ? 1.05 : Math.min(1 + (streak - 1) * 0.12, 1.6);
       sWinJingle(mult);
       setTimeout(() => sWinJingle(mult), 900);
-      if (streak >= 3) setTimeout(() => sWinJingle(mult * 1.1), 1800);
+      if (!isEntry && streak >= 3) setTimeout(() => sWinJingle(mult * 1.1), 1800);
 
-      const bursts = Math.min(3 + (streak - 1), 6);
+      const bursts = isEntry ? 2 : Math.min(3 + (streak - 1), 6);
       for (let k = 0; k < bursts; k++) setTimeout(coinBurst, k * 700);
 
       setTimeout(() => {

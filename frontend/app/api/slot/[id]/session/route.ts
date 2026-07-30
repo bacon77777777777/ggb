@@ -24,13 +24,13 @@ export async function GET(
     const [userSessionRes, machineRes] = await Promise.all([
       supabase
         .from('slot_sessions')
-        .select('spins_since_rush, tier_progress, total_spins')
+        .select('tier_progress, total_spins')
         .eq('user_id', session.user.id)
         .eq('machine_id', machineId)
         .single(),
       supabase
         .from('slot_machines')
-        .select('rush_state, rush_hits_remaining, rush_locked_bet')
+        .select('rush_state, rush_hits_remaining, rush_locked_bet, floor_counter')
         .eq('id', machineId)
         .single(),
     ])
@@ -46,7 +46,8 @@ export async function GET(
         state:               machine.rush_state ?? 'normal',
         rush_hits_remaining: machine.rush_hits_remaining ?? 0,
         locked_bet:          machine.rush_locked_bet ?? null,
-        spins_since_rush:    userSession?.spins_since_rush ?? 0,
+        spins_since_rush:    machine.floor_counter ?? 0,   // 機台層級保底計數
+        floor_counter:       machine.floor_counter ?? 0,
         tier_progress:       userSession?.tier_progress ?? {},
         total_spins:         userSession?.total_spins ?? 0,
       }

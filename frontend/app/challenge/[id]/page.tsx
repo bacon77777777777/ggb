@@ -78,7 +78,8 @@ interface SlotPoolItem {
 interface SlotSession {
   state: 'normal' | 'rush';
   rush_hits_remaining: number;
-  spins_since_rush: number;
+  spins_since_rush: number;   // = floor_counter（機台層級保底計數）
+  floor_counter: number;
   tier_progress: Record<string, number> | null;
   total_spins: number;
   locked_bet: number | null;
@@ -88,6 +89,8 @@ interface SpinResult {
   success: boolean;
   new_balance: number;
   bet: number;
+  is_coin_return: boolean;
+  coin_return_amount: number;
   prize: {
     pool_item_id: number;
     prize_id: number;
@@ -142,6 +145,9 @@ export default function MachinePage() {
   const [jackpot, setJackpot] = useState(false);
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
+  const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
+  const coinReturnIdRef = useRef(0);
+  const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAutoRef = useRef(false);
   const reelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -155,6 +161,12 @@ export default function MachinePage() {
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
   useEffect(() => { videoPhaseRef.current = videoPhase; }, [videoPhase]);
+
+  const showCoinReturn = useCallback((amount: number) => {
+    if (coinReturnTimerRef.current) clearTimeout(coinReturnTimerRef.current);
+    setCoinReturnDisplay({ amount, id: ++coinReturnIdRef.current });
+    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 2200);
+  }, []);
 
   const syncSession = useCallback(() => {
     fetch(`/api/slot/${id}/session`)
@@ -201,12 +213,10 @@ export default function MachinePage() {
   // Tier locked when entering from challenge list via ?bet= param
   const isTierLocked = !!preSelectedBet || isRushLocked;
 
-  // Per-tier floor progress (from tier_progress[currentBet])
-  const spinsThisTier = session?.tier_progress?.[String(currentTier.coins)]
-    ?? session?.spins_since_rush
-    ?? 0;
+  // 機台層級保底計數（machine-level, 所有玩家共用）
+  const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
 
-  // 直撃費用：max(min_rush_hits, floor_spin_count - spinsThisTier) × bet
+  // 直撃費用：max(min_rush_hits, floor_spin_count - floor_counter) × bet
   const directCost = machine
     ? Math.max(machine.min_rush_hits, machine.floor_spin_count - spinsThisTier) * currentTier.coins
     : 0;
@@ -273,15 +283,16 @@ export default function MachinePage() {
       const showVideo = !isAutoRef.current && !isClassic;
 
       if (data.rush_triggered) {
-        setRushStreak(prev => prev + 1);
-        // 觸發 RUSH → 突入演出
+        // 觸發 RUSH：本發為 coin return（退幣），不計入 streak
+        // rushStreak 維持 0 → finish(true) 顯示 "RUSH!!" 而非 "大当り!!"
+        if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
         if (showVideo) {
           setVideoPhase('rush_entry');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
         } else {
-          // classic / auto：stopReels 跑完後回 idle，不彈結果
+          // classic / auto：777 動畫顯示 "RUSH!!"，結束後回 idle 等玩家在 RUSH 中旋轉
           animDoneRef.current = () => {
             setLastResult(null);
             setSpinState('idle');
@@ -291,15 +302,14 @@ export default function MachinePage() {
           setSpinState('stopping');
         }
       } else if (data.session.state === 'rush') {
+        // RUSH 中旋轉：抽到品項，streak 遞增，顯示結果
         setRushStreak(prev => prev + 1);
-        // RUSH 中每一轉 → WIN 演出
         if (showVideo) {
           setVideoPhase('rush_win');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 6000);
         } else {
-          // classic：stopReels 跑完後彈結果
           animDoneRef.current = () => {
             setSpinState('result');
             if (refreshProfile) refreshProfile();
@@ -308,15 +318,23 @@ export default function MachinePage() {
         }
       } else {
         if (isClassic) {
-          // isJackpot=true → RUSH 退出（wasInRushRef），先遞增讓 finish(true) 讀到正確 streak 再歸零
-          // isJackpot=false → 普通旋轉，直接歸零
-          if (isJackpot) setRushStreak(prev => prev + 1);
-          animDoneRef.current = () => {
-            setRushStreak(0);
-            setSpinState('idle');
-            if (refreshProfile) refreshProfile();
-            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
-          };
+          if (isJackpot) {
+            // RUSH 退出（wasInRushRef=true, state='normal'）：streak 遞增後顯示結果
+            setRushStreak(prev => prev + 1);
+            animDoneRef.current = () => {
+              setSpinState('result');
+              if (refreshProfile) refreshProfile();
+            };
+          } else {
+            // 普通 coin return 旋轉：顯示 +XG 動畫，回 idle
+            if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            animDoneRef.current = () => {
+              setRushStreak(0);
+              setSpinState('idle');
+              if (refreshProfile) refreshProfile();
+              if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+            };
+          }
           setSpinState('stopping');
         } else {
           setRushStreak(0);
@@ -386,9 +404,9 @@ export default function MachinePage() {
       if (refreshProfile) refreshProfile();
 
       if (isClassic) {
-        // Classic 模式：機台播放 jackpot 動畫，直接回 idle
+        // Classic 模式：直撃突入，顯示 "RUSH!!"（streak=0），回 idle 等 RUSH 旋轉
         setJackpot(true);
-        setRushStreak(1);
+        setRushStreak(0);
         setLastResult(null);
         setSpinState('idle');
       } else {
@@ -412,7 +430,8 @@ export default function MachinePage() {
     setIsAuto(false);
     setLastResult(null);
     setJackpot(false);
-    // 不重置 rushStreak — 由 handleSpin else 分支（普通轉）才歸零
+    // RUSH 已結束（isRushActive=false）才重置 streak，還在 RUSH 中繼續累積
+    if (!isRushActive) setRushStreak(0);
     setSpinState('idle');
   };
 
@@ -448,20 +467,38 @@ export default function MachinePage() {
   const machineType = machine.slot_themes?.machine_type ?? 'video';
 
   const renderMachineVisual = () => machineType === 'classic' ? (
-    <SlotMachineClassic
-      spinState={spinState}
-      isRushActive={isRushActive}
-      rushHitsRemaining={session?.rush_hits_remaining ?? 0}
-      isAuto={isAuto}
-      spinsThisTier={spinsThisTier}
-      floorSpinCount={machine.floor_spin_count}
-      jackpot={jackpot}
-      rushStreak={rushStreak}
-      onSpin={handleSpin}
-      onDirect={handleDirect}
-      onAutoToggle={() => setIsAuto(v => !v)}
-      onAnimDone={() => { animDoneRef.current?.(); animDoneRef.current = null; }}
-    />
+    <div className="relative w-full">
+      <SlotMachineClassic
+        spinState={spinState}
+        isRushActive={isRushActive}
+        rushHitsRemaining={session?.rush_hits_remaining ?? 0}
+        isAuto={isAuto}
+        spinsThisTier={spinsThisTier}
+        floorSpinCount={machine.floor_spin_count}
+        jackpot={jackpot}
+        rushStreak={rushStreak}
+        onSpin={handleSpin}
+        onDirect={handleDirect}
+        onAutoToggle={() => setIsAuto(v => !v)}
+        onAnimDone={() => { animDoneRef.current?.(); animDoneRef.current = null; }}
+      />
+      <AnimatePresence>
+        {coinReturnDisplay && (
+          <motion.div
+            key={coinReturnDisplay.id}
+            initial={{ opacity: 0, y: 0, scale: 0.7 }}
+            animate={{ opacity: 1, y: -44, scale: 1.25 }}
+            exit={{ opacity: 0, y: -80, scale: 1 }}
+            transition={{ duration: 0.45 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none select-none"
+          >
+            <span className="text-3xl font-black text-yellow-300 drop-shadow-[0_0_10px_rgba(250,200,0,0.9)] [text-shadow:0_0_16px_#facc15,0_2px_4px_rgba(0,0,0,0.8)]">
+              +{coinReturnDisplay.amount}G
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   ) : (
     <SlotMachineVisual
       spinState={spinState as 'idle' | 'spinning' | 'video' | 'result'}
