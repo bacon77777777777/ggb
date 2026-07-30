@@ -453,7 +453,8 @@ export default function SlotMachineVisual({
         stage.appendChild(c);
         const ang = Math.random() * Math.PI * 2;
         const sp = 16 + Math.random() * 34;
-        let vx = Math.cos(ang) * sp, vy = Math.sin(ang) * sp - 26, x = 0, y = 0, life = 0;
+        const vx = Math.cos(ang) * sp;
+        let vy = Math.sin(ang) * sp - 26, x = 0, y = 0, life = 0;
         const flip = 6 + Math.random() * 10;
         (function fly() {
           life++; vy += 3.2 * 0.14; x += vx * 0.14; y += vy * 0.14;

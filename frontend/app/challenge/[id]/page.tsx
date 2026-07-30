@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Coins, Zap, Trophy, RotateCcw,
-  ChevronLeft, ChevronRight, Lock, X,
+  Coins, Zap, Trophy,
+  Lock, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -552,98 +552,6 @@ export default function MachinePage() {
       onDirect={handleDirect}
       onAutoToggle={() => setIsAuto(v => !v)}
     />
-  );
-
-  const renderControls = () => (
-    <div className="px-4 py-4 space-y-2.5">
-      <div className="flex justify-between text-xs text-neutral-400">
-        <span>累計 <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{session?.total_spins ?? 0}</span> 次</span>
-        <span><span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{currentTier.coins}</span> G/轉</span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => changeTier(-1)}
-          disabled={isTierLocked || tierIndex === 0}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
-        <motion.button
-          onClick={handleSpin}
-          disabled={spinState !== 'idle' || !user}
-          whileTap={{ scale: 0.97 }}
-          className={cn(
-            "flex-1 py-3 rounded-xl font-black text-base tracking-wide shadow-md transition-all",
-            isRushActive
-              ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-950 shadow-yellow-900/20"
-              : "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-violet-900/20",
-            spinState !== 'idle' && "opacity-60 cursor-not-allowed"
-          )}
-        >
-          {(spinState === 'spinning' || spinState === 'stopping') ? (
-            <span className="flex items-center justify-center gap-2">
-              <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: 'linear' }}>
-                <RotateCcw className="w-4 h-4" />
-              </motion.span>
-              挑戰中...
-            </span>
-          ) : `SPIN  ${currentTier.coins} G`}
-        </motion.button>
-
-        <button
-          onClick={() => changeTier(1)}
-          disabled={isTierLocked || tierIndex === tiers.length - 1}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        <button
-          onClick={() => setIsAuto(v => !v)}
-          className={cn(
-            "h-12 px-3 rounded-xl text-xs font-bold transition-all",
-            isAuto ? "bg-amber-400 text-amber-950 shadow-md" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
-          )}
-        >
-          AUTO
-        </button>
-      </div>
-
-      {/* 直撃按鈕：跳過保底等待直接進 RUSH */}
-      {!isRushActive && (
-        <motion.button
-          onClick={handleDirect}
-          disabled={spinState !== 'idle' || !user || directLoading || isLowForDirect}
-          whileTap={{ scale: 0.97 }}
-          className={cn(
-            "w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 border-2 transition-all",
-            "border-amber-400/40 bg-amber-50/30 dark:bg-amber-900/10 text-amber-600/80 dark:text-amber-400/80",
-            (spinState !== 'idle' || directLoading || isLowForDirect) && "opacity-40 cursor-not-allowed"
-          )}
-        >
-          <Zap className="w-4 h-4" />
-          {directLoading ? '處理中...' : `直撃　${directCost.toLocaleString()} G → 即進 RUSH`}
-        </motion.button>
-      )}
-
-      <div className="flex items-center justify-center gap-2 text-xs">
-        <Coins className="w-3.5 h-3.5 text-amber-500" />
-        <span className={cn("text-neutral-400", isLowBalance && "text-red-400 font-medium")}>
-          1回 {currentTier.coins.toLocaleString()} G ｜ 残高 {userTokens.toLocaleString()} G
-        </span>
-        {isLowBalance && (
-          <button onClick={() => router.push('/topup')} className="text-primary underline font-medium">儲值</button>
-        )}
-      </div>
-
-      {error && <p className="text-center text-red-400 text-xs">{error}</p>}
-
-      <p className="text-center text-[10px] text-neutral-300 dark:text-neutral-600">
-        進行挑戰即視為同意<span className="underline cursor-pointer" onClick={() => router.push('/terms')}>服務條款</span>。未滿 18 歲禁止。
-      </p>
-    </div>
   );
 
   const renderPrizePool = () => {
