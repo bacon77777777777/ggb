@@ -11,7 +11,7 @@ export interface SlotMachineVisualProps {
   isAuto: boolean;
   spinsThisTier: number;
   floorSpinCount: number;
-  rushTriggered: boolean;
+  jackpot: boolean;   // true = rush_triggered || wasInRush (RUSH win spin)
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
@@ -89,6 +89,11 @@ const SMV_CSS = `
   color:#fff35e;text-shadow:0 0 1cqw #ff2a00,0 0 3cqw #ffb300;
 }
 @keyframes smv-strobeTxt{0%{opacity:1;}50%{opacity:.15;}}
+.smv-marquee-txt.smv-msg{
+  animation:none;transform:none;margin:auto;
+  font-size:3.8cqw;color:rgba(255,181,30,.9);
+  text-shadow:0 0 .6cqw rgba(255,120,0,.7);
+}
 .smv-marquee::after{
   content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(rgba(0,0,0,.55) 28%,transparent 32%);
@@ -134,13 +139,24 @@ const SMV_CSS = `
 .smv-lf4{aspect-ratio:70/284;background-image:url('/images/slot/machine/4.png');}
 
 /* Buttons */
-.smv-btn{position:absolute;z-index:7;cursor:pointer;background:center/100% 100% no-repeat;}
+.smv-btn{
+  position:absolute;z-index:7;cursor:pointer;
+  background:center/100% 100% no-repeat;
+  display:flex;align-items:center;justify-content:center;
+}
+.smv-btn-label{
+  color:#fff;font-family:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  font-weight:900;font-size:4.5cqw;
+  text-shadow:0 0 .8cqw rgba(0,0,0,.9),0 .4cqw .4cqw rgba(0,0,0,.7);
+  pointer-events:none;line-height:1;letter-spacing:.05cqw;
+}
 .smv-btn-auto{left:21.87%;top:61.48%;width:17.33%;height:8.58%;background-image:url('/images/slot/machine/auto.png');}
 .smv-btn-spin{
   left:39.20%;top:62.34%;width:23.73%;height:11.16%;
   background-image:url('/images/slot/machine/spin.png');
   animation:smv-invite 1.8s ease-in-out infinite;
 }
+.smv-btn-spin .smv-btn-label{font-size:6.5cqw;letter-spacing:.2cqw;}
 .smv-btn-rush{left:62.93%;top:61.48%;width:17.33%;height:8.58%;background-image:url('/images/slot/machine/rush.png');}
 @keyframes smv-invite{
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
@@ -150,7 +166,9 @@ const SMV_CSS = `
 .smv-btn:active{transform:translateY(3%) scale(.97);filter:brightness(.92);}
 .smv-stage.smv-spinning .smv-btn,.smv-stage.smv-spinning .smv-lever-hit{pointer-events:none;}
 .smv-stage.smv-spinning .smv-btn{filter:saturate(.6) brightness(.85);animation:none;}
+.smv-stage.smv-spinning .smv-btn-label{opacity:0;}
 .smv-btn-auto.smv-on{animation:smv-autopulse .9s infinite;}
+.smv-btn-auto.smv-on .smv-btn-label{color:#ffd84d;text-shadow:0 0 1.2cqw rgba(255,180,0,.9);}
 @keyframes smv-autopulse{50%{filter:brightness(1.5) drop-shadow(0 0 1.4cqw #ffd84d);}}
 
 /* RUSH in-game: spin button pulses orange */
@@ -238,7 +256,7 @@ const SMV_CSS = `
 
 export default function SlotMachineVisual({
   spinState, isRushActive, rushHitsRemaining, isAuto,
-  spinsThisTier, floorSpinCount, rushTriggered,
+  spinsThisTier, floorSpinCount, jackpot,
   onSpin, onDirect, onAutoToggle,
 }: SlotMachineVisualProps) {
   const stageRef    = useRef<HTMLDivElement>(null);
@@ -253,7 +271,10 @@ export default function SlotMachineVisual({
   const rowH        = useRef(80);
   const rafId       = useRef(0);
   const prevSpin    = useRef<SpinState>('idle');
-  const prevRushTrig = useRef(false);
+  const jackpotRef  = useRef(false);
+
+  // Keep jackpotRef in sync — declared before spinState effect so it runs first
+  useEffect(() => { jackpotRef.current = jackpot; }, [jackpot]);
 
   // Inject CSS once
   useEffect(() => {
@@ -289,34 +310,6 @@ export default function SlotMachineVisual({
     stageRef.current?.style.setProperty('--smv-rowH', h + 'px');
   }, []);
 
-  // Sync stage CSS classes + trigger animations
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    stage.classList.toggle('smv-spinning', spinState === 'spinning');
-    stage.classList.toggle('smv-rushmode', isRushActive);
-
-    if (spinState === 'spinning' && prevSpin.current !== 'spinning') {
-      leverPull();
-      reelSpin();
-    }
-    prevSpin.current = spinState;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spinState, isRushActive]);
-
-  // Win effects on rush trigger
-  useEffect(() => {
-    if (rushTriggered && !prevRushTrig.current) {
-      flash();
-      shake();
-      coinBurst();
-      bigWin();
-      winMarquee();
-    }
-    prevRushTrig.current = rushTriggered;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rushTriggered]);
-
   const showFrame = useCallback((i: number) => {
     leverEls.current.forEach((f, k) => f?.classList.toggle('show', k === i));
   }, []);
@@ -325,41 +318,113 @@ export default function SlotMachineVisual({
     [1, 2, 3, 0].forEach((f, i) => setTimeout(() => showFrame(f), i * 80));
   }, [showFrame]);
 
-  const reelSpin = useCallback(() => {
+  // Phase 1: fast continuous spin (runs until spinState changes)
+  const startFastSpin = useCallback(() => {
     cancelAnimationFrame(rafId.current);
     const rh = rowH.current;
-    const cycle = N * REP * rh;
-    const targets = [0, 1, 2].map((_, i) => ({
-      i, target: Math.floor(Math.random() * N), dur: 900 + i * 200,
-    }));
+    const nrh = N * rh;
+    const cycle = REP * nrh;
     reelEls.current.forEach(r => r?.classList.add('smv-blur'));
-    const start = [...offsets.current];
+
+    function frame() {
+      for (let i = 0; i < 3; i++) {
+        offsets.current[i] = (offsets.current[i] + rh * (0.9 + i * 0.12)) % cycle;
+        const strip = stripEls.current[i];
+        if (strip) strip.style.transform = `translateY(${-(offsets.current[i] % nrh)}px)`;
+      }
+      rafId.current = requestAnimationFrame(frame);
+    }
+    rafId.current = requestAnimationFrame(frame);
+  }, []);
+
+  // Phase 2: ease to target position; fires win effects in onDone if jackpot
+  const stopReels = useCallback((isJackpot: boolean, onDone: () => void) => {
+    cancelAnimationFrame(rafId.current);
+    const rh = rowH.current;
+    const nrh = N * rh;
+    const cycle = REP * nrh;
+
+    // jackpot: all reels on sym 0 ('7'); non-jackpot: 3 distinct symbols
+    const targets: number[] = isJackpot
+      ? [0, 0, 0]
+      : (() => {
+          const t0 = Math.floor(Math.random() * N);
+          let t1; do { t1 = Math.floor(Math.random() * N); } while (t1 === t0);
+          let t2; do { t2 = Math.floor(Math.random() * N); } while (t2 === t0 || t2 === t1);
+          return [t0, t1, t2];
+        })();
+
+    const starts = [...offsets.current];
     const t0 = performance.now();
+    const DURS = [520, 680, 860];
     const ease = (t: number) => 1 - Math.pow(1 - t, 4);
+    const settled = [false, false, false];
 
     function frame(now: number) {
       const el = now - t0;
-      let done = true;
-      for (const a of targets) {
-        const p = Math.min(el / a.dur, 1);
-        const strip = stripEls.current[a.i];
-        const reel  = reelEls.current[a.i];
-        const endAt = ((a.target * rh) % (N * rh) + N * rh) % (N * rh);
-        const dist  = (2 + a.i) * cycle + ((endAt - (start[a.i] % cycle)) + cycle) % cycle;
-        const pos   = start[a.i] + dist * ease(p);
-        offsets.current[a.i] = pos;
-        if (strip) strip.style.transform = `translateY(${-(pos % (N * rh))}px)`;
-        if (p > 0.65) reel?.classList.remove('smv-blur');
-        if (p < 1) done = false;
+      let allDone = true;
+
+      for (let i = 0; i < 3; i++) {
+        const p = Math.min(el / DURS[i], 1);
+        const strip = stripEls.current[i];
+        const reel  = reelEls.current[i];
+        const endAt = ((targets[i] * rh) % nrh + nrh) % nrh;
+        const dist  = 2 * cycle + ((endAt - (starts[i] % cycle)) + cycle) % cycle;
+        const pos   = starts[i] + dist * ease(p);
+        offsets.current[i] = pos;
+        if (strip) strip.style.transform = `translateY(${-(pos % nrh)}px)`;
+        if (p > 0.5) reel?.classList.remove('smv-blur');
+        if (p < 1) { allDone = false; }
+        else if (!settled[i]) {
+          settled[i] = true;
+          if (isJackpot) reel?.classList.add('smv-hit');
+        }
       }
-      if (!done) {
+
+      if (!allDone) {
         rafId.current = requestAnimationFrame(frame);
       } else {
         reelEls.current.forEach(r => r?.classList.remove('smv-blur'));
+        onDone();
       }
     }
     rafId.current = requestAnimationFrame(frame);
   }, []);
+
+  // Sync stage classes + drive two-phase reel animation
+  // jackpotRef is updated by the earlier effect in the same commit, so it's already correct here
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.classList.toggle('smv-spinning', spinState === 'spinning');
+    stage.classList.toggle('smv-rushmode', isRushActive);
+
+    if (spinState === 'spinning' && prevSpin.current !== 'spinning') {
+      leverPull();
+      startFastSpin();
+    } else if (spinState !== 'spinning' && prevSpin.current === 'spinning') {
+      const wasJackpot = jackpotRef.current;
+      stopReels(wasJackpot, () => {
+        if (wasJackpot) {
+          flash(); shake(); coinBurst(); bigWin(); winMarquee();
+        } else {
+          const txt = marqueeTxt.current;
+          if (txt) {
+            txt.classList.add('smv-msg');
+            txt.textContent = '押忍！再挑戰一次';
+            setTimeout(() => {
+              if (marqueeTxt.current) {
+                marqueeTxt.current.classList.remove('smv-msg');
+                marqueeTxt.current.textContent = MARQUEE_DEFAULT;
+              }
+            }, 2200);
+          }
+        }
+      });
+    }
+    prevSpin.current = spinState;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spinState, isRushActive]);
 
   const flash = useCallback(() => {
     const el = flashEl.current;
@@ -413,11 +478,12 @@ export default function SlotMachineVisual({
     const wrap = marqueeWrap.current;
     const txt  = marqueeTxt.current;
     if (!wrap || !txt) return;
+    txt.classList.remove('smv-msg');
     wrap.classList.add('smv-win');
     txt.textContent = '大当り RUSH !!';
     setTimeout(() => {
       wrap.classList.remove('smv-win');
-      txt.textContent = MARQUEE_DEFAULT;
+      if (marqueeTxt.current) marqueeTxt.current.textContent = MARQUEE_DEFAULT;
     }, 3200);
   }, []);
 
@@ -428,62 +494,70 @@ export default function SlotMachineVisual({
   const canAct = spinState === 'idle';
 
   return (
-    <div ref={stageRef} className="smv-stage">
-      {/* Machine background */}
-      <div className="smv-machine" />
+    <div style={{ background: '#000' }}>
+      <div ref={stageRef} className="smv-stage">
+        {/* Machine background */}
+        <div className="smv-machine" />
 
-      {/* RUSH sign */}
-      <div className="smv-rushsign" />
+        {/* RUSH sign */}
+        <div className="smv-rushsign" />
 
-      {/* Marquee */}
-      <div ref={marqueeWrap} className="smv-marquee">
-        <div ref={marqueeTxt} className="smv-marquee-txt">{MARQUEE_DEFAULT}</div>
-      </div>
-
-      {/* 保底進度條 */}
-      {!isRushActive && floorSpinCount > 0 && (
-        <div className="smv-floor-bar">
-          <div className="smv-floor-fill" style={{ width: `${floorPct}%` }} />
+        {/* Marquee */}
+        <div ref={marqueeWrap} className="smv-marquee">
+          <div ref={marqueeTxt} className="smv-marquee-txt">{MARQUEE_DEFAULT}</div>
         </div>
-      )}
 
-      {/* Reels */}
-      {[0, 1, 2].map(i => (
-        <div key={i} ref={el => { reelEls.current[i] = el; }} className={`smv-reel smv-r${i}`}>
-          <div ref={el => { stripEls.current[i] = el; }} className="smv-strip" />
-          <div className="smv-shade" />
-        </div>
-      ))}
+        {/* 保底進度條 */}
+        {!isRushActive && floorSpinCount > 0 && (
+          <div className="smv-floor-bar">
+            <div className="smv-floor-fill" style={{ width: `${floorPct}%` }} />
+          </div>
+        )}
 
-      {/* Flash */}
-      <div ref={flashEl} className="smv-flash" />
-
-      {/* Lever */}
-      <div className="smv-lever-hit" onClick={canAct ? onSpin : undefined} />
-      <div className="smv-lever">
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} ref={el => { leverEls.current[i] = el; }}
-            className={`smv-lf smv-lf${i + 1}${i === 0 ? ' show' : ''}`}
-          />
+        {/* Reels */}
+        {[0, 1, 2].map(i => (
+          <div key={i} ref={el => { reelEls.current[i] = el; }} className={`smv-reel smv-r${i}`}>
+            <div ref={el => { stripEls.current[i] = el; }} className="smv-strip" />
+            <div className="smv-shade" />
+          </div>
         ))}
-      </div>
 
-      {/* Buttons */}
-      <div
-        className={`smv-btn smv-btn-auto${isAuto ? ' smv-on' : ''}`}
-        onClick={onAutoToggle}
-      />
-      <div className="smv-btn smv-btn-spin" onClick={canAct ? onSpin : undefined} />
-      <div className="smv-btn smv-btn-rush" onClick={canAct ? onDirect : undefined} />
+        {/* Flash */}
+        <div ref={flashEl} className="smv-flash" />
 
-      {/* RUSH badge */}
-      {isRushActive && rushHitsRemaining > 0 && (
-        <div className="smv-rush-badge">⚡ RUSH ×{rushHitsRemaining}</div>
-      )}
+        {/* Lever */}
+        <div className="smv-lever-hit" onClick={canAct ? onSpin : undefined} />
+        <div className="smv-lever">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} ref={el => { leverEls.current[i] = el; }}
+              className={`smv-lf smv-lf${i + 1}${i === 0 ? ' show' : ''}`}
+            />
+          ))}
+        </div>
 
-      {/* Big win overlay */}
-      <div ref={bigwinEl} className="smv-bigwin">
-        <span className="smv-bigwin-txt">大当り!!</span>
+        {/* Buttons */}
+        <div
+          className={`smv-btn smv-btn-auto${isAuto ? ' smv-on' : ''}`}
+          onClick={onAutoToggle}
+        >
+          <span className="smv-btn-label">自動</span>
+        </div>
+        <div className="smv-btn smv-btn-spin" onClick={canAct ? onSpin : undefined}>
+          <span className="smv-btn-label">SPIN</span>
+        </div>
+        <div className="smv-btn smv-btn-rush" onClick={canAct ? onDirect : undefined}>
+          <span className="smv-btn-label">直擊</span>
+        </div>
+
+        {/* RUSH badge */}
+        {isRushActive && rushHitsRemaining > 0 && (
+          <div className="smv-rush-badge">⚡ RUSH ×{rushHitsRemaining}</div>
+        )}
+
+        {/* Big win overlay */}
+        <div ref={bigwinEl} className="smv-bigwin">
+          <span className="smv-bigwin-txt">大当り!!</span>
+        </div>
       </div>
     </div>
   );

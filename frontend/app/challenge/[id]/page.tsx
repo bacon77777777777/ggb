@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, Zap, Trophy, RotateCcw,
-  ChevronLeft, ChevronRight, Lock,
+  ChevronLeft, ChevronRight, Lock, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -138,14 +138,15 @@ export default function MachinePage() {
   const [winCount, setWinCount] = useState(0);
   const [isAuto, setIsAuto] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
-  const [directConfirm, setDirectConfirm] = useState(false);
+  const [jackpot, setJackpot] = useState(false);
+  const [showDirectModal, setShowDirectModal] = useState(false);
 
   const isAutoRef = useRef(false);
   const reelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResultRef = useRef<SpinResult | null>(null);
-  const directConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasInRushRef = useRef(false);
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
@@ -219,6 +220,9 @@ export default function MachinePage() {
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
     setError(null);
+    // Snapshot rush state before this spin; reset jackpot for new spin
+    wasInRushRef.current = isRushActive;
+    setJackpot(false);
     setSpinState('spinning');
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
@@ -234,6 +238,7 @@ export default function MachinePage() {
 
       if (!res.ok || data.error) {
         setError(data.error ?? '挑戰失敗，請稍後再試');
+        setJackpot(false);
         setSpinState('idle');
         syncSession();
         return;
@@ -247,6 +252,10 @@ export default function MachinePage() {
         const idx = tiers.findIndex(t => t.coins === data.session.locked_bet);
         if (idx >= 0) setTierIndex(idx);
       }
+
+      // jackpot = RUSH just triggered OR we were already in RUSH (winning a RUSH item)
+      const isJackpot = data.rush_triggered || wasInRushRef.current;
+      setJackpot(isJackpot);
 
       const showVideo = !isAutoRef.current;
 
@@ -271,7 +280,8 @@ export default function MachinePage() {
           setSpinState('result');
         }
       } else {
-        setSpinState('result');
+        // 普通旋轉（coin_return）→ 不彈恭喜彈窗，直接回 idle
+        setSpinState('idle');
       }
 
       if (refreshProfile) refreshProfile();
@@ -288,23 +298,21 @@ export default function MachinePage() {
     } catch {
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
       setError('連線失敗，已自動復原，請再試一次');
+      setJackpot(false);
       setSpinState('idle');
       syncSession();
     }
   };
 
-  const handleDirect = async () => {
+  // 直擊按鈕：開確認彈窗
+  const handleDirect = () => {
+    if (spinState !== 'idle' || !user || isRushActive) return;
+    setShowDirectModal(true);
+  };
+
+  // 確認後執行直擊 API
+  const executeDirectSpin = async () => {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
-
-    if (!directConfirm) {
-      setDirectConfirm(true);
-      if (directConfirmTimerRef.current) clearTimeout(directConfirmTimerRef.current);
-      directConfirmTimerRef.current = setTimeout(() => setDirectConfirm(false), 4000);
-      return;
-    }
-
-    if (directConfirmTimerRef.current) clearTimeout(directConfirmTimerRef.current);
-    setDirectConfirm(false);
     setDirectLoading(true);
     setError(null);
 
@@ -346,8 +354,8 @@ export default function MachinePage() {
     if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
     setIsAuto(false);
     setLastResult(null);
+    setJackpot(false);
     setSpinState('idle');
-    setDirectConfirm(false);
   };
 
   if (isLoading) return <ProductLoadingScreen />;
@@ -387,7 +395,7 @@ export default function MachinePage() {
       isAuto={isAuto}
       spinsThisTier={spinsThisTier}
       floorSpinCount={machine.floor_spin_count}
-      rushTriggered={lastResult?.rush_triggered ?? false}
+      jackpot={jackpot}
       onSpin={handleSpin}
       onDirect={handleDirect}
       onAutoToggle={() => setIsAuto(v => !v)}
@@ -460,19 +468,12 @@ export default function MachinePage() {
           whileTap={{ scale: 0.97 }}
           className={cn(
             "w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 border-2 transition-all",
-            directConfirm
-              ? "border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
-              : "border-amber-400/40 bg-amber-50/30 dark:bg-amber-900/10 text-amber-600/80 dark:text-amber-400/80",
+            "border-amber-400/40 bg-amber-50/30 dark:bg-amber-900/10 text-amber-600/80 dark:text-amber-400/80",
             (spinState !== 'idle' || directLoading || isLowForDirect) && "opacity-40 cursor-not-allowed"
           )}
         >
           <Zap className="w-4 h-4" />
-          {directLoading
-            ? '處理中...'
-            : directConfirm
-              ? `確認直撃 ${directCost.toLocaleString()} G？（再按確認）`
-              : `直撃　${directCost.toLocaleString()} G → 即進 RUSH`
-          }
+          {directLoading ? '處理中...' : `直撃　${directCost.toLocaleString()} G → 即進 RUSH`}
         </motion.button>
       )}
 
@@ -676,9 +677,13 @@ export default function MachinePage() {
 
       {/* Mobile / tablet */}
       <div className="block lg:hidden pb-8">
-        <div className="bg-white dark:bg-neutral-900 shadow-sm border-b border-neutral-100 dark:border-neutral-800">
-          {renderMachineVisual()}
-          {renderControls()}
+        <div>
+          <div className="bg-black shadow-sm">
+            {renderMachineVisual()}
+          </div>
+          <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+            {renderControls()}
+          </div>
         </div>
         <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2 space-y-2">
           {renderPrizePool()}
@@ -691,9 +696,13 @@ export default function MachinePage() {
         <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
           <div className="grid grid-cols-12 gap-6 items-start">
             <div className="col-span-4 sticky top-4">
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                {renderMachineVisual()}
-                {renderControls()}
+              <div className="rounded-3xl border border-neutral-800 overflow-hidden">
+                <div className="bg-black">
+                  {renderMachineVisual()}
+                </div>
+                <div className="bg-white dark:bg-neutral-900">
+                  {renderControls()}
+                </div>
               </div>
             </div>
             <div className="col-span-8 space-y-4">
@@ -719,7 +728,9 @@ export default function MachinePage() {
                 ? machine.slot_themes?.video_rush_entry
                 : pickRushWinVideo(
                     machine.slot_themes ?? { video_rush_entry:null,video_rush_anticipation:null,video_rush_win:null,video_rush_win_strong:null,video_rush_win_god:null,video_rush_revival:null },
-                    lastResult?.prize.video_type ?? 'win'
+                    lastResult?.prize.level === '一等獎' ? 'win_god'
+                      : lastResult?.prize.level === '二等獎' ? 'win_strong'
+                      : 'win'
                   )) ?? undefined}
               autoPlay
               muted
@@ -769,6 +780,70 @@ export default function MachinePage() {
               點擊跳過
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 直撃確認 modal */}
+      <AnimatePresence>
+        {showDirectModal && (
+          <>
+            <motion.div
+              key="direct-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowDirectModal(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
+            />
+            <motion.div
+              key="direct-panel"
+              initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col overflow-hidden"
+            >
+              <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-black text-base text-neutral-900 dark:text-white">直撃確認</h3>
+                </div>
+                <button onClick={() => setShowDirectModal(false)}
+                  className="p-1 -mr-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 active:scale-95 transition-transform">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="px-4 py-5 space-y-3">
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200/60 dark:border-amber-700/30">
+                  <p className="text-sm text-amber-800 dark:text-amber-300 font-bold text-center">
+                    跳過保底等待，直接進入 RUSH 模式
+                  </p>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-neutral-500">直撃費用</span>
+                  <span className="text-lg font-black text-primary tabular-nums">{directCost.toLocaleString()} G</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-500">目前 G 幣</span>
+                  <span className={cn("text-sm font-bold tabular-nums", isLowForDirect ? "text-red-400" : "text-neutral-700 dark:text-neutral-300")}>
+                    {userTokens.toLocaleString()} G
+                  </span>
+                </div>
+                {isLowForDirect && (
+                  <p className="text-xs text-red-400 text-center font-medium">G 幣不足，請先儲值</p>
+                )}
+              </div>
+              <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] flex gap-2">
+                <button onClick={() => setShowDirectModal(false)}
+                  className="flex-1 h-[44px] text-sm rounded-xl font-black bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-[0.98] transition-transform">
+                  取消
+                </button>
+                <button
+                  onClick={() => { setShowDirectModal(false); executeDirectSpin(); }}
+                  disabled={isLowForDirect || directLoading}
+                  className="flex-1 h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-50"
+                >
+                  {directLoading ? '處理中...' : `確認直撃　${directCost.toLocaleString()} G`}
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
