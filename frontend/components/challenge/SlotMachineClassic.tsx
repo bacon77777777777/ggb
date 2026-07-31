@@ -389,8 +389,14 @@ const SMVC_CSS = `
   left:var(--wl-l,24.4%); top:var(--wl-t,92.6%); width:var(--wl-w,51.2%); height:var(--wl-h,6.33%);
   background:url('/images/slot/machine/wallet.png') no-repeat center/100% 100%;
 }
+.smvc-wallet i {
+  position:absolute; right:7%; top:6%; bottom:6%;
+  display:flex; align-items:center;
+  font-style:normal; font-weight:900; font-size:3.4cqw;
+  color:#ffd75e; text-shadow:0 0 .7cqw rgba(255,190,60,.6),0 0 1.6cqw rgba(255,150,30,.3);
+}
 .smvc-wallet span {
-  position:absolute; left:30%; right:4.5%; top:6%; bottom:6%;
+  position:absolute; left:30%; right:7%; top:6%; bottom:6%;
   display:flex; align-items:center; justify-content:center;
   font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
   font-weight:900; font-size:3.4cqw; letter-spacing:.15cqw; white-space:nowrap;
@@ -1077,7 +1083,8 @@ export default function SlotMachineClassic({
 
         {/* 總餘額板 */}
         <div className="smvc-wallet">
-          <span>{(balance ?? 0).toLocaleString()} G</span>
+          <span>{(balance ?? 0).toLocaleString()}</span>
+          <i>G</i>
         </div>
 
         {/* Marquee */}
