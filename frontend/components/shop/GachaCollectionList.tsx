@@ -73,6 +73,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           .from('products')
           .select('*')
           .eq('status', 'active')
+          .neq('type', 'slot')
           .neq('id', productId)
           .limit(4);
         setRecommendations(data ?? []);

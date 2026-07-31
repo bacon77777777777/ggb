@@ -83,6 +83,9 @@ export default function NewProductPage() {
     return l.includes('last one') || level.includes('最後賞')
   }
 
+  // 機台類別：品項庫商品，不上架、不售價；價值/庫存供機台獎池使用
+  const isSlot = formData.type === 'slot'
+
   const ichibanLevels = [
     { value: 'A賞', label: 'A賞' },
     { value: 'B賞', label: 'B賞' },
@@ -137,6 +140,7 @@ export default function NewProductPage() {
     total: number
     remaining: number
     probability: number
+    recycleValue: number
   }>>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -182,6 +186,7 @@ export default function NewProductPage() {
       total: 0,
       remaining: 0,
       probability: 0,
+      recycleValue: 0,
     }
     setPrizes(prev => [...prev, newPrize])
     if (typeof window !== 'undefined') {
@@ -222,12 +227,16 @@ export default function NewProductPage() {
     e.preventDefault()
     
     // 驗證必填欄位
-    if (!formData.name || !formData.price || prizes.length === 0) {
+    if (!formData.name || (!isSlot && !formData.price) || prizes.length === 0) {
       toast('請填寫所有必填欄位並至少添加一個獎項', 'warning')
       return
     }
     if (!formData.supplierId) {
       toast('請選擇廠商', 'warning')
+      return
+    }
+    if (isSlot && prizes.some(p => !(p.recycleValue > 0))) {
+      toast('機台品項必須填寫品項價值（大於 0）', 'warning')
       return
     }
     setIsSubmitting(true)
@@ -247,8 +256,16 @@ export default function NewProductPage() {
         return data.publicUrl
       }
 
-      // 1. Upload Product Image
+      // 1. Upload Product Image（機台：自動帶主題機台圖片）
       let productImageUrl = formData.imagePreview
+      if (isSlot) {
+        try {
+          const res = await fetch('/api/admin/slot/themes')
+          const data = await res.json()
+          const theme = (data.themes ?? []).find((t: any) => formData.name.startsWith(t.name))
+          if (theme?.image_url) productImageUrl = theme.image_url
+        } catch { /* 比對不到主題時維持預設圖 */ }
+      }
       if (formData.image) {
         const file = formData.image
         const fileExt = file.name.split('.').pop()
@@ -266,6 +283,16 @@ export default function NewProductPage() {
       if (!startedAt && formData.status === 'active') {
         startedAt = new Date().toISOString()
       }
+
+      const slotOverrides = isSlot ? {
+        price: 0,
+        status: 'pending',
+        started_at: null,
+        is_hot: false,
+        is_preorder: false,
+        preorder_available_at: null,
+        machine_theme: null,
+      } : {}
 
       const productData = {
         name: formData.name,
@@ -291,9 +318,21 @@ export default function NewProductPage() {
         is_preorder: formData.isPreorder,
         preorder_available_at: formData.preorderAvailableAt ? `${formData.preorderAvailableAt} 00:00:00` : null,
         machine_theme: formData.machineTheme || null,
+        ...slotOverrides,
       }
 
-      // 3.5 Insert Product Tags
+      // 3.5 機台：等級依價值自動判定（前 10% 一等獎、次 30% 二等獎、其餘三等獎）
+      const slotLevelById = new Map<string, string>()
+      if (isSlot) {
+        const ranked = [...prizes].sort((a, b) => b.recycleValue - a.recycleValue)
+        const n = ranked.length
+        const firstCount  = Math.max(1, Math.round(n * 0.1))
+        const secondCount = Math.round(n * 0.3)
+        ranked.forEach((prize, i) => {
+          slotLevelById.set(prize.id, i < firstCount ? '一等獎' : i < firstCount + secondCount ? '二等獎' : '三等獎')
+        })
+      }
+
       // 4. Upload Prize Images and Insert Prizes
       const prizePayload = await Promise.all(prizes.map(async (prize) => {
         let prizeImageUrl = prize.imagePreview || prize.image || '/images/item.png'
@@ -307,11 +346,12 @@ export default function NewProductPage() {
 
         return {
           name: prize.name,
-          level: prize.level,
+          level: isSlot ? (slotLevelById.get(prize.id) ?? '三等獎') : prize.level,
           image_url: prizeImageUrl,
           total: prize.total,
           remaining: prize.remaining,
-          probability: prize.probability
+          probability: prize.probability,
+          recycle_value: Math.max(0, Math.round(prize.recycleValue) || 0)
         }
       }))
 
@@ -395,8 +435,8 @@ export default function NewProductPage() {
                   required
                 />
               </div>
-              {/* 商品圖 — 點擊上傳 */}
-              <label className="flex-shrink-0 cursor-pointer group relative">
+              {/* 商品圖 — 點擊上傳（機台：自動帶機台圖片） */}
+              {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
                 <input
                   type="file"
                   accept="image/*"
@@ -426,7 +466,7 @@ export default function NewProductPage() {
                     </svg>
                   </button>
                 )}
-              </label>
+              </label>}
             </div>
 
             {/* 類型 */}
@@ -443,11 +483,12 @@ export default function NewProductPage() {
                 <option value="gacha">轉蛋</option>
                 <option value="card">抽卡</option>
                 <option value="custom">自製賞</option>
+                <option value="slot">機台</option>
               </SelectField>
             </div>
 
-            {/* 售價 / 成本 */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* 售價 / 成本（機台：價格由檔次決定，不適用） */}
+            {!isSlot && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   售價 (G) <span className="text-red-500">*</span>
@@ -476,19 +517,19 @@ export default function NewProductPage() {
                   step="0.01"
                 />
               </div>
-            </div>
+            </div>}
 
             {/* 標籤 */}
-            <div>
+            {!isSlot && <div>
               <TagSelector
                 value={formData.selectedTagIds}
                 onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
                 label="標籤"
               />
-            </div>
+            </div>}
 
-            {/* 狀態 / 開賣時間 */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* 狀態 / 開賣時間（機台：強制隱藏商品，不上架） */}
+            {!isSlot && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   狀態
@@ -512,10 +553,10 @@ export default function NewProductPage() {
                   placeholder="選擇開賣時間"
                 />
               </div>
-            </div>
+            </div>}
 
             {/* 稀有度 */}
-            <div>
+            {!isSlot && <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 稀有度
               </label>
@@ -529,11 +570,11 @@ export default function NewProductPage() {
                 <option value="4">4 星</option>
                 <option value="5">5 星</option>
               </SelectField>
-            </div>
+            </div>}
 
             {/* 上市時間與代理商 */}
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              {!isSlot && <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   上市時間
                 </label>
@@ -545,8 +586,8 @@ export default function NewProductPage() {
                   onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
                   placeholder="選擇上市時間"
                 />
-              </div>
-              <div>
+              </div>}
+              {!isSlot && <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   代理商
                 </label>
@@ -557,8 +598,8 @@ export default function NewProductPage() {
                   className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="例如：萬代南夢宮"
                 />
-              </div>
-              <div>
+              </div>}
+              {!isSlot && <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   條碼
                 </label>
@@ -570,8 +611,8 @@ export default function NewProductPage() {
                   placeholder="4549660718956"
                   maxLength={50}
                 />
-              </div>
-              <div>
+              </div>}
+              {!isSlot && <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   系列
                 </label>
@@ -582,7 +623,7 @@ export default function NewProductPage() {
                   className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="寶可夢、鬼滅之刃..."
                 />
-              </div>
+              </div>}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   廠商 <span className="text-red-500">*</span>
@@ -603,7 +644,7 @@ export default function NewProductPage() {
                   ) : null
                 })()}
               </div>
-              <div>
+              {!isSlot && <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   抽獎模組
                 </label>
@@ -616,11 +657,20 @@ export default function NewProductPage() {
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </SelectField>
-              </div>
+              </div>}
             </div>
 
+            {/* 機台說明 */}
+            {isSlot && (
+              <div className="bg-indigo-50 border-2 border-indigo-100 rounded-lg p-4 text-xs text-indigo-700 leading-relaxed">
+                機台品項庫商品：不會出現在前台商城，售價由機台檔次決定。<br />
+                建議命名「主題名稱(檔次)」，例：絕頂RUSH(10)。<br />
+                品項的「價值」與「庫存」供機台獎池出獎與直衝定價使用（同主題全部機台共用庫存）。
+              </div>
+            )}
+
             {/* 預購商品設定 */}
-            <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-4 space-y-3">
+            {!isSlot && <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-4 space-y-3">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -644,10 +694,10 @@ export default function NewProductPage() {
                   <p className="text-xs text-neutral-500 self-end">到達此日期後，倉庫可申請配送與上架</p>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* 熱賣商品標記 */}
-            <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-4">
+            {!isSlot && <div className="bg-neutral-50 border-2 border-neutral-200 rounded-lg p-4">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -660,7 +710,7 @@ export default function NewProductPage() {
                   <p className="text-xs text-neutral-500 mt-0.5">熱賣商品將在前台顯示熱賣標籤</p>
                 </div>
               </label>
-            </div>
+            </div>}
 
           </div>
 
@@ -737,8 +787,8 @@ export default function NewProductPage() {
 
                         {/* 欄位 */}
                         <div className="flex-1 space-y-1.5 min-w-0">
-                          {/* 名稱 + 等級 */}
-                          <div className="grid grid-cols-2 gap-1.5">
+                          {/* 名稱 + 等級（機台：等級由價值自動判定，不顯示） */}
+                          <div className={`grid gap-1.5 ${isSlot ? 'grid-cols-1' : 'grid-cols-2'}`}>
                             <input
                               type="text"
                               value={prize.name}
@@ -750,33 +800,35 @@ export default function NewProductPage() {
                               className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                               placeholder="名稱"
                             />
-                            <SelectField
-                              value={prize.level}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                const newLevel = e.target.value
-                                updated[index].level = newLevel
-                                if (isLastOneLevel(newLevel)) {
-                                  const fixed = updated[index]
-                                  const ensureOne = (v: number) => (v && v > 0 ? v : 1)
-                                  fixed.total = ensureOne(fixed.total)
-                                  fixed.remaining = ensureOne(fixed.remaining)
-                                  fixed.probability = 0
-                                }
-                                setPrizes(updated)
-                              }}
-                            >
-                              <option value="">等級</option>
-                              {(formData.type === 'gacha' ? gachaLevels
-                                : formData.type === 'blindbox' ? blindboxLevels
-                                : ichibanLevels).map(level => (
-                                  <option key={level.value} value={level.value}>{level.label}</option>
-                              ))}
-                            </SelectField>
+                            {!isSlot && (
+                              <SelectField
+                                value={prize.level}
+                                onChange={(e) => {
+                                  const updated = [...prizes]
+                                  const newLevel = e.target.value
+                                  updated[index].level = newLevel
+                                  if (isLastOneLevel(newLevel)) {
+                                    const fixed = updated[index]
+                                    const ensureOne = (v: number) => (v && v > 0 ? v : 1)
+                                    fixed.total = ensureOne(fixed.total)
+                                    fixed.remaining = ensureOne(fixed.remaining)
+                                    fixed.probability = 0
+                                  }
+                                  setPrizes(updated)
+                                }}
+                              >
+                                <option value="">等級</option>
+                                {(formData.type === 'gacha' ? gachaLevels
+                                  : formData.type === 'blindbox' ? blindboxLevels
+                                  : ichibanLevels).map(level => (
+                                    <option key={level.value} value={level.value}>{level.label}</option>
+                                ))}
+                              </SelectField>
+                            )}
                           </div>
 
-                          {/* 數量 + 剩餘 + 機率 */}
-                          <div className="grid grid-cols-3 gap-1.5">
+                          {/* 數量 + 剩餘 + 機率 + 價值 */}
+                          <div className={`grid gap-1.5 ${isSlot ? 'grid-cols-3' : 'grid-cols-4'}`}>
                             <input
                               type="number"
                               value={prize.total === 0 ? '' : prize.total}
@@ -795,15 +847,30 @@ export default function NewProductPage() {
                             <div className="px-2 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-700">
                               {prize.remaining === 0 ? '0' : prize.remaining}
                             </div>
-                            <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
-                              {isLastOneLevel(prize.level)
-                                ? '最後賞'
-                                : (calculatedTotalCount > 0 && prize.total > 0
-                                    ? ((prize.total / calculatedTotalCount) * 100).toFixed(1) + '%'
-                                    : '0%'
-                                  )
-                              }
-                            </div>
+                            {!isSlot && (
+                              <div className="px-2 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 flex items-center justify-center">
+                                {isLastOneLevel(prize.level)
+                                  ? '最後賞'
+                                  : (calculatedTotalCount > 0 && prize.total > 0
+                                      ? ((prize.total / calculatedTotalCount) * 100).toFixed(1) + '%'
+                                      : '0%'
+                                    )
+                                }
+                              </div>
+                            )}
+                            <input
+                              type="number"
+                              value={prize.recycleValue === 0 ? '' : prize.recycleValue}
+                              onChange={(e) => {
+                                const updated = [...prizes]
+                                updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                setPrizes(updated)
+                              }}
+                              className="w-full px-2 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                              min="0"
+                              placeholder="價值(G)"
+                              title="品項價值（回收/機台定價用）"
+                            />
                           </div>
                         </div>
                       </div>

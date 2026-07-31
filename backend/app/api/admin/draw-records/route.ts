@@ -18,7 +18,8 @@ export async function GET() {
         `
           *,
           user:users (id, name, email),
-          product:products (name, image_url, price, type)
+          product:products (name, image_url, price, type),
+          slot_log:slot_spin_logs (bet, kind, machine:slot_machines (machine_number, theme:slot_themes (name)))
         `
       )
       .order('created_at', { ascending: false })

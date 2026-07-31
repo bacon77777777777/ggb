@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,6 +70,7 @@ interface SlotPoolItem {
     level: string;
     image_url: string | null;
     recycle_value: number;
+    remaining: number | null;
     products: { type: string } | null;
   } | null;
   slot_prizes: {
@@ -170,6 +172,9 @@ export default function MachinePage() {
   }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
+  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
+  // 機台總餘額板顯示值：按下 SPIN 即時扣款，回包後以 new_balance 校正；idle 時跟 profile 對齊
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -199,6 +204,10 @@ export default function MachinePage() {
   const scheduleResultCloseRef = useRef<() => void>(() => {});
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
+  useEffect(() => {
+    if (spinState === 'idle') setWalletBalance((user as any)?.tokens ?? 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, spinState]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
   useEffect(() => { videoPhaseRef.current = videoPhase; }, [videoPhase]);
 
@@ -283,7 +292,7 @@ export default function MachinePage() {
   const directCost = (() => {
     const vals = pool
       .filter(i => i.rush_only && !i.normal_only && !i.coin_return
-        && (i.remaining == null || i.remaining > 0)
+        && (i.product_prizes == null || i.product_prizes.remaining == null || i.product_prizes.remaining > 0)
         && (i.min_bet == null || i.min_bet === currentTier.coins))
       .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
     const maxVal = vals.length ? Math.max(...vals) : 0;
@@ -337,6 +346,7 @@ export default function MachinePage() {
     setError(null);
     setJackpot(false);
     setSpinState('spinning');
+    setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
     try {
@@ -352,6 +362,7 @@ export default function MachinePage() {
         setError(data.error ?? '挑戰失敗，請稍後再試');
         setJackpot(false);
         setSpinState('idle');
+        setWalletBalance((user as any)?.tokens ?? 0);
         syncSession();
         return;
       }
@@ -386,6 +397,7 @@ export default function MachinePage() {
           // classic / auto：777 動畫顯示 "RUSH!!"，結束後回 idle 等玩家在 RUSH 中旋轉
           animDoneRef.current = () => {
             if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setWalletBalance(data.new_balance);
             setLastResult(null);
             setSpinState('idle');
             if (refreshProfile) refreshProfile();
@@ -403,6 +415,7 @@ export default function MachinePage() {
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 6000);
         } else {
           animDoneRef.current = () => {
+            setWalletBalance(data.new_balance);
             setTimeout(() => {
               setSpinState('result');
               if (refreshProfile) refreshProfile();
@@ -416,6 +429,7 @@ export default function MachinePage() {
           // 普通旋轉 / 延續失敗揭曉轉：非 777 停定 → +XG、finish(false) 換回普通機台、streak 歸零
           animDoneRef.current = () => {
             if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setWalletBalance(data.new_balance);
             setRushStreak(0);
             setSpinState('idle');
             if (refreshProfile) refreshProfile();
@@ -442,6 +456,7 @@ export default function MachinePage() {
       setError('連線失敗，已自動復原，請再試一次');
       setJackpot(false);
       setSpinState('idle');
+      setWalletBalance((user as any)?.tokens ?? 0);
       syncSession();
     }
   };
@@ -459,6 +474,7 @@ export default function MachinePage() {
     setError(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+    setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - directCost));
     if (isClassic) {
       // Classic 模式：先啟動滾輪視覺，再等 API
       setJackpot(false);
@@ -478,6 +494,7 @@ export default function MachinePage() {
 
       if (!res.ok || data.error) {
         setError(data.error ?? '直撃失敗');
+        setWalletBalance((user as any)?.tokens ?? 0);
         if (isClassic) setSpinState('idle');
         return;
       }
@@ -487,6 +504,7 @@ export default function MachinePage() {
         const idx = tiers.findIndex(t => t.coins === data.session.locked_bet);
         if (idx >= 0) setTierIndex(idx);
       }
+      if (data.new_balance != null) setWalletBalance(data.new_balance);
       if (refreshProfile) refreshProfile();
 
       if (isClassic) {
@@ -509,6 +527,7 @@ export default function MachinePage() {
       }
     } catch {
       setError('直撃失敗，請稍後再試');
+      setWalletBalance((user as any)?.tokens ?? 0);
       if (isClassic) setSpinState('idle');
     } finally {
       setDirectLoading(false);
@@ -565,6 +584,7 @@ export default function MachinePage() {
         totalSpins={session?.day_spins ?? 0}
         betCoins={currentTier.coins}
         directCost={directCost}
+        balance={walletBalance ?? userTokens}
         onSpin={handleSpin}
         onDirect={handleDirect}
         onAutoToggle={() => setIsAuto(v => !v)}
@@ -618,7 +638,11 @@ export default function MachinePage() {
       const prize = item.product_prizes ?? item.slot_prizes;
       const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
       return (
-        <div key={item.id} className="flex flex-col items-center">
+        <div
+          key={item.id}
+          className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
+          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url })}
+        >
           <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
             {prize?.image_url ? (
               <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
@@ -995,6 +1019,39 @@ export default function MachinePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 品項大圖預覽 */}
+      {previewPrize && typeof window !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[2600] bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setPreviewPrize(null)}
+        >
+          <div
+            className="relative max-w-[88vw] max-h-[88vh] flex flex-col items-center gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewPrize(null)}
+              className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <span className="text-white text-base font-black text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
+              {previewPrize.name}
+            </span>
+            <Image
+              src={previewPrize.image_url || '/images/item_defaulet.png'}
+              alt={previewPrize.name}
+              width={600}
+              height={600}
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl"
+              unoptimized
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

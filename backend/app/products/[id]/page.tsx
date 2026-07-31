@@ -165,6 +165,7 @@ export default function EditProductPage() {
     total: number
     remaining: number
     probability: number
+    recycleValue: number
     decompose_type: 'auto' | 'percent' | 'fixed'
     decompose_value: number | null
   }>>([])
@@ -376,6 +377,7 @@ export default function EditProductPage() {
             total: prize.total,
             remaining: prize.remaining,
             probability: prize.probability,
+            recycleValue: prize.recycle_value ?? 0,
             decompose_type: prize.decompose_type || 'auto',
             decompose_value: prize.decompose_value ?? null,
           }))
@@ -499,6 +501,7 @@ export default function EditProductPage() {
           total: prize.total,
           remaining: prize.remaining,
           probability: prize.probability,
+          recycle_value: Math.max(0, Math.round(prize.recycleValue) || 0),
           decompose_type: prize.decompose_type || 'auto',
           decompose_value: prize.decompose_value ?? null,
         }
@@ -577,6 +580,15 @@ export default function EditProductPage() {
     )
   }
 
+  // 機台：品項庫商品（不上架、無售價；數量=共用庫存、價值=定價依據）
+  const isSlot = formData.type === 'slot'
+  const slotLevels = [
+    { value: '一等獎', label: '一等獎（大獎）' },
+    { value: '二等獎', label: '二等獎' },
+    { value: '三等獎', label: '三等獎' },
+    { value: '四等獎', label: '四等獎' },
+    { value: '五等獎', label: '五等獎' },
+  ]
   // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
   const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
   // 轉蛋/盒玩：機率制，等級固定「普通」，數量可疊加
@@ -630,12 +642,138 @@ export default function EditProductPage() {
           </div>
         </div>
 
-        <form id="product-form" onSubmit={handleSubmit} className="space-y-3">
-
-          {/* ── Section: 上架資訊 ── */}
+        <form id="product-form" onSubmit={handleSubmit} className="flex gap-4 items-start">
+          {/* 左欄：商品設定 */}
+          <div className="w-[440px] flex-shrink-0 space-y-3 overflow-y-auto h-[calc(100dvh-9rem)] pr-0.5">
+          {/* ── Section: 商品資訊 ── */}
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
+            <div className="space-y-2">
+              {/* Row 1: 名稱 + 圖（機台：主圖自動帶機台圖片，不可上傳） */}
+              <div className="flex items-center gap-3">
+                {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
+                    }} />
+                  <div className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
+                    {formData.imagePreview
+                      ? <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
+                      : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    }
+                  </div>
+                  {formData.imagePreview && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 z-10">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </label>}
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="請輸入商品名稱" required />
+                </div>
+              </div>
+
+              {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">類別 <span className="text-red-500">*</span></label>
+                  <SelectField value={formData.type} disabled>
+                    <option value="ichiban">一番賞</option>
+                    <option value="blindbox">盒玩</option>
+                    <option value="gacha">轉蛋</option>
+                    <option value="card">抽卡</option>
+                    <option value="custom">自製賞</option>
+                    <option value="slot">機台</option>
+                  </SelectField>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
+                  <SelectField value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}>
+                    <option value="">— 未指定 —</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={String(s.id)}>{s.name}</option>
+                    ))}
+                  </SelectField>
+                </div>
+                {!isSlot && <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">抽獎模組</label>
+                  <SelectField value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
+                    <option value="">— 類別預設 —</option>
+                    {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </SelectField>
+                </div>}
+                {!isSlot && <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
+                  <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
+                    onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
+                    onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
+                    onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
+                    placeholder="選擇上市時間" />
+                </div>}
+                {!isSlot && <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">代理商</label>
+                  <input type="text" value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="萬代南夢宮" />
+                </div>}
+              </div>
+
+              {/* Row 3: 條碼 系列 熱賣（機台不適用） */}
+              {!isSlot && <div className="grid grid-cols-2 gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
+                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="4549660718956" maxLength={50} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">系列</label>
+                  <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                    placeholder="寶可夢、鬼滅之刃..." />
+                </div>
+                {allCategories.length > 0 && (
+                  <CategoryMultiSelect
+                    categories={allCategories}
+                    selected={formData.selectedCategoryIds}
+                    onChange={ids => setFormData(p => ({ ...p, selectedCategoryIds: ids }))}
+                  />
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
+                  <select value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}
+                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                    <option value="0">否</option>
+                    <option value="1">是</option>
+                  </select>
+                </div>
+              </div>}
+
+              {/* 標籤 */}
+              {!isSlot && <div>
+                <TagSelector value={formData.selectedTagIds}
+                  onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
+                  label="標籤" />
+              </div>}
+            </div>
+          </div>
+
+          {/* ── Section: 上架資訊（機台：不上架、無售價，整區隱藏） ── */}
+          {isSlot && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-700 leading-relaxed">
+              機台品項庫商品：不會出現在前台商城，售價由機台檔次決定。品項的「價值」與「庫存」供機台獎池出獎與直衝定價使用（同主題全部機台共用庫存）。
+            </div>
+          )}
+          {!isSlot && <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">上架資訊</h3>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">狀態</label>
                 <SelectField value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
@@ -674,7 +812,7 @@ export default function EditProductPage() {
             </div>
             {/* 完抽時間 / Seed（條件顯示） */}
             {formData.status === 'ended' && (
-              <div className="grid grid-cols-5 gap-3 mt-3">
+              <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">完抽時間</label>
                   <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600">
@@ -693,129 +831,13 @@ export default function EditProductPage() {
                 )}
               </div>
             )}
+          </div>}
+
           </div>
 
-          {/* ── Section: 商品資訊 ── */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
-            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
-            <div className="space-y-2">
-              {/* Row 1: 名稱 + 圖 */}
-              <div className="flex items-center gap-3">
-                <label className="flex-shrink-0 cursor-pointer group relative">
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
-                    }} />
-                  <div className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-300 overflow-hidden bg-white flex items-center justify-center group-hover:border-primary transition-colors">
-                    {formData.imagePreview
-                      ? <img src={formData.imagePreview} alt="" className="w-full h-full object-cover" />
-                      : <svg className="w-5 h-5 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                    }
-                  </div>
-                  {formData.imagePreview && (
-                    <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, image: null, imagePreview: '' }) }}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 z-10">
-                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  )}
-                </label>
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
-                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                    placeholder="請輸入商品名稱" required />
-                </div>
-              </div>
-
-              {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
-              <div className="grid grid-cols-5 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">類別 <span className="text-red-500">*</span></label>
-                  <SelectField value={formData.type} disabled>
-                    <option value="ichiban">一番賞</option>
-                    <option value="blindbox">盒玩</option>
-                    <option value="gacha">轉蛋</option>
-                    <option value="card">抽卡</option>
-                    <option value="custom">自製賞</option>
-                  </SelectField>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
-                  <SelectField value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}>
-                    <option value="">— 未指定 —</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={String(s.id)}>{s.name}</option>
-                    ))}
-                  </SelectField>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">抽獎模組</label>
-                  <SelectField value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
-                    <option value="">— 類別預設 —</option>
-                    {(MODULE_OPTIONS[formData.type] ?? []).map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </SelectField>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
-                  <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
-                    onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
-                    onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
-                    onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
-                    placeholder="選擇上市時間" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">代理商</label>
-                  <input type="text" value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                    placeholder="萬代南夢宮" />
-                </div>
-              </div>
-
-              {/* Row 3: 條碼 系列 熱賣 */}
-              <div className="grid grid-cols-3 gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
-                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                    placeholder="4549660718956" maxLength={50} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">系列</label>
-                  <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                    placeholder="寶可夢、鬼滅之刃..." />
-                </div>
-                {allCategories.length > 0 && (
-                  <CategoryMultiSelect
-                    categories={allCategories}
-                    selected={formData.selectedCategoryIds}
-                    onChange={ids => setFormData(p => ({ ...p, selectedCategoryIds: ids }))}
-                  />
-                )}
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
-                  <select value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
-                    <option value="0">否</option>
-                    <option value="1">是</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 標籤 */}
-              <div>
-                <TagSelector value={formData.selectedTagIds}
-                  onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
-                  label="標籤" />
-              </div>
-            </div>
-          </div>
-
+          {/* 右欄：品項 */}
           {/* ── Section: 品項 ── */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+          <div className="flex-1 bg-white rounded-xl border border-neutral-200 shadow-sm p-4 overflow-y-auto h-[calc(100dvh-9rem)]">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">品項</h3>
               <span className="text-xs font-mono text-neutral-400">
@@ -825,7 +847,7 @@ export default function EditProductPage() {
               </span>
             </div>
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2.5">
                 {prizes.map((prize, index) => (
                   <div key={prize.id} className="border border-neutral-200 rounded-xl bg-white hover:border-primary/40 hover:shadow-sm transition-all">
 
@@ -949,15 +971,15 @@ export default function EditProductPage() {
                             }}
                           >
                             <option value="">— 選擇等級 —</option>
-                            {ichibanLevels.map(level => (
+                            {(isSlot ? slotLevels : ichibanLevels).map(level => (
                               <option key={level.value} value={level.value}>{level.label}</option>
                             ))}
                           </SelectField>
                         )}
                       </div>
 
-                      {/* 數量資訊：3 欄 */}
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* 數量資訊 */}
+                      <div className={`grid gap-2 ${isSlot ? 'grid-cols-3' : 'grid-cols-4'}`}>
                         <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
                           {isVerifiable ? (
@@ -988,7 +1010,7 @@ export default function EditProductPage() {
                             {prize.remaining}
                           </div>
                         </div>
-                        <div>
+                        {!isSlot && <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">抽中機率</label>
                           <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 text-center">
                             {isLastOneLevel(prize.level)
@@ -999,6 +1021,21 @@ export default function EditProductPage() {
                                 )
                             }
                           </div>
+                        </div>}
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">品項價值 (G)</label>
+                          <input
+                            type="number"
+                            value={prize.recycleValue === 0 ? '' : prize.recycleValue}
+                            onChange={(e) => {
+                              const updated = [...prizes]
+                              updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                              setPrizes(updated)
+                            }}
+                            className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
+                            min="0"
+                            placeholder="0"
+                          />
                         </div>
                       </div>
 
@@ -1104,7 +1141,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
                   }}
                   className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                 >
@@ -1130,6 +1167,7 @@ export default function EditProductPage() {
                       total: 0,
                       remaining: 0,
                       probability: 0,
+                      recycleValue: 0,
                       decompose_type: 'auto' as const,
                       decompose_value: null as number | null,
                     }

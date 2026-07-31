@@ -32,7 +32,7 @@ export async function GET(
         .select(`
           id, min_bet, is_floor, rush_only, normal_only, remaining,
           coin_return, return_multiplier, display_name,
-          product_prizes (id, name, level, image_url, recycle_value, products(type)),
+          product_prizes (id, name, level, image_url, recycle_value, remaining, products(type)),
           slot_prizes (id, name, level, image_url, recycle_value)
         `)
         .eq('machine_id', machineId)

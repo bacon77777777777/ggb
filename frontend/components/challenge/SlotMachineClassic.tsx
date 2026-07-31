@@ -17,6 +17,7 @@ export interface MachineLayout {
   autoBtn?: LayoutBox;
   spinBtn?: LayoutBox;
   rushBtn?: LayoutBox;
+  wallet?: LayoutBox;
 }
 
 export interface SlotMachineClassicProps {
@@ -37,6 +38,8 @@ export interface SlotMachineClassicProps {
   totalSpins: number;
   betCoins: number;
   directCost: number;
+  /** 玩家總餘額（G），顯示於機台下方總餘額板 */
+  balance?: number;
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
@@ -101,6 +104,52 @@ const CNNUM = '一二三四五六七八九十';
 const cn = (n: number) => n <= 10 ? CNNUM[n - 1] : n.toString();
 
 // ── CSS ──────────────────────────────────────────────────────────────────────
+
+
+// 跑馬燈泡座標（% of 750×932 模板；前 13 顆=頂弧 light1、後 28 顆=大当り看板環 light2）
+const MARQUEE_BULBS: { x: number; y: number; ph: number }[] = [
+  { x: 26.267, y: 1.022, ph: 0 },
+  { x: 29.0, y: 1.022, ph: 1 },
+  { x: 31.733, y: 1.022, ph: 2 },
+  { x: 34.467, y: 1.022, ph: 0 },
+  { x: 37.067, y: 1.022, ph: 1 },
+  { x: 39.933, y: 1.022, ph: 2 },
+  { x: 42.667, y: 1.022, ph: 0 },
+  { x: 59.067, y: 1.022, ph: 1 },
+  { x: 62.067, y: 1.022, ph: 2 },
+  { x: 65.067, y: 1.022, ph: 0 },
+  { x: 68.4, y: 1.022, ph: 1 },
+  { x: 71.067, y: 1.022, ph: 2 },
+  { x: 73.733, y: 1.022, ph: 0 },
+  { x: 72.0, y: 11.0, ph: 0 },
+  { x: 75.467, y: 11.0, ph: 1 },
+  { x: 78.267, y: 12.65, ph: 2 },
+  { x: 78.533, y: 15.27, ph: 0 },
+  { x: 78.533, y: 17.89, ph: 1 },
+  { x: 78.533, y: 20.607, ph: 2 },
+  { x: 77.067, y: 22.645, ph: 0 },
+  { x: 74.0, y: 23.227, ph: 1 },
+  { x: 70.4, y: 23.227, ph: 2 },
+  { x: 66.8, y: 23.227, ph: 0 },
+  { x: 63.333, y: 23.227, ph: 1 },
+  { x: 59.733, y: 23.227, ph: 2 },
+  { x: 56.133, y: 23.227, ph: 0 },
+  { x: 52.4, y: 23.227, ph: 1 },
+  { x: 48.667, y: 23.227, ph: 2 },
+  { x: 45.067, y: 23.227, ph: 0 },
+  { x: 41.2, y: 23.227, ph: 1 },
+  { x: 37.467, y: 23.227, ph: 2 },
+  { x: 33.733, y: 23.227, ph: 0 },
+  { x: 29.867, y: 23.227, ph: 1 },
+  { x: 26.267, y: 23.227, ph: 2 },
+  { x: 22.933, y: 22.645, ph: 0 },
+  { x: 21.467, y: 20.607, ph: 1 },
+  { x: 21.467, y: 17.89, ph: 2 },
+  { x: 21.467, y: 15.27, ph: 0 },
+  { x: 21.733, y: 12.65, ph: 1 },
+  { x: 24.533, y: 11.097, ph: 2 },
+  { x: 28.0, y: 11.0, ph: 0 },
+];
 
 const SMVC_CSS = `
 .smvc-stage {
@@ -304,6 +353,57 @@ const SMVC_CSS = `
   background-size:.9cqw .9cqw;
 }
 
+/* ── Marquee bulbs（跑馬燈追逐；RUSH 加速）── */
+.smvc-bulb {
+  position:absolute; z-index:3; pointer-events:none;
+  width:1.5cqw; aspect-ratio:1/1; border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 35%, #fff6d0 0%, #ffd75e 48%, #ff9d1c 85%);
+  box-shadow:0 0 .9cqw .25cqw rgba(255,195,70,.85), 0 0 2.2cqw .7cqw rgba(255,150,30,.4);
+  animation:smvc-bulbChase var(--bulb-dur,.9s) steps(1) infinite;
+  animation-delay:calc(var(--ph) * var(--bulb-dur,.9s) / -3);
+}
+@keyframes smvc-bulbChase {
+  0%    { opacity:1; }
+  33.4% { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
+  100%  { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
+}
+.smvc-rushskin .smvc-bulb { --bulb-dur:.45s; }
+/* 事件燈效：大当り/連中全閃、返還快掃、7 連落定脈衝 */
+.smvc-bulbs-flash .smvc-bulb { animation:smvc-bulbAll .12s steps(2) infinite; }
+.smvc-bulbs-pop   .smvc-bulb { animation:smvc-bulbAll .1s  steps(2) 4; }
+.smvc-bulbs-sweep .smvc-bulb { --bulb-dur:.3s; }
+@keyframes smvc-bulbAll { 0%{opacity:1; filter:none; box-shadow:0 0 1.1cqw .35cqw rgba(255,205,80,.95), 0 0 2.6cqw .9cqw rgba(255,160,40,.5);} 50%{opacity:.3; filter:brightness(.6);} }
+
+/* 頂弧（light1）底圖偏亮金，熄燈遮罩用較淡版本避免死黑 */
+.smvc-bulb-arc { animation-name:smvc-bulbChaseArc; }
+@keyframes smvc-bulbChaseArc {
+  0%    { opacity:1; }
+  33.4% { opacity:.5; box-shadow:inset 0 0 .5cqw .12cqw rgba(0,0,0,.32), 0 0 .7cqw .2cqw rgba(0,0,0,.18); filter:saturate(.65) brightness(.8); }
+  100%  { opacity:.5; box-shadow:inset 0 0 .5cqw .12cqw rgba(0,0,0,.32), 0 0 .7cqw .2cqw rgba(0,0,0,.18); filter:saturate(.65) brightness(.8); }
+}
+
+/* ── 總餘額板 ── */
+.smvc-wallet {
+  position:absolute; z-index:4; pointer-events:none;
+  left:var(--wl-l,24.4%); top:var(--wl-t,92.6%); width:var(--wl-w,51.2%); height:var(--wl-h,6.33%);
+  background:url('/images/slot/machine/wallet.png') no-repeat center/100% 100%;
+}
+.smvc-wallet i {
+  position:absolute; right:7%; top:6%; bottom:6%;
+  display:flex; align-items:center;
+  font-style:normal; font-weight:900; font-size:3.4cqw;
+  color:#ffd75e; text-shadow:0 0 .7cqw rgba(255,190,60,.6),0 0 1.6cqw rgba(255,150,30,.3);
+}
+.smvc-wallet span {
+  position:absolute; left:30%; right:7%; top:6%; bottom:6%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
+  font-weight:900; font-size:3.4cqw; letter-spacing:.15cqw; white-space:nowrap;
+  color:#ffd75e; text-shadow:0 0 .7cqw rgba(255,190,60,.6),0 0 1.6cqw rgba(255,150,30,.3);
+  font-variant-numeric:tabular-nums;
+}
+
 /* ── Reels ── */
 .smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
 .smvc-r0 { left:var(--r0-l,22.00%); width:var(--r0-w,17.07%); }
@@ -505,7 +605,7 @@ const SMVC_CSS = `
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SlotMachineClassic({
-  spinState, isRushActive, isAuto, reelOutcome, spriteUrl, machineLayout,
+  spinState, isRushActive, isAuto, reelOutcome, spriteUrl, machineLayout, balance,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
   winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
@@ -538,7 +638,8 @@ export default function SlotMachineClassic({
   };
 
   const offsets       = useRef([0, 0, 0]);
-  const rowH          = useRef(80);
+  const rowH          = useRef(80);   // 格高（= 視窗高 × CELL_F，上下露出相鄰符號邊）
+  const padY          = useRef(0);    // 置中偏移 = (視窗高 − 格高) / 2
   const rafId         = useRef(0);
   const prevSpin      = useRef<SpinState>('idle');
   const jackpotRef    = useRef(false);
@@ -583,7 +684,7 @@ export default function SlotMachineClassic({
       }
       offsets.current = t.map(s => s * h);
       stripEls.current.forEach((el, i) => {
-        if (el) el.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
+        if (el) el.style.transform = `translateY(${stripY(offsets.current[i], h)}px)`;
       });
     }
     window.addEventListener('resize', sync);
@@ -606,14 +707,20 @@ export default function SlotMachineClassic({
     if (isRushActive) stage.classList.add('smvc-rushskin');
   }, [isRushActive, spinState]);
 
+  // 條帶定位：目標格置中，上下各露出相鄰符號一小段（往上多移一圈確保上方有格可露）
+  const stripY = useCallback((pos: number, h: number) =>
+    -(pos % (N * h)) - N * h + padY.current, []);
+
   const sync = useCallback(() => {
-    const h = reelEls.current[0]?.clientHeight ?? 80;
+    const vh = reelEls.current[0]?.clientHeight ?? 80;
+    const h = vh * 0.74;
     rowH.current = h;
+    padY.current = (vh - h) / 2;
     stageRef.current?.style.setProperty('--smvc-rowH', h + 'px');
     stripEls.current.forEach((s, i) => {
-      if (s) s.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
+      if (s) s.style.transform = `translateY(${stripY(offsets.current[i], h)}px)`;
     });
-  }, []);
+  }, [stripY]);
 
   const showFrame = useCallback((i: number) => {
     leverEls.current.forEach((f, k) => f?.classList.toggle('smvc-show', k === i));
@@ -656,6 +763,13 @@ export default function SlotMachineClassic({
 
       sThud(lvl);
       sBeep(520 + lvl * 340, 0.1, 'square', 0.12, 0.02);
+
+      if (lvl >= 2) {
+        stage.classList.remove('smvc-bulbs-pop');
+        void stage.offsetWidth;
+        stage.classList.add('smvc-bulbs-pop');
+        setTimeout(() => stage.classList.remove('smvc-bulbs-pop'), 500);
+      }
     }, 150);
   }, []);
 
@@ -689,9 +803,19 @@ export default function SlotMachineClassic({
       stage.classList.remove('smvc-rushskin');
       const txt = marqueeTxt.current;
       if (txt) txt.textContent = '★ 押忍！再挑戰一次 ★ GGB RUSH ★';
+
+      // 返還揭曉：跑馬燈快掃一輪
+      stage.classList.add('smvc-bulbs-sweep');
+      setTimeout(() => stage.classList.remove('smvc-bulbs-sweep'), 1200);
     } else {
       const streak = rushStreakRef.current;
       stage.classList.add('smvc-rushmode', 'smvc-shake', 'smvc-rushskin');
+
+      // 大当り/連中：全燈同步爆閃，連中越多閃越久
+      stage.classList.remove('smvc-bulbs-flash');
+      void stage.offsetWidth;
+      stage.classList.add('smvc-bulbs-flash');
+      setTimeout(() => stage.classList.remove('smvc-bulbs-flash'), 1800 + Math.min(streak, 4) * 400);
 
       const fl = flashEl.current;
       if (fl) { fl.classList.remove('smvc-go'); void fl.offsetWidth; fl.classList.add('smvc-go'); }
@@ -800,7 +924,7 @@ export default function SlotMachineClassic({
         const dist = loops * cycle + ((endAt - (starts[i] % cycle)) + cycle) % cycle;
         const pos = starts[i] + dist * ease(p);
         offsets.current[i] = pos % cycle;
-        if (strip) strip.style.transform = `translateY(${-(pos % nrh)}px)`;
+        if (strip) strip.style.transform = `translateY(${stripY(pos, rh)}px)`;
         if (p > 0.65) reel?.classList.remove('smvc-blur');
         if (p < 1) { allDone = false; }
         else if (!settled[i]) {
@@ -830,7 +954,7 @@ export default function SlotMachineClassic({
       }
     }
     rafId.current = requestAnimationFrame(frame);
-  }, [stampFx]);
+  }, [stampFx, stripY]);
 
   // Main spinState effect — 照 v16：spinning 只做 UI 準備，stopping 才跑 stopReels
   useEffect(() => {
@@ -855,7 +979,7 @@ export default function SlotMachineClassic({
           for (let i = 0; i < 3; i++) {
             offsets.current[i] = (offsets.current[i] + rh * 0.38) % cycle;
             const strip = stripEls.current[i];
-            if (strip) strip.style.transform = `translateY(${-(offsets.current[i] % nrh)}px)`;
+            if (strip) strip.style.transform = `translateY(${stripY(offsets.current[i], rh)}px)`;
           }
           rafId.current = requestAnimationFrame(spinFrame);
         };
@@ -917,6 +1041,7 @@ export default function SlotMachineClassic({
             };
             box(L.marquee, 'mq'); box(L.scoreboard, 'sb');
             box(L.autoBtn, 'ba'); box(L.spinBtn, 'bs'); box(L.rushBtn, 'br');
+            box(L.wallet, 'wl');
             if (L.reels) {
               if (L.reels.t != null) v['--r-t'] = L.reels.t + '%';
               if (L.reels.h != null) v['--r-h'] = L.reels.h + '%';
@@ -949,6 +1074,18 @@ export default function SlotMachineClassic({
 
         {/* RUSH sign */}
         <div className="smvc-rushsign smvc-layer" />
+
+        {/* 跑馬燈泡（頂弧 + 大当り看板環） */}
+        {MARQUEE_BULBS.map((b, i) => (
+          <i key={i} className={`smvc-bulb${i < 13 ? ' smvc-bulb-arc' : ''}`}
+            style={{ left: `${b.x}%`, top: `${b.y}%`, '--ph': b.ph } as React.CSSProperties} />
+        ))}
+
+        {/* 總餘額板 */}
+        <div className="smvc-wallet">
+          <span>{(balance ?? 0).toLocaleString()}</span>
+          <i>G</i>
+        </div>
 
         {/* Marquee */}
         <div className="smvc-marquee" ref={marqueeEl}>

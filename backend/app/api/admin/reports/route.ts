@@ -225,6 +225,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id, name, type, category, total_count, remaining, supplier_id, supplier:suppliers(id, name)')
         .eq('is_active', true)
+        .neq('type', 'slot')
       if (supplierId) productQuery = productQuery.eq('supplier_id', supplierId)
       if (productType) productQuery = productQuery.eq('type', productType)
       const { data: products, error: prodErr } = await productQuery
@@ -260,6 +261,38 @@ export async function GET(request: NextRequest) {
         }
       })
 
+      // 4. 老虎機（slot_spin_logs 流水彙總，消費金額 = 投注 + 直衝 − 退幣）
+      if ((!productType || productType === 'slot') && start && end) {
+        const [slotRes, machinesRes] = await Promise.all([
+          supabase.rpc('get_slot_machine_report', { p_start: start, p_end: end }),
+          supabase.from('slot_machines').select('id, supplier_id, supplier:suppliers(id, name)'),
+        ])
+        if (!slotRes.error) {
+          const machineMap = new Map<number, any>(
+            (machinesRes.data ?? []).map((m: any) => [m.id, m])
+          )
+          for (const r of slotRes.data ?? []) {
+            const m = machineMap.get(r.machine_id)
+            if (supplierId && String(m?.supplier_id ?? '') !== supplierId) continue
+            const drawCount = (r.spins ?? 0) + (r.direct_count ?? 0)
+            if (!r.is_active && drawCount === 0) continue
+            ;(rows as any[]).push({
+              id: `slot-${r.machine_id}`,
+              name: `${r.theme_name || r.machine_name}${r.machine_number ? ` ${r.machine_number}號機` : ''}`,
+              type: 'slot',
+              category: null,
+              supplierName: m?.supplier?.name ?? null,
+              drawCount,
+              revenue: (r.bet_total ?? 0) + (r.direct_total ?? 0) - (r.coin_return_total ?? 0),
+              pointsUsed: 0,
+              remaining: null,
+              totalCount: null,
+              completionRate: null,
+            })
+          }
+        }
+      }
+
       // 依消費金額降冪
       rows.sort((a: any, b: any) => b.revenue - a.revenue)
 
@@ -275,7 +308,7 @@ export async function GET(request: NextRequest) {
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
         applyDateFilter(
           excBot(supabase.from('draw_records')
-            .select('product_id, created_at, product:products(id, name, price, supplier_id)'))
+            .select('product_id, created_at, product:products(id, name, price, supplier_id, type)'))
         ),
         applyDateFilter(
           excBot(supabase.from('recharge_records').select('amount, status, created_at, payment_fee'))
@@ -294,7 +327,7 @@ export async function GET(request: NextRequest) {
       if (rechargeRes.error) throw rechargeRes.error
 
       // 消費明細：只算該廠商商品
-      const draws: any[] = drawRes.data ?? []
+      const draws: any[] = (drawRes.data ?? []).filter((d: any) => d.product?.type !== 'slot')
       const supplierDraws = draws.filter(d => String(d.product?.supplier_id) === supplierId)
 
       const byProduct: Record<number, { name: string; price: number; drawCount: number; totalG: number }> = {}

@@ -213,7 +213,7 @@ export default function ProductsPage() {
     fetchCategories()
   }, [])
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedType, setSelectedType] = useState<'all' | 'ichiban' | 'blindbox' | 'gacha' | 'custom'>('all')
+  const [selectedType, setSelectedType] = useState<'all' | 'ichiban' | 'blindbox' | 'gacha' | 'custom' | 'card' | 'slot'>('all')
   const [selectedLowStock, setSelectedLowStock] = useState(false)  // 是否只顯示低庫存
   const [selectedHot, setSelectedHot] = useState(false)  // 是否只顯示熱門商品
   const [sortField, setSortField] = useState<string>('productCode')
@@ -247,14 +247,20 @@ export default function ProductsPage() {
     return l.includes('last one') || level.includes('最後賞')
   }
   
-  const HIGH_TIER_LEVELS = ['SP', 'A', 'B', 'C']
-  
-  const isMajorDepleted = (product: Product): boolean => {
-    const majorRemaining = product.prizes
-      .filter(prize => HIGH_TIER_LEVELS.includes(normalizePrizeLevel(prize.level)))
-      .reduce((sum, prize) => sum + prize.remaining, 0)
-    return majorRemaining === 0
+  // 大獎狀態：轉蛋/盒玩不適用（—）；機台以「一等獎」為大獎；
+  // 一番賞/抽卡/自製以「總數量 = 1」的品項為大賞（排除最後賞）
+  type MajorStatus = 'none' | 'normal' | 'depleted'
+  const getMajorStatus = (product: Product): MajorStatus => {
+    const type = product.type || 'ichiban'
+    if (type === 'gacha' || type === 'blindbox') return 'none'
+    const majors = type === 'slot'
+      ? product.prizes.filter(prize => normalizePrizeLevel(prize.level) === '一等獎')
+      : product.prizes.filter(prize => !isLastOneLevel(prize.level) && prize.total === 1)
+    if (majors.length === 0) return 'none'
+    return majors.reduce((sum, prize) => sum + prize.remaining, 0) === 0 ? 'depleted' : 'normal'
   }
+
+  const isMajorDepleted = (product: Product): boolean => getMajorStatus(product) === 'depleted'
   
   const [productVisibility, setProductVisibility] = useState<{ [key: number]: boolean }>({})
 
@@ -279,7 +285,7 @@ export default function ProductsPage() {
 
   // 匯出CSV功能
   const handleExportCSV = () => {
-    const headers = ['編號', '商品名稱', '分類', '種類', '價格(G)', '成本', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
+    const headers = ['編號', '商品名稱', '分類', '類別', '價格(G)', '成本', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
     const csvData = sortedProducts.map(product => {
       const normalPrizes = product.prizes.filter(p => !isLastOneLevel(p.level))
       const totalCount = normalPrizes.reduce((sum, s) => sum + s.total, 0)
@@ -287,7 +293,8 @@ export default function ProductsPage() {
       const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
       const calculatedSales = product.sales
       const stockAndSales = `庫存：${remaining}/${totalCount} 銷量：${calculatedSales}`
-      const majorStatus = isMajorDepleted(product) ? '廢套' : '正常'
+      const majorStatusMap = { none: '—', normal: '正常', depleted: '廢套' } as const
+      const majorStatus = majorStatusMap[getMajorStatus(product)]
       
       // 轉換種類名稱
       const typeMap: Record<string, string> = {
@@ -295,7 +302,8 @@ export default function ProductsPage() {
         blindbox: '盲盒',
         gacha: '轉蛋',
         card: '抽卡',
-        custom: '自製'
+        custom: '自製',
+        slot: '機台'
       }
       const typeName = typeMap[product.type || 'ichiban'] || '一番賞'
 
@@ -549,9 +557,9 @@ export default function ProductsPage() {
     const matchCategory = selectedCategory === 'all' || product.category === selectedCategory
     const matchStatus = selectedStatus === 'all' || product.status === selectedStatus
     const matchType = selectedType === 'all' || (product.type || 'ichiban') === selectedType
-    const matchMajorStatus = selectedMajorStatus === 'all' || 
-      (selectedMajorStatus === 'depleted' && isMajorDepleted(product)) ||
-      (selectedMajorStatus === 'normal' && !isMajorDepleted(product))
+    const matchMajorStatus = selectedMajorStatus === 'all' ||
+      (selectedMajorStatus === 'depleted' && getMajorStatus(product) === 'depleted') ||
+      (selectedMajorStatus === 'normal' && getMajorStatus(product) === 'normal')
     // 低庫存篩選
     const matchLowStock = !selectedLowStock || (() => {
       const calculatedRemaining = product.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
@@ -580,11 +588,13 @@ export default function ProductsPage() {
         aValue = a.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
         bValue = b.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
         break
-      case 'majorStatus':
-        // 根據大獎狀態排序（廢套排在後面）
-        aValue = isMajorDepleted(a) ? 1 : 0
-        bValue = isMajorDepleted(b) ? 1 : 0
+      case 'majorStatus': {
+        // 根據大獎狀態排序（廢套排在後面，— 排最前）
+        const rank = { none: 0, normal: 1, depleted: 2 } as const
+        aValue = rank[getMajorStatus(a)]
+        bValue = rank[getMajorStatus(b)]
         break
+      }
       case 'visibility': aValue = productVisibility[a.id] ? 1 : 0; bValue = productVisibility[b.id] ? 1 : 0; break
       case 'createdAt': aValue = a.createdAt; bValue = b.createdAt; break
       case 'startedAt':
@@ -783,7 +793,7 @@ export default function ProductsPage() {
             columns={[
               { key: 'productCode', label: '編號', visible: visibleColumns.productCode },
               { key: 'name', label: '名稱', visible: visibleColumns.name },
-              { key: 'type', label: '種類', visible: visibleColumns.type },
+              { key: 'type', label: '類別', visible: visibleColumns.type },
               { key: 'price', label: '價格(G)', visible: visibleColumns.price },
               { key: 'cost', label: '成本', visible: visibleColumns.cost },
               { key: 'stockAndSales', label: '庫存/銷量', visible: visibleColumns.stockAndSales },
@@ -809,17 +819,18 @@ export default function ProductsPage() {
               },
               {
                 key: 'type',
-                label: '種類',
+                label: '類別',
                 type: 'select',
                 value: selectedType,
                 onChange: (value: string) => setSelectedType(value as any),
                 options: [
-                  { value: 'all', label: '全部種類' },
+                  { value: 'all', label: '全部類別' },
                   { value: 'ichiban', label: '一番賞' },
                   { value: 'blindbox', label: '盲盒' },
                   { value: 'gacha', label: '轉蛋' },
                   { value: 'card', label: '抽卡' },
-                  { value: 'custom', label: '自製賞' }
+                  { value: 'custom', label: '自製賞' },
+                  { value: 'slot', label: '機台' }
                 ]
               },
               {
@@ -867,13 +878,14 @@ export default function ProductsPage() {
               }] : []),
               ...(selectedType !== 'all' ? [{
                 key: 'type',
-                label: '種類',
+                label: '類別',
                 value: ({
                   ichiban: '一番賞',
                   blindbox: '盲盒',
                   gacha: '轉蛋',
                   card: '抽卡',
-                  custom: '自製賞'
+                  custom: '自製賞',
+                  slot: '機台'
                 } as const)[selectedType] || '一番賞',
                 color: 'primary' as const,
                 onRemove: () => setSelectedType('all')
@@ -944,7 +956,7 @@ export default function ProductsPage() {
                   )}
                   {visibleColumns.type && (
                     <SortableTableHeader sortKey="type" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
-                      種類
+                      類別
                     </SortableTableHeader>
                   )}
                   {visibleColumns.price && (
@@ -1070,6 +1082,8 @@ export default function ProductsPage() {
                               ? 'bg-orange-100 text-orange-700'
                               : product.type === 'card'
                               ? 'bg-green-100 text-green-700'
+                              : product.type === 'slot'
+                              ? 'bg-indigo-100 text-indigo-700'
                               : 'bg-neutral-100 text-neutral-700'
                           }`}>
                             {{
@@ -1077,7 +1091,8 @@ export default function ProductsPage() {
                               blindbox: '盲盒',
                               gacha: '轉蛋',
                               card: '抽卡',
-                              custom: '自製'
+                              custom: '自製',
+                              slot: '機台'
                             }[product.type || 'ichiban'] || '一番賞'}
                           </span>
                         </td>
@@ -1115,9 +1130,9 @@ export default function ProductsPage() {
                       )}
                       {visibleColumns.majorStatus && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                          {['gacha', 'blindbox', 'card'].includes(product.type ?? '') ? (
+                          {getMajorStatus(product) === 'none' ? (
                             <span className="text-neutral-400">—</span>
-                          ) : isMajorDepleted(product) ? (
+                          ) : getMajorStatus(product) === 'depleted' ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 border border-red-200 font-semibold whitespace-nowrap">
                               廢套
                             </span>
@@ -1128,7 +1143,12 @@ export default function ProductsPage() {
                           )}
                         </td>
                       )}
-                      {visibleColumns.visibility && (
+                      {visibleColumns.visibility && product.type === 'slot' && (
+                        <td className={`${getDensityClasses()} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
+                          <span className="text-neutral-400">—</span>
+                        </td>
+                      )}
+                      {visibleColumns.visibility && product.type !== 'slot' && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={async () => {
