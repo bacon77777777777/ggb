@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -111,13 +111,45 @@ interface SpinResult {
 type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 type VideoPhase = 'rush_entry' | 'rush_win' | null;
 
-const LEVEL_COLORS: Record<string, string> = {
-  'A': 'from-yellow-400 to-amber-500',
-  'B': 'from-violet-400 to-purple-600',
-  'C': 'from-sky-400 to-blue-500',
-  'Last One': 'from-rose-400 to-red-600',
-  'LAST ONE': 'from-rose-400 to-red-600',
-};
+// ── RUSH 得獎慶祝彩帶 ──────────────────────────────────────────────
+const CONFETTI_COLORS = ['#ff4d6d', '#ffd400', '#4dd08c', '#4da6ff', '#c44dff', '#ff8c1a', '#ffffff'];
+
+function ConfettiBurst() {
+  const pieces = useMemo(() => Array.from({ length: 52 }, (_, i) => {
+    const spread = (Math.random() - 0.5) * 96;   // vw 水平散布
+    return {
+      id: i,
+      xMid: `${spread * 0.55}vw`,
+      xEnd: `${spread}vw`,
+      yMid: `${-(8 + Math.random() * 24)}vh`,    // 先向上噴
+      delay: Math.random() * 0.25,
+      dur: 2 + Math.random() * 1.3,
+      w: 6 + Math.random() * 8,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      rot: (Math.random() - 0.5) * 900,
+      round: Math.random() > 0.5,
+    };
+  }), []);
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {pieces.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ x: '0vw', y: '0vh', rotate: 0, opacity: 1 }}
+          animate={{
+            x: ['0vw', p.xMid, p.xEnd],
+            y: ['0vh', p.yMid, '115vh'],
+            rotate: p.rot,
+            opacity: [1, 1, 0.85],
+          }}
+          transition={{ duration: p.dur, delay: p.delay, ease: [0.15, 0.6, 0.55, 1], times: [0, 0.28, 1] }}
+          className="absolute left-1/2 top-[36%]"
+          style={{ width: p.w, height: p.w * 0.45, background: p.color, borderRadius: p.round ? '50%' : '2px' }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function MachinePage() {
   const { id } = useParams<{ id: string }>();
@@ -159,6 +191,7 @@ export default function MachinePage() {
   const videoPhaseRef = useRef<VideoPhase>(null);
   const animDoneRef = useRef<(() => void) | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scheduleResultCloseRef = useRef<(rushEnded: boolean) => void>(() => {});
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
@@ -261,26 +294,32 @@ export default function MachinePage() {
     } else {
       // RUSH WIN 影片結束：延遲 2 秒讓玩家欣賞機台效果
       if (lastResultRef.current) {
-        setTimeout(() => setSpinState('result'), 2000);
+        setTimeout(() => {
+          setSpinState('result');
+          scheduleResultCloseRef.current(lastResultRef.current?.session.state !== 'rush');
+        }, 2000);
       } else {
         setSpinState('idle');
       }
     }
   }, []);
 
-  // Auto 模式：結果彈窗顯示後自動關閉並續轉（rushEnded=true 表示 RUSH 已結束，需歸零 streak）
-  function scheduleAutoResultClose(rushEnded: boolean) {
-    if (!isAutoRef.current) return;
+  // 結果慶祝關閉：rushEnded=true 表示 RUSH 已結束，需歸零 streak；auto 開啟時關閉後續轉
+  function closeResult(rushEnded: boolean) {
     if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    autoCloseTimerRef.current = setTimeout(() => {
-      if (!isAutoRef.current) return;
-      setLastResult(null);
-      setJackpot(false);
-      if (rushEnded) setRushStreak(0);
-      setSpinState('idle');
-      setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
-    }, 2500);
+    setLastResult(null);
+    setJackpot(false);
+    if (rushEnded) setRushStreak(0);
+    setSpinState('idle');
+    if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
   }
+
+  // 結果慶祝顯示後數秒自動關閉（手動/auto 皆自動關）
+  function scheduleResultClose(rushEnded: boolean) {
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => closeResult(rushEnded), 2600);
+  }
+  scheduleResultCloseRef.current = scheduleResultClose;
 
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
@@ -355,7 +394,7 @@ export default function MachinePage() {
             setTimeout(() => {
               setSpinState('result');
               if (refreshProfile) refreshProfile();
-              scheduleAutoResultClose(false);
+              scheduleResultClose(false);
             }, 2000);
           };
           setSpinState('stopping');
@@ -369,7 +408,7 @@ export default function MachinePage() {
               setTimeout(() => {
                 setSpinState('result');
                 if (refreshProfile) refreshProfile();
-                scheduleAutoResultClose(true);
+                scheduleResultClose(true);
               }, 2000);
             };
           } else {
@@ -470,16 +509,6 @@ export default function MachinePage() {
     } finally {
       setDirectLoading(false);
     }
-  };
-
-  const handleClose = () => {
-    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    setIsAuto(false);
-    setLastResult(null);
-    setJackpot(false);
-    // RUSH 已結束（isRushActive=false）才重置 streak，還在 RUSH 中繼續累積
-    if (!isRushActive) setRushStreak(0);
-    setSpinState('idle');
   };
 
   if (isLoading) return <ProductLoadingScreen />;
@@ -917,56 +946,44 @@ export default function MachinePage() {
         )}
       </AnimatePresence>
 
-      {/* 獎品結果 modal */}
+      {/* 獎品結果 — RUSH 得獎慶祝：品項圖 + 名稱 + 彩帶，數秒後自動關閉（點擊可提前跳過） */}
       <AnimatePresence>
         {spinState === 'result' && lastResult && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={handleClose}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-hidden"
+            onClick={() => closeResult(!isRushActive)}
           >
+            <ConfettiBurst />
             <motion.div
-              initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
-              className="mx-6 w-full max-w-xs bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-neutral-100 dark:border-neutral-800"
+              initial={{ scale: 0 }}
+              animate={{
+                scale: [0, 1.18, 0.95, 1.05, 1],
+                rotate: [0, -5, 4, -2, 0],
+                x: [0, -8, 8, -5, 0],
+              }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.65, ease: 'easeOut' }}
+              className="flex flex-col items-center px-8 pointer-events-none"
             >
-              <div className={cn("h-1.5 w-full bg-gradient-to-r", LEVEL_COLORS[lastResult.prize.level] ?? 'from-neutral-300 to-neutral-400')} />
-              <div className="p-6 text-center">
-                {lastResult.rush_triggered && (
-                  <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-50 dark:bg-yellow-400/20 text-yellow-600 dark:text-yellow-400 rounded-full text-xs font-bold">
-                    <Zap className="w-3 h-3" />RUSH 獎勵
+              <div className="relative w-60 h-60">
+                {lastResult.prize.image_url ? (
+                  <Image
+                    src={lastResult.prize.image_url} alt={lastResult.prize.name} fill
+                    className="object-contain drop-shadow-[0_0_32px_rgba(255,210,80,0.85)]"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <Trophy className="w-24 h-24 text-amber-400" />
                   </div>
                 )}
-                <div className="relative w-32 h-32 mx-auto mb-4 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                  {lastResult.prize.image_url ? (
-                    <Image src={lastResult.prize.image_url} alt={lastResult.prize.name} fill className="object-contain p-2" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <Trophy className="w-12 h-12 text-amber-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="inline-block px-2 py-0.5 rounded bg-neutral-900 dark:bg-neutral-700 text-white text-xs font-mono mb-2">
-                  {lastResult.prize.level}
-                </div>
-                <h3 className="text-neutral-900 dark:text-white font-bold text-lg">{lastResult.prize.name}</h3>
-                <p className="text-neutral-400 text-xs mt-1">已放入倉庫</p>
-                <div className="mt-4 flex items-center justify-center gap-4 text-xs text-neutral-400">
-                  <span>累計 {lastResult.session.total_spins} 次</span>
-                  {lastResult.session.state === 'rush' && (lastResult.session.rush_hits_remaining ?? 0) > 0 && (
-                    <span className="text-yellow-500">⚡ RUSH 剩餘 ×{lastResult.session.rush_hits_remaining}</span>
-                  )}
-                </div>
-                {isAuto && <p className="mt-3 text-amber-500/80 text-xs font-medium">AUTO 中，2 秒後繼續…</p>}
               </div>
-              <div className="px-6 pb-6 flex gap-3">
-                <button onClick={handleClose} className="flex-1 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-bold active:bg-neutral-200 dark:active:bg-neutral-700">
-                  繼續挑戰
-                </button>
-                <button onClick={() => router.push('/item')} className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold active:opacity-80">
-                  查看倉庫
-                </button>
-              </div>
+              <h3
+                className="mt-5 text-white font-black text-2xl text-center"
+                style={{ textShadow: '0 0 18px rgba(255,200,60,.9), 0 2px 6px rgba(0,0,0,.8)' }}
+              >
+                {lastResult.prize.name}
+              </h3>
             </motion.div>
           </motion.div>
         )}
