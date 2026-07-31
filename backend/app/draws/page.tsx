@@ -17,6 +17,20 @@ interface DrawRecord {
   status: string
   user?: { name: string; email: string; id: string }
   product?: { name: string; image_url: string; price?: number; type?: string }
+  slot_log?: {
+    bet: number
+    kind: string
+    machine?: { machine_number: number | null; theme?: { name: string } | null } | null
+  }[]
+}
+
+// 老虎機 spin 流水（migration 390 之後才有；舊紀錄無法回溯）
+const slotLogOf = (r: DrawRecord) => r.slot_log?.[0] ?? null
+const slotMachineLabel = (r: DrawRecord) => {
+  const log = slotLogOf(r)
+  if (!log) return null
+  const theme = log.machine?.theme?.name || '挑戰機台'
+  return log.machine?.machine_number ? `${theme} ${log.machine.machine_number}號機` : theme
 }
 
 export default function DrawsPage() {
@@ -66,6 +80,7 @@ export default function DrawsPage() {
         r.user?.name?.toLowerCase().includes(q) ||
         r.user?.email?.toLowerCase().includes(q) ||
         r.product?.name?.toLowerCase().includes(q) ||
+        slotMachineLabel(r)?.toLowerCase().includes(q) ||
         String(r.ticket_number).includes(q)
       )
     }
@@ -183,7 +198,7 @@ export default function DrawsPage() {
           {record.product?.image_url && (
             <img src={record.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
           )}
-          <span className="truncate max-w-[200px]" title={record.product?.name}>{record.product?.name || '未知商品'}</span>
+          <span className="truncate max-w-[200px]" title={record.product?.name}>{record.product?.name || slotMachineLabel(record) || '未知商品'}</span>
         </div>
       )
     },
@@ -213,7 +228,9 @@ export default function DrawsPage() {
       label: '消費(G)',
       render: (record) => (
         <span className="tabular-nums text-neutral-600">
-          {record.product?.price != null ? record.product.price.toLocaleString() : '—'}
+          {slotLogOf(record)
+            ? slotLogOf(record)!.bet.toLocaleString()
+            : record.product?.price != null ? record.product.price.toLocaleString() : '—'}
         </span>
       )
     },
@@ -237,11 +254,11 @@ export default function DrawsPage() {
       formatDateTime(r.created_at),
       r.user?.name || '',
       r.user?.email || '',
-      r.product?.name || '',
+      r.product?.name || slotMachineLabel(r) || '',
       r.prize_level || '',
       r.prize_name || '',
       String(r.ticket_number ?? ''),
-      String(r.product?.price ?? ''),
+      String(slotLogOf(r)?.bet ?? r.product?.price ?? ''),
       r.status === 'success' ? '成功' : r.status,
     ])
     const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n')

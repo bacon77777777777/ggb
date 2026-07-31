@@ -19,6 +19,7 @@ const PRODUCT_TYPE_LABEL: Record<string, string> = {
   blindbox: '盒玩',
   card: '卡片',
   custom: '自訂',
+  slot: '挑戰機台',
 }
 
 const TYPE_META: Record<ReportType, { title: string }> = {
@@ -172,7 +173,7 @@ export default function ReportPage() {
     } else if (reportType === 'products') {
       exportCSV(`消費明細_${start}_${end}.csv`,
         ['商品名稱', '廠商', '種類', '抽獎次數', '消費金額G幣(G)', '消費積分(積分)', '剩餘數量', '總數量', '完抽率(%)'],
-        filteredProducts.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue - (p.pointsUsed ?? 0)), String((p.pointsUsed ?? 0) * 4), String(p.remaining), String(p.totalCount), String(p.completionRate)])
+        filteredProducts.map(p => [p.name, p.supplierName ?? '—', PRODUCT_TYPE_LABEL[p.type] || p.type || '—', String(p.drawCount), String(p.revenue - (p.pointsUsed ?? 0)), String((p.pointsUsed ?? 0) * 4), p.remaining == null ? '—' : String(p.remaining), p.totalCount == null ? '—' : String(p.totalCount), p.completionRate == null ? '—' : String(p.completionRate)])
       )
     } else if (reportType === 'overview' && overview) {
       const rows: string[][] = [
@@ -194,6 +195,7 @@ export default function ReportPage() {
     }
   }
 
+  const exportable = ['recharge', 'consumption', 'products', 'overview'].includes(reportType)
   const canExport =
     (reportType === 'recharge' && rechargeData.length > 0) ||
     (reportType === 'consumption' && consumptionData.length > 0) ||
@@ -238,9 +240,9 @@ export default function ReportPage() {
             </>
           )}
           <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
-          {canExport && (
-            <button onClick={handleExport}
-              className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+          {exportable && (
+            <button onClick={handleExport} disabled={!canExport}
+              className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -492,10 +494,12 @@ export default function ReportPage() {
                             </td>
                           )}
                           <td className="px-4 py-3 text-right text-neutral-600 whitespace-nowrap">
-                            {p.remaining.toLocaleString()} / {p.totalCount.toLocaleString()}
+                            {p.remaining == null || p.totalCount == null
+                              ? '—'
+                              : `${p.remaining.toLocaleString()} / ${p.totalCount.toLocaleString()}`}
                           </td>
                           <td className="px-4 py-3 min-w-[100px]">
-                            <CompletionBar pct={p.completionRate} />
+                            {p.completionRate == null ? <span className="text-neutral-300 text-xs">—</span> : <CompletionBar pct={p.completionRate} />}
                           </td>
                         </tr>
                       )
