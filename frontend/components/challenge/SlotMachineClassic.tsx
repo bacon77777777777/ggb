@@ -366,6 +366,12 @@ const SMVC_CSS = `
   100%  { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
 }
 .smvc-rushskin .smvc-bulb { --bulb-dur:.45s; }
+/* 事件燈效：大当り/連中全閃、返還快掃、7 連落定脈衝 */
+.smvc-bulbs-flash .smvc-bulb { animation:smvc-bulbAll .12s steps(2) infinite; }
+.smvc-bulbs-pop   .smvc-bulb { animation:smvc-bulbAll .1s  steps(2) 4; }
+.smvc-bulbs-sweep .smvc-bulb { --bulb-dur:.3s; }
+@keyframes smvc-bulbAll { 0%{opacity:1; filter:none; box-shadow:0 0 1.1cqw .35cqw rgba(255,205,80,.95), 0 0 2.6cqw .9cqw rgba(255,160,40,.5);} 50%{opacity:.3; filter:brightness(.6);} }
+
 /* 頂弧（light1）底圖偏亮金，熄燈遮罩用較淡版本避免死黑 */
 .smvc-bulb-arc { animation-name:smvc-bulbChaseArc; }
 @keyframes smvc-bulbChaseArc {
@@ -733,6 +739,13 @@ export default function SlotMachineClassic({
 
       sThud(lvl);
       sBeep(520 + lvl * 340, 0.1, 'square', 0.12, 0.02);
+
+      if (lvl >= 2) {
+        stage.classList.remove('smvc-bulbs-pop');
+        void stage.offsetWidth;
+        stage.classList.add('smvc-bulbs-pop');
+        setTimeout(() => stage.classList.remove('smvc-bulbs-pop'), 500);
+      }
     }, 150);
   }, []);
 
@@ -766,9 +779,19 @@ export default function SlotMachineClassic({
       stage.classList.remove('smvc-rushskin');
       const txt = marqueeTxt.current;
       if (txt) txt.textContent = '★ 押忍！再挑戰一次 ★ GGB RUSH ★';
+
+      // 返還揭曉：跑馬燈快掃一輪
+      stage.classList.add('smvc-bulbs-sweep');
+      setTimeout(() => stage.classList.remove('smvc-bulbs-sweep'), 1200);
     } else {
       const streak = rushStreakRef.current;
       stage.classList.add('smvc-rushmode', 'smvc-shake', 'smvc-rushskin');
+
+      // 大当り/連中：全燈同步爆閃，連中越多閃越久
+      stage.classList.remove('smvc-bulbs-flash');
+      void stage.offsetWidth;
+      stage.classList.add('smvc-bulbs-flash');
+      setTimeout(() => stage.classList.remove('smvc-bulbs-flash'), 1800 + Math.min(streak, 4) * 400);
 
       const fl = flashEl.current;
       if (fl) { fl.classList.remove('smvc-go'); void fl.offsetWidth; fl.classList.add('smvc-go'); }
