@@ -482,12 +482,16 @@ export default function SlotMachineClassic({
       strip.innerHTML = html;
     });
     sync();
-    // Randomize initial reel positions (avoid 777 on load)
+    // Init reel positions: RUSH 中顯示 777（刷新頁面也要維持），否則隨機（避開 777）
     {
       const h = rowH.current || 80;
       let t: number[];
-      do { t = [0, 1, 2].map(() => Math.floor(Math.random() * N)); }
-      while (t[0] === SEVEN && t[1] === SEVEN && t[2] === SEVEN);
+      if (isRushActive) {
+        t = [SEVEN, SEVEN, SEVEN];
+      } else {
+        do { t = [0, 1, 2].map(() => Math.floor(Math.random() * N)); }
+        while (t[0] === SEVEN && t[1] === SEVEN && t[2] === SEVEN);
+      }
       offsets.current = t.map(s => s * h);
       stripEls.current.forEach((el, i) => {
         if (el) el.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
