@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { name, image_url, link_url, sort_order, is_active } = body
+    const { name, image_url, link_url, sort_order, is_active, page } = body
 
     const supabaseAdmin = getSupabaseAdmin()
 
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
           link_url,
           sort_order,
           is_active,
+          page: page || 'home',
         },
       ])
       .select()

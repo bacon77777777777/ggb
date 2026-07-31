@@ -49,8 +49,6 @@ import Image from 'next/image';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { IpLoader } from '@/components/ui/IpLoader';
-
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -2197,8 +2195,8 @@ function ProfileContent() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <IpLoader />
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-4 lg:p-8">
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -2357,7 +2355,17 @@ function ProfileContent() {
                 }}
               >
                 {isLoadingData ? (
-                  <div className="flex justify-center py-10"><IpLoader /></div>
+                  <div className="p-4 space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                        <div className="w-12 h-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 animate-pulse flex-shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded-lg animate-pulse w-1/2" />
+                          <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded-lg animate-pulse w-1/3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : activeWarehouseTab === 'all' ? (
                   filteredWarehouseItems.length === 0 ? (
                     <div className="py-20 text-center text-neutral-400">

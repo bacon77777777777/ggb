@@ -1,30 +1,37 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Coins, Zap, Trophy, RotateCcw,
-  ChevronLeft, ChevronRight, Lock,
-} from 'lucide-react';
+import { Zap, Trophy, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
+import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
+import SlotMachineClassic, { ReelOutcome, MachineLayout } from '@/components/challenge/SlotMachineClassic';
 
-// ── 影片素材（暫用 events/1 現有素材）────────────────────────────────────
-const BASE_VIDEO = 'https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho'
-const VIDEOS = {
-  rush_entry:      `${BASE_VIDEO}/banchou-buildup.mp4`,
-  rush_win:        `${BASE_VIDEO}/banchou-win.mp4`,
-  rush_win_strong: `${BASE_VIDEO}/banchou-win-strong.mp4`,
-  rush_win_god:    `${BASE_VIDEO}/banchou-win-god.mp4`,
+// 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
+const RETURN_OUTCOME: Record<string, ReelOutcome> = {
+  '神域共鳴': 'triple',   // 三個一樣（非7）
+  '命運之瞳': 'pair7',    // 雙7聽牌
+  '緋色幸運': 'pair',     // 兩個一樣（非7）
+  '黃金序章': 'mixed',    // 三個都不同
+};
+
+interface ThemeVideos {
+  video_rush_entry:        string | null;
+  video_rush_anticipation: string | null;
+  video_rush_win:          string | null;
+  video_rush_win_strong:   string | null;
+  video_rush_win_god:      string | null;
+  video_rush_revival:      string | null;
 }
 
-function pickRushWinVideo(level: string): string {
-  if (level === 'A' || level === 'Last One' || level === 'LAST ONE') return VIDEOS.rush_win_god
-  if (level === 'B') return VIDEOS.rush_win_strong
-  return VIDEOS.rush_win
+function pickRushWinVideo(videos: ThemeVideos, videoType: string): string | null {
+  if (videoType === 'win_god')    return videos.video_rush_win_god
+  if (videoType === 'win_strong') return videos.video_rush_win_strong
+  return videos.video_rush_win
 }
 
 interface BetTier {
@@ -43,6 +50,7 @@ interface SlotMachine {
   min_rush_hits: number;
   floor_spin_count: number;
   bet_tiers: BetTier[];
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null; machine_layout: MachineLayout | null } | null;
 }
 
 interface SlotPoolItem {
@@ -52,6 +60,9 @@ interface SlotPoolItem {
   rush_only: boolean;
   normal_only: boolean;
   remaining: number | null;
+  coin_return: boolean | null;
+  return_multiplier: number | null;
+  display_name: string | null;
   product_prizes: {
     id: number;
     name: string;
@@ -65,21 +76,28 @@ interface SlotPoolItem {
     name: string;
     level: string;
     image_url: string | null;
+    recycle_value: number;
   } | null;
 }
 
 interface SlotSession {
   state: 'normal' | 'rush';
   rush_hits_remaining: number;
-  spins_since_rush: number;
+  spins_since_rush: number;   // = floor_counter（機台層級保底計數）
+  floor_counter: number;
+  tier_progress: Record<string, number> | null;
   total_spins: number;
   locked_bet: number | null;
+  day_spins?: number;   // 機台當日總轉次（台灣時間 00:00 重置）
+  day_rush?: number;    // 機台當日 RUSH 觸發次數
 }
 
 interface SpinResult {
   success: boolean;
   new_balance: number;
   bet: number;
+  is_coin_return: boolean;
+  coin_return_amount: number;
   prize: {
     pool_item_id: number;
     prize_id: number;
@@ -87,30 +105,69 @@ interface SpinResult {
     level: string;
     image_url: string;
     recycle_value: number;
+    video_type?: string;
   };
   session: SlotSession;
   rush_triggered: boolean;
-  is_floor: boolean;
+  is_ceiling: boolean;
   error?: string;
 }
 
-type SpinState = 'idle' | 'spinning' | 'video' | 'result';
+type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 type VideoPhase = 'rush_entry' | 'rush_win' | null;
 
-const LEVEL_COLORS: Record<string, string> = {
-  'A': 'from-yellow-400 to-amber-500',
-  'B': 'from-violet-400 to-purple-600',
-  'C': 'from-sky-400 to-blue-500',
-  'Last One': 'from-rose-400 to-red-600',
-  'LAST ONE': 'from-rose-400 to-red-600',
-};
+// ── RUSH 得獎慶祝彩帶 ──────────────────────────────────────────────
+const CONFETTI_COLORS = ['#ff4d6d', '#ffd400', '#4dd08c', '#4da6ff', '#c44dff', '#ff8c1a', '#ffffff'];
 
-const TIER_LS_KEY = (machineId: number) => `ggb_slot_tier_${machineId}`;
+function ConfettiBurst() {
+  const pieces = useMemo(() => Array.from({ length: 52 }, (_, i) => {
+    const spread = (Math.random() - 0.5) * 96;   // vw 水平散布
+    return {
+      id: i,
+      xMid: `${spread * 0.55}vw`,
+      xEnd: `${spread}vw`,
+      yMid: `${-(8 + Math.random() * 24)}vh`,    // 先向上噴
+      delay: Math.random() * 0.25,
+      dur: 2 + Math.random() * 1.3,
+      w: 6 + Math.random() * 8,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      rot: (Math.random() - 0.5) * 900,
+      round: Math.random() > 0.5,
+    };
+  }), []);
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {pieces.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ x: '0vw', y: '0vh', rotate: 0, opacity: 1 }}
+          animate={{
+            x: ['0vw', p.xMid, p.xEnd],
+            y: ['0vh', p.yMid, '115vh'],
+            rotate: p.rot,
+            opacity: [1, 1, 0.85],
+          }}
+          transition={{ duration: p.dur, delay: p.delay, ease: [0.15, 0.6, 0.55, 1], times: [0, 0.28, 1] }}
+          className="absolute left-1/2 top-[36%]"
+          style={{ width: p.w, height: p.w * 0.45, background: p.color, borderRadius: p.round ? '50%' : '2px' }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function MachinePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
+
+  // Read pre-selected bet from URL (?bet=100), set on entry from challenge list
+  const [preSelectedBet, setPreSelectedBet] = useState<number | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const b = params.get('bet');
+    if (b) setPreSelectedBet(parseInt(b));
+  }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
@@ -121,26 +178,63 @@ export default function MachinePage() {
   const [lastResult, setLastResult] = useState<SpinResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tierIndex, setTierIndex] = useState(0);
-  const [winCount, setWinCount] = useState(0);
   const [isAuto, setIsAuto] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
-  const [directConfirm, setDirectConfirm] = useState(false);
+  const [jackpot, setJackpot] = useState(false);
+  const [reelOutcome, setReelOutcome] = useState<ReelOutcome | null>(null);
+  const [rushStreak, setRushStreak] = useState(0);
+  const [showDirectModal, setShowDirectModal] = useState(false);
+  const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
+  const coinReturnIdRef = useRef(0);
+  const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAutoRef = useRef(false);
   const reelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResultRef = useRef<SpinResult | null>(null);
-  const directConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoPhaseRef = useRef<VideoPhase>(null);
+  const animDoneRef = useRef<(() => void) | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scheduleResultCloseRef = useRef<() => void>(() => {});
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
+  useEffect(() => { videoPhaseRef.current = videoPhase; }, [videoPhase]);
+
+  const showCoinReturn = useCallback((amount: number) => {
+    if (coinReturnTimerRef.current) clearTimeout(coinReturnTimerRef.current);
+    setCoinReturnDisplay({ amount, id: ++coinReturnIdRef.current });
+    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 2200);
+  }, []);
 
   const syncSession = useCallback(() => {
     fetch(`/api/slot/${id}/session`)
       .then(r => r.json())
       .then(d => { if (d.session) setSession(d.session); })
       .catch(() => {});
+  }, [id]);
+
+  // 機台佔用：進入時 occupy，每 20 秒 heartbeat，離開時 vacate
+  useEffect(() => {
+    const occupy = () => fetch(`/api/slot/${id}/occupy`, { method: 'POST' }).catch(() => {});
+    const heartbeat = () => fetch(`/api/slot/${id}/heartbeat`, { method: 'POST' }).catch(() => {});
+    const vacate = () => fetch(`/api/slot/${id}/vacate`, { method: 'POST', keepalive: true }).catch(() => {});
+
+    occupy();
+    heartbeatRef.current = setInterval(heartbeat, 20_000);
+
+    const onHide = () => { if (document.visibilityState === 'hidden') vacate(); };
+    const onShow = () => { if (document.visibilityState === 'visible') occupy(); };
+    document.addEventListener('visibilitychange', onHide);
+    document.addEventListener('visibilitychange', onShow);
+
+    return () => {
+      clearInterval(heartbeatRef.current ?? undefined);
+      document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('visibilitychange', onShow);
+      vacate();
+    };
   }, [id]);
 
   useEffect(() => {
@@ -160,9 +254,11 @@ export default function MachinePage() {
             const idx = m.bet_tiers.findIndex(t => t.coins === s.locked_bet);
             if (idx >= 0) setTierIndex(idx);
           } else {
-            const saved = localStorage.getItem(TIER_LS_KEY(m.id));
-            if (saved) {
-              const idx = m.bet_tiers.findIndex(t => t.coins === parseInt(saved));
+            // Prefer URL ?bet param over localStorage
+            const urlBet = new URLSearchParams(window.location.search).get('bet');
+            const betToFind = urlBet ? parseInt(urlBet) : null;
+            if (betToFind) {
+              const idx = m.bet_tiers.findIndex(t => t.coins === betToFind);
               if (idx >= 0) setTierIndex(idx);
             }
           }
@@ -174,32 +270,72 @@ export default function MachinePage() {
 
   const tiers: BetTier[] = machine?.bet_tiers ?? [];
   const currentTier: BetTier = tiers[tierIndex] ?? { label: '小注', coins: machine?.price_per_spin ?? 100 };
-  const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
+  // RUSH 視覺狀態：state='rush' 即算（含 hits=0 的延續判定中——下一轉揭曉是否連中）
+  const isRushActive = session?.state === 'rush';
   const isRushLocked = isRushActive;
+  // Tier locked when entering from challenge list via ?bet= param
+  const isTierLocked = !!preSelectedBet || isRushLocked;
 
-  // 直撃費用：max(min_rush_hits, floor_spin_count - spins_since_rush) × bet
-  const directCost = machine
-    ? Math.max(machine.min_rush_hits, machine.floor_spin_count - (session?.spins_since_rush ?? 0)) * currentTier.coins
-    : 0;
+  // 機台層級保底計數（machine-level, 所有玩家共用）
+  const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
+
+  // 直撃費用：該檔次 RUSH 獎池最高品項價值 × 1.5，無條件進位至檔次金額倍數
+  const directCost = (() => {
+    const vals = pool
+      .filter(i => i.rush_only && !i.normal_only && !i.coin_return
+        && (i.remaining == null || i.remaining > 0)
+        && (i.min_bet == null || i.min_bet === currentTier.coins))
+      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
+    const maxVal = vals.length ? Math.max(...vals) : 0;
+    return maxVal > 0 ? Math.ceil((maxVal * 1.5) / currentTier.coins) * currentTier.coins : 0;
+  })();
 
   const changeTier = useCallback((delta: number) => {
-    if (isRushLocked || tiers.length <= 1) return;
-    setTierIndex(prev => {
-      const next = Math.max(0, Math.min(tiers.length - 1, prev + delta));
-      if (machine) localStorage.setItem(TIER_LS_KEY(machine.id), String(tiers[next].coins));
-      return next;
-    });
-  }, [isRushLocked, tiers, machine]);
+    if (isTierLocked || tiers.length <= 1) return;
+    setTierIndex(prev => Math.max(0, Math.min(tiers.length - 1, prev + delta)));
+  }, [isTierLocked, tiers]);
 
   const handleVideoEnd = useCallback(() => {
     if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+    const phase = videoPhaseRef.current;
     setVideoPhase(null);
-    setSpinState(lastResultRef.current ? 'result' : 'idle');
+    if (phase === 'rush_entry') {
+      // 突入影片結束：進入 RUSH 狀態，此轉無 RUSH 獎池品項，回 idle 等玩家繼續轉
+      setLastResult(null);
+      setSpinState('idle');
+    } else {
+      // RUSH WIN 影片結束：延遲 2 秒讓玩家欣賞機台效果
+      if (lastResultRef.current) {
+        setTimeout(() => {
+          setSpinState('result');
+          scheduleResultCloseRef.current();
+        }, 2000);
+      } else {
+        setSpinState('idle');
+      }
+    }
   }, []);
+
+  // 結果慶祝關閉；auto 開啟時關閉後續轉。streak 歸零交給「非 777 揭曉轉」的 animDone 處理
+  function closeResult() {
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    setLastResult(null);
+    setJackpot(false);
+    setSpinState('idle');
+    if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+  }
+
+  // 結果慶祝顯示後數秒自動關閉（手動/auto 皆自動關）
+  function scheduleResultClose() {
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => closeResult(), 2600);
+  }
+  scheduleResultCloseRef.current = scheduleResultClose;
 
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
     setError(null);
+    setJackpot(false);
     setSpinState('spinning');
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
@@ -210,11 +346,11 @@ export default function MachinePage() {
         body: JSON.stringify({ bet: currentTier.coins }),
       });
       const data: SpinResult = await res.json();
-      await new Promise(r => setTimeout(r, 1200));
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
       if (!res.ok || data.error) {
         setError(data.error ?? '挑戰失敗，請稍後再試');
+        setJackpot(false);
         setSpinState('idle');
         syncSession();
         return;
@@ -222,83 +358,127 @@ export default function MachinePage() {
 
       setLastResult(data);
       setSession(data.session);
-      setWinCount(prev => prev + 1);
 
       if (data.session.state === 'rush' && data.session.locked_bet != null && tiers.length > 0) {
         const idx = tiers.findIndex(t => t.coins === data.session.locked_bet);
         if (idx >= 0) setTierIndex(idx);
       }
 
-      const showVideo = !isAutoRef.current;
+      // jackpot（777）= RUSH 觸發 or RUSH 品項轉（保底連中 / 延續判定通過，state 維持 rush）
+      // 延續判定失敗的揭曉轉 state='normal' → 非 777，finish(false) 換回普通機台
+      const isJackpot = data.rush_triggered || data.session.state === 'rush';
+      setJackpot(isJackpot);
+      // 退幣轉：滾輪演出對應返還種類的組合
+      setReelOutcome(!isJackpot && data.is_coin_return ? (RETURN_OUTCOME[data.prize?.name] ?? 'mixed') : null);
+
+      const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+      const showVideo = !isAutoRef.current && !isClassic;
 
       if (data.rush_triggered) {
-        // 觸發 RUSH → 突入演出
+        // 觸發 RUSH：本發為 coin return（退幣），不計入 streak
+        // rushStreak 維持 0 → finish(true) 顯示 "RUSH!!" 而非 "大当り!!"
         if (showVideo) {
           setVideoPhase('rush_entry');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
         } else {
-          setSpinState('result');
+          // classic / auto：777 動畫顯示 "RUSH!!"，結束後回 idle 等玩家在 RUSH 中旋轉
+          animDoneRef.current = () => {
+            if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setLastResult(null);
+            setSpinState('idle');
+            if (refreshProfile) refreshProfile();
+            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+          };
+          setSpinState('stopping');
         }
       } else if (data.session.state === 'rush') {
-        // RUSH 中每一轉 → WIN 演出
+        // RUSH 中旋轉：抽到品項，streak 遞增，顯示結果
+        setRushStreak(prev => prev + 1);
         if (showVideo) {
           setVideoPhase('rush_win');
           setSpinState('video');
           if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 6000);
         } else {
-          setSpinState('result');
+          animDoneRef.current = () => {
+            setTimeout(() => {
+              setSpinState('result');
+              if (refreshProfile) refreshProfile();
+              scheduleResultClose();
+            }, 2000);
+          };
+          setSpinState('stopping');
         }
       } else {
-        setSpinState('result');
-      }
-
-      if (refreshProfile) refreshProfile();
-
-      if (isAutoRef.current) {
-        autoCloseTimerRef.current = setTimeout(() => {
-          if (isAutoRef.current) {
-            setLastResult(null);
+        if (isClassic) {
+          // 普通旋轉 / 延續失敗揭曉轉：非 777 停定 → +XG、finish(false) 換回普通機台、streak 歸零
+          animDoneRef.current = () => {
+            if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setRushStreak(0);
             setSpinState('idle');
-            setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+            if (refreshProfile) refreshProfile();
+            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+          };
+          setSpinState('stopping');
+        } else {
+          setRushStreak(0);
+          setSpinState('idle');
+          if (refreshProfile) refreshProfile();
+          if (isAutoRef.current) {
+            autoCloseTimerRef.current = setTimeout(() => {
+              if (isAutoRef.current) {
+                setLastResult(null);
+                setSpinState('idle');
+                setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+              }
+            }, 2000);
           }
-        }, 2000);
+        }
       }
     } catch {
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
       setError('連線失敗，已自動復原，請再試一次');
+      setJackpot(false);
       setSpinState('idle');
       syncSession();
     }
   };
 
-  const handleDirect = async () => {
+  // 直擊按鈕：開確認彈窗
+  const handleDirect = () => {
+    if (spinState !== 'idle' || !user || isRushActive) return;
+    setShowDirectModal(true);
+  };
+
+  // 確認後執行直擊 API
+  const executeDirectSpin = async () => {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
-
-    if (!directConfirm) {
-      setDirectConfirm(true);
-      if (directConfirmTimerRef.current) clearTimeout(directConfirmTimerRef.current);
-      directConfirmTimerRef.current = setTimeout(() => setDirectConfirm(false), 4000);
-      return;
-    }
-
-    if (directConfirmTimerRef.current) clearTimeout(directConfirmTimerRef.current);
-    setDirectConfirm(false);
     setDirectLoading(true);
     setError(null);
 
+    const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+    if (isClassic) {
+      // Classic 模式：先啟動滾輪視覺，再等 API
+      setJackpot(false);
+      setSpinState('spinning');
+    }
+
     try {
-      const res = await fetch(`/api/slot/${id}/direct`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bet: currentTier.coins }),
-      });
-      const data = await res.json();
+      const [res] = await Promise.all([
+        fetch(`/api/slot/${id}/direct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bet: currentTier.coins }),
+        }),
+        isClassic ? new Promise(r => setTimeout(r, 800)) : Promise.resolve(),
+      ]);
+      const data = await (res as Response).json();
 
       if (!res.ok || data.error) {
         setError(data.error ?? '直撃失敗');
+        if (isClassic) setSpinState('idle');
         return;
       }
 
@@ -309,26 +489,30 @@ export default function MachinePage() {
       }
       if (refreshProfile) refreshProfile();
 
-      // 直撃只進入 RUSH，無品項結果 → video 結束後回 idle
-      setLastResult(null);
-      setVideoPhase('rush_entry');
-      setSpinState('video');
-      if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
-      videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
-
+      if (isClassic) {
+        // Classic 模式：直撃突入也要完整演出——滾輪轉動 → 777 停定 → RUSH!!（streak=0）
+        setJackpot(true);
+        setReelOutcome(null);
+        setRushStreak(0);
+        setLastResult(null);
+        animDoneRef.current = () => {
+          setSpinState('idle');
+        };
+        setSpinState('stopping');
+      } else {
+        // 直撃只進入 RUSH，無品項結果 → video 結束後回 idle
+        setLastResult(null);
+        setVideoPhase('rush_entry');
+        setSpinState('video');
+        if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+        videoTimeoutRef.current = setTimeout(handleVideoEnd, 8000);
+      }
     } catch {
       setError('直撃失敗，請稍後再試');
+      if (isClassic) setSpinState('idle');
     } finally {
       setDirectLoading(false);
     }
-  };
-
-  const handleClose = () => {
-    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    setIsAuto(false);
-    setLastResult(null);
-    setSpinState('idle');
-    setDirectConfirm(false);
   };
 
   if (isLoading) return <ProductLoadingScreen />;
@@ -336,7 +520,7 @@ export default function MachinePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-neutral-500 bg-neutral-50 dark:bg-neutral-950">
         <p>機台不存在</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm underline text-primary">返回</button>
+        <button onClick={() => router.push('/challenge')} className="mt-4 text-sm underline text-primary">返回</button>
       </div>
     );
   }
@@ -349,7 +533,8 @@ export default function MachinePage() {
     : 0;
 
   const regularPool = pool
-    .filter(item => !item.rush_only && (item.product_prizes || item.slot_prizes))
+    // coin_return 項目為 display_name-only（migration 386 起無獎品連結），一樣要列出
+    .filter(item => !item.rush_only && (item.coin_return || item.product_prizes || item.slot_prizes))
     .sort((a, b) => {
       const aLocked = a.min_bet != null && a.min_bet > currentTier.coins;
       const bLocked = b.min_bet != null && b.min_bet > currentTier.coins;
@@ -360,325 +545,212 @@ export default function MachinePage() {
 
   // ── renderers ──────────────────────────────────────────────
 
-  const renderMachineVisual = () => (
-    <div
-      className={cn(
-        "relative mx-0 overflow-hidden border-y transition-colors duration-500",
-        isRushActive
-          ? "border-yellow-200 dark:border-yellow-700 bg-yellow-950/60"
-          : "border-neutral-100 dark:border-neutral-800 bg-neutral-900/70"
-      )}
-      style={{ aspectRatio: '4/3' }}
-    >
-      {machine.image_url && (
-        <Image src={machine.image_url} alt={machine.name} fill
-          className={cn("object-cover transition-opacity duration-500", isRushActive ? "opacity-30" : "opacity-40")} />
-      )}
+  const machineType = machine.slot_themes?.machine_type ?? 'video';
 
-      <div className="absolute inset-0 flex items-center justify-center gap-3 px-6">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="flex-1 h-[65%] rounded-xl bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center">
-            <motion.div
-              animate={spinState === 'spinning' ? { y: [0, -40, 0, 40, 0] } : { y: 0 }}
-              transition={spinState === 'spinning'
-                ? { duration: 0.3, repeat: Infinity, delay: i * 0.05 }
-                : { duration: 0.2 }}
-              className="text-4xl select-none"
-            >
-              {spinState === 'result' && lastResult ? ['🎁', '⭐', '💎'][i] : ['🎰', '🎯', '🎲'][i]}
-            </motion.div>
-          </div>
-        ))}
-      </div>
-
+  const renderMachineVisual = () => machineType === 'classic' ? (
+    <div className="relative w-full">
+      <SlotMachineClassic
+        spinState={spinState}
+        isRushActive={isRushActive}
+        rushHitsRemaining={session?.rush_hits_remaining ?? 0}
+        isAuto={isAuto}
+        reelOutcome={reelOutcome}
+        spriteUrl={machine.slot_themes?.machine_sprite_url ?? undefined}
+        machineLayout={machine.slot_themes?.machine_layout ?? undefined}
+        spinsThisTier={spinsThisTier}
+        floorSpinCount={machine.floor_spin_count}
+        jackpot={jackpot}
+        rushStreak={rushStreak}
+        winCount={session?.day_rush ?? 0}
+        totalSpins={session?.day_spins ?? 0}
+        betCoins={currentTier.coins}
+        directCost={directCost}
+        onSpin={handleSpin}
+        onDirect={handleDirect}
+        onAutoToggle={() => setIsAuto(v => !v)}
+        onAnimDone={() => { animDoneRef.current?.(); animDoneRef.current = null; }}
+      />
       <AnimatePresence>
-        {isRushActive && (
+        {coinReturnDisplay && (
           <motion.div
-            initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }}
-            className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-yellow-400 rounded-full shadow-lg"
+            key={coinReturnDisplay.id}
+            initial={{ opacity: 0, y: 0, scale: 0.7 }}
+            animate={{ opacity: 1, y: -44, scale: 1.25 }}
+            exit={{ opacity: 0, y: -80, scale: 1 }}
+            transition={{ duration: 0.45 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none select-none"
           >
-            <Zap className="w-3.5 h-3.5 text-yellow-950" />
-            <span className="text-yellow-950 font-black text-sm tracking-widest">RUSH</span>
-            <span className="text-yellow-800 text-sm font-bold">×{session?.rush_hits_remaining}</span>
+            <span className="font-black tabular-nums" style={{
+              fontSize: '2.6rem',
+              color: '#facc15',
+              textShadow: '0 0 16px rgba(250,200,0,0.95), 0 0 8px #ff8c00, 0 2px 4px rgba(0,0,0,0.85)',
+              letterSpacing: '-0.02em',
+              fontFamily: 'Impact, "Arial Black", sans-serif',
+            }}>
+              +{coinReturnDisplay.amount}G
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {spinState === 'spinning' && <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />}
     </div>
+  ) : (
+    <SlotMachineVisual
+      spinState={spinState as 'idle' | 'spinning' | 'video' | 'result'}
+      isRushActive={isRushActive}
+      rushHitsRemaining={session?.rush_hits_remaining ?? 0}
+      isAuto={isAuto}
+      spinsThisTier={spinsThisTier}
+      floorSpinCount={machine.floor_spin_count}
+      jackpot={jackpot}
+      onSpin={handleSpin}
+      onDirect={handleDirect}
+      onAutoToggle={() => setIsAuto(v => !v)}
+    />
   );
 
-  const renderControls = () => (
-    <div className="px-4 py-4 space-y-2.5">
-      <div className="flex justify-between text-xs text-neutral-400">
-        <span>累計 <span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{session?.total_spins ?? 0}</span> 次</span>
-        <span>WIN <span className="font-mono font-medium text-emerald-500">{winCount}</span></span>
-        <span><span className="font-mono font-medium text-neutral-600 dark:text-neutral-300">{currentTier.coins}</span> G/轉</span>
-      </div>
+  const renderPrizePool = () => {
+    // RUSH 獎池在上（實體物品格狀），普通旋轉返還在下（各自一個區塊）
+    const coinReturnPool = regularPool.filter(item => item.coin_return);
+    const normalPhysicalPool = regularPool.filter(item => !item.coin_return);
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => changeTier(-1)}
-          disabled={isRushLocked || tierIndex === 0}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
-        <motion.button
-          onClick={handleSpin}
-          disabled={spinState !== 'idle' || !user}
-          whileTap={{ scale: 0.97 }}
-          className={cn(
-            "flex-1 py-3 rounded-xl font-black text-base tracking-wide shadow-md transition-all",
-            isRushActive
-              ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-950 shadow-yellow-900/20"
-              : "bg-gradient-to-r from-violet-500 to-indigo-600 text-white shadow-violet-900/20",
-            spinState !== 'idle' && "opacity-60 cursor-not-allowed"
-          )}
-        >
-          {spinState === 'spinning' ? (
-            <span className="flex items-center justify-center gap-2">
-              <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity, ease: 'linear' }}>
-                <RotateCcw className="w-4 h-4" />
-              </motion.span>
-              挑戰中...
-            </span>
-          ) : `SPIN  ${currentTier.coins} G`}
-        </motion.button>
-
-        <button
-          onClick={() => changeTier(1)}
-          disabled={isRushLocked || tierIndex === tiers.length - 1}
-          className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 disabled:opacity-25 active:scale-90 transition-all"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        <button
-          onClick={() => setIsAuto(v => !v)}
-          className={cn(
-            "h-12 px-3 rounded-xl text-xs font-bold transition-all",
-            isAuto ? "bg-amber-400 text-amber-950 shadow-md" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
-          )}
-        >
-          AUTO
-        </button>
-      </div>
-
-      {/* 直撃按鈕：跳過保底等待直接進 RUSH */}
-      {!isRushActive && (
-        <motion.button
-          onClick={handleDirect}
-          disabled={spinState !== 'idle' || !user || directLoading || isLowForDirect}
-          whileTap={{ scale: 0.97 }}
-          className={cn(
-            "w-full py-2.5 rounded-xl text-sm font-black flex items-center justify-center gap-2 border-2 transition-all",
-            directConfirm
-              ? "border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
-              : "border-amber-400/40 bg-amber-50/30 dark:bg-amber-900/10 text-amber-600/80 dark:text-amber-400/80",
-            (spinState !== 'idle' || directLoading || isLowForDirect) && "opacity-40 cursor-not-allowed"
-          )}
-        >
-          <Zap className="w-4 h-4" />
-          {directLoading
-            ? '處理中...'
-            : directConfirm
-              ? `確認直撃 ${directCost.toLocaleString()} G？（再按確認）`
-              : `直撃　${directCost.toLocaleString()} G → 即進 RUSH`
-          }
-        </motion.button>
-      )}
-
-      <div className="flex items-center justify-center gap-2 text-xs">
-        <Coins className="w-3.5 h-3.5 text-amber-500" />
-        <span className={cn("text-neutral-400", isLowBalance && "text-red-400 font-medium")}>
-          1回 {currentTier.coins.toLocaleString()} G ｜ 残高 {userTokens.toLocaleString()} G
-        </span>
-        {isLowBalance && (
-          <button onClick={() => router.push('/topup')} className="text-primary underline font-medium">儲值</button>
-        )}
-      </div>
-
-      {error && <p className="text-center text-red-400 text-xs">{error}</p>}
-
-      <p className="text-center text-[10px] text-neutral-300 dark:text-neutral-600">
-        進行挑戰即視為同意<span className="underline cursor-pointer" onClick={() => router.push('/terms')}>服務條款</span>。未滿 18 歲禁止。
-      </p>
-    </div>
-  );
-
-  const renderPrizePool = () => (
-    <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-      <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30 flex items-center justify-between">
-        <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">
-          {currentTier.coins}G 獎池
-        </h2>
-        {isRushActive && (
-          <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
-            ⚡ RUSH 模式
-          </span>
-        )}
-      </div>
-
-      <table className="w-full text-left table-fixed">
-        <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
-          {regularPool.length === 0 && (
-            <tr><td colSpan={2} className="px-4 py-6 text-center text-sm text-neutral-400">尚無品項</td></tr>
-          )}
-          {regularPool.map(item => {
-            const prize = item.product_prizes ?? item.slot_prizes;
-            const isLocked = item.min_bet != null && item.min_bet > currentTier.coins;
-            const pType = item.product_prizes?.products?.type ?? '';
-            const rawLevel = prize?.level ?? '';
-            const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
-            return (
-              <tr key={item.id} className={cn("transition-colors", isLocked ? "opacity-35" : "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50")}>
-                <td className="px-2 sm:px-6 py-1.5 sm:py-3">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                      {prize?.image_url ? (
-                        <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
-                      ) : (
-                        <div className="flex items-center justify-center w-full h-full">
-                          <Trophy className="w-4 h-4 text-neutral-300" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                      {displayLevel && (
-                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold whitespace-nowrap flex-shrink-0">
-                          {displayLevel}
-                        </span>
-                      )}
-                      <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
-                        {prize?.name}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[80px] sm:w-[100px] align-middle">
-                  {isLocked ? (
-                    <span className="flex items-center justify-end gap-1 text-[12px] text-neutral-400 font-bold">
-                      <Lock className="w-3 h-3" />{item.min_bet}G↑
-                    </span>
-                  ) : item.is_floor ? (
-                    <span className="text-[12px] sm:text-[13px] font-black text-violet-500">保底</span>
-                  ) : (
-                    <span className="text-[12px] sm:text-[13px] font-black text-neutral-300 dark:text-neutral-600">—</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {rushPool.length > 0 && (
-        <>
-          <div className="px-2 sm:px-6 py-2 border-t border-neutral-100 dark:border-neutral-800 bg-amber-50/50 dark:bg-amber-900/10">
-            <span className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">🔥 RUSH 獎池</span>
+    // 格狀品項卡：圖片 + 名稱（居中）+ 價值（固定值，不縮放）
+    const renderGridCard = (item: SlotPoolItem) => {
+      const prize = item.product_prizes ?? item.slot_prizes;
+      const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
+      return (
+        <div key={item.id} className="flex flex-col items-center">
+          <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
+            {prize?.image_url ? (
+              <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full">
+                <Trophy className="w-7 h-7 text-neutral-300" />
+              </div>
+            )}
           </div>
-          <table className="w-full text-left table-fixed">
-            <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
-              {rushPool.map(item => {
-                const prize = item.product_prizes ?? item.slot_prizes;
-                const pType = item.product_prizes?.products?.type ?? '';
-                const rawLevel = prize?.level ?? '';
-                const displayLevel = ['gacha', 'blindbox', 'slot'].includes(pType) ? '普通' : rawLevel;
-                return (
-                  <tr key={item.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-900/10 transition-colors">
-                    <td className="px-2 sm:px-6 py-1.5 sm:py-3">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                          {prize?.image_url ? (
-                            <Image src={prize.image_url} alt={prize.name} fill className="object-cover" unoptimized />
-                          ) : (
-                            <div className="flex items-center justify-center w-full h-full">
-                              <Trophy className="w-4 h-4 text-amber-300" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                          {displayLevel && (
-                            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold whitespace-nowrap flex-shrink-0">
-                              {displayLevel}
-                            </span>
-                          )}
-                          <span className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight truncate">
-                            {prize?.name}
-                          </span>
-                        </div>
+          <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
+            <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">
+              {prize?.name}
+            </p>
+          </div>
+          {displayValue > 0 && (
+            <p className="text-[9px] font-black text-primary tabular-nums text-center">
+              {displayValue.toLocaleString()} G
+            </p>
+          )}
+        </div>
+      );
+    };
+
+    // 只顯示當前檔次的 RUSH 品項（min_bet = 當前檔次；NULL = 全檔通用）
+    const tieredRushPool = rushPool.filter(item => item.min_bet == null || item.min_bet === currentTier.coins);
+    const rushValues = tieredRushPool
+      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0)
+      .filter(v => v > 0);
+    const rushMinVal = rushValues.length ? Math.min(...rushValues) : 0;
+    const rushMaxVal = rushValues.length ? Math.max(...rushValues) : 0;
+
+    const physicalItems = [...tieredRushPool, ...normalPhysicalPool];
+    const hasContent = physicalItems.length > 0 || coinReturnPool.length > 0;
+
+    return (
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
+        {/* 標題列 */}
+        <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+          <h2 className="text-sm font-black text-neutral-900 dark:text-neutral-50">獎池總覽</h2>
+          {isRushActive && (
+            <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
+              ⚡ RUSH 模式
+            </span>
+          )}
+        </div>
+
+        {!hasContent && (
+          <p className="px-4 py-8 text-center text-sm text-neutral-400">尚無品項</p>
+        )}
+
+        {/* ── RUSH 獎池 ── */}
+        {physicalItems.length > 0 && (
+          <div className="px-4 pt-3 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">RUSH 獎池</p>
+              {rushMinVal > 0 && (
+                <p className="text-sm font-black text-primary tabular-nums">
+                  {rushMinVal.toLocaleString()} ～ {rushMaxVal.toLocaleString()} G
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {physicalItems.map(item => renderGridCard(item))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 普通旋轉返還 ── 4 欄 grid，同 RUSH 排版 */}
+        {coinReturnPool.length > 0 && (() => {
+          const crMults = coinReturnPool.map(i => i.return_multiplier ?? 0).filter(v => v > 0);
+          const crMin = crMults.length ? Math.floor(currentTier.coins * Math.min(...crMults)) : 0;
+          const crMax = crMults.length ? Math.floor(currentTier.coins * Math.max(...crMults)) : 0;
+          return (
+          <div className={physicalItems.length > 0 ? 'border-t border-neutral-100 dark:border-neutral-800' : ''}>
+            <div className="px-4 pt-3 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-black text-neutral-400 uppercase tracking-wider">普通旋轉返還</p>
+                {crMin > 0 && (
+                  <p className="text-sm font-black text-primary tabular-nums">
+                    {crMin.toLocaleString()} ～ {crMax.toLocaleString()} G
+                  </p>
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {coinReturnPool.map(item => {
+                  const prize = item.slot_prizes;
+                  const name = item.display_name ?? prize?.name ?? '返還';
+                  const ret = item.return_multiplier != null
+                    ? Math.floor(currentTier.coins * item.return_multiplier)
+                    : null;
+                  return (
+                    <div key={item.id} className="flex flex-col items-center">
+                      <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
+                        <Image
+                          src={prize?.image_url ?? '/images/slot/machine/coin.png'}
+                          alt={name} fill className="object-contain p-2" unoptimized
+                        />
                       </div>
-                    </td>
-                    <td className="px-2 sm:px-3 py-1.5 sm:py-3 text-right w-[80px] sm:w-[100px] align-middle">
-                      {item.is_floor ? (
-                        <span className="text-[12px] sm:text-[13px] font-black text-violet-500">保底</span>
-                      ) : (
-                        <span className="text-[12px] sm:text-[13px] font-black text-amber-500">RUSH</span>
+                      <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
+                        <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
+                      </div>
+                      {ret != null && (
+                        <p className="text-[9px] font-black text-primary tabular-nums text-center">
+                          {ret.toLocaleString()} G
+                        </p>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </>
-      )}
-    </div>
-  );
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          );
+        })()}
+      </div>
+    );
+  };
 
   const renderMachineInfo = () => {
     const infoRows = [
       { label: '類別', value: '挑戰機台' },
-      { label: 'RUSH 觸發率', value: `${(machine.trigger_rate * 100).toFixed(0)}%` },
-      { label: 'RUSH 連莊率', value: `${(machine.continue_rate * 100).toFixed(0)}%` },
+      { label: '主題', value: machine.name },
+      { label: '檔次', value: `${currentTier.coins} G` },
       { label: '最少連數', value: `${machine.min_rush_hits} 連` },
       { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
+      { label: '保底進度', value: `${Math.min(spinsThisTier, machine.floor_spin_count)} / ${machine.floor_spin_count}` },
     ];
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
         <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-          {machine.name}
+          機台資訊
         </h3>
-
-        {tiers.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-            <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">下注檔位</span>
-            <div className="flex flex-wrap gap-1.5 ml-auto">
-              {tiers.map((tier, idx) => (
-                <button
-                  key={tier.coins}
-                  onClick={() => { if (!isRushLocked) setTierIndex(idx); }}
-                  className={cn(
-                    "px-3 py-0.5 rounded-full text-xs font-black transition-colors",
-                    idx === tierIndex
-                      ? "bg-primary text-white"
-                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200"
-                  )}
-                >
-                  {tier.coins} G
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {session && (
-          <div className="py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-            <div className="flex justify-between text-[13px] font-black mb-2">
-              <span className="text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">保底進度</span>
-              <span className="text-neutral-900 dark:text-neutral-50">{session.spins_since_rush} / {machine.floor_spin_count}</span>
-            </div>
-            <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-violet-400 to-amber-400 rounded-full"
-                animate={{ width: `${floorProgress}%` }}
-                transition={{ duration: 0.4 }}
-              />
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 sm:gap-y-4 gap-x-12">
           {infoRows.map(({ label, value }) => (
@@ -697,7 +769,7 @@ export default function MachinePage() {
               '抽出後即確認結果，不可退款或更換。',
               '實體獎品由廠商備貨配送，配送時間約 3–7 個工作日。',
               '如遇商品缺貨，將以 G幣 原額退還，敬請見諒。',
-              'RUSH 觸發後連續獲得多件大獎，最少連中次數有所保證。',
+              'RUSH 可於任意轉隨機觸發；累積至保底轉數時必定觸發，觸發後進度歸零。',
               '直撃費用一經扣除不予退還，RUSH 中無法再次直撃。',
             ].map((text, i) => (
               <li key={i} className="text-[12px] sm:text-[13px] text-neutral-400 dark:text-neutral-500 font-bold leading-relaxed">{text}</li>
@@ -715,9 +787,10 @@ export default function MachinePage() {
 
       {/* Mobile / tablet */}
       <div className="block lg:hidden pb-8">
-        <div className="bg-white dark:bg-neutral-900 shadow-sm border-b border-neutral-100 dark:border-neutral-800">
-          {renderMachineVisual()}
-          {renderControls()}
+        <div>
+          <div className="bg-black shadow-sm">
+            {renderMachineVisual()}
+          </div>
         </div>
         <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2 space-y-2">
           {renderPrizePool()}
@@ -730,9 +803,12 @@ export default function MachinePage() {
         <div className="max-w-7xl mx-auto px-2 pt-20 pb-6">
           <div className="grid grid-cols-12 gap-6 items-start">
             <div className="col-span-4 sticky top-4">
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-                {renderMachineVisual()}
-                {renderControls()}
+              <div className="rounded-3xl border border-neutral-800 overflow-hidden">
+                <div className="bg-black">
+                  {renderMachineVisual()}
+                </div>
+                <div className="bg-white dark:bg-neutral-900">
+                </div>
               </div>
             </div>
             <div className="col-span-8 space-y-4">
@@ -754,9 +830,14 @@ export default function MachinePage() {
             {/* 影片本體 */}
             <video
               key={videoPhase}
-              src={videoPhase === 'rush_entry'
-                ? VIDEOS.rush_entry
-                : pickRushWinVideo(lastResult?.prize.level ?? '')}
+              src={(videoPhase === 'rush_entry'
+                ? machine.slot_themes?.video_rush_entry
+                : pickRushWinVideo(
+                    machine.slot_themes ?? { video_rush_entry:null,video_rush_anticipation:null,video_rush_win:null,video_rush_win_strong:null,video_rush_win_god:null,video_rush_revival:null },
+                    lastResult?.prize.level === '一等獎' ? 'win_god'
+                      : lastResult?.prize.level === '二等獎' ? 'win_strong'
+                      : 'win'
+                  )) ?? undefined}
               autoPlay
               muted
               playsInline
@@ -808,56 +889,108 @@ export default function MachinePage() {
         )}
       </AnimatePresence>
 
-      {/* 獎品結果 modal */}
+      {/* 直撃確認 modal */}
+      <AnimatePresence>
+        {showDirectModal && (
+          <>
+            <motion.div
+              key="direct-backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowDirectModal(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
+            />
+            <motion.div
+              key="direct-panel"
+              initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col overflow-hidden"
+            >
+              <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-black text-base text-neutral-900 dark:text-white">直撃確認</h3>
+                </div>
+                <button onClick={() => setShowDirectModal(false)}
+                  className="p-1 -mr-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 active:scale-95 transition-transform">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="px-4 py-5 space-y-3">
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200/60 dark:border-amber-700/30">
+                  <p className="text-sm text-amber-800 dark:text-amber-300 font-bold text-center">
+                    跳過保底等待，直接進入 RUSH 模式
+                  </p>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-sm text-neutral-500">直撃費用</span>
+                  <span className="text-lg font-black text-primary tabular-nums">{directCost.toLocaleString()} G</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-500">目前 G 幣</span>
+                  <span className={cn("text-sm font-bold tabular-nums", isLowForDirect ? "text-red-400" : "text-neutral-700 dark:text-neutral-300")}>
+                    {userTokens.toLocaleString()} G
+                  </span>
+                </div>
+                {isLowForDirect && (
+                  <p className="text-xs text-red-400 text-center font-medium">G 幣不足，請先儲值</p>
+                )}
+              </div>
+              <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] flex gap-2">
+                <button onClick={() => setShowDirectModal(false)}
+                  className="flex-1 h-[44px] text-sm rounded-xl font-black bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-[0.98] transition-transform">
+                  取消
+                </button>
+                <button
+                  onClick={() => { setShowDirectModal(false); executeDirectSpin(); }}
+                  disabled={isLowForDirect || directLoading}
+                  className="flex-1 h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-50"
+                >
+                  {directLoading ? '處理中...' : `確認直撃　${directCost.toLocaleString()} G`}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 獎品結果 — RUSH 得獎慶祝：品項圖 + 名稱 + 彩帶，數秒後自動關閉（點擊可提前跳過） */}
       <AnimatePresence>
         {spinState === 'result' && lastResult && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={handleClose}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-hidden"
+            onClick={() => closeResult()}
           >
+            <ConfettiBurst />
             <motion.div
-              initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
-              className="mx-6 w-full max-w-xs bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+              initial={{ scale: 0 }}
+              animate={{
+                scale: [0, 1.18, 0.95, 1.05, 1],
+                rotate: [0, -5, 4, -2, 0],
+                x: [0, -8, 8, -5, 0],
+              }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.65, ease: 'easeOut' }}
+              className="flex flex-col items-center px-8 pointer-events-none"
             >
-              <div className={cn("h-2 w-full bg-gradient-to-r", LEVEL_COLORS[lastResult.prize.level] ?? 'from-neutral-600 to-neutral-700')} />
-              <div className="p-6 text-center">
-                {lastResult.rush_triggered && (
-                  <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-xs font-bold">
-                    <Zap className="w-3 h-3" />RUSH 獎勵
+              <div className="relative w-60 h-60">
+                {lastResult.prize.image_url ? (
+                  <Image
+                    src={lastResult.prize.image_url} alt={lastResult.prize.name} fill unoptimized
+                    className="object-contain drop-shadow-[0_0_32px_rgba(255,210,80,0.85)]"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <Trophy className="w-24 h-24 text-amber-400" />
                   </div>
                 )}
-                <div className="relative w-32 h-32 mx-auto mb-4 rounded-2xl overflow-hidden bg-neutral-800">
-                  {lastResult.prize.image_url ? (
-                    <Image src={lastResult.prize.image_url} alt={lastResult.prize.name} fill className="object-contain p-2" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <Trophy className="w-12 h-12 text-amber-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="inline-block px-2 py-0.5 rounded bg-white/10 text-white/60 text-xs font-mono mb-2">
-                  {lastResult.prize.level}
-                </div>
-                <h3 className="text-white font-bold text-lg">{lastResult.prize.name}</h3>
-                <p className="text-white/50 text-xs mt-1">已放入倉庫</p>
-                <div className="mt-4 flex items-center justify-center gap-4 text-xs text-white/40">
-                  <span>累計 {lastResult.session.total_spins} 次</span>
-                  {lastResult.session.state === 'rush' && (lastResult.session.rush_hits_remaining ?? 0) > 0 && (
-                    <span className="text-yellow-400">⚡ RUSH 剩餘 ×{lastResult.session.rush_hits_remaining}</span>
-                  )}
-                </div>
-                {isAuto && <p className="mt-3 text-amber-400/70 text-xs font-medium">AUTO 中，2 秒後繼續…</p>}
               </div>
-              <div className="px-6 pb-6 flex gap-3">
-                <button onClick={handleClose} className="flex-1 py-3 rounded-xl bg-white/10 text-white/80 text-sm font-bold active:bg-white/20">
-                  繼續挑戰
-                </button>
-                <button onClick={() => router.push('/item')} className="flex-1 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold active:bg-violet-700">
-                  查看倉庫
-                </button>
-              </div>
+              <h3
+                className="mt-5 text-white font-black text-2xl text-center"
+                style={{ textShadow: '0 0 18px rgba(255,200,60,.9), 0 2px 6px rgba(0,0,0,.8)' }}
+              >
+                {lastResult.prize.name}
+              </h3>
             </motion.div>
           </motion.div>
         )}

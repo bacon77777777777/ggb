@@ -18,7 +18,12 @@ export async function GET(
     const [machineRes, poolRes] = await Promise.all([
       supabase
         .from('slot_machines')
-        .select('*')
+        .select(`*, slot_themes(
+          id, name, image_url, machine_type, machine_sprite_url, machine_layout,
+          video_rush_entry, video_rush_anticipation,
+          video_rush_win, video_rush_win_strong,
+          video_rush_win_god, video_rush_revival
+        )`)
         .eq('id', machineId)
         .eq('is_active', true)
         .single(),
@@ -26,8 +31,9 @@ export async function GET(
         .from('slot_pool_items')
         .select(`
           id, min_bet, is_floor, rush_only, normal_only, remaining,
+          coin_return, return_multiplier, display_name,
           product_prizes (id, name, level, image_url, recycle_value, products(type)),
-          slot_prizes (id, name, level, image_url)
+          slot_prizes (id, name, level, image_url, recycle_value)
         `)
         .eq('machine_id', machineId)
         .order('id', { ascending: true }),

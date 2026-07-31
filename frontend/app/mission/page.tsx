@@ -6,7 +6,7 @@ import { MissionService } from '@/services/mission';
 import MissionFrame, { Mission } from '@/components/mission/MissionFrame';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
-import { IpLoader } from '@/components/ui/IpLoader';
+import { MissionSkeleton } from '@/components/Skeletons';
 import { useRouter } from 'next/navigation';
 
 export default function MissionPage() {
@@ -214,11 +214,7 @@ export default function MissionPage() {
   }, [scale, loading]);
 
   if (loading && missions.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-neutral-50">
-        <IpLoader />
-      </div>
-    );
+    return <MissionSkeleton />;
   }
 
   return (

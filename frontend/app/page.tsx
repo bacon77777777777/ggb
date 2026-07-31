@@ -146,6 +146,7 @@ export default function Home() {
             .from('banners')
             .select('*')
             .eq('is_active', true)
+            .eq('page', 'home')
             .order('sort_order', { ascending: true }) as unknown as Promise<BannersQueryResult>,
           'banners'
         );
@@ -1441,7 +1442,7 @@ export default function Home() {
               </Tabs>
             )}
 
-            <div className={cn("flex items-center gap-1.5 py-2 px-2", secondaryTabs.length <= 1 && "hidden")}>
+            <div className={cn("flex items-center gap-1.5 pb-2 px-2", secondaryTabs.length <= 1 && "hidden")}>
               <div ref={secondaryTabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
                 <div className="flex items-center gap-1.5">
                   {secondaryTabs.map((tab) => (

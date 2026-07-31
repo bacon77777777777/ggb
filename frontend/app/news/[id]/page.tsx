@@ -475,13 +475,13 @@ export default function NewsDetailPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 pb-[80px]">
 
       {/* ── 頂部操作列（絕對定位在圖片上方）── */}
-      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 pt-[env(safe-area-inset-top)] pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
         <Link href="/news"
-          className="pointer-events-auto m-2 w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
         </Link>
         <button onClick={handleShare}
-          className="pointer-events-auto m-2 w-9 h-9 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <Share2 className="w-4 h-4" />
         </button>
       </div>

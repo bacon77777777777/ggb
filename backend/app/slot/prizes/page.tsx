@@ -36,6 +36,8 @@ interface SlotPrize {
   id: number
   name: string
   level: string
+  prize_type: 'rush' | 'coin_return'
+  recycle_value: number
   image_url: string | null
   remaining: number | null
   supplier_id: number | null
@@ -47,6 +49,8 @@ interface SlotPrize {
 const EMPTY_FORM = {
   name: '',
   level: '一等獎',
+  prize_type: 'rush' as 'rush' | 'coin_return',
+  recycle_value: '',
   image_url: '',
   remaining: '',
   supplier_id: '',
@@ -76,6 +80,7 @@ export default function SlotPrizesPage() {
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [prizeTypeTab, setPrizeTypeTab] = useState<'rush' | 'coin_return'>('rush')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [levelFilter, setLevelFilter] = useState('all')
@@ -130,6 +135,8 @@ export default function SlotPrizesPage() {
     setForm({
       name: p.name,
       level: p.level,
+      prize_type: p.prize_type ?? 'rush',
+      recycle_value: p.recycle_value != null ? String(p.recycle_value) : '',
       image_url: p.image_url ?? '',
       remaining: p.remaining != null ? String(p.remaining) : '',
       supplier_id: p.supplier_id != null ? String(p.supplier_id) : '',
@@ -217,6 +224,7 @@ export default function SlotPrizesPage() {
 
   const filtered = prizes
     .filter(p => {
+      if (p.prize_type !== prizeTypeTab) return false
       if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase()) && !(p.suppliers?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())) return false
       if (statusFilter === 'active' && !p.is_active) return false
       if (statusFilter === 'inactive' && p.is_active) return false
@@ -241,8 +249,35 @@ export default function SlotPrizesPage() {
   const dc = getDensityClasses()
   const levelLabel = (level: string) => LEVEL_OPTIONS.find(o => o.value === level)?.label ?? level
 
+  // prizes are already deduplicated by the API (one unique name per prize_type)
+  const rushCount      = prizes.filter(p => p.prize_type === 'rush').length
+  const coinReturnCount = prizes.filter(p => p.prize_type === 'coin_return').length
+
   return (
     <AdminLayout pageTitle="品項管理">
+      {/* Tabs */}
+      <div className="flex gap-1 mb-3">
+        {([
+          { key: 'rush',        label: '🔥 RUSH獎池',      count: rushCount },
+          { key: 'coin_return', label: '🪙 普通旋轉返還',  count: coinReturnCount },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setPrizeTypeTab(tab.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              prizeTypeTab === tab.key
+                ? 'bg-primary text-white'
+                : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            {tab.label}
+            <span className={`ml-1.5 text-xs font-black ${prizeTypeTab === tab.key ? 'text-white/80' : 'text-neutral-400'}`}>
+              ({tab.count})
+            </span>
+          </button>
+        ))}
+      </div>
+
       <PageCard>
         <SearchToolbar
           searchPlaceholder="搜尋品項名稱、廠商..."

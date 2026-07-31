@@ -7,6 +7,11 @@ import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 
+const PAGE_TABS = [
+  { value: 'home', label: '首頁輪播圖' },
+  { value: 'challenge', label: '挑戰頁輪播圖' },
+]
+
 interface Banner {
   id: number
   name: string
@@ -14,6 +19,7 @@ interface Banner {
   link_url: string
   sort_order: number
   is_active: boolean
+  page: string
   created_at: string
 }
 
@@ -25,13 +31,15 @@ export default function BannersPage() {
   const savingLock = useRef(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  
+  const [activeTab, setActiveTab] = useState<'home' | 'challenge'>('home')
+
   const [formData, setFormData] = useState({
     name: '',
     image_url: '',
     link_url: '',
     sort_order: 0,
     is_active: true,
+    page: 'home' as 'home' | 'challenge',
     imageFile: null as File | null,
     imagePreview: ''
   })
@@ -67,6 +75,7 @@ export default function BannersPage() {
       link_url: banner.link_url || '',
       sort_order: banner.sort_order,
       is_active: banner.is_active,
+      page: (banner.page as 'home' | 'challenge') || 'home',
       imageFile: null,
       imagePreview: banner.image_url
     })
@@ -81,6 +90,7 @@ export default function BannersPage() {
       link_url: '',
       sort_order: 0,
       is_active: true,
+      page: activeTab,
       imageFile: null,
       imagePreview: ''
     })
@@ -161,7 +171,8 @@ export default function BannersPage() {
         image_url: finalImageUrl || formData.imagePreview,
         link_url: formData.link_url,
         sort_order: formData.sort_order,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        page: formData.page,
       }
 
       if (editingBanner) {
@@ -198,6 +209,8 @@ export default function BannersPage() {
       setIsSaving(false)
     }
   }
+
+  const filteredBanners = banners.filter(b => (b.page || 'home') === activeTab)
 
   const columns: Column<Banner>[] = [
     {
@@ -296,7 +309,23 @@ export default function BannersPage() {
   return (
     <AdminLayout pageTitle="輪播圖管理">
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          {/* Page tabs */}
+          <div className="flex gap-1 bg-neutral-100 rounded-lg p-1">
+            {PAGE_TABS.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value as 'home' | 'challenge')}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab.value
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={handleAdd}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
@@ -307,7 +336,7 @@ export default function BannersPage() {
 
         <PageCard>
           <DataTable
-            data={banners}
+            data={filteredBanners}
             columns={columns}
             keyField="id"
             emptyMessage="尚無輪播圖資料"
@@ -371,6 +400,26 @@ export default function BannersPage() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>
+              <div className="flex gap-2">
+                {PAGE_TABS.map(tab => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' })}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      formData.page === tab.value
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">排序 (數字越小越前面)</label>
@@ -381,7 +430,7 @@ export default function BannersPage() {
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                 />
               </div>
-              
+
               <div className="flex items-center pt-6">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input

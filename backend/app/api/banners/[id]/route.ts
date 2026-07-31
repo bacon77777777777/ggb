@@ -13,19 +13,16 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { name, image_url, link_url, sort_order, is_active } = body
+    const { name, image_url, link_url, sort_order, is_active, page } = body
 
     const supabaseAdmin = getSupabaseAdmin()
 
+    const updateData: Record<string, unknown> = { name, image_url, link_url, sort_order, is_active }
+    if (page !== undefined) updateData.page = page
+
     const { data, error } = await supabaseAdmin
       .from('banners')
-      .update({
-        name,
-        image_url,
-        link_url,
-        sort_order,
-        is_active,
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single()

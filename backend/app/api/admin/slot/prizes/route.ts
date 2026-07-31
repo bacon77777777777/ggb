@@ -12,12 +12,29 @@ export async function GET() {
     supabase
       .from('slot_prizes')
       .select('*, suppliers(id, name)')
+      .order('prize_type', { ascending: true })
       .order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, name').order('name'),
   ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ prizes: data ?? [], suppliers: suppliersData ?? [] })
+
+  // Deduplicate by name — keep the entry with the highest id (most recently seeded/created)
+  const seenNames = new Set<string>()
+  const deduped = (data ?? [])
+    .sort((a, b) => b.id - a.id) // highest id first so it survives the Set filter
+    .filter(p => {
+      if (seenNames.has(p.name)) return false
+      seenNames.add(p.name)
+      return true
+    })
+    .sort((a, b) => {
+      // Restore sort order: prize_type asc, then created_at desc
+      if (a.prize_type !== b.prize_type) return a.prize_type < b.prize_type ? -1 : 1
+      return b.created_at < a.created_at ? -1 : 1
+    })
+
+  return NextResponse.json({ prizes: deduped, suppliers: suppliersData ?? [] })
 }
 
 export async function POST(request: NextRequest) {

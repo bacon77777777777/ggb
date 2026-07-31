@@ -4,6 +4,228 @@
 
 ---
 
+## v2026.07.31d｜2026-07-31｜直衝定價改版
+
+### 改動（migration 389，STG+PROD 已執行）
+- 直衝費用：該檔次 RUSH 獎池最高品項回收價值 × 1.5，無條件進位至檔次金額倍數（例：10G 檔最高 630G → 945 → 950G）
+- 廢除舊「剩餘保底轉數 × 檔次」公式（保底 1400 下失衡）
+- 前後端同步（enter_slot_rush_direct + 前台 directCost）
+
+---
+
+## v2026.07.31c｜2026-07-31｜sprite 原圖直傳 + 主題版位覆蓋系統
+
+### 改動（migration 388，STG+PROD 已執行）
+- 上傳 API 加 raw=1 模式：機台 sprite 組圖原圖直傳不壓縮（其他上傳照舊壓 800 WebP）
+- slot_themes.machine_layout（JSONB）：各主題可覆蓋 marquee/scoreboard/reels/三按鈕版位（百分比），元件版位改 CSS 變數注入
+- 後台主題設定加「機台版位覆蓋」JSON 編輯欄（含格式驗證）
+- AI 生成主題 SOP 建立：ChatGPT 出圖（任意排版）→ 自動分割重組進 2048×1400 模板 → raw 上傳 → 版位 JSON 微調；埃及主題 sprite2 為首例
+- 直衝定價確認維持：剩餘保底轉數 × 檔次金額
+
+---
+
+## v2026.07.31b｜2026-07-31｜main_rush 圖寬修正
+
+### 改動
+- main_rush.png 750×932（原多 3px 寬），sprite 重組、CSS 定位係數同步，RUSH 皮膚切換不再錯位
+
+---
+
+## v2026.07.31a｜2026-07-31｜老虎機 sprite 組圖系統 + 主題換皮 + 體驗修正
+
+### Sprite 組圖系統
+- 全部圖素（機台/RUSH皮膚/發光層/燈牌/按鈕/拉桿4幀/滾輪符號/蓋章）合併為單張 sprite.png（2048×1400 固定模板），background-position 定位，10+ 請求變 1 個
+- 滾輪符號從文字改正式圖：RUSH 標誌（三連=觸發）+ 5 隻 GGB 角色（256×256）
+- 主題換皮：slot_themes.machine_sprite_url（migration 387，STG+PROD 已執行），後台主題設定可上傳/更換/清除 sprite，未設定用預設；前台依主題載入
+
+### 體驗修正（staging 回報）
+- LED 計分板常駐顯示（滾動中不消失），數字綠、文字白
+- 直衝購買後完整演出：滾輪轉動 → 777 → RUSH!! 才切紫皮
+- 中獎彈窗品項圖修復（外部圖域名加 unoptimized）
+- 音效開關：機台右上角 38px 黑圓鈕（同文章返回鈕）白線圖標，靜音紅斜線，localStorage 記憶
+- 大当り/連中文字移除描邊加粗（還原）
+- 獎池：品項圖改卡牌比例 63:88、圓角改小、退幣四檔恢復列出並改用 GGB 金幣圖
+- 滾輪符號放大至 92% 窗格寬；SPIN/直衝/自動按鈕金額顯示與文字位置微調
+
+---
+
+## v2026.07.30i｜2026-07-30｜老虎機柏青哥式 jackpot 模型 + 滾輪返還演出
+
+### 遊戲模型（migration 384/385/386，STG+PROD 已執行）
+- RUSH 延續判定移到「下一轉」：保底連中抽完後機台停在判定中狀態，下一轉擲延續率——過則 777 連中出品項，沒過則非 777 退幣揭曉回普通機台（保底 0/70 重算）。RUSH 狀態下絕不觸發新 RUSH
+- 改柏青哥式 jackpot 模型（對標日本スロット風オリパ競品）：檔次 100~2000G → 10/20/50/100/300G，獎池 45~65 倍檔次，觸發率 0.2%（1/500）、保底 1,400 轉、保底連 1、延續 50%、遞減 50%，總 RTP ≈ 83%
+- RUSH 獎池改「檔次專屬」（min_bet = 鎖定檔次才抽得到），前後台顯示同步
+- 修退幣獎池靜默清空地雷：CHECK 約束放寬 + 主題儲存重建失敗改報錯
+- STG 池以遊々亭真實卡片模擬（170 張不重複，各檔 10/40/40/40/40）
+
+### 前台 UI
+- 滾輪組合對應返還種類：神域共鳴=三連、命運之瞳=雙7聽牌、緋色幸運=兩個一樣、黃金序章=三不同，777 為 RUSH 專屬
+- RUSH 恭喜彈窗改慶祝式：品項圖震動彈出 + 彩帶噴發，2.6 秒自動關閉（auto 續轉），移除按鈕與文字
+- RUSH 狀態刷新頁面滾輪維持 777
+- SPIN/直衝 按鈕顯示金額，按鈕文字位置與大小微調
+
+### 後台
+- RUSH 獎池列表表頭可排序（預設回收幣值低→高）
+- 麵包屑改用側欄名稱「主題管理」
+
+---
+
+## v2026.07.30h｜2026-07-30｜RUSH 結束由下一轉滾輪揭曉
+
+### 改動
+- RUSH 皮膚移除只交給滾輪三個停定時的 finish()：關閉恭喜彈窗後機台保持紫色，下一轉滾輪非 777 停定才換回普通機台（連中則維持紫色），揭曉感與實機一致
+- LED 計分板配合：皮膚尚未揭曉切回前（RUSH 看板仍亮）保持隱藏
+
+---
+
+## v2026.07.30g｜2026-07-30｜老虎機體驗修正 + 每日統計 + 延續遞減後台可調
+
+### 改動
+- 滾輪即轉：拉桿一拉滾輪立即等速滾動（原本要等 API 返回才動），API 返回後才 ease-out 定位
+- RUSH 皮膚換圖時機修正：RUSH 結束後皮膚保留至結果彈窗關閉回 idle 才切回普通機台（原本按下 SPIN 立即換圖，體感差）
+- 自動按鈕在旋轉中不再禁用，隨時可關閉自動模式
+- Auto 模式卡彈窗修正：RUSH 得獎/退出的恭喜彈窗顯示 2.5 秒後自動關閉續轉
+- 機台按鈕文字放大（2.7→3.3cqw、SPIN 3.2→4cqw）並上移
+- LED 計分板改接機台每日統計：累計 N次 ★ RUSH N次，台灣時間 00:00 自動重置
+- DB migration 383（STG+PROD 已執行）：
+  - `slot_machines` 加 `day_spins` / `day_rush` / `day_reset_date`，由 `play_slot_locked` 每次 spin 順帶維護跨日清零，不需 cron
+  - `slot_themes` 加 `continue_rate_decay`，後台主題設定「延續率遞減係數」欄位可調，儲存時同步至旗下機台
+  - `enter_slot_rush_direct` 直撃也計入 day_rush
+- 確認 RUSH 中不會發生 rush 觸發（382 邏輯：RUSH 中只判延續率 × decay^連中次數，二擇一：連中延續或回普通機台）
+
+---
+
+## v2026.07.30f｜2026-07-30｜老虎機 UI 大幅優化
+
+### 改動
+- 結果彈窗改白色風格（與轉蛋彈窗統一：bg-white、深色文字、primary 按鈕）
+- +XG 出現時機延後至三個轉輪全部停定後才顯示，顏色改回金黃（#facc15）+ Impact 字體
+- 大当り!! 漸層改水平（90deg），使中文字與 !! 色調一致
+- 機台按鈕加上文字標籤：自動 / SPIN / 直衝
+- 普通機台隱藏 light_rush 看板；改顯示 LED 計分板（累計 N次 ★ RUSH N次）於同位置
+- 計分板定位移至 light_rush.png 正後方（top:27.15%）
+- RUSH 剩餘浮層移除，控制列底部 RUSH 計數移除
+- 隱藏機台下方控制區塊（SPIN/AUTO/tier 選擇列），由機台內按鈕取代
+- winCount 只計算真正的 RUSH 得獎次數（RUSH 中抽品 + RUSH 退出）
+- 機台佔用系統：occupy / heartbeat / vacate API + 倒計時浮層
+- stopReels/finish 防禦性修正：捕捉 jackpot 值避免皮膚時機錯誤
+
+---
+
+## v2026.07.30e｜2026-07-30｜挑戰機台模組化：新增 classic 純機台效果類型
+
+### 改動
+- DB：`slot_themes` 新增 `machine_type` 欄位（`video` | `classic`，預設 `video`）
+- 後台主題設定：「機台模組」選擇器，radio 按鈕切換 video / classic
+- 後台 API：`machine_type` 加入 PATCH 允許欄位
+- 新增 `SlotMachineClassic.tsx` — 基於 v15 原生機台效果：
+  - 多層發光燈（8區 mask + screen blend）
+  - 蓋章系統（stampFx + ring impact，左連 7 階梯震動）
+  - 聽牌模式（前兩輪 777 時第三輪多轉 1500ms + 心跳音效）
+  - RUSH 皮膚（main_rush.png overlay）
+  - 大当り連中文字（5 等級：lv1 金 → lv5 彩虹，streak 驅動）
+  - Web Audio API 音效（clack/clunk/thud/winJingle/coinBurst）
+- `page.tsx`：`rushStreak` state、`machineType` 條件渲染、classic 模式跳過影片直接播機台動畫
+
+## v2026.07.30d｜2026-07-30｜修正 RUSH 突入影片後不應立即彈出結果
+
+### 改動
+- 新增 `videoPhaseRef` 追蹤當前影片 phase
+- `handleVideoEnd`：rush_entry 影片結束 → 清除 lastResult + 回 idle（不彈結果彈窗）；rush_win 影片結束 → 正常顯示結果
+- auto 模式觸發 RUSH 時：skip 影片直接回 idle，讓 auto timer 繼續執行第一轉 RUSH spin
+
+## v2026.07.30c｜2026-07-30｜挑戰機台互動優化 + 滾輪兩段式動畫
+
+### 改動
+- **滾輪兩段式動畫**：Phase 1 = 轉轉轉（API 呼叫中持續快速滾動），Phase 2 = 停止（jackpot 時三格對齊 7，非 jackpot 時三格不同符號）
+- **win effects 僅在 jackpot 時觸發**：移除 `rushTriggered` useEffect，改在 `stopReels()` callback 中依 jackpot 決定是否播放閃光/抖動/金幣爆炸
+- **非 jackpot 跑馬燈**：滾輪停止後顯示「押忍！再挑戰一次」2.2 秒
+- **按鈕文字標籤**：紅色按鈕「SPIN」、左橘色「自動」（active 時金色）、右橘色「直擊」
+- **直擊確認彈窗**：按下「直擊」（機台按鈕或下方按鈕）開確認底部彈窗，顯示費用 + 餘額，確認後執行直擊
+- **普通旋轉不彈恭喜彈窗**：coin_return 結果直接 setSpinState('idle')，只有 RUSH 獎池品項才彈結果彈窗
+- **video_type 修正**：改用 `prize.level` 對應影片（一等獎→win_god、二等獎→win_strong、其他→win）
+- **機台背景黑化**：機台圖片區塊背景改為黑色，視覺上更融合
+
+## v2026.07.30b｜2026-07-30｜挑戰機台上半部機台美術移植
+
+### 改動
+- 新增 `SlotMachineVisual` 元件（`frontend/components/challenge/SlotMachineVisual.tsx`）
+- 移植 ggb-slot-v8.html 機台效果至前台 React：main.png 背景、light_rush.png 亮牌、拉桿 4 格動畫、三個滾輪、AUTO/SPIN/RUSH 三按鈕圖像
+- RUSH 模式：機台快速頻閃 + RUSH 亮牌閃爍 + 橘色 RUSH badge + SPIN 按鈕橘色脈動
+- 觸發 RUSH 時：白光閃 + 機台抖動 + G 幣爆炸粒子 + 大当り!! 覆蓋文字 + 跑馬燈切換
+- 保底進度條：滾輪正上方顯示此檔次累積轉數進度
+- 尺寸以 750×932 為基準，container-query 比例完美縮放
+- 移除舊版 emoji 滾輪佔位設計
+
+---
+
+## v2026.07.30a｜2026-07-30｜挑戰機台 UI 細節優化
+
+### 改動
+- 確認入場彈窗機台名稱後顯示 `#N`（機台編號）
+- 挑戰機台內頁與確認入場彈窗：RUSH 獎池右上角幣值範圍字放大加粗（`text-sm font-black`）
+- 挑戰機台內頁與確認入場彈窗：普通旋轉返還區塊新增右上角幣值範圍（依當前檔次 × return_multiplier 計算）
+- STG spin 報錯修復：`draw_records_status_check` constraint 加入 `coin_return` 值（migration 376，同步 STG + PROD）
+
+---
+
+## v2026.07.29e｜2026-07-29｜已知問題記錄
+
+### ⚠ 已知問題（待修）
+
+**挑戰機台前台：普通旋轉也會彈出恭喜獲得彈窗**
+- 現況：每次 spin API 回傳後一律 `setSpinState('result')` → 觸發全螢幕結果 modal
+- 正確行為：
+  - 普通旋轉（coin_return）→ 靜默或幣值 toast，不彈窗
+  - RUSH 觸發瞬間 → 突入演出影片（video_rush_entry）→ 彈窗
+  - RUSH 每連 → 對決煽り（video_rush_anticipation）→ 依賞等播勝利影片（普通/強/壓勝）→ 彈窗
+  - RUSH 繼續確定 → 逆轉復活（video_rush_revival）
+- 修正位置：`frontend/app/challenge/[id]/page.tsx` `handleSpin()`，非 RUSH 狀態改 `setSpinState('idle')`
+
+---
+
+## v2026.07.29d｜2026-07-29｜RUSH獎池賞等管理 + STG 普通返還補齊
+
+### 後台（挑戰機台）
+- `slot/[id]/page.tsx`：RUSH獎池表格新增「稀有度」欄（Badge 顯示一/二/三等獎）
+- `slot/[id]/page.tsx`：新增「✦ 自動分配賞等」按鈕 — 依 recycle_value desc 排序，每檔次各分三等（10%一等/20%二等/70%三等），批次 PATCH
+- `api/admin/slot/themes/[id]/pool/route.ts`：PATCH 路由擴充支援 `level` 欄位更新
+- 特效影片小灰字改為「一等獎品項獲得」/「二等獎品項獲得」/「三等獎品項獲得」
+
+### DB（STG）
+- `375_stg_coin_return_pool_items.sql`：補 STG 5 台機台的普通旋轉返還品項（神域共鳴/命運之瞳/緋色幸運/黃金序章）
+
+---
+
+## v2026.07.29c｜2026-07-29｜挑戰機台後台 RUSH 機率設定 UX 修正
+
+### 後台（挑戰機台）
+- `slot/prizes/page.tsx` + `api/admin/slot/prizes/route.ts`：品項管理去重 — API 層依名稱 DISTINCT，從 160 筆（32 × 5 台）收歸 32 筆；PATCH/DELETE 同步更新所有同名副本
+- `slot/[id]/page.tsx`：RUSH 延續率輸入支援小數點後兩位（`step=0.01`）
+- `slot/[id]/page.tsx`：觸發率/延續率 input 顯示統一為 `0.XX` 格式
+- `slot/[id]/page.tsx`：觸發率/延續率 改用 local string state + onBlur 套格式，修正退格鍵被 toFixed 覆蓋的問題
+- `slot/[id]/page.tsx`：保底轉數超出有效範圍（N > 3/p）時顯示紅字提示「自然均值 X 轉，建議 ≤ Y」
+
+---
+
+## v2026.07.29b｜2026-07-29｜排行榜+文章返回/分享按鈕對齊 events 風格
+
+### 前台
+- `ranking/page.tsx`、`news/[id]/page.tsx`：返回與分享圖標尺寸改 `38×38px`、margin 改 `10px`（移除容器 `px-2`），與 LP/events 頁面一致
+
+---
+
+## v2026.07.29a｜2026-07-29｜前台頁面 Skeleton 灰色載入骨架
+
+### 前台
+- 新增 `ChallengeSkeleton`、`ChallengeDetailSkeleton`、`MissionSkeleton` 三個灰色骨架元件至 `Skeletons.tsx`
+- `challenge/page.tsx`：替換 `ProductLoadingScreen` → `ChallengeSkeleton`（灰色卡片列表）
+- `challenge/[id]/page.tsx`：替換 `ProductLoadingScreen` → `ChallengeDetailSkeleton`（機台視覺 + 控制列 + 獎池）
+- `mission/page.tsx`（簽到）：替換 `IpLoader` → `MissionSkeleton`（banner + 日曆 + 任務清單）
+- `profile/page.tsx`（會員）：替換 `IpLoader` → `ProfileSkeleton`（auth 載入階段）；倉庫 tab 內聯 spinner → 灰色骨架列
+
+---
+
 ## v2026.07.28f｜2026-07-28｜挑戰機台品項系統 + 前台獎池修正 + UI 統一
 
 ### 後台（挑戰機台）
