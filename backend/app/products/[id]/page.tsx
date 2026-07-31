@@ -642,76 +642,9 @@ export default function EditProductPage() {
           </div>
         </div>
 
-        <form id="product-form" onSubmit={handleSubmit} className="space-y-3">
-
-          {/* ── Section: 上架資訊（機台：不上架、無售價，整區隱藏） ── */}
-          {isSlot && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-700 leading-relaxed">
-              機台品項庫商品：不會出現在前台商城，售價由機台檔次決定。品項的「價值」與「庫存」供機台獎池出獎與直衝定價使用（同主題全部機台共用庫存）。
-            </div>
-          )}
-          {!isSlot && <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
-            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">上架資訊</h3>
-            <div className="grid grid-cols-5 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">狀態</label>
-                <SelectField value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
-                  <option value="active">進行中</option>
-                  <option value="pending">待上架</option>
-                  <option value="ended">已完抽</option>
-                </SelectField>
-              </div>
-              <div>
-                <DatePicker label="開賣時間" value={formData.startedAt}
-                  onChange={(value) => setFormData(prev => ({ ...prev, startedAt: value }))}
-                  placeholder="選擇時間" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
-                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                  placeholder="0" required min="1" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
-                <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
-                  placeholder="0" min="0" step="0.01" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">稀有度</label>
-                <SelectField value={formData.rarity} onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}>
-                  <option value="1">1★</option>
-                  <option value="2">2★</option>
-                  <option value="3">3★</option>
-                  <option value="4">4★</option>
-                  <option value="5">5★</option>
-                </SelectField>
-              </div>
-            </div>
-            {/* 完抽時間 / Seed（條件顯示） */}
-            {formData.status === 'ended' && (
-              <div className="grid grid-cols-5 gap-3 mt-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">完抽時間</label>
-                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600">
-                    {formData.endedAt || '自動記錄中...'}
-                  </div>
-                </div>
-                {formData.seed && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
-                    <div className="flex gap-1">
-                      <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
-                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); toast('已複製', 'success') } catch(_e){ /* clipboard unavailable */ } }}
-                        className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>}
-
+        <form id="product-form" onSubmit={handleSubmit} className="flex gap-4 items-start">
+          {/* 左欄：商品設定 */}
+          <div className="w-[440px] flex-shrink-0 space-y-3 overflow-y-auto h-[calc(100dvh-9rem)] pr-0.5">
           {/* ── Section: 商品資訊 ── */}
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
@@ -746,7 +679,7 @@ export default function EditProductPage() {
               </div>
 
               {/* Row 2: 類型 廠商 抽獎模組 上市時間 代理商 */}
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">類別 <span className="text-red-500">*</span></label>
                   <SelectField value={formData.type} disabled>
@@ -793,7 +726,7 @@ export default function EditProductPage() {
               </div>
 
               {/* Row 3: 條碼 系列 熱賣（機台不適用） */}
-              {!isSlot && <div className="grid grid-cols-3 gap-3 items-end">
+              {!isSlot && <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
                   <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
@@ -832,8 +765,79 @@ export default function EditProductPage() {
             </div>
           </div>
 
+          {/* ── Section: 上架資訊（機台：不上架、無售價，整區隱藏） ── */}
+          {isSlot && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-700 leading-relaxed">
+              機台品項庫商品：不會出現在前台商城，售價由機台檔次決定。品項的「價值」與「庫存」供機台獎池出獎與直衝定價使用（同主題全部機台共用庫存）。
+            </div>
+          )}
+          {!isSlot && <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">上架資訊</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">狀態</label>
+                <SelectField value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                  <option value="active">進行中</option>
+                  <option value="pending">待上架</option>
+                  <option value="ended">已完抽</option>
+                </SelectField>
+              </div>
+              <div>
+                <DatePicker label="開賣時間" value={formData.startedAt}
+                  onChange={(value) => setFormData(prev => ({ ...prev, startedAt: value }))}
+                  placeholder="選擇時間" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
+                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  placeholder="0" required min="1" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
+                <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  placeholder="0" min="0" step="0.01" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">稀有度</label>
+                <SelectField value={formData.rarity} onChange={(e) => setFormData({ ...formData, rarity: parseInt(e.target.value) })}>
+                  <option value="1">1★</option>
+                  <option value="2">2★</option>
+                  <option value="3">3★</option>
+                  <option value="4">4★</option>
+                  <option value="5">5★</option>
+                </SelectField>
+              </div>
+            </div>
+            {/* 完抽時間 / Seed（條件顯示） */}
+            {formData.status === 'ended' && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">完抽時間</label>
+                  <div className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600">
+                    {formData.endedAt || '自動記錄中...'}
+                  </div>
+                </div>
+                {formData.seed && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
+                    <div className="flex gap-1">
+                      <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
+                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); toast('已複製', 'success') } catch(_e){ /* clipboard unavailable */ } }}
+                        className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>}
+
+          </div>
+
+          {/* 右欄：品項 */}
           {/* ── Section: 品項 ── */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+          <div className="flex-1 bg-white rounded-xl border border-neutral-200 shadow-sm p-4 overflow-y-auto h-[calc(100dvh-9rem)]">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">品項</h3>
               <span className="text-xs font-mono text-neutral-400">
@@ -843,7 +847,7 @@ export default function EditProductPage() {
               </span>
             </div>
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 2xl:grid-cols-3 gap-2.5">
                 {prizes.map((prize, index) => (
                   <div key={prize.id} className="border border-neutral-200 rounded-xl bg-white hover:border-primary/40 hover:shadow-sm transition-all">
 
