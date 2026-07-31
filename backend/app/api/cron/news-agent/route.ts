@@ -167,6 +167,20 @@ function extractBodyImage(html: string): string {
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
+// 圖片帶站方浮水印的來源：不用其圖，改用平台預設圖
+const WATERMARKED_SOURCES = ['dengeki.com']
+const DEFAULT_NEWS_IMAGE =
+  `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
+
+// Claude 回 general 時的關鍵字兜底分類
+function classifyByKeywords(text: string): string | null {
+  if (/一番賞|一番くじ/.test(text)) return 'ichiban'
+  if (/ガシャポン|ガチャ|カプセル|扭蛋|轉蛋/.test(text)) return 'gacha'
+  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG/i.test(text)) return 'tcg'
+  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART/i.test(text)) return 'blindbox'
+  return null
+}
+
 const BLOCKED_IMG_DOMAINS = [
   'google.com', 'googleapis.com', 'googleusercontent.com',
   'gstatic.com', 'ggpht.com', 'lh3.google', 'lh4.google',
@@ -333,7 +347,7 @@ ${combined}
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
   "content": "<h2>小標</h2><p>段落...</p>（繁體中文，250-400字，2-3段，從玩家視角介紹商品特色與發售資訊）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|blindbox|tcg|general"
+  "category": "ichiban|gacha|blindbox|tcg|general（能明確歸入前四類就不要用 general）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -544,12 +558,16 @@ export async function POST(req: NextRequest) {
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
+      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      const imageUrl = isWatermarked ? DEFAULT_NEWS_IMAGE : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'general')
+        ? draft.category
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
         image_url: imageUrl, source_url: realUrl,
-        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: !!imageUrl,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
       })
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
@@ -619,7 +637,11 @@ export async function POST(req: NextRequest) {
       // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
+      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      const imageUrl = isWatermarked ? DEFAULT_NEWS_IMAGE : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'general')
+        ? draft.category
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
@@ -629,7 +651,7 @@ export async function POST(req: NextRequest) {
         content:    draft.content,
         image_url:  imageUrl,
         source_url: realUrl,
-        category:   draft.category ?? category,
+        category:   finalCategory,
         tags:       draft.tags ?? [],
         is_active:  !!imageUrl,
       })

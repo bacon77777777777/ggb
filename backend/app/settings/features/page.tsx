@@ -120,6 +120,33 @@ export default function FeatureFlagsPage() {
     }
   }
 
+  const saveAllPushFlags = async (value: boolean) => {
+    setIsPushSaving(true)
+    const allFlags = Object.fromEntries(
+      LINE_PUSH_ITEMS.map(item => [item.key, value])
+    ) as Record<LinePushKey, boolean>
+    setPushFlags(prev => ({ ...prev, ...allFlags }))
+    try {
+      const res = await fetch('/api/admin/line-push-flags', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ flags: allFlags }),
+      })
+      if (res.ok) {
+        const json = (await res.json().catch(() => null)) as any
+        const incoming = json?.flags || {}
+        const normalized = { ...DEFAULT_PUSH_FLAGS }
+        for (const k of Object.keys(normalized) as LinePushKey[]) {
+          if (k in incoming) normalized[k] = Boolean(incoming[k])
+        }
+        setPushFlags(normalized)
+      }
+    } finally {
+      setIsPushSaving(false)
+    }
+  }
+
   const savePushFlag = async (key: LinePushKey, value: boolean) => {
     setIsPushSaving(true)
     const next = { ...pushFlags, [key]: value }
@@ -293,7 +320,17 @@ export default function FeatureFlagsPage() {
 
 
           <div>
-            <div className="mb-2 text-[12px] font-black text-neutral-500">GB哥推播</div>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[12px] font-black text-neutral-500">GB哥推播</div>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-bold text-neutral-400">總開關</span>
+                <Switch
+                  checked={!isPushLoading && LINE_PUSH_ITEMS.every(item => pushFlags[item.key])}
+                  disabled={isPushLoading || isPushSaving}
+                  onCheckedChange={(checked) => saveAllPushFlags(checked)}
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               {LINE_PUSH_ITEMS.map((item) => {
                 const ready = !isPushLoading
