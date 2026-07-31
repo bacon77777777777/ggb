@@ -4,10 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Coins, Zap, Trophy,
-  Lock, X,
-} from 'lucide-react';
+import { Zap, Trophy, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
@@ -707,13 +704,10 @@ export default function MachinePage() {
                   return (
                     <div key={item.id} className="flex flex-col items-center">
                       <div className="aspect-square w-full relative rounded-xl overflow-hidden">
-                        {prize?.image_url ? (
-                          <Image src={prize.image_url} alt={name} fill className="object-contain" unoptimized />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full">
-                            <Coins className="w-6 h-6 text-amber-400" />
-                          </div>
-                        )}
+                        <Image
+                          src={prize?.image_url ?? '/images/slot/machine/coin.png'}
+                          alt={name} fill className="object-contain p-1.5" unoptimized
+                        />
                       </div>
                       <div className="mt-px h-[22px] flex items-center justify-center w-full px-0.5">
                         <p className="text-[9px] text-center text-neutral-600 dark:text-neutral-300 leading-tight line-clamp-2 w-full">{name}</p>
