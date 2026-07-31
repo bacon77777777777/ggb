@@ -568,6 +568,7 @@ export default function MachinePage() {
         totalSpins={session?.day_spins ?? 0}
         betCoins={currentTier.coins}
         directCost={directCost}
+        balance={userTokens}
         onSpin={handleSpin}
         onDirect={handleDirect}
         onAutoToggle={() => setIsAuto(v => !v)}

@@ -17,6 +17,7 @@ export interface MachineLayout {
   autoBtn?: LayoutBox;
   spinBtn?: LayoutBox;
   rushBtn?: LayoutBox;
+  wallet?: LayoutBox;
 }
 
 export interface SlotMachineClassicProps {
@@ -37,6 +38,8 @@ export interface SlotMachineClassicProps {
   totalSpins: number;
   betCoins: number;
   directCost: number;
+  /** 玩家總餘額（G），顯示於機台下方總餘額板 */
+  balance?: number;
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
@@ -380,6 +383,21 @@ const SMVC_CSS = `
   100%  { opacity:.5; box-shadow:inset 0 0 .5cqw .12cqw rgba(0,0,0,.32), 0 0 .7cqw .2cqw rgba(0,0,0,.18); filter:saturate(.65) brightness(.8); }
 }
 
+/* ── 總餘額板 ── */
+.smvc-wallet {
+  position:absolute; z-index:4; pointer-events:none;
+  left:var(--wl-l,24.4%); top:var(--wl-t,92.6%); width:var(--wl-w,51.2%); height:var(--wl-h,6.33%);
+  background:url('/images/slot/machine/wallet.png') no-repeat center/100% 100%;
+}
+.smvc-wallet span {
+  position:absolute; left:30%; right:4.5%; top:6%; bottom:6%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
+  font-weight:900; font-size:2.6cqw; letter-spacing:.15cqw; white-space:nowrap;
+  color:#ffd75e; text-shadow:0 0 .7cqw rgba(255,190,60,.6),0 0 1.6cqw rgba(255,150,30,.3);
+  font-variant-numeric:tabular-nums;
+}
+
 /* ── Reels ── */
 .smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
 .smvc-r0 { left:var(--r0-l,22.00%); width:var(--r0-w,17.07%); }
@@ -581,7 +599,7 @@ const SMVC_CSS = `
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SlotMachineClassic({
-  spinState, isRushActive, isAuto, reelOutcome, spriteUrl, machineLayout,
+  spinState, isRushActive, isAuto, reelOutcome, spriteUrl, machineLayout, balance,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
   winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
@@ -1017,6 +1035,7 @@ export default function SlotMachineClassic({
             };
             box(L.marquee, 'mq'); box(L.scoreboard, 'sb');
             box(L.autoBtn, 'ba'); box(L.spinBtn, 'bs'); box(L.rushBtn, 'br');
+            box(L.wallet, 'wl');
             if (L.reels) {
               if (L.reels.t != null) v['--r-t'] = L.reels.t + '%';
               if (L.reels.h != null) v['--r-h'] = L.reels.h + '%';
@@ -1055,6 +1074,11 @@ export default function SlotMachineClassic({
           <i key={i} className={`smvc-bulb${i < 13 ? ' smvc-bulb-arc' : ''}`}
             style={{ left: `${b.x}%`, top: `${b.y}%`, '--ph': b.ph } as React.CSSProperties} />
         ))}
+
+        {/* 總餘額板 */}
+        <div className="smvc-wallet">
+          <span>{(balance ?? 0).toLocaleString()} G</span>
+        </div>
 
         {/* Marquee */}
         <div className="smvc-marquee" ref={marqueeEl}>
