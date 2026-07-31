@@ -102,6 +102,52 @@ const cn = (n: number) => n <= 10 ? CNNUM[n - 1] : n.toString();
 
 // ── CSS ──────────────────────────────────────────────────────────────────────
 
+
+// 跑馬燈泡座標（% of 750×932 模板；前 13 顆=頂弧 light1、後 28 顆=大当り看板環 light2）
+const MARQUEE_BULBS: { x: number; y: number; ph: number }[] = [
+  { x: 26.267, y: 1.022, ph: 0 },
+  { x: 29.0, y: 1.022, ph: 1 },
+  { x: 31.733, y: 1.022, ph: 2 },
+  { x: 34.467, y: 1.022, ph: 0 },
+  { x: 37.067, y: 1.022, ph: 1 },
+  { x: 39.933, y: 1.022, ph: 2 },
+  { x: 42.667, y: 1.022, ph: 0 },
+  { x: 59.067, y: 1.022, ph: 1 },
+  { x: 62.067, y: 1.022, ph: 2 },
+  { x: 65.067, y: 1.022, ph: 0 },
+  { x: 68.4, y: 1.022, ph: 1 },
+  { x: 71.067, y: 1.022, ph: 2 },
+  { x: 73.733, y: 1.022, ph: 0 },
+  { x: 72.0, y: 11.0, ph: 0 },
+  { x: 75.467, y: 11.0, ph: 1 },
+  { x: 78.267, y: 12.65, ph: 2 },
+  { x: 78.533, y: 15.27, ph: 0 },
+  { x: 78.533, y: 17.89, ph: 1 },
+  { x: 78.533, y: 20.607, ph: 2 },
+  { x: 77.067, y: 22.645, ph: 0 },
+  { x: 74.0, y: 23.227, ph: 1 },
+  { x: 70.4, y: 23.227, ph: 2 },
+  { x: 66.8, y: 23.227, ph: 0 },
+  { x: 63.333, y: 23.227, ph: 1 },
+  { x: 59.733, y: 23.227, ph: 2 },
+  { x: 56.133, y: 23.227, ph: 0 },
+  { x: 52.4, y: 23.227, ph: 1 },
+  { x: 48.667, y: 23.227, ph: 2 },
+  { x: 45.067, y: 23.227, ph: 0 },
+  { x: 41.2, y: 23.227, ph: 1 },
+  { x: 37.467, y: 23.227, ph: 2 },
+  { x: 33.733, y: 23.227, ph: 0 },
+  { x: 29.867, y: 23.227, ph: 1 },
+  { x: 26.267, y: 23.227, ph: 2 },
+  { x: 22.933, y: 22.645, ph: 0 },
+  { x: 21.467, y: 20.607, ph: 1 },
+  { x: 21.467, y: 17.89, ph: 2 },
+  { x: 21.467, y: 15.27, ph: 0 },
+  { x: 21.733, y: 12.65, ph: 1 },
+  { x: 24.533, y: 11.097, ph: 2 },
+  { x: 28.0, y: 11.0, ph: 0 },
+];
+
 const SMVC_CSS = `
 .smvc-stage {
   position:relative; width:100%; aspect-ratio:750/932;
@@ -303,6 +349,23 @@ const SMVC_CSS = `
   background:radial-gradient(rgba(0,0,0,.55) 28%,transparent 32%);
   background-size:.9cqw .9cqw;
 }
+
+/* ── Marquee bulbs（跑馬燈追逐；RUSH 加速）── */
+.smvc-bulb {
+  position:absolute; z-index:3; pointer-events:none;
+  width:1.5cqw; aspect-ratio:1/1; border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 35%, #fff6d0 0%, #ffd75e 48%, #ff9d1c 85%);
+  box-shadow:0 0 .9cqw .25cqw rgba(255,195,70,.85), 0 0 2.2cqw .7cqw rgba(255,150,30,.4);
+  animation:smvc-bulbChase var(--bulb-dur,.9s) steps(1) infinite;
+  animation-delay:calc(var(--ph) * var(--bulb-dur,.9s) / -3);
+}
+@keyframes smvc-bulbChase {
+  0%    { opacity:1; }
+  33.4% { opacity:.22; }
+  100%  { opacity:.22; }
+}
+.smvc-rushskin .smvc-bulb { --bulb-dur:.45s; }
 
 /* ── Reels ── */
 .smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
@@ -956,6 +1019,12 @@ export default function SlotMachineClassic({
 
         {/* RUSH sign */}
         <div className="smvc-rushsign smvc-layer" />
+
+        {/* 跑馬燈泡（頂弧 + 大当り看板環） */}
+        {MARQUEE_BULBS.map((b, i) => (
+          <i key={i} className="smvc-bulb"
+            style={{ left: `${b.x}%`, top: `${b.y}%`, '--ph': b.ph } as React.CSSProperties} />
+        ))}
 
         {/* Marquee */}
         <div className="smvc-marquee" ref={marqueeEl}>
