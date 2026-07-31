@@ -70,6 +70,7 @@ interface SlotPoolItem {
     level: string;
     image_url: string | null;
     recycle_value: number;
+    remaining: number | null;
     products: { type: string } | null;
   } | null;
   slot_prizes: {
@@ -285,7 +286,7 @@ export default function MachinePage() {
   const directCost = (() => {
     const vals = pool
       .filter(i => i.rush_only && !i.normal_only && !i.coin_return
-        && (i.remaining == null || i.remaining > 0)
+        && (i.product_prizes == null || i.product_prizes.remaining == null || i.product_prizes.remaining > 0)
         && (i.min_bet == null || i.min_bet === currentTier.coins))
       .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
     const maxVal = vals.length ? Math.max(...vals) : 0;

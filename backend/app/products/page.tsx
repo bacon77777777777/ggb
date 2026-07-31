@@ -250,6 +250,7 @@ export default function ProductsPage() {
   const HIGH_TIER_LEVELS = ['SP', 'A', 'B', 'C']
   
   const isMajorDepleted = (product: Product): boolean => {
+    if (product.type === 'slot') return false  // 機台品項庫不適用大獎狀態
     const majorRemaining = product.prizes
       .filter(prize => HIGH_TIER_LEVELS.includes(normalizePrizeLevel(prize.level)))
       .reduce((sum, prize) => sum + prize.remaining, 0)
