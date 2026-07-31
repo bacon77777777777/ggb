@@ -109,14 +109,6 @@ export default function NewProductPage() {
     { value: 'Limited', label: '限定版 Limited' },
     { value: 'Option Parts', label: '配件版 Option Parts' },
   ]
-  const slotLevels = [
-    { value: '一等獎', label: '一等獎（大獎）' },
-    { value: '二等獎', label: '二等獎' },
-    { value: '三等獎', label: '三等獎' },
-    { value: '四等獎', label: '四等獎' },
-    { value: '五等獎', label: '五等獎' },
-  ]
-
   const blindboxLevels = [
     { value: '普通款', label: '普通款 Normal' },
     { value: '稀有款', label: '稀有款 Rare' },
@@ -243,6 +235,10 @@ export default function NewProductPage() {
       toast('請選擇廠商', 'warning')
       return
     }
+    if (isSlot && prizes.some(p => !(p.recycleValue > 0))) {
+      toast('機台品項必須填寫品項價值（大於 0）', 'warning')
+      return
+    }
     setIsSubmitting(true)
     
     try {
@@ -317,7 +313,18 @@ export default function NewProductPage() {
         ...slotOverrides,
       }
 
-      // 3.5 Insert Product Tags
+      // 3.5 機台：等級依價值自動判定（前 10% 一等獎、次 30% 二等獎、其餘三等獎）
+      const slotLevelById = new Map<string, string>()
+      if (isSlot) {
+        const ranked = [...prizes].sort((a, b) => b.recycleValue - a.recycleValue)
+        const n = ranked.length
+        const firstCount  = Math.max(1, Math.round(n * 0.1))
+        const secondCount = Math.round(n * 0.3)
+        ranked.forEach((prize, i) => {
+          slotLevelById.set(prize.id, i < firstCount ? '一等獎' : i < firstCount + secondCount ? '二等獎' : '三等獎')
+        })
+      }
+
       // 4. Upload Prize Images and Insert Prizes
       const prizePayload = await Promise.all(prizes.map(async (prize) => {
         let prizeImageUrl = prize.imagePreview || prize.image || '/images/item.png'
@@ -331,7 +338,7 @@ export default function NewProductPage() {
 
         return {
           name: prize.name,
-          level: prize.level,
+          level: isSlot ? (slotLevelById.get(prize.id) ?? '三等獎') : prize.level,
           image_url: prizeImageUrl,
           total: prize.total,
           remaining: prize.remaining,
@@ -772,8 +779,8 @@ export default function NewProductPage() {
 
                         {/* 欄位 */}
                         <div className="flex-1 space-y-1.5 min-w-0">
-                          {/* 名稱 + 等級 */}
-                          <div className="grid grid-cols-2 gap-1.5">
+                          {/* 名稱 + 等級（機台：等級由價值自動判定，不顯示） */}
+                          <div className={`grid gap-1.5 ${isSlot ? 'grid-cols-1' : 'grid-cols-2'}`}>
                             <input
                               type="text"
                               value={prize.name}
@@ -785,30 +792,31 @@ export default function NewProductPage() {
                               className="w-full px-2 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                               placeholder="名稱"
                             />
-                            <SelectField
-                              value={prize.level}
-                              onChange={(e) => {
-                                const updated = [...prizes]
-                                const newLevel = e.target.value
-                                updated[index].level = newLevel
-                                if (isLastOneLevel(newLevel)) {
-                                  const fixed = updated[index]
-                                  const ensureOne = (v: number) => (v && v > 0 ? v : 1)
-                                  fixed.total = ensureOne(fixed.total)
-                                  fixed.remaining = ensureOne(fixed.remaining)
-                                  fixed.probability = 0
-                                }
-                                setPrizes(updated)
-                              }}
-                            >
-                              <option value="">等級</option>
-                              {(formData.type === 'gacha' ? gachaLevels
-                                : formData.type === 'blindbox' ? blindboxLevels
-                                : formData.type === 'slot' ? slotLevels
-                                : ichibanLevels).map(level => (
-                                  <option key={level.value} value={level.value}>{level.label}</option>
-                              ))}
-                            </SelectField>
+                            {!isSlot && (
+                              <SelectField
+                                value={prize.level}
+                                onChange={(e) => {
+                                  const updated = [...prizes]
+                                  const newLevel = e.target.value
+                                  updated[index].level = newLevel
+                                  if (isLastOneLevel(newLevel)) {
+                                    const fixed = updated[index]
+                                    const ensureOne = (v: number) => (v && v > 0 ? v : 1)
+                                    fixed.total = ensureOne(fixed.total)
+                                    fixed.remaining = ensureOne(fixed.remaining)
+                                    fixed.probability = 0
+                                  }
+                                  setPrizes(updated)
+                                }}
+                              >
+                                <option value="">等級</option>
+                                {(formData.type === 'gacha' ? gachaLevels
+                                  : formData.type === 'blindbox' ? blindboxLevels
+                                  : ichibanLevels).map(level => (
+                                    <option key={level.value} value={level.value}>{level.label}</option>
+                                ))}
+                              </SelectField>
+                            )}
                           </div>
 
                           {/* 數量 + 剩餘 + 機率 + 價值 */}
