@@ -650,6 +650,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/slot': 'slot',
     '/slot/prizes': 'slot_prizes',
     '/slot/banners': 'slot_banners',
+    '/slot/reports': 'slot',
     '/slot/[id]': 'slot',
     '/draws': 'draws',
     '/orders': 'orders',
@@ -781,6 +782,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '主題管理', path: '/slot', icon: IconBolt },
           { name: '品項管理', path: '/slot/prizes', icon: IconProducts },
           { name: '輪播圖管理', path: '/slot/banners', icon: IconBanners },
+          { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
         ],
       },
       {
