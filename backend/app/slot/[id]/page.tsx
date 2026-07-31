@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { AdminLayout, PageCard, Modal } from '@/components'
+import { AdminLayout, PageCard, Modal, SortableTableHeader } from '@/components'
 import Switch from '@/components/ui/Switch'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
@@ -108,6 +108,8 @@ export default function SlotThemeDetailPage() {
 
   // RUSH 獎池 modal
   const [tierFilter, setTierFilter]       = useState<number | null>(null)
+  const [poolSortField, setPoolSortField] = useState('recycle')
+  const [poolSortDir, setPoolSortDir]     = useState<'asc' | 'desc'>('asc')
   const [showAddPrize, setShowAddPrize]   = useState(false)
   const [availablePrizes, setAvailablePrizes] = useState<SlotPrize[]>([])
   const [prizeSearch, setPrizeSearch]     = useState('')
@@ -363,6 +365,29 @@ export default function SlotThemeDetailPage() {
 
   const tierOptions      = [...new Set(poolItems.map(p => p.min_bet))].sort((a, b) => (a ?? 0) - (b ?? 0))
   const filteredItems    = tierFilter == null ? poolItems : poolItems.filter(p => p.min_bet === tierFilter)
+
+  const handlePoolSort = (field: string) => {
+    if (field === poolSortField) setPoolSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setPoolSortField(field); setPoolSortDir('asc') }
+  }
+
+  const POOL_LEVEL_RANK: Record<string, number> = { '一等獎': 1, '二等獎': 2, '三等獎': 3 }
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    const dir = poolSortDir === 'asc' ? 1 : -1
+    switch (poolSortField) {
+      case 'name':
+        return dir * (a.slot_prizes?.name ?? a.display_name ?? '').localeCompare(b.slot_prizes?.name ?? b.display_name ?? '', 'zh-Hant')
+      case 'level':
+        return dir * ((POOL_LEVEL_RANK[a.slot_prizes?.level ?? ''] ?? 9) - (POOL_LEVEL_RANK[b.slot_prizes?.level ?? ''] ?? 9))
+      case 'min_bet':
+        return dir * ((a.min_bet ?? 0) - (b.min_bet ?? 0))
+      case 'remaining':
+        return dir * ((a.remaining ?? Number.MAX_SAFE_INTEGER) - (b.remaining ?? Number.MAX_SAFE_INTEGER))
+      case 'recycle':
+      default:
+        return dir * ((a.slot_prizes?.recycle_value ?? 0) - (b.slot_prizes?.recycle_value ?? 0))
+    }
+  })
   const filteredPrizesSearch = availablePrizes.filter(p =>
     !prizeSearch || p.name.toLowerCase().includes(prizeSearch.toLowerCase())
   )
@@ -699,13 +724,17 @@ export default function SlotThemeDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr>
-                        {['圖片', '名稱', '稀有度', '最低投注', '回收幣值', '庫存（每台）', '操作'].map(h => (
-                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                        ))}
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">圖片</th>
+                        <SortableTableHeader sortKey="name" currentSortField={poolSortField} sortDirection={poolSortDir} onSort={handlePoolSort} className="px-4 py-2.5">名稱</SortableTableHeader>
+                        <SortableTableHeader sortKey="level" currentSortField={poolSortField} sortDirection={poolSortDir} onSort={handlePoolSort} className="px-4 py-2.5">稀有度</SortableTableHeader>
+                        <SortableTableHeader sortKey="min_bet" currentSortField={poolSortField} sortDirection={poolSortDir} onSort={handlePoolSort} className="px-4 py-2.5">最低投注</SortableTableHeader>
+                        <SortableTableHeader sortKey="recycle" currentSortField={poolSortField} sortDirection={poolSortDir} onSort={handlePoolSort} className="px-4 py-2.5">回收幣值</SortableTableHeader>
+                        <SortableTableHeader sortKey="remaining" currentSortField={poolSortField} sortDirection={poolSortDir} onSort={handlePoolSort} className="px-4 py-2.5">庫存（每台）</SortableTableHeader>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                      {filteredItems.map(item => {
+                      {sortedItems.map(item => {
                         const prizeName    = item.slot_prizes?.name ?? item.display_name ?? '—'
                         const prizeImg     = item.slot_prizes?.image_url ?? '/images/item.png'
                         const recycleVal   = item.slot_prizes?.recycle_value ?? 0
