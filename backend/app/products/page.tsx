@@ -1143,7 +1143,12 @@ export default function ProductsPage() {
                           )}
                         </td>
                       )}
-                      {visibleColumns.visibility && (
+                      {visibleColumns.visibility && product.type === 'slot' && (
+                        <td className={`${getDensityClasses()} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
+                          <span className="text-neutral-400">—</span>
+                        </td>
+                      )}
+                      {visibleColumns.visibility && product.type !== 'slot' && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={async () => {
