@@ -22,6 +22,7 @@ interface SlotTheme {
   video_rush_win_god: string | null; video_rush_revival: string | null
   is_active: boolean; sort_order: number
   machine_type: 'video' | 'classic'
+  machine_sprite_url: string | null
   suppliers: { name: string } | null
 }
 interface ThemePrize {
@@ -105,6 +106,8 @@ export default function SlotThemeDetailPage() {
   const [betTiersInput, setBetTiersInput] = useState('')
   const [machineImageFile, setMachineImageFile]       = useState<File | null>(null)
   const [machineImagePreview, setMachineImagePreview] = useState('')
+  const [spriteFile, setSpriteFile]                   = useState<File | null>(null)
+  const [spritePreview, setSpritePreview]             = useState('')
 
   // RUSH 獎池 modal
   const [tierFilter, setTierFilter]       = useState<number | null>(null)
@@ -138,6 +141,7 @@ export default function SlotThemeDetailPage() {
     setDecayStr(((t.continue_rate_decay ?? 0.5) * 100).toFixed(0))
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setMachineImagePreview(t.image_url ?? '')
+    setSpritePreview(t.machine_sprite_url ?? '')
     setIsLoading(false)
   }
 
@@ -192,16 +196,28 @@ export default function SlotThemeDetailPage() {
         if (!uploadRes.ok) throw new Error(uploadJson?.error || '圖片上傳失敗')
         finalImageUrl = String(uploadJson?.publicUrl || '')
       }
+      let finalSpriteUrl = form.machine_sprite_url ?? null
+      if (spriteFile) {
+        const uploadForm = new FormData()
+        uploadForm.append('file', spriteFile)
+        uploadForm.append('bucket', 'products')
+        uploadForm.append('path', `slot-sprite-${id}-${Date.now()}.png`)
+        const uploadRes  = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
+        const uploadJson = await uploadRes.json().catch(() => ({}))
+        if (!uploadRes.ok) throw new Error(uploadJson?.error || '組圖上傳失敗')
+        finalSpriteUrl = String(uploadJson?.publicUrl || '')
+      }
       const res = await fetch(`/api/admin/slot/themes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, bet_tiers: parsedTiers, spin_returns: FIXED_COIN_RETURNS, image_url: finalImageUrl }),
+        body: JSON.stringify({ ...form, bet_tiers: parsedTiers, spin_returns: FIXED_COIN_RETURNS, image_url: finalImageUrl, machine_sprite_url: finalSpriteUrl }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       toast('儲存成功')
       setTheme(data.theme)
       setMachineImageFile(null)
+      setSpriteFile(null)
     } catch (e: any) {
       toast(e.message ?? '儲存失敗', 'error')
     } finally {
@@ -463,7 +479,7 @@ export default function SlotThemeDetailPage() {
                     onChange={e => setForm(p => ({ ...p, event_slug: e.target.value || null }))} />
                 </Field>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="機台圖片">
                   <input type="file" accept="image/*" onChange={e => {
                     const f = e.target.files?.[0]
@@ -473,6 +489,26 @@ export default function SlotThemeDetailPage() {
                     <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
                       <img src={machineImagePreview} alt="" className="w-full h-full object-cover" />
                     </div>
+                  )}
+                </Field>
+                <Field label="機台組圖（sprite，2048×1400 模板）">
+                  <input type="file" accept="image/png" onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (f) { setSpriteFile(f); setSpritePreview(URL.createObjectURL(f)) }
+                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  {spritePreview ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="w-24 h-16 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-900">
+                        <img src={spritePreview} alt="" className="w-full h-full object-contain" />
+                      </div>
+                      <button type="button"
+                        onClick={() => { setSpriteFile(null); setSpritePreview(''); setForm(p => ({ ...p, machine_sprite_url: null })) }}
+                        className="text-xs text-neutral-500 underline hover:text-red-500">
+                        清除（改用預設）
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-neutral-400">未上傳，使用預設組圖</p>
                   )}
                 </Field>
               </div>

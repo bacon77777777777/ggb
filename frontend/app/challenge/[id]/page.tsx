@@ -50,7 +50,7 @@ interface SlotMachine {
   min_rush_hits: number;
   floor_spin_count: number;
   bet_tiers: BetTier[];
-  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null } | null;
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null } | null;
 }
 
 interface SlotPoolItem {
@@ -549,6 +549,7 @@ export default function MachinePage() {
         rushHitsRemaining={session?.rush_hits_remaining ?? 0}
         isAuto={isAuto}
         reelOutcome={reelOutcome}
+        spriteUrl={machine.slot_themes?.machine_sprite_url ?? undefined}
         spinsThisTier={spinsThisTier}
         floorSpinCount={machine.floor_spin_count}
         jackpot={jackpot}
