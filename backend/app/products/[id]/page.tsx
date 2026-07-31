@@ -165,6 +165,7 @@ export default function EditProductPage() {
     total: number
     remaining: number
     probability: number
+    recycleValue: number
     decompose_type: 'auto' | 'percent' | 'fixed'
     decompose_value: number | null
   }>>([])
@@ -376,6 +377,7 @@ export default function EditProductPage() {
             total: prize.total,
             remaining: prize.remaining,
             probability: prize.probability,
+            recycleValue: prize.recycle_value ?? 0,
             decompose_type: prize.decompose_type || 'auto',
             decompose_value: prize.decompose_value ?? null,
           }))
@@ -499,6 +501,7 @@ export default function EditProductPage() {
           total: prize.total,
           remaining: prize.remaining,
           probability: prize.probability,
+          recycle_value: Math.max(0, Math.round(prize.recycleValue) || 0),
           decompose_type: prize.decompose_type || 'auto',
           decompose_value: prize.decompose_value ?? null,
         }
@@ -577,6 +580,15 @@ export default function EditProductPage() {
     )
   }
 
+  // 機台：品項庫商品（不上架、無售價；數量=共用庫存、價值=定價依據）
+  const isSlot = formData.type === 'slot'
+  const slotLevels = [
+    { value: '一等獎', label: '一等獎（大獎）' },
+    { value: '二等獎', label: '二等獎' },
+    { value: '三等獎', label: '三等獎' },
+    { value: '四等獎', label: '四等獎' },
+    { value: '五等獎', label: '五等獎' },
+  ]
   // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
   const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
   // 轉蛋/盒玩：機率制，等級固定「普通」，數量可疊加
@@ -632,8 +644,13 @@ export default function EditProductPage() {
 
         <form id="product-form" onSubmit={handleSubmit} className="space-y-3">
 
-          {/* ── Section: 上架資訊 ── */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
+          {/* ── Section: 上架資訊（機台：不上架、無售價，整區隱藏） ── */}
+          {isSlot && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-700 leading-relaxed">
+              機台品項庫商品：不會出現在前台商城，售價由機台檔次決定。品項的「價值」與「庫存」供機台獎池出獎與直衝定價使用（同主題全部機台共用庫存）。
+            </div>
+          )}
+          {!isSlot && <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">上架資訊</h3>
             <div className="grid grid-cols-5 gap-3">
               <div>
@@ -693,7 +710,7 @@ export default function EditProductPage() {
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* ── Section: 商品資訊 ── */}
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
@@ -738,6 +755,7 @@ export default function EditProductPage() {
                     <option value="gacha">轉蛋</option>
                     <option value="card">抽卡</option>
                     <option value="custom">自製賞</option>
+                    <option value="slot">機台</option>
                   </SelectField>
                 </div>
                 <div>
@@ -749,7 +767,7 @@ export default function EditProductPage() {
                     ))}
                   </SelectField>
                 </div>
-                <div>
+                {!isSlot && <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">抽獎模組</label>
                   <SelectField value={formData.machineTheme} onChange={(e) => setFormData({ ...formData, machineTheme: e.target.value })}>
                     <option value="">— 類別預設 —</option>
@@ -757,25 +775,25 @@ export default function EditProductPage() {
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </SelectField>
-                </div>
-                <div>
+                </div>}
+                {!isSlot && <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">上市時間</label>
                   <YearMonthPicker year={formData.releaseYear} month={formData.releaseMonth}
                     onYearChange={(value) => setFormData({ ...formData, releaseYear: value })}
                     onMonthChange={(value) => setFormData({ ...formData, releaseMonth: value })}
                     onClear={() => setFormData({ ...formData, releaseYear: '', releaseMonth: '' })}
                     placeholder="選擇上市時間" />
-                </div>
-                <div>
+                </div>}
+                {!isSlot && <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">代理商</label>
                   <input type="text" value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
                     placeholder="萬代南夢宮" />
-                </div>
+                </div>}
               </div>
 
-              {/* Row 3: 條碼 系列 熱賣 */}
-              <div className="grid grid-cols-3 gap-3 items-end">
+              {/* Row 3: 條碼 系列 熱賣（機台不適用） */}
+              {!isSlot && <div className="grid grid-cols-3 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
                   <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
@@ -803,14 +821,14 @@ export default function EditProductPage() {
                     <option value="1">是</option>
                   </select>
                 </div>
-              </div>
+              </div>}
 
               {/* 標籤 */}
-              <div>
+              {!isSlot && <div>
                 <TagSelector value={formData.selectedTagIds}
                   onChange={(newTags) => setFormData((prev) => ({ ...prev, selectedTagIds: newTags }))}
                   label="標籤" />
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -949,15 +967,15 @@ export default function EditProductPage() {
                             }}
                           >
                             <option value="">— 選擇等級 —</option>
-                            {ichibanLevels.map(level => (
+                            {(isSlot ? slotLevels : ichibanLevels).map(level => (
                               <option key={level.value} value={level.value}>{level.label}</option>
                             ))}
                           </SelectField>
                         )}
                       </div>
 
-                      {/* 數量資訊：3 欄 */}
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* 數量資訊 */}
+                      <div className={`grid gap-2 ${isSlot ? 'grid-cols-3' : 'grid-cols-4'}`}>
                         <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">總數量</label>
                           {isVerifiable ? (
@@ -988,7 +1006,7 @@ export default function EditProductPage() {
                             {prize.remaining}
                           </div>
                         </div>
-                        <div>
+                        {!isSlot && <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">抽中機率</label>
                           <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 text-center">
                             {isLastOneLevel(prize.level)
@@ -999,6 +1017,21 @@ export default function EditProductPage() {
                                 )
                             }
                           </div>
+                        </div>}
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">品項價值 (G)</label>
+                          <input
+                            type="number"
+                            value={prize.recycleValue === 0 ? '' : prize.recycleValue}
+                            onChange={(e) => {
+                              const updated = [...prizes]
+                              updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                              setPrizes(updated)
+                            }}
+                            className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
+                            min="0"
+                            placeholder="0"
+                          />
                         </div>
                       </div>
 
@@ -1104,7 +1137,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
                   }}
                   className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                 >
@@ -1130,6 +1163,7 @@ export default function EditProductPage() {
                       total: 0,
                       remaining: 0,
                       probability: 0,
+                      recycleValue: 0,
                       decompose_type: 'auto' as const,
                       decompose_value: null as number | null,
                     }
