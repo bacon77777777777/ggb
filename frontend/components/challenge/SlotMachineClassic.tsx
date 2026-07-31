@@ -418,7 +418,6 @@ const SMVC_CSS = `
   font-size:15cqw; font-weight:900; letter-spacing:1cqw; white-space:nowrap;
   background:linear-gradient(90deg,#fff3a0 0%,#ffd400 25%,#ff8800 55%,#ff3800 80%,#ffd400 100%);
   -webkit-background-clip:text; background-clip:text; color:transparent;
-  -webkit-text-stroke:.55cqw rgba(180,60,0,.7); paint-order:stroke fill;
   filter:drop-shadow(0 0 1.5cqw #ff3c00) drop-shadow(.5cqw .8cqw 0 rgba(80,20,0,.9));
   animation:smvc-winpop .5s cubic-bezier(.2,2.4,.4,1) both,smvc-winstrobe .16s steps(2) .5s infinite;
 }
