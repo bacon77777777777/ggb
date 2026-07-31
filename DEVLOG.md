@@ -4,6 +4,17 @@
 
 ---
 
+## v2026.07.31c｜2026-07-31｜sprite 原圖直傳 + 主題版位覆蓋系統
+
+### 改動（migration 388，STG+PROD 已執行）
+- 上傳 API 加 raw=1 模式：機台 sprite 組圖原圖直傳不壓縮（其他上傳照舊壓 800 WebP）
+- slot_themes.machine_layout（JSONB）：各主題可覆蓋 marquee/scoreboard/reels/三按鈕版位（百分比），元件版位改 CSS 變數注入
+- 後台主題設定加「機台版位覆蓋」JSON 編輯欄（含格式驗證）
+- AI 生成主題 SOP 建立：ChatGPT 出圖（任意排版）→ 自動分割重組進 2048×1400 模板 → raw 上傳 → 版位 JSON 微調；埃及主題 sprite2 為首例
+- 直衝定價確認維持：剩餘保底轉數 × 檔次金額
+
+---
+
 ## v2026.07.31b｜2026-07-31｜main_rush 圖寬修正
 
 ### 改動
