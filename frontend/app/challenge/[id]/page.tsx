@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
-import SlotMachineClassic, { ReelOutcome } from '@/components/challenge/SlotMachineClassic';
+import SlotMachineClassic, { ReelOutcome, MachineLayout } from '@/components/challenge/SlotMachineClassic';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -50,7 +50,7 @@ interface SlotMachine {
   min_rush_hits: number;
   floor_spin_count: number;
   bet_tiers: BetTier[];
-  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null } | null;
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null; machine_layout: MachineLayout | null } | null;
 }
 
 interface SlotPoolItem {
@@ -550,6 +550,7 @@ export default function MachinePage() {
         isAuto={isAuto}
         reelOutcome={reelOutcome}
         spriteUrl={machine.slot_themes?.machine_sprite_url ?? undefined}
+        machineLayout={machine.slot_themes?.machine_layout ?? undefined}
         spinsThisTier={spinsThisTier}
         floorSpinCount={machine.floor_spin_count}
         jackpot={jackpot}

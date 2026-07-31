@@ -19,7 +19,7 @@ export async function GET(
       supabase
         .from('slot_machines')
         .select(`*, slot_themes(
-          id, name, image_url, machine_type, machine_sprite_url,
+          id, name, image_url, machine_type, machine_sprite_url, machine_layout,
           video_rush_entry, video_rush_anticipation,
           video_rush_win, video_rush_win_strong,
           video_rush_win_god, video_rush_revival

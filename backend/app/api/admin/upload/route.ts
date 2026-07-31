@@ -21,6 +21,14 @@ export async function POST(request: Request) {
     }
 
     const buf = Buffer.from(await file.arrayBuffer())
+
+    // raw=1：原圖直傳不壓縮（機台 sprite 組圖等像素精度素材用）
+    if (String(form.get('raw') || '') === '1') {
+      const key = `${bucket}/${filePath}`
+      const publicUrl = await r2Upload(key, buf, file.type || 'image/png')
+      return NextResponse.json({ publicUrl })
+    }
+
     const compressed = await compressToWebP(buf, bucket)
     const noExt = filePath.replace(/\.[^.]+$/, '')
     const key = `${bucket}/${noExt}.webp`

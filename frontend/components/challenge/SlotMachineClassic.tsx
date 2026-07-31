@@ -8,6 +8,17 @@ type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 // triple = 三個一樣(非7) / pair7 = 雙7聽牌 / pair = 兩個一樣(非7) / mixed = 三個都不同
 export type ReelOutcome = 'triple' | 'pair7' | 'pair' | 'mixed';
 
+// 主題版位覆蓋（單位：stage 百分比）
+interface LayoutBox { l?: number; t?: number; w?: number; h?: number }
+export interface MachineLayout {
+  marquee?: LayoutBox;
+  scoreboard?: LayoutBox;                                  // RUSH 燈牌與 LED 計分板共用
+  reels?: { t?: number; h?: number; cols?: { l?: number; w?: number }[] };
+  autoBtn?: LayoutBox;
+  spinBtn?: LayoutBox;
+  rushBtn?: LayoutBox;
+}
+
 export interface SlotMachineClassicProps {
   spinState: SpinState;
   isRushActive: boolean;
@@ -16,6 +27,8 @@ export interface SlotMachineClassicProps {
   reelOutcome?: ReelOutcome | null;
   /** 主題組圖路徑（2048×1400 固定模板），未傳用預設主題 */
   spriteUrl?: string;
+  /** 主題版位覆蓋（百分比），未設定區域用預設座標 */
+  machineLayout?: MachineLayout | null;
   spinsThisTier: number;
   floorSpinCount: number;
   jackpot: boolean;
@@ -225,7 +238,9 @@ const SMVC_CSS = `
 
 /* ── RUSH sign (hidden in normal mode) ── */
 .smvc-rushsign {
-  position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%; z-index:5;
+  position:absolute;
+  left:var(--sb-l,27.07%); top:var(--sb-t,27.15%); width:var(--sb-w,45.87%); height:var(--sb-h,8.8%);
+  z-index:5;
   background-image:var(--smvc-sprite);
   background-repeat:no-repeat;
   background-size:595.3488% 1707.3171%;
@@ -246,7 +261,8 @@ const SMVC_CSS = `
 
 /* ── Scoreboard (behind rush sign, 常駐顯示；RUSH 燈牌亮起時被其覆蓋) ── */
 .smvc-scoreboard {
-  position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%;
+  position:absolute;
+  left:var(--sb-l,27.07%); top:var(--sb-t,27.15%); width:var(--sb-w,45.87%); height:var(--sb-h,8.8%);
   z-index:4; display:flex; align-items:center; justify-content:center;
   pointer-events:none;
   font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
@@ -265,7 +281,8 @@ const SMVC_CSS = `
 
 /* ── Marquee ── */
 .smvc-marquee {
-  position:absolute; left:24.93%; top:14.59%; width:50%; height:7.83%;
+  position:absolute;
+  left:var(--mq-l,24.93%); top:var(--mq-t,14.59%); width:var(--mq-w,50%); height:var(--mq-h,7.83%);
   overflow:hidden; border-radius:1cqw; display:flex; align-items:center; z-index:5;
 }
 .smvc-marquee-txt {
@@ -288,10 +305,10 @@ const SMVC_CSS = `
 }
 
 /* ── Reels ── */
-.smvc-reel { position:absolute; overflow:hidden; z-index:3; }
-.smvc-r0 { left:22.00%; top:40.77%; width:17.07%; height:15.88%; }
-.smvc-r1 { left:42.40%; top:40.77%; width:16.13%; height:15.88%; }
-.smvc-r2 { left:61.73%; top:40.77%; width:16.27%; height:15.88%; }
+.smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
+.smvc-r0 { left:var(--r0-l,22.00%); width:var(--r0-w,17.07%); }
+.smvc-r1 { left:var(--r1-l,42.40%); width:var(--r1-w,16.13%); }
+.smvc-r2 { left:var(--r2-l,61.73%); width:var(--r2-w,16.27%); }
 .smvc-strip { position:absolute; left:0; width:100%; will-change:transform; }
 .smvc-cell {
   height:var(--smvc-rowH,80px);
@@ -388,14 +405,14 @@ const SMVC_CSS = `
   color:#ffe8a0;
 }
 .smvc-btn-amt { font-size:68%; opacity:.92; letter-spacing:.04cqw; }
-.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;
+.smvc-btn-auto { left:var(--ba-l,21.87%); top:var(--ba-t,61.48%); width:var(--ba-w,17.33%); height:var(--ba-h,8.58%);
   background-size:1575.3846% 1750%; background-position:79.2492% 7.5758%;
   font-size:3.3cqw; padding-bottom:3.2cqw; }
-.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%;
+.smvc-btn-spin { left:var(--bs-l,39.20%); top:var(--bs-t,62.34%); width:var(--bs-w,23.73%); height:var(--bs-h,11.16%);
   background-size:1150.5618% 1346.1538%; background-position:81.2834% 15.4321%;
   font-size:4.5cqw; padding-bottom:3.2cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
-.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;
+.smvc-btn-rush { left:var(--br-l,62.93%); top:var(--br-t,61.48%); width:var(--br-w,17.33%); height:var(--br-h,8.58%);
   background-size:1575.3846% 1750%; background-position:79.2492% 24.2424%;
   font-size:3.3cqw; padding-bottom:3.2cqw; }
 @keyframes smvc-invite {
@@ -488,7 +505,7 @@ const SMVC_CSS = `
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SlotMachineClassic({
-  spinState, isRushActive, isAuto, reelOutcome, spriteUrl,
+  spinState, isRushActive, isAuto, reelOutcome, spriteUrl, machineLayout,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
   winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
@@ -885,7 +902,33 @@ export default function SlotMachineClassic({
       <div
         ref={stageRef}
         className="smvc-stage"
-        style={{ '--smvc-sprite': `url(${spriteUrl ?? DEFAULT_SPRITE})` } as React.CSSProperties}
+        style={{
+          '--smvc-sprite': `url(${spriteUrl ?? DEFAULT_SPRITE})`,
+          ...(() => {
+            // 主題版位覆蓋 → CSS 變數（未設定的用 CSS 預設值）
+            const v: Record<string, string> = {};
+            const L = machineLayout ?? {};
+            const box = (b: LayoutBox | undefined, p: string) => {
+              if (!b) return;
+              if (b.l != null) v[`--${p}-l`] = b.l + '%';
+              if (b.t != null) v[`--${p}-t`] = b.t + '%';
+              if (b.w != null) v[`--${p}-w`] = b.w + '%';
+              if (b.h != null) v[`--${p}-h`] = b.h + '%';
+            };
+            box(L.marquee, 'mq'); box(L.scoreboard, 'sb');
+            box(L.autoBtn, 'ba'); box(L.spinBtn, 'bs'); box(L.rushBtn, 'br');
+            if (L.reels) {
+              if (L.reels.t != null) v['--r-t'] = L.reels.t + '%';
+              if (L.reels.h != null) v['--r-h'] = L.reels.h + '%';
+              (L.reels.cols ?? []).forEach((c, i) => {
+                if (i > 2) return;
+                if (c.l != null) v[`--r${i}-l`] = c.l + '%';
+                if (c.w != null) v[`--r${i}-w`] = c.w + '%';
+              });
+            }
+            return v;
+          })(),
+        } as React.CSSProperties}
       >
         {/* Machine layers */}
         <div className="smvc-machine smvc-layer" />

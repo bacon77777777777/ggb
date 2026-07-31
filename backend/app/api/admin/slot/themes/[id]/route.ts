@@ -43,7 +43,7 @@ export async function PATCH(
     'continue_rate_decay', 'min_rush_hits', 'floor_spin_count',
     'video_rush_entry', 'video_rush_anticipation', 'video_rush_win',
     'video_rush_win_strong', 'video_rush_win_god', 'video_rush_revival',
-    'is_active', 'sort_order', 'machine_type', 'machine_sprite_url',
+    'is_active', 'sort_order', 'machine_type', 'machine_sprite_url', 'machine_layout',
   ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {

@@ -23,6 +23,7 @@ interface SlotTheme {
   is_active: boolean; sort_order: number
   machine_type: 'video' | 'classic'
   machine_sprite_url: string | null
+  machine_layout: Record<string, unknown> | null
   suppliers: { name: string } | null
 }
 interface ThemePrize {
@@ -108,6 +109,7 @@ export default function SlotThemeDetailPage() {
   const [machineImagePreview, setMachineImagePreview] = useState('')
   const [spriteFile, setSpriteFile]                   = useState<File | null>(null)
   const [spritePreview, setSpritePreview]             = useState('')
+  const [layoutStr, setLayoutStr]                     = useState('')
 
   // RUSH 獎池 modal
   const [tierFilter, setTierFilter]       = useState<number | null>(null)
@@ -142,6 +144,7 @@ export default function SlotThemeDetailPage() {
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setMachineImagePreview(t.image_url ?? '')
     setSpritePreview(t.machine_sprite_url ?? '')
+    setLayoutStr(t.machine_layout ? JSON.stringify(t.machine_layout, null, 2) : '')
     setIsLoading(false)
   }
 
@@ -183,6 +186,10 @@ export default function SlotThemeDetailPage() {
   const handleSave = async () => {
     if (parsedTiers.length === 0) { toast('請設定至少一個投注檔次', 'error'); return }
     if (parsedTiers.length > 5)   { toast('投注檔次最多 5 個', 'error'); return }
+    let parsedLayout: Record<string, unknown> | null = null
+    if (layoutStr.trim()) {
+      try { parsedLayout = JSON.parse(layoutStr) } catch { toast('機台版位 JSON 格式錯誤', 'error'); return }
+    }
     setSaving(true)
     try {
       let finalImageUrl = form.image_url ?? null
@@ -201,6 +208,7 @@ export default function SlotThemeDetailPage() {
         const uploadForm = new FormData()
         uploadForm.append('file', spriteFile)
         uploadForm.append('bucket', 'products')
+        uploadForm.append('raw', '1')   // sprite 不壓縮，原圖直傳
         uploadForm.append('path', `slot-sprite-${id}-${Date.now()}.png`)
         const uploadRes  = await fetch('/api/admin/upload', { method: 'POST', body: uploadForm })
         const uploadJson = await uploadRes.json().catch(() => ({}))
@@ -210,7 +218,7 @@ export default function SlotThemeDetailPage() {
       const res = await fetch(`/api/admin/slot/themes/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, bet_tiers: parsedTiers, spin_returns: FIXED_COIN_RETURNS, image_url: finalImageUrl, machine_sprite_url: finalSpriteUrl }),
+        body: JSON.stringify({ ...form, bet_tiers: parsedTiers, spin_returns: FIXED_COIN_RETURNS, image_url: finalImageUrl, machine_sprite_url: finalSpriteUrl, machine_layout: parsedLayout }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -510,6 +518,17 @@ export default function SlotThemeDetailPage() {
                   ) : (
                     <p className="mt-1 text-xs text-neutral-400">未上傳，使用預設組圖</p>
                   )}
+                </Field>
+              </div>
+              <div className="mt-4">
+                <Field label="機台版位覆蓋（JSON，選填）">
+                  <textarea rows={5} className={INPUT + ' font-mono text-xs'} value={layoutStr}
+                    onChange={e => setLayoutStr(e.target.value)}
+                    placeholder={'留空使用預設版位。範例：\n{"reels":{"t":39,"h":17,"cols":[{"l":19.5,"w":18.5},{"l":42},{"l":63.5}]},"marquee":{"t":16},"scoreboard":{"t":30}}'}
+                  />
+                  <p className="mt-1 text-xs text-neutral-400">
+                    單位為機台寬高百分比。可覆蓋 marquee / scoreboard / reels / autoBtn / spinBtn / rushBtn，只填要調的欄位（l/t/w/h）
+                  </p>
                 </Field>
               </div>
               <div className="mt-4">
