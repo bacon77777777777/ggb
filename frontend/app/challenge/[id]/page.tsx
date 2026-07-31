@@ -187,11 +187,10 @@ export default function MachinePage() {
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResultRef = useRef<SpinResult | null>(null);
-  const wasInRushRef = useRef(false);
   const videoPhaseRef = useRef<VideoPhase>(null);
   const animDoneRef = useRef<(() => void) | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const scheduleResultCloseRef = useRef<(rushEnded: boolean) => void>(() => {});
+  const scheduleResultCloseRef = useRef<() => void>(() => {});
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
@@ -265,7 +264,8 @@ export default function MachinePage() {
 
   const tiers: BetTier[] = machine?.bet_tiers ?? [];
   const currentTier: BetTier = tiers[tierIndex] ?? { label: '小注', coins: machine?.price_per_spin ?? 100 };
-  const isRushActive = session?.state === 'rush' && (session?.rush_hits_remaining ?? 0) > 0;
+  // RUSH 視覺狀態：state='rush' 即算（含 hits=0 的延續判定中——下一轉揭曉是否連中）
+  const isRushActive = session?.state === 'rush';
   const isRushLocked = isRushActive;
   // Tier locked when entering from challenge list via ?bet= param
   const isTierLocked = !!preSelectedBet || isRushLocked;
@@ -296,7 +296,7 @@ export default function MachinePage() {
       if (lastResultRef.current) {
         setTimeout(() => {
           setSpinState('result');
-          scheduleResultCloseRef.current(lastResultRef.current?.session.state !== 'rush');
+          scheduleResultCloseRef.current();
         }, 2000);
       } else {
         setSpinState('idle');
@@ -304,28 +304,25 @@ export default function MachinePage() {
     }
   }, []);
 
-  // 結果慶祝關閉：rushEnded=true 表示 RUSH 已結束，需歸零 streak；auto 開啟時關閉後續轉
-  function closeResult(rushEnded: boolean) {
+  // 結果慶祝關閉；auto 開啟時關閉後續轉。streak 歸零交給「非 777 揭曉轉」的 animDone 處理
+  function closeResult() {
     if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
     setLastResult(null);
     setJackpot(false);
-    if (rushEnded) setRushStreak(0);
     setSpinState('idle');
     if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
   }
 
   // 結果慶祝顯示後數秒自動關閉（手動/auto 皆自動關）
-  function scheduleResultClose(rushEnded: boolean) {
+  function scheduleResultClose() {
     if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
-    autoCloseTimerRef.current = setTimeout(() => closeResult(rushEnded), 2600);
+    autoCloseTimerRef.current = setTimeout(() => closeResult(), 2600);
   }
   scheduleResultCloseRef.current = scheduleResultClose;
 
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
     setError(null);
-    // Snapshot rush state before this spin; reset jackpot for new spin
-    wasInRushRef.current = isRushActive;
     setJackpot(false);
     setSpinState('spinning');
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
@@ -355,8 +352,9 @@ export default function MachinePage() {
         if (idx >= 0) setTierIndex(idx);
       }
 
-      // jackpot = RUSH just triggered OR we were already in RUSH (winning a RUSH item)
-      const isJackpot = data.rush_triggered || wasInRushRef.current;
+      // jackpot（777）= RUSH 觸發 or RUSH 品項轉（保底連中 / 延續判定通過，state 維持 rush）
+      // 延續判定失敗的揭曉轉 state='normal' → 非 777，finish(false) 換回普通機台
+      const isJackpot = data.rush_triggered || data.session.state === 'rush';
       setJackpot(isJackpot);
 
       const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
@@ -394,33 +392,21 @@ export default function MachinePage() {
             setTimeout(() => {
               setSpinState('result');
               if (refreshProfile) refreshProfile();
-              scheduleResultClose(false);
+              scheduleResultClose();
             }, 2000);
           };
           setSpinState('stopping');
         }
       } else {
         if (isClassic) {
-          if (isJackpot) {
-            // RUSH 退出（wasInRushRef=true, state='normal'）：streak 遞增後顯示結果
-            setRushStreak(prev => prev + 1);
-            animDoneRef.current = () => {
-              setTimeout(() => {
-                setSpinState('result');
-                if (refreshProfile) refreshProfile();
-                scheduleResultClose(true);
-              }, 2000);
-            };
-          } else {
-            // 普通 coin return 旋轉：顯示 +XG 動畫，回 idle（等三個轉完才顯示）
-            animDoneRef.current = () => {
-              if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
-              setRushStreak(0);
-              setSpinState('idle');
-              if (refreshProfile) refreshProfile();
-              if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
-            };
-          }
+          // 普通旋轉 / 延續失敗揭曉轉：非 777 停定 → +XG、finish(false) 換回普通機台、streak 歸零
+          animDoneRef.current = () => {
+            if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setRushStreak(0);
+            setSpinState('idle');
+            if (refreshProfile) refreshProfile();
+            if (isAutoRef.current) setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 700);
+          };
           setSpinState('stopping');
         } else {
           setRushStreak(0);
@@ -952,7 +938,7 @@ export default function MachinePage() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm overflow-hidden"
-            onClick={() => closeResult(!isRushActive)}
+            onClick={() => closeResult()}
           >
             <ConfettiBurst />
             <motion.div
