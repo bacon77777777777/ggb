@@ -538,7 +538,8 @@ export default function SlotMachineClassic({
   };
 
   const offsets       = useRef([0, 0, 0]);
-  const rowH          = useRef(80);
+  const rowH          = useRef(80);   // 格高（= 視窗高 × CELL_F，上下露出相鄰符號邊）
+  const padY          = useRef(0);    // 置中偏移 = (視窗高 − 格高) / 2
   const rafId         = useRef(0);
   const prevSpin      = useRef<SpinState>('idle');
   const jackpotRef    = useRef(false);
@@ -583,7 +584,7 @@ export default function SlotMachineClassic({
       }
       offsets.current = t.map(s => s * h);
       stripEls.current.forEach((el, i) => {
-        if (el) el.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
+        if (el) el.style.transform = `translateY(${stripY(offsets.current[i], h)}px)`;
       });
     }
     window.addEventListener('resize', sync);
@@ -606,14 +607,20 @@ export default function SlotMachineClassic({
     if (isRushActive) stage.classList.add('smvc-rushskin');
   }, [isRushActive, spinState]);
 
+  // 條帶定位：目標格置中，上下各露出相鄰符號一小段（往上多移一圈確保上方有格可露）
+  const stripY = useCallback((pos: number, h: number) =>
+    -(pos % (N * h)) - N * h + padY.current, []);
+
   const sync = useCallback(() => {
-    const h = reelEls.current[0]?.clientHeight ?? 80;
+    const vh = reelEls.current[0]?.clientHeight ?? 80;
+    const h = vh * 0.74;
     rowH.current = h;
+    padY.current = (vh - h) / 2;
     stageRef.current?.style.setProperty('--smvc-rowH', h + 'px');
     stripEls.current.forEach((s, i) => {
-      if (s) s.style.transform = `translateY(${-(offsets.current[i] % (N * h))}px)`;
+      if (s) s.style.transform = `translateY(${stripY(offsets.current[i], h)}px)`;
     });
-  }, []);
+  }, [stripY]);
 
   const showFrame = useCallback((i: number) => {
     leverEls.current.forEach((f, k) => f?.classList.toggle('smvc-show', k === i));
@@ -800,7 +807,7 @@ export default function SlotMachineClassic({
         const dist = loops * cycle + ((endAt - (starts[i] % cycle)) + cycle) % cycle;
         const pos = starts[i] + dist * ease(p);
         offsets.current[i] = pos % cycle;
-        if (strip) strip.style.transform = `translateY(${-(pos % nrh)}px)`;
+        if (strip) strip.style.transform = `translateY(${stripY(pos, rh)}px)`;
         if (p > 0.65) reel?.classList.remove('smvc-blur');
         if (p < 1) { allDone = false; }
         else if (!settled[i]) {
@@ -830,7 +837,7 @@ export default function SlotMachineClassic({
       }
     }
     rafId.current = requestAnimationFrame(frame);
-  }, [stampFx]);
+  }, [stampFx, stripY]);
 
   // Main spinState effect — 照 v16：spinning 只做 UI 準備，stopping 才跑 stopReels
   useEffect(() => {
@@ -855,7 +862,7 @@ export default function SlotMachineClassic({
           for (let i = 0; i < 3; i++) {
             offsets.current[i] = (offsets.current[i] + rh * 0.38) % cycle;
             const strip = stripEls.current[i];
-            if (strip) strip.style.transform = `translateY(${-(offsets.current[i] % nrh)}px)`;
+            if (strip) strip.style.transform = `translateY(${stripY(offsets.current[i], rh)}px)`;
           }
           rafId.current = requestAnimationFrame(spinFrame);
         };
