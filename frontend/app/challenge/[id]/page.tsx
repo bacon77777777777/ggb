@@ -12,7 +12,15 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
-import SlotMachineClassic from '@/components/challenge/SlotMachineClassic';
+import SlotMachineClassic, { ReelOutcome } from '@/components/challenge/SlotMachineClassic';
+
+// 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
+const RETURN_OUTCOME: Record<string, ReelOutcome> = {
+  '神域共鳴': 'triple',   // 三個一樣（非7）
+  '命運之瞳': 'pair7',    // 雙7聽牌
+  '緋色幸運': 'pair',     // 兩個一樣（非7）
+  '黃金序章': 'mixed',    // 三個都不同
+};
 
 interface ThemeVideos {
   video_rush_entry:        string | null;
@@ -176,6 +184,7 @@ export default function MachinePage() {
   const [isAuto, setIsAuto] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
   const [jackpot, setJackpot] = useState(false);
+  const [reelOutcome, setReelOutcome] = useState<ReelOutcome | null>(null);
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
   const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
@@ -356,6 +365,8 @@ export default function MachinePage() {
       // 延續判定失敗的揭曉轉 state='normal' → 非 777，finish(false) 換回普通機台
       const isJackpot = data.rush_triggered || data.session.state === 'rush';
       setJackpot(isJackpot);
+      // 退幣轉：滾輪演出對應返還種類的組合
+      setReelOutcome(!isJackpot && data.is_coin_return ? (RETURN_OUTCOME[data.prize?.name] ?? 'mixed') : null);
 
       const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
       const showVideo = !isAutoRef.current && !isClassic;
@@ -535,6 +546,7 @@ export default function MachinePage() {
         isRushActive={isRushActive}
         rushHitsRemaining={session?.rush_hits_remaining ?? 0}
         isAuto={isAuto}
+        reelOutcome={reelOutcome}
         spinsThisTier={spinsThisTier}
         floorSpinCount={machine.floor_spin_count}
         jackpot={jackpot}

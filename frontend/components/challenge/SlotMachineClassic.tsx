@@ -4,11 +4,16 @@ import { useRef, useEffect, useCallback } from 'react';
 
 type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 
+// 滾輪演出組合：由返還種類決定（jackpot 另由 jackpot prop 控制）
+// triple = 三個一樣(非7) / pair7 = 雙7聽牌 / pair = 兩個一樣(非7) / mixed = 三個都不同
+export type ReelOutcome = 'triple' | 'pair7' | 'pair' | 'mixed';
+
 export interface SlotMachineClassicProps {
   spinState: SpinState;
   isRushActive: boolean;
   rushHitsRemaining: number;
   isAuto: boolean;
+  reelOutcome?: ReelOutcome | null;
   spinsThisTier: number;
   floorSpinCount: number;
   jackpot: boolean;
@@ -437,7 +442,7 @@ const SMVC_CSS = `
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SlotMachineClassic({
-  spinState, isRushActive, isAuto,
+  spinState, isRushActive, isAuto, reelOutcome,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
   winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
@@ -458,11 +463,13 @@ export default function SlotMachineClassic({
   const rafId         = useRef(0);
   const prevSpin      = useRef<SpinState>('idle');
   const jackpotRef    = useRef(false);
+  const outcomeRef    = useRef<ReelOutcome | null>(null);
   const rushStreakRef  = useRef(0);
   const animGen       = useRef(0);     // generation counter: 每次新動畫遞增，讓舊 stopReels RAF 自動停止
 
   // Keep refs in sync — declared before spinState effect so ordering is guaranteed
   useEffect(() => { jackpotRef.current = jackpot; }, [jackpot]);
+  useEffect(() => { outcomeRef.current = reelOutcome ?? null; }, [reelOutcome]);
   useEffect(() => { rushStreakRef.current = rushStreak; }, [rushStreak]);
 
   // Inject CSS once
@@ -653,22 +660,41 @@ export default function SlotMachineClassic({
     }
   }, [coinBurst]);
 
-  const stopReels = useCallback((isJackpot: boolean, onDone: () => void) => {
+  const stopReels = useCallback((isJackpot: boolean, outcome: ReelOutcome | null, onDone: () => void) => {
     cancelAnimationFrame(rafId.current);
     const myGen = ++animGen.current; // 讓舊的 stopReels RAF 在下一 frame 自動停止
     const rh = rowH.current;
     const nrh = N * rh;
     const cycle = REP * nrh;
 
-    // Compute targets: jackpot=777, else random avoiding all-7s
-    const targets: number[] = isJackpot
-      ? [SEVEN, SEVEN, SEVEN]
-      : (() => {
-          let t: number[];
-          do { t = [0, 1, 2].map(() => Math.floor(Math.random() * N)); }
-          while (t[0] === SEVEN && t[1] === SEVEN && t[2] === SEVEN);
+    // Compute targets: jackpot=777；退幣依返還種類演出對應組合
+    const targets: number[] = (() => {
+      if (isJackpot) return [SEVEN, SEVEN, SEVEN];
+      const pickNon7 = () => 1 + Math.floor(Math.random() * (N - 1));
+      switch (outcome) {
+        case 'triple': {          // 神域共鳴：三個一樣（非7）
+          const s = pickNon7();
+          return [s, s, s];
+        }
+        case 'pair7': {           // 命運之瞳：雙7聽牌，第三個非7
+          return [SEVEN, SEVEN, pickNon7()];
+        }
+        case 'pair': {            // 緋色幸運：兩個一樣（非7），位置隨機
+          const s = pickNon7();
+          let x; do { x = pickNon7(); } while (x === s);
+          const arr = [[s, s, x], [s, x, s], [x, s, s]];
+          return arr[Math.floor(Math.random() * 3)];
+        }
+        default: {                // 黃金序章／fallback：三個都不同
+          const t: number[] = [];
+          while (t.length < 3) {
+            const v = Math.floor(Math.random() * N);
+            if (!t.includes(v)) t.push(v);
+          }
           return t;
-        })();
+        }
+      }
+    })();
 
     // Listening mode: both first reels show 7 (near-miss or jackpot)
     const reach = targets[0] === SEVEN && targets[1] === SEVEN;
@@ -758,9 +784,10 @@ export default function SlotMachineClassic({
       }
     } else if (spinState === 'stopping') {
       // API 返回，開始 ease-out 動畫（同 v16 的 spin()）
-      // 捕捉 jackpot 值，避免 ref 在動畫期間被覆蓋
+      // 捕捉 jackpot / outcome 值，避免 ref 在動畫期間被覆蓋
       const jp = jackpotRef.current;
-      stopReels(jp, () => {
+      const oc = outcomeRef.current;
+      stopReels(jp, oc, () => {
         finish(jp);
         onAnimDone?.();
       });
