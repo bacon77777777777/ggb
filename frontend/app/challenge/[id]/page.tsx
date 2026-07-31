@@ -530,7 +530,8 @@ export default function MachinePage() {
     : 0;
 
   const regularPool = pool
-    .filter(item => !item.rush_only && (item.product_prizes || item.slot_prizes))
+    // coin_return 項目為 display_name-only（migration 386 起無獎品連結），一樣要列出
+    .filter(item => !item.rush_only && (item.coin_return || item.product_prizes || item.slot_prizes))
     .sort((a, b) => {
       const aLocked = a.min_bet != null && a.min_bet > currentTier.coins;
       const bLocked = b.min_bet != null && b.min_bet > currentTier.coins;
