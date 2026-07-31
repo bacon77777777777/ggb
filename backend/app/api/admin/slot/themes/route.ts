@@ -60,16 +60,25 @@ export async function POST(request: NextRequest) {
 
   if (themeErr) return NextResponse.json({ error: themeErr.message }, { status: 500 })
 
-  // 1.5 建立對應的機台品項庫商品（品項改在商品管理維護）
-  await supabase.from('products').insert({
-    name: `${name}機台品項庫`,
-    type: 'slot',
-    status: 'pending',
-    is_active: false,
-    price: 0,
-    supplier_id: supplier_id ?? null,
-    description: '挑戰機台品項庫（由機台系統使用，請勿上架）',
-  })
+  // 1.5 每個檔次建對應商品（商品名稱 = 主題名稱(檔次)，品項在商品管理維護）
+  const tierList: { coins: number }[] = Array.isArray(bet_tiers) ? bet_tiers : []
+  if (tierList.length > 0) {
+    const { data: tierProducts } = await supabase
+      .from('products')
+      .insert(tierList.map(t => ({
+        name: `${name}(${t.coins})`,
+        type: 'slot',
+        status: 'pending',
+        is_active: false,
+        price: 0,
+        supplier_id: supplier_id ?? null,
+        description: `挑戰機台 ${t.coins}G 檔獎池品項（由機台系統使用，請勿上架）`,
+      })))
+      .select('id')
+    for (const p of tierProducts ?? []) {
+      await supabase.from('products').update({ product_code: String(10000000 + p.id) }).eq('id', p.id)
+    }
+  }
 
   const sr: { name: string; multiplier: number; weight: number }[] =
     spin_returns ?? DEFAULT_SPIN_RETURNS
