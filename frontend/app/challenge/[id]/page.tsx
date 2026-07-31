@@ -611,7 +611,7 @@ export default function MachinePage() {
       const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
       return (
         <div key={item.id} className="flex flex-col items-center">
-          <div className="aspect-[63/88] w-full relative rounded-xl overflow-hidden">
+          <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
             {prize?.image_url ? (
               <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
             ) : (
@@ -703,7 +703,7 @@ export default function MachinePage() {
                     : null;
                   return (
                     <div key={item.id} className="flex flex-col items-center">
-                      <div className="aspect-[63/88] w-full relative rounded-xl overflow-hidden">
+                      <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
                         <Image
                           src={prize?.image_url ?? '/images/slot/machine/coin.png'}
                           alt={name} fill className="object-contain p-2" unoptimized
