@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -170,6 +171,7 @@ export default function MachinePage() {
   }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
+  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -618,7 +620,11 @@ export default function MachinePage() {
       const prize = item.product_prizes ?? item.slot_prizes;
       const displayValue = item.slot_prizes?.recycle_value ?? item.product_prizes?.recycle_value ?? 0;
       return (
-        <div key={item.id} className="flex flex-col items-center">
+        <div
+          key={item.id}
+          className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
+          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url })}
+        >
           <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
             {prize?.image_url ? (
               <Image src={prize.image_url} alt={prize?.name ?? ''} fill className="object-contain" unoptimized />
@@ -995,6 +1001,39 @@ export default function MachinePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 品項大圖預覽 */}
+      {previewPrize && typeof window !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[2600] bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setPreviewPrize(null)}
+        >
+          <div
+            className="relative max-w-[88vw] max-h-[88vh] flex flex-col items-center gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewPrize(null)}
+              className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <span className="text-white text-base font-black text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
+              {previewPrize.name}
+            </span>
+            <Image
+              src={previewPrize.image_url || '/images/item_defaulet.png'}
+              alt={previewPrize.name}
+              width={600}
+              height={600}
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl"
+              unoptimized
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
