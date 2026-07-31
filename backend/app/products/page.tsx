@@ -247,15 +247,20 @@ export default function ProductsPage() {
     return l.includes('last one') || level.includes('最後賞')
   }
   
-  const HIGH_TIER_LEVELS = ['SP', 'A', 'B', 'C']
-  
-  const isMajorDepleted = (product: Product): boolean => {
-    if (product.type === 'slot') return false  // 機台品項庫不適用大獎狀態
-    const majorRemaining = product.prizes
-      .filter(prize => HIGH_TIER_LEVELS.includes(normalizePrizeLevel(prize.level)))
-      .reduce((sum, prize) => sum + prize.remaining, 0)
-    return majorRemaining === 0
+  // 大獎狀態：轉蛋/盒玩不適用（—）；機台以「一等獎」為大獎；
+  // 一番賞/抽卡/自製以「總數量 = 1」的品項為大賞（排除最後賞）
+  type MajorStatus = 'none' | 'normal' | 'depleted'
+  const getMajorStatus = (product: Product): MajorStatus => {
+    const type = product.type || 'ichiban'
+    if (type === 'gacha' || type === 'blindbox') return 'none'
+    const majors = type === 'slot'
+      ? product.prizes.filter(prize => normalizePrizeLevel(prize.level) === '一等獎')
+      : product.prizes.filter(prize => !isLastOneLevel(prize.level) && prize.total === 1)
+    if (majors.length === 0) return 'none'
+    return majors.reduce((sum, prize) => sum + prize.remaining, 0) === 0 ? 'depleted' : 'normal'
   }
+
+  const isMajorDepleted = (product: Product): boolean => getMajorStatus(product) === 'depleted'
   
   const [productVisibility, setProductVisibility] = useState<{ [key: number]: boolean }>({})
 
@@ -288,7 +293,8 @@ export default function ProductsPage() {
       const remaining = typeof product.remaining === 'number' ? product.remaining : fallbackRemaining
       const calculatedSales = product.sales
       const stockAndSales = `庫存：${remaining}/${totalCount} 銷量：${calculatedSales}`
-      const majorStatus = isMajorDepleted(product) ? '廢套' : '正常'
+      const majorStatusMap = { none: '—', normal: '正常', depleted: '廢套' } as const
+      const majorStatus = majorStatusMap[getMajorStatus(product)]
       
       // 轉換種類名稱
       const typeMap: Record<string, string> = {
@@ -551,9 +557,9 @@ export default function ProductsPage() {
     const matchCategory = selectedCategory === 'all' || product.category === selectedCategory
     const matchStatus = selectedStatus === 'all' || product.status === selectedStatus
     const matchType = selectedType === 'all' || (product.type || 'ichiban') === selectedType
-    const matchMajorStatus = selectedMajorStatus === 'all' || 
-      (selectedMajorStatus === 'depleted' && isMajorDepleted(product)) ||
-      (selectedMajorStatus === 'normal' && !isMajorDepleted(product))
+    const matchMajorStatus = selectedMajorStatus === 'all' ||
+      (selectedMajorStatus === 'depleted' && getMajorStatus(product) === 'depleted') ||
+      (selectedMajorStatus === 'normal' && getMajorStatus(product) === 'normal')
     // 低庫存篩選
     const matchLowStock = !selectedLowStock || (() => {
       const calculatedRemaining = product.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
@@ -582,11 +588,13 @@ export default function ProductsPage() {
         aValue = a.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
         bValue = b.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
         break
-      case 'majorStatus':
-        // 根據大獎狀態排序（廢套排在後面）
-        aValue = isMajorDepleted(a) ? 1 : 0
-        bValue = isMajorDepleted(b) ? 1 : 0
+      case 'majorStatus': {
+        // 根據大獎狀態排序（廢套排在後面，— 排最前）
+        const rank = { none: 0, normal: 1, depleted: 2 } as const
+        aValue = rank[getMajorStatus(a)]
+        bValue = rank[getMajorStatus(b)]
         break
+      }
       case 'visibility': aValue = productVisibility[a.id] ? 1 : 0; bValue = productVisibility[b.id] ? 1 : 0; break
       case 'createdAt': aValue = a.createdAt; bValue = b.createdAt; break
       case 'startedAt':
@@ -1122,9 +1130,9 @@ export default function ProductsPage() {
                       )}
                       {visibleColumns.majorStatus && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                          {['gacha', 'blindbox', 'card'].includes(product.type ?? '') ? (
+                          {getMajorStatus(product) === 'none' ? (
                             <span className="text-neutral-400">—</span>
-                          ) : isMajorDepleted(product) ? (
+                          ) : getMajorStatus(product) === 'depleted' ? (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 border border-red-200 font-semibold whitespace-nowrap">
                               廢套
                             </span>
