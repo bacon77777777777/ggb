@@ -460,14 +460,16 @@ const SMVC_CSS = `
 .smvc-flash.smvc-go { animation:smvc-flashout .6s ease-out both; }
 @keyframes smvc-flashout { 0%{opacity:1;} 100%{opacity:0;} }
 
-/* ── 音效開關（右上角，白線圖標）── */
+/* ── 音效開關（右上角，白線圖標 + 黑色圓形遮罩，同文章內頁返回鈕）── */
 .smvc-mute {
   position:absolute; right:2.6%; top:2.2%; width:7.2%; aspect-ratio:1/1;
   z-index:8; cursor:pointer; pointer-events:all;
   display:flex; align-items:center; justify-content:center;
-  opacity:.88; filter:drop-shadow(0 1px 3px rgba(0,0,0,.85));
+  background:rgba(0,0,0,.3); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+  border-radius:50%;
+  opacity:.92;
 }
-.smvc-mute svg { width:68%; height:68%; }
+.smvc-mute svg { width:56%; height:56%; }
 .smvc-mute:hover  { opacity:1; }
 .smvc-mute:active { transform:scale(.9); }
 
@@ -947,8 +949,8 @@ export default function SlotMachineClassic({
           {sfxMuted ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 5 6 9H3v6h3l5 4z" />
-              <line x1="22" y1="9" x2="16" y2="15" />
-              <line x1="16" y1="9" x2="22" y2="15" />
+              <path d="M15.5 8.5a5 5 0 0 1 0 7" opacity=".35" />
+              <line x1="4" y1="4" x2="20" y2="20" stroke="#ef4444" strokeWidth={2.5} />
             </svg>
           ) : (
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
