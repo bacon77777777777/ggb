@@ -541,6 +541,8 @@ export default function MachinePage() {
         rushStreak={rushStreak}
         winCount={session?.day_rush ?? 0}
         totalSpins={session?.day_spins ?? 0}
+        betCoins={currentTier.coins}
+        directCost={directCost}
         onSpin={handleSpin}
         onDirect={handleDirect}
         onAutoToggle={() => setIsAuto(v => !v)}

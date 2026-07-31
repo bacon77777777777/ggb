@@ -15,6 +15,8 @@ export interface SlotMachineClassicProps {
   rushStreak: number;
   winCount: number;
   totalSpins: number;
+  betCoins: number;
+  directCost: number;
   onSpin: () => void;
   onDirect: () => void;
   onAutoToggle: () => void;
@@ -345,17 +347,18 @@ const SMVC_CSS = `
 /* ── Buttons ── */
 .smvc-btn {
   position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat;
-  display:flex; align-items:center; justify-content:center;
-  padding-bottom:1.2cqw;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  line-height:1.05; padding-bottom:1.2cqw;
   font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
   font-weight:900; letter-spacing:.06cqw; pointer-events:all;
   text-shadow:0 0 .6cqw rgba(255,140,0,.9),0 1px 2px rgba(0,0,0,.8);
   color:#ffe8a0;
 }
+.smvc-btn-amt { font-size:56%; opacity:.9; letter-spacing:.04cqw; }
 .smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:3.3cqw; padding-bottom:2.2cqw; }
-.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:4.5cqw; padding-bottom:2.4cqw;
+.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:4.5cqw; padding-bottom:2cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
-.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:3.3cqw; padding-bottom:2.2cqw; }
+.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:3.3cqw; padding-bottom:1.8cqw; }
 @keyframes smvc-invite {
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
   50%    {filter:drop-shadow(0 0 1.6cqw rgba(255,220,120,.95)) brightness(1.12);}
@@ -436,7 +439,7 @@ const SMVC_CSS = `
 export default function SlotMachineClassic({
   spinState, isRushActive, isAuto,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
-  winCount, totalSpins,
+  winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
 }: SlotMachineClassicProps) {
   const stageRef   = useRef<HTMLDivElement>(null);
@@ -845,8 +848,14 @@ export default function SlotMachineClassic({
 
         {/* Buttons */}
         <div className="smvc-btn smvc-btn-auto" onClick={onAutoToggle}>自動</div>
-        <div className="smvc-btn smvc-btn-spin" onClick={onSpin}>SPIN</div>
-        <div className="smvc-btn smvc-btn-rush" onClick={onDirect}>直衝</div>
+        <div className="smvc-btn smvc-btn-spin" onClick={onSpin}>
+          <span className="smvc-btn-amt">{betCoins.toLocaleString()}G</span>
+          SPIN
+        </div>
+        <div className="smvc-btn smvc-btn-rush" onClick={onDirect}>
+          <span className="smvc-btn-amt">{directCost.toLocaleString()}G</span>
+          直衝
+        </div>
 
         {/* Bigwin text */}
         <div ref={bigwinEl} className="smvc-bigwin"><span>大当り!!</span></div>
