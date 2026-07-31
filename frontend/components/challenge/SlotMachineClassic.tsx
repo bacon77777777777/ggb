@@ -121,8 +121,8 @@ const SMVC_CSS = `
   inset:0; z-index:1;
   background-image:var(--smvc-sprite);
   background-repeat:no-repeat;
-  background-size:271.9788% 150.2146%;
-  background-position:58.6873% 0%;
+  background-size:273.0667% 150.2146%;
+  background-position:58.5516% 0%;
   opacity:0;
 }
 .smvc-stage.smvc-rushskin .smvc-mrush { opacity:1; }
@@ -139,8 +139,8 @@ const SMVC_CSS = `
   opacity:0;
 }
 .smvc-stage.smvc-rushskin .smvc-lit {
-  background-size:271.9788% 150.2146%;
-  background-position:58.6873% 0%;
+  background-size:273.0667% 150.2146%;
+  background-position:58.5516% 0%;
 }
 @keyframes smvc-litPulse  { 0%,100%{opacity:0;} 50%{opacity:.85;} }
 @keyframes smvc-litStrobe { 0%{opacity:1;} 50%{opacity:.05;} }
