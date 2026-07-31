@@ -173,6 +173,8 @@ export default function MachinePage() {
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
   const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
+  // 機台總餘額板顯示值：按下 SPIN 即時扣款，回包後以 new_balance 校正；idle 時跟 profile 對齊
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -202,6 +204,10 @@ export default function MachinePage() {
   const scheduleResultCloseRef = useRef<() => void>(() => {});
 
   useEffect(() => { isAutoRef.current = isAuto; }, [isAuto]);
+  useEffect(() => {
+    if (spinState === 'idle') setWalletBalance((user as any)?.tokens ?? 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, spinState]);
   useEffect(() => { lastResultRef.current = lastResult; }, [lastResult]);
   useEffect(() => { videoPhaseRef.current = videoPhase; }, [videoPhase]);
 
@@ -340,6 +346,7 @@ export default function MachinePage() {
     setError(null);
     setJackpot(false);
     setSpinState('spinning');
+    setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
     try {
@@ -355,6 +362,7 @@ export default function MachinePage() {
         setError(data.error ?? '挑戰失敗，請稍後再試');
         setJackpot(false);
         setSpinState('idle');
+        setWalletBalance((user as any)?.tokens ?? 0);
         syncSession();
         return;
       }
@@ -389,6 +397,7 @@ export default function MachinePage() {
           // classic / auto：777 動畫顯示 "RUSH!!"，結束後回 idle 等玩家在 RUSH 中旋轉
           animDoneRef.current = () => {
             if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setWalletBalance(data.new_balance);
             setLastResult(null);
             setSpinState('idle');
             if (refreshProfile) refreshProfile();
@@ -406,6 +415,7 @@ export default function MachinePage() {
           videoTimeoutRef.current = setTimeout(handleVideoEnd, 6000);
         } else {
           animDoneRef.current = () => {
+            setWalletBalance(data.new_balance);
             setTimeout(() => {
               setSpinState('result');
               if (refreshProfile) refreshProfile();
@@ -419,6 +429,7 @@ export default function MachinePage() {
           // 普通旋轉 / 延續失敗揭曉轉：非 777 停定 → +XG、finish(false) 換回普通機台、streak 歸零
           animDoneRef.current = () => {
             if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
+            setWalletBalance(data.new_balance);
             setRushStreak(0);
             setSpinState('idle');
             if (refreshProfile) refreshProfile();
@@ -445,6 +456,7 @@ export default function MachinePage() {
       setError('連線失敗，已自動復原，請再試一次');
       setJackpot(false);
       setSpinState('idle');
+      setWalletBalance((user as any)?.tokens ?? 0);
       syncSession();
     }
   };
@@ -462,6 +474,7 @@ export default function MachinePage() {
     setError(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
+    setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - directCost));
     if (isClassic) {
       // Classic 模式：先啟動滾輪視覺，再等 API
       setJackpot(false);
@@ -481,6 +494,7 @@ export default function MachinePage() {
 
       if (!res.ok || data.error) {
         setError(data.error ?? '直撃失敗');
+        setWalletBalance((user as any)?.tokens ?? 0);
         if (isClassic) setSpinState('idle');
         return;
       }
@@ -490,6 +504,7 @@ export default function MachinePage() {
         const idx = tiers.findIndex(t => t.coins === data.session.locked_bet);
         if (idx >= 0) setTierIndex(idx);
       }
+      if (data.new_balance != null) setWalletBalance(data.new_balance);
       if (refreshProfile) refreshProfile();
 
       if (isClassic) {
@@ -512,6 +527,7 @@ export default function MachinePage() {
       }
     } catch {
       setError('直撃失敗，請稍後再試');
+      setWalletBalance((user as any)?.tokens ?? 0);
       if (isClassic) setSpinState('idle');
     } finally {
       setDirectLoading(false);
@@ -568,7 +584,7 @@ export default function MachinePage() {
         totalSpins={session?.day_spins ?? 0}
         betCoins={currentTier.coins}
         directCost={directCost}
-        balance={userTokens}
+        balance={walletBalance ?? userTokens}
         onSpin={handleSpin}
         onDirect={handleDirect}
         onAutoToggle={() => setIsAuto(v => !v)}
