@@ -115,7 +115,7 @@ export default function SlotThemesPage() {
   const currentTiers = parseTiers(form.bet_tiers_input)
 
   return (
-    <AdminLayout pageTitle="挑戰機台主題">
+    <AdminLayout pageTitle="主題管理">
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">

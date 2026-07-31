@@ -396,7 +396,7 @@ export default function SlotThemeDetailPage() {
     <AdminLayout
       pageTitle={theme.name}
       breadcrumbs={[
-        { label: '挑戰機台主題', href: '/slot' },
+        { label: '主題管理', href: '/slot' },
         { label: theme.name, href: `/slot/${id}` },
       ]}
     >
