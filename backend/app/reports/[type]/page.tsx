@@ -10,6 +10,7 @@ import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import SelectField from '@/components/ui/SelectField'
+import SortableTableHeader from '@/components/SortableTableHeader'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -121,6 +122,18 @@ export default function ReportPage() {
   const [filterType, setFilterType] = useState('')
   const [filterCurrency, setFilterCurrency] = useState<'all' | 'tokens' | 'points'>('all')
 
+  // 消費明細排序
+  const [sortField, setSortField] = useState('revenue')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(d => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
   useEffect(() => {
     const now = new Date()
     const y = now.getFullYear()
@@ -206,10 +219,32 @@ export default function ReportPage() {
   const productTypes = [...new Set(productsData.map(p => p.type).filter(Boolean))]
 
   // 幣種篩選後的商品列表
-  const filteredProducts = productsData.filter(p => {
+  const filteredBase = productsData.filter(p => {
     if (filterCurrency === 'tokens') return (p.revenue - (p.pointsUsed ?? 0)) > 0 || p.drawCount === 0
     if (filterCurrency === 'points') return (p.pointsUsed ?? 0) > 0
     return true
+  })
+
+  // 排序
+  const sortVal = (p: any): string | number => {
+    switch (sortField) {
+      case 'name':       return p.name ?? ''
+      case 'supplier':   return p.supplierName ?? ''
+      case 'type':       return PRODUCT_TYPE_LABEL[p.type] || p.type || ''
+      case 'drawCount':  return p.drawCount ?? 0
+      case 'revenue':    return (p.revenue ?? 0) - (p.pointsUsed ?? 0)
+      case 'points':     return p.pointsUsed ?? 0
+      case 'stock':      return p.remaining ?? -1
+      case 'completion': return p.completionRate ?? -1
+      default:           return 0
+    }
+  }
+  const filteredProducts = [...filteredBase].sort((a, b) => {
+    const av = sortVal(a); const bv = sortVal(b)
+    const cmp = typeof av === 'string'
+      ? av.localeCompare(String(bv), 'zh-TW')
+      : (av as number) - (bv as number)
+    return sortDirection === 'asc' ? cmp : -cmp
   })
 
   return (
@@ -456,20 +491,37 @@ export default function ReportPage() {
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">#</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">商品名稱</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">廠商</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">種類</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">抽獎次數</th>
-                      {filterCurrency !== 'points' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">消費金額(G)</th>}
-                      {filterCurrency !== 'tokens' && <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">積分</th>}
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">剩餘 / 總數</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">完抽率</th>
+                      <SortableTableHeader sortKey="name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">商品名稱</SortableTableHeader>
+                      <SortableTableHeader sortKey="supplier" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">廠商</SortableTableHeader>
+                      <SortableTableHeader sortKey="type" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">種類</SortableTableHeader>
+                      <SortableTableHeader sortKey="drawCount" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">抽獎次數</SortableTableHeader>
+                      {filterCurrency !== 'points' && <SortableTableHeader sortKey="revenue" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">消費金額(G)</SortableTableHeader>}
+                      {filterCurrency !== 'tokens' && <SortableTableHeader sortKey="points" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">積分</SortableTableHeader>}
+                      <SortableTableHeader sortKey="stock" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">剩餘 / 總數</SortableTableHeader>
+                      <SortableTableHeader sortKey="completion" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-2 px-4 whitespace-nowrap">完抽率</SortableTableHeader>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {filteredProducts.length === 0 ? (
                       <TableEmpty colSpan={9} message="此條件無商品資料" />
-                    ) : filteredProducts.map((p, i) => {
+                    ) : (
+                      <tr className="bg-neutral-50 font-semibold">
+                        <td colSpan={4} className="px-4 py-2 text-sm text-neutral-700">合計</td>
+                        <td className="px-4 py-2 text-right font-bold">{filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
+                        {filterCurrency !== 'points' && (
+                          <td className="px-4 py-2 text-right font-bold text-green-700">
+                            {filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G
+                          </td>
+                        )}
+                        {filterCurrency !== 'tokens' && (
+                          <td className="px-4 py-2 text-right font-bold text-indigo-600">
+                            {(filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0) * 4).toLocaleString()} 積分
+                          </td>
+                        )}
+                        <td colSpan={2} />
+                      </tr>
+                    )}
+                    {filteredProducts.map((p, i) => {
                       const tokenRev = p.revenue - (p.pointsUsed ?? 0)
                       const pts = p.pointsUsed ?? 0
                       return (
@@ -505,25 +557,6 @@ export default function ReportPage() {
                       )
                     })}
                   </tbody>
-                  {filteredProducts.length > 0 && (
-                    <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                      <tr>
-                        <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
-                        <td className="px-4 py-2 text-right font-bold">{filteredProducts.reduce((s, p) => s + p.drawCount, 0).toLocaleString()}</td>
-                        {filterCurrency !== 'points' && (
-                          <td className="px-4 py-2 text-right font-bold text-green-700">
-                            {filteredProducts.reduce((s, p) => s + (p.revenue - (p.pointsUsed ?? 0)), 0).toLocaleString()} G
-                          </td>
-                        )}
-                        {filterCurrency !== 'tokens' && (
-                          <td className="px-4 py-2 text-right font-bold text-indigo-600">
-                            {filteredProducts.reduce((s, p) => s + (p.pointsUsed ?? 0), 0).toLocaleString()} G
-                          </td>
-                        )}
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  )}
                 </table>
               </div>
             )}
