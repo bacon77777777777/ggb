@@ -112,7 +112,13 @@ export async function PATCH(
         }))
       )
       if (newItems.length > 0) {
-        await supabase.from('slot_pool_items').insert(newItems)
+        const { error: insertErr } = await supabase.from('slot_pool_items').insert(newItems)
+        if (insertErr) {
+          return NextResponse.json(
+            { error: `退幣獎池重建失敗（請立即回報）：${insertErr.message}` },
+            { status: 500 }
+          )
+        }
       }
     }
   }

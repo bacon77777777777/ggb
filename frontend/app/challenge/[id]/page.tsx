@@ -522,11 +522,7 @@ export default function MachinePage() {
       if (aLocked !== bLocked) return Number(aLocked) - Number(bLocked);
       return (a.min_bet ?? 0) - (b.min_bet ?? 0);
     });
-  // RUSH 池為檔次專屬（min_bet = 當前檔次；NULL = 全檔通用），切換檔次顯示對應獎池
-  const rushPool = pool.filter(item =>
-    item.rush_only && (item.product_prizes || item.slot_prizes) &&
-    (item.min_bet == null || item.min_bet === currentTier.coins)
-  );
+  const rushPool = pool.filter(item => item.rush_only && (item.product_prizes || item.slot_prizes));
 
   // ── renderers ──────────────────────────────────────────────
 
@@ -622,8 +618,8 @@ export default function MachinePage() {
       );
     };
 
-    // 只顯示當前檔次的 RUSH 品項（min_bet == currentTier.coins）
-    const tieredRushPool = rushPool.filter(item => item.min_bet === currentTier.coins);
+    // 只顯示當前檔次的 RUSH 品項（min_bet = 當前檔次；NULL = 全檔通用）
+    const tieredRushPool = rushPool.filter(item => item.min_bet == null || item.min_bet === currentTier.coins);
     const rushValues = tieredRushPool
       .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0)
       .filter(v => v > 0);
