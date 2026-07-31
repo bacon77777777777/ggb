@@ -298,7 +298,7 @@ const SMVC_CSS = `
   display:flex; align-items:center; justify-content:center;
 }
 .smvc-sym {
-  display:block; width:76%; aspect-ratio:1/1;
+  display:block; width:92%; aspect-ratio:1/1;
   background-image:var(--smvc-sprite);
   background-repeat:no-repeat;
   background-size:800% 546.875%;
