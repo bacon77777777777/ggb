@@ -33,6 +33,7 @@ async function fetchProductsForSitemap(limitTotal = 5000): Promise<DbProduct[]> 
     const { data, error } = await supabase
       .from('products')
       .select('id,type,status,created_at')
+      .neq('type', 'slot')
       .range(offset, offset + pageSize - 1)
       .order('id', { ascending: true })
 

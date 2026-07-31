@@ -27,7 +27,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('slot_pool_items')
-    .select('id, min_bet, remaining, display_name, slot_prizes(id, name, image_url, level, recycle_value)')
+    .select('id, min_bet, remaining, display_name, slot_prizes:product_prizes(id, name, image_url, level, recycle_value)')
     .eq('machine_id', firstId)
     .eq('rush_only', true)
     .order('min_bet', { ascending: true, nullsFirst: true })
@@ -63,12 +63,12 @@ export async function PATCH(
 
   const { data: items } = await supabase
     .from('slot_pool_items')
-    .select('slot_prize_id')
+    .select('product_prize_id')
     .in('machine_id', machineIds)
     .eq('rush_only', true)
-    .not('slot_prize_id', 'is', null)
+    .not('product_prize_id', 'is', null)
 
-  const prizeIds = (items ?? []).map((i: { slot_prize_id: number }) => i.slot_prize_id).filter(Boolean)
+  const prizeIds = (items ?? []).map((i: { product_prize_id: number }) => i.product_prize_id).filter(Boolean)
   if (prizeIds.length === 0) return NextResponse.json({ success: true })
 
   const updates: Record<string, unknown> = {}
@@ -76,7 +76,7 @@ export async function PATCH(
   if (level != null) updates.level = String(level)
 
   const { error } = await supabase
-    .from('slot_prizes')
+    .from('product_prizes')
     .update(updates)
     .in('id', prizeIds)
     .eq('name', prize_name)
@@ -95,9 +95,9 @@ export async function POST(
 
   const { id } = await params
   const body = await request.json()
-  const { slot_prize_id, display_name, image_url, min_bet, remaining } = body
+  const { product_prize_id, display_name, image_url, min_bet, remaining } = body
 
-  if (!slot_prize_id && !display_name)
+  if (!product_prize_id && !display_name)
     return NextResponse.json({ error: '請選擇品項或輸入名稱' }, { status: 400 })
 
   const supabase = getSupabaseAdmin()
@@ -119,9 +119,9 @@ export async function POST(
     weight:       100,
     min_bet:      min_bet != null ? parseInt(String(min_bet)) : null,
     remaining:    remaining != null && remaining !== '' ? parseInt(String(remaining)) : null,
-    ...(slot_prize_id
-      ? { slot_prize_id: parseInt(String(slot_prize_id)) }
-      : { display_name, slot_prize_id: null }),
+    ...(product_prize_id
+      ? { product_prize_id: parseInt(String(product_prize_id)) }
+      : { display_name, product_prize_id: null }),
   }))
 
   const { data, error } = await supabase
@@ -159,12 +159,12 @@ export async function DELETE(
   if (prizePoolId) {
     // 找到 pool item 對應的 slot_prize_id 或 display_name，再對所有機台刪除
     const { data: item } = await supabase
-      .from('slot_pool_items').select('slot_prize_id, display_name').eq('id', prizePoolId).single()
+      .from('slot_pool_items').select('product_prize_id, display_name').eq('id', prizePoolId).single()
 
     if (item) {
       let q = supabase.from('slot_pool_items').delete().in('machine_id', machineIds).eq('rush_only', true)
-      if (item.slot_prize_id) {
-        q = q.eq('slot_prize_id', item.slot_prize_id)
+      if (item.product_prize_id) {
+        q = q.eq('product_prize_id', item.product_prize_id)
       } else if (item.display_name) {
         q = q.eq('display_name', item.display_name)
       }

@@ -269,8 +269,8 @@ export default function SlotThemeDetailPage() {
     setSavingPrize(true)
     try {
       const payload = {
-        slot_prize_id: selectedPrize.id,
-        display_name:  selectedPrize.name,
+        product_prize_id: selectedPrize.id,
+        display_name:     selectedPrize.name,
         min_bet:       addForm.min_bet === '' ? null : parseInt(addForm.min_bet),
         remaining:     addForm.remaining === '' ? null : parseInt(addForm.remaining),
       }

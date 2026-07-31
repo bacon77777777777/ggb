@@ -225,6 +225,7 @@ export async function GET(request: NextRequest) {
         .from('products')
         .select('id, name, type, category, total_count, remaining, supplier_id, supplier:suppliers(id, name)')
         .eq('is_active', true)
+        .neq('type', 'slot')
       if (supplierId) productQuery = productQuery.eq('supplier_id', supplierId)
       if (productType) productQuery = productQuery.eq('type', productType)
       const { data: products, error: prodErr } = await productQuery
@@ -307,7 +308,7 @@ export async function GET(request: NextRequest) {
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
         applyDateFilter(
           excBot(supabase.from('draw_records')
-            .select('product_id, created_at, product:products(id, name, price, supplier_id)'))
+            .select('product_id, created_at, product:products(id, name, price, supplier_id, type)'))
         ),
         applyDateFilter(
           excBot(supabase.from('recharge_records').select('amount, status, created_at, payment_fee'))
@@ -326,7 +327,7 @@ export async function GET(request: NextRequest) {
       if (rechargeRes.error) throw rechargeRes.error
 
       // 消費明細：只算該廠商商品
-      const draws: any[] = drawRes.data ?? []
+      const draws: any[] = (drawRes.data ?? []).filter((d: any) => d.product?.type !== 'slot')
       const supplierDraws = draws.filter(d => String(d.product?.supplier_id) === supplierId)
 
       const byProduct: Record<number, { name: string; price: number; drawCount: number; totalG: number }> = {}

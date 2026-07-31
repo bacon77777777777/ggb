@@ -648,7 +648,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/products': 'products',
     // 挑戰機台
     '/slot': 'slot',
-    '/slot/prizes': 'slot_prizes',
     '/slot/banners': 'slot_banners',
     '/slot/reports': 'slot',
     '/slot/[id]': 'slot',
@@ -780,7 +779,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '挑戰機台',
         items: [
           { name: '主題管理', path: '/slot', icon: IconBolt },
-          { name: '品項管理', path: '/slot/prizes', icon: IconProducts },
           { name: '輪播圖管理', path: '/slot/banners', icon: IconBanners },
           { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
         ],

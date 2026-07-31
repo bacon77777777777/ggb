@@ -114,6 +114,7 @@ export default function Home() {
             .from('products')
             .select('*')
             .neq('status', 'pending')
+            .neq('type', 'slot')
             .order('created_at', { ascending: false }) as unknown as Promise<ProductsQueryResult>,
           'products'
         );

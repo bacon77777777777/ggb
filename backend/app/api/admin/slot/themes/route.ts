@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
 
   if (themeErr) return NextResponse.json({ error: themeErr.message }, { status: 500 })
 
+  // 1.5 建立對應的機台品項庫商品（品項改在商品管理維護）
+  await supabase.from('products').insert({
+    name: `${name}機台品項庫`,
+    type: 'slot',
+    status: 'pending',
+    is_active: false,
+    price: 0,
+    supplier_id: supplier_id ?? null,
+    description: '挑戰機台品項庫（由機台系統使用，請勿上架）',
+  })
+
   const sr: { name: string; multiplier: number; weight: number }[] =
     spin_returns ?? DEFAULT_SPIN_RETURNS
 

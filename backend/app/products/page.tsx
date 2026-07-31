@@ -213,7 +213,7 @@ export default function ProductsPage() {
     fetchCategories()
   }, [])
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedType, setSelectedType] = useState<'all' | 'ichiban' | 'blindbox' | 'gacha' | 'custom'>('all')
+  const [selectedType, setSelectedType] = useState<'all' | 'ichiban' | 'blindbox' | 'gacha' | 'custom' | 'card' | 'slot'>('all')
   const [selectedLowStock, setSelectedLowStock] = useState(false)  // 是否只顯示低庫存
   const [selectedHot, setSelectedHot] = useState(false)  // 是否只顯示熱門商品
   const [sortField, setSortField] = useState<string>('productCode')
@@ -279,7 +279,7 @@ export default function ProductsPage() {
 
   // 匯出CSV功能
   const handleExportCSV = () => {
-    const headers = ['編號', '商品名稱', '分類', '種類', '價格(G)', '成本', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
+    const headers = ['編號', '商品名稱', '分類', '類別', '價格(G)', '成本', '庫存/銷量', '大獎狀態', '上架', '建立時間', '開賣時間', '完抽時間']
     const csvData = sortedProducts.map(product => {
       const normalPrizes = product.prizes.filter(p => !isLastOneLevel(p.level))
       const totalCount = normalPrizes.reduce((sum, s) => sum + s.total, 0)
@@ -295,7 +295,8 @@ export default function ProductsPage() {
         blindbox: '盲盒',
         gacha: '轉蛋',
         card: '抽卡',
-        custom: '自製'
+        custom: '自製',
+        slot: '機台'
       }
       const typeName = typeMap[product.type || 'ichiban'] || '一番賞'
 
@@ -783,7 +784,7 @@ export default function ProductsPage() {
             columns={[
               { key: 'productCode', label: '編號', visible: visibleColumns.productCode },
               { key: 'name', label: '名稱', visible: visibleColumns.name },
-              { key: 'type', label: '種類', visible: visibleColumns.type },
+              { key: 'type', label: '類別', visible: visibleColumns.type },
               { key: 'price', label: '價格(G)', visible: visibleColumns.price },
               { key: 'cost', label: '成本', visible: visibleColumns.cost },
               { key: 'stockAndSales', label: '庫存/銷量', visible: visibleColumns.stockAndSales },
@@ -809,17 +810,18 @@ export default function ProductsPage() {
               },
               {
                 key: 'type',
-                label: '種類',
+                label: '類別',
                 type: 'select',
                 value: selectedType,
                 onChange: (value: string) => setSelectedType(value as any),
                 options: [
-                  { value: 'all', label: '全部種類' },
+                  { value: 'all', label: '全部類別' },
                   { value: 'ichiban', label: '一番賞' },
                   { value: 'blindbox', label: '盲盒' },
                   { value: 'gacha', label: '轉蛋' },
                   { value: 'card', label: '抽卡' },
-                  { value: 'custom', label: '自製賞' }
+                  { value: 'custom', label: '自製賞' },
+                  { value: 'slot', label: '機台' }
                 ]
               },
               {
@@ -867,13 +869,14 @@ export default function ProductsPage() {
               }] : []),
               ...(selectedType !== 'all' ? [{
                 key: 'type',
-                label: '種類',
+                label: '類別',
                 value: ({
                   ichiban: '一番賞',
                   blindbox: '盲盒',
                   gacha: '轉蛋',
                   card: '抽卡',
-                  custom: '自製賞'
+                  custom: '自製賞',
+                  slot: '機台'
                 } as const)[selectedType] || '一番賞',
                 color: 'primary' as const,
                 onRemove: () => setSelectedType('all')
@@ -944,7 +947,7 @@ export default function ProductsPage() {
                   )}
                   {visibleColumns.type && (
                     <SortableTableHeader sortKey="type" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
-                      種類
+                      類別
                     </SortableTableHeader>
                   )}
                   {visibleColumns.price && (
@@ -1070,6 +1073,8 @@ export default function ProductsPage() {
                               ? 'bg-orange-100 text-orange-700'
                               : product.type === 'card'
                               ? 'bg-green-100 text-green-700'
+                              : product.type === 'slot'
+                              ? 'bg-indigo-100 text-indigo-700'
                               : 'bg-neutral-100 text-neutral-700'
                           }`}>
                             {{
@@ -1077,7 +1082,8 @@ export default function ProductsPage() {
                               blindbox: '盲盒',
                               gacha: '轉蛋',
                               card: '抽卡',
-                              custom: '自製'
+                              custom: '自製',
+                              slot: '機台'
                             }[product.type || 'ichiban'] || '一番賞'}
                           </span>
                         </td>

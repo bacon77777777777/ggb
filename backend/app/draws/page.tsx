@@ -198,7 +198,7 @@ export default function DrawsPage() {
           {record.product?.image_url && (
             <img src={record.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
           )}
-          <span className="truncate max-w-[200px]" title={record.product?.name}>{record.product?.name || slotMachineLabel(record) || '未知商品'}</span>
+          <span className="truncate max-w-[200px]" title={record.product?.name}>{slotMachineLabel(record) || record.product?.name || '未知商品'}</span>
         </div>
       )
     },
@@ -254,7 +254,7 @@ export default function DrawsPage() {
       formatDateTime(r.created_at),
       r.user?.name || '',
       r.user?.email || '',
-      r.product?.name || slotMachineLabel(r) || '',
+      slotMachineLabel(r) || r.product?.name || '',
       r.prize_level || '',
       r.prize_name || '',
       String(r.ticket_number ?? ''),
