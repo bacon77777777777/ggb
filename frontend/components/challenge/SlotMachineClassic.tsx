@@ -14,6 +14,8 @@ export interface SlotMachineClassicProps {
   rushHitsRemaining: number;
   isAuto: boolean;
   reelOutcome?: ReelOutcome | null;
+  /** 主題組圖路徑（2048×1400 固定模板），未傳用預設主題 */
+  spriteUrl?: string;
   spinsThisTier: number;
   floorSpinCount: number;
   jackpot: boolean;
@@ -74,15 +76,9 @@ function sThud(lvl: number) {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const SYMS = [
-  { t: '７',  cls: 'smvc-s7'   },
-  { t: '虎',  cls: 'smvc-sHu'  },
-  { t: '賞',  cls: 'smvc-sSho' },
-  { t: 'BAR', cls: 'smvc-sBar' },
-  { t: '⚡',  cls: 'smvc-sBolt'},
-  { t: '★',  cls: 'smvc-sStar' },
-];
-const N = SYMS.length, REP = 5, SEVEN = 0;
+// 滾輪符號：sprite 組圖 D 區 6 格（256×256），index 0 = 7（RUSH 專屬）
+const N = 6, REP = 5, SEVEN = 0;
+const DEFAULT_SPRITE = '/images/slot/machine/sprite.png';
 const MARQUEE_DEFAULT = '★ GGB RUSH ★ 押忍!! ★ 拉下拉桿試試手氣 ★ GOOD LUCK ★';
 const CNNUM = '一二三四五六七八九十';
 const cn = (n: number) => n <= 10 ? CNNUM[n - 1] : n.toString();
@@ -109,13 +105,20 @@ const SMVC_CSS = `
 }
 
 .smvc-layer { position:absolute; pointer-events:none; }
+/* ── Sprite 組圖定位（2048×1400 模板，座標見 sprite.png 模板表）── */
 .smvc-machine {
   inset:0;
-  background:url('/images/slot/machine/main.png') center/100% 100% no-repeat;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+  background-size:273.0667% 150.2146%;
+  background-position:0% 0%;
 }
 .smvc-mrush {
   inset:0; z-index:1;
-  background:url('/images/slot/machine/main_rush.png') center/100% 100% no-repeat;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+  background-size:271.9788% 150.2146%;
+  background-position:58.6873% 0%;
   opacity:0;
 }
 .smvc-stage.smvc-rushskin .smvc-mrush { opacity:1; }
@@ -123,12 +126,18 @@ const SMVC_CSS = `
 /* ── 發光層 ── */
 .smvc-lit {
   position:absolute; inset:0; pointer-events:none; z-index:4;
-  background:url('/images/slot/machine/main.png') center/100% 100% no-repeat;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+  background-size:273.0667% 150.2146%;
+  background-position:0% 0%;
   mix-blend-mode:screen;
   filter:brightness(2.1) saturate(1.75) blur(2.5px);
   opacity:0;
 }
-.smvc-stage.smvc-rushskin .smvc-lit { background-image:url('/images/slot/machine/main_rush.png'); }
+.smvc-stage.smvc-rushskin .smvc-lit {
+  background-size:271.9788% 150.2146%;
+  background-position:58.6873% 0%;
+}
 @keyframes smvc-litPulse  { 0%,100%{opacity:0;} 50%{opacity:.85;} }
 @keyframes smvc-litStrobe { 0%{opacity:1;} 50%{opacity:.05;} }
 @keyframes smvc-bulbBlink { 0%{opacity:.9;} 50%{opacity:.12;} }
@@ -213,7 +222,10 @@ const SMVC_CSS = `
 /* ── RUSH sign (hidden in normal mode) ── */
 .smvc-rushsign {
   position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%; z-index:5;
-  background:url('/images/slot/machine/light_rush.png') center/100% 100% no-repeat;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+  background-size:595.3488% 1707.3171%;
+  background-position:89.2019% 0%;
   opacity:0; transform-origin:center;
 }
 @keyframes smvc-signPulse {
@@ -277,15 +289,19 @@ const SMVC_CSS = `
 .smvc-cell {
   height:var(--smvc-rowH,80px);
   display:flex; align-items:center; justify-content:center;
-  font-weight:900; font-size:9.5cqw;
-  font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
 }
-.smvc-s7   { color:#e03014; text-shadow:.3cqw .3cqw 0 #7a0d00; }
-.smvc-sHu  { color:#ff9500; text-shadow:.3cqw .3cqw 0 #6b3c00; }
-.smvc-sSho { color:#d4a017; text-shadow:.3cqw .3cqw 0 #5e4506; }
-.smvc-sBar { color:#1c1c1c; font-size:7cqw; letter-spacing:.2cqw; text-shadow:.2cqw .2cqw 0 #999; }
-.smvc-sBolt{ color:#f5c400; text-shadow:0 0 1.2cqw #ff9d00; }
-.smvc-sStar{ color:#b03df0; text-shadow:.3cqw .3cqw 0 #4d0f73; }
+.smvc-sym {
+  display:block; width:76%; aspect-ratio:1/1;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+  background-size:800% 546.875%;
+}
+.smvc-sym0 { background-position:0%       83.0420%; }
+.smvc-sym1 { background-position:14.8438% 83.0420%; }
+.smvc-sym2 { background-position:29.6875% 83.0420%; }
+.smvc-sym3 { background-position:44.5313% 83.0420%; }
+.smvc-sym4 { background-position:59.3750% 83.0420%; }
+.smvc-sym5 { background-position:74.2188% 83.0420%; }
 .smvc-reel.smvc-blur .smvc-strip { filter:blur(.45cqw); }
 .smvc-shade {
   position:absolute; inset:0; pointer-events:none;
@@ -321,10 +337,9 @@ const SMVC_CSS = `
   display:flex; align-items:center; justify-content:center;
   animation:smvc-stampIn .16s cubic-bezier(.55,0,1,.45) both;
 }
-.smvc-stx {
-  font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
-  font-weight:900; font-size:9.5cqw; color:#e03014;
-  text-shadow:.3cqw .3cqw 0 #7a0d00,0 0 2cqw rgba(255,80,30,.9);
+.smvc-stamp .smvc-sym {
+  width:74%;
+  filter:drop-shadow(0 0 2cqw rgba(255,80,30,.9)) drop-shadow(.3cqw .3cqw 0 rgba(122,13,0,.85));
 }
 @keyframes smvc-stampIn {
   0%  {transform:scale(var(--ss,2.4)); opacity:0;}
@@ -342,16 +357,22 @@ const SMVC_CSS = `
 /* ── Lever ── */
 .smvc-lever-hit { position:absolute; left:2%; top:44%; width:16%; height:26%; z-index:7; cursor:pointer; }
 .smvc-lever     { position:absolute; left:5.07%; top:50.32%; height:30.47%; z-index:6; pointer-events:none; }
-.smvc-lf { position:absolute; left:0; top:0; height:100%; background:center/100% 100% no-repeat; opacity:0; }
+.smvc-lf {
+  position:absolute; left:0; top:0; height:100%; opacity:0;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
+}
 .smvc-lf.smvc-show { opacity:1; }
-.smvc-lf1 { width:9.20cqw; background-image:url('/images/slot/machine/1.png'); }
-.smvc-lf2 { width:9.73cqw; background-image:url('/images/slot/machine/2.png'); }
-.smvc-lf3 { width:9.87cqw; background-image:url('/images/slot/machine/3.png'); }
-.smvc-lf4 { width:9.33cqw; background-image:url('/images/slot/machine/4.png'); }
+.smvc-lf1 { width:9.20cqw; background-size:2968.1159% 492.9577%; background-position:76.8064% 37.6344%; }
+.smvc-lf2 { width:9.73cqw; background-size:2805.4795% 492.9577%; background-position:81.5190% 37.6344%; }
+.smvc-lf3 { width:9.87cqw; background-size:2767.5676% 492.9577%; background-position:86.1196% 37.6344%; }
+.smvc-lf4 { width:9.33cqw; background-size:2925.7143% 492.9577%; background-position:90.4954% 37.6344%; }
 
 /* ── Buttons ── */
 .smvc-btn {
-  position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat;
+  position:absolute; z-index:7; cursor:pointer;
+  background-image:var(--smvc-sprite);
+  background-repeat:no-repeat;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   line-height:1.05; padding-bottom:1.2cqw;
   font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
@@ -360,10 +381,16 @@ const SMVC_CSS = `
   color:#ffe8a0;
 }
 .smvc-btn-amt { font-size:68%; opacity:.92; letter-spacing:.04cqw; }
-.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:3.3cqw; padding-bottom:3.2cqw; }
-.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:4.5cqw; padding-bottom:3.2cqw;
+.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;
+  background-size:1575.3846% 1750%; background-position:79.2492% 7.5758%;
+  font-size:3.3cqw; padding-bottom:3.2cqw; }
+.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%;
+  background-size:1150.5618% 1346.1538%; background-position:81.2834% 15.4321%;
+  font-size:4.5cqw; padding-bottom:3.2cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
-.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:3.3cqw; padding-bottom:3.2cqw; }
+.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;
+  background-size:1575.3846% 1750%; background-position:79.2492% 24.2424%;
+  font-size:3.3cqw; padding-bottom:3.2cqw; }
 @keyframes smvc-invite {
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
   50%    {filter:drop-shadow(0 0 1.6cqw rgba(255,220,120,.95)) brightness(1.12);}
@@ -442,7 +469,7 @@ const SMVC_CSS = `
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function SlotMachineClassic({
-  spinState, isRushActive, isAuto, reelOutcome,
+  spinState, isRushActive, isAuto, reelOutcome, spriteUrl,
   spinsThisTier, floorSpinCount, jackpot, rushStreak,
   winCount, totalSpins, betCoins, directCost,
   onSpin, onDirect, onAutoToggle, onAnimDone,
@@ -487,8 +514,8 @@ export default function SlotMachineClassic({
       if (!strip) return;
       let html = '';
       for (let k = 0; k < REP; k++)
-        for (const s of SYMS)
-          html += `<div class="smvc-cell ${s.cls}">${s.t}</div>`;
+        for (let i = 0; i < N; i++)
+          html += `<div class="smvc-cell"><i class="smvc-sym smvc-sym${i}"></i></div>`;
       strip.innerHTML = html;
     });
     sync();
@@ -553,7 +580,7 @@ export default function SlotMachineClassic({
     const st = document.createElement('div');
     st.className = 'smvc-stamp';
     st.style.cssText = `left:${reel.offsetLeft}px;top:${reel.offsetTop}px;width:${reel.clientWidth}px;height:${reel.clientHeight}px;--ss:${2 + lvl * 0.5}`;
-    st.innerHTML = '<span class="smvc-stx">７</span>';
+    st.innerHTML = '<i class="smvc-sym smvc-sym0"></i>';
     stage.appendChild(st);
     setTimeout(() => st.remove(), 550);
 
@@ -827,7 +854,11 @@ export default function SlotMachineClassic({
 
   return (
     <div style={{ background: '#000' }}>
-      <div ref={stageRef} className="smvc-stage">
+      <div
+        ref={stageRef}
+        className="smvc-stage"
+        style={{ '--smvc-sprite': `url(${spriteUrl ?? DEFAULT_SPRITE})` } as React.CSSProperties}
+      >
         {/* Machine layers */}
         <div className="smvc-machine smvc-layer" />
         <div className="smvc-mrush smvc-layer" />
