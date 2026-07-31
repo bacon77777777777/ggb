@@ -462,14 +462,14 @@ const SMVC_CSS = `
 
 /* ── 音效開關（右上角，白線圖標 + 黑色圓形遮罩，同文章內頁返回鈕）── */
 .smvc-mute {
-  position:absolute; right:2.6%; top:2.2%; width:7.2%; aspect-ratio:1/1;
+  position:absolute; right:10px; top:10px; width:38px; height:38px;
   z-index:8; cursor:pointer; pointer-events:all;
   display:flex; align-items:center; justify-content:center;
   background:rgba(0,0,0,.3); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
   border-radius:50%;
   opacity:.92;
 }
-.smvc-mute svg { width:56%; height:56%; }
+.smvc-mute svg { width:20px; height:20px; }
 .smvc-mute:hover  { opacity:1; }
 .smvc-mute:active { transform:scale(.9); }
 
