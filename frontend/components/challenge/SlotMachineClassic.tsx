@@ -503,14 +503,14 @@ export default function SlotMachineClassic({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep rush skin in sync — but NOT during spinning/stopping/result (finish() 控制動畫期間，
-  // result 期間保留 RUSH 皮膚讓玩家欣賞，回 idle 才依真實狀態切換)
+  // Keep rush skin in sync — 只負責「加上」皮膚（進 RUSH / 直撃）。
+  // 「移除」只交給 finish()（滾輪三個停定時）：RUSH 已結束時皮膚仍保留，
+  // 由下一轉的滾輪結果揭曉——非 777 停定 → 才換回普通機台
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     if (spinState === 'spinning' || spinState === 'stopping') return;
     if (isRushActive) stage.classList.add('smvc-rushskin');
-    else if (spinState === 'idle') stage.classList.remove('smvc-rushskin');
   }, [isRushActive, spinState]);
 
   const sync = useCallback(() => {
@@ -776,10 +776,12 @@ export default function SlotMachineClassic({
   }, [isAuto]);
 
   // LED scoreboard — shown in rush sign panel area when idle + not in rush
+  // （RUSH 剛結束但皮膚尚未揭曉切回時，RUSH 看板仍亮著，計分板保持隱藏）
   useEffect(() => {
     const sb = scoreboardEl.current;
     if (!sb) return;
-    if (spinState === 'idle' && !isRushActive) {
+    const skinOn = stageRef.current?.classList.contains('smvc-rushskin') ?? false;
+    if (spinState === 'idle' && !isRushActive && !skinOn) {
       sb.textContent = `累計 ${totalSpins}次  ★  RUSH ${winCount}次`;
       sb.style.opacity = '1';
     } else {
