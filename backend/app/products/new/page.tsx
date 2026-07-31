@@ -256,8 +256,16 @@ export default function NewProductPage() {
         return data.publicUrl
       }
 
-      // 1. Upload Product Image
+      // 1. Upload Product Image（機台：自動帶主題機台圖片）
       let productImageUrl = formData.imagePreview
+      if (isSlot) {
+        try {
+          const res = await fetch('/api/admin/slot/themes')
+          const data = await res.json()
+          const theme = (data.themes ?? []).find((t: any) => formData.name.startsWith(t.name))
+          if (theme?.image_url) productImageUrl = theme.image_url
+        } catch { /* 比對不到主題時維持預設圖 */ }
+      }
       if (formData.image) {
         const file = formData.image
         const fileExt = file.name.split('.').pop()
@@ -427,8 +435,8 @@ export default function NewProductPage() {
                   required
                 />
               </div>
-              {/* 商品圖 — 點擊上傳 */}
-              <label className="flex-shrink-0 cursor-pointer group relative">
+              {/* 商品圖 — 點擊上傳（機台：自動帶機台圖片） */}
+              {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
                 <input
                   type="file"
                   accept="image/*"
@@ -458,7 +466,7 @@ export default function NewProductPage() {
                     </svg>
                   </button>
                 )}
-              </label>
+              </label>}
             </div>
 
             {/* 類型 */}

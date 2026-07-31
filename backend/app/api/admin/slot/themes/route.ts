@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         is_active: false,
         price: 0,
         supplier_id: supplier_id ?? null,
+        image_url: image_url ?? null,
         description: `挑戰機台 ${t.coins}G 檔獎池品項（由機台系統使用，請勿上架）`,
       })))
       .select('id')

@@ -649,9 +649,9 @@ export default function EditProductPage() {
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4">
             <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">商品資訊</h3>
             <div className="space-y-2">
-              {/* Row 1: 名稱 + 圖 */}
+              {/* Row 1: 名稱 + 圖（機台：主圖自動帶機台圖片，不可上傳） */}
               <div className="flex items-center gap-3">
-                <label className="flex-shrink-0 cursor-pointer group relative">
+                {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
                   <input type="file" accept="image/*" className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
@@ -669,7 +669,7 @@ export default function EditProductPage() {
                       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   )}
-                </label>
+                </label>}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -847,7 +847,7 @@ export default function EditProductPage() {
               </span>
             </div>
             <div className="space-y-2">
-              <div className="grid grid-cols-2 2xl:grid-cols-3 gap-2.5">
+              <div className="space-y-2.5">
                 {prizes.map((prize, index) => (
                   <div key={prize.id} className="border border-neutral-200 rounded-xl bg-white hover:border-primary/40 hover:shadow-sm transition-all">
 
