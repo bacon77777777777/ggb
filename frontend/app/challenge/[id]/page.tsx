@@ -279,10 +279,16 @@ export default function MachinePage() {
   // 機台層級保底計數（machine-level, 所有玩家共用）
   const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
 
-  // 直撃費用：max(min_rush_hits, floor_spin_count - floor_counter) × bet
-  const directCost = machine
-    ? Math.max(machine.min_rush_hits, machine.floor_spin_count - spinsThisTier) * currentTier.coins
-    : 0;
+  // 直撃費用：該檔次 RUSH 獎池最高品項價值 × 1.5，無條件進位至檔次金額倍數
+  const directCost = (() => {
+    const vals = pool
+      .filter(i => i.rush_only && !i.normal_only && !i.coin_return
+        && (i.remaining == null || i.remaining > 0)
+        && (i.min_bet == null || i.min_bet === currentTier.coins))
+      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
+    const maxVal = vals.length ? Math.max(...vals) : 0;
+    return maxVal > 0 ? Math.ceil((maxVal * 1.5) / currentTier.coins) * currentTier.coins : 0;
+  })();
 
   const changeTier = useCallback((delta: number) => {
     if (isTierLocked || tiers.length <= 1) return;
