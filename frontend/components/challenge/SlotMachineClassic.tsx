@@ -366,6 +366,13 @@ const SMVC_CSS = `
   100%  { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
 }
 .smvc-rushskin .smvc-bulb { --bulb-dur:.45s; }
+/* 頂弧（light1）底圖偏亮金，熄燈遮罩用較淡版本避免死黑 */
+.smvc-bulb-arc { animation-name:smvc-bulbChaseArc; }
+@keyframes smvc-bulbChaseArc {
+  0%    { opacity:1; }
+  33.4% { opacity:.5; box-shadow:inset 0 0 .5cqw .12cqw rgba(0,0,0,.32), 0 0 .7cqw .2cqw rgba(0,0,0,.18); filter:saturate(.65) brightness(.8); }
+  100%  { opacity:.5; box-shadow:inset 0 0 .5cqw .12cqw rgba(0,0,0,.32), 0 0 .7cqw .2cqw rgba(0,0,0,.18); filter:saturate(.65) brightness(.8); }
+}
 
 /* ── Reels ── */
 .smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
@@ -1022,7 +1029,7 @@ export default function SlotMachineClassic({
 
         {/* 跑馬燈泡（頂弧 + 大当り看板環） */}
         {MARQUEE_BULBS.map((b, i) => (
-          <i key={i} className="smvc-bulb"
+          <i key={i} className={`smvc-bulb${i < 13 ? ' smvc-bulb-arc' : ''}`}
             style={{ left: `${b.x}%`, top: `${b.y}%`, '--ph': b.ph } as React.CSSProperties} />
         ))}
 
