@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AdminLayout, Modal, SortableTableHeader, DateRangePicker } from '@/components'
+import { AdminLayout, PageCard, Modal, SortableTableHeader, DateRangePicker } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/contexts/ToastContext'
@@ -209,8 +209,8 @@ export default function SlotReportsPage() {
         )}
 
         {/* 機台明細表 */}
-        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
+        <PageCard>
+          <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-neutral-900">機台明細</h3>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm text-neutral-500 cursor-pointer">
@@ -228,21 +228,21 @@ export default function SlotReportsPage() {
           {loading ? (
             <CardSkeleton rows={5} />
           ) : visibleRows.length === 0 ? (
-            <div className="py-20 text-center text-neutral-400 text-sm">此區間無機台交易紀錄</div>
+            <div className="py-12 text-center text-sm text-neutral-400">此區間無機台交易紀錄</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <SortableTableHeader sortKey="machine_id" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4">機台</SortableTableHeader>
-                    <SortableTableHeader sortKey="spins" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">轉數</SortableTableHeader>
-                    <SortableTableHeader sortKey="bet_total" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">投注額</SortableTableHeader>
-                    <SortableTableHeader sortKey="direct" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">直衝</SortableTableHeader>
-                    <SortableTableHeader sortKey="rush_count" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">RUSH</SortableTableHeader>
-                    <SortableTableHeader sortKey="coin_return" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">退幣</SortableTableHeader>
-                    <SortableTableHeader sortKey="prize_value" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">出獎</SortableTableHeader>
-                    <SortableTableHeader sortKey="profit" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">毛利</SortableTableHeader>
-                    <SortableTableHeader sortKey="rtp" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-2 px-4 text-right">RTP</SortableTableHeader>
+                    <SortableTableHeader sortKey="machine_id" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">機台</SortableTableHeader>
+                    <SortableTableHeader sortKey="spins" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">轉數</SortableTableHeader>
+                    <SortableTableHeader sortKey="bet_total" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">投注額</SortableTableHeader>
+                    <SortableTableHeader sortKey="direct" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">直衝</SortableTableHeader>
+                    <SortableTableHeader sortKey="rush_count" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">RUSH</SortableTableHeader>
+                    <SortableTableHeader sortKey="coin_return" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">退幣</SortableTableHeader>
+                    <SortableTableHeader sortKey="prize_value" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">出獎</SortableTableHeader>
+                    <SortableTableHeader sortKey="profit" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">毛利</SortableTableHeader>
+                    <SortableTableHeader sortKey="rtp" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">RTP</SortableTableHeader>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -259,46 +259,46 @@ export default function SlotReportsPage() {
                         </div>
                         <div className="text-xs text-neutral-400">ID {r.machine_id}</div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-semibold">{fmt(r.spins)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{fmt(r.bet_total)} G</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-neutral-600 whitespace-nowrap">
+                      <td className="px-4 py-3 tabular-nums font-semibold">{fmt(r.spins)}</td>
+                      <td className="px-4 py-3 tabular-nums">{fmt(r.bet_total)} G</td>
+                      <td className="px-4 py-3 tabular-nums text-neutral-600 whitespace-nowrap">
                         {r.direct_count > 0 ? `${r.direct_count} 次 / ${fmt(r.direct_total)} G` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{fmt(r.rush_count)} 次</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{fmt(r.coin_return_total)} G</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-neutral-600 whitespace-nowrap">
+                      <td className="px-4 py-3 tabular-nums">{fmt(r.rush_count)} 次</td>
+                      <td className="px-4 py-3 tabular-nums">{fmt(r.coin_return_total)} G</td>
+                      <td className="px-4 py-3 tabular-nums text-neutral-600 whitespace-nowrap">
                         {r.prize_count > 0 ? `${r.prize_count} 件 / ${fmt(r.prize_value_total)} G` : '—'}
                       </td>
-                      <td className={`px-4 py-3 text-right tabular-nums font-semibold ${profit(r) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <td className={`px-4 py-3 tabular-nums font-semibold ${profit(r) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {fmt(profit(r))} G
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{rtpText(rtp(r))}</td>
+                      <td className="px-4 py-3 tabular-nums">{rtpText(rtp(r))}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="bg-neutral-50 border-t border-neutral-200">
                   <tr>
                     <td className="px-4 py-2 text-sm font-semibold text-neutral-700">合計（{visibleRows.length} 台）</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{fmt(totals.spins)}</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{fmt(totals.bet)} G</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.spins)}</td>
+                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.bet)} G</td>
+                    <td className="px-4 py-2 font-bold tabular-nums whitespace-nowrap">
                       {totals.directCount > 0 ? `${totals.directCount} 次 / ${fmt(totals.directTotal)} G` : '—'}
                     </td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{fmt(totals.rush)} 次</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{fmt(totals.coinReturn)} G</td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.rush)} 次</td>
+                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.coinReturn)} G</td>
+                    <td className="px-4 py-2 font-bold tabular-nums whitespace-nowrap">
                       {totals.prizeCount > 0 ? `${totals.prizeCount} 件 / ${fmt(totals.prizeValue)} G` : '—'}
                     </td>
-                    <td className={`px-4 py-2 text-right font-bold tabular-nums ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`px-4 py-2 font-bold tabular-nums ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {fmt(totals.profit)} G
                     </td>
-                    <td className="px-4 py-2 text-right font-bold tabular-nums">{rtpText(totals.rtp)}</td>
+                    <td className="px-4 py-2 font-bold tabular-nums">{rtpText(totals.rtp)}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
-        </div>
+        </PageCard>
 
         <p className="text-xs text-neutral-400">點機台列可看每日明細。出獎價值以品項回收價計算；毛利 = 投注 + 直衝 − 退幣 − 出獎價值。</p>
       </div>
@@ -313,8 +313,8 @@ export default function SlotReportsPage() {
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                {['日期', '轉數', '投注額', '直衝', 'RUSH', '退幣', '出獎', '毛利', 'RTP'].map((h, i) => (
-                  <th key={h} className={`py-2 px-3 text-xs font-semibold text-neutral-500 whitespace-nowrap ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                {['日期', '轉數', '投注額', '直衝', 'RUSH', '退幣', '出獎', '毛利', 'RTP'].map(h => (
+                  <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -327,20 +327,20 @@ export default function SlotReportsPage() {
                 daily.map(d => (
                   <tr key={d.day} className="hover:bg-neutral-50 transition-colors">
                     <td className="py-2 px-3 font-mono text-xs">{d.day}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(d.spins)}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(d.bet_total)} G</td>
-                    <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
+                    <td className="py-2 px-3 tabular-nums">{fmt(d.spins)}</td>
+                    <td className="py-2 px-3 tabular-nums">{fmt(d.bet_total)} G</td>
+                    <td className="py-2 px-3 tabular-nums whitespace-nowrap">
                       {d.direct_count > 0 ? `${d.direct_count} 次 / ${fmt(d.direct_total)} G` : '—'}
                     </td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(d.rush_count)} 次</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(d.coin_return_total)} G</td>
-                    <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">
+                    <td className="py-2 px-3 tabular-nums">{fmt(d.rush_count)} 次</td>
+                    <td className="py-2 px-3 tabular-nums">{fmt(d.coin_return_total)} G</td>
+                    <td className="py-2 px-3 tabular-nums whitespace-nowrap">
                       {d.prize_count > 0 ? `${d.prize_count} 件 / ${fmt(d.prize_value_total)} G` : '—'}
                     </td>
-                    <td className={`py-2 px-3 text-right tabular-nums font-semibold ${profit(d) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`py-2 px-3 tabular-nums font-semibold ${profit(d) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {fmt(profit(d))} G
                     </td>
-                    <td className="py-2 px-3 text-right tabular-nums">{rtpText(rtp(d))}</td>
+                    <td className="py-2 px-3 tabular-nums">{rtpText(rtp(d))}</td>
                   </tr>
                 ))
               )}
