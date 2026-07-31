@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AdminLayout, PageCard, Modal, SortableTableHeader, DateRangePicker } from '@/components'
+import { AdminLayout, PageCard, Modal, SortableTableHeader, SearchToolbar, DateRangePicker } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useToast } from '@/contexts/ToastContext'
 
 interface ReportRow {
@@ -33,6 +34,18 @@ interface DailyRow {
   prize_count: number
   prize_value_total: number
 }
+
+const COLUMNS = [
+  { key: 'machine',     label: '機台' },
+  { key: 'spins',       label: '轉數' },
+  { key: 'bet',         label: '投注額' },
+  { key: 'direct',      label: '直衝' },
+  { key: 'rush',        label: 'RUSH' },
+  { key: 'coin_return', label: '退幣' },
+  { key: 'prize',       label: '出獎' },
+  { key: 'profit',      label: '毛利' },
+  { key: 'rtp',         label: 'RTP' },
+]
 
 const fmt = (n: number) => n.toLocaleString('zh-TW')
 
@@ -70,9 +83,13 @@ export default function SlotReportsPage() {
   const [end, setEnd] = useState('')
   const [rows, setRows] = useState<ReportRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [hideIdle, setHideIdle] = useState(true)
-  const [sortField, setSortField] = useState('machine_id')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [idleFilter, setIdleFilter] = useState<'active' | 'all'>('active')
+  const [sortField, setSortField] = useState('machine')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs<Record<string, boolean>>('slot_reports', 'normal', {
+    machine: true, spins: true, bet: true, direct: true, rush: true, coin_return: true, prize: true, profit: true, rtp: true,
+  })
 
   // 每日明細 modal
   const [detailMachine, setDetailMachine] = useState<ReportRow | null>(null)
@@ -114,23 +131,32 @@ export default function SlotReportsPage() {
     }
   }
 
+  const machineLabel = (r: ReportRow) =>
+    `${r.theme_name || r.machine_name}${r.machine_number ? ` #${r.machine_number}` : ''}`
+
   const visibleRows = useMemo(() => {
-    const filtered = hideIdle ? rows.filter(r => r.spins > 0 || r.direct_count > 0) : rows
+    let filtered = idleFilter === 'active' ? rows.filter(r => r.spins > 0 || r.direct_count > 0) : rows
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      filtered = filtered.filter(r =>
+        machineLabel(r).toLowerCase().includes(q) || String(r.machine_id).includes(q)
+      )
+    }
     const val = (r: ReportRow): number => {
       switch (sortField) {
         case 'spins':       return r.spins
-        case 'bet_total':   return r.bet_total
+        case 'bet':         return r.bet_total
         case 'direct':      return r.direct_total
-        case 'rush_count':  return r.rush_count
+        case 'rush':        return r.rush_count
         case 'coin_return': return r.coin_return_total
-        case 'prize_value': return r.prize_value_total
+        case 'prize':       return r.prize_value_total
         case 'profit':      return profit(r)
         case 'rtp':         return rtp(r) ?? -1
         default:            return r.machine_id
       }
     }
     return [...filtered].sort((a, b) => (sortDir === 'asc' ? val(a) - val(b) : val(b) - val(a)))
-  }, [rows, hideIdle, sortField, sortDir])
+  }, [rows, idleFilter, searchQuery, sortField, sortDir])
 
   const totals = useMemo(() => {
     const sum = (fn: (r: ReportRow) => number) => visibleRows.reduce((acc, r) => acc + fn(r), 0)
@@ -152,8 +178,14 @@ export default function SlotReportsPage() {
     }
   }, [visibleRows])
 
-  const machineLabel = (r: ReportRow) =>
-    `${r.theme_name || r.machine_name}${r.machine_number ? ` #${r.machine_number}` : ''}`
+  const show = (key: string) => visibleColumns[key as keyof typeof visibleColumns] !== false
+  const dc = (() => {
+    switch (tableDensity) {
+      case 'compact':     return 'py-2 px-2'
+      case 'normal':      return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  })()
 
   const handleExport = () => {
     exportCSV(`機台報表_${start}_${end}.csv`,
@@ -186,16 +218,9 @@ export default function SlotReportsPage() {
   return (
     <AdminLayout pageTitle="機台報表">
       <div className="space-y-4">
-        {/* 工具列 — 靠右對齊，同對帳報表風格 */}
+        {/* 日期區間 — 靠右對齊，同對帳報表風格 */}
         <div className="flex items-center justify-end gap-2 flex-wrap">
           <DateRangePicker startDate={start} endDate={end} onStartDateChange={setStart} onEndDateChange={setEnd} placeholder="選擇日期範圍" />
-          <button onClick={handleExport} disabled={visibleRows.length === 0}
-            className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-neutral-200">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            匯出 CSV
-          </button>
         </div>
 
         {/* KPI 小卡 */}
@@ -210,21 +235,34 @@ export default function SlotReportsPage() {
 
         {/* 機台明細表 */}
         <PageCard>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-neutral-900">機台明細</h3>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-neutral-500 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hideIdle}
-                  onChange={e => setHideIdle(e.target.checked)}
-                  className="rounded border-neutral-300"
-                />
-                隱藏無交易機台
-              </label>
-              <span className="text-sm text-neutral-500">共 {visibleRows.length} 台</span>
-            </div>
-          </div>
+          <SearchToolbar
+            searchPlaceholder="搜尋機台名稱、ID..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            showExportCSV={true}
+            onExportCSV={handleExport}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'idle',
+                label: '交易狀態',
+                type: 'select',
+                value: idleFilter,
+                onChange: setIdleFilter,
+                options: [
+                  { value: 'active', label: '隱藏無交易機台' },
+                  { value: 'all',    label: '顯示全部機台' },
+                ],
+              },
+            ]}
+            showColumnToggle={true}
+            columns={COLUMNS.map(c => ({ key: c.key, label: c.label, visible: visibleColumns[c.key as keyof typeof visibleColumns] }))}
+            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
+          />
+
           {loading ? (
             <CardSkeleton rows={5} />
           ) : visibleRows.length === 0 ? (
@@ -234,67 +272,56 @@ export default function SlotReportsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
                   <tr>
-                    <SortableTableHeader sortKey="machine_id" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">機台</SortableTableHeader>
-                    <SortableTableHeader sortKey="spins" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">轉數</SortableTableHeader>
-                    <SortableTableHeader sortKey="bet_total" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">投注額</SortableTableHeader>
-                    <SortableTableHeader sortKey="direct" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">直衝</SortableTableHeader>
-                    <SortableTableHeader sortKey="rush_count" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">RUSH</SortableTableHeader>
-                    <SortableTableHeader sortKey="coin_return" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">退幣</SortableTableHeader>
-                    <SortableTableHeader sortKey="prize_value" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">出獎</SortableTableHeader>
-                    <SortableTableHeader sortKey="profit" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">毛利</SortableTableHeader>
-                    <SortableTableHeader sortKey="rtp" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className="py-3 px-4">RTP</SortableTableHeader>
+                    {show('machine')     && <SortableTableHeader sortKey="machine" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>機台</SortableTableHeader>}
+                    {show('spins')       && <SortableTableHeader sortKey="spins" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>轉數</SortableTableHeader>}
+                    {show('bet')         && <SortableTableHeader sortKey="bet" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>投注額</SortableTableHeader>}
+                    {show('direct')      && <SortableTableHeader sortKey="direct" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>直衝</SortableTableHeader>}
+                    {show('rush')        && <SortableTableHeader sortKey="rush" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>RUSH</SortableTableHeader>}
+                    {show('coin_return') && <SortableTableHeader sortKey="coin_return" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>退幣</SortableTableHeader>}
+                    {show('prize')       && <SortableTableHeader sortKey="prize" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>出獎</SortableTableHeader>}
+                    {show('profit')      && <SortableTableHeader sortKey="profit" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>毛利</SortableTableHeader>}
+                    {show('rtp')         && <SortableTableHeader sortKey="rtp" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>RTP</SortableTableHeader>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
+                  {/* 合計列 — 表頭下方 */}
+                  <tr className="bg-neutral-50 font-semibold">
+                    {show('machine')     && <td className={`${dc} text-sm text-neutral-700`}>合計（{visibleRows.length} 台）</td>}
+                    {show('spins')       && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.spins)}</td>}
+                    {show('bet')         && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.bet)} G</td>}
+                    {show('direct')      && <td className={`${dc} font-bold tabular-nums whitespace-nowrap`}>{totals.directCount > 0 ? `${totals.directCount} 次 / ${fmt(totals.directTotal)} G` : '—'}</td>}
+                    {show('rush')        && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.rush)} 次</td>}
+                    {show('coin_return') && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.coinReturn)} G</td>}
+                    {show('prize')       && <td className={`${dc} font-bold tabular-nums whitespace-nowrap`}>{totals.prizeCount > 0 ? `${totals.prizeCount} 件 / ${fmt(totals.prizeValue)} G` : '—'}</td>}
+                    {show('profit')      && <td className={`${dc} font-bold tabular-nums ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(totals.profit)} G</td>}
+                    {show('rtp')         && <td className={`${dc} font-bold tabular-nums`}>{rtpText(totals.rtp)}</td>}
+                  </tr>
                   {visibleRows.map(r => (
                     <tr
                       key={r.machine_id}
                       onClick={() => openDetail(r)}
                       className="hover:bg-neutral-50 transition-colors cursor-pointer"
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-neutral-900">{machineLabel(r)}</span>
-                          {!r.is_active && <Badge color="gray">下架</Badge>}
-                        </div>
-                        <div className="text-xs text-neutral-400">ID {r.machine_id}</div>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums font-semibold">{fmt(r.spins)}</td>
-                      <td className="px-4 py-3 tabular-nums">{fmt(r.bet_total)} G</td>
-                      <td className="px-4 py-3 tabular-nums text-neutral-600 whitespace-nowrap">
-                        {r.direct_count > 0 ? `${r.direct_count} 次 / ${fmt(r.direct_total)} G` : '—'}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{fmt(r.rush_count)} 次</td>
-                      <td className="px-4 py-3 tabular-nums">{fmt(r.coin_return_total)} G</td>
-                      <td className="px-4 py-3 tabular-nums text-neutral-600 whitespace-nowrap">
-                        {r.prize_count > 0 ? `${r.prize_count} 件 / ${fmt(r.prize_value_total)} G` : '—'}
-                      </td>
-                      <td className={`px-4 py-3 tabular-nums font-semibold ${profit(r) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {fmt(profit(r))} G
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{rtpText(rtp(r))}</td>
+                      {show('machine') && (
+                        <td className={dc}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-neutral-900 whitespace-nowrap">{machineLabel(r)}</span>
+                            {!r.is_active && <Badge color="gray">下架</Badge>}
+                          </div>
+                          <div className="text-xs text-neutral-400">ID {r.machine_id}</div>
+                        </td>
+                      )}
+                      {show('spins')       && <td className={`${dc} tabular-nums font-semibold`}>{fmt(r.spins)}</td>}
+                      {show('bet')         && <td className={`${dc} tabular-nums`}>{fmt(r.bet_total)} G</td>}
+                      {show('direct')      && <td className={`${dc} tabular-nums text-neutral-600 whitespace-nowrap`}>{r.direct_count > 0 ? `${r.direct_count} 次 / ${fmt(r.direct_total)} G` : '—'}</td>}
+                      {show('rush')        && <td className={`${dc} tabular-nums`}>{fmt(r.rush_count)} 次</td>}
+                      {show('coin_return') && <td className={`${dc} tabular-nums`}>{fmt(r.coin_return_total)} G</td>}
+                      {show('prize')       && <td className={`${dc} tabular-nums text-neutral-600 whitespace-nowrap`}>{r.prize_count > 0 ? `${r.prize_count} 件 / ${fmt(r.prize_value_total)} G` : '—'}</td>}
+                      {show('profit')      && <td className={`${dc} tabular-nums font-semibold ${profit(r) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(profit(r))} G</td>}
+                      {show('rtp')         && <td className={`${dc} tabular-nums`}>{rtpText(rtp(r))}</td>}
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                  <tr>
-                    <td className="px-4 py-2 text-sm font-semibold text-neutral-700">合計（{visibleRows.length} 台）</td>
-                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.spins)}</td>
-                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.bet)} G</td>
-                    <td className="px-4 py-2 font-bold tabular-nums whitespace-nowrap">
-                      {totals.directCount > 0 ? `${totals.directCount} 次 / ${fmt(totals.directTotal)} G` : '—'}
-                    </td>
-                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.rush)} 次</td>
-                    <td className="px-4 py-2 font-bold tabular-nums">{fmt(totals.coinReturn)} G</td>
-                    <td className="px-4 py-2 font-bold tabular-nums whitespace-nowrap">
-                      {totals.prizeCount > 0 ? `${totals.prizeCount} 件 / ${fmt(totals.prizeValue)} G` : '—'}
-                    </td>
-                    <td className={`px-4 py-2 font-bold tabular-nums ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {fmt(totals.profit)} G
-                    </td>
-                    <td className="px-4 py-2 font-bold tabular-nums">{rtpText(totals.rtp)}</td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
           )}
