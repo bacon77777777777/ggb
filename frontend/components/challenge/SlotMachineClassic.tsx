@@ -362,8 +362,8 @@ const SMVC_CSS = `
 }
 @keyframes smvc-bulbChase {
   0%    { opacity:1; }
-  33.4% { opacity:.82; box-shadow:inset 0 0 0 2cqw rgba(0,0,0,.42); filter:saturate(.55) brightness(.75); }
-  100%  { opacity:.82; box-shadow:inset 0 0 0 2cqw rgba(0,0,0,.42); filter:saturate(.55) brightness(.75); }
+  33.4% { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
+  100%  { opacity:.85; box-shadow:inset 0 0 .55cqw .15cqw rgba(0,0,0,.5), 0 0 .9cqw .3cqw rgba(0,0,0,.3); filter:saturate(.5) brightness(.6); }
 }
 .smvc-rushskin .smvc-bulb { --bulb-dur:.45s; }
 
