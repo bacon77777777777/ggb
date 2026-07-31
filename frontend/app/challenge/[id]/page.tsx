@@ -522,7 +522,11 @@ export default function MachinePage() {
       if (aLocked !== bLocked) return Number(aLocked) - Number(bLocked);
       return (a.min_bet ?? 0) - (b.min_bet ?? 0);
     });
-  const rushPool = pool.filter(item => item.rush_only && (item.product_prizes || item.slot_prizes));
+  // RUSH 池為檔次專屬（min_bet = 當前檔次；NULL = 全檔通用），切換檔次顯示對應獎池
+  const rushPool = pool.filter(item =>
+    item.rush_only && (item.product_prizes || item.slot_prizes) &&
+    (item.min_bet == null || item.min_bet === currentTier.coins)
+  );
 
   // ── renderers ──────────────────────────────────────────────
 
