@@ -716,19 +716,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
-        id: 'reports',
-        title: '對帳報表',
-        items: [
-          { name: '儲值明細', path: '/recharges', icon: IconRecharges },
-          { name: '物流明細', path: '/reports/logistics', icon: IconTruck },
-          { name: '折價券明細', path: '/reports/coupons', icon: IconCoupons },
-          { name: '消費明細', path: '/reports/products', icon: IconCart },
-          { name: '分解明細', path: '/reports/dismantled', icon: IconScissors },
-          { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
-          { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
-        ],
-      },
-      {
         id: 'lottery',
         title: '抽獎管理',
         items: [
@@ -741,11 +728,33 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
+        id: 'challenge',
+        title: '機台管理',
+        items: [
+          { name: '主題管理', path: '/slot', icon: IconBolt },
+          { name: '輪播圖管理', path: '/slot/banners', icon: IconBanners },
+          { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
+        ],
+      },
+      {
         id: 'members',
         title: '會員管理',
         items: [
           { name: '會員管理', path: '/users', icon: IconUsers },
           { name: '待複核儲值', path: '/recharge-review', icon: IconRecharges },
+        ],
+      },
+      {
+        id: 'reports',
+        title: '對帳報表',
+        items: [
+          { name: '儲值明細', path: '/recharges', icon: IconRecharges },
+          { name: '物流明細', path: '/reports/logistics', icon: IconTruck },
+          { name: '折價券明細', path: '/reports/coupons', icon: IconCoupons },
+          { name: '消費明細', path: '/reports/products', icon: IconCart },
+          { name: '分解明細', path: '/reports/dismantled', icon: IconScissors },
+          { name: '廠商結算', path: '/reports/settlement', icon: IconReceipt },
+          { name: '廠商月結管理', path: '/settlement-snapshots', icon: IconLedger },
         ],
       },
       {
@@ -772,15 +781,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '客服工單', path: '/cs-management/tickets', icon: IconChat },
           { name: '操作手冊', path: '/cs-management/sop', icon: IconBook },
-        ],
-      },
-      {
-        id: 'challenge',
-        title: '挑戰機台',
-        items: [
-          { name: '主題管理', path: '/slot', icon: IconBolt },
-          { name: '輪播圖管理', path: '/slot/banners', icon: IconBanners },
-          { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
         ],
       },
       {
