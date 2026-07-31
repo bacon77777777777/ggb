@@ -346,24 +346,25 @@ const SMVC_CSS = `
 .smvc-btn {
   position:absolute; z-index:7; cursor:pointer; background:center/100% 100% no-repeat;
   display:flex; align-items:center; justify-content:center;
+  padding-bottom:1.2cqw;
   font-family:Impact,"Arial Black","Microsoft JhengHei",sans-serif;
   font-weight:900; letter-spacing:.06cqw; pointer-events:all;
   text-shadow:0 0 .6cqw rgba(255,140,0,.9),0 1px 2px rgba(0,0,0,.8);
   color:#ffe8a0;
 }
-.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:2.7cqw; }
-.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:3.2cqw;
+.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:3.3cqw; }
+.smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:4cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
-.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:2.7cqw; }
+.smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:3.3cqw; }
 @keyframes smvc-invite {
   0%,100%{filter:drop-shadow(0 0 .2cqw rgba(255,220,120,.3));}
   50%    {filter:drop-shadow(0 0 1.6cqw rgba(255,220,120,.95)) brightness(1.12);}
 }
 .smvc-btn:hover  { filter:brightness(1.15) drop-shadow(0 0 1cqw rgba(255,230,150,.8)); }
 .smvc-btn:active { transform:translateY(3%) scale(.97); filter:brightness(.92); }
-.smvc-stage.smvc-spinning .smvc-btn,
+.smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto),
 .smvc-stage.smvc-spinning .smvc-lever-hit { pointer-events:none; }
-.smvc-stage.smvc-spinning .smvc-btn { filter:saturate(.6) brightness(.85); animation:none; }
+.smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto) { filter:saturate(.6) brightness(.85); animation:none; }
 .smvc-btn-auto.smvc-on { animation:smvc-autopulse .9s infinite; }
 @keyframes smvc-autopulse { 50%{filter:brightness(1.5) drop-shadow(0 0 1.4cqw #ffd84d);} }
 
@@ -502,12 +503,14 @@ export default function SlotMachineClassic({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep rush skin in sync — but NOT during spinning/stopping (finish() handles that timing)
+  // Keep rush skin in sync — but NOT during spinning/stopping/result (finish() 控制動畫期間，
+  // result 期間保留 RUSH 皮膚讓玩家欣賞，回 idle 才依真實狀態切換)
   useEffect(() => {
-    if (!stageRef.current) return;
-    if (isRushActive && spinState !== 'spinning' && spinState !== 'stopping') {
-      stageRef.current.classList.add('smvc-rushskin');
-    }
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (spinState === 'spinning' || spinState === 'stopping') return;
+    if (isRushActive) stage.classList.add('smvc-rushskin');
+    else if (spinState === 'idle') stage.classList.remove('smvc-rushskin');
   }, [isRushActive, spinState]);
 
   const sync = useCallback(() => {
@@ -723,16 +726,29 @@ export default function SlotMachineClassic({
     if (!stage) return;
 
     if (spinState === 'spinning') {
-      // UI 準備：lever pull + blur。不做 JS reel 動畫，等 API 返回後 stopping 才開始
+      // UI 準備：lever pull + blur + 等速滾動。等 API 返回後 stopping 才做 ease-out 定位
       stage.classList.add('smvc-spinning');
       stage.classList.remove('smvc-rushmode');
-      // 非 RUSH 轉時移除 rush skin，避免 RUSH 結束後 skin 殘留到下一轉
-      if (!isRushActive) stage.classList.remove('smvc-rushskin');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
       if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
       reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
+      // 等速滾動：拉桿一拉滾輪立即轉起來，stopping 的 stopReels 會接手（++animGen 停掉此迴圈）
+      {
+        const myGen = ++animGen.current;
+        const spinFrame = () => {
+          if (animGen.current !== myGen) return;
+          const rh = rowH.current || 80, nrh = N * rh, cycle = REP * nrh;
+          for (let i = 0; i < 3; i++) {
+            offsets.current[i] = (offsets.current[i] + rh * 0.38) % cycle;
+            const strip = stripEls.current[i];
+            if (strip) strip.style.transform = `translateY(${-(offsets.current[i] % nrh)}px)`;
+          }
+          rafId.current = requestAnimationFrame(spinFrame);
+        };
+        rafId.current = requestAnimationFrame(spinFrame);
+      }
     } else if (spinState === 'stopping') {
       // API 返回，開始 ease-out 動畫（同 v16 的 spin()）
       // 捕捉 jackpot 值，避免 ref 在動畫期間被覆蓋

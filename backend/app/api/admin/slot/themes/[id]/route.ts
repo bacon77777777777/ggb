@@ -40,7 +40,7 @@ export async function PATCH(
   const allowed = [
     'name', 'machine_count', 'event_slug', 'supplier_id', 'image_url',
     'bet_tiers', 'spin_returns', 'trigger_rate', 'continue_rate',
-    'min_rush_hits', 'floor_spin_count',
+    'continue_rate_decay', 'min_rush_hits', 'floor_spin_count',
     'video_rush_entry', 'video_rush_anticipation', 'video_rush_win',
     'video_rush_win_strong', 'video_rush_win_god', 'video_rush_revival',
     'is_active', 'sort_order', 'machine_type',
@@ -65,8 +65,8 @@ export async function PATCH(
   const machineSync: Record<string, unknown> = {}
   const syncFields = [
     'name', 'bet_tiers', 'trigger_rate', 'continue_rate',
-    'min_rush_hits', 'floor_spin_count', 'supplier_id', 'event_slug',
-    'image_url', 'is_active',
+    'continue_rate_decay', 'min_rush_hits', 'floor_spin_count',
+    'supplier_id', 'event_slug', 'image_url', 'is_active',
   ]
   for (const f of syncFields) {
     if (f in updates) machineSync[f] = updates[f]

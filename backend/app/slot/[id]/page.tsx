@@ -16,6 +16,7 @@ interface SlotTheme {
   event_slug: string | null; supplier_id: number | null; image_url: string | null
   bet_tiers: BetTier[]; spin_returns: SpinReturn[]
   trigger_rate: number; continue_rate: number; min_rush_hits: number; floor_spin_count: number
+  continue_rate_decay: number
   video_rush_entry: string | null; video_rush_anticipation: string | null
   video_rush_win: string | null; video_rush_win_strong: string | null
   video_rush_win_god: string | null; video_rush_revival: string | null
@@ -100,6 +101,7 @@ export default function SlotThemeDetailPage() {
   const [form, setForm]                   = useState<Partial<SlotTheme>>({})
   const [triggerRateStr, setTriggerRateStr]   = useState('')
   const [continueRateStr, setContinueRateStr] = useState('')
+  const [decayStr, setDecayStr]               = useState('')
   const [betTiersInput, setBetTiersInput] = useState('')
   const [machineImageFile, setMachineImageFile]       = useState<File | null>(null)
   const [machineImagePreview, setMachineImagePreview] = useState('')
@@ -131,6 +133,7 @@ export default function SlotThemeDetailPage() {
     setForm({ ...t })
     setTriggerRateStr((t.trigger_rate  ?? 0) > 0 ? ((t.trigger_rate  ?? 0) * 100).toFixed(2) : '')
     setContinueRateStr((t.continue_rate ?? 0) > 0 ? ((t.continue_rate ?? 0) * 100).toFixed(2) : '')
+    setDecayStr(((t.continue_rate_decay ?? 0.5) * 100).toFixed(0))
     setBetTiersInput((t.bet_tiers ?? []).map((b: BetTier) => b.coins).join(','))
     setMachineImagePreview(t.image_url ?? '')
     setIsLoading(false)
@@ -562,6 +565,24 @@ export default function SlotThemeDetailPage() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
                   </div>
+                </Field>
+                <Field label="延續率遞減係數">
+                  <div className="relative">
+                    <input type="number" step={1} min={1} max={100} className={INPUT + ' pr-8'}
+                      value={decayStr}
+                      onChange={e => setDecayStr(e.target.value)}
+                      onBlur={e => {
+                        const v = parseFloat(e.target.value)
+                        const val = isNaN(v) ? 50 : Math.min(100, Math.max(1, v))
+                        setForm(prev => ({ ...prev, continue_rate_decay: val / 100 }))
+                        setDecayStr(val.toFixed(0))
+                      }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    每延續一次，延續率 × 此係數（例：延續率 50%、係數 50% → 第二次延續判定為 25%）。100% = 不遞減
+                  </p>
                 </Field>
               </div>
 

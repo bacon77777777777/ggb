@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.07.30g｜2026-07-30｜老虎機體驗修正 + 每日統計 + 延續遞減後台可調
+
+### 改動
+- 滾輪即轉：拉桿一拉滾輪立即等速滾動（原本要等 API 返回才動），API 返回後才 ease-out 定位
+- RUSH 皮膚換圖時機修正：RUSH 結束後皮膚保留至結果彈窗關閉回 idle 才切回普通機台（原本按下 SPIN 立即換圖，體感差）
+- 自動按鈕在旋轉中不再禁用，隨時可關閉自動模式
+- Auto 模式卡彈窗修正：RUSH 得獎/退出的恭喜彈窗顯示 2.5 秒後自動關閉續轉
+- 機台按鈕文字放大（2.7→3.3cqw、SPIN 3.2→4cqw）並上移
+- LED 計分板改接機台每日統計：累計 N次 ★ RUSH N次，台灣時間 00:00 自動重置
+- DB migration 383（STG+PROD 已執行）：
+  - `slot_machines` 加 `day_spins` / `day_rush` / `day_reset_date`，由 `play_slot_locked` 每次 spin 順帶維護跨日清零，不需 cron
+  - `slot_themes` 加 `continue_rate_decay`，後台主題設定「延續率遞減係數」欄位可調，儲存時同步至旗下機台
+  - `enter_slot_rush_direct` 直撃也計入 day_rush
+- 確認 RUSH 中不會發生 rush 觸發（382 邏輯：RUSH 中只判延續率 × decay^連中次數，二擇一：連中延續或回普通機台）
+
+---
+
 ## v2026.07.30f｜2026-07-30｜老虎機 UI 大幅優化
 
 ### 改動

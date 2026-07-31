@@ -83,6 +83,8 @@ interface SlotSession {
   tier_progress: Record<string, number> | null;
   total_spins: number;
   locked_bet: number | null;
+  day_spins?: number;   // 機台當日總轉次（台灣時間 00:00 重置）
+  day_rush?: number;    // 機台當日 RUSH 觸發次數
 }
 
 interface SpinResult {
@@ -139,7 +141,6 @@ export default function MachinePage() {
   const [lastResult, setLastResult] = useState<SpinResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tierIndex, setTierIndex] = useState(0);
-  const [winCount, setWinCount] = useState(0);
   const [isAuto, setIsAuto] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
   const [jackpot, setJackpot] = useState(false);
@@ -267,6 +268,20 @@ export default function MachinePage() {
     }
   }, []);
 
+  // Auto 模式：結果彈窗顯示後自動關閉並續轉（rushEnded=true 表示 RUSH 已結束，需歸零 streak）
+  function scheduleAutoResultClose(rushEnded: boolean) {
+    if (!isAutoRef.current) return;
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => {
+      if (!isAutoRef.current) return;
+      setLastResult(null);
+      setJackpot(false);
+      if (rushEnded) setRushStreak(0);
+      setSpinState('idle');
+      setTimeout(() => { if (isAutoRef.current) handleSpin(); }, 600);
+    }, 2500);
+  }
+
   const handleSpin = async () => {
     if (spinState !== 'idle' || !user) return;
     setError(null);
@@ -330,7 +345,6 @@ export default function MachinePage() {
       } else if (data.session.state === 'rush') {
         // RUSH 中旋轉：抽到品項，streak 遞增，顯示結果
         setRushStreak(prev => prev + 1);
-        setWinCount(prev => prev + 1);
         if (showVideo) {
           setVideoPhase('rush_win');
           setSpinState('video');
@@ -341,6 +355,7 @@ export default function MachinePage() {
             setTimeout(() => {
               setSpinState('result');
               if (refreshProfile) refreshProfile();
+              scheduleAutoResultClose(false);
             }, 2000);
           };
           setSpinState('stopping');
@@ -350,11 +365,11 @@ export default function MachinePage() {
           if (isJackpot) {
             // RUSH 退出（wasInRushRef=true, state='normal'）：streak 遞增後顯示結果
             setRushStreak(prev => prev + 1);
-            setWinCount(prev => prev + 1);
             animDoneRef.current = () => {
               setTimeout(() => {
                 setSpinState('result');
                 if (refreshProfile) refreshProfile();
+                scheduleAutoResultClose(true);
               }, 2000);
             };
           } else {
@@ -509,8 +524,8 @@ export default function MachinePage() {
         floorSpinCount={machine.floor_spin_count}
         jackpot={jackpot}
         rushStreak={rushStreak}
-        winCount={winCount}
-        totalSpins={session?.total_spins ?? 0}
+        winCount={session?.day_rush ?? 0}
+        totalSpins={session?.day_spins ?? 0}
         onSpin={handleSpin}
         onDirect={handleDirect}
         onAutoToggle={() => setIsAuto(v => !v)}
