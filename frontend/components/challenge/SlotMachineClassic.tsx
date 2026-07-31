@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 
 type SpinState = 'idle' | 'spinning' | 'stopping' | 'video' | 'result';
 
@@ -33,6 +33,8 @@ export interface SlotMachineClassicProps {
 // ── Audio (module-level singleton) ──────────────────────────────────────────
 
 let _ac: AudioContext | null = null;
+let _muted = false;
+function setSfxMuted(m: boolean) { _muted = m; }
 function getAC(): AudioContext {
   if (!_ac) {
     const W = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -42,6 +44,7 @@ function getAC(): AudioContext {
 }
 
 function sBeep(f: number, dur = 0.09, type: OscillatorType = 'square', vol = 0.12, when = 0) {
+  if (_muted) return;
   try {
     const ac = getAC();
     if (ac.state === 'suspended') ac.resume();
@@ -62,6 +65,7 @@ function sWinJingle(mult = 1) {
   });
 }
 function sThud(lvl: number) {
+  if (_muted) return;
   try {
     const ac = getAC();
     if (ac.state === 'suspended') ac.resume();
@@ -240,15 +244,18 @@ const SMVC_CSS = `
   50% {opacity:.25; transform:scale(1);}
 }
 
-/* ── Scoreboard (behind rush sign, idle non-rush state) ── */
+/* ── Scoreboard (behind rush sign, 常駐顯示；RUSH 燈牌亮起時被其覆蓋) ── */
 .smvc-scoreboard {
   position:absolute; left:27.07%; top:27.15%; width:45.87%; height:8.8%;
   z-index:4; display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none;
+  pointer-events:none;
   font-family:"PingFang TC","Microsoft JhengHei",monospace,sans-serif;
   font-weight:900; font-size:3.4cqw; letter-spacing:.3cqw; white-space:nowrap;
+  color:#fff; text-shadow:0 0 .8cqw rgba(255,255,255,.65),0 0 2cqw rgba(255,255,255,.3);
+}
+.smvc-scoreboard b {
+  font-weight:900;
   color:#4dff91; text-shadow:0 0 .8cqw #00cc55,0 0 2.4cqw rgba(0,200,80,.85);
-  transition:opacity .25s;
 }
 .smvc-scoreboard::after {
   content:""; position:absolute; inset:0; pointer-events:none;
@@ -453,6 +460,17 @@ const SMVC_CSS = `
 .smvc-flash.smvc-go { animation:smvc-flashout .6s ease-out both; }
 @keyframes smvc-flashout { 0%{opacity:1;} 100%{opacity:0;} }
 
+/* ── 音效開關（右上角，白線圖標）── */
+.smvc-mute {
+  position:absolute; right:2.6%; top:2.2%; width:7.2%; aspect-ratio:1/1;
+  z-index:8; cursor:pointer; pointer-events:all;
+  display:flex; align-items:center; justify-content:center;
+  opacity:.88; filter:drop-shadow(0 1px 3px rgba(0,0,0,.85));
+}
+.smvc-mute svg { width:68%; height:68%; }
+.smvc-mute:hover  { opacity:1; }
+.smvc-mute:active { transform:scale(.9); }
+
 /* ── Coin ── */
 .smvc-coin {
   position:absolute; width:4.6cqw; height:4.6cqw; border-radius:50%;
@@ -484,6 +502,22 @@ export default function SlotMachineClassic({
   const flashEl    = useRef<HTMLDivElement>(null);
 
   const scoreboardEl  = useRef<HTMLDivElement>(null);
+
+  // 音效開關（localStorage 記憶）
+  const [sfxMuted, setSfxMutedState] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem('smvc-muted') === '1';
+    setSfxMutedState(saved);
+    setSfxMuted(saved);
+  }, []);
+  const toggleMute = () => {
+    setSfxMutedState(prev => {
+      const next = !prev;
+      setSfxMuted(next);
+      try { localStorage.setItem('smvc-muted', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const offsets       = useRef([0, 0, 0]);
   const rowH          = useRef(80);
@@ -836,19 +870,12 @@ export default function SlotMachineClassic({
     btn?.classList.toggle('smvc-on', isAuto);
   }, [isAuto]);
 
-  // LED scoreboard — shown in rush sign panel area when idle + not in rush
-  // （RUSH 剛結束但皮膚尚未揭曉切回時，RUSH 看板仍亮著，計分板保持隱藏）
+  // LED scoreboard — 常駐顯示（RUSH 燈牌亮起時被其覆蓋）；數字綠色、文字白色
   useEffect(() => {
     const sb = scoreboardEl.current;
     if (!sb) return;
-    const skinOn = stageRef.current?.classList.contains('smvc-rushskin') ?? false;
-    if (spinState === 'idle' && !isRushActive && !skinOn) {
-      sb.textContent = `累計 ${totalSpins}次  ★  RUSH ${winCount}次`;
-      sb.style.opacity = '1';
-    } else {
-      sb.style.opacity = '0';
-    }
-  }, [spinState, isRushActive, winCount, totalSpins]);
+    sb.innerHTML = `累計 <b>${totalSpins}</b>次 ★ RUSH <b>${winCount}</b>次`;
+  }, [winCount, totalSpins]);
 
   const floorPct = Math.min((spinsThisTier / Math.max(floorSpinCount, 1)) * 100, 100);
 
@@ -913,6 +940,23 @@ export default function SlotMachineClassic({
         <div className="smvc-btn smvc-btn-rush" onClick={onDirect}>
           <span className="smvc-btn-amt">{directCost.toLocaleString()}G</span>
           直衝
+        </div>
+
+        {/* 音效開關 */}
+        <div className="smvc-mute" onClick={toggleMute} role="button" aria-label="音效開關">
+          {sfxMuted ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5 6 9H3v6h3l5 4z" />
+              <line x1="22" y1="9" x2="16" y2="15" />
+              <line x1="16" y1="9" x2="22" y2="15" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5 6 9H3v6h3l5 4z" />
+              <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+              <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+            </svg>
+          )}
         </div>
 
         {/* Bigwin text */}

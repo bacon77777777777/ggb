@@ -487,11 +487,15 @@ export default function MachinePage() {
       if (refreshProfile) refreshProfile();
 
       if (isClassic) {
-        // Classic 模式：直撃突入，顯示 "RUSH!!"（streak=0），回 idle 等 RUSH 旋轉
+        // Classic 模式：直撃突入也要完整演出——滾輪轉動 → 777 停定 → RUSH!!（streak=0）
         setJackpot(true);
+        setReelOutcome(null);
         setRushStreak(0);
         setLastResult(null);
-        setSpinState('idle');
+        animDoneRef.current = () => {
+          setSpinState('idle');
+        };
+        setSpinState('stopping');
       } else {
         // 直撃只進入 RUSH，無品項結果 → video 結束後回 idle
         setLastResult(null);
@@ -969,7 +973,7 @@ export default function MachinePage() {
               <div className="relative w-60 h-60">
                 {lastResult.prize.image_url ? (
                   <Image
-                    src={lastResult.prize.image_url} alt={lastResult.prize.name} fill
+                    src={lastResult.prize.image_url} alt={lastResult.prize.name} fill unoptimized
                     className="object-contain drop-shadow-[0_0_32px_rgba(255,210,80,0.85)]"
                   />
                 ) : (
