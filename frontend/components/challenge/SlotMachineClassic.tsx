@@ -355,7 +355,7 @@ const SMVC_CSS = `
   color:#ffe8a0;
 }
 .smvc-btn-amt { font-size:68%; opacity:.92; letter-spacing:.04cqw; }
-.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:3.3cqw; padding-bottom:2.2cqw; }
+.smvc-btn-auto { left:21.87%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/auto.png');  font-size:3.3cqw; padding-bottom:3.2cqw; }
 .smvc-btn-spin { left:39.20%; top:62.34%; width:23.73%; height:11.16%; background-image:url('/images/slot/machine/spin.png'); font-size:4.5cqw; padding-bottom:3.2cqw;
   animation:smvc-invite 1.8s ease-in-out infinite; }
 .smvc-btn-rush { left:62.93%; top:61.48%; width:17.33%; height:8.58%;  background-image:url('/images/slot/machine/rush.png'); font-size:3.3cqw; padding-bottom:3.2cqw; }
