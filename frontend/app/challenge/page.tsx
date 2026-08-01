@@ -295,9 +295,11 @@ function OccupancyOverlay({
 
   const isMine = occupantId === currentUserId;
   if (isMine) {
+    // 自己佔用中（不小心跳出）：顯示離席倒數，歸零即釋出機台
+    const mySecondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
     return (
       <div className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
-        <span className="text-white font-black text-sm tracking-wide select-none">回到機台</span>
+        <span className="text-white font-black text-sm tabular-nums select-none">離席倒數 {mySecondsLeft} 秒</span>
       </div>
     );
   }
