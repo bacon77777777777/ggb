@@ -173,13 +173,13 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
 
     /* ── HERO ── */
     .lpv-hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;
-      justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;
+      justify-content:center;text-align:center;padding:80px 24px 60px;
       background-color:${heroBg};}
-    .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;}
-    .lpv-hero .h-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;clip-path:inset(0);}
+    .lpv-hero .h-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;clip-path:inset(0);
       opacity:.5;filter:brightness(.42) saturate(1.15);}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
-    .lpv-hero .h-scatter{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+    .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(72% 42% at 50% 8%,${borderStrong},transparent 46%),
@@ -188,36 +188,36 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       width:76%;height:32%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(30px);}
     .lpv-hero .h-veil{position:absolute;inset:0;
       background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
-    .lpv-eyebrow{position:relative;z-index:1;font-size:12px;letter-spacing:7px;color:${accentLight};
+    .lpv-eyebrow{position:relative;z-index:3;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
-    .lpv-title{position:relative;z-index:1;font-family:'Arial Black','Noto Sans JP',sans-serif;
+    .lpv-title{position:relative;z-index:3;font-family:'Arial Black','Noto Sans JP',sans-serif;
       font-weight:900;line-height:.9;letter-spacing:2px;font-size:clamp(34px,9.5vw,78px);
       background:${titleGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;
       filter:drop-shadow(0 4px 26px ${glow40});}
-    .lpv-gems{position:relative;z-index:1;display:flex;gap:10px;justify-content:center;margin-top:18px;}
+    .lpv-gems{position:relative;z-index:3;display:flex;gap:10px;justify-content:center;margin-top:18px;}
     .lpv-gems i{width:14px;height:14px;border-radius:999px;display:block;
       box-shadow:0 0 14px currentColor,0 0 28px currentColor;}
-    .lpv-sub{position:relative;z-index:1;margin-top:18px;font-size:clamp(14px,4vw,19px);
+    .lpv-sub{position:relative;z-index:3;margin-top:18px;font-size:clamp(14px,4vw,19px);
       font-weight:700;color:${heroSubColor};max-width:580px;line-height:1.7;}
     .lpv-sub-b{background:${titleGrad};-webkit-background-clip:text;background-clip:text;
       color:transparent;font-weight:900;font-size:1.15em;}
-    .lpv-arasa{position:relative;z-index:1;margin-top:22px;display:inline-block;
+    .lpv-arasa{position:relative;z-index:3;margin-top:22px;display:inline-block;
       padding:9px 22px;border-radius:8px;font-weight:900;font-size:clamp(13px,3.6vw,16px);
       color:${arasaColor};background:${heroCardDarker};
       border:2px dashed ${vars.accent};
       box-shadow:0 0 18px rgba(${a},0.4);letter-spacing:1px;}
-    .lpv-badge{position:relative;z-index:1;margin-top:16px;font-size:11px;letter-spacing:3px;
+    .lpv-badge{position:relative;z-index:3;margin-top:16px;font-size:11px;letter-spacing:3px;
       color:${vars.accent};font-weight:800;opacity:.8;
       animation:lpvPulse 2.4s ease-in-out infinite;}
     @keyframes lpvPulse{0%,100%{opacity:.6}50%{opacity:1}}
     .lpv-cta-btn{display:inline-flex;align-items:center;gap:8px;margin-top:30px;
       padding:16px 40px;border-radius:999px;font-weight:900;font-size:18px;
       color:#3a2c08;background:${GOLD};
-      box-shadow:0 8px 30px ${GOLD_SHADOW};position:relative;z-index:1;text-decoration:none;
+      box-shadow:0 8px 30px ${GOLD_SHADOW};position:relative;z-index:3;text-decoration:none;
       transition:transform .15s;}
     .lpv-cta-btn:active{transform:scale(.97);}
-    .lpv-scroll{position:absolute;bottom:18px;left:0;right:0;z-index:1;font-size:11px;
+    .lpv-scroll{position:absolute;bottom:18px;left:0;right:0;z-index:3;font-size:11px;
       letter-spacing:3px;color:${scrollColor};animation:lpvBob 1.8s ease-in-out infinite;text-align:center;}
     @keyframes lpvBob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 
