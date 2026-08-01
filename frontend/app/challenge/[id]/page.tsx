@@ -302,16 +302,8 @@ export default function MachinePage() {
   // 機台層級保底計數（machine-level, 所有玩家共用）
   const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
 
-  // 直撃費用：該檔次獎池最高品項價值，進位至檔次倍數（與 enter_slot_rush_direct 一致）
-  const directCost = (() => {
-    const vals = pool
-      .filter(i => i.rush_only && !i.normal_only && !i.coin_return
-        && (i.product_prizes == null || i.product_prizes.remaining == null || i.product_prizes.remaining > 0)
-        && (i.min_bet == null || i.min_bet === currentTier.coins))
-      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
-    const maxVal = vals.length ? Math.max(...vals) : 0;
-    return maxVal > 0 ? Math.ceil(maxVal / currentTier.coins) * currentTier.coins : 0;
-  })();
+  // 直撃費用：保底轉數 × 檔次金額（與 enter_slot_rush_direct 一致）
+  const directCost = (machine?.floor_spin_count ?? 0) * currentTier.coins;
 
   const changeTier = useCallback((delta: number) => {
     if (isTierLocked || tiers.length <= 1) return;
@@ -1003,7 +995,7 @@ export default function MachinePage() {
                   {/* 說明 */}
                   <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center gap-2 p-3 md:p-6">
                     <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span className="font-bold text-neutral-700 dark:text-neutral-300 text-[13px] md:text-[15px]">跳過保底等待直接進入 RUSH，保證獲得一件（不觸發連中延續）</span>
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300 text-[13px] md:text-[15px]">跳過保底等待，直接進入 RUSH 模式</span>
                   </div>
 
                   {/* 金額摘要 */}
