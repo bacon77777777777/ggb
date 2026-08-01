@@ -176,6 +176,11 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;
       background-color:${heroBg};}
     .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;}
+    .lpv-hero .h-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+      opacity:.5;filter:brightness(.42) saturate(1.15);}
+    /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
+    .lpv-hero .h-scatter{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+    .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(110% 70% at 50% 14%,${borderStrong},transparent 52%),
                  radial-gradient(80% 50% at 50% 0%,${borderMid},transparent 55%);}
@@ -419,6 +424,10 @@ function H2({ c }: { c: Record<string, unknown> }) {
 
 function HeroSection({ c }: { c: Record<string, unknown> }) {
   const gems = (c.gems as { color: string }[]) || []
+  const scatter = (c.scatter as {
+    url: string; top?: string; left?: string; right?: string; bottom?: string
+    size?: string; rotate?: number; blur?: number; opacity?: number
+  }[]) || []
   const videoRef = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     const v = videoRef.current
@@ -434,7 +443,23 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
         <video ref={videoRef} src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
           autoPlay muted loop playsInline className="h-vid" />
       )}
+      {!bool(c.bg_video_url) && bool(c.bg_image_url) && (
+        <img src={c.bg_image_url as string} alt="" className="h-bgimg" />
+      )}
       <div className="h-bg" /><div className="h-beam" /><div className="h-veil" />
+      {scatter.length > 0 && (
+        <div className="h-scatter" aria-hidden="true">
+          {scatter.map((s, i) => (
+            <img key={i} src={s.url} alt="" style={{
+              top: s.top, left: s.left, right: s.right, bottom: s.bottom,
+              width: s.size,
+              transform: `rotate(${s.rotate ?? 0}deg)`,
+              filter: `blur(${s.blur ?? 0}px)`,
+              opacity: s.opacity ?? 1,
+            }} />
+          ))}
+        </div>
+      )}
       {bool(c.eyebrow) && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
       {bool(c.title) && <h1 className="lpv-title">{c.title as string}</h1>}
       {gems.length > 0 && (
