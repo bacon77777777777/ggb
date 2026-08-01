@@ -12,6 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
 import SlotMachineClassic, { ReelOutcome, MachineLayout, setSfxMuted } from '@/components/challenge/SlotMachineClassic';
+import DanmakuLayer, { type DanmakuItem } from '@/components/challenge/DanmakuLayer';
+import EndingBar from '@/components/challenge/EndingBar';
+import { inheritSchedule } from '@/lib/schedule';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -53,7 +56,9 @@ interface SlotMachine {
   floor_spin_count: number;
   bet_tiers: BetTier[];
   event_slug: string | null;
-  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null; machine_layout: MachineLayout | null; event_slug: string | null } | null;
+  start_at: string | null;
+  end_at: string | null;
+  slot_themes: ThemeVideos & { id: number; name: string; image_url: string | null; machine_type: string | null; machine_sprite_url: string | null; machine_layout: MachineLayout | null; event_slug: string | null; start_at: string | null; end_at: string | null } | null;
 }
 
 interface SlotPoolItem {
@@ -191,6 +196,31 @@ export default function MachinePage() {
       return next;
     });
   };
+
+  // 彈幕開關（與音效開關同樣記在 localStorage）
+  const [danmakuOff, setDanmakuOff] = useState(false);
+  useEffect(() => {
+    setDanmakuOff(typeof window !== 'undefined' && localStorage.getItem('smvc-danmaku-off') === '1');
+  }, []);
+  const toggleDanmaku = () => {
+    setDanmakuOff(prev => {
+      const next = !prev;
+      try { localStorage.setItem('smvc-danmaku-off', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+  const [danmaku, setDanmaku] = useState<DanmakuItem[]>([]);
+  useEffect(() => {
+    if (danmakuOff) return;
+    const load = () => fetch('/api/slot/danmaku')
+      .then(r => r.json())
+      .then(d => setDanmaku(d.items ?? []))
+      .catch(() => {});
+    load();
+    const t = setInterval(load, 60_000);
+    return () => clearInterval(t);
+  }, [danmakuOff]);
+  const [machineEnded, setMachineEnded] = useState(false);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -623,6 +653,9 @@ export default function MachinePage() {
 
   const renderMachineVisual = () => machineType === 'classic' ? (
     <div className="relative w-full">
+      {!danmakuOff && (
+        <DanmakuLayer items={danmaku} paused={isRushActive || spinState === 'video'} />
+      )}
       <SlotMachineClassic
         spinState={spinState}
         isRushActive={isRushActive}
@@ -883,6 +916,15 @@ export default function MachinePage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
+        <div className="flex items-center">
+        <button onClick={toggleDanmaku} aria-label="彈幕開關"
+          className="pointer-events-auto my-[10px] ml-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="3" />
+            <path d="M6 10h6M6 14h4M15 12h3" />
+            {danmakuOff && <line x1="3" y1="3" x2="21" y2="21" stroke="#ef4444" strokeWidth={2.5} />}
+          </svg>
+        </button>
         <button onClick={toggleMute} aria-label="音效開關"
           className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -892,7 +934,34 @@ export default function MachinePage() {
             {sfxMuted && <line x1="3" y1="3" x2="21" y2="21" stroke="#ef4444" strokeWidth={2.5} />}
           </svg>
         </button>
+        </div>
       </div>
+
+      {/* 機台結束警示（剩 5 分鐘，導航正下方；與彈幕分離，不可關閉） */}
+      <div className="fixed inset-x-0 z-30 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top) + 58px)' }}>
+        <div className="relative">
+          <EndingBar
+            endAt={inheritSchedule(machine, machine.slot_themes).end_at}
+            onEnded={() => setMachineEnded(true)}
+          />
+        </div>
+      </div>
+
+      {/* 檔期結束：直接跳提示並引導離開，避免玩家按下去只看到紅色錯誤訊息 */}
+      {machineEnded && (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center px-8">
+          <div className="w-full max-w-[320px] rounded-2xl bg-white dark:bg-neutral-900 p-6 text-center">
+            <p className="text-lg font-black text-neutral-900 dark:text-white">機台已結束</p>
+            <p className="mt-2 text-sm font-black text-neutral-500">
+              感謝挑戰，已獲得的卡牌都在倉庫裡。
+            </p>
+            <button onClick={() => router.replace('/challenge')}
+              className="mt-5 w-full h-11 rounded-xl bg-primary text-white font-black active:scale-[0.98] transition-transform">
+              回到機台列表
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 閒置警告（最後 15 秒，畫面正中間） */}
       {idleWarnSeconds != null && (
