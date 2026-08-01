@@ -410,7 +410,8 @@ const SMVC_CSS = `
 .smvc-rushskin .smvc-scoreboard { opacity:0; transition:opacity .3s; }
 
 /* ── Reels ── */
-.smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
+/* 滾輪窗：機台圖的滾筒實際範圍約 38.6%~60.1%，高度取到 59.3% 貼齊滾筒下緣 */
+.smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,18.5%); }
 .smvc-r0 { left:var(--r0-l,22.00%); width:var(--r0-w,17.07%); }
 .smvc-r1 { left:var(--r1-l,42.40%); width:var(--r1-w,16.13%); }
 .smvc-r2 { left:var(--r2-l,61.73%); width:var(--r2-w,16.27%); }
@@ -693,7 +694,11 @@ export default function SlotMachineClassic({
 
   const sync = useCallback(() => {
     const vh = reelEls.current[0]?.clientHeight ?? 80;
-    const h = vh * 0.74;
+    // 格高固定為滾輪窗高的 63.5%：滾輪窗由 15.88% 加高到 18.5% 後，
+    // 若沿用原本的 0.74 會讓格子跟著變高，但符號大小由寬度決定（92% + 1:1），
+    // 結果就是符號沒變大、上下間距被拉開。此係數讓格高維持加高前的絕對值，
+    // 多出來的窗高只用來多露出上下相鄰的符號。
+    const h = vh * 0.635;
     rowH.current = h;
     padY.current = (vh - h) / 2;
     stageRef.current?.style.setProperty('--smvc-rowH', h + 'px');

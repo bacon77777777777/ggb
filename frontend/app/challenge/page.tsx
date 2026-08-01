@@ -488,6 +488,11 @@ export default function ChallengePage() {
   const [machinesLoading, setMachinesLoading] = useState(true);
   const [bannersLoading, setBannersLoading] = useState(true);
   const [activeTheme, setActiveTheme] = useState('全部');
+  // 由活動頁 CTA 帶入（/challenge?theme=主題名），直接落在對應頁籤
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('theme');
+    if (t) setActiveTheme(t);
+  }, []);
   const [entering, setEntering] = useState<SlotMachine | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('hot');
   const [sortOpen, setSortOpen] = useState(false);

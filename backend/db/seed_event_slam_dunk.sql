@@ -28,7 +28,7 @@ FROM public.events e, (VALUES
   "highlight_text": "抽到的是實體卡牌 ―― 可申請寄送，或回收成 G 幣",
   "badge_text": "",
   "cta_text": "前往挑戰",
-  "cta_url": "/challenge",
+  "cta_url": "/challenge?theme=%E7%81%8C%E7%B1%83SLAM%20DUNK",
   "bg_video_url": "",
   "bg_poster_url": "",
   "bg_image_url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/machine-rush.webp",
@@ -151,12 +151,12 @@ FROM public.events e, (VALUES
   "h2_type": "pp",
   "subtitle": "保底走完，卡牌就是你的。",
   "text": "前往挑戰",
-  "url": "/challenge"
+  "url": "/challenge?theme=%E7%81%8C%E7%B1%83SLAM%20DUNK"
 }$J$),
 (11, 'sticky_cta', $J${
   "text": "前往挑戰",
   "sub_text": "五台開放中 · 保底進度公開可見",
-  "url": "/challenge"
+  "url": "/challenge?theme=%E7%81%8C%E7%B1%83SLAM%20DUNK"
 }$J$)
 ) AS v(sort_order, type, content)
 WHERE e.slug = 'slam-dunk';
