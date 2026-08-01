@@ -15,7 +15,7 @@ import Image from 'next/image';
  */
 
 export interface DanmakuItem {
-  id: number;
+  id: string;
   name: string;
   avatar: string | null;
   prize: string;
