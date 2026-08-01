@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
 
 export async function GET() {
   const admin = await requireAdminSession()
@@ -36,12 +37,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = getSupabaseAdmin()
 
-  const DEFAULT_SPIN_RETURNS = [
-    { name: '神域共鳴', multiplier: 2.4, weight: 20  },
-    { name: '命運之瞳', multiplier: 1.5, weight: 50  },
-    { name: '緋色幸運', multiplier: 0.8, weight: 130 },
-    { name: '黃金序章', multiplier: 0.2, weight: 800 },
-  ]
+  const DEFAULT_SPIN_RETURNS = [...CANONICAL_SPIN_RETURNS]
 
   // 1. 建立主題
   const { data: theme, error: themeErr } = await supabase

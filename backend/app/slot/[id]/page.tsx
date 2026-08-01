@@ -7,6 +7,7 @@ import Switch from '@/components/ui/Switch'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
+import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -53,13 +54,8 @@ const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outli
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
 const BTN_GHOST   = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
 
-// 固定 4 種幣值返還（不需管理員設定）
-const FIXED_COIN_RETURNS = [
-  { name: '神域共鳴', multiplier: 2.4,  weight: 50  },
-  { name: '命運之瞳', multiplier: 1.5,  weight: 100 },
-  { name: '緋色幸運', multiplier: 0.8,  weight: 200 },
-  { name: '黃金序章', multiplier: 0.25, weight: 520 },
-]
+// 固定 4 種幣值返還（不需管理員設定）—— 定版數值統一由 lib/slotDefaults 匯出
+const FIXED_COIN_RETURNS = [...CANONICAL_SPIN_RETURNS]
 const FIXED_TOTAL_W  = FIXED_COIN_RETURNS.reduce((s, r) => s + r.weight, 0)
 const FIXED_AVG_MULT = FIXED_COIN_RETURNS.reduce((s, r) => s + r.multiplier * r.weight, 0) / FIXED_TOTAL_W
 
@@ -115,7 +111,7 @@ export default function SlotThemeDetailPage() {
   // RUSH 獎池 modal
   const [tierFilter, setTierFilter]       = useState<number | null>(null)
   const [poolSortField, setPoolSortField] = useState('recycle')
-  const [poolSortDir, setPoolSortDir]     = useState<'asc' | 'desc'>('asc')
+  const [poolSortDir, setPoolSortDir]     = useState<'asc' | 'desc'>('desc')   // 預設回收幣值由高到低
   const [showAddPrize, setShowAddPrize]   = useState(false)
   const [availablePrizes, setAvailablePrizes] = useState<SlotPrize[]>([])
   const [prizeSearch, setPrizeSearch]     = useState('')
@@ -383,7 +379,7 @@ export default function SlotThemeDetailPage() {
 
   const TABS = [
     { key: 'settings', label: '主題設定' },
-    { key: 'prizes',   label: `RUSH獎池 (${prizes.length})` },
+    { key: 'prizes',   label: `RUSH獎池 (${poolItems.length})` },
     { key: 'videos',   label: '特效影片' },
     { key: 'machines', label: `機台 (${machines.length})` },
   ] as const
@@ -393,7 +389,7 @@ export default function SlotThemeDetailPage() {
 
   const handlePoolSort = (field: string) => {
     if (field === poolSortField) setPoolSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setPoolSortField(field); setPoolSortDir('asc') }
+    else { setPoolSortField(field); setPoolSortDir(field === 'recycle' ? 'desc' : 'asc') }
   }
 
   const POOL_LEVEL_RANK: Record<string, number> = { '一等獎': 1, '二等獎': 2, '三等獎': 3 }
