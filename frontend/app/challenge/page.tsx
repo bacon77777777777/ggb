@@ -510,7 +510,7 @@ export default function ChallengePage() {
 
         {/* 桌機側欄 — 同首頁分類欄，手機維持 banner 下方頁籤 */}
         <aside className="hidden md:block w-60 flex-shrink-0 sticky top-16">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow-card border border-neutral-100 dark:border-neutral-800 transition-colors min-h-[calc(100vh-5rem)]">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow-card border border-neutral-100 dark:border-neutral-800 transition-colors min-h-[535px]">
             <div className="space-y-1">
               {themes.map(t => (
                 <button
