@@ -1359,7 +1359,7 @@ export default function ProductDetailPage() {
               </div>
               
               <div className="overflow-x-auto relative custom-scrollbar">
-                <table className="w-full min-w-[480px] text-left">
+                <table className="w-full text-left">
                   <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
                     <tr>
                       <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
@@ -1965,7 +1965,7 @@ export default function ProductDetailPage() {
               </div>
               
               <div className="overflow-x-auto relative custom-scrollbar">
-                <table className="w-full min-w-[480px] text-left">
+                <table className="w-full text-left">
                   <thead className="bg-neutral-50/50 dark:bg-neutral-800/50 text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 border-b border-neutral-50 dark:border-neutral-800">
                     <tr>
                       <th className="px-2 sm:px-6 py-2 sm:py-3 uppercase tracking-widest">獎項名稱</th>
