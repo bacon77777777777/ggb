@@ -401,6 +401,17 @@ export default function ChallengePage() {
   const supabase = createClient();
 
   const [machines, setMachines] = useState<SlotMachine[]>([]);
+  // 閒置被踢出提示（?idle_kick=1）
+  const [kickNotice, setKickNotice] = useState(false);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('idle_kick') === '1') {
+      setKickNotice(true);
+      window.history.replaceState(null, '', '/challenge');
+      const t = setTimeout(() => setKickNotice(false), 4500);
+      return () => clearTimeout(t);
+    }
+  }, []);
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
   const [machinesLoading, setMachinesLoading] = useState(true);
   const [bannersLoading, setBannersLoading] = useState(true);
@@ -478,6 +489,12 @@ export default function ChallengePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
+      {/* 閒置踢出提示 */}
+      {kickNotice && (
+        <div className="fixed top-[calc(env(safe-area-inset-top)+14px)] left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-black/80 backdrop-blur-sm text-white text-sm font-bold shadow-lg whitespace-nowrap">
+          過久沒有動作，已讓位給其他用戶
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-0 pt-0">
 
         {/* Banner — same as home */}

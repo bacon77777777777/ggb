@@ -204,6 +204,10 @@ export default function MachinePage() {
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
   const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
+  // 閒置踢出：進入/每次 SPIN 起算 30s 緩衝 → 60s 倒數（最後 15 秒顯示警告）→ 踢出即讓位
+  const [idleWarnSeconds, setIdleWarnSeconds] = useState<number | null>(null);
+  const lastActionRef = useRef(Date.now());
+  const idleKickedRef = useRef(false);
   const coinReturnIdRef = useRef(0);
   const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -247,8 +251,8 @@ export default function MachinePage() {
     occupy();
     heartbeatRef.current = setInterval(heartbeat, 20_000);
 
-    const onHide = () => { if (document.visibilityState === 'hidden') vacate(); };
-    const onShow = () => { if (document.visibilityState === 'visible') occupy(); };
+    const onHide = () => { if (document.visibilityState === 'hidden' && !idleKickedRef.current) vacate(); };
+    const onShow = () => { if (document.visibilityState === 'visible' && !idleKickedRef.current) occupy(); };
     document.addEventListener('visibilitychange', onHide);
     document.addEventListener('visibilitychange', onShow);
 
@@ -256,8 +260,32 @@ export default function MachinePage() {
       clearInterval(heartbeatRef.current ?? undefined);
       document.removeEventListener('visibilitychange', onHide);
       document.removeEventListener('visibilitychange', onShow);
-      vacate();
+      if (!idleKickedRef.current) vacate();
     };
+  }, [id]);
+
+  // 閒置踢出計時：30s 緩衝 + 60s 倒數（最後 15 秒顯示警告），SPIN/直擊重置
+  useEffect(() => {
+    const IDLE_BUFFER_MS = 30_000;
+    const IDLE_COUNTDOWN_MS = 60_000;
+    const WARN_SECONDS = 15;
+    lastActionRef.current = Date.now();
+    const t = setInterval(() => {
+      if (idleKickedRef.current) return;
+      const idle = Date.now() - lastActionRef.current;
+      const leftMs = IDLE_BUFFER_MS + IDLE_COUNTDOWN_MS - idle;
+      if (leftMs <= 0) {
+        idleKickedRef.current = true;
+        setIdleWarnSeconds(null);
+        fetch(`/api/slot/${id}/vacate?immediate=1`, { method: 'POST', keepalive: true }).catch(() => {});
+        router.replace('/challenge?idle_kick=1');
+        return;
+      }
+      const leftSec = Math.ceil(leftMs / 1000);
+      setIdleWarnSeconds(leftSec <= WARN_SECONDS ? leftSec : null);
+    }, 1000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -351,6 +379,8 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user) return;
     setError(null);
     setJackpot(false);
+    lastActionRef.current = Date.now();
+    setIdleWarnSeconds(null);
     setSpinState('spinning');
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
@@ -478,6 +508,8 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
     setDirectLoading(true);
     setError(null);
+    lastActionRef.current = Date.now();
+    setIdleWarnSeconds(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - directCost));
@@ -833,6 +865,13 @@ export default function MachinePage() {
           </svg>
         </button>
       </div>
+
+      {/* 閒置警告（最後 15 秒） */}
+      {idleWarnSeconds != null && (
+        <div className="fixed top-[calc(env(safe-area-inset-top)+58px)] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-black/75 backdrop-blur-sm text-white text-sm font-black pointer-events-none whitespace-nowrap">
+          閒置中，<span className="text-orange-500 tabular-nums">{idleWarnSeconds}</span> 秒後將離開機台
+        </div>
+      )}
 
       {/* Mobile / tablet */}
       <div className="block lg:hidden pb-8">
