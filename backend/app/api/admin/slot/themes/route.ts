@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  // 預設 = 基本款玩法（保證一連）：保底 90 轉、觸發 0.2%、延續 10%，RTP ≈ 77~82%
+  // 預設 = 基本款玩法（保證一連）：保底 200 轉、觸發 0.2%、延續 30%（衰減 50%），RTP ≈ 82%
   const { name, machine_count = 1, bet_tiers = [], spin_returns, trigger_rate = 0.002,
-    continue_rate = 0.10, min_rush_hits = 1, floor_spin_count = 90,
+    continue_rate = 0.30, min_rush_hits = 1, floor_spin_count = 200,
     supplier_id, event_slug, image_url, sort_order = 0 } = body
 
   if (!name) return NextResponse.json({ error: '請填入主題名稱' }, { status: 400 })
@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin()
 
   const DEFAULT_SPIN_RETURNS = [
-    { name: '神域共鳴', multiplier: 2.4,  weight: 10   },
-    { name: '命運之瞳', multiplier: 1.5,  weight: 20   },
-    { name: '緋色幸運', multiplier: 0.8,  weight: 40   },
-    { name: '黃金序章', multiplier: 0.05, weight: 1130 },
+    { name: '神域共鳴', multiplier: 2.4, weight: 20  },
+    { name: '命運之瞳', multiplier: 1.5, weight: 50  },
+    { name: '緋色幸運', multiplier: 0.8, weight: 130 },
+    { name: '黃金序章', multiplier: 0.2, weight: 800 },
   ]
 
   // 1. 建立主題
