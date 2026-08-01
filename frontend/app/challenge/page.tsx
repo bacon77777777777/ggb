@@ -110,12 +110,17 @@ function TierSelectModal({
   const tiers = machine.bet_tiers ?? [];
   const [selected, setSelected] = useState(tiers[0]?.coins ?? 100);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
+  const [poolLoading, setPoolLoading] = useState(true);
+  const [poolError, setPoolError] = useState(false);
 
   useEffect(() => {
+    setPoolLoading(true);
+    setPoolError(false);
     fetch(`/api/slot/machines/${machine.id}`)
       .then(r => r.json())
       .then(d => setPool(d.pool ?? []))
-      .catch(() => {});
+      .catch(() => setPoolError(true))
+      .finally(() => setPoolLoading(false));
   }, [machine.id]);
 
   const coinReturns  = pool.filter(i => !i.rush_only && i.coin_return);
@@ -180,6 +185,16 @@ function TierSelectModal({
           {/* 獎池總覽 */}
           <div className="px-4 pb-4 mt-2">
             <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-3">獎池總覽</p>
+
+            {poolLoading && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">獎池載入中…</p>
+            )}
+            {!poolLoading && poolError && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">獎池載入失敗，請重新開啟</p>
+            )}
+            {!poolLoading && !poolError && pool.length === 0 && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">此機台尚未設定獎池</p>
+            )}
 
             {/* RUSH 獎品 4欄格狀 — 只顯示當前檔次品項 */}
             {physicalItems.length > 0 && (() => {
