@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import { isInternalUrl, toInternalPath } from '@/lib/internalUrl'
 
 interface Banner {
   id: string;
@@ -12,21 +13,6 @@ interface Banner {
   link: string;
 }
 
-const INTERNAL_HOSTS = ['www.ggb.com.tw', 'ggb.com.tw', 'staging.ggb.com.tw']
-
-function isInternalUrl(url: string): boolean {
-  if (!url || url === '#') return true
-  if (url.startsWith('/')) return true
-  try {
-    return INTERNAL_HOSTS.includes(new URL(url).hostname)
-  } catch { return false }
-}
-
-function toInternalPath(url: string): string {
-  if (url.startsWith('/') || url === '#') return url
-  try { return new URL(url).pathname + new URL(url).search + new URL(url).hash }
-  catch { return url }
-}
 
 const DEFAULT_BANNER: Banner = {
   id: '__default__',
