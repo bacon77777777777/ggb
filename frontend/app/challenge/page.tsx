@@ -56,6 +56,8 @@ interface SlotMachine {
   occupant_id: string | null;
   occupant_active_until: string | null;
   occupancy_expires_at: string | null;
+  day_rush: number | null;
+  day_reset_date: string | null;
   slot_themes: SlotTheme | null;
 }
 
@@ -323,6 +325,10 @@ function OccupancyOverlay({
 
 // ── Machine Card (matches ProductCard) ───────────────────────────────────────
 
+// day_rush 由 DB 於「當日首轉」才重算，跨日後尚無人轉的機台仍留著昨天的數字，
+// 故前端以台灣時間比對 day_reset_date，非今日一律顯示 0
+const taipeiToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+
 function MachineCard({
   machine, number, currentUserId, onEnter,
 }: {
@@ -351,9 +357,13 @@ function MachineCard({
           occupancyExpiresAt={machine.occupancy_expires_at}
           currentUserId={currentUserId}
         />
+        {/* 今日 RUSH 次數（day_reset_date 非今日代表尚未跨日重算，顯示 0） */}
+        <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
+          RUSH {machine.day_reset_date === taipeiToday() ? (machine.day_rush ?? 0).toLocaleString() : 0} 次
+        </div>
         {/* 保底轉數進度 */}
         <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
-          {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
+          保底 {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
         </div>
       </div>
 
