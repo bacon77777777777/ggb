@@ -60,11 +60,25 @@ interface SlotMachine {
   occupant_active_until: string | null;
   occupancy_expires_at: string | null;
   day_rush: number | null;
+  day_spins: number | null;
   day_reset_date: string | null;
   start_at: string | null;
   end_at: string | null;
+  total_spins: number | null;
   slot_themes: SlotTheme | null;
 }
+
+// ── 排序 ─────────────────────────────────────────────────────────────────────
+
+type SortKey = 'hot' | 'floor' | 'rush' | 'total' | 'free';
+
+const SORTS: { key: SortKey; label: string; hint: string }[] = [
+  { key: 'hot',   label: '最熱門',   hint: '今日轉數最多' },
+  { key: 'floor', label: '保底進度', hint: '快滿保底的排前面' },
+  { key: 'rush',  label: 'RUSH 次數', hint: '今日觸發最多' },
+  { key: 'total', label: '累計次數', hint: '歷史總轉數' },
+  { key: 'free',  label: '可進入',   hint: '目前沒人佔用' },
+];
 
 // ── Sparkline ────────────────────────────────────────────────────────────────
 
@@ -475,6 +489,8 @@ export default function ChallengePage() {
   const [bannersLoading, setBannersLoading] = useState(true);
   const [activeTheme, setActiveTheme] = useState('全部');
   const [entering, setEntering] = useState<SlotMachine | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('hot');
+  const [sortOpen, setSortOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -527,11 +543,32 @@ export default function ChallengePage() {
     ];
   }, [machines]);
 
-  const filtered = useMemo(() =>
-    activeTheme === '全部'
+  const filtered = useMemo(() => {
+    const base = activeTheme === '全部'
       ? machines
-      : machines.filter(m => themeKey(m) === activeTheme),
-    [machines, activeTheme]
+      : machines.filter(m => themeKey(m) === activeTheme);
+    const today = taipeiToday();
+    const dayRush = (m: SlotMachine) => m.day_reset_date === today ? (m.day_rush ?? 0) : 0;
+    const daySpins = (m: SlotMachine) => m.day_reset_date === today ? (m.day_spins ?? 0) : 0;
+    // 保底進度以「離觸發還差幾轉」排，越接近越前面
+    const floorLeft = (m: SlotMachine) => m.floor_spin_count - (m.floor_counter ?? 0);
+    const isFree = (m: SlotMachine) => {
+      const exp = m.occupancy_expires_at ? new Date(m.occupancy_expires_at).getTime() : 0;
+      return !m.occupant_id || exp <= Date.now() ? 0 : 1;   // 0 = 空機排前面
+    };
+    const sorted = [...base];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'floor': return floorLeft(a) - floorLeft(b);
+        case 'rush':  return dayRush(b) - dayRush(a);
+        case 'total': return (b.total_spins ?? 0) - (a.total_spins ?? 0);
+        case 'free':  return isFree(a) - isFree(b) || floorLeft(a) - floorLeft(b);
+        default:      return daySpins(b) - daySpins(a) || (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      }
+    });
+    return sorted;
+  },
+    [machines, activeTheme, sortKey]
   );
 
   // #N within same theme
@@ -624,7 +661,11 @@ export default function ChallengePage() {
             </div>
 
             {/* Filter icon — same SVG as home */}
-            <button className="flex-shrink-0 ml-1 p-1.5 rounded-full text-neutral-500 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all">
+            <button onClick={() => setSortOpen(v => !v)} aria-label="排序"
+              className={cn(
+                'flex-shrink-0 ml-1 p-1.5 rounded-full active:scale-95 transition-all',
+                sortKey === 'hot' ? 'text-neutral-500 hover:text-primary hover:bg-primary/5' : 'text-primary bg-primary/10'
+              )}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4"
                 stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 4h16" /><path d="M6 12h12" /><path d="M10 20h4" />
@@ -632,6 +673,28 @@ export default function ChallengePage() {
             </button>
           </div>
         </div>
+
+        {/* 排序選單 */}
+        {sortOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
+            <div className="relative z-50 mx-2 md:mx-0 mt-1 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden">
+              {SORTS.map(s => (
+                <button key={s.key}
+                  onClick={() => { setSortKey(s.key); setSortOpen(false); }}
+                  className={cn(
+                    'w-full px-4 py-2.5 flex items-center justify-between text-left transition-colors',
+                    sortKey === s.key ? 'bg-primary/5' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                  )}>
+                  <span className={cn('text-[13px] font-black', sortKey === s.key ? 'text-primary' : 'text-neutral-700 dark:text-neutral-200')}>
+                    {s.label}
+                  </span>
+                  <span className="text-[11px] text-neutral-400">{s.hint}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* 2-column machine grid — same grid as home products */}
         <div className="px-2 pt-2 md:px-0 md:pt-4">

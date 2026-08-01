@@ -31,15 +31,15 @@ FROM public.events e, (VALUES
   "cta_url": "/challenge",
   "bg_video_url": "",
   "bg_poster_url": "",
-  "bg_image_url": "/images/slot/machine/sprite2.png",
+  "bg_image_url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/machine-rush.webp",
   "gems": [],
   "scatter": [
-    {"url": "/images/slot/machine/sprite2.png", "bottom": "-6%", "left": "-12%", "size": "clamp(150px,38vw,340px)", "rotate": 24,  "blur": 1.5,  "opacity": 0.78},
-    {"url": "/images/slot/machine/sprite2.png", "top": "-4%",    "left": "-10%", "size": "clamp(120px,30vw,270px)", "rotate": -18, "blur": 3,    "opacity": 0.68},
-    {"url": "/images/slot/machine/sprite2.png", "bottom": "2%",  "right": "-8%", "size": "clamp(95px,24vw,215px)",  "rotate": -22, "blur": 5,    "opacity": 0.56},
-    {"url": "/images/slot/machine/sprite2.png", "top": "2%",     "right": "-6%", "size": "clamp(76px,19vw,170px)",  "rotate": 16,  "blur": 7,    "opacity": 0.45},
-    {"url": "/images/slot/machine/sprite2.png", "top": "13%",    "left": "12%",  "size": "clamp(60px,15vw,135px)",  "rotate": 9,   "blur": 9.5,  "opacity": 0.35},
-    {"url": "/images/slot/machine/sprite2.png", "top": "10%",    "right": "16%", "size": "clamp(48px,12vw,108px)",  "rotate": -8,  "blur": 12,   "opacity": 0.26}
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym0.webp", "bottom": "-6%", "left": "-12%", "size": "clamp(150px,38vw,340px)", "rotate": 24,  "blur": 1.5,  "opacity": 0.78},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym1.webp", "top": "-4%",    "left": "-10%", "size": "clamp(120px,30vw,270px)", "rotate": -18, "blur": 3,    "opacity": 0.68},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym2.webp", "bottom": "2%",  "right": "-8%", "size": "clamp(95px,24vw,215px)",  "rotate": -22, "blur": 5,    "opacity": 0.56},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym3.webp", "top": "2%",     "right": "-6%", "size": "clamp(76px,19vw,170px)",  "rotate": 16,  "blur": 7,    "opacity": 0.45},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym4.webp", "top": "13%",    "left": "12%",  "size": "clamp(60px,15vw,135px)",  "rotate": 9,   "blur": 9.5,  "opacity": 0.35},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/sym5.webp", "top": "10%",    "right": "16%", "size": "clamp(48px,12vw,108px)",  "rotate": -8,  "blur": 12,   "opacity": 0.26}
   ]
 }$J$),
 (1, 'stats', $J${
@@ -130,8 +130,8 @@ FROM public.events e, (VALUES
   "layout": "grid",
   "subtitle": "普通時累積保底，進入灌籃RUSH 後機台由金轉藍",
   "items": [
-    {"url": "/images/slot/machine/sprite2.png", "caption": "普通時", "badge": "累積保底", "color": "#e879f9", "poster": "", "media_type": "image"},
-    {"url": "/images/slot/machine/sprite2.png", "caption": "灌籃RUSH", "badge": "抽卡中", "color": "#ffd24a", "poster": "", "media_type": "image"}
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/machine-normal.webp", "caption": "普通時", "badge": "累積保底", "color": "#e879f9", "poster": "", "media_type": "image"},
+    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/slot/slam-dunk/machine-rush.webp", "caption": "灌籃RUSH", "badge": "抽卡中", "color": "#ffd24a", "poster": "", "media_type": "image"}
   ],
   "callout": "挑戰列表可直接看到每台目前的保底進度與今日 RUSH 次數 ―― 挑一台再上機。",
   "callout_border": "#6a4a1e"
