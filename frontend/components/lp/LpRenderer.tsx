@@ -93,6 +93,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const subtitleColor = isDark
     ? `rgb(${clamp(ar+(255-ar)*.03)},${clamp(ag+(255-ag)*.55)},${clamp(ab+(255-ab)*.01)})`
     : `rgb(${clamp(ar*.65)},${clamp(ag*.55)},${clamp(ab*.65)})`
+  // 卡片內小字：深色主題往白色混，純提高不透明度會變成刺眼的高飽和色
+  const bodyMuted = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.72)},${clamp(ag+(255-ag)*.72)},${clamp(ab+(255-ab)*.72)})`
+    : `rgba(${a},.82)`
 
   // rgba glows / shadows
   const glow40 = `rgba(${a},0.40)`
@@ -285,7 +289,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       padding:22px 14px;text-align:center;}
     .lpv-stat .sv{font-family:'Arial Black','Noto Sans JP',sans-serif;font-weight:900;
       font-size:clamp(20px,5.6vw,30px);}
-    .lpv-stat .sl{font-size:11px;color:rgba(${a},${isDark?'0.80':'0.85'});font-weight:700;margin-top:6px;letter-spacing:.3px;}
+    .lpv-stat .sl{font-size:11px;color:${bodyMuted};font-weight:700;margin-top:6px;letter-spacing:.3px;}
 
     /* ── FUKURO ── default gold/warm; .accent overrides to theme colour */
     .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
@@ -311,14 +315,14 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       background:linear-gradient(180deg,${cardDark},${cardDarker});}
     .lpv-relrow .rnm{font-weight:900;font-size:15px;}
     .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:${relValueColor};}
-    .lpv-relrow .rds{font-size:11px;color:rgba(${a},${isDark?'.78':'.82'});font-weight:600;margin-top:2px;}
+    .lpv-relrow .rds{font-size:11px;color:${bodyMuted};font-weight:600;margin-top:2px;}
 
     /* ── RULE ── */
     .lpv-rule{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;margin:0 auto;}
     .lpv-rc{border-radius:12px;border:1px solid ${borderMid};
       background:linear-gradient(180deg,${cardDark},${cardDarker});padding:16px 14px;}
     .lpv-rc .rt{font-weight:900;font-size:16px;}
-    .lpv-rc .rd{font-size:11px;color:rgba(${a},${isDark?'.78':'.82'});font-weight:600;margin-top:5px;line-height:1.6;}
+    .lpv-rc .rd{font-size:11px;color:${bodyMuted};font-weight:600;margin-top:5px;line-height:1.6;}
 
     /* ── TABLE ── */
     .lpv-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
@@ -352,7 +356,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-feat-icon{font-size:32px;margin-bottom:10px;line-height:1;}
     .lpv-feat-icon img{width:40px;height:40px;object-fit:contain;margin:0 auto;}
     .lpv-feat-title{font-weight:900;font-size:15px;margin-bottom:6px;}
-    .lpv-feat-desc{font-size:11px;color:rgba(${a},${isDark?'.80':'.85'});font-weight:600;line-height:1.6;}
+    .lpv-feat-desc{font-size:11px;color:${bodyMuted};font-weight:600;line-height:1.6;}
 
     /* ── COUNTDOWN ── */
     .lpv-countdown{display:flex;justify-content:center;align-items:flex-start;gap:6px;margin:20px 0;}
