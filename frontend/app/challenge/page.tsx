@@ -46,6 +46,7 @@ interface SlotMachine {
   sort_order: number;
   bet_tiers: BetTier[];
   floor_spin_count: number;
+  floor_counter: number | null;
   trigger_rate: number;
   machine_theme: string;
   event_slug: string | null;
@@ -294,9 +295,11 @@ function OccupancyOverlay({
 
   const isMine = occupantId === currentUserId;
   if (isMine) {
+    // 自己佔用中（不小心跳出）：顯示離席倒數，歸零即釋出機台
+    const mySecondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
     return (
       <div className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
-        <span className="text-white font-black text-sm tracking-wide select-none">回到機台</span>
+        <span className="text-white font-black text-sm tabular-nums select-none">離席倒數 <span className="text-orange-500">{mySecondsLeft}</span> 秒</span>
       </div>
     );
   }
@@ -348,6 +351,10 @@ function MachineCard({
           occupancyExpiresAt={machine.occupancy_expires_at}
           currentUserId={currentUserId}
         />
+        {/* 保底轉數進度 */}
+        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
+          {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
+        </div>
       </div>
 
       {/* Content */}
@@ -380,7 +387,7 @@ function MachineCard({
           </div>
         )}
 
-        {/* Sparkline */}
+        {/* Sparkline（裝飾走勢，切換檔次變化） */}
         <Sparkline seed={sparkSeed} className="h-8 my-1.5" />
       </div>
     </div>
@@ -394,6 +401,20 @@ export default function ChallengePage() {
   const supabase = createClient();
 
   const [machines, setMachines] = useState<SlotMachine[]>([]);
+  // 閒置被踢出提示（?idle_kick=1）
+  const [kickNotice, setKickNotice] = useState(false);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('idle_kick') === '1') {
+      window.history.replaceState(null, '', '/challenge');
+      setKickNotice(true);
+    }
+  }, []);
+  useEffect(() => {
+    if (!kickNotice) return;
+    const t = setTimeout(() => setKickNotice(false), 5000);
+    return () => clearTimeout(t);
+  }, [kickNotice]);
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
   const [machinesLoading, setMachinesLoading] = useState(true);
   const [bannersLoading, setBannersLoading] = useState(true);
@@ -471,15 +492,61 @@ export default function ChallengePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
-      <div className="max-w-7xl mx-auto px-0 pt-0">
+      {/* 閒置踢出提示（畫面正中間，5 秒後淡出） */}
+      <AnimatePresence>
+        {kickNotice && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, x: '-50%', y: '-50%', transition: { duration: 0.6 } }}
+            className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black shadow-xl whitespace-nowrap"
+          >
+            過久沒有動作，已讓位給其他用戶
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="max-w-7xl mx-auto px-0 pt-0 md:px-2 lg:px-8 md:pt-6">
+        <div className="flex flex-col md:flex-row gap-4 lg:gap-6 items-start">
+
+        {/* 桌機側欄 — 同首頁分類欄，手機維持 banner 下方頁籤 */}
+        <aside className="hidden md:block w-60 flex-shrink-0 sticky top-16">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow-card border border-neutral-100 dark:border-neutral-800 transition-colors min-h-[535px]">
+            <div className="space-y-1">
+              {themes.map(t => (
+                <button
+                  key={t.name}
+                  onClick={() => setActiveTheme(t.name)}
+                  className={cn(
+                    "w-full text-left px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-xl text-[13px] lg:text-sm font-black transition-all flex items-center justify-between gap-2",
+                    activeTheme === t.name
+                      ? "bg-primary text-white shadow-lg shadow-primary/20"
+                      : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                  )}
+                >
+                  <span className="truncate">{t.name}</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center h-[20px] min-w-[20px] px-1.5 rounded-full text-[10px] font-black tabular-nums",
+                      activeTheme === t.name ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
+                    )}
+                  >
+                    {t.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1 min-w-0 w-full">
 
         {/* Banner — same as home */}
         <section>
           {bannersLoading ? <BannerSkeleton /> : <HeroBanner banners={banners} />}
         </section>
 
-        {/* Sticky tab bar — same style as home secondary tabs */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+        {/* Sticky tab bar — same style as home secondary tabs（桌機改用左側欄） */}
+        <div className="md:hidden sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-1.5 py-2 px-2">
             <div ref={tabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
               <div className="flex items-center gap-1.5">
@@ -511,10 +578,10 @@ export default function ChallengePage() {
         </div>
 
         {/* 2-column machine grid — same grid as home products */}
-        <div className="px-2 pt-2">
+        <div className="px-2 pt-2 md:px-0 md:pt-4">
           {machinesLoading ? (
-            <div className="grid grid-cols-2 gap-2">
-              {[1, 2, 3, 4].map(i => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
                 <div key={i} className="rounded-[8px] border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
                   <div className="aspect-square w-full animate-pulse bg-neutral-200 dark:bg-neutral-800 rounded-t-[8px]" />
                   <div className="p-2 space-y-2">
@@ -528,7 +595,7 @@ export default function ChallengePage() {
           ) : filtered.length === 0 ? (
             <p className="text-center text-sm text-neutral-400 py-16">此分類目前沒有機台</p>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {filtered.map(machine => (
                 <MachineCard
                   key={machine.id}
@@ -556,6 +623,9 @@ export default function ChallengePage() {
               ))}
             </div>
           )}
+        </div>
+
+        </div>
         </div>
       </div>
 

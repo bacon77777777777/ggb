@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
+import sharp from 'sharp'
+import { detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -167,6 +169,94 @@ function extractBodyImage(html: string): string {
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
+// 圖片帶站方浮水印的來源：不用其圖，改用平台預設圖
+const WATERMARKED_SOURCES = ['dengeki.com']
+const DEFAULT_NEWS_IMAGE =
+  `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
+
+// GGB logo（蓋浮水印用），模組層快取
+let _logoBuf: Buffer | null = null
+async function getLogoBuffer(): Promise<Buffer | null> {
+  if (_logoBuf) return _logoBuf
+  try {
+    const url = `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/logo.png`
+    const res = await fetch(url, { signal: AbortSignal.timeout(8_000) })
+    if (!res.ok) return null
+    _logoBuf = Buffer.from(await res.arrayBuffer())
+    return _logoBuf
+  } catch { return null }
+}
+
+
+
+// 白墊貼齊指定角落（朝圖內側的那個角圓角）
+function wmPlatePath(w: number, h: number, corner: WmCorner): string {
+  const r = Math.round(h / 4)
+  switch (corner) {
+    case 'top-right':    return `M0 0 H${w} V${h} H${r} A${r} ${r} 0 0 1 0 ${h - r} V0 Z`
+    case 'top-left':     return `M0 0 H${w} V${h - r} A${r} ${r} 0 0 1 ${w - r} ${h} H0 V0 Z`
+    case 'bottom-right': return `M${r} 0 H${w} V${h} H0 V${r} A${r} ${r} 0 0 1 ${r} 0 Z`
+    case 'bottom-left':  return `M0 0 H${w - r} A${r} ${r} 0 0 1 ${w} ${r} V${h} H0 Z`
+  }
+}
+
+// 浮水印來源：對應角落壓 GGB logo（白色圓角墊底）蓋住站方浮水印，保留原圖
+async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | null> {
+  try {
+    const logo = await getLogoBuffer()
+    if (!logo) return null
+    const meta = await sharp(buf).metadata()
+    const W = meta.width ?? 0, H = meta.height ?? 0
+    if (!W || !H) return null
+    const logoW = Math.round(W * 0.21)
+    const logoH = Math.round((logoW * 107) / 300)
+    const pad = Math.round(logoW * 0.05)
+    const plateW = logoW + pad * 2
+    const plateH = logoH + pad * 2
+    const left = corner.endsWith('left') ? 0 : W - plateW
+    const top = corner.startsWith('top') ? 0 : H - plateH
+    const plate = Buffer.from(
+      `<svg width="${plateW}" height="${plateH}"><path d="${wmPlatePath(plateW, plateH, corner)}" fill="white" fill-opacity="0.97"/></svg>`
+    )
+    const logoResized = await sharp(logo).resize(logoW, logoH).png().toBuffer()
+    return await sharp(buf)
+      .composite([
+        { input: plate, top, left },
+        { input: logoResized, top: top + pad, left: left + pad },
+      ])
+      .jpeg({ quality: 88 })
+      .toBuffer()
+  } catch { return null }
+}
+
+// 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
+async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(imgUrl, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length < 3_000) return null
+    const corner = await detectWatermarkCorner(buf)
+    const branded = await brandCoverImage(buf, corner)
+    if (!branded) return null
+    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
+    return await r2Upload(key, branded, 'image/jpeg')
+  } catch { return null }
+}
+
+// Claude 回 general 時的關鍵字兜底分類
+function classifyByKeywords(text: string): string | null {
+  if (/一番賞|一番くじ/.test(text)) return 'ichiban'
+  if (/ガシャポン|ガチャ|カプセル|扭蛋|轉蛋/.test(text)) return 'gacha'
+  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG/i.test(text)) return 'tcg'
+  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART/i.test(text)) return 'blindbox'
+  return null
+}
+
 const BLOCKED_IMG_DOMAINS = [
   'google.com', 'googleapis.com', 'googleusercontent.com',
   'gstatic.com', 'ggpht.com', 'lh3.google', 'lh4.google',
@@ -333,7 +423,7 @@ ${combined}
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
   "content": "<h2>小標</h2><p>段落...</p>（繁體中文，250-400字，2-3段，從玩家視角介紹商品特色與發售資訊）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|blindbox|tcg|general"
+  "category": "ichiban|gacha|blindbox|tcg|general（能明確歸入前四類就不要用 general）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -544,12 +634,18 @@ export async function POST(req: NextRequest) {
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
+      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      const imageUrl = isWatermarked
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
+        : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'general')
+        ? draft.category
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
         image_url: imageUrl, source_url: realUrl,
-        category: draft.category ?? feed.category, tags: draft.tags ?? [], is_active: !!imageUrl,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
       })
       if (!error) {
         results.written++; results.articles.push(`[${feed.label}] ${draft.title}`)
@@ -619,7 +715,13 @@ export async function POST(req: NextRequest) {
       // 標題相似度去重（同主題 Jaccard >= 0.55 視為重複）
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      const imageUrl = (await downloadImageToR2(ogImage)) ?? ogImage
+      const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      const imageUrl = isWatermarked
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
+        : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'general')
+        ? draft.category
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
@@ -629,7 +731,7 @@ export async function POST(req: NextRequest) {
         content:    draft.content,
         image_url:  imageUrl,
         source_url: realUrl,
-        category:   draft.category ?? category,
+        category:   finalCategory,
         tags:       draft.tags ?? [],
         is_active:  !!imageUrl,
       })

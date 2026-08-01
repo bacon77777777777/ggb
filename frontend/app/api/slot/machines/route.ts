@@ -12,7 +12,7 @@ export async function GET() {
       .from('slot_machines')
       .select(`
         id, name, description, image_url, price_per_spin, is_active,
-        sort_order, bet_tiers, floor_spin_count, trigger_rate,
+        sort_order, bet_tiers, floor_spin_count, floor_counter, trigger_rate,
         machine_theme, event_slug, theme_id, machine_number, rush_state,
         occupant_id, occupant_active_until, occupancy_expires_at,
         slot_themes(

@@ -50,7 +50,7 @@ export interface SlotMachineClassicProps {
 
 let _ac: AudioContext | null = null;
 let _muted = false;
-function setSfxMuted(m: boolean) { _muted = m; }
+export function setSfxMuted(m: boolean) { _muted = m; }
 function getAC(): AudioContext {
   if (!_ac) {
     const W = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -341,6 +341,8 @@ const SMVC_CSS = `
   animation:smvc-ticker 9s linear infinite;
 }
 @keyframes smvc-ticker { from{transform:translateX(100%);} to{transform:translateX(-100%);} }
+/* 靜態置中（非777揭曉訊息）：不捲動 */
+.smvc-marquee.smvc-mq-static .smvc-marquee-txt { animation:none; transform:none; margin:auto; }
 .smvc-marquee.smvc-win .smvc-marquee-txt {
   animation:smvc-strobeTxt .22s steps(2) infinite;
   font-size:4.4cqw; margin:auto; transform:none;
@@ -403,6 +405,9 @@ const SMVC_CSS = `
   color:#ffd75e; text-shadow:0 0 .7cqw rgba(255,190,60,.6),0 0 1.6cqw rgba(255,150,30,.3);
   font-variant-numeric:tabular-nums;
 }
+
+/* RUSH 皮膚下計分板先隱藏，回普通機台再顯示 */
+.smvc-rushskin .smvc-scoreboard { opacity:0; transition:opacity .3s; }
 
 /* ── Reels ── */
 .smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
@@ -521,6 +526,7 @@ const SMVC_CSS = `
 }
 .smvc-btn:hover  { filter:brightness(1.15) drop-shadow(0 0 1cqw rgba(255,230,150,.8)); }
 .smvc-btn:active { transform:translateY(3%) scale(.97); filter:brightness(.92); }
+.smvc-btn-off { filter:grayscale(1) brightness(.5) contrast(1.05); pointer-events:none; }
 .smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto),
 .smvc-stage.smvc-spinning .smvc-lever-hit { pointer-events:none; }
 .smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto) { filter:saturate(.6) brightness(.85); animation:none; }
@@ -576,18 +582,6 @@ const SMVC_CSS = `
 .smvc-flash.smvc-go { animation:smvc-flashout .6s ease-out both; }
 @keyframes smvc-flashout { 0%{opacity:1;} 100%{opacity:0;} }
 
-/* ── 音效開關（右上角，白線圖標 + 黑色圓形遮罩，同文章內頁返回鈕）── */
-.smvc-mute {
-  position:absolute; right:10px; top:10px; width:38px; height:38px;
-  z-index:8; cursor:pointer; pointer-events:all;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,.3); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
-  border-radius:50%;
-  opacity:.92;
-}
-.smvc-mute svg { width:20px; height:20px; }
-.smvc-mute:hover  { opacity:1; }
-.smvc-mute:active { transform:scale(.9); }
 
 /* ── Coin ── */
 .smvc-coin {
@@ -622,21 +616,7 @@ export default function SlotMachineClassic({
   const scoreboardEl  = useRef<HTMLDivElement>(null);
 
   // 音效開關（localStorage 記憶）
-  const [sfxMuted, setSfxMutedState] = useState(false);
-  useEffect(() => {
-    const saved = localStorage.getItem('smvc-muted') === '1';
-    setSfxMutedState(saved);
-    setSfxMuted(saved);
-  }, []);
-  const toggleMute = () => {
-    setSfxMutedState(prev => {
-      const next = !prev;
-      setSfxMuted(next);
-      try { localStorage.setItem('smvc-muted', next ? '1' : '0'); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
+  const mqTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offsets       = useRef([0, 0, 0]);
   const rowH          = useRef(80);   // 格高（= 視窗高 × CELL_F，上下露出相鄰符號邊）
   const padY          = useRef(0);    // 置中偏移 = (視窗高 − 格高) / 2
@@ -801,8 +781,17 @@ export default function SlotMachineClassic({
 
     if (!isJackpot) {
       stage.classList.remove('smvc-rushskin');
+      const mq = marqueeEl.current;
       const txt = marqueeTxt.current;
-      if (txt) txt.textContent = '★ 押忍！再挑戰一次 ★ GGB RUSH ★';
+      if (mq && txt) {
+        mq.classList.add('smvc-mq-static');
+        txt.textContent = 'GGB的命！再挑戰一次！';
+        if (mqTimerRef.current) clearTimeout(mqTimerRef.current);
+        mqTimerRef.current = setTimeout(() => {
+          mq.classList.remove('smvc-mq-static');
+          txt.textContent = MARQUEE_DEFAULT;
+        }, 4000);
+      }
 
       // 返還揭曉：跑馬燈快掃一輪
       stage.classList.add('smvc-bulbs-sweep');
@@ -966,7 +955,8 @@ export default function SlotMachineClassic({
       stage.classList.add('smvc-spinning');
       stage.classList.remove('smvc-rushmode');
       if (bigwinEl.current) bigwinEl.current.className = 'smvc-bigwin';
-      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win');
+      if (mqTimerRef.current) clearTimeout(mqTimerRef.current);
+      if (marqueeEl.current) marqueeEl.current.classList.remove('smvc-win', 'smvc-mq-static');
       if (marqueeTxt.current) marqueeTxt.current.textContent = '★ GOOD LUCK !! ★ RUSH CHANCE ★';
       reelEls.current.forEach(r => r?.classList.add('smvc-blur'));
       leverPull();
@@ -1118,27 +1108,12 @@ export default function SlotMachineClassic({
           <span className="smvc-btn-amt">{betCoins.toLocaleString()}G</span>
           SPIN
         </div>
-        <div className="smvc-btn smvc-btn-rush" onClick={onDirect}>
+        <div className={`smvc-btn smvc-btn-rush${isRushActive ? ' smvc-btn-off' : ''}`} onClick={onDirect}>
           <span className="smvc-btn-amt">{directCost.toLocaleString()}G</span>
-          直衝
+          直擊
         </div>
 
         {/* 音效開關 */}
-        <div className="smvc-mute" onClick={toggleMute} role="button" aria-label="音效開關">
-          {sfxMuted ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5 6 9H3v6h3l5 4z" />
-              <path d="M15.5 8.5a5 5 0 0 1 0 7" opacity=".35" />
-              <line x1="4" y1="4" x2="20" y2="20" stroke="#ef4444" strokeWidth={2.5} />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5 6 9H3v6h3l5 4z" />
-              <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-              <path d="M18.5 5.5a9 9 0 0 1 0 13" />
-            </svg>
-          )}
-        </div>
 
         {/* Bigwin text */}
         <div ref={bigwinEl} className="smvc-bigwin"><span>大当り!!</span></div>

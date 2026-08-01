@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
-import SlotMachineClassic, { ReelOutcome, MachineLayout } from '@/components/challenge/SlotMachineClassic';
+import SlotMachineClassic, { ReelOutcome, MachineLayout, setSfxMuted } from '@/components/challenge/SlotMachineClassic';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -175,6 +175,20 @@ export default function MachinePage() {
   const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
   // 機台總餘額板顯示值：按下 SPIN 即時扣款，回包後以 new_balance 校正；idle 時跟 profile 對齊
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [sfxMuted, setSfxMutedState] = useState(false);
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' && localStorage.getItem('smvc-muted') === '1';
+    setSfxMutedState(saved);
+    setSfxMuted(saved);
+  }, []);
+  const toggleMute = () => {
+    setSfxMutedState(prev => {
+      const next = !prev;
+      setSfxMuted(next);
+      try { localStorage.setItem('smvc-muted', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -190,6 +204,16 @@ export default function MachinePage() {
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
   const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
+  // 閒置踢出：初次上機 30 秒，SPIN/直擊每次 +60 秒（上限 90 秒），進出不重置；
+  // 最後 15 秒警告，到期踢出即讓位。期限與伺服器同步。
+  const [idleWarnSeconds, setIdleWarnSeconds] = useState<number | null>(null);
+  const idleDeadlineRef = useRef<number>(Date.now() + 30_000);
+  const idleKickedRef = useRef(false);
+  const extendIdleDeadline = () => {
+    const now = Date.now();
+    const remaining = Math.max(idleDeadlineRef.current - now, 0);
+    idleDeadlineRef.current = now + Math.min(remaining + 60_000, 90_000);
+  };
   const coinReturnIdRef = useRef(0);
   const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -214,7 +238,7 @@ export default function MachinePage() {
   const showCoinReturn = useCallback((amount: number) => {
     if (coinReturnTimerRef.current) clearTimeout(coinReturnTimerRef.current);
     setCoinReturnDisplay({ amount, id: ++coinReturnIdRef.current });
-    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 2200);
+    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 3000);
   }, []);
 
   const syncSession = useCallback(() => {
@@ -226,15 +250,26 @@ export default function MachinePage() {
 
   // 機台佔用：進入時 occupy，每 20 秒 heartbeat，離開時 vacate
   useEffect(() => {
-    const occupy = () => fetch(`/api/slot/${id}/occupy`, { method: 'POST' }).catch(() => {});
+    const occupy = () =>
+      fetch(`/api/slot/${id}/occupy`, { method: 'POST' })
+        .then(async r => {
+          const d = await r.json().catch(() => null);
+          if (r.status === 409) {
+            // 機台已被他人佔用（列表輪詢空窗撞入）：退回挑戰頁
+            router.replace('/challenge');
+            return;
+          }
+          if (d?.occupancy_expires_at) idleDeadlineRef.current = new Date(d.occupancy_expires_at).getTime();
+        })
+        .catch(() => {});
     const heartbeat = () => fetch(`/api/slot/${id}/heartbeat`, { method: 'POST' }).catch(() => {});
     const vacate = () => fetch(`/api/slot/${id}/vacate`, { method: 'POST', keepalive: true }).catch(() => {});
 
     occupy();
     heartbeatRef.current = setInterval(heartbeat, 20_000);
 
-    const onHide = () => { if (document.visibilityState === 'hidden') vacate(); };
-    const onShow = () => { if (document.visibilityState === 'visible') occupy(); };
+    const onHide = () => { if (document.visibilityState === 'hidden' && !idleKickedRef.current) vacate(); };
+    const onShow = () => { if (document.visibilityState === 'visible' && !idleKickedRef.current) occupy(); };
     document.addEventListener('visibilitychange', onHide);
     document.addEventListener('visibilitychange', onShow);
 
@@ -242,8 +277,28 @@ export default function MachinePage() {
       clearInterval(heartbeatRef.current ?? undefined);
       document.removeEventListener('visibilitychange', onHide);
       document.removeEventListener('visibilitychange', onShow);
-      vacate();
+      if (!idleKickedRef.current) vacate();
     };
+  }, [id]);
+
+  // 閒置踢出計時：期限 = 最後動作 +90s（最後 15 秒顯示警告），SPIN/直擊刷新
+  useEffect(() => {
+    const WARN_SECONDS = 15;
+    const t = setInterval(() => {
+      if (idleKickedRef.current) return;
+      const leftMs = idleDeadlineRef.current - Date.now();
+      if (leftMs <= 0) {
+        idleKickedRef.current = true;
+        setIdleWarnSeconds(null);
+        fetch(`/api/slot/${id}/vacate?immediate=1`, { method: 'POST', keepalive: true }).catch(() => {});
+        router.replace('/challenge?idle_kick=1');
+        return;
+      }
+      const leftSec = Math.ceil(leftMs / 1000);
+      setIdleWarnSeconds(leftSec <= WARN_SECONDS ? leftSec : null);
+    }, 1000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -288,16 +343,8 @@ export default function MachinePage() {
   // 機台層級保底計數（machine-level, 所有玩家共用）
   const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
 
-  // 直撃費用：該檔次 RUSH 獎池最高品項價值 × 1.5，無條件進位至檔次金額倍數
-  const directCost = (() => {
-    const vals = pool
-      .filter(i => i.rush_only && !i.normal_only && !i.coin_return
-        && (i.product_prizes == null || i.product_prizes.remaining == null || i.product_prizes.remaining > 0)
-        && (i.min_bet == null || i.min_bet === currentTier.coins))
-      .map(i => i.slot_prizes?.recycle_value ?? i.product_prizes?.recycle_value ?? 0);
-    const maxVal = vals.length ? Math.max(...vals) : 0;
-    return maxVal > 0 ? Math.ceil((maxVal * 1.5) / currentTier.coins) * currentTier.coins : 0;
-  })();
+  // 直撃費用：剩餘保底轉數 × 檔次金額（隨已轉數下降，與 enter_slot_rush_direct 一致）
+  const directCost = Math.max((machine?.floor_spin_count ?? 0) - (session?.floor_counter ?? 0), 1) * currentTier.coins;
 
   const changeTier = useCallback((delta: number) => {
     if (isTierLocked || tiers.length <= 1) return;
@@ -345,6 +392,8 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user) return;
     setError(null);
     setJackpot(false);
+    extendIdleDeadline();
+    setIdleWarnSeconds(null);
     setSpinState('spinning');
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
     if (reelTimerRef.current) clearInterval(reelTimerRef.current);
@@ -359,6 +408,7 @@ export default function MachinePage() {
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
       if (!res.ok || data.error) {
+        if (String(data.error ?? '').includes('機台使用中')) { router.replace('/challenge'); return; }
         setError(data.error ?? '挑戰失敗，請稍後再試');
         setJackpot(false);
         setSpinState('idle');
@@ -472,6 +522,8 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
     setDirectLoading(true);
     setError(null);
+    extendIdleDeadline();
+    setIdleWarnSeconds(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - directCost));
@@ -493,6 +545,7 @@ export default function MachinePage() {
       const data = await (res as Response).json();
 
       if (!res.ok || data.error) {
+        if (String(data.error ?? '').includes('機台使用中')) { router.replace('/challenge'); return; }
         setError(data.error ?? '直撃失敗');
         setWalletBalance((user as any)?.tokens ?? 0);
         if (isClassic) setSpinState('idle');
@@ -598,7 +651,7 @@ export default function MachinePage() {
             animate={{ opacity: 1, y: -44, scale: 1.25 }}
             exit={{ opacity: 0, y: -80, scale: 1 }}
             transition={{ duration: 0.45 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none select-none"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[45] pointer-events-none select-none"
           >
             <span className="font-black tabular-nums" style={{
               fontSize: '2.6rem',
@@ -807,7 +860,33 @@ export default function MachinePage() {
   // ── layout ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen pt-14 md:pt-0 bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+
+      {/* ── 頂部操作列（同文章內頁：黑圓返回 + 聲音開關）── */}
+      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
+        <button onClick={() => router.push('/challenge')}
+          className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <button onClick={toggleMute} aria-label="音效開關"
+          className="pointer-events-auto m-[10px] w-[38px] h-[38px] bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+            <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+            <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+            {sfxMuted && <line x1="3" y1="3" x2="21" y2="21" stroke="#ef4444" strokeWidth={2.5} />}
+          </svg>
+        </button>
+      </div>
+
+      {/* 閒置警告（最後 15 秒，畫面正中間） */}
+      {idleWarnSeconds != null && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black pointer-events-none whitespace-nowrap shadow-xl">
+          閒置中，<span className="text-orange-500 tabular-nums">{idleWarnSeconds}</span> 秒後將離開機台
+        </div>
+      )}
 
       {/* Mobile / tablet */}
       <div className="block lg:hidden pb-8">
@@ -927,49 +1006,89 @@ export default function MachinePage() {
               key="direct-panel"
               initial={{ opacity: 0, y: '100%' }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 right-0 bottom-0 z-[61] bg-white dark:bg-[#1a1b1e] rounded-t-2xl border-t border-neutral-200 dark:border-white/10 flex flex-col overflow-hidden"
+              className="fixed z-[61] bg-white dark:bg-[#1a1b1e] flex flex-col max-h-[90vh] overflow-hidden left-0 right-0 bottom-0 rounded-t-2xl border-t border-neutral-200 dark:border-white/10 md:inset-0 md:m-auto md:w-[480px] md:h-fit md:rounded-2xl md:border md:shadow-2xl"
             >
-              <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-5 h-5 text-amber-500" />
-                  <h3 className="font-black text-base text-neutral-900 dark:text-white">直撃確認</h3>
-                </div>
+              {/* Header — 同轉蛋購買確認 */}
+              <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 px-4 py-3 md:px-6 md:py-4">
+                <h3 className="font-black text-neutral-900 dark:text-white text-base md:text-xl">直擊確認</h3>
                 <button onClick={() => setShowDirectModal(false)}
                   className="p-1 -mr-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 active:scale-95 transition-transform">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="px-4 py-5 space-y-3">
-                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200/60 dark:border-amber-700/30">
-                  <p className="text-sm text-amber-800 dark:text-amber-300 font-bold text-center">
-                    跳過保底等待，直接進入 RUSH 模式
-                  </p>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto">
+                {/* 商品資訊列 */}
+                <div className="flex gap-3 p-3 pb-2 md:p-6 md:pb-4 md:gap-5">
+                  <div className="relative bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden shrink-0 shadow-sm border border-neutral-100 dark:border-neutral-700 w-12 h-12 md:w-16 md:h-16">
+                    <Image
+                      src={machine.slot_themes?.image_url || machine.image_url || '/images/item.png'}
+                      alt={machine.name} fill className="object-cover" unoptimized
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 py-0.5 flex flex-col justify-between">
+                    <h3 className="font-black text-neutral-900 dark:text-white leading-tight line-clamp-1 text-base md:text-xl">
+                      {machine.slot_themes?.name ?? machine.name}
+                    </h3>
+                    <div className="flex flex-col justify-end mt-1">
+                      <div className="flex items-center gap-1">
+                        <div className="relative shrink-0 w-5 h-5 md:w-6 md:h-6">
+                          <Image src="/images/gcoin.png" alt="G" fill className="object-contain" unoptimized />
+                        </div>
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="font-black text-accent-red font-amount leading-none tracking-tighter text-lg md:text-2xl">{directCost.toLocaleString()}</span>
+                          <span className="font-black text-neutral-400 leading-none uppercase tracking-widest text-[13px] md:text-[15px]">/直擊</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-sm text-neutral-500">直撃費用</span>
-                  <span className="text-lg font-black text-primary tabular-nums">{directCost.toLocaleString()} G</span>
+
+                <div className="px-3 md:px-6 md:pb-6 space-y-2 md:space-y-4">
+                  {/* 說明 */}
+                  <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center gap-2 p-3 md:p-6">
+                    <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300 text-[13px] md:text-[15px]">跳過保底等待，直接進入 RUSH 模式</span>
+                  </div>
+
+                  {/* 金額摘要 */}
+                  <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl space-y-2 mb-3 p-3 md:p-6 md:space-y-4">
+                    <div className="flex justify-between items-center font-bold text-neutral-500 dark:text-neutral-400 text-[13px] md:text-[15px]">
+                      <span>商品總額</span>
+                      <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{directCost.toLocaleString()}</span> 元</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500 text-[13px] md:text-[15px]">
+                      <span>代幣餘額</span>
+                      <div className="flex flex-col items-end">
+                        <span><span className="font-amount">{userTokens.toLocaleString()}</span> 代幣</span>
+                        {!isLowForDirect && (
+                          <span className="text-xs text-accent-emerald">購買後剩餘: {(userTokens - directCost).toLocaleString()}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="h-px bg-neutral-200 dark:bg-neutral-700 border-dashed w-full my-1" />
+                    <div className="flex justify-between items-end text-base font-black text-accent-red">
+                      <span className="text-[13px] md:text-[15px]">實付金額</span>
+                      <span className="leading-none text-xl md:text-3xl"><span className="font-amount">{directCost.toLocaleString()}</span> 代幣</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-neutral-500">目前 G 幣</span>
-                  <span className={cn("text-sm font-bold tabular-nums", isLowForDirect ? "text-red-400" : "text-neutral-700 dark:text-neutral-300")}>
-                    {userTokens.toLocaleString()} G
-                  </span>
-                </div>
-                {isLowForDirect && (
-                  <p className="text-xs text-red-400 text-center font-medium">G 幣不足，請先儲值</p>
-                )}
               </div>
-              <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] flex gap-2">
-                <button onClick={() => setShowDirectModal(false)}
-                  className="flex-1 h-[44px] text-sm rounded-xl font-black bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 active:scale-[0.98] transition-transform">
-                  取消
-                </button>
+
+              {/* Footer — 同轉蛋購買確認 */}
+              <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 z-10 flex items-center justify-center mt-auto min-h-16 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] md:h-24 md:px-6 md:rounded-b-[24px]">
                 <button
                   onClick={() => { setShowDirectModal(false); executeDirectSpin(); }}
                   disabled={isLowForDirect || directLoading}
-                  className="flex-1 h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-50"
+                  className={cn(
+                    "w-full rounded-xl font-black shadow-xl transition-all h-[44px] text-base md:h-[52px] md:text-lg",
+                    isLowForDirect
+                      ? "bg-neutral-300 text-neutral-500 shadow-none cursor-not-allowed"
+                      : "bg-accent-red text-white shadow-accent-red/20 hover:bg-accent-red/90 active:scale-[0.98] disabled:opacity-60"
+                  )}
                 >
-                  {directLoading ? '處理中...' : `確認直撃　${directCost.toLocaleString()} G`}
+                  {directLoading ? '處理中...' : isLowForDirect ? 'G 幣不足，請先儲值' : `確認支付 ${directCost.toLocaleString()} 代幣`}
                 </button>
               </div>
             </motion.div>
