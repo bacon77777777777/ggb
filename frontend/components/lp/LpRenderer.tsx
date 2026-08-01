@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, Share2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
+import { scheduleState } from '@/lib/schedule'
 
 const LP_LOADING_CHARS = [
   '/loading/1.svg', '/loading/2.svg', '/loading/3.svg', '/loading/4.svg',
@@ -180,6 +181,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       opacity:.5;filter:brightness(.42) saturate(1.15);}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
+    .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.68);backdrop-filter:blur(2px);}
+    .lpv-hero .h-ended span{color:#fff;font-weight:900;letter-spacing:2px;
+      font-size:clamp(20px,5.5vw,34px);text-shadow:0 2px 12px rgba(0,0,0,.6);}
     .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(72% 42% at 50% 8%,${borderStrong},transparent 46%),
@@ -422,7 +427,7 @@ function H2({ c }: { c: Record<string, unknown> }) {
   return <h2 className="lpv-h2">{t}</h2>
 }
 
-function HeroSection({ c }: { c: Record<string, unknown> }) {
+function HeroSection({ c, ended }: { c: Record<string, unknown>; ended?: boolean }) {
   const gems = (c.gems as { color: string }[]) || []
   const scatter = (c.scatter as {
     url: string; top?: string; left?: string; right?: string; bottom?: string
@@ -439,6 +444,11 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
   const [subHi, subRest] = subRaw.includes('\n') ? subRaw.split('\n') : [null, subRaw]
   return (
     <section className="lpv-hero">
+      {ended && (
+        <div className="h-ended" aria-label="活動已結束">
+          <span>活動已結束</span>
+        </div>
+      )}
       {bool(c.bg_video_url) && (
         <video ref={videoRef} src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
           autoPlay muted loop playsInline className="h-vid" />
@@ -932,6 +942,8 @@ export default function LpRenderer({ slug }: { slug: string }) {
   if (!data) return <LpLoadingScreen />
 
   const { event, sections } = data
+  // 檔期結束後頁面仍可開啟，僅版頭蓋黑遮罩；要完全隱藏請於後台取消上架
+  const eventEnded = scheduleState(event.start_at, event.end_at) === 'ended'
   const stickySection = sections.find(s => s.type === 'sticky_cta')
 
   return (
@@ -947,7 +959,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
       </div>
       {sections.map(sec => {
         switch (sec.type) {
-          case 'hero':        return <HeroSection       key={sec.id} c={sec.content} />
+          case 'hero':        return <HeroSection       key={sec.id} c={sec.content} ended={eventEnded} />
           case 'text':        return <TextSection        key={sec.id} c={sec.content} />
           case 'steps':       return <StepsSection       key={sec.id} c={sec.content} />
           case 'cards':       return <CardsSection       key={sec.id} c={sec.content} />
