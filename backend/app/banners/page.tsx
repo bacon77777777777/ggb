@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
+import ScheduleFields from '@/components/ScheduleFields'
 import { Switch } from '@/components/ui'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
@@ -21,6 +22,9 @@ interface Banner {
   is_active: boolean
   page: string
   created_at: string
+  start_at: string | null
+  end_at: string | null
+  event_id: string | null
 }
 
 export default function BannersPage() {
@@ -40,6 +44,9 @@ export default function BannersPage() {
     sort_order: 0,
     is_active: true,
     page: 'home' as 'home' | 'challenge',
+    start_at: null as string | null,
+    end_at: null as string | null,
+    event_id: null as string | null,
     imageFile: null as File | null,
     imagePreview: ''
   })
@@ -73,6 +80,9 @@ export default function BannersPage() {
       name: banner.name || '',
       image_url: banner.image_url,
       link_url: banner.link_url || '',
+      start_at: banner.start_at ?? null,
+      end_at: banner.end_at ?? null,
+      event_id: banner.event_id ?? null,
       sort_order: banner.sort_order,
       is_active: banner.is_active,
       page: (banner.page as 'home' | 'challenge') || 'home',
@@ -88,6 +98,9 @@ export default function BannersPage() {
       name: '',
       image_url: '',
       link_url: '',
+      start_at: null,
+      end_at: null,
+      event_id: null,
       sort_order: 0,
       is_active: true,
       page: activeTab,
@@ -170,6 +183,9 @@ export default function BannersPage() {
         name: formData.name,
         image_url: finalImageUrl || formData.imagePreview,
         link_url: formData.link_url,
+        start_at: formData.start_at,
+        end_at: formData.end_at,
+        event_id: formData.event_id,
         sort_order: formData.sort_order,
         is_active: formData.is_active,
         page: formData.page,
@@ -395,10 +411,22 @@ export default function BannersPage() {
                 type="text"
                 value={formData.link_url}
                 onChange={e => setFormData({ ...formData, link_url: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg disabled:bg-neutral-50 disabled:text-neutral-400"
                 placeholder="https://..."
+                disabled={!!formData.event_id}
               />
+              {formData.event_id && (
+                <p className="mt-1 text-xs text-neutral-400">已關聯活動，連結由系統自動指向該活動頁</p>
+              )}
             </div>
+
+            <ScheduleFields
+              startAt={formData.start_at}
+              endAt={formData.end_at}
+              eventId={formData.event_id}
+              showEventLink
+              onChange={patch => setFormData(prev => ({ ...prev, ...patch }))}
+            />
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>

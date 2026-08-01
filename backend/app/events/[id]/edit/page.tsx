@@ -4,12 +4,13 @@ import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
+import ScheduleFields from '@/components/ScheduleFields'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Event {
   id: string; slug: string; title: string
   bg_color: string; accent_color: string
-  is_active: boolean; start_at: string | null; end_at: string | null
+  is_active: boolean; start_at: string | null; end_at: string | null; kind: string | null
   linked_category_id: string | null
   theme_mode: 'dark' | 'light'
 }
@@ -688,17 +689,24 @@ export default function EventEditPage() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">開始時間</label>
-                <input type="datetime-local" className={inputCls} value={meta.start_at ? new Date(meta.start_at).toISOString().slice(0, 16) : ''}
-                  onChange={e => setMeta(m => ({ ...m, start_at: e.target.value || null }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">結束時間</label>
-                <input type="datetime-local" className={inputCls} value={meta.end_at ? new Date(meta.end_at).toISOString().slice(0, 16) : ''}
-                  onChange={e => setMeta(m => ({ ...m, end_at: e.target.value || null }))} />
-              </div>
+            <ScheduleFields
+              startAt={meta.start_at ?? null}
+              endAt={meta.end_at ?? null}
+              inheritHint="結束後頁面仍可開啟，版頭顯示「活動已結束」；要完全隱藏請取消上架"
+              onChange={patch => setMeta(m => ({ ...m, ...patch }))}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
+                活動分類 <span className="font-normal text-neutral-400">（僅供後台篩選，不影響前台）</span>
+              </label>
+              <select value={meta.kind || 'other'}
+                onChange={e => setMeta(m => ({ ...m, kind: e.target.value }))}
+                className={inputCls}>
+                <option value="machine">機台檔期</option>
+                <option value="campaign">行銷活動</option>
+                <option value="guide">說明指南</option>
+                <option value="other">其他</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
