@@ -350,7 +350,7 @@ function MachineCard({
           currentUserId={currentUserId}
         />
         {/* 保底轉數進度 */}
-        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-amber-300 tabular-nums leading-tight">
+        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
           {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
         </div>
       </div>
