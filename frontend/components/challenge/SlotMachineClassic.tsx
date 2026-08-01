@@ -410,7 +410,8 @@ const SMVC_CSS = `
 .smvc-rushskin .smvc-scoreboard { opacity:0; transition:opacity .3s; }
 
 /* ── Reels ── */
-.smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,15.88%); }
+/* 滾輪窗：機台圖的滾筒實際範圍約 38.6%~60.1%，高度取到 59.3% 貼齊滾筒下緣 */
+.smvc-reel { position:absolute; overflow:hidden; z-index:3; top:var(--r-t,40.77%); height:var(--r-h,18.5%); }
 .smvc-r0 { left:var(--r0-l,22.00%); width:var(--r0-w,17.07%); }
 .smvc-r1 { left:var(--r1-l,42.40%); width:var(--r1-w,16.13%); }
 .smvc-r2 { left:var(--r2-l,61.73%); width:var(--r2-w,16.27%); }
