@@ -7,6 +7,7 @@ import Switch from '@/components/ui/Switch'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
+import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -53,17 +54,8 @@ const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outli
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
 const BTN_GHOST   = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
 
-// 固定 4 種幣值返還（不需管理員設定）
-// ⚠️ 這組數值是玩法定版的一部分（返還期望 38.7% → RTP ≈ 82%），
-//    且每次存檔都會覆蓋 DB 的 spin_returns，與 migration 396 及
-//    app/api/admin/slot/themes/route.ts 的 DEFAULT_SPIN_RETURNS 必須一致。
-//    改動前先確認 RTP 影響：權重調鬆會直接讓 RTP 超過 100%（平台倒賠）。
-const FIXED_COIN_RETURNS = [
-  { name: '神域共鳴', multiplier: 2.4, weight: 20  },
-  { name: '命運之瞳', multiplier: 1.5, weight: 50  },
-  { name: '緋色幸運', multiplier: 0.8, weight: 130 },
-  { name: '黃金序章', multiplier: 0.2, weight: 800 },
-]
+// 固定 4 種幣值返還（不需管理員設定）—— 定版數值統一由 lib/slotDefaults 匯出
+const FIXED_COIN_RETURNS = [...CANONICAL_SPIN_RETURNS]
 const FIXED_TOTAL_W  = FIXED_COIN_RETURNS.reduce((s, r) => s + r.weight, 0)
 const FIXED_AVG_MULT = FIXED_COIN_RETURNS.reduce((s, r) => s + r.multiplier * r.weight, 0) / FIXED_TOTAL_W
 
