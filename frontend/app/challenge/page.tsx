@@ -358,12 +358,16 @@ function MachineCard({
           currentUserId={currentUserId}
         />
         {/* 今日 RUSH 次數（day_reset_date 非今日代表尚未跨日重算，顯示 0） */}
-        <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
-          RUSH {machine.day_reset_date === taipeiToday() ? (machine.day_rush ?? 0).toLocaleString() : 0} 次
+        <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black text-white leading-tight">
+          RUSH <span className="text-[10px] tabular-nums text-[#facc15]">
+            {machine.day_reset_date === taipeiToday() ? (machine.day_rush ?? 0).toLocaleString() : 0}
+          </span> 次
         </div>
         {/* 保底轉數進度 */}
-        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
-          保底 {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
+        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black text-white leading-tight">
+          保底 <span className="text-[10px] tabular-nums text-[#facc15]">
+            {(machine.floor_counter ?? 0).toLocaleString()}
+          </span>/{machine.floor_spin_count.toLocaleString()}
         </div>
       </div>
 
