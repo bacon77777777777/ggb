@@ -9,6 +9,7 @@ import { BannerSkeleton } from '@/components/Skeletons';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { X, Trophy } from 'lucide-react';
+import { scheduleState, inheritSchedule, untilText, filterBannersBySchedule } from '@/lib/schedule';
 
 interface BetTier { label: string; coins: number }
 
@@ -29,6 +30,8 @@ interface SlotTheme {
   name: string;
   image_url: string | null;
   event_slug: string | null;
+  start_at: string | null;
+  end_at: string | null;
   video_rush_entry: string | null;
   video_rush_anticipation: string | null;
   video_rush_win: string | null;
@@ -58,6 +61,8 @@ interface SlotMachine {
   occupancy_expires_at: string | null;
   day_rush: number | null;
   day_reset_date: string | null;
+  start_at: string | null;
+  end_at: string | null;
   slot_themes: SlotTheme | null;
 }
 
@@ -107,15 +112,23 @@ function TierSelectModal({
   onClose: () => void;
   onConfirm: (bet: number) => void;
 }) {
+  // 檔期：機台自身優先，留空則跟隨主題
+  const period = inheritSchedule(machine, machine.slot_themes);
+  const sched = scheduleState(period.start_at, period.end_at);
   const tiers = machine.bet_tiers ?? [];
   const [selected, setSelected] = useState(tiers[0]?.coins ?? 100);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
+  const [poolLoading, setPoolLoading] = useState(true);
+  const [poolError, setPoolError] = useState(false);
 
   useEffect(() => {
+    setPoolLoading(true);
+    setPoolError(false);
     fetch(`/api/slot/machines/${machine.id}`)
       .then(r => r.json())
       .then(d => setPool(d.pool ?? []))
-      .catch(() => {});
+      .catch(() => setPoolError(true))
+      .finally(() => setPoolLoading(false));
   }, [machine.id]);
 
   const coinReturns  = pool.filter(i => !i.rush_only && i.coin_return);
@@ -180,6 +193,16 @@ function TierSelectModal({
           {/* 獎池總覽 */}
           <div className="px-4 pb-4 mt-2">
             <p className="text-xs font-black text-neutral-500 uppercase tracking-wider mb-3">獎池總覽</p>
+
+            {poolLoading && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">獎池載入中…</p>
+            )}
+            {!poolLoading && poolError && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">獎池載入失敗，請重新開啟</p>
+            )}
+            {!poolLoading && !poolError && pool.length === 0 && (
+              <p className="py-6 text-center text-xs font-black text-neutral-400">此機台尚未設定獎池</p>
+            )}
 
             {/* RUSH 獎品 4欄格狀 — 只顯示當前檔次品項 */}
             {physicalItems.length > 0 && (() => {
@@ -265,9 +288,11 @@ function TierSelectModal({
 
         {/* Footer */}
         <div className="bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] shrink-0">
-          <button onClick={() => onConfirm(selected)}
-            className="w-full h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform">
-            確認入場 {selected.toLocaleString()} G
+          <button onClick={() => onConfirm(selected)} disabled={sched !== 'running'}
+            className="w-full h-[44px] text-base rounded-xl font-black bg-primary text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-50 disabled:active:scale-100">
+            {sched === 'ended' ? '機台已結束'
+              : sched === 'upcoming' ? `${untilText(period.start_at)}後開放`
+              : `確認入場 ${selected.toLocaleString()} G`}
           </button>
         </div>
       </motion.div>
@@ -337,6 +362,8 @@ function MachineCard({
   currentUserId: string | null;
   onEnter: () => void;
 }) {
+  const period = inheritSchedule(machine, machine.slot_themes);
+  const sched = scheduleState(period.start_at, period.end_at);
   const tiers = machine.bet_tiers ?? [];
   const [tierIdx, setTierIdx] = useState(0);
   const sparkSeed = machine.id * 7 + machine.sort_order + tierIdx * 13;
@@ -351,12 +378,26 @@ function MachineCard({
           alt={machine.name} fill className="object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
         />
-        <OccupancyOverlay
-          occupantId={machine.occupant_id}
-          occupantActiveUntil={machine.occupant_active_until}
-          occupancyExpiresAt={machine.occupancy_expires_at}
-          currentUserId={currentUserId}
-        />
+        {sched === 'running' && (
+          <OccupancyOverlay
+            occupantId={machine.occupant_id}
+            occupantActiveUntil={machine.occupant_active_until}
+            occupancyExpiresAt={machine.occupancy_expires_at}
+            currentUserId={currentUserId}
+          />
+        )}
+        {sched !== 'running' && (
+          <div className="absolute inset-0 z-20 bg-black/65 flex flex-col items-center justify-center gap-1 pointer-events-none">
+            <span className="text-white font-black text-sm select-none">
+              {sched === 'ended' ? '機台已結束' : '即將開放'}
+            </span>
+            {sched === 'upcoming' && untilText(period.start_at) && (
+              <span className="text-white/70 font-black text-[11px] select-none">
+                {untilText(period.start_at)}後開放
+              </span>
+            )}
+          </div>
+        )}
         {/* 今日 RUSH 次數（day_reset_date 非今日代表尚未跨日重算，顯示 0） */}
         <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black text-white leading-tight">
           RUSH <span className="text-[10px] tabular-nums text-[#facc15]">
@@ -462,11 +503,12 @@ export default function ChallengePage() {
     ;(async () => {
       try {
         const { data } = await supabase.from('banners')
-          .select('id, image_url, link_url')
+          .select('id, image_url, link_url, start_at, end_at, events(start_at, end_at)')
           .eq('is_active', true)
           .eq('page', 'challenge')
           .order('sort_order', { ascending: true });
-        setBanners((data ?? []).map(b => ({ id: b.id, image: b.image_url, link: b.link_url || '#' })));
+        const inWindow = filterBannersBySchedule((data ?? []) as any[]);
+        setBanners(inWindow.map(b => ({ id: b.id, image: b.image_url, link: b.link_url || '#' })));
       } catch {}
       setBannersLoading(false);
     })();

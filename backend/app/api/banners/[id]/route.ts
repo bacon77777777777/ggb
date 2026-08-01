@@ -3,6 +3,13 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 
+/** 關聯活動時連結一律由系統產生，避免後台手打錯字或活動改 slug 後變死連結 */
+async function resolveBannerLink(eventId: string | null | undefined, fallback: string | null | undefined) {
+  if (!eventId) return fallback ?? null
+  const { data } = await getSupabaseAdmin().from('events').select('slug').eq('id', eventId).single()
+  return data?.slug ? `/events/${data.slug}` : (fallback ?? null)
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -13,12 +20,18 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { name, image_url, link_url, sort_order, is_active, page } = body
+    const { name, image_url, link_url, sort_order, is_active, page, start_at, end_at, event_id } = body
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    const updateData: Record<string, unknown> = { name, image_url, link_url, sort_order, is_active }
+    const updateData: Record<string, unknown> = {
+      name, image_url, sort_order, is_active,
+      link_url: await resolveBannerLink(event_id, link_url),
+    }
     if (page !== undefined) updateData.page = page
+    if (start_at !== undefined) updateData.start_at = start_at || null
+    if (end_at !== undefined) updateData.end_at = end_at || null
+    if (event_id !== undefined) updateData.event_id = event_id || null
 
     const { data, error } = await supabaseAdmin
       .from('banners')

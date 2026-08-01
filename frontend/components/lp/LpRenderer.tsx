@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, Share2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ProductCard from '@/components/ProductCard'
+import { scheduleState } from '@/lib/schedule'
 
 const LP_LOADING_CHARS = [
   '/loading/1.svg', '/loading/2.svg', '/loading/3.svg', '/loading/4.svg',
@@ -93,6 +94,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const subtitleColor = isDark
     ? `rgb(${clamp(ar+(255-ar)*.03)},${clamp(ag+(255-ag)*.55)},${clamp(ab+(255-ab)*.01)})`
     : `rgb(${clamp(ar*.65)},${clamp(ag*.55)},${clamp(ab*.65)})`
+  // 卡片內小字：深色主題往白色混，純提高不透明度會變成刺眼的高飽和色
+  const bodyMuted = isDark
+    ? `rgb(${clamp(ar+(255-ar)*.72)},${clamp(ag+(255-ag)*.72)},${clamp(ab+(255-ab)*.72)})`
+    : `rgba(${a},.82)`
 
   // rgba glows / shadows
   const glow40 = `rgba(${a},0.40)`
@@ -169,46 +174,55 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
 
     /* ── HERO ── */
     .lpv-hero{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;
-      justify-content:center;text-align:center;padding:80px 24px 60px;overflow:hidden;
+      justify-content:center;text-align:center;padding:80px 24px 60px;
       background-color:${heroBg};}
-    .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;}
+    .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;clip-path:inset(0);}
+    .lpv-hero .h-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;clip-path:inset(0);
+      opacity:.5;filter:brightness(.42) saturate(1.15);}
+    /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
+    .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
+    .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.68);backdrop-filter:blur(2px);}
+    .lpv-hero .h-ended span{color:#fff;font-weight:900;letter-spacing:2px;
+      font-size:clamp(20px,5.5vw,34px);text-shadow:0 2px 12px rgba(0,0,0,.6);}
+    .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
-      background:radial-gradient(110% 70% at 50% 14%,${borderStrong},transparent 52%),
-                 radial-gradient(80% 50% at 50% 0%,${borderMid},transparent 55%);}
-    .lpv-hero .h-beam{position:absolute;top:-22%;left:50%;transform:translateX(-50%);
-      width:130%;height:56%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(36px);}
+      background:radial-gradient(72% 42% at 50% 8%,${borderStrong},transparent 46%),
+                 radial-gradient(50% 28% at 50% 0%,${borderMid},transparent 52%);}
+    .lpv-hero .h-beam{position:absolute;top:-14%;left:50%;transform:translateX(-50%);
+      width:76%;height:32%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(30px);}
     .lpv-hero .h-veil{position:absolute;inset:0;
       background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
-    .lpv-eyebrow{position:relative;z-index:1;font-size:12px;letter-spacing:7px;color:${accentLight};
+    .lpv-eyebrow{position:relative;z-index:3;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
-    .lpv-title{position:relative;z-index:1;font-family:'Arial Black','Noto Sans JP',sans-serif;
+    .lpv-title{position:relative;z-index:3;font-family:'Arial Black','Noto Sans JP',sans-serif;
       font-weight:900;line-height:.9;letter-spacing:2px;font-size:clamp(34px,9.5vw,78px);
       background:${titleGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;
       filter:drop-shadow(0 4px 26px ${glow40});}
-    .lpv-gems{position:relative;z-index:1;display:flex;gap:10px;justify-content:center;margin-top:18px;}
+    .lpv-gems{position:relative;z-index:3;display:flex;gap:10px;justify-content:center;margin-top:18px;}
     .lpv-gems i{width:14px;height:14px;border-radius:999px;display:block;
       box-shadow:0 0 14px currentColor,0 0 28px currentColor;}
-    .lpv-sub{position:relative;z-index:1;margin-top:18px;font-size:clamp(14px,4vw,19px);
+    .lpv-sub{position:relative;z-index:3;margin-top:18px;font-size:clamp(14px,4vw,19px);
       font-weight:700;color:${heroSubColor};max-width:580px;line-height:1.7;}
     .lpv-sub-b{background:${titleGrad};-webkit-background-clip:text;background-clip:text;
       color:transparent;font-weight:900;font-size:1.15em;}
-    .lpv-arasa{position:relative;z-index:1;margin-top:22px;display:inline-block;
+    .lpv-arasa{position:relative;z-index:3;margin-top:22px;display:inline-block;
       padding:9px 22px;border-radius:8px;font-weight:900;font-size:clamp(13px,3.6vw,16px);
       color:${arasaColor};background:${heroCardDarker};
       border:2px dashed ${vars.accent};
       box-shadow:0 0 18px rgba(${a},0.4);letter-spacing:1px;}
-    .lpv-badge{position:relative;z-index:1;margin-top:16px;font-size:11px;letter-spacing:3px;
+    .lpv-badge{position:relative;z-index:3;margin-top:16px;font-size:11px;letter-spacing:3px;
       color:${vars.accent};font-weight:800;opacity:.8;
       animation:lpvPulse 2.4s ease-in-out infinite;}
     @keyframes lpvPulse{0%,100%{opacity:.6}50%{opacity:1}}
     .lpv-cta-btn{display:inline-flex;align-items:center;gap:8px;margin-top:30px;
       padding:16px 40px;border-radius:999px;font-weight:900;font-size:18px;
       color:#3a2c08;background:${GOLD};
-      box-shadow:0 8px 30px ${GOLD_SHADOW};position:relative;z-index:1;text-decoration:none;
+      box-shadow:0 8px 30px ${GOLD_SHADOW};position:relative;z-index:3;text-decoration:none;
       transition:transform .15s;}
     .lpv-cta-btn:active{transform:scale(.97);}
-    .lpv-scroll{position:absolute;bottom:18px;left:0;right:0;z-index:1;font-size:11px;
+    .lpv-scroll{position:absolute;bottom:18px;left:0;right:0;z-index:3;font-size:11px;
       letter-spacing:3px;color:${scrollColor};animation:lpvBob 1.8s ease-in-out infinite;text-align:center;}
     @keyframes lpvBob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 
@@ -285,7 +299,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       padding:22px 14px;text-align:center;}
     .lpv-stat .sv{font-family:'Arial Black','Noto Sans JP',sans-serif;font-weight:900;
       font-size:clamp(20px,5.6vw,30px);}
-    .lpv-stat .sl{font-size:11px;color:rgba(${a},${isDark?'0.65':'0.85'});font-weight:700;margin-top:6px;letter-spacing:.3px;}
+    .lpv-stat .sl{font-size:11px;color:${bodyMuted};font-weight:700;margin-top:6px;letter-spacing:.3px;}
 
     /* ── FUKURO ── default gold/warm; .accent overrides to theme colour */
     .lpv-fukuro-wrap{border-radius:16px;border:1px solid #6a3a1e;
@@ -311,14 +325,14 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       background:linear-gradient(180deg,${cardDark},${cardDarker});}
     .lpv-relrow .rnm{font-weight:900;font-size:15px;}
     .lpv-relrow .rst{font-size:15px;letter-spacing:1px;color:${relValueColor};}
-    .lpv-relrow .rds{font-size:11px;color:rgba(${a},${isDark?'.6':'.82'});font-weight:600;margin-top:2px;}
+    .lpv-relrow .rds{font-size:11px;color:${bodyMuted};font-weight:600;margin-top:2px;}
 
     /* ── RULE ── */
     .lpv-rule{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;margin:0 auto;}
     .lpv-rc{border-radius:12px;border:1px solid ${borderMid};
       background:linear-gradient(180deg,${cardDark},${cardDarker});padding:16px 14px;}
     .lpv-rc .rt{font-weight:900;font-size:16px;}
-    .lpv-rc .rd{font-size:11px;color:rgba(${a},${isDark?'.6':'.82'});font-weight:600;margin-top:5px;line-height:1.6;}
+    .lpv-rc .rd{font-size:11px;color:${bodyMuted};font-weight:600;margin-top:5px;line-height:1.6;}
 
     /* ── TABLE ── */
     .lpv-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
@@ -352,7 +366,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-feat-icon{font-size:32px;margin-bottom:10px;line-height:1;}
     .lpv-feat-icon img{width:40px;height:40px;object-fit:contain;margin:0 auto;}
     .lpv-feat-title{font-weight:900;font-size:15px;margin-bottom:6px;}
-    .lpv-feat-desc{font-size:11px;color:rgba(${a},${isDark?'.65':'.85'});font-weight:600;line-height:1.6;}
+    .lpv-feat-desc{font-size:11px;color:${bodyMuted};font-weight:600;line-height:1.6;}
 
     /* ── COUNTDOWN ── */
     .lpv-countdown{display:flex;justify-content:center;align-items:flex-start;gap:6px;margin:20px 0;}
@@ -413,8 +427,12 @@ function H2({ c }: { c: Record<string, unknown> }) {
   return <h2 className="lpv-h2">{t}</h2>
 }
 
-function HeroSection({ c }: { c: Record<string, unknown> }) {
+function HeroSection({ c, ended }: { c: Record<string, unknown>; ended?: boolean }) {
   const gems = (c.gems as { color: string }[]) || []
+  const scatter = (c.scatter as {
+    url: string; top?: string; left?: string; right?: string; bottom?: string
+    size?: string; rotate?: number; blur?: number; opacity?: number
+  }[]) || []
   const videoRef = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     const v = videoRef.current
@@ -426,11 +444,32 @@ function HeroSection({ c }: { c: Record<string, unknown> }) {
   const [subHi, subRest] = subRaw.includes('\n') ? subRaw.split('\n') : [null, subRaw]
   return (
     <section className="lpv-hero">
+      {ended && (
+        <div className="h-ended" aria-label="活動已結束">
+          <span>活動已結束</span>
+        </div>
+      )}
       {bool(c.bg_video_url) && (
         <video ref={videoRef} src={c.bg_video_url as string} poster={(c.bg_poster_url as string) || undefined}
           autoPlay muted loop playsInline className="h-vid" />
       )}
+      {!bool(c.bg_video_url) && bool(c.bg_image_url) && (
+        <img src={c.bg_image_url as string} alt="" className="h-bgimg" />
+      )}
       <div className="h-bg" /><div className="h-beam" /><div className="h-veil" />
+      {scatter.length > 0 && (
+        <div className="h-scatter" aria-hidden="true">
+          {scatter.map((s, i) => (
+            <img key={i} src={s.url} alt="" style={{
+              top: s.top, left: s.left, right: s.right, bottom: s.bottom,
+              width: s.size,
+              transform: `rotate(${s.rotate ?? 0}deg)`,
+              filter: `blur(${s.blur ?? 0}px)`,
+              opacity: s.opacity ?? 1,
+            }} />
+          ))}
+        </div>
+      )}
       {bool(c.eyebrow) && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
       {bool(c.title) && <h1 className="lpv-title">{c.title as string}</h1>}
       {gems.length > 0 && (
@@ -903,6 +942,8 @@ export default function LpRenderer({ slug }: { slug: string }) {
   if (!data) return <LpLoadingScreen />
 
   const { event, sections } = data
+  // 檔期結束後頁面仍可開啟，僅版頭蓋黑遮罩；要完全隱藏請於後台取消上架
+  const eventEnded = scheduleState(event.start_at, event.end_at) === 'ended'
   const stickySection = sections.find(s => s.type === 'sticky_cta')
 
   return (
@@ -918,7 +959,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
       </div>
       {sections.map(sec => {
         switch (sec.type) {
-          case 'hero':        return <HeroSection       key={sec.id} c={sec.content} />
+          case 'hero':        return <HeroSection       key={sec.id} c={sec.content} ended={eventEnded} />
           case 'text':        return <TextSection        key={sec.id} c={sec.content} />
           case 'steps':       return <StepsSection       key={sec.id} c={sec.content} />
           case 'cards':       return <CardsSection       key={sec.id} c={sec.content} />

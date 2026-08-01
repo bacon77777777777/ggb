@@ -6,6 +6,7 @@ import { AdminLayout, PageCard, Modal, SortableTableHeader } from '@/components'
 import Switch from '@/components/ui/Switch'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
+import ScheduleFields from '@/components/ScheduleFields'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ interface SlotTheme {
   video_rush_entry: string | null; video_rush_anticipation: string | null
   video_rush_win: string | null; video_rush_win_strong: string | null
   video_rush_win_god: string | null; video_rush_revival: string | null
-  is_active: boolean; sort_order: number
+  is_active: boolean; sort_order: number; start_at: string | null; end_at: string | null
   machine_type: 'video' | 'classic'
   machine_sprite_url: string | null
   machine_layout: Record<string, unknown> | null
@@ -486,6 +487,14 @@ export default function SlotThemeDetailPage() {
                   <input type="text" className={INPUT} placeholder="例：1（→ /events/1）" value={form.event_slug ?? ''}
                     onChange={e => setForm(p => ({ ...p, event_slug: e.target.value || null }))} />
                 </Field>
+              </div>
+              <div className="mt-4 pt-4 border-t border-neutral-100">
+                <ScheduleFields
+                  startAt={form.start_at ?? null}
+                  endAt={form.end_at ?? null}
+                  inheritHint="旗下機台可各自覆寫，留空即跟隨本主題"
+                  onChange={patch => setForm(p => ({ ...p, ...patch }))}
+                />
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="機台圖片">

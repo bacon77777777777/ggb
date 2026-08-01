@@ -15,9 +15,9 @@ export async function GET() {
         sort_order, bet_tiers, floor_spin_count, floor_counter, trigger_rate,
         machine_theme, event_slug, theme_id, machine_number, rush_state,
         occupant_id, occupant_active_until, occupancy_expires_at,
-        day_rush, day_reset_date,
+        day_rush, day_reset_date, start_at, end_at,
         slot_themes(
-          id, name, image_url, event_slug,
+          id, name, image_url, event_slug, start_at, end_at,
           video_rush_entry, video_rush_anticipation,
           video_rush_win, video_rush_win_strong,
           video_rush_win_god, video_rush_revival

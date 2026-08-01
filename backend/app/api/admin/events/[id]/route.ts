@@ -28,6 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       end_at: body.end_at || null,
       linked_category_id: body.linked_category_id ?? null,
       theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
+      kind: body.kind ?? 'other',
     }).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await logAdminAction({ adminId: admin.adminId, action: 'update_event', detail: { id, slug: body.slug }, ip: req.headers.get('x-forwarded-for') ?? '' })

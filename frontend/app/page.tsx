@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
+import { filterBannersBySchedule } from '@/lib/schedule';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -145,7 +146,7 @@ export default function Home() {
         const result = await withTimeout(
           supabase
             .from('banners')
-            .select('*')
+            .select('*, events(start_at, end_at)')
             .eq('is_active', true)
             .eq('page', 'home')
             .order('sort_order', { ascending: true }) as unknown as Promise<BannersQueryResult>,
@@ -184,7 +185,7 @@ export default function Home() {
       }
 
       setAllProducts(productsData);
-      setBanners(bannersData);
+      setBanners(filterBannersBySchedule(bannersData as any[]) as typeof bannersData);
 
       if (productsError) {
         setLoadError('無法載入商品列表，請檢查網路連線');

@@ -44,6 +44,7 @@ export async function PATCH(
     'video_rush_entry', 'video_rush_anticipation', 'video_rush_win',
     'video_rush_win_strong', 'video_rush_win_god', 'video_rush_revival',
     'is_active', 'sort_order', 'machine_type', 'machine_sprite_url', 'machine_layout',
+    'start_at', 'end_at',
   ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
