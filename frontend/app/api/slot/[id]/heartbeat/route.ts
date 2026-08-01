@@ -21,7 +21,7 @@ export async function POST(
 
   const now = Date.now()
   const activeUntil = new Date(now + 30_000).toISOString()
-  const expiresAt = new Date(now + 90_000).toISOString()
+  const expiresAt = new Date(now + 120_000).toISOString()
 
   // 只更新自己佔用的機台，不影響他人
   await supabase

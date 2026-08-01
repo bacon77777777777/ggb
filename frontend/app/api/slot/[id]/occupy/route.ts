@@ -40,7 +40,7 @@ export async function POST(
   }
 
   const activeUntil = new Date(now + 30_000).toISOString()   // +30s
-  const newExpiresAt = new Date(now + 90_000).toISOString() // +30s active + 60s grace
+  const newExpiresAt = new Date(now + 120_000).toISOString() // +30s active + 90s grace
 
   await supabase
     .from('slot_machines')
