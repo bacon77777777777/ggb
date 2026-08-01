@@ -10,12 +10,48 @@
 import sharp from 'sharp'
 import { readFileSync, writeFileSync, appendFileSync } from 'fs'
 import { r2Upload } from '../lib/r2'
+import Anthropic from '@anthropic-ai/sdk'
+
+type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// Claude 視覺：判斷 DENGEKI 浮水印在哪個角落（偵測失敗預設右上）
+async function detectWatermarkCorner(buf: Buffer): Promise<Corner> {
+  try {
+    const small = await sharp(buf).resize(760, null, { withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer()
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') } },
+          { type: 'text', text: '圖上有「DENGEKI HOBBY WEB 電ホビ」浮水印，位於哪個角落？只回傳 JSON：{"corner":"top-left|top-right|bottom-left|bottom-right"}' },
+        ],
+      }],
+    })
+    const text = resp.content.find(c => c.type === 'text')?.text ?? ''
+    const m = text.match(/top-left|top-right|bottom-left|bottom-right/)
+    return (m?.[0] as Corner) ?? 'top-right'
+  } catch { return 'top-right' }
+}
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36'
 const LOGO_PATH = new URL('../../frontend/public/images/logo.png', import.meta.url).pathname
 const DEFAULT_IMG = 'https://www.ggb.com.tw/images/banner_defaulet.png'
 
-async function brandCover(buf: Buffer): Promise<Buffer> {
+// 白墊貼齊指定角落（朝圖內側的那個角圓角），logo 置於墊內
+function platePath(w: number, h: number, corner: Corner): string {
+  const r = Math.round(h / 4)
+  switch (corner) {
+    case 'top-right':    return `M0 0 H${w} V${h} H${r} A${r} ${r} 0 0 1 0 ${h - r} V0 Z`
+    case 'top-left':     return `M0 0 H${w} V${h - r} A${r} ${r} 0 0 1 ${w - r} ${h} H0 V0 Z`
+    case 'bottom-right': return `M${r} 0 H${w} V${h} H0 V${r} A${r} ${r} 0 0 1 ${r} 0 Z`
+    case 'bottom-left':  return `M0 0 H${w - r} A${r} ${r} 0 0 1 ${w} ${r} V${h} H0 Z`
+  }
+}
+
+async function brandCover(buf: Buffer, corner: Corner = 'top-right'): Promise<Buffer> {
   const logo = readFileSync(LOGO_PATH)
   const meta = await sharp(buf).metadata()
   const W = meta.width!, H = meta.height!
@@ -25,15 +61,16 @@ async function brandCover(buf: Buffer): Promise<Buffer> {
   const pad = Math.round(logoW * 0.05)
   const plateW = logoW + pad * 2
   const plateH = logoH + pad * 2
-  const m = Math.max(4, Math.round(W * 0.008))
+  const left = corner.endsWith('left') ? 0 : W - plateW
+  const top = corner.startsWith('top') ? 0 : H - plateH
   const plate = Buffer.from(
-    `<svg width="${plateW}" height="${plateH}"><path d="M0 0 H${plateW} V${plateH} H${Math.round(plateH / 4)} A${Math.round(plateH / 4)} ${Math.round(plateH / 4)} 0 0 1 0 ${plateH - Math.round(plateH / 4)} V0 Z" fill="white" fill-opacity="0.97"/></svg>`
+    `<svg width="${plateW}" height="${plateH}"><path d="${platePath(plateW, plateH, corner)}" fill="white" fill-opacity="0.97"/></svg>`
   )
   const logoResized = await sharp(logo).resize(logoW, logoH).png().toBuffer()
   return sharp(buf)
     .composite([
-      { input: plate, top: 0, left: W - plateW },
-      { input: logoResized, top: pad, left: W - plateW + pad },
+      { input: plate, top, left },
+      { input: logoResized, top: top + pad, left: left + pad },
     ])
     .jpeg({ quality: 88 })
     .toBuffer()
@@ -57,9 +94,11 @@ async function main() {
   const [mode, a, b] = process.argv.slice(2)
 
   if (mode === 'sample') {
-    const out = await brandCover(readFileSync(a))
+    const buf = readFileSync(a)
+    const corner = (process.argv[5] as Corner) || (await detectWatermarkCorner(buf))
+    const out = await brandCover(buf, corner)
     writeFileSync(b, out)
-    console.log('sample written:', b)
+    console.log('sample written:', b, 'corner:', corner)
     return
   }
 
@@ -76,7 +115,8 @@ async function main() {
         if (!res.ok) throw new Error(`img http ${res.status}`)
         const buf = Buffer.from(await res.arrayBuffer())
         if (buf.length < 3_000) throw new Error('too small')
-        const branded = await brandCover(buf)
+        const corner = await detectWatermarkCorner(buf)
+        const branded = await brandCover(buf, corner)
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
         const url = await r2Upload(key, branded, 'image/jpeg')
         appendFileSync(b, `UPDATE news SET image_url='${url}' WHERE id='${id}';\n`)

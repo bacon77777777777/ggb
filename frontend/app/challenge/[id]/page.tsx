@@ -228,7 +228,7 @@ export default function MachinePage() {
   const showCoinReturn = useCallback((amount: number) => {
     if (coinReturnTimerRef.current) clearTimeout(coinReturnTimerRef.current);
     setCoinReturnDisplay({ amount, id: ++coinReturnIdRef.current });
-    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 2200);
+    coinReturnTimerRef.current = setTimeout(() => setCoinReturnDisplay(null), 3000);
   }, []);
 
   const syncSession = useCallback(() => {
@@ -410,9 +410,7 @@ export default function MachinePage() {
         } else {
           // classic / auto：777 動畫顯示 "RUSH!!"，結束後回 idle 等玩家在 RUSH 中旋轉
           animDoneRef.current = () => {
-            if (data.coin_return_amount > 0) {
-              setTimeout(() => showCoinReturn(data.coin_return_amount), 1500);
-            }
+            if (data.coin_return_amount > 0) showCoinReturn(data.coin_return_amount);
             setWalletBalance(data.new_balance);
             setLastResult(null);
             setSpinState('idle');
@@ -614,7 +612,7 @@ export default function MachinePage() {
             animate={{ opacity: 1, y: -44, scale: 1.25 }}
             exit={{ opacity: 0, y: -80, scale: 1 }}
             transition={{ duration: 0.45 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none select-none"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[45] pointer-events-none select-none"
           >
             <span className="font-black tabular-nums" style={{
               fontSize: '2.6rem',
