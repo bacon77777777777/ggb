@@ -874,9 +874,9 @@ export default function MachinePage() {
         </button>
       </div>
 
-      {/* 閒置警告（最後 15 秒） */}
+      {/* 閒置警告（最後 15 秒，畫面正中間） */}
       {idleWarnSeconds != null && (
-        <div className="fixed top-[calc(env(safe-area-inset-top)+58px)] left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-black/75 backdrop-blur-sm text-white text-sm font-black pointer-events-none whitespace-nowrap">
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black pointer-events-none whitespace-nowrap shadow-xl">
           閒置中，<span className="text-orange-500 tabular-nums">{idleWarnSeconds}</span> 秒後將離開機台
         </div>
       )}

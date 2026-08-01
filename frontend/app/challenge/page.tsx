@@ -408,7 +408,7 @@ export default function ChallengePage() {
     if (sp.get('idle_kick') === '1') {
       setKickNotice(true);
       window.history.replaceState(null, '', '/challenge');
-      const t = setTimeout(() => setKickNotice(false), 4500);
+      const t = setTimeout(() => setKickNotice(false), 5000);
       return () => clearTimeout(t);
     }
   }, []);
@@ -489,12 +489,19 @@ export default function ChallengePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
-      {/* 閒置踢出提示 */}
-      {kickNotice && (
-        <div className="fixed top-[calc(env(safe-area-inset-top)+14px)] left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-black/80 backdrop-blur-sm text-white text-sm font-bold shadow-lg whitespace-nowrap">
-          過久沒有動作，已讓位給其他用戶
-        </div>
-      )}
+      {/* 閒置踢出提示（畫面正中間，5 秒後淡出） */}
+      <AnimatePresence>
+        {kickNotice && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.6 } }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-bold shadow-xl whitespace-nowrap"
+          >
+            過久沒有動作，已讓位給其他用戶
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="max-w-7xl mx-auto px-0 pt-0">
 
         {/* Banner — same as home */}
