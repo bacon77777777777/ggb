@@ -107,7 +107,7 @@ FROM public.events e, (VALUES
   "subtitle": "以下規則寫在系統裡，不是話術",
   "rules": [
     {"title": "保底必觸發", "desc": "轉滿 200 轉一定進入 RUSH，進度不會被歸零重來", "title_color": "#ffd24a"},
-    {"title": "最低 1 張保證", "desc": "觸發 RUSH 後，至少獲得 1 張卡牌", "title_color": "#5aff9a"},
+    {"title": "保證一連", "desc": "觸發 RUSH 後，至少獲得 1 張卡牌", "title_color": "#5aff9a"},
     {"title": "每轉都有返還", "desc": "普通旋轉不會出現 0G，最低也返還投注額的 20%", "title_color": "#e879f9"},
     {"title": "保底進度公開", "desc": "機台列表直接顯示各機台目前保底進度與今日 RUSH 次數", "title_color": "#ff4d5a"}
   ]
@@ -117,24 +117,22 @@ FROM public.events e, (VALUES
   "subtitle": "保底成本與直擊價格對照",
   "columns": ["", "10G", "20G", "50G", "100G", "300G"],
   "rows": [
-    ["保底轉數", "200 轉", "200 轉", "200 轉", "200 轉", "200 轉"],
-    ["轉滿保底投注額", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"],
-    ["直擊價（全新機台）", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"],
-    ["單轉最低返還", "2G", "4G", "10G", "20G", "60G"],
-    ["單轉最高返還", "24G", "48G", "120G", "240G", "720G"]
+    ["轉滿保底（200 轉）投注額", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"],
+    ["直擊價（全新機台）", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"]
   ],
-  "note": "※ 直擊價會隨保底進度下降：剩餘轉數 × 檔次金額，最低 1 轉份。",
+  "note": "※ 直擊等於買下剩餘的保底轉數，因此全新機台的直擊價正好等於轉滿保底的投注額；已經轉愈多，直擊就愈便宜（剩餘轉數 × 檔次金額，最低 1 轉份）。",
   "highlight_col": 0
 }$J$),
 (8, 'gallery', $J${
-  "h2": "機台一覽",
+  "h2": "兩種面貌",
   "h2_type": "pp",
   "layout": "grid",
-  "subtitle": "五台同規格機台同時開放，保底進度各自獨立",
+  "subtitle": "普通時累積保底，進入絕頂RUSH 後機台整台變裝",
   "items": [
-    {"url": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/slot-machine-1-1785553507978.webp", "caption": "絕頂RUSH", "badge": "機台", "color": "#e879f9", "poster": "", "media_type": "image"}
+    {"url": "/images/slot/machine/main.png", "caption": "普通時", "badge": "累積保底", "color": "#e879f9", "poster": "", "media_type": "image"},
+    {"url": "/images/slot/machine/main_rush.png", "caption": "絕頂RUSH", "badge": "抽卡中", "color": "#ffd24a", "poster": "", "media_type": "image"}
   ],
-  "callout": "每台機台的保底進度分開計算，挑戰列表可直接看到各機台目前進度與今日 RUSH 次數。",
+  "callout": "五台同規格機台同時開放，每台保底進度分開計算，挑戰列表可直接看到各機台目前進度與今日 RUSH 次數。",
   "callout_border": "#6a4a1e"
 }$J$),
 (9, 'fukuro', $J${
