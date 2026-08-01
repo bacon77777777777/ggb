@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Badge from '@/components/ui/Badge'
+import DateRangePicker from '@/components/DateRangePicker'
 
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
@@ -70,13 +71,6 @@ export default function ScheduleFields({
       .catch(() => {})
   }, [showEventLink])
 
-  const quick = (days: number) => {
-    const d = new Date()
-    d.setDate(d.getDate() + days)
-    d.setHours(23, 59, 0, 0)
-    onChange({ end_at: d.toISOString() })
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -87,34 +81,14 @@ export default function ScheduleFields({
         {inheritHint && <span className="text-xs text-neutral-400">{inheritHint}</span>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm text-neutral-600 mb-1">開始時間</label>
-          <input type="datetime-local" className={INPUT} value={toLocalInput(startAt)}
-            onChange={e => onChange({ start_at: fromLocalInput(e.target.value) })} />
-        </div>
-        <div>
-          <label className="block text-sm text-neutral-600 mb-1">結束時間</label>
-          <input type="datetime-local" className={INPUT} value={toLocalInput(endAt)}
-            onChange={e => onChange({ end_at: fromLocalInput(e.target.value) })} />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-neutral-400">快速設定結束</span>
-        {[[7, '一週'], [14, '兩週'], [30, '一個月']].map(([d, label]) => (
-          <button key={label as string} type="button" onClick={() => quick(d as number)}
-            className="px-2.5 py-1 text-xs text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
-            {label as string}
-          </button>
-        ))}
-        {(startAt || endAt) && (
-          <button type="button" onClick={() => onChange({ start_at: null, end_at: null })}
-            className="px-2.5 py-1 text-xs text-neutral-500 hover:text-neutral-800 transition-colors">
-            清除（不限制）
-          </button>
-        )}
-      </div>
+      <DateRangePicker
+        withTime
+        placeholder="不限制（留空即無檔期）"
+        startDate={toLocalInput(startAt)}
+        endDate={toLocalInput(endAt)}
+        onStartDateChange={v => onChange({ start_at: fromLocalInput(v) })}
+        onEndDateChange={v => onChange({ end_at: fromLocalInput(v) })}
+      />
 
       {showEventLink && (
         <div>

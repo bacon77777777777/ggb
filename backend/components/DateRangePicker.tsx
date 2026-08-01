@@ -9,6 +9,8 @@ interface DateRangePickerProps {
   onEndDateChange: (value: string) => void
   placeholder?: string
   label?: string
+  /** 開啟後值為 YYYY-MM-DDTHH:mm，面板下方多一列時間 */
+  withTime?: boolean
 }
 
 export default function DateRangePicker({ 
@@ -17,14 +19,25 @@ export default function DateRangePicker({
   onStartDateChange, 
   onEndDateChange, 
   placeholder = '選擇日期範圍',
-  label 
+  label,
+  withTime = false,
 }: DateRangePickerProps) {
+  // 時間支援：對外值為 YYYY-MM-DDTHH:mm，內部日曆邏輯仍只處理日期部分
+  const sDate = withTime ? (startDate ? startDate.slice(0, 10) : '') : startDate
+  const eDate = withTime ? (endDate ? endDate.slice(0, 10) : '') : endDate
+  const sTime = withTime ? (startDate?.slice(11, 16) || '00:00') : ''
+  const eTime = withTime ? (endDate?.slice(11, 16) || '23:59') : ''
+  const emitStart = (d: string) => onStartDateChange(!d ? '' : withTime ? `${d}T${sTime}` : d)
+  const emitEnd = (d: string) => onEndDateChange(!d ? '' : withTime ? `${d}T${eTime}` : d)
+  const setStartTime = (t: string) => { if (sDate) onStartDateChange(`${sDate}T${t}`) }
+  const setEndTime = (t: string) => { if (eDate) onEndDateChange(`${eDate}T${t}`) }
+
   const [isOpen, setIsOpen] = useState(false)
   const [selectingStart, setSelectingStart] = useState(true)
   const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom')
   const [viewDate, setViewDate] = useState(() => {
-    if (startDate) {
-      const [year, month] = startDate.split('-').map(Number)
+    if (sDate) {
+      const [year, month] = sDate.split('-').map(Number)
       return { year, month }
     }
     const now = new Date()
@@ -115,19 +128,19 @@ export default function DateRangePicker({
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     
     if (selectingStart) {
-      onStartDateChange(dateStr)
+      emitStart(dateStr)
       // 如果結束日期在開始日期之前，清除結束日期
-      if (endDate && dateStr > endDate) {
-        onEndDateChange('')
+      if (eDate && dateStr > eDate) {
+        emitEnd('')
       }
       setSelectingStart(false)
     } else {
       // 如果選擇的結束日期在開始日期之前，則將其設為開始日期
-      if (startDate && dateStr < startDate) {
-        onStartDateChange(dateStr)
-        onEndDateChange(startDate)
+      if (sDate && dateStr < sDate) {
+        emitStart(dateStr)
+        emitEnd(sDate)
       } else {
-        onEndDateChange(dateStr)
+        emitEnd(dateStr)
       }
       setSelectingStart(true)
     }
@@ -140,21 +153,23 @@ export default function DateRangePicker({
   }
 
   const getDisplayText = () => {
-    if (!startDate && !endDate) return placeholder
-    if (startDate && endDate) return `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
-    if (startDate) return `${formatDisplayDate(startDate)} - ?`
+    if (!sDate && !eDate) return placeholder
+    const fs = sDate ? `${formatDisplayDate(sDate)}${withTime ? ` ${sTime}` : ''}` : ''
+    const fe = eDate ? `${formatDisplayDate(eDate)}${withTime ? ` ${eTime}` : ''}` : ''
+    if (sDate && eDate) return `${fs} - ${fe}`
+    if (sDate) return `${fs} - ?`
     return placeholder
   }
 
   const isSelected = (day: number, month: number, year: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return dateStr === startDate || dateStr === endDate
+    return dateStr === sDate || dateStr === eDate
   }
 
   const isInRange = (day: number, month: number, year: number) => {
-    if (!startDate || !endDate) return false
+    if (!sDate || !eDate) return false
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return dateStr > startDate && dateStr < endDate
+    return dateStr > sDate && dateStr < eDate
   }
 
   const isToday = (day: number, month: number, year: number) => {
@@ -164,18 +179,18 @@ export default function DateRangePicker({
 
   const isStartDate = (day: number, month: number, year: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return dateStr === startDate
+    return dateStr === sDate
   }
 
   const isEndDate = (day: number, month: number, year: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    return dateStr === endDate
+    return dateStr === eDate
   }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onStartDateChange('')
-    onEndDateChange('')
+    emitStart('')
+    emitEnd('')
     setSelectingStart(true)
   }
 
@@ -190,11 +205,11 @@ export default function DateRangePicker({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full h-9 px-3 bg-white border border-neutral-200 rounded-lg text-sm cursor-pointer hover:border-neutral-300 transition-colors flex items-center justify-between"
       >
-        <span className={startDate || endDate ? 'text-neutral-900' : 'text-neutral-400'}>
+        <span className={sDate || eDate ? 'text-neutral-900' : 'text-neutral-400'}>
           {getDisplayText()}
         </span>
         <div className="flex items-center gap-1">
-          {(startDate || endDate) && (
+          {(sDate || eDate) && (
             <button onClick={handleClear} className="p-0.5 hover:bg-neutral-100 rounded transition-colors">
               <svg className="w-4 h-4 text-neutral-400 hover:text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -221,7 +236,7 @@ export default function DateRangePicker({
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              開始：{startDate ? formatDisplayDate(startDate) : '未選'}
+              開始：{sDate ? formatDisplayDate(sDate) : '未選'}
             </button>
             <span className="text-neutral-400">→</span>
             <button
@@ -232,7 +247,7 @@ export default function DateRangePicker({
                   : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              結束：{endDate ? formatDisplayDate(endDate) : '未選'}
+              結束：{eDate ? formatDisplayDate(eDate) : '未選'}
             </button>
           </div>
 
@@ -297,8 +312,8 @@ export default function DateRangePicker({
               onClick={() => {
                 const today = new Date()
                 const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-                onStartDateChange(dateStr)
-                onEndDateChange(dateStr)
+                emitStart(dateStr)
+                emitEnd(dateStr)
               }}
               className="px-2 py-1 text-xs text-neutral-600 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
             >
@@ -309,8 +324,8 @@ export default function DateRangePicker({
                 const today = new Date()
                 const start = new Date(today)
                 start.setDate(today.getDate() - 7)
-                onStartDateChange(`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`)
-                onEndDateChange(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
+                emitStart(`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`)
+                emitEnd(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
               }}
               className="px-2 py-1 text-xs text-neutral-600 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
             >
@@ -321,8 +336,8 @@ export default function DateRangePicker({
                 const today = new Date()
                 const start = new Date(today)
                 start.setDate(today.getDate() - 30)
-                onStartDateChange(`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`)
-                onEndDateChange(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
+                emitStart(`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`)
+                emitEnd(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)
               }}
               className="px-2 py-1 text-xs text-neutral-600 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
             >
@@ -331,9 +346,9 @@ export default function DateRangePicker({
             <button
               onClick={() => {
                 const today = new Date()
-                onStartDateChange(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
+                emitStart(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
                 const lastDay = getDaysInMonth(today.getFullYear(), today.getMonth() + 1)
-                onEndDateChange(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`)
+                emitEnd(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`)
               }}
               className="px-2 py-1 text-xs text-neutral-600 bg-neutral-100 rounded hover:bg-neutral-200 transition-colors"
             >
@@ -346,6 +361,23 @@ export default function DateRangePicker({
               清除
             </button>
           </div>
+
+          {withTime && (
+            <div className="mt-3 pt-3 border-t border-neutral-100 grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="block text-xs text-neutral-500 mb-1">開始時間</span>
+                <input type="time" value={sTime} disabled={!sDate}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm disabled:bg-neutral-50 disabled:text-neutral-300" />
+              </label>
+              <label className="block">
+                <span className="block text-xs text-neutral-500 mb-1">結束時間</span>
+                <input type="time" value={eTime} disabled={!eDate}
+                  onChange={e => setEndTime(e.target.value)}
+                  className="w-full px-2 py-1.5 border border-neutral-200 rounded-lg text-sm disabled:bg-neutral-50 disabled:text-neutral-300" />
+              </label>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -306,12 +306,6 @@ export default function EventsPage() {
             {items.map(item => (
               <div key={item.id}
                 className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${item.is_active ? 'border-neutral-200 bg-white' : 'border-neutral-100 bg-neutral-50 opacity-60'}`}>
-                {/* 色塊預覽 */}
-                <div className="w-10 h-10 rounded-lg flex-none border border-neutral-200 overflow-hidden relative"
-                  style={{ background: item.bg_color }}>
-                  <div className="absolute inset-0 opacity-60 rounded-lg"
-                    style={{ background: `radial-gradient(circle at 50% 30%, ${item.accent_color}55, transparent 70%)` }} />
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-sm font-bold text-neutral-900 truncate">{item.title}</span>
