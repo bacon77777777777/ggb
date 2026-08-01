@@ -39,9 +39,9 @@ export async function POST(
     )
   }
 
-  // 佔用期限錨定「最後動作」（spin/首次上機）+ 90 秒；回座只刷新活躍窗、不延長期限
+  // 初次上機 30 秒；spin 每次 +60 秒（上限 90，DB 函數處理）；回座不延長期限
   const isMineUnexpired = machine.occupant_id === session.user.id && !isExpired
-  const deadline = isMineUnexpired ? expiresAt : now + 90_000
+  const deadline = isMineUnexpired ? expiresAt : now + 30_000
   const activeUntil = new Date(Math.min(now + 30_000, deadline)).toISOString()
   const newExpiresAt = new Date(deadline).toISOString()
 

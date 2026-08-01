@@ -204,11 +204,16 @@ export default function MachinePage() {
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
   const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
-  // 閒置踢出：期限錨定「最後動作 +90s」（30 緩衝 + 60 倒數，最後 15 秒警告）→ 踢出即讓位
-  // 期限與伺服器同步：進出頁面不重置，只有 SPIN/直擊刷新
+  // 閒置踢出：初次上機 30 秒，SPIN/直擊每次 +60 秒（上限 90 秒），進出不重置；
+  // 最後 15 秒警告，到期踢出即讓位。期限與伺服器同步。
   const [idleWarnSeconds, setIdleWarnSeconds] = useState<number | null>(null);
-  const idleDeadlineRef = useRef<number>(Date.now() + 90_000);
+  const idleDeadlineRef = useRef<number>(Date.now() + 30_000);
   const idleKickedRef = useRef(false);
+  const extendIdleDeadline = () => {
+    const now = Date.now();
+    const remaining = Math.max(idleDeadlineRef.current - now, 0);
+    idleDeadlineRef.current = now + Math.min(remaining + 60_000, 90_000);
+  };
   const coinReturnIdRef = useRef(0);
   const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -382,7 +387,7 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user) return;
     setError(null);
     setJackpot(false);
-    idleDeadlineRef.current = Date.now() + 90_000;
+    extendIdleDeadline();
     setIdleWarnSeconds(null);
     setSpinState('spinning');
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
@@ -511,7 +516,7 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
     setDirectLoading(true);
     setError(null);
-    idleDeadlineRef.current = Date.now() + 90_000;
+    extendIdleDeadline();
     setIdleWarnSeconds(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';
