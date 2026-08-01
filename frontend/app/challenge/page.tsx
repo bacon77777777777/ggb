@@ -56,6 +56,8 @@ interface SlotMachine {
   occupant_id: string | null;
   occupant_active_until: string | null;
   occupancy_expires_at: string | null;
+  day_rush: number | null;
+  day_reset_date: string | null;
   slot_themes: SlotTheme | null;
 }
 
@@ -323,6 +325,10 @@ function OccupancyOverlay({
 
 // ── Machine Card (matches ProductCard) ───────────────────────────────────────
 
+// day_rush 由 DB 於「當日首轉」才重算，跨日後尚無人轉的機台仍留著昨天的數字，
+// 故前端以台灣時間比對 day_reset_date，非今日一律顯示 0
+const taipeiToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+
 function MachineCard({
   machine, number, currentUserId, onEnter,
 }: {
@@ -351,9 +357,17 @@ function MachineCard({
           occupancyExpiresAt={machine.occupancy_expires_at}
           currentUserId={currentUserId}
         />
+        {/* 今日 RUSH 次數（day_reset_date 非今日代表尚未跨日重算，顯示 0） */}
+        <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black text-white leading-tight">
+          RUSH <span className="text-[10px] tabular-nums text-[#facc15]">
+            {machine.day_reset_date === taipeiToday() ? (machine.day_rush ?? 0).toLocaleString() : 0}
+          </span> 次
+        </div>
         {/* 保底轉數進度 */}
-        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-white tabular-nums leading-tight">
-          {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
+        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black text-white leading-tight">
+          保底 <span className="text-[10px] tabular-nums text-[#facc15]">
+            {(machine.floor_counter ?? 0).toLocaleString()}
+          </span>/{machine.floor_spin_count.toLocaleString()}
         </div>
       </div>
 
@@ -546,7 +560,7 @@ export default function ChallengePage() {
         </section>
 
         {/* Sticky tab bar — same style as home secondary tabs（桌機改用左側欄） */}
-        <div className="md:hidden sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+        <div className="md:hidden sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-1.5 py-2 px-2">
             <div ref={tabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
               <div className="flex items-center gap-1.5">
