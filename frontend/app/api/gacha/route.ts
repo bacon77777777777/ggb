@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
     if (!productId || !count) {
       return NextResponse.json({ error: '缺少必要參數' }, { status: 400 })
     }
+    if (!Number.isInteger(count) || count < 1) {
+      return NextResponse.json({ error: '抽獎數量不正確' }, { status: 400 })
+    }
 
     // 用 anon key + user JWT 呼叫 RPC，讓 auth.uid() 正確
     const userSupabase = createClient(
@@ -42,7 +45,19 @@ export async function POST(request: NextRequest) {
       { global: { headers: { Authorization: `Bearer ${session?.access_token}` } } }
     )
 
-    const { data, error } = await userSupabase.rpc('play_gacha_locked', {
+    // 依商品類型分派抽獎引擎（DB 端亦有類型防護，此處僅選對通道）：
+    //   轉蛋/盒玩   → 機率引擎
+    //   抽卡/自製賞 → 賞等票號引擎（票號後端自動配，前台維持選數量購買）
+    const { data: productRow } = await userSupabase
+      .from('products')
+      .select('type')
+      .eq('id', productId)
+      .single()
+
+    const isTicketBased = productRow?.type === 'card' || productRow?.type === 'custom'
+    const rpcName = isTicketBased ? 'play_ichiban_auto_locked' : 'play_gacha_locked'
+
+    const { data, error } = await userSupabase.rpc(rpcName, {
       p_product_id: productId,
       p_count: count,
       p_use_points: usePoints ?? false,

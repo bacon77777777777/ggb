@@ -7,7 +7,7 @@ import { ChevronLeft } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
-import { calculateSeedHash, verifyDraw, determinePrize } from '@/utils/drawLogicClient';
+import { calculateSeedHash, verifyDraw, determinePrize, generateRandomValue } from '@/utils/drawLogicClient';
 import { useAuth } from '@/contexts/AuthContext';
 import CopyableTruncatedField from '@/components/ui/CopyableTruncatedField';
 
@@ -38,6 +38,7 @@ export default function FairnessVerifyPage() {
   const [prizesForVerification, setPrizesForVerification] = useState<
     { level: string; name: string; probability: number }[]
   >([]);
+  const [drawSecret, setDrawSecret] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
 
@@ -92,6 +93,13 @@ export default function FairnessVerifyPage() {
         const isEndedOrSoldOut =
           data.status === 'ended' ||
           (typeof data.remaining === 'number' && data.remaining <= 0);
+
+        // 抽獎金鑰＝公開 Seed + 私密 Secret，Secret 僅在完抽後公開（未完抽回傳 null）。
+        // 開賣中若公開，任何人都能反推每張未抽票券的獎項並狙擊大賞。
+        const { data: secret } = await supabase.rpc('get_draw_secret', {
+          p_product_id: productId,
+        });
+        setDrawSecret(typeof secret === 'string' && secret ? secret : null);
 
         if (isEndedOrSoldOut && data.seed) {
           setSeedInput(data.seed);
@@ -234,13 +242,18 @@ export default function FairnessVerifyPage() {
       setTxidHashMatch(null);
       setVerifiedPrize(null);
 
+      // TXID Hash 由公開 Seed 計算，隨時可驗；
+      // 獎項對應需再加上完抽後才公開的 Secret，未公開前只驗得了雜湊。
       const result = await verifyDraw(seed, nonce, expectedHash);
       setTxidHashCalculated(result.txidHash);
       setTxidHashMatch(result.hashMatch);
 
-      if (prizesForVerification.length > 0) {
-        const mappedPrize = determinePrize(result.randomValue, prizesForVerification);
-        setVerifiedPrize(mappedPrize);
+      if (drawSecret && prizesForVerification.length > 0) {
+        const randomValue = await generateRandomValue({
+          seed: `${seed}:${drawSecret}`,
+          nonce,
+        });
+        setVerifiedPrize(determinePrize(randomValue, prizesForVerification));
       } else {
         setVerifiedPrize(null);
       }
@@ -507,6 +520,12 @@ async function verifyDraw(seed: string, nonce: number, expectedHash: string) {
                   這一抽依目前機率對應獎項：
                   {verifiedPrize ? `${verifiedPrize.level} ${verifiedPrize.name}` : '—'}
                 </p>
+                {!drawSecret && (
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    本商品尚未完抽，獎項驗證金鑰暫不公開（若開賣中即公開，任何人都能反推未抽籤號的獎項）。
+                    完抽後金鑰自動公開，屆時可在此完整驗證每一抽。TXID Hash 則隨時可驗。
+                  </p>
+                )}
               </div>
             </div>
 
