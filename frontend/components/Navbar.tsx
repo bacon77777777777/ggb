@@ -588,7 +588,8 @@ function NavbarInner() {
             isSearchPage ||
             isExchangeManagePage ||
             pathname === '/exchange' ||
-            pathname === '/ranking'
+            pathname === '/ranking' ||
+            pathname === '/challenge'
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}
