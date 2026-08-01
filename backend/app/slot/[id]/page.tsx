@@ -111,7 +111,7 @@ export default function SlotThemeDetailPage() {
   // RUSH 獎池 modal
   const [tierFilter, setTierFilter]       = useState<number | null>(null)
   const [poolSortField, setPoolSortField] = useState('recycle')
-  const [poolSortDir, setPoolSortDir]     = useState<'asc' | 'desc'>('asc')
+  const [poolSortDir, setPoolSortDir]     = useState<'asc' | 'desc'>('desc')   // 預設回收幣值由高到低
   const [showAddPrize, setShowAddPrize]   = useState(false)
   const [availablePrizes, setAvailablePrizes] = useState<SlotPrize[]>([])
   const [prizeSearch, setPrizeSearch]     = useState('')
@@ -379,7 +379,7 @@ export default function SlotThemeDetailPage() {
 
   const TABS = [
     { key: 'settings', label: '主題設定' },
-    { key: 'prizes',   label: `RUSH獎池 (${prizes.length})` },
+    { key: 'prizes',   label: `RUSH獎池 (${poolItems.length})` },
     { key: 'videos',   label: '特效影片' },
     { key: 'machines', label: `機台 (${machines.length})` },
   ] as const
@@ -389,7 +389,7 @@ export default function SlotThemeDetailPage() {
 
   const handlePoolSort = (field: string) => {
     if (field === poolSortField) setPoolSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setPoolSortField(field); setPoolSortDir('asc') }
+    else { setPoolSortField(field); setPoolSortDir(field === 'recycle' ? 'desc' : 'asc') }
   }
 
   const POOL_LEVEL_RANK: Record<string, number> = { '一等獎': 1, '二等獎': 2, '三等獎': 3 }
