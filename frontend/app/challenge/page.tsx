@@ -493,10 +493,10 @@ export default function ChallengePage() {
       <AnimatePresence>
         {kickNotice && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.6 } }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-bold shadow-xl whitespace-nowrap"
+            initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, x: '-50%', y: '-50%', transition: { duration: 0.6 } }}
+            className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-bold shadow-xl whitespace-nowrap"
           >
             過久沒有動作，已讓位給其他用戶
           </motion.div>
