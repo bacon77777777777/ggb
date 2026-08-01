@@ -61,20 +61,13 @@ interface SlotMachine {
 
 // ── Sparkline ────────────────────────────────────────────────────────────────
 
-function buildSparkline(seed: number, n = 24): number[] {
-  let x = seed * 1103515245 + 12345;
-  const pts: number[] = [];
-  let v = 0.5;
-  for (let i = 0; i < n; i++) {
-    x = ((x * 1103515245 + 12345) >>> 0);
-    v = Math.max(0.08, Math.min(0.92, v + (x / 0xffffffff - 0.5) * 0.28));
-    pts.push(v);
-  }
-  return pts;
-}
-
-function Sparkline({ seed, className }: { seed: number; className?: string }) {
-  const pts = useMemo(() => buildSparkline(seed), [seed]);
+// 近 7 日每日 RUSH 次數 → 0~1 正規化（全 0 畫低平線）
+function Sparkline({ data, id, className }: { data: number[]; id: number; className?: string }) {
+  const pts = useMemo(() => {
+    const max = Math.max(...data, 1);
+    return data.map(v => 0.08 + (v / max) * 0.84);
+  }, [data]);
+  const seed = id;
   const W = 200, H = 36;
   const d = pts.map((v, i) => {
     const x = (i / (pts.length - 1)) * W;
@@ -299,7 +292,7 @@ function OccupancyOverlay({
     const mySecondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
     return (
       <div className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
-        <span className="text-white font-black text-sm tabular-nums select-none">離席倒數 {mySecondsLeft} 秒</span>
+        <span className="text-white font-black text-sm tabular-nums select-none">離席倒數 <span className="text-orange-500">{mySecondsLeft}</span> 秒</span>
       </div>
     );
   }
@@ -324,16 +317,16 @@ function OccupancyOverlay({
 // ── Machine Card (matches ProductCard) ───────────────────────────────────────
 
 function MachineCard({
-  machine, number, currentUserId, onEnter,
+  machine, number, currentUserId, rushTrend, onEnter,
 }: {
   machine: SlotMachine;
   number: number;
   currentUserId: string | null;
+  rushTrend: number[];
   onEnter: () => void;
 }) {
   const tiers = machine.bet_tiers ?? [];
   const [tierIdx, setTierIdx] = useState(0);
-  const sparkSeed = machine.id * 7 + machine.sort_order + tierIdx * 13;
 
   return (
     <div onClick={onEnter}
@@ -387,8 +380,8 @@ function MachineCard({
           </div>
         )}
 
-        {/* Sparkline */}
-        <Sparkline seed={sparkSeed} className="h-8 my-1.5" />
+        {/* 近 7 日每日 RUSH 次數走勢 */}
+        <Sparkline data={rushTrend} id={machine.id} className="h-8 my-1.5" />
       </div>
     </div>
   );
@@ -401,6 +394,7 @@ export default function ChallengePage() {
   const supabase = createClient();
 
   const [machines, setMachines] = useState<SlotMachine[]>([]);
+  const [rushTrend, setRushTrend] = useState<Record<number, number[]>>({});
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
   const [machinesLoading, setMachinesLoading] = useState(true);
   const [bannersLoading, setBannersLoading] = useState(true);
@@ -422,7 +416,11 @@ export default function ChallengePage() {
     const fetchMachines = () =>
       fetch('/api/slot/machines')
         .then(r => r.json())
-        .then(d => { if (alive) setMachines(d.machines ?? []); })
+        .then(d => {
+          if (!alive) return;
+          setMachines(d.machines ?? []);
+          setRushTrend(d.rush_trend ?? {});
+        })
         .catch(console.error);
 
     fetchMachines().finally(() => { if (alive) setMachinesLoading(false); });
@@ -542,6 +540,7 @@ export default function ChallengePage() {
                   machine={machine}
                   number={themeIndexMap.get(machine.id) ?? 1}
                   currentUserId={currentUserId}
+                  rushTrend={rushTrend[machine.id] ?? Array(7).fill(0)}
                   onEnter={() => {
                     const now = Date.now();
                     const expiresAt = machine.occupancy_expires_at
