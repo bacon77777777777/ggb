@@ -27,28 +27,7 @@ export async function GET() {
 
     if (error) throw error
 
-    // 近 7 日每日 RUSH 次數（觸發 + 直擊），台灣時區切日，供列表走勢圖
-    const since = new Date(Date.now() - 7 * 86400_000).toISOString()
-    const { data: logs } = await supabase
-      .from('slot_spin_logs')
-      .select('machine_id, created_at')
-      .in('kind', ['rush_trigger', 'direct_entry'])
-      .gte('created_at', since)
-
-    const dayKey = (iso: string) =>
-      new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })
-    const days: string[] = Array.from({ length: 7 }, (_, i) =>
-      dayKey(new Date(Date.now() - (6 - i) * 86400_000).toISOString())
-    )
-    const rushTrend: Record<number, number[]> = {}
-    for (const m of data ?? []) rushTrend[(m as { id: number }).id] = Array(7).fill(0)
-    for (const l of logs ?? []) {
-      const idx = days.indexOf(dayKey((l as { created_at: string }).created_at))
-      const mid = (l as { machine_id: number }).machine_id
-      if (idx >= 0 && rushTrend[mid]) rushTrend[mid][idx]++
-    }
-
-    return NextResponse.json({ machines: data ?? [], rush_trend: rushTrend })
+    return NextResponse.json({ machines: data ?? [] })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })
   }
