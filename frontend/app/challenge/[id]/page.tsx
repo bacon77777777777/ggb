@@ -343,8 +343,8 @@ export default function MachinePage() {
   // 機台層級保底計數（machine-level, 所有玩家共用）
   const spinsThisTier = session?.floor_counter ?? session?.spins_since_rush ?? 0;
 
-  // 直撃費用：保底轉數 × 檔次金額（與 enter_slot_rush_direct 一致）
-  const directCost = (machine?.floor_spin_count ?? 0) * currentTier.coins;
+  // 直撃費用：剩餘保底轉數 × 檔次金額（隨已轉數下降，與 enter_slot_rush_direct 一致）
+  const directCost = Math.max((machine?.floor_spin_count ?? 0) - (session?.floor_counter ?? 0), 1) * currentTier.coins;
 
   const changeTier = useCallback((delta: number) => {
     if (isTierLocked || tiers.length <= 1) return;

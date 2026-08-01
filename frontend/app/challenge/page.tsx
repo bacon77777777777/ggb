@@ -406,12 +406,15 @@ export default function ChallengePage() {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('idle_kick') === '1') {
-      setKickNotice(true);
       window.history.replaceState(null, '', '/challenge');
-      const t = setTimeout(() => setKickNotice(false), 5000);
-      return () => clearTimeout(t);
+      setKickNotice(true);
     }
   }, []);
+  useEffect(() => {
+    if (!kickNotice) return;
+    const t = setTimeout(() => setKickNotice(false), 5000);
+    return () => clearTimeout(t);
+  }, [kickNotice]);
   const [banners, setBanners] = useState<{ id: string; image: string; link: string }[]>([]);
   const [machinesLoading, setMachinesLoading] = useState(true);
   const [bannersLoading, setBannersLoading] = useState(true);
@@ -496,7 +499,7 @@ export default function ChallengePage() {
             initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
             exit={{ opacity: 0, x: '-50%', y: '-50%', transition: { duration: 0.6 } }}
-            className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-bold shadow-xl whitespace-nowrap"
+            className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black shadow-xl whitespace-nowrap"
           >
             過久沒有動作，已讓位給其他用戶
           </motion.div>
