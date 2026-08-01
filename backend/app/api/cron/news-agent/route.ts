@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
+import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -171,6 +172,65 @@ function extractBodyImage(html: string): string {
 const WATERMARKED_SOURCES = ['dengeki.com']
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
+
+// GGB logo（蓋浮水印用），模組層快取
+let _logoBuf: Buffer | null = null
+async function getLogoBuffer(): Promise<Buffer | null> {
+  if (_logoBuf) return _logoBuf
+  try {
+    const url = `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/logo.png`
+    const res = await fetch(url, { signal: AbortSignal.timeout(8_000) })
+    if (!res.ok) return null
+    _logoBuf = Buffer.from(await res.arrayBuffer())
+    return _logoBuf
+  } catch { return null }
+}
+
+// 浮水印來源：右上角壓 GGB logo（白色圓角墊底）蓋住站方浮水印，保留原圖
+async function brandCoverImage(buf: Buffer): Promise<Buffer | null> {
+  try {
+    const logo = await getLogoBuffer()
+    if (!logo) return null
+    const meta = await sharp(buf).metadata()
+    const W = meta.width ?? 0, H = meta.height ?? 0
+    if (!W || !H) return null
+    const logoW = Math.round(W * 0.21)
+    const logoH = Math.round((logoW * 107) / 300)
+    const pad = Math.round(logoW * 0.05)
+    const plateW = logoW + pad * 2
+    const plateH = logoH + pad * 2
+    const m = Math.max(4, Math.round(W * 0.008))
+    const plate = Buffer.from(
+      `<svg width="${plateW}" height="${plateH}"><rect width="${plateW}" height="${plateH}" rx="${Math.round(plateH / 4)}" fill="white" fill-opacity="0.96"/></svg>`
+    )
+    const logoResized = await sharp(logo).resize(logoW, logoH).png().toBuffer()
+    return await sharp(buf)
+      .composite([
+        { input: plate, top: 0, left: W - plateW },
+        { input: logoResized, top: pad, left: W - plateW + pad },
+      ])
+      .jpeg({ quality: 88 })
+      .toBuffer()
+  } catch { return null }
+}
+
+// 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
+async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(imgUrl, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length < 3_000) return null
+    const branded = await brandCoverImage(buf)
+    if (!branded) return null
+    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
+    return await r2Upload(key, branded, 'image/jpeg')
+  } catch { return null }
+}
 
 // Claude 回 general 時的關鍵字兜底分類
 function classifyByKeywords(text: string): string | null {
@@ -559,7 +619,9 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      const imageUrl = isWatermarked ? DEFAULT_NEWS_IMAGE : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const imageUrl = isWatermarked
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
+        : ((await downloadImageToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
@@ -638,7 +700,9 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      const imageUrl = isWatermarked ? DEFAULT_NEWS_IMAGE : ((await downloadImageToR2(ogImage)) ?? ogImage)
+      const imageUrl = isWatermarked
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
+        : ((await downloadImageToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
