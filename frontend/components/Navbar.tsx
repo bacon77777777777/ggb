@@ -509,7 +509,6 @@ function NavbarInner() {
   // Auth pages have their own custom top navigation
   if (pathname === '/mission' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') return null;
   if (pathname.startsWith('/events/')) return null;
-  if (pathname === '/challenge') return null;
   // 機台內頁改用頁內浮動導航（返回 + 音效），隱藏全域 Navbar
   if (/^\/challenge\/[^/]+$/.test(pathname)) return null;
 

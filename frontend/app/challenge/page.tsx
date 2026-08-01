@@ -546,7 +546,7 @@ export default function ChallengePage() {
         </section>
 
         {/* Sticky tab bar — same style as home secondary tabs（桌機改用左側欄） */}
-        <div className="md:hidden sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+        <div className="md:hidden sticky top-[57px] z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-1.5 py-2 px-2">
             <div ref={tabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
               <div className="flex items-center gap-1.5">
