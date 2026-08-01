@@ -182,10 +182,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-hero .h-scatter{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
     .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
-      background:radial-gradient(110% 70% at 50% 14%,${borderStrong},transparent 52%),
-                 radial-gradient(80% 50% at 50% 0%,${borderMid},transparent 55%);}
-    .lpv-hero .h-beam{position:absolute;top:-22%;left:50%;transform:translateX(-50%);
-      width:130%;height:56%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(36px);}
+      background:radial-gradient(72% 42% at 50% 8%,${borderStrong},transparent 46%),
+                 radial-gradient(50% 28% at 50% 0%,${borderMid},transparent 52%);}
+    .lpv-hero .h-beam{position:absolute;top:-14%;left:50%;transform:translateX(-50%);
+      width:76%;height:32%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(30px);}
     .lpv-hero .h-veil{position:absolute;inset:0;
       background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
     .lpv-eyebrow{position:relative;z-index:1;font-size:12px;letter-spacing:7px;color:${accentLight};

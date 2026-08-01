@@ -24,7 +24,7 @@ FROM public.events e, (VALUES
   "eyebrow": "SLOT TYPE B",
   "title": "絕頂RUSH",
   "subtitle": "轉滿 200 轉，必定觸發。\n進入絕頂，卡牌一張張落下。",
-  "highlight_text": "保底 200 轉必觸發 · 每一轉都有返還 · 觸發保證至少 1 張卡",
+  "highlight_text": "抽到的是實體卡牌 ―― 可申請寄送，或回收成 G 幣",
   "badge_text": "",
   "cta_text": "前往挑戰",
   "cta_url": "/challenge",
@@ -33,12 +33,12 @@ FROM public.events e, (VALUES
   "bg_image_url": "/images/slot/machine/main.png",
   "gems": [],
   "scatter": [
-    {"url": "/images/slot/machine/01.png", "top": "-2%",  "left": "-12%",  "size": "clamp(130px,34vw,300px)", "rotate": -18, "blur": 3.5, "opacity": 0.68},
-    {"url": "/images/slot/machine/02.png", "top": "3%",   "right": "-10%", "size": "clamp(110px,29vw,260px)", "rotate": 16,  "blur": 5.5, "opacity": 0.5},
-    {"url": "/images/slot/machine/03.png", "top": "15%",  "left": "13%",   "size": "clamp(70px,18vw,160px)",  "rotate": 9,   "blur": 8,   "opacity": 0.34},
-    {"url": "/images/slot/machine/04.png", "top": "12%",  "right": "15%",  "size": "clamp(64px,16vw,145px)",  "rotate": -8,  "blur": 9,   "opacity": 0.3},
-    {"url": "/images/slot/machine/05.png", "bottom": "-3%", "left": "-8%", "size": "clamp(125px,33vw,290px)", "rotate": 24,  "blur": 4,   "opacity": 0.6},
-    {"url": "/images/slot/machine/06.png", "bottom": "6%",  "right": "-6%","size": "clamp(105px,27vw,240px)", "rotate": -22, "blur": 2.5, "opacity": 0.7}
+    {"url": "/images/slot/machine/01.png", "bottom": "-6%", "left": "-12%", "size": "clamp(150px,38vw,340px)", "rotate": 24,  "blur": 1.5,  "opacity": 0.78},
+    {"url": "/images/slot/machine/02.png", "top": "-4%",    "left": "-10%", "size": "clamp(120px,30vw,270px)", "rotate": -18, "blur": 3,    "opacity": 0.68},
+    {"url": "/images/slot/machine/03.png", "bottom": "2%",  "right": "-8%", "size": "clamp(95px,24vw,215px)",  "rotate": -22, "blur": 5,    "opacity": 0.56},
+    {"url": "/images/slot/machine/04.png", "top": "2%",     "right": "-6%", "size": "clamp(76px,19vw,170px)",  "rotate": 16,  "blur": 7,    "opacity": 0.45},
+    {"url": "/images/slot/machine/05.png", "top": "13%",    "left": "12%",  "size": "clamp(60px,15vw,135px)",  "rotate": 9,   "blur": 9.5,  "opacity": 0.35},
+    {"url": "/images/slot/machine/06.png", "top": "10%",    "right": "16%", "size": "clamp(48px,12vw,108px)",  "rotate": -8,  "blur": 12,   "opacity": 0.26}
   ]
 }$J$),
 (1, 'stats', $J${
@@ -47,20 +47,20 @@ FROM public.events e, (VALUES
   "subtitle": "保底型 · 絕頂RUSH",
   "stats": [
     {"v": "200 轉", "l": "保底轉數。轉滿必定觸發 RUSH", "color": "#ffd24a"},
-    {"v": "至少 1 張", "l": "觸發即保證獲得卡牌", "color": "#e879f9"},
-    {"v": "10〜300G", "l": "五種入場檔次，上機後該場鎖定", "color": "#ffd24a"},
-    {"v": "實體卡牌", "l": "獲得的卡牌可申請寄送或回收成 G 幣", "color": "#e879f9"}
+    {"v": "5 台", "l": "同時開放，每台保底進度各自獨立", "color": "#e879f9"},
+    {"v": "5 檔", "l": "10〜300G 任選，上機後該場鎖定", "color": "#ffd24a"},
+    {"v": "共用獎池", "l": "五台共用同一份卡牌庫存", "color": "#e879f9"}
   ]
 }$J$),
 (2, 'steps', $J${
   "h2": "絕頂RUSH 的流程",
-  "subtitle": "每一轉都有返還，保底轉滿必定進入 RUSH",
+  "subtitle": "從上機到結束，一場完整的流程",
   "steps": [
-    {"title": "選擇檔次上機", "description": "10 / 20 / 50 / 100 / 300G 五選一，上機後該場鎖定不可更換"},
-    {"title": "普通旋轉", "description": "每一轉都會返還 G 幣，同時累積保底轉數"},
-    {"title": "觸發絕頂RUSH", "description": "保底轉滿 200 轉必定觸發；未轉滿時也可能隨時降臨"},
-    {"title": "RUSH 中＝抽卡", "description": "進入 RUSH 後每轉抽出實體卡牌，保證至少 1 張"},
-    {"title": "延續判定", "description": "每獲得一張後判定是否延續，延續成功就繼續抽下一張"}
+    {"title": "選擇檔次上機", "description": "檔次決定每轉的投注額，以及對應的卡牌獎池"},
+    {"title": "普通旋轉", "description": "每轉返還 G 幣，同時把保底進度往前推一格"},
+    {"title": "觸發絕頂RUSH", "description": "保底走完必定觸發，未走完時也可能提前降臨"},
+    {"title": "RUSH 中＝抽卡", "description": "機台整台變裝，每一轉抽出實體卡牌"},
+    {"title": "延續判定", "description": "延續成功就繼續抽下一張，失敗則結束回到普通"}
   ]
 }$J$),
 (3, 'table', $J${
@@ -106,10 +106,10 @@ FROM public.events e, (VALUES
   "h2_highlight": {"text": "保證", "type": "gold"},
   "subtitle": "以下規則寫在系統裡，不是話術",
   "rules": [
-    {"title": "保底必觸發", "desc": "轉滿 200 轉一定進入 RUSH，進度不會被歸零重來", "title_color": "#ffd24a"},
-    {"title": "保證一連", "desc": "觸發 RUSH 後，至少獲得 1 張卡牌", "title_color": "#5aff9a"},
-    {"title": "每轉都有返還", "desc": "普通旋轉不會出現 0G，最低也返還投注額的 20%", "title_color": "#e879f9"},
-    {"title": "保底進度公開", "desc": "機台列表直接顯示各機台目前保底進度與今日 RUSH 次數", "title_color": "#ff4d5a"}
+    {"title": "保底不會歸零", "desc": "進度記在機台上，中途離開、換人接手、隔天再來都不會被清掉", "title_color": "#ffd24a"},
+    {"title": "結果立刻定案", "desc": "按下的瞬間就由伺服器決定並寫入紀錄，關掉頁面也不影響已獲得的卡牌", "title_color": "#5aff9a"},
+    {"title": "直擊內容相同", "desc": "直擊只是買進入權，RUSH 裡的獎池與延續規則與自然觸發完全一樣", "title_color": "#e879f9"},
+    {"title": "每轉都留底", "desc": "投注與返還全部寫入紀錄，可在會員中心的消費明細查詢", "title_color": "#ff4d5a"}
   ]
 }$J$),
 (7, 'table', $J${
@@ -132,7 +132,7 @@ FROM public.events e, (VALUES
     {"url": "/images/slot/machine/main.png", "caption": "普通時", "badge": "累積保底", "color": "#e879f9", "poster": "", "media_type": "image"},
     {"url": "/images/slot/machine/main_rush.png", "caption": "絕頂RUSH", "badge": "抽卡中", "color": "#ffd24a", "poster": "", "media_type": "image"}
   ],
-  "callout": "五台同規格機台同時開放，每台保底進度分開計算，挑戰列表可直接看到各機台目前進度與今日 RUSH 次數。",
+  "callout": "挑戰列表可直接看到每台目前的保底進度與今日 RUSH 次數 ―― 挑一台再上機。",
   "callout_border": "#6a4a1e"
 }$J$),
 (9, 'fukuro', $J${
@@ -148,13 +148,13 @@ FROM public.events e, (VALUES
 (10, 'cta', $J${
   "h2": "絕頂，會連莊。",
   "h2_type": "pp",
-  "subtitle": "轉滿 200 轉，卡牌就是你的。",
+  "subtitle": "保底走完，卡牌就是你的。",
   "text": "前往挑戰",
   "url": "/challenge"
 }$J$),
 (11, 'sticky_cta', $J${
   "text": "前往挑戰",
-  "sub_text": "保底 200 轉必觸發 · 觸發保證至少 1 張卡",
+  "sub_text": "五台開放中 · 保底進度公開可見",
   "url": "/challenge"
 }$J$)
 ) AS v(sort_order, type, content)
