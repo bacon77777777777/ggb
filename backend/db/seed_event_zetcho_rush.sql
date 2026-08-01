@@ -1,0 +1,159 @@
+-- 絕頂RUSH 活動說明頁（內容種子，非 schema migration）
+--
+-- 用途：以 events / event_sections 活動頁模組建立「絕頂RUSH」玩法說明頁
+-- 網址：/events/zetcho-rush
+-- 內容參數皆取自實際機台設定（slot_themes id=1）：
+--   保底 200 轉必觸發、自然觸發 0.2%、延續 30% 每次減半、最低連中 1
+--   返還池：神域共鳴 2%×2.4 / 命運之瞳 5%×1.5 / 緋色幸運 13%×0.8 / 黃金序章 80%×0.2
+--   直擊價 = 剩餘保底轉數 × 檔次金額
+-- 可重複執行（會先刪除同 slug 再重建）；後台 /events 可直接編輯。
+
+BEGIN;
+
+DELETE FROM public.events WHERE slug = 'zetcho-rush';
+
+INSERT INTO public.events (slug, title, bg_color, accent_color, theme_mode, is_active)
+VALUES ('zetcho-rush', '絕頂RUSH', '#0a0610', '#e100ff', 'dark', TRUE);
+
+INSERT INTO public.event_sections (event_id, sort_order, type, content)
+SELECT e.id, v.sort_order, v.type, v.content::jsonb
+FROM public.events e, (VALUES
+(0, 'hero', $J${
+  "eyebrow": "SLOT TYPE B",
+  "title": "絕頂RUSH",
+  "subtitle": "轉滿 200 轉，必定觸發。\n進入絕頂，卡牌一張張落下。",
+  "highlight_text": "保底 200 轉必觸發 · 每一轉都有返還 · 觸發保證至少 1 張卡",
+  "badge_text": "",
+  "cta_text": "前往挑戰",
+  "cta_url": "/challenge",
+  "bg_video_url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-buildup.mp4",
+  "bg_poster_url": "",
+  "gems": []
+}$J$),
+(1, 'stats', $J${
+  "h2": "SPEC",
+  "h2_type": "pp",
+  "subtitle": "保底型 · 絕頂RUSH",
+  "stats": [
+    {"v": "200 轉", "l": "保底轉數。轉滿必定觸發 RUSH", "color": "#ffd24a"},
+    {"v": "0.2%", "l": "每轉自然觸發機率（保底之外的驚喜）", "color": "#e879f9"},
+    {"v": "至少 1 張", "l": "觸發即保證獲得卡牌", "color": "#ffd24a"},
+    {"v": "10〜300G", "l": "五種入場檔次，上機後該場鎖定", "color": "#e879f9"}
+  ]
+}$J$),
+(2, 'steps', $J${
+  "h2": "絕頂RUSH 的流程",
+  "subtitle": "每一轉都有返還，保底轉滿必定進入 RUSH",
+  "steps": [
+    {"title": "選擇檔次上機", "description": "10 / 20 / 50 / 100 / 300G 五選一，上機後該場鎖定不可更換"},
+    {"title": "普通旋轉", "description": "每一轉都會返還 G 幣，同時累積保底轉數"},
+    {"title": "觸發絕頂RUSH", "description": "保底轉滿 200 轉必定觸發；未滿時也有 0.2% 機率隨時降臨"},
+    {"title": "RUSH 中＝抽卡", "description": "進入 RUSH 後每轉抽出實體卡牌，保證至少 1 張"},
+    {"title": "延續判定", "description": "每獲得一張後判定是否延續，延續成功就繼續抽下一張"}
+  ]
+}$J$),
+(3, 'table', $J${
+  "h2": "普通旋轉返還",
+  "h2_highlight": {"text": "返還", "type": "pp"},
+  "subtitle": "每一轉都有返還，任何檔次都不會出現 0G",
+  "columns": ["返還品項", "機率", "10G", "20G", "50G", "100G", "300G"],
+  "rows": [
+    ["神域共鳴", "2%", "24G", "48G", "120G", "240G", "720G"],
+    ["命運之瞳", "5%", "15G", "30G", "75G", "150G", "450G"],
+    ["緋色幸運", "13%", "8G", "16G", "40G", "80G", "240G"],
+    ["黃金序章", "80%", "2G", "4G", "10G", "20G", "60G"]
+  ],
+  "note": "※ 返還金額 ＝ 該檔次投注額 × 品項倍率。最低的黃金序章也會返還投注額的 20%。",
+  "highlight_col": 0
+}$J$),
+(4, 'rel', $J${
+  "h2": "延續率遞減",
+  "h2_highlight": {"text": "延續", "type": "pp"},
+  "subtitle": "首次延續機率最高，之後每次減半 ―― 連莊愈長愈珍貴",
+  "rows": [
+    {"name": "第 1 次延續", "value": "30%", "desc": "獲得卡牌後的第一次判定", "name_color": "#5aff9a"},
+    {"name": "第 2 次延續", "value": "15%", "desc": "機率減半", "name_color": "#ffd24a"},
+    {"name": "第 3 次延續", "value": "7.5%", "desc": "再減半", "name_color": "#ff9a3d"},
+    {"name": "第 4 次以後", "value": "3.75% 以下", "desc": "持續遞減，長連莊是真本事", "name_color": "#ff4d5a"}
+  ],
+  "callout": "延續愈多張愈難，但每一次延續成功，都是實打實多一張卡牌入袋。"
+}$J$),
+(5, 'fukuro', $J${
+  "h2": "絕頂直擊",
+  "h2_type": "pp",
+  "ft": "不想等？付費直接進入 RUSH",
+  "ft_type": "pp",
+  "fb": "直擊價格 ＝ 剩餘保底轉數 × 檔次金額。已經轉愈多，直擊就愈便宜。",
+  "fb2": "",
+  "variant": "accent",
+  "subtitle": "把剩下的保底轉數一次買斷，立刻進入絕頂RUSH",
+  "chips": ["10G 檔｜全新機台 2,000G", "20G 檔｜4,000G", "50G 檔｜10,000G", "100G 檔｜20,000G", "300G 檔｜60,000G"],
+  "callout": "直擊是「購買進入權」的功能。進入後獲得的卡牌與連莊數仍由抽選決定，可能低於支付的金額，不保證一擊回本。"
+}$J$),
+(6, 'rule', $J${
+  "h2": "機制保證",
+  "h2_highlight": {"text": "保證", "type": "gold"},
+  "subtitle": "以下規則寫在系統裡，不是話術",
+  "rules": [
+    {"title": "保底必觸發", "desc": "轉滿 200 轉一定進入 RUSH，進度不會被歸零重來", "title_color": "#ffd24a"},
+    {"title": "最低 1 張保證", "desc": "觸發 RUSH 後，至少獲得 1 張卡牌", "title_color": "#5aff9a"},
+    {"title": "每轉都有返還", "desc": "普通旋轉不會出現 0G，最低也返還投注額的 20%", "title_color": "#e879f9"},
+    {"title": "保底進度公開", "desc": "機台列表直接顯示各機台目前保底進度與今日 RUSH 次數", "title_color": "#ff4d5a"}
+  ]
+}$J$),
+(7, 'table', $J${
+  "h2": "各檔次一覽",
+  "subtitle": "保底成本與直擊價格對照",
+  "columns": ["", "10G", "20G", "50G", "100G", "300G"],
+  "rows": [
+    ["保底轉數", "200 轉", "200 轉", "200 轉", "200 轉", "200 轉"],
+    ["轉滿保底投注額", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"],
+    ["直擊價（全新機台）", "2,000G", "4,000G", "10,000G", "20,000G", "60,000G"],
+    ["單轉最低返還", "2G", "4G", "10G", "20G", "60G"],
+    ["單轉最高返還", "24G", "48G", "120G", "240G", "720G"]
+  ],
+  "note": "※ 直擊價會隨保底進度下降：剩餘轉數 × 檔次金額，最低 1 轉份。",
+  "highlight_col": 0
+}$J$),
+(8, 'gallery', $J${
+  "h2": "絕頂RUSH 演出",
+  "h2_type": "pp",
+  "layout": "grid",
+  "subtitle": "觸發 → 獲得 → 延續！ 每一段演出都對應真實的抽選結果",
+  "items": [
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-buildup.mp4", "caption": "絕頂突入", "badge": "觸發", "color": "#e879f9", "poster": "", "media_type": "video"},
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-win.mp4", "caption": "獲得卡牌", "badge": "連", "color": "#ffd24a", "poster": "", "media_type": "video"},
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-win-strong.mp4", "caption": "強勢獲得", "badge": "強", "color": "#ff9a3d", "poster": "", "media_type": "video"},
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-win-god.mp4", "caption": "壓倒性勝利", "badge": "激熱", "color": "#ff4d5a", "poster": "", "media_type": "video"},
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/zetcho_reversal.mp4", "caption": "逆轉復活", "badge": "逆轉", "color": "#5aff9a", "poster": "", "media_type": "video"},
+    {"url": "https://akdqleelvqvjhjnfkpfq.supabase.co/storage/v1/object/public/lp-assets/zetcho/banchou-yokoku-strong.mp4", "caption": "觸發前兆", "badge": "前兆", "color": "#a855f7", "poster": "", "media_type": "video"}
+  ],
+  "callout": "演出用來表現結果的熱度，不會改變抽選結果。",
+  "callout_border": "#6a4a1e"
+}$J$),
+(9, 'fukuro', $J${
+  "h2": "",
+  "ft": "一人一台 ―― 座位機制",
+  "ft_type": "gold",
+  "fb": "上機後機台為你保留 30 秒，每次旋轉或直擊 +60 秒（最長 90 秒）。閒置到期會自動讓位給其他玩家，離開前 15 秒畫面會先提示。",
+  "fb2": "",
+  "chips": ["上機保留 30 秒", "每轉 +60 秒", "上限 90 秒", "離席前 15 秒提示"],
+  "callout": "",
+  "subtitle": ""
+}$J$),
+(10, 'cta', $J${
+  "h2": "絕頂，會連莊。",
+  "h2_type": "pp",
+  "subtitle": "轉滿 200 轉，卡牌就是你的。",
+  "text": "前往挑戰",
+  "url": "/challenge"
+}$J$),
+(11, 'sticky_cta', $J${
+  "text": "前往挑戰",
+  "sub_text": "保底 200 轉必觸發 · 觸發保證至少 1 張卡",
+  "url": "/challenge"
+}$J$)
+) AS v(sort_order, type, content)
+WHERE e.slug = 'zetcho-rush';
+
+COMMIT;
