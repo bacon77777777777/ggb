@@ -204,9 +204,10 @@ export default function MachinePage() {
   const [rushStreak, setRushStreak] = useState(0);
   const [showDirectModal, setShowDirectModal] = useState(false);
   const [coinReturnDisplay, setCoinReturnDisplay] = useState<{ amount: number; id: number } | null>(null);
-  // 閒置踢出：進入/每次 SPIN 起算 30s 緩衝 → 60s 倒數（最後 15 秒顯示警告）→ 踢出即讓位
+  // 閒置踢出：期限錨定「最後動作 +90s」（30 緩衝 + 60 倒數，最後 15 秒警告）→ 踢出即讓位
+  // 期限與伺服器同步：進出頁面不重置，只有 SPIN/直擊刷新
   const [idleWarnSeconds, setIdleWarnSeconds] = useState<number | null>(null);
-  const lastActionRef = useRef(Date.now());
+  const idleDeadlineRef = useRef<number>(Date.now() + 90_000);
   const idleKickedRef = useRef(false);
   const coinReturnIdRef = useRef(0);
   const coinReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -244,7 +245,13 @@ export default function MachinePage() {
 
   // 機台佔用：進入時 occupy，每 20 秒 heartbeat，離開時 vacate
   useEffect(() => {
-    const occupy = () => fetch(`/api/slot/${id}/occupy`, { method: 'POST' }).catch(() => {});
+    const occupy = () =>
+      fetch(`/api/slot/${id}/occupy`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          if (d?.occupancy_expires_at) idleDeadlineRef.current = new Date(d.occupancy_expires_at).getTime();
+        })
+        .catch(() => {});
     const heartbeat = () => fetch(`/api/slot/${id}/heartbeat`, { method: 'POST' }).catch(() => {});
     const vacate = () => fetch(`/api/slot/${id}/vacate`, { method: 'POST', keepalive: true }).catch(() => {});
 
@@ -264,16 +271,12 @@ export default function MachinePage() {
     };
   }, [id]);
 
-  // 閒置踢出計時：30s 緩衝 + 60s 倒數（最後 15 秒顯示警告），SPIN/直擊重置
+  // 閒置踢出計時：期限 = 最後動作 +90s（最後 15 秒顯示警告），SPIN/直擊刷新
   useEffect(() => {
-    const IDLE_BUFFER_MS = 30_000;
-    const IDLE_COUNTDOWN_MS = 60_000;
     const WARN_SECONDS = 15;
-    lastActionRef.current = Date.now();
     const t = setInterval(() => {
       if (idleKickedRef.current) return;
-      const idle = Date.now() - lastActionRef.current;
-      const leftMs = IDLE_BUFFER_MS + IDLE_COUNTDOWN_MS - idle;
+      const leftMs = idleDeadlineRef.current - Date.now();
       if (leftMs <= 0) {
         idleKickedRef.current = true;
         setIdleWarnSeconds(null);
@@ -379,7 +382,7 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user) return;
     setError(null);
     setJackpot(false);
-    lastActionRef.current = Date.now();
+    idleDeadlineRef.current = Date.now() + 90_000;
     setIdleWarnSeconds(null);
     setSpinState('spinning');
     setWalletBalance(b => Math.max(0, (b ?? (user as any)?.tokens ?? 0) - currentTier.coins));
@@ -508,7 +511,7 @@ export default function MachinePage() {
     if (spinState !== 'idle' || !user || directLoading || isRushActive) return;
     setDirectLoading(true);
     setError(null);
-    lastActionRef.current = Date.now();
+    idleDeadlineRef.current = Date.now() + 90_000;
     setIdleWarnSeconds(null);
 
     const isClassic = (machine?.slot_themes?.machine_type ?? 'video') === 'classic';

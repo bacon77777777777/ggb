@@ -39,8 +39,11 @@ export async function POST(
     )
   }
 
-  const activeUntil = new Date(now + 30_000).toISOString()   // +30s
-  const newExpiresAt = new Date(now + 120_000).toISOString() // +30s active + 90s grace
+  // 佔用期限錨定「最後動作」（spin/首次上機）+ 90 秒；回座只刷新活躍窗、不延長期限
+  const isMineUnexpired = machine.occupant_id === session.user.id && !isExpired
+  const deadline = isMineUnexpired ? expiresAt : now + 90_000
+  const activeUntil = new Date(Math.min(now + 30_000, deadline)).toISOString()
+  const newExpiresAt = new Date(deadline).toISOString()
 
   await supabase
     .from('slot_machines')
@@ -51,5 +54,5 @@ export async function POST(
     })
     .eq('id', machineId)
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, occupancy_expires_at: newExpiresAt })
 }

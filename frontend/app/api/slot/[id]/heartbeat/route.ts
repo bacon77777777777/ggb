@@ -20,18 +20,26 @@ export async function POST(
   )
 
   const now = Date.now()
-  const activeUntil = new Date(now + 30_000).toISOString()
-  const expiresAt = new Date(now + 120_000).toISOString()
 
-  // 只更新自己佔用的機台，不影響他人
+  // 期限錨定最後動作 +90s，心跳不延長，只刷新活躍窗（上限 = 期限）
+  const { data: machine } = await supabase
+    .from('slot_machines')
+    .select('occupant_id, occupancy_expires_at')
+    .eq('id', machineId)
+    .single()
+
+  if (!machine || machine.occupant_id !== session.user.id) {
+    return NextResponse.json({ success: false })
+  }
+  const expiresAt = machine.occupancy_expires_at ? new Date(machine.occupancy_expires_at).getTime() : 0
+  if (expiresAt <= now) return NextResponse.json({ success: false })
+
+  const activeUntil = new Date(Math.min(now + 30_000, expiresAt)).toISOString()
   await supabase
     .from('slot_machines')
-    .update({
-      occupant_active_until: activeUntil,
-      occupancy_expires_at:  expiresAt,
-    })
+    .update({ occupant_active_until: activeUntil })
     .eq('id', machineId)
     .eq('occupant_id', session.user.id)
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, occupancy_expires_at: machine.occupancy_expires_at })
 }

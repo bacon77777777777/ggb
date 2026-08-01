@@ -21,18 +21,17 @@ export async function POST(
   )
 
   const now = Date.now()
-  // active_until 設為過去（標記為非活躍）；一般離開保留 90 秒寬限（30 緩衝 + 60 倒數）,
+  // 期限錨定最後動作 +90s：一般離開不延長也不縮短（維持原期限），僅標記非活躍；
   // 閒置踢出（immediate=1）立即釋出讓位
   const immediate = new URL(req.url).searchParams.get('immediate') === '1'
   const pastTime = new Date(now - 1000).toISOString()
-  const graceEnd = immediate ? pastTime : new Date(now + 90_000).toISOString()
+
+  const updates: Record<string, string> = { occupant_active_until: pastTime }
+  if (immediate) updates.occupancy_expires_at = pastTime
 
   await supabase
     .from('slot_machines')
-    .update({
-      occupant_active_until: pastTime,
-      occupancy_expires_at:  graceEnd,
-    })
+    .update(updates)
     .eq('id', machineId)
     .eq('occupant_id', session.user.id)
 
