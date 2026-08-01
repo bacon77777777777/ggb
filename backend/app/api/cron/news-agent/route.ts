@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
+import { detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -186,28 +187,7 @@ async function getLogoBuffer(): Promise<Buffer | null> {
   } catch { return null }
 }
 
-type WmCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
-// Claude 視覺：判斷浮水印在哪個角落（偵測失敗預設右上）
-async function detectWatermarkCorner(claude: Anthropic, buf: Buffer): Promise<WmCorner> {
-  try {
-    const small = await sharp(buf).resize(760, null, { withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer()
-    const resp = await claude.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 50,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') } },
-          { type: 'text', text: '圖上有「DENGEKI HOBBY WEB 電ホビ」浮水印，位於哪個角落？只回傳 JSON：{"corner":"top-left|top-right|bottom-left|bottom-right"}' },
-        ],
-      }],
-    })
-    const text = resp.content.find(c => c.type === 'text')?.text ?? ''
-    const m = text.match(/top-left|top-right|bottom-left|bottom-right/)
-    return (m?.[0] as WmCorner) ?? 'top-right'
-  } catch { return 'top-right' }
-}
 
 // 白墊貼齊指定角落（朝圖內側的那個角圓角）
 function wmPlatePath(w: number, h: number, corner: WmCorner): string {
@@ -250,7 +230,7 @@ async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | 
 }
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
-async function downloadBrandedToR2(imgUrl: string, claude: Anthropic): Promise<string | null> {
+async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
       headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
@@ -260,7 +240,7 @@ async function downloadBrandedToR2(imgUrl: string, claude: Anthropic): Promise<s
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length < 3_000) return null
-    const corner = await detectWatermarkCorner(claude, buf)
+    const corner = await detectWatermarkCorner(buf)
     const branded = await brandCoverImage(buf, corner)
     if (!branded) return null
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
@@ -656,7 +636,7 @@ export async function POST(req: NextRequest) {
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       const imageUrl = isWatermarked
-        ? ((await downloadBrandedToR2(ogImage, claude)) ?? DEFAULT_NEWS_IMAGE)
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
         : ((await downloadImageToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category
@@ -737,7 +717,7 @@ export async function POST(req: NextRequest) {
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       const imageUrl = isWatermarked
-        ? ((await downloadBrandedToR2(ogImage, claude)) ?? DEFAULT_NEWS_IMAGE)
+        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
         : ((await downloadImageToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category

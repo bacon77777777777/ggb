@@ -526,7 +526,7 @@ const SMVC_CSS = `
 }
 .smvc-btn:hover  { filter:brightness(1.15) drop-shadow(0 0 1cqw rgba(255,230,150,.8)); }
 .smvc-btn:active { transform:translateY(3%) scale(.97); filter:brightness(.92); }
-.smvc-btn-off { filter:grayscale(.75) brightness(.55); pointer-events:none; }
+.smvc-btn-off { filter:grayscale(1) brightness(.5) contrast(1.05); pointer-events:none; }
 .smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto),
 .smvc-stage.smvc-spinning .smvc-lever-hit { pointer-events:none; }
 .smvc-stage.smvc-spinning .smvc-btn:not(.smvc-btn-auto) { filter:saturate(.6) brightness(.85); animation:none; }

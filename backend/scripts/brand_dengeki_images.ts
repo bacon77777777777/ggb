@@ -10,31 +10,10 @@
 import sharp from 'sharp'
 import { readFileSync, writeFileSync, appendFileSync } from 'fs'
 import { r2Upload } from '../lib/r2'
-import Anthropic from '@anthropic-ai/sdk'
+import { detectWatermarkCorner, type WmCorner } from '../lib/dengekiWm'
 
-type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+type Corner = WmCorner
 
-// Claude 視覺：判斷 DENGEKI 浮水印在哪個角落（偵測失敗預設右上）
-async function detectWatermarkCorner(buf: Buffer): Promise<Corner> {
-  try {
-    const small = await sharp(buf).resize(760, null, { withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer()
-    const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 50,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') } },
-          { type: 'text', text: '圖上有「DENGEKI HOBBY WEB 電ホビ」浮水印，位於哪個角落？只回傳 JSON：{"corner":"top-left|top-right|bottom-left|bottom-right"}' },
-        ],
-      }],
-    })
-    const text = resp.content.find(c => c.type === 'text')?.text ?? ''
-    const m = text.match(/top-left|top-right|bottom-left|bottom-right/)
-    return (m?.[0] as Corner) ?? 'top-right'
-  } catch { return 'top-right' }
-}
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36'
 const LOGO_PATH = new URL('../../frontend/public/images/logo.png', import.meta.url).pathname
