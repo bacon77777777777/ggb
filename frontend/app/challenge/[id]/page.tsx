@@ -252,8 +252,13 @@ export default function MachinePage() {
   useEffect(() => {
     const occupy = () =>
       fetch(`/api/slot/${id}/occupy`, { method: 'POST' })
-        .then(r => r.json())
-        .then(d => {
+        .then(async r => {
+          const d = await r.json().catch(() => null);
+          if (r.status === 409) {
+            // 機台已被他人佔用（列表輪詢空窗撞入）：退回挑戰頁
+            router.replace('/challenge');
+            return;
+          }
           if (d?.occupancy_expires_at) idleDeadlineRef.current = new Date(d.occupancy_expires_at).getTime();
         })
         .catch(() => {});
