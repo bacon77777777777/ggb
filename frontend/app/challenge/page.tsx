@@ -547,8 +547,8 @@ export default function ChallengePage() {
         {/* 2-column machine grid — same grid as home products */}
         <div className="px-2 pt-2">
           {machinesLoading ? (
-            <div className="grid grid-cols-2 gap-2">
-              {[1, 2, 3, 4].map(i => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
                 <div key={i} className="rounded-[8px] border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
                   <div className="aspect-square w-full animate-pulse bg-neutral-200 dark:bg-neutral-800 rounded-t-[8px]" />
                   <div className="p-2 space-y-2">
@@ -562,7 +562,7 @@ export default function ChallengePage() {
           ) : filtered.length === 0 ? (
             <p className="text-center text-sm text-neutral-400 py-16">此分類目前沒有機台</p>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
               {filtered.map(machine => (
                 <MachineCard
                   key={machine.id}

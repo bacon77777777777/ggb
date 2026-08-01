@@ -653,26 +653,23 @@ function NavbarInner() {
                     : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
                 )}
               >
-                <span>回首頁</span>
+                <span>首頁</span>
                 {pathname === '/' && (
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
                 )}
               </Link>
               <Link
-                href="/announcements"
+                href="/challenge"
                 className={cn(
                   "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
-                  pathname === '/announcements' || pathname.startsWith('/announcements/')
+                  pathname === '/challenge' || pathname.startsWith('/challenge/')
                     ? "text-primary"
                     : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
                 )}
               >
-                <span>公告</span>
-                {(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
+                <span>挑戰</span>
+                {(pathname === '/challenge' || pathname.startsWith('/challenge/')) && (
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
-                )}
-                {bellUnread && !(pathname === '/announcements' || pathname.startsWith('/announcements/')) && (
-                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-accent-red" />
                 )}
               </Link>
               <Link
@@ -808,10 +805,17 @@ function NavbarInner() {
               </div>
             )}
 
-            {isHomePage && (
+            {/* 公告：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標左邊 */}
+            {!isProductDetailPage && !isAnnouncementDetailPage && (
               <Link
                 href="/announcements"
-                className="relative p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform md:hidden"
+                className={cn(
+                  "relative p-2 rounded-xl active:scale-90 transition-transform md:flex md:items-center",
+                  pathname === '/announcements' || pathname.startsWith('/announcements/')
+                    ? "text-primary"
+                    : "text-neutral-600 dark:text-neutral-400 md:hover:text-primary",
+                  !isHomePage && "hidden"
+                )}
                 aria-label="公告"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
