@@ -19,40 +19,49 @@ export async function POST(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data: machine } = await supabase
-    .from('slot_machines')
-    .select('occupant_id, occupancy_expires_at')
-    .eq('id', machineId)
-    .single()
-
-  if (!machine) return NextResponse.json({ error: '機台不存在' }, { status: 404 })
-
   const now = Date.now()
-  const expiresAt = machine.occupancy_expires_at ? new Date(machine.occupancy_expires_at).getTime() : 0
-  const isExpired = expiresAt <= now
-  const isOccupiedByOther = machine.occupant_id && machine.occupant_id !== session.user.id && !isExpired
+  const nowIso = new Date(now).toISOString()
 
-  if (isOccupiedByOther) {
-    return NextResponse.json(
-      { error: '機台使用中', occupancy_expires_at: machine.occupancy_expires_at },
-      { status: 409 }
-    )
+  // 1) 回座：自己佔用且未過期 → 只刷新活躍窗（不延長期限）
+  const { data: mine } = await supabase
+    .from('slot_machines')
+    .select('occupancy_expires_at')
+    .eq('id', machineId)
+    .eq('occupant_id', session.user.id)
+    .gt('occupancy_expires_at', nowIso)
+    .maybeSingle()
+
+  if (mine?.occupancy_expires_at) {
+    const deadline = new Date(mine.occupancy_expires_at).getTime()
+    await supabase
+      .from('slot_machines')
+      .update({ occupant_active_until: new Date(Math.min(now + 30_000, deadline)).toISOString() })
+      .eq('id', machineId)
+      .eq('occupant_id', session.user.id)
+    return NextResponse.json({ success: true, occupancy_expires_at: mine.occupancy_expires_at })
   }
 
-  // 初次上機 30 秒；spin 每次 +60 秒（上限 90，DB 函數處理）；回座不延長期限
-  const isMineUnexpired = machine.occupant_id === session.user.id && !isExpired
-  const deadline = isMineUnexpired ? expiresAt : now + 30_000
-  const activeUntil = new Date(Math.min(now + 30_000, deadline)).toISOString()
-  const newExpiresAt = new Date(deadline).toISOString()
-
-  await supabase
+  // 2) 原子認領：僅在「無人 / 已過期」時成立，同時搶台只有一人成功
+  const newExpiresAt = new Date(now + 30_000).toISOString() // 初次上機 30 秒
+  const { data: claimed } = await supabase
     .from('slot_machines')
     .update({
       occupant_id:           session.user.id,
-      occupant_active_until: activeUntil,
+      occupant_active_until: newExpiresAt,
       occupancy_expires_at:  newExpiresAt,
     })
     .eq('id', machineId)
+    .or(`occupant_id.is.null,occupancy_expires_at.is.null,occupancy_expires_at.lt.${nowIso}`)
+    .select('id')
+
+  if (!claimed || claimed.length === 0) {
+    const { data: cur } = await supabase
+      .from('slot_machines').select('occupancy_expires_at').eq('id', machineId).single()
+    return NextResponse.json(
+      { error: '機台使用中', occupancy_expires_at: cur?.occupancy_expires_at ?? null },
+      { status: 409 }
+    )
+  }
 
   return NextResponse.json({ success: true, occupancy_expires_at: newExpiresAt })
 }

@@ -408,6 +408,7 @@ export default function MachinePage() {
       if (reelTimerRef.current) clearInterval(reelTimerRef.current);
 
       if (!res.ok || data.error) {
+        if (String(data.error ?? '').includes('機台使用中')) { router.replace('/challenge'); return; }
         setError(data.error ?? '挑戰失敗，請稍後再試');
         setJackpot(false);
         setSpinState('idle');
@@ -544,6 +545,7 @@ export default function MachinePage() {
       const data = await (res as Response).json();
 
       if (!res.ok || data.error) {
+        if (String(data.error ?? '').includes('機台使用中')) { router.replace('/challenge'); return; }
         setError(data.error ?? '直撃失敗');
         setWalletBalance((user as any)?.tokens ?? 0);
         if (isClassic) setSpinState('idle');
