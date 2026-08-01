@@ -505,15 +505,48 @@ export default function ChallengePage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="max-w-7xl mx-auto px-0 pt-0">
+      <div className="max-w-7xl mx-auto px-0 pt-0 md:px-2 lg:px-8 md:pt-6">
+        <div className="flex flex-col md:flex-row gap-4 lg:gap-6 items-start">
+
+        {/* 桌機側欄 — 同首頁分類欄，手機維持 banner 下方頁籤 */}
+        <aside className="hidden md:block w-60 flex-shrink-0 sticky top-16">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-3 shadow-card border border-neutral-100 dark:border-neutral-800 transition-colors">
+            <div className="space-y-1">
+              {themes.map(t => (
+                <button
+                  key={t.name}
+                  onClick={() => setActiveTheme(t.name)}
+                  className={cn(
+                    "w-full text-left px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-xl text-[13px] lg:text-sm font-black transition-all flex items-center justify-between gap-2",
+                    activeTheme === t.name
+                      ? "bg-primary text-white shadow-lg shadow-primary/20"
+                      : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                  )}
+                >
+                  <span className="truncate">{t.name}</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center h-[20px] min-w-[20px] px-1.5 rounded-full text-[10px] font-black tabular-nums",
+                      activeTheme === t.name ? "bg-white/20 text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500"
+                    )}
+                  >
+                    {t.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1 min-w-0 w-full">
 
         {/* Banner — same as home */}
         <section>
           {bannersLoading ? <BannerSkeleton /> : <HeroBanner banners={banners} />}
         </section>
 
-        {/* Sticky tab bar — same style as home secondary tabs */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
+        {/* Sticky tab bar — same style as home secondary tabs（桌機改用左側欄） */}
+        <div className="md:hidden sticky top-0 z-40 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-1.5 py-2 px-2">
             <div ref={tabsRef} className="flex-1 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide snap-x snap-mandatory">
               <div className="flex items-center gap-1.5">
@@ -545,9 +578,9 @@ export default function ChallengePage() {
         </div>
 
         {/* 2-column machine grid — same grid as home products */}
-        <div className="px-2 pt-2">
+        <div className="px-2 pt-2 md:px-0 md:pt-4">
           {machinesLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
                 <div key={i} className="rounded-[8px] border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
                   <div className="aspect-square w-full animate-pulse bg-neutral-200 dark:bg-neutral-800 rounded-t-[8px]" />
@@ -562,7 +595,7 @@ export default function ChallengePage() {
           ) : filtered.length === 0 ? (
             <p className="text-center text-sm text-neutral-400 py-16">此分類目前沒有機台</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {filtered.map(machine => (
                 <MachineCard
                   key={machine.id}
@@ -590,6 +623,9 @@ export default function ChallengePage() {
               ))}
             </div>
           )}
+        </div>
+
+        </div>
         </div>
       </div>
 
