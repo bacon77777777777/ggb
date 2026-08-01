@@ -46,6 +46,7 @@ interface SlotMachine {
   sort_order: number;
   bet_tiers: BetTier[];
   floor_spin_count: number;
+  floor_counter: number | null;
   trigger_rate: number;
   machine_theme: string;
   event_slug: string | null;
@@ -348,6 +349,10 @@ function MachineCard({
           occupancyExpiresAt={machine.occupancy_expires_at}
           currentUserId={currentUserId}
         />
+        {/* 保底轉數進度 */}
+        <div className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-black text-amber-300 tabular-nums leading-tight">
+          {(machine.floor_counter ?? 0).toLocaleString()}/{machine.floor_spin_count.toLocaleString()}
+        </div>
       </div>
 
       {/* Content */}
