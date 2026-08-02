@@ -260,6 +260,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     @media(max-width:520px){.lpv-cards.sq{grid-template-columns:1fr;}}
     .lpv-cards.sq .lpv-card,.lpv-cards.sq .lpv-card.grand{
       border:none;background:none;box-shadow:none;padding:0;}
+    @media(max-width:520px){.lpv-cards.sq{gap:40px;}}
     .lpv-cards.sq .lpv-card-img{height:auto;aspect-ratio:1/1;}
     .lpv-cards.sq .lpv-card-img,.lpv-cards.sq .lpv-card-ph{
       width:50%;margin-left:auto;margin-right:auto;}
