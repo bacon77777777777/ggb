@@ -61,7 +61,9 @@ export default function DanmakuLayer({ items, paused }: { items: DanmakuItem[]; 
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 overflow-hidden transition-opacity duration-500"
+      // z-10：高於機台內部元素（最高 z=8），低於頂部操作列（z-20）與結束警示條（z-30），
+      // 彈幕從按鈕與警示條「後面」通過，不遮擋必看資訊
+      className="pointer-events-none absolute inset-x-0 top-0 z-10 overflow-hidden transition-opacity duration-500"
       style={{ height: '26%', opacity: paused ? 0 : 1 }}
     >
       {flying.map(f => (
