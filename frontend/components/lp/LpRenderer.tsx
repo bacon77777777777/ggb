@@ -258,6 +258,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-card-img{width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:12px;}
     .lpv-cards.sq{grid-template-columns:repeat(3,1fr);}
     @media(max-width:520px){.lpv-cards.sq{grid-template-columns:1fr;}}
+    .lpv-cards.sq .lpv-card,.lpv-cards.sq .lpv-card.grand{
+      border:none;background:none;box-shadow:none;padding:0;}
     .lpv-cards.sq .lpv-card-img{height:auto;aspect-ratio:1/1;}
     .lpv-card-ph{width:100%;aspect-ratio:1/1;border-radius:10px;margin-bottom:12px;
       background:${overlayFaint};}
