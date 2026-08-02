@@ -261,6 +261,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-cards.sq .lpv-card,.lpv-cards.sq .lpv-card.grand{
       border:none;background:none;box-shadow:none;padding:0;}
     .lpv-cards.sq .lpv-card-img{height:auto;aspect-ratio:1/1;}
+    .lpv-cards.sq .lpv-card-img,.lpv-cards.sq .lpv-card-ph{
+      width:50%;margin-left:auto;margin-right:auto;}
     .lpv-card-ph{width:100%;aspect-ratio:1/1;border-radius:10px;margin-bottom:12px;
       background:${overlayFaint};}
     .lpv-card-tag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:1.5px;
