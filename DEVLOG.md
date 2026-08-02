@@ -4,6 +4,20 @@
 
 ---
 
+## v2026.08.02b｜2026-08-02｜修 PROD 文章沒圖（雙重原因）+ 彈幕不蓋導航
+
+### 🔴 PROD 文章圖片全變預設圖（8/1 中午起）
+兩個獨立原因疊加，缺一都會壞：
+1. **R2 secret 未更新到 PROD**：8/1 Cloudflare R2 token 重生成後，只更新了本地與 STG，Vercel PROD 的 `R2_SECRET_ACCESS_KEY` 還是 6 天前的舊值 → news-agent 上傳 R2 全數簽章失敗。已補上新 key 並 redeploy backend。
+2. **logo.png 從未入庫**：Dengeki 壓浮水印功能（v2026.08.01a）引用 `www.ggb.com.tw/images/logo.png`，但該檔只存在另一台電腦本地、從未 commit → PROD cron 抓 logo 一直 404 → 壓印失敗 fallback 預設圖。已由 `images/20260629/logo.svg` 轉 600×214 PNG 入庫。
+- 受影響 15 篇（8/1–8/2）已用 `scripts/brand_dengeki_images.ts backfill` 重抓補圖，PROD 已套用
+- 教訓：跨機器開發時，程式引用的靜態資產必須跟 code 同 commit
+
+### 彈幕不蓋導航與警示
+- 彈幕層 z-30 → z-10：高於機台內部元素（最高 z=8），低於頂部操作列（z-20）與結束警示條（z-30），彈幕改從按鈕與警示條後方通過
+
+---
+
 ## v2026.08.02a｜2026-08-02｜品項詳情彈窗 + 機台規則頁 + 活動頁新手化
 
 ### 品項詳情彈窗（全類別統一）
