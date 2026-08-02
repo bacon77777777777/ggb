@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,6 +14,7 @@ import SlotMachineClassic, { ReelOutcome, MachineLayout, setSfxMuted } from '@/c
 import DanmakuLayer, { type DanmakuItem } from '@/components/challenge/DanmakuLayer';
 import EndingBar from '@/components/challenge/EndingBar';
 import { inheritSchedule } from '@/lib/schedule';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -179,7 +179,7 @@ export default function MachinePage() {
   }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
-  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
+  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null; level?: string; recycle_value?: number | null } | null>(null);
   // 機台總餘額板顯示值：按下 SPIN 即時扣款，回包後以 new_balance 校正；idle 時跟 profile 對齊
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [sfxMuted, setSfxMutedState] = useState(false);
@@ -729,7 +729,7 @@ export default function MachinePage() {
         <div
           key={item.id}
           className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
-          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url })}
+          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url, level: prize.level, recycle_value: prize.recycle_value })}
         >
           <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
             {prize?.image_url ? (
@@ -1221,38 +1221,7 @@ export default function MachinePage() {
         )}
       </AnimatePresence>
 
-      {/* 品項大圖預覽 */}
-      {previewPrize && typeof window !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[2600] bg-black/85 flex items-center justify-center p-4"
-          onClick={() => setPreviewPrize(null)}
-        >
-          <div
-            className="relative max-w-[88vw] max-h-[88vh] flex flex-col items-center gap-3"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewPrize(null)}
-              className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <span className="text-white text-base font-black text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
-              {previewPrize.name}
-            </span>
-            <Image
-              src={previewPrize.image_url || '/images/item_defaulet.png'}
-              alt={previewPrize.name}
-              width={600}
-              height={600}
-              className="max-w-full max-h-[75vh] object-contain rounded-2xl"
-              unoptimized
-            />
-          </div>
-        </div>,
-        document.body
-      )}
+      <PrizeDetailSheet prize={previewPrize} onClose={() => setPreviewPrize(null)} />
     </div>
   );
 }
