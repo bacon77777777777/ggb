@@ -256,6 +256,11 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       background:linear-gradient(180deg,rgba(${a},0.22),${cardDarker});
       box-shadow:0 0 40px ${glow20},0 0 80px ${glow08};}
     .lpv-card-img{width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:12px;}
+    .lpv-cards.sq{grid-template-columns:repeat(3,1fr);}
+    @media(max-width:520px){.lpv-cards.sq{grid-template-columns:1fr;}}
+    .lpv-cards.sq .lpv-card-img{height:auto;aspect-ratio:1/1;}
+    .lpv-card-ph{width:100%;aspect-ratio:1/1;border-radius:10px;margin-bottom:12px;
+      background:${overlayFaint};}
     .lpv-card-tag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:1.5px;
       padding:3px 12px;border-radius:999px;margin-bottom:12px;
       background:${overlayFaint};color:${textSemi65};}
@@ -533,14 +538,17 @@ function StepsSection({ c }: { c: Record<string, unknown> }) {
 function CardsSection({ c }: { c: Record<string, unknown> }) {
   type CardItem = { tag: string; variant: string; title: string; subtitle: string; value: string; unit: string; extras: string[]; image_url?: string }
   const cards = (c.cards as CardItem[]) || []
+  const square = c.layout === 'square'
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
       <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
-      <div className="lpv-cards">
+      <div className={`lpv-cards${square ? ' sq' : ''}`}>
         {cards.map((card, i) => (
           <div key={i} className={`lpv-card ${card.variant === 'grand' ? 'grand' : 'star'}`}>
-            {card.image_url && <img src={card.image_url} alt={card.title || ''} className="lpv-card-img" />}
+            {card.image_url
+              ? <img src={card.image_url} alt={card.title || ''} className="lpv-card-img" />
+              : square && <div className="lpv-card-ph" />}
             {card.tag && <span className="lpv-card-tag">{card.tag}</span>}
             {card.title && <div className="lpv-card-title">{card.title}</div>}
             {card.subtitle && <div className="lpv-card-sub">{card.subtitle}</div>}

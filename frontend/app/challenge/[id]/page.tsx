@@ -858,8 +858,6 @@ export default function MachinePage() {
       { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
       { label: '保底進度', value: `${Math.min(spinsThisTier, machine.floor_spin_count)} / ${machine.floor_spin_count}` },
     ];
-    // 機台專屬活動頁：機台設定優先，其次沿用主題共用的說明頁
-    const eventSlug = machine.event_slug || machine.slot_themes?.event_slug || null;
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
         <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
@@ -873,15 +871,13 @@ export default function MachinePage() {
               <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">{value}</span>
             </div>
           ))}
-          {eventSlug && (
-            <div className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">機台說明</span>
-              <Link href={`/events/${eventSlug}`}
-                className="text-primary font-black text-[13px] text-right underline underline-offset-2 hover:opacity-80 transition-opacity">
-                前往查看
-              </Link>
-            </div>
-          )}
+          <div className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+            <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">規則說明</span>
+            <Link href="/challenge/rules"
+              className="text-primary font-black text-[13px] text-right underline underline-offset-2 hover:opacity-80 transition-opacity">
+              前往查看
+            </Link>
+          </div>
         </div>
 
         <div className="pt-1">
