@@ -83,7 +83,7 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
     <AnimatePresence>
       {prize && (
         <motion.div
-          className="fixed inset-0 z-[2700] flex items-center justify-center p-5"
+          className="fixed inset-0 z-[2700] flex items-end justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -91,19 +91,19 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
           onClick={onClose}
         >
           {/* backdrop */}
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/60" />
 
-          {/* sheet */}
+          {/* bottom sheet */}
           <motion.div
-            className="relative w-full max-w-[320px] bg-white dark:bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl"
-            initial={{ scale: 0.92, opacity: 0, y: 16 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 16 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-full max-w-[560px] bg-white dark:bg-neutral-900 rounded-t-3xl overflow-y-auto max-h-[88dvh] shadow-2xl pb-[env(safe-area-inset-bottom)]"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onClick={e => e.stopPropagation()}
           >
             {/* header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="sticky top-0 bg-white dark:bg-neutral-900 flex items-center justify-between px-5 pt-4 pb-2 z-10">
               <span className="font-black text-sm text-neutral-900 dark:text-neutral-100 tracking-wide">商品詳細</span>
               <button
                 type="button"
@@ -115,8 +115,8 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
             </div>
 
             {/* image */}
-            <div className="px-8 pb-4">
-              <div className="relative w-full aspect-[63/88] bg-neutral-50 dark:bg-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-5 pt-1 pb-2 flex justify-center">
+              <div className="relative w-[62%] max-w-[240px] aspect-[63/88] bg-neutral-50 dark:bg-neutral-800 rounded-xl overflow-hidden shadow-sm">
                 <Image
                   src={prize?.image_url || '/images/item_defaulet.png'}
                   alt={prize?.name ?? ''}
@@ -128,7 +128,7 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
             </div>
 
             {/* name */}
-            <div className="px-5 pb-3 text-center">
+            <div className="px-5 pb-2 text-center">
               <p className="font-black text-sm text-neutral-900 dark:text-neutral-100 leading-snug">{prize?.name}</p>
             </div>
 
@@ -136,9 +136,9 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
             {rows.length > 0 && (
               <>
                 <div className="h-px bg-neutral-100 dark:bg-neutral-800 mx-5" />
-                <div className="px-5 py-3 flex flex-col gap-0">
+                <div className="px-5 pt-1 pb-4 flex flex-col gap-0">
                   {rows.map((row, i) => (
-                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-neutral-50 dark:border-neutral-800 last:border-0">
                       <span className="text-[13px] text-neutral-400 dark:text-neutral-500">{row.label}</span>
                       <span className="text-[13px]">{row.value}</span>
                     </div>
