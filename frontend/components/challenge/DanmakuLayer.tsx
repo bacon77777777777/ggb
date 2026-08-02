@@ -63,8 +63,10 @@ export default function DanmakuLayer({ items, paused }: { items: DanmakuItem[]; 
       aria-hidden
       // z-10：高於機台內部元素（最高 z=8），低於頂部操作列（z-20）與結束警示條（z-30），
       // 彈幕從按鈕與警示條「後面」通過，不遮擋必看資訊
-      className="pointer-events-none absolute inset-x-0 top-0 z-10 overflow-hidden transition-opacity duration-500"
-      style={{ height: '26%', opacity: paused ? 0 : 1 }}
+      className="pointer-events-none absolute inset-x-0 z-10 overflow-hidden transition-opacity duration-500"
+      // 起點下移到頂部操作列之下（返回/彈幕/音效鈕高 38px + 上下各 10px 邊距）：
+      // 即使 z-index 已低於操作列，重疊時彈幕仍會從鈕的後方穿過去，視覺很雜
+      style={{ top: 'calc(env(safe-area-inset-top) + 62px)', height: '22%', opacity: paused ? 0 : 1 }}
     >
       {flying.map(f => (
         <div

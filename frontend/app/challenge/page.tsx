@@ -28,6 +28,7 @@ interface SlotPoolItem {
 interface SlotTheme {
   id: number;
   name: string;
+  sort_order: number | null;
   image_url: string | null;
   event_slug: string | null;
   start_at: string | null;
@@ -538,13 +539,42 @@ export default function ChallengePage() {
   // 用 slot_themes.name 分組（無主題則 fallback machine_theme）
   const themeKey = (m: SlotMachine) => m.slot_themes?.name || m.machine_theme || '其他';
 
+  // 左右滑動切換頁籤（僅在水平位移明顯大於垂直時觸發，避免干擾直向捲動）
+  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const onSwipeStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onSwipeEnd = (e: React.TouchEvent) => {
+    const s0 = swipeRef.current;
+    swipeRef.current = null;
+    if (!s0) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s0.x;
+    const dy = t.clientY - s0.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const names = themes.map(t2 => t2.name);
+    const i = names.indexOf(activeTheme);
+    if (i < 0) return;
+    const next = dx < 0 ? i + 1 : i - 1;
+    if (next >= 0 && next < names.length) setActiveTheme(names[next]);
+  };
+
   // Build tabs
   const themes = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const m of machines) counts[themeKey(m)] = (counts[themeKey(m)] ?? 0) + 1;
+    // 依主題 sort_order 固定頁籤順序：機台的 sort_order 各主題皆為 1~5，
+    // 平手時順序會隨查詢結果浮動，導致頁籤位置不穩定
+    const counts: Record<string, { count: number; order: number }> = {};
+    for (const m of machines) {
+      const k = themeKey(m);
+      const order = m.slot_themes?.sort_order ?? m.slot_themes?.id ?? 999;
+      counts[k] = { count: (counts[k]?.count ?? 0) + 1, order: counts[k]?.order ?? order };
+    }
     return [
       { name: '全部', count: machines.length },
-      ...Object.entries(counts).map(([name, count]) => ({ name, count })),
+      ...Object.entries(counts)
+        .sort((a, b) => a[1].order - b[1].order)
+        .map(([name, v]) => ({ name, count: v.count })),
     ];
   }, [machines]);
 
@@ -702,7 +732,8 @@ export default function ChallengePage() {
         )}
 
         {/* 2-column machine grid — same grid as home products */}
-        <div className="px-2 pt-2 md:px-0 md:pt-4">
+        <div className="px-2 pt-2 md:px-0 md:pt-4"
+          onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
           {machinesLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (

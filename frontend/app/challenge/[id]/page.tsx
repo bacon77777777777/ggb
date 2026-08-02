@@ -770,11 +770,9 @@ export default function MachinePage() {
         {/* 標題列 */}
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
           <h2 className="text-sm font-black text-neutral-900 dark:text-neutral-50">獎池總覽</h2>
-          {isRushActive && (
-            <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
-              ⚡ RUSH 模式
-            </span>
-          )}
+          {/* 原本此處有「⚡ RUSH 模式」標籤，已移除：
+              它跟著 isRushActive 即時切換，會在滾輪還沒停穩前就先消失，
+              等於提前洩漏這轉有沒有連中，破壞開獎的懸念 */}
         </div>
 
         {!hasContent && (

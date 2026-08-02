@@ -17,7 +17,7 @@ export async function GET() {
         occupant_id, occupant_active_until, occupancy_expires_at,
         day_rush, day_spins, day_reset_date, start_at, end_at,
         slot_themes(
-          id, name, image_url, event_slug, start_at, end_at,
+          id, name, image_url, event_slug, start_at, end_at, sort_order,
           video_rush_entry, video_rush_anticipation,
           video_rush_win, video_rush_win_strong,
           video_rush_win_god, video_rush_revival
