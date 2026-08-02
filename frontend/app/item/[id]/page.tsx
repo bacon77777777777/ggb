@@ -31,6 +31,7 @@ import { useAlert } from '@/components/ui/AlertDialog';
 import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
 function getRandomPackStyles(): string[] {
   return Array.from({ length: 9 }, () =>
@@ -363,7 +364,7 @@ export default function ProductDetailPage() {
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [isGachaLoading, setIsGachaLoading] = useState(false);
-  const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number } | null>(null);
+  const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number; probability?: number | null; recycle_value?: number | null } | null>(null);
   const [recommendations, setRecommendations] = useState<Database['public']['Tables']['products']['Row'][]>([]);
   
   // Purchase Flow State
@@ -1386,7 +1387,9 @@ export default function ProductDetailPage() {
                           image_url: prize.image_url || undefined,
                           level: prize.level,
                           total: prize.total,
-                          remaining: prize.remaining
+                          remaining: prize.remaining,
+                          probability: (prize as any).probability ?? null,
+                          recycle_value: (prize as any).recycle_value ?? null,
                         })}
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
@@ -1453,6 +1456,8 @@ export default function ProductDetailPage() {
                           level: lastOnePrize.level,
                           total: lastOnePrize.total,
                           remaining: lastOnePrize.remaining,
+                          probability: (lastOnePrize as any).probability ?? null,
+                          recycle_value: (lastOnePrize as any).recycle_value ?? null,
                         })
                       }
                     >
@@ -1715,29 +1720,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {viewingPrize && (
-          <div
-            className="fixed inset-0 z-[2200] bg-black/80 flex items-center justify-center"
-            onClick={() => setViewingPrize(null)}
-          >
-            <div
-              className="relative w-[80vw] max-w-sm max-h-[80vh] flex flex-col items-center justify-center gap-3"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] text-center px-3">
-                {viewingPrize.name}
-              </div>
-              <Image
-                src={viewingPrize.image_url || '/images/item.png'}
-                alt={viewingPrize.name}
-                width={800}
-                height={800}
-                className="max-w-full max-h-full object-contain rounded-2xl"
-                unoptimized
-              />
-            </div>
-          </div>
-        )}
+        <PrizeDetailSheet prize={viewingPrize} onClose={() => setViewingPrize(null)} />
 
         {(() => {
           const cardTheme = (product as any).machine_theme || moduleSettings['card'];
@@ -1992,7 +1975,9 @@ export default function ProductDetailPage() {
                           image_url: prize.image_url || undefined,
                           level: prize.level,
                           total: prize.total,
-                          remaining: prize.remaining
+                          remaining: prize.remaining,
+                          probability: (prize as any).probability ?? null,
+                          recycle_value: (prize as any).recycle_value ?? null,
                         })}
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
@@ -2059,6 +2044,8 @@ export default function ProductDetailPage() {
                           level: lastOnePrize.level,
                           total: lastOnePrize.total,
                           remaining: lastOnePrize.remaining,
+                          probability: (lastOnePrize as any).probability ?? null,
+                          recycle_value: (lastOnePrize as any).recycle_value ?? null,
                         })
                       }
                     >
@@ -2262,29 +2249,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {viewingPrize && (
-          <div
-            className="fixed inset-0 z-[2200] bg-black/80 flex items-center justify-center"
-            onClick={() => setViewingPrize(null)}
-          >
-            <div
-              className="relative w-[80vw] max-w-sm max-h-[80vh] flex flex-col items-center justify-center gap-3"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] text-center px-3">
-                {viewingPrize.name}
-              </div>
-              <Image
-                src={viewingPrize.image_url || '/images/item.png'}
-                alt={viewingPrize.name}
-                width={800}
-                height={800}
-                className="max-w-full max-h-full object-contain rounded-2xl"
-                unoptimized
-              />
-            </div>
-          </div>
-        )}
+        <PrizeDetailSheet prize={viewingPrize} onClose={() => setViewingPrize(null)} />
 
         <ActionBar hideOn="lg">
           <div className="flex items-center gap-4 w-full">
