@@ -43,7 +43,7 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
   if (!mounted) return null;
 
   const rows: { label: string; value: React.ReactNode }[] = [];
-  if (prize?.level) {
+  if (prize?.level && prize.level !== prize.name) {
     rows.push({
       label: '賞等',
       value: <span className={`font-black ${getLevelStyle(prize.level)}`}>{prize.level}</span>,
@@ -73,9 +73,11 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
     });
   }
   if (prize?.probability !== undefined && prize.probability !== null && prize.probability > 0) {
+    // DB 兩種存法並存：<=1 視為小數（0.25），>1 視為已是百分比數值（25）
+    const pct = prize.probability <= 1 ? prize.probability * 100 : prize.probability;
     rows.push({
       label: '機率',
-      value: <span className="font-black text-neutral-800 dark:text-neutral-200">{(prize.probability * 100).toFixed(2)}%</span>,
+      value: <span className="font-black text-neutral-800 dark:text-neutral-200">{pct.toFixed(2)}%</span>,
     });
   }
 
@@ -114,17 +116,16 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
               </button>
             </div>
 
-            {/* image */}
+            {/* image：容器貼合圖片本身比例，不留白邊 */}
             <div className="px-5 pt-1 pb-2 flex justify-center">
-              <div className="relative w-[62%] max-w-[240px] aspect-[63/88] bg-neutral-50 dark:bg-neutral-800 rounded-xl overflow-hidden shadow-sm">
-                <Image
-                  src={prize?.image_url || '/images/item_defaulet.png'}
-                  alt={prize?.name ?? ''}
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
+              <Image
+                src={prize?.image_url || '/images/item_defaulet.png'}
+                alt={prize?.name ?? ''}
+                width={480}
+                height={480}
+                className="h-[36dvh] max-h-[320px] w-auto max-w-full object-contain rounded-xl"
+                unoptimized
+              />
             </div>
 
             {/* name */}
