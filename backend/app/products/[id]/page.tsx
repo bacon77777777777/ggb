@@ -13,7 +13,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   ],
   card:     [
     { value: 'card_pack',  label: '蓄力開卡包（按住撕開 → 翻牌）' },
-    { value: 'card_flip',  label: '直接翻牌（略過開包動畫）' },
+    { value: 'card_video', label: '過場影片（播完回商品頁彈出恭喜）' },
   ],
   custom:   [
     { value: 'custom_combo', label: '影片互動 Combo（全畫面影片＋互動點擊）' },
