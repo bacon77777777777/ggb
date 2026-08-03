@@ -195,8 +195,11 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
       background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
     .lpv-eyebrow{position:relative;z-index:3;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
+    /* line-height 需 >=1.1：中文字身高於行框，而 background-clip:text 只在
+       元素框內上色，行框太矮會讓超出的字身變透明，看起來像被裁掉。
+       padding-block 再留一點餘裕給 drop-shadow 與較高的字型。 */
     .lpv-title{position:relative;z-index:3;font-family:'Arial Black','Noto Sans JP',sans-serif;
-      font-weight:900;line-height:.9;letter-spacing:2px;font-size:clamp(34px,9.5vw,78px);
+      font-weight:900;line-height:1.12;padding-block:.04em;letter-spacing:2px;font-size:clamp(34px,9.5vw,78px);
       background:${titleGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;
       filter:drop-shadow(0 4px 26px ${glow40});}
@@ -272,7 +275,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-card.grand .lpv-card-tag{background:${cardDark};color:${vars.accent};}
     .lpv-card-title{font-weight:900;font-size:17px;}
     .lpv-card-sub{font-size:11px;color:${textSemi42};margin-top:4px;}
-    .lpv-card-num{font-weight:900;font-size:clamp(28px,8vw,42px);line-height:1.05;margin-top:10px;
+    .lpv-card-num{font-weight:900;font-size:clamp(28px,8vw,42px);line-height:1.15;margin-top:10px;
       background:${cardNumGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;}
     .lpv-card-unit{font-size:14px;font-weight:900;}
