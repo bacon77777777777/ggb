@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
+import { detectWatermark, detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -252,16 +252,16 @@ async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | 
  *
  * 圖片來自已經抓下來的文章 HTML，不額外發請求、不做圖片生成，
  * 成本僅為 R2 儲存。轉存 R2 而非直接外連，是因為部分來源站擋 hotlink。
- * 帶浮水印的來源（如 dengeki）一律不取內文圖，避免整篇都是別站浮水印。
+ * 每張圖都會偵測浮水印，偵測到就比照封面蓋上 GGB logo 蓋掉，
+ * 沒偵測到就原樣轉存 —— 不會為了保險而在乾淨的圖上亂蓋 logo。
  */
 async function injectBodyImages(
   content: string,
   articleHtml: string,
   coverUrl: string,
   pageUrl: string,
-  isWatermarked: boolean,
 ): Promise<string> {
-  if (!content || !articleHtml || isWatermarked) return content
+  if (!content || !articleHtml) return content
 
   const candidates = extractBodyImages(articleHtml, 6)
     .map(u => resolveImageUrl(u, pageUrl))
@@ -271,7 +271,8 @@ async function injectBodyImages(
   const hosted: string[] = []
   for (const u of candidates) {
     if (hosted.length >= 2) break
-    const r = await downloadImageToR2(u)
+    // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
+    const r = await downloadSmartToR2(u)
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -296,6 +297,38 @@ async function injectBodyImages(
 
 function figureHtml(url: string): string {
   return `<figure><img src="${url}" alt="" loading="lazy" /></figure>`
+}
+
+/**
+ * 轉存到 R2，並在偵測到浮水印時蓋上 GGB logo
+ *
+ * 與 downloadBrandedToR2 的差別：那支是「已知來源帶浮水印」時無條件蓋，
+ * 這支是先偵測再決定 —— 沒浮水印就不要亂蓋 logo 破壞原圖。
+ * 只抓一次圖，偵測是本地模板比對，不產生額外費用。
+ */
+async function downloadSmartToR2(imgUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(imgUrl, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length < 3_000) return null
+
+    const wm = await detectWatermark(buf)
+    if (wm.found) {
+      const branded = await brandCoverImage(buf, wm.corner)
+      if (branded) {
+        const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
+        return await r2Upload(key, branded, 'image/jpeg')
+      }
+    }
+    const webp = await sharp(buf).resize(1200, null, { withoutEnlargement: true }).webp({ quality: 82 }).toBuffer()
+    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
+    return await r2Upload(key, webp, 'image/webp')
+  } catch { return null }
 }
 
 async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
@@ -703,9 +736,11 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
+      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadImageToR2(ogImage)) ?? ogImage)
+        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
@@ -784,9 +819,11 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
+      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadImageToR2(ogImage)) ?? ogImage)
+        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
       const finalCategory = (draft.category && draft.category !== 'general')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
@@ -794,7 +831,7 @@ export async function POST(req: NextRequest) {
       // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
       // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
       const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml, ogImage, realUrl, isWatermarked
+        draft.content, articleHtml, ogImage, realUrl
       )
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
