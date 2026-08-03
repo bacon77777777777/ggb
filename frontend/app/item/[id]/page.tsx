@@ -24,7 +24,6 @@ import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
 import CardDrawAnimation from '@/components/card/CardDrawAnimation';
-import CardFlipDirect from '@/components/card/CardFlipDirect';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { useAlert } from '@/components/ui/AlertDialog';
@@ -1735,16 +1734,7 @@ export default function ProductDetailPage() {
               />
             );
           }
-          if (cardTheme === 'card_flip') {
-            return (
-              <CardFlipDirect
-                isOpen={isVideoOpen}
-                prizes={wonPrizes}
-                onGoToWarehouse={handleVideoEnd}
-                onContinue={handleCardContinue}
-              />
-            );
-          }
+          // card_video 與未設定皆走過場影片：播完 handleVideoEnd 會關影片並開恭喜彈窗
           return isVideoOpen ? (
             <div className="fixed inset-0 z-[2100] bg-black pointer-events-auto flex items-center justify-center">
               <div className="relative w-full h-full max-w-[560px] bg-black shadow-2xl">
@@ -2327,7 +2317,7 @@ export default function ProductDetailPage() {
         {(() => {
           const effectiveTheme = (product as any).machine_theme || moduleSettings[product.type];
           // custom 型別永遠走 GachaBattleEffect（combo 影片互動），不走 GachaThemeRenderer
-          if (product.type !== 'custom' && (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack' || effectiveTheme === 'card_flip')) {
+          if (product.type !== 'custom' && (effectiveTheme === 'ichiban_grid' || effectiveTheme === 'custom_grid' || effectiveTheme === 'card_pack')) {
             return (
               <GachaThemeRenderer
                 theme={effectiveTheme || 'gacha_classic'}

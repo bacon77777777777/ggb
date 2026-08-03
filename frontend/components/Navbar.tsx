@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import NavbarLayout from './NavbarLayout';
+import { countUnread } from '@/lib/announcementRead';
 
 export default function Navbar() {
   return (
@@ -37,23 +38,19 @@ function NavbarInner() {
   const [bellUnread, setBellUnread] = useState(false);
 
   useEffect(() => {
-    const LAST_SEEN_KEY = 'ggb:bell:last_seen';
     const check = async () => {
       try {
-        const res = await fetch('/api/announcements?limit=1');
+        const res = await fetch('/api/announcements?limit=30');
         if (!res.ok) return;
         const data = await res.json();
         if (!Array.isArray(data) || data.length === 0) return;
-        const latestAt = data[0]?.published_at;
-        if (!latestAt) return;
-        const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
-        if (!lastSeen || new Date(latestAt) > new Date(lastSeen)) {
-          setBellUnread(true);
-        }
+        // 逐則判定：列表已改成單則已讀，鈴鐺不能再只看「最後檢視時間」
+        setBellUnread(countUnread(data as { id: string; published_at: string }[]) > 0);
       } catch {}
     };
     check();
-    const handler = () => setBellUnread(false);
+    // 已讀狀態變動時重新計算（可能只讀了一則，仍有其他未讀）
+    const handler = () => { void check(); };
     window.addEventListener('ggb:announcementsRead', handler);
     return () => window.removeEventListener('ggb:announcementsRead', handler);
   }, []);
@@ -819,10 +816,21 @@ function NavbarInner() {
                 aria-label="公告"
               >
                 <Bell className="w-5 h-5 stroke-[2]" />
+                {/* 尺寸/位置對齊會員頁的設定齒輪紅點，邊框改用導航列底色才看得出來 */}
                 {bellUnread && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent-red border border-white dark:border-neutral-950" />
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent-red border-2 border-white dark:border-neutral-950" />
                 )}
               </Link>
+            )}
+
+            {pathname === '/announcements' && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('ggb:markAllAnnouncementsRead'))}
+                className="px-2.5 py-1 text-[12px] font-black text-neutral-600 dark:text-neutral-300 hover:text-primary transition-colors whitespace-nowrap"
+              >
+                全部已讀
+              </button>
             )}
 
             {isAuthenticated && isHomePage && (

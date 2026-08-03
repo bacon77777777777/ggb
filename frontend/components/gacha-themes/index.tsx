@@ -14,7 +14,6 @@ export type MachineTheme =
   | 'custom_grid'
   | 'custom_tear'
   | 'card_pack'
-  | 'card_flip'
   | 'blindbox_classic'
   | 'blindbox_mode2'
   | 'blindbox_mode3'
@@ -31,7 +30,6 @@ export interface GachaThemeProps {
 // 各主題 lazy load（尚未實作的暫時 fallback 到 ClassicCapsule）
 const ClassicCapsule = dynamic(() => import('@/components/GachaMachine'), { ssr: false });
 const CardPackAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
-const CardFlipDirect = dynamic(() => import('@/components/card/CardFlipDirect'), { ssr: false });
 
 const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   gacha_classic:    ClassicCapsule,
@@ -44,7 +42,6 @@ const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   custom_grid:      ClassicCapsule,
   custom_tear:      ClassicCapsule,
   card_pack:        CardPackAnimation,
-  card_flip:        CardFlipDirect,
   blindbox_classic: ClassicCapsule,
   blindbox_mode2:   ClassicCapsule,
   blindbox_mode3:   ClassicCapsule,

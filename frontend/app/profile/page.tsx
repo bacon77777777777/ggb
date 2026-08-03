@@ -2202,6 +2202,13 @@ function ProfileContent() {
   }
 
   const isGuest = !user;
+
+  // 設定頁的五個必填項（對應各列的「立即設定」）；有任一未完成 → 齒輪顯示紅點
+  const settingsIncomplete = !isGuest && !!user && (
+    !user.name || !user.is_phone_verified || !user.email ||
+    !settingsForm.gender || !settingsForm.birthday
+  );
+
   const loginHref = '/login?redirect=%2Fprofile';
 
   const navItems = [
@@ -6304,19 +6311,32 @@ function ProfileContent() {
               <div className="absolute top-[8%] left-0 w-full px-[4.2%] flex items-center justify-between">
                 <div className="flex-1 flex items-center gap-[2.1%] min-w-0">
                   {/* Avatar */}
-                  <div className="relative shrink-0 w-[16%] aspect-square rounded-full overflow-hidden border-2 border-white/20">
-                    {isGuest ? (
-                      <div className="w-full h-full bg-neutral-200 flex items-center justify-center">
-                        <User className="w-1/2 h-1/2 text-neutral-400" />
+                  <div className="relative shrink-0 w-[16%] aspect-square">
+                    <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/20">
+                      {isGuest ? (
+                        <div className="w-full h-full bg-neutral-200 flex items-center justify-center">
+                          <User className="w-1/2 h-1/2 text-neutral-400" />
+                        </div>
+                      ) : (
+                        <Image
+                          src={user.avatar_url || '/images/avatar.png'}
+                          alt={user.name || 'User'}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      )}
+                    </div>
+                    {/* 已認證：手機驗證通過才顯示。掛在頭像外層，避免被圓形裁切吃掉 */}
+                    {!isGuest && user.is_phone_verified && (
+                      <div
+                        className="absolute -bottom-0.5 -right-0.5 w-[34%] aspect-square rounded-full bg-[#22c55e] border-2 border-white flex items-center justify-center shadow"
+                        title="已認證"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-3/5 h-3/5" fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
                       </div>
-                    ) : (
-                      <Image 
-                        src={user.avatar_url || '/images/avatar.png'} 
-                        alt={user.name || 'User'} 
-                        fill 
-                        className="object-cover" 
-                        unoptimized
-                      />
                     )}
                   </div>
 
@@ -6404,7 +6424,7 @@ function ProfileContent() {
                         className="w-[32px] h-[32px] bg-black/10 rounded-full flex items-center justify-center backdrop-blur-sm active:bg-black/20 transition-colors relative"
                       >
                         <Settings className="w-5 h-5 text-white" />
-                        {!isGuest && !user.is_phone_verified && (
+                        {settingsIncomplete && (
                           <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent-red border-2 border-white/20 rounded-full" />
                         )}
                       </button>

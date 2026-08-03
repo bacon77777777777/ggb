@@ -318,6 +318,26 @@ import { useToast } from '@/contexts/ToastContext'
 
 ---
 
+## 前台文案原則：不要把技術術語丟給玩家
+
+**任何會被玩家看到的字串，都不可出現路徑、欄位名、狀態碼、內部代號。**
+玩家看到 `/events/slam-dunk` 不知道那是什麼，也點不了。
+
+| 不可以 | 應該寫成 |
+|--------|----------|
+| `前往查看：/events/zetcho-rush` | `[前往查看活動資訊頁](/events/zetcho-rush)` |
+| `玩法說明：/events/slam-dunk` | `[查看玩法說明](/events/slam-dunk)` |
+| `前往挑戰：/challenge` | `[前往挑戰機台](/challenge)` |
+| 「按下的瞬間由伺服器決定並寫入紀錄」 | 「按下去的那一刻結果就定了，斷線也算你的」 |
+| 「購買進入權」 | 「買一張入場券」 |
+
+**公告內文的連結寫法**：`[顯示文字](/path)`。
+公告內頁（`frontend/app/announcements/[id]/page.tsx` 的 `linkify`）會渲染成
+主題色 + 底線的可點連結；站內走 `next/link`，站外才開新分頁。
+裸網址仍相容（舊資料），但新文案一律用有顯示文字的寫法。
+
+同樣原則適用於活動頁、機台頁、錯誤訊息與任何前台提示。
+
 ## 重要慣例
 
 - 所有 migration 執行後 commit 並 push（不需詢問）

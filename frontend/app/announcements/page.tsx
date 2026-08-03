@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import { timeAgo } from '@/lib/timeAgo';
+import { getReadIds, isUnread, markRead, markAllRead } from '@/lib/announcementRead';
 
 interface Announcement {
   id: string;
@@ -29,7 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   系統: 'bg-neutral-100 text-neutral-600',
 };
 
-const LAST_SEEN_KEY = 'ggb:bell:last_seen';
+
 
 function LoadingSkeleton() {
   return (
@@ -52,6 +53,7 @@ export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const tabKeys = CATEGORIES.map(c => c.key);
   const swipeX = useRef<number | null>(null);
 
@@ -62,9 +64,23 @@ export default function AnnouncementsPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
 
-    localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
-    window.dispatchEvent(new CustomEvent('ggb:announcementsRead'));
+    // 刻意不在進頁時全標已讀 —— 那樣逐則紅點就失去意義；
+    // 已讀改由「點進內頁」或「全部已讀」觸發
+    setReadIds(getReadIds());
   }, []);
+
+  const unreadCount = items.filter(i => isUnread(i, readIds)).length;
+
+  const handleMarkAll = useCallback(() => {
+    markAllRead(items.map(i => i.id));
+    setReadIds(getReadIds());
+  }, [items]);
+
+  // 「全部已讀」按鈕在 Navbar 上（公告頁專用），透過事件觸發此處
+  useEffect(() => {
+    window.addEventListener('ggb:markAllAnnouncementsRead', handleMarkAll);
+    return () => window.removeEventListener('ggb:markAllAnnouncementsRead', handleMarkAll);
+  }, [handleMarkAll]);
 
   const onTouchStart = (e: React.TouchEvent) => { swipeX.current = e.touches[0].clientX; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -105,7 +121,15 @@ export default function AnnouncementsPage() {
           ) : (
             filtered.map(item => (
               <div key={item.id} className="relative py-3 border-b border-neutral-100 dark:border-neutral-800 last:border-0 active:bg-neutral-50 dark:active:bg-neutral-800/40 transition-colors">
-                <Link href={`/announcements/${item.id}`} className="absolute inset-0 z-0" aria-label={item.title} />
+                <Link
+                  href={`/announcements/${item.id}`}
+                  className="absolute inset-0 z-0"
+                  aria-label={item.title}
+                  onClick={() => markRead(item.id)}
+                />
+                {isUnread(item, readIds) && (
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-2.5 h-2.5 rounded-full bg-accent-red" aria-label="未讀" />
+                )}
                 <div className="pointer-events-none relative z-10">
                   <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                     {item.is_pinned && (
