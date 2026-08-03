@@ -40,15 +40,20 @@ const PHYS_R = HOLE_R + 10;
 const FRONT_FLOOR = HOLE_B + BOX_R * 0.5;
 const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 
+// ─── 素材資料夾 ───────────────────────────────────────────────────────────────
+// 同一台販賣機邏輯可換皮：mode3（叢林探險）、mode4（賽璐璐風格）版位完全相同，
+// 只有 main.png / hole_bg.png 不同，故素材根目錄做成參數。
+const DEFAULT_ASSET_BASE = '/images/blindbox/mode3';
+
 // ─── 6-face image paths ───────────────────────────────────────────────────────
-const FACES = {
-  front:  '/images/blindbox/mode3/box/4.png',
-  back:   '/images/blindbox/mode3/box/6.png',
-  left:   '/images/blindbox/mode3/box/3.png',
-  right:  '/images/blindbox/mode3/box/5.png',
-  top:    '/images/blindbox/mode3/box/2.png', // 交換：原 bottom 圖
-  bottom: '/images/blindbox/mode3/box/1.png', // 交換：原 top 圖
-} as const;
+const faceSrcs = (base: string) => ({
+  front:  `${base}/box/4.png`,
+  back:   `${base}/box/6.png`,
+  left:   `${base}/box/3.png`,
+  right:  `${base}/box/5.png`,
+  top:    `${base}/box/2.png`, // 交換：原 bottom 圖
+  bottom: `${base}/box/1.png`, // 交換：原 top 圖
+});
 
 // Resting viewing angle when box is settled
 const BASE_AX = -20; // deg — tilt back to show top face
@@ -76,7 +81,8 @@ function rand(min: number, max: number) { return min + Math.random() * (max - mi
 //   Front/Back : W×H, rotateY(0/180) translateZ(D/2)
 //   Right/Left : D×H, centered at X=±W/2 via rotateY(±90) translateZ(W/2)
 //   Top/Bottom : W×D, centered at Y=∓H/2 via rotateX(∓90) translateZ(H/2)
-function Box3DFaces() {
+function Box3DFaces({ assetBase }: { assetBase: string }) {
+  const FACES = faceSrcs(assetBase);
   const hw = BOX_W / 2, hh = BOX_H / 2, hd = BOX_D / 2;
   // left/top offsets keep face-div center aligned with box-div center before rotation
   const sideLeft = (BOX_W - BOX_D) / 2;
@@ -134,6 +140,8 @@ export interface BlindboxMachineMode3Props {
   onTrial?:     () => void;
   isSoldOut?:   boolean;
   onLoaded?:    () => void;
+  /** 素材資料夾，換皮用（mode3 = 叢林探險、mode4 = 賽璐璐風格） */
+  assetBase?:   string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -145,6 +153,7 @@ export function BlindboxMachineMode3({
   onTrial,
   isSoldOut,
   onLoaded,
+  assetBase = DEFAULT_ASSET_BASE,
 }: BlindboxMachineMode3Props) {
 
   const [slotState, setSlotState]       = useState<('present' | 'nudging' | 'gone' | 'shuffling')[]>(Array(20).fill('present'));
@@ -449,7 +458,7 @@ export function BlindboxMachineMode3({
       {/* Background */}
       <div className="absolute inset-0">
         <Image
-          src="/images/blindbox/mode3/main.png" alt="blindbox machine"
+          src={`${assetBase}/main.png`} alt="blindbox machine"
           fill className="object-fill" unoptimized
           onLoad={() => onLoaded?.()}
         />
@@ -549,7 +558,7 @@ export function BlindboxMachineMode3({
                 transition: innerTransition !== 'none' ? innerTransition : undefined,
                 ...(innerAnimation ? { animation: innerAnimation } : {}),
               }}>
-                <Box3DFaces />
+                <Box3DFaces assetBase={assetBase} />
               </div>
             </div>
           );
@@ -578,7 +587,7 @@ export function BlindboxMachineMode3({
             willChange: 'transform',
           }}
         >
-          <Box3DFaces />
+          <Box3DFaces assetBase={assetBase} />
         </div>
       ))}
 
@@ -600,14 +609,14 @@ export function BlindboxMachineMode3({
               transform: shelfBase3D(BACK_SCALE, slot.col),
             }}
           >
-            <Box3DFaces />
+            <Box3DFaces assetBase={assetBase} />
           </motion.div>
         );
       })}
 
       {/* hole_bg (z=12): opaque overlay with transparent oval — reveals physics boxes */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
-        <Image src="/images/blindbox/mode3/hole_bg.png" alt="" fill className="object-fill" unoptimized />
+        <Image src={`${assetBase}/hole_bg.png`} alt="" fill className="object-fill" unoptimized />
       </div>
 
       {/* Retrieval slot click area — appears after boxes settle (z=14) */}
@@ -641,19 +650,19 @@ export function BlindboxMachineMode3({
 
       {/* Buttons (z=20) */}
       <ImageButton
-        src="/images/blindbox/mode3/btn2.png" alt="換一批" text="換一批"
+        src={`${assetBase}/btn2.png`} alt="換一批" text="換一批"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
-        src="/images/blindbox/mode3/btn1.png" alt="立即開盒" text="立即開盒"
+        src={`${assetBase}/btn1.png`} alt="立即開盒" text="立即開盒"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
         onClick={() => { if (machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
       <ImageButton
-        src="/images/blindbox/mode3/btn2.png" alt="試試看" text="試試看"
+        src={`${assetBase}/btn2.png`} alt="試試看" text="試試看"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}

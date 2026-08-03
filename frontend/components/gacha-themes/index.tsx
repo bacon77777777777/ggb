@@ -17,6 +17,7 @@ export type MachineTheme =
   | 'blindbox_classic'
   | 'blindbox_mode2'
   | 'blindbox_mode3'
+  | 'blindbox_mode4'
   | 'blindbox_claw';
 
 export interface GachaThemeProps {
@@ -45,6 +46,7 @@ const THEME_MAP: Record<MachineTheme, React.ComponentType<GachaThemeProps>> = {
   blindbox_classic: ClassicCapsule,
   blindbox_mode2:   ClassicCapsule,
   blindbox_mode3:   ClassicCapsule,
+  blindbox_mode4:   ClassicCapsule,
   blindbox_claw:    ClassicCapsule,
 };
 
