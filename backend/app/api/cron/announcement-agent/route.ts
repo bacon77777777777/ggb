@@ -15,6 +15,10 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
  *
  * 防重複靠 announcements.source_key 的唯一索引（migration 415），
  * 重複插入會拿到 23505 並被視為「已發過」跳過。
+ *
+ * ⚠️ 內文連結一律寫成 [顯示文字](/path)，不可直接寫路徑：
+ * 玩家看到「/events/slam-dunk」不知道那是什麼，也點不了。
+ * 公告內頁會把這個寫法渲染成主題色可點連結。
  */
 
 const NEW_PRODUCT_THRESHOLD = 5   // 當日新上架商品達此數才發彙總
@@ -64,7 +68,7 @@ export async function GET(req: NextRequest) {
       : ''
     await publish(supabase, r, {
       title: `${ev.title} 開跑！`,
-      content: `${ev.title} 正式開始，快來看看玩法與獎品。${endText}\n\n前往查看：/events/${ev.slug}`,
+      content: `${ev.title} 正式開始，快來看看玩法與獎品。${endText}\n\n[前往查看活動資訊頁](/events/${ev.slug})`,
       category: '活動',
       source_key: `event:${ev.id}`,
     })
@@ -79,10 +83,10 @@ export async function GET(req: NextRequest) {
   for (const t of (themes ?? []) as { id: number; name: string; event_slug: string | null; slot_machines: { is_active: boolean }[] }[]) {
     const live = (t.slot_machines ?? []).filter(m => m.is_active).length
     if (live === 0) continue   // 主題上架但機台都還沒開，不算對玩家可用
-    const link = t.event_slug ? `\n\n玩法說明：/events/${t.event_slug}` : ''
+    const link = t.event_slug ? `\n\n[查看玩法說明](/events/${t.event_slug})` : ''
     await publish(supabase, r, {
       title: `新機台「${t.name}」開放挑戰`,
-      content: `${t.name} 已上線，共 ${live} 台同時開放。${link}\n\n前往挑戰：/challenge`,
+      content: `${t.name} 已上線，共 ${live} 台同時開放。${link}\n\n[前往挑戰機台](/challenge)`,
       category: '活動',
       source_key: `theme:${t.id}`,
     })

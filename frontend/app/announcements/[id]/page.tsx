@@ -38,22 +38,39 @@ function toPath(url: string) {
   try { const u = new URL(url); return u.pathname + u.search + u.hash } catch { return url }
 }
 
+const LINK_CLASS = 'text-primary underline underline-offset-2 font-bold';
+
+/**
+ * 公告內文的連結渲染
+ *
+ * 支援兩種寫法：
+ *   [顯示文字](/path)  → 只顯示文字，不把路徑露給玩家看
+ *   裸網址 https://…   → 舊資料相容，仍以網址本身當文字
+ *
+ * 站內連結一律走 next/link 前端換頁，站外才開新分頁
+ * （PWA 開新分頁會把玩家踢出 App）。
+ */
 function linkify(text: string): React.ReactNode[] {
-  const urlRegex = /https?:\/\/[^\s]+/g;
-  const parts = text.split(urlRegex);
-  const urls = text.match(urlRegex) || [];
-  const result: React.ReactNode[] = [];
-  parts.forEach((part, i) => {
-    result.push(part);
-    if (urls[i]) {
-      const internal = isInternal(urls[i]);
-      result.push(internal
-        ? <Link key={i} href={toPath(urls[i])} className="text-primary underline underline-offset-2 break-all">{urls[i]}</Link>
-        : <a key={i} href={urls[i]} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 break-all">{urls[i]}</a>
-      );
-    }
-  });
-  return result;
+  // [文字](連結) 優先，其次才是裸網址
+  const token = /\[([^\]]+)\]\(([^)\s]+)\)|https?:\/\/[^\s]+/g;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+
+  while ((m = token.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const label = m[1] ?? m[0];
+    const href = m[2] ?? m[0];
+    out.push(
+      isInternal(href)
+        ? <Link key={key++} href={toPath(href)} className={LINK_CLASS}>{label}</Link>
+        : <a key={key++} href={href} target="_blank" rel="noopener noreferrer" className={`${LINK_CLASS} break-all`}>{label}</a>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
 }
 
 export default function AnnouncementDetailPage() {
