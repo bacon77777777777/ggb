@@ -26,8 +26,8 @@ type Locale = 'TW' | 'JP' | 'US'
 const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
   // ── 繁體中文（台灣）
   { q: '一番賞 發售',         category: 'ichiban',  locale: 'TW' },
-  { q: '盒玩 發售 新品',      category: 'blindbox', locale: 'TW' },
-  { q: '盲盒 新品 上市',      category: 'blindbox', locale: 'TW' },
+  { q: '盒玩 發售 新品',      category: 'toy'    , locale: 'TW' },
+  { q: '盲盒 新品 上市',      category: 'toy'    , locale: 'TW' },
   { q: '轉蛋 新品 發售',      category: 'gacha',    locale: 'TW' },
   { q: '卡牌 新彈 發售',      category: 'tcg',      locale: 'TW' },
   { q: '扭蛋 新商品',         category: 'gacha',    locale: 'TW' },
@@ -36,29 +36,36 @@ const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
   { q: '一番くじ 予約',                  category: 'ichiban',  locale: 'JP' },
   { q: 'バンダイ ガシャポン 新商品',     category: 'gacha',    locale: 'JP' },
   { q: 'ガシャポン 発売 予約',           category: 'gacha',    locale: 'JP' },
-  { q: 'ブラインドボックス 新商品 発売', category: 'blindbox', locale: 'JP' },
-  { q: 'ポップマート 新商品',            category: 'blindbox', locale: 'JP' },
+  { q: 'ブラインドボックス 新商品 発売', category: 'toy'    , locale: 'JP' },
+  { q: 'ポップマート 新商品',            category: 'toy'    , locale: 'JP' },
   { q: 'ポケモンカード 新弾 発売',       category: 'tcg',      locale: 'JP' },
   { q: '遊戯王 OCG 新カード 発売',       category: 'tcg',      locale: 'JP' },
+  { q: 'ヴァイスシュヴァルツ 新弾',      category: 'tcg',      locale: 'JP' },
+  { q: 'ワンピースカードゲーム 新弾',    category: 'tcg',      locale: 'JP' },
+  { q: '寶可夢 卡牌 新彈',               category: 'tcg',      locale: 'TW' },
+  { q: '遊戲王 卡牌 新彈 上市',          category: 'tcg',      locale: 'TW' },
+  { q: '食玩 新商品 発売',               category: 'toy',      locale: 'JP' },
+  { q: 'ソフビ 新作 発売',               category: 'toy',      locale: 'JP' },
+  { q: 'TOPTOY 盲盒 新品',               category: 'toy',      locale: 'TW' },
   { q: 'デュエルマスターズ 新弾',        category: 'tcg',      locale: 'JP' },
   // ── 英文（全球）
   { q: 'gashapon new product release 2026', category: 'gacha',    locale: 'US' },
   { q: 'Pokemon TCG new set 2026',          category: 'tcg',      locale: 'US' },
-  { q: 'blind box figure new release',      category: 'blindbox', locale: 'US' },
-  { q: 'Pop Mart new figure',               category: 'blindbox', locale: 'US' },
+  { q: 'blind box figure new release',      category: 'toy'    , locale: 'US' },
+  { q: 'Pop Mart new figure',               category: 'toy'    , locale: 'US' },
   { q: 'Yu-Gi-Oh OCG new card 2026',        category: 'tcg',      locale: 'US' },
 ]
 
 // ── 直接 RSS 來源（非 Google News）──────────────────────────────────────────
 const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
   // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
-  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'general',  label: 'PRTimes-hobby' },
+  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'figure',   label: 'PRTimes-hobby' },
   // 電撃ホビーウェブ
-  { url: 'https://hobby.dengeki.com/feed/',             category: 'general',  label: 'DengekiHobby' },
+  { url: 'https://hobby.dengeki.com/feed/',             category: 'figure',   label: 'DengekiHobby' },
   // Animate Times
-  { url: 'https://www.animatetimes.com/rss.xml',       category: 'general',  label: 'AnimateTimes' },
+  { url: 'https://www.animatetimes.com/rss.xml',       category: 'figure',   label: 'AnimateTimes' },
   // 巴哈姆特 GNN 遊戲動漫新聞（繁中）
-  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'general',  label: 'GNN-TW' },
+  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'figure',   label: 'GNN-TW' },
 ]
 
 const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
@@ -353,8 +360,9 @@ async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
 function classifyByKeywords(text: string): string | null {
   if (/一番賞|一番くじ/.test(text)) return 'ichiban'
   if (/ガシャポン|ガチャ|カプセル|扭蛋|轉蛋/.test(text)) return 'gacha'
-  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG/i.test(text)) return 'tcg'
-  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART/i.test(text)) return 'blindbox'
+  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG|新弾/i.test(text)) return 'tcg'
+  if (/景品|プライズ|フィギュア|公仔|手辦|模型|Figuarts|ROBOT魂|ねんどろいど|黏土人/i.test(text)) return 'figure'
+  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART|食玩|ソフビ|軟膠|周邊|グッズ/i.test(text)) return 'toy'
   return null
 }
 
@@ -524,7 +532,7 @@ ${combined}
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
   "content": "<h2>小標</h2><p>段落...</p><h2>小標</h2><p>段落...</p>（繁體中文，550-750字，4~5段並用 2~3 個 <h2> 分段，從玩家視角介紹：商品特色與造型細節、系列背景或角色亮點、發售與預購資訊、值得入手的理由；資訊不足處以既有內容延伸描述，不可捏造價格或日期）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|blindbox|tcg|figure|general（figure＝公仔/景品/模型/プライズ；能明確歸類就不要用 general）"
+  "category": "ichiban|gacha|tcg|figure|toy（figure＝公仔/景品/模型/プライズ；toy＝盒玩/盲盒/食玩/周邊商品/軟膠/展會；分不出來就用 toy）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -565,8 +573,11 @@ function jaccardSim(a: Set<string>, b: Set<string>): number {
 const CATEGORY_TONE: Record<string, string> = {
   ichiban:  '一番賞景品，語氣可以興奮、期待、或喊衝',
   gacha:    '扭蛋/轉蛋商品，語氣可以可愛、期待、或問哪裡買',
-  blindbox: '盲盒/盒玩商品，語氣可以可愛、驚喜、或分享收藏心情',
+  toy:      '盒玩/盲盒/食玩/周邊商品，語氣可以可愛、驚喜、或分享收藏心情',
   tcg:      '集換式卡牌，語氣可以討論強度、卡圖、或問價格',
+  figure:   '公仔景品/模型，語氣可以讚嘆做工、討論比例、或喊要收',
+  // 舊分類值保留對照，避免既有文章取不到語氣設定
+  blindbox: '盒玩/盲盒商品，語氣可以可愛、驚喜、或分享收藏心情',
   general:  '周邊商品情報，語氣自然，依內容決定',
 }
 
@@ -741,9 +752,9 @@ export async function POST(req: NextRequest) {
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
         : ((await downloadSmartToR2(ogImage)) ?? ogImage)
-      const finalCategory = (draft.category && draft.category !== 'general')
+      const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
@@ -824,9 +835,9 @@ export async function POST(req: NextRequest) {
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
         : ((await downloadSmartToR2(ogImage)) ?? ogImage)
-      const finalCategory = (draft.category && draft.category !== 'general')
+      const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
 
       // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
       // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。

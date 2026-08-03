@@ -27,14 +27,14 @@ interface NewsItem {
   liked?: boolean;
 }
 
+// 依實際篇數排序；每一類都有足夠內容，避免出現空頁籤
 const CATEGORIES = [
-  { key: 'all',      label: '全部' },
-  { key: 'figure',   label: '公仔景品' },
-  { key: 'gacha',    label: '轉蛋' },
-  { key: 'ichiban',  label: '一番賞' },
-  { key: 'tcg',      label: '卡牌' },
-  { key: 'blindbox', label: '盒玩' },
-  { key: 'general',  label: '綜合' },
+  { key: 'all',     label: '全部' },
+  { key: 'figure',  label: '公仔景品' },
+  { key: 'gacha',   label: '轉蛋' },
+  { key: 'toy',     label: '盒玩周邊' },
+  { key: 'ichiban', label: '一番賞' },
+  { key: 'tcg',     label: '卡牌' },
 ];
 
 
@@ -221,13 +221,16 @@ export default function NewsPage() {
     if (dist < 0 && cur > 0) setActiveTab(tabKeys[cur - 1]);
   };
 
-  const loadArticles = async () => {
-    const { data } = await supabase
+  // 依分類向 DB 取資料，不可先抓最新 N 篇再於前端過濾：
+  // 冷門分類（卡牌/盒玩）的文章多半較舊，會整批落在 N 篇之外，
+  // 導致資料庫明明有文章、頁籤卻顯示「此分類目前沒有文章」
+  const loadArticles = async (category: string) => {
+    let q = supabase
       .from('news')
       .select('id,title,summary,image_url,source_url,category,tags,is_active,created_at,view_count')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(60);
+      .eq('is_active', true);
+    if (category !== 'all') q = q.eq('category', category);
+    const { data } = await q.order('created_at', { ascending: false }).limit(60);
 
     const articles = data ?? [];
     if (articles.length === 0) { setAll([]); setIsLoading(false); return; }
@@ -246,15 +249,16 @@ export default function NewsPage() {
   };
 
   useEffect(() => {
-    loadArticles();
+    setIsLoading(true);
+    loadArticles(activeTab);
     // 回到頁面時刷新讚/留言數，確保與內頁同步
-    const onFocus = () => { if (document.visibilityState === 'visible') loadArticles(); };
+    const onFocus = () => { if (document.visibilityState === 'visible') loadArticles(activeTab); };
     document.addEventListener('visibilitychange', onFocus);
     return () => document.removeEventListener('visibilitychange', onFocus);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTab]);
 
-  const filtered = activeTab === 'all' ? all : all.filter(n => n.category === activeTab);
+  const filtered = all;
   const carousel = [...filtered].sort((a, b) => b.view_count - a.view_count).slice(0, 5);
   const carouselIds = new Set(carousel.map(c => c.id));
   // 列表不重複顯示輪播中已出現的文章
