@@ -8,7 +8,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { detectWatermark, detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
+import { brandCoverImage } from '@/lib/newsBranding'
+import { detectWatermark, type WmCorner } from '@/lib/dengekiWm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -57,6 +58,24 @@ const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
 ]
 
 // ── 直接 RSS 來源（非 Google News）──────────────────────────────────────────
+/**
+ * HTML 來源（無可用 RSS，需解析列表頁）
+ *
+ * 玩具人 toy-people.com：頁面 <head> 有宣告 rss.php 等三支 feed，但實際皆 404，
+ * 故改抓列表頁的文章連結。繁中原生、內文長、圖多且無浮水印，
+ * 是目前最適合的來源之一。
+ */
+const HTML_SOURCES: Array<{ url: string; category: string; label: string }> = [
+  { url: 'https://www.toy-people.com/?cat=8', category: 'toy',    label: 'ToyPeople-新聞' },
+  { url: 'https://www.toy-people.com/',       category: 'figure', label: 'ToyPeople-首頁' },
+]
+
+/** 從玩具人列表頁取出文章連結（?p=數字） */
+function extractToyPeopleLinks(html: string): string[] {
+  const links = [...html.matchAll(/href="(https:\/\/www\.toy-people\.com\/\?p=\d+)"/g)].map(m => m[1])
+  return [...new Set(links)]
+}
+
 const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
   // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
   { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'figure',   label: 'PRTimes-hobby' },
@@ -198,60 +217,6 @@ const WATERMARKED_SOURCES = ['dengeki.com']
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
-// GGB logo（蓋浮水印用），模組層快取
-let _logoBuf: Buffer | null = null
-async function getLogoBuffer(): Promise<Buffer | null> {
-  if (_logoBuf) return _logoBuf
-  try {
-    const url = `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/logo.png`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8_000) })
-    if (!res.ok) return null
-    _logoBuf = Buffer.from(await res.arrayBuffer())
-    return _logoBuf
-  } catch { return null }
-}
-
-
-
-// 白墊貼齊指定角落（朝圖內側的那個角圓角）
-function wmPlatePath(w: number, h: number, corner: WmCorner): string {
-  const r = Math.round(h / 4)
-  switch (corner) {
-    case 'top-right':    return `M0 0 H${w} V${h} H${r} A${r} ${r} 0 0 1 0 ${h - r} V0 Z`
-    case 'top-left':     return `M0 0 H${w} V${h - r} A${r} ${r} 0 0 1 ${w - r} ${h} H0 V0 Z`
-    case 'bottom-right': return `M${r} 0 H${w} V${h} H0 V${r} A${r} ${r} 0 0 1 ${r} 0 Z`
-    case 'bottom-left':  return `M0 0 H${w - r} A${r} ${r} 0 0 1 ${w} ${r} V${h} H0 Z`
-  }
-}
-
-// 浮水印來源：對應角落壓 GGB logo（白色圓角墊底）蓋住站方浮水印，保留原圖
-async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | null> {
-  try {
-    const logo = await getLogoBuffer()
-    if (!logo) return null
-    const meta = await sharp(buf).metadata()
-    const W = meta.width ?? 0, H = meta.height ?? 0
-    if (!W || !H) return null
-    const logoW = Math.round(W * 0.21)
-    const logoH = Math.round((logoW * 107) / 300)
-    const pad = Math.round(logoW * 0.05)
-    const plateW = logoW + pad * 2
-    const plateH = logoH + pad * 2
-    const left = corner.endsWith('left') ? 0 : W - plateW
-    const top = corner.startsWith('top') ? 0 : H - plateH
-    const plate = Buffer.from(
-      `<svg width="${plateW}" height="${plateH}"><path d="${wmPlatePath(plateW, plateH, corner)}" fill="white" fill-opacity="0.97"/></svg>`
-    )
-    const logoResized = await sharp(logo).resize(logoW, logoH).png().toBuffer()
-    return await sharp(buf)
-      .composite([
-        { input: plate, top, left },
-        { input: logoResized, top: top + pad, left: left + pad },
-      ])
-      .jpeg({ quality: 88 })
-      .toBuffer()
-  } catch { return null }
-}
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
 /**
@@ -267,6 +232,7 @@ async function injectBodyImages(
   articleHtml: string,
   coverUrl: string,
   pageUrl: string,
+  forceBrand = false,
 ): Promise<string> {
   if (!content || !articleHtml) return content
 
@@ -279,7 +245,7 @@ async function injectBodyImages(
   for (const u of candidates) {
     if (hosted.length >= 2) break
     // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
-    const r = await downloadSmartToR2(u)
+    const r = await downloadSmartToR2(u, forceBrand)
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -309,11 +275,12 @@ function figureHtml(url: string): string {
 /**
  * 轉存到 R2，並在偵測到浮水印時蓋上 GGB logo
  *
- * 與 downloadBrandedToR2 的差別：那支是「已知來源帶浮水印」時無條件蓋，
- * 這支是先偵測再決定 —— 沒浮水印就不要亂蓋 logo 破壞原圖。
- * 只抓一次圖，偵測是本地模板比對，不產生額外費用。
+ * 封面圖與內文圖共用同一條路徑：四個角落都做模板比對，偵測到浮水印才蓋 GGB logo，
+ * 乾淨的圖原樣轉存，不會為了保險而亂蓋。
+ * forceBrand 供已知帶浮水印的來源使用：即使偵測未達門檻也照蓋，避免漏網。
+ * 只抓一次圖，偵測為本地模板比對，不產生額外費用。
  */
-async function downloadSmartToR2(imgUrl: string): Promise<string | null> {
+async function downloadSmartToR2(imgUrl: string, forceBrand = false): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
       headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
@@ -324,8 +291,9 @@ async function downloadSmartToR2(imgUrl: string): Promise<string | null> {
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length < 3_000) return null
 
+    // 四個角落都比對；已知帶浮水印的來源即使偵測未達門檻也照蓋（用偵測到分數最高的角）
     const wm = await detectWatermark(buf)
-    if (wm.found) {
+    if (wm.found || forceBrand) {
       const branded = await brandCoverImage(buf, wm.corner)
       if (branded) {
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
@@ -338,23 +306,6 @@ async function downloadSmartToR2(imgUrl: string): Promise<string | null> {
   } catch { return null }
 }
 
-async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(imgUrl, {
-      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
-      signal: AbortSignal.timeout(12_000),
-      redirect: 'follow',
-    })
-    if (!res.ok) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 3_000) return null
-    const corner = await detectWatermarkCorner(buf)
-    const branded = await brandCoverImage(buf, corner)
-    if (!branded) return null
-    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
-    return await r2Upload(key, branded, 'image/jpeg')
-  } catch { return null }
-}
 
 // Claude 回 general 時的關鍵字兜底分類
 function classifyByKeywords(text: string): string | null {
@@ -526,6 +477,13 @@ ${combined}
 ❌ 市場分析、產業報告
 ❌ 商品已停售、絕版回憶文
 
+【重寫要求 —— 務必遵守】
+標題與內文都必須是**你自己重新撰寫的原創文字**，不可整句照抄原文。
+來源若已是繁體中文（如玩具人、巴哈 GNN），更要留意：
+請用不同的句型與敘述順序重組，不可只改幾個字就當作改寫。
+商品名稱、品牌、系列名、發售日期、價格等事實資訊必須忠實保留，
+但描述、評論、鋪陳一律用自己的話寫。
+
 通過篩選後，改寫成繁體中文（台灣用語），輸出 JSON，只輸出 JSON 不加說明：
 {
   "title": "吸引台灣玩家點擊的標題（繁體中文，25字以內，含商品名）",
@@ -694,6 +652,21 @@ export async function POST(req: NextRequest) {
     return [...recentTitles, ...sessionTitles].some(t => jaccardSim(tokens, t) >= 0.55)
   }
 
+  /**
+   * 改寫「之前」先用來源標題擋掉重複主題
+   *
+   * 原本只在改寫後比對重寫標題，等於重複文章已經燒掉一次 Claude 呼叫。
+   * 來源標題與既有文章高度重疊時直接跳過，不進改寫流程。
+   * 門檻放寬到 0.45：來源標題與我方改寫後的標題本就不會完全一致，
+   * 太嚴會擋不掉；真的誤擋也還有後面的正式比對兜底。
+   */
+  function isDuplicateSource(rawTitle: string): boolean {
+    if (!rawTitle) return false
+    const tokens = tokenize(rawTitle)
+    if (tokens.size === 0) return false
+    return [...recentTitles, ...sessionTitles].some(t => jaccardSim(tokens, t) >= 0.45)
+  }
+
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
@@ -703,6 +676,67 @@ export async function POST(req: NextRequest) {
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
 
   // ── 直接 RSS 來源（PR TIMES / 電撃ホビー / Animate Times 等）────────────────
+  // ── HTML 來源（無 RSS，解析列表頁）──────────────────────────
+  for (const src of HTML_SOURCES) {
+    if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+
+    const listHtml = await fetchText(src.url, 10_000)
+    if (!listHtml) { results.errors++; continue }
+
+    for (const realUrl of extractToyPeopleLinks(listHtml).slice(0, 8)) {
+      if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
+      if (existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
+
+      const articleHtml = await fetchText(realUrl, 10_000)
+      if (!articleHtml) { results.skipped++; results.skipReasons.noHtml++; continue }
+
+      const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
+                   || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
+      if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+
+      const title = extractMeta(articleHtml, 'og:title') || ''
+      const desc  = extractMeta(articleHtml, 'og:description') || ''
+      const bodyText = articleHtml
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ').trim()
+        .slice(0, 1500)
+
+      if (isDuplicateSource(title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+      const draft = await rewriteArticle(claude, title, desc, bodyText, realUrl, src.category)
+      if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
+      if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
+      // 玩具人圖片無浮水印，仍走偵測式轉存（偵測到才蓋 logo）
+      const imageUrl = (await downloadSmartToR2(ogImage)) ?? ogImage
+      const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl)
+      const finalCategory = (draft.category && draft.category !== 'toy')
+        ? draft.category
+        : (classifyByKeywords(`${draft.title} ${title} ${(draft.tags ?? []).join(',')}`) ?? src.category)
+
+      const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+      const { error } = await supabase.from('news').insert({
+        id, title: draft.title, summary: draft.summary, content: contentWithImages,
+        image_url: imageUrl, source_url: realUrl,
+        category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
+      })
+      if (!error) {
+        results.written++
+        results.articles.push(`[${src.label}] ${draft.title}`)
+        existing.add(realUrl)
+        sessionTitles.push(tokenize(draft.title))
+        await generateAndSeedComments(supabase, claude, id, draft.title, draft.summary, finalCategory)
+        void supabase.rpc('seed_bot_engagement_for_article', { p_news_id: id }).then(null, () => {})
+        await new Promise(r => setTimeout(r, 300))
+      } else {
+        results.errors++; results.skipReasons.insertErr++
+        console.error('[news-agent] insert error:', error.message)
+      }
+    }
+  }
+
   for (const feed of DIRECT_FEEDS) {
     if (Date.now() > DEADLINE || results.written >= MAX_TOTAL) break
 
@@ -742,16 +776,17 @@ export async function POST(req: NextRequest) {
             .slice(0, 1500)
         : (jinaText || item.description).slice(0, 1500)
 
+      if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
       const draft = await rewriteArticle(claude, item.title, item.description, bodyText, realUrl, feed.category)
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
-      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
-      const imageUrl = isWatermarked
-        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
+      // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
+      // 已知帶浮水印的來源即使未達門檻也照蓋
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked))
+        ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
@@ -820,6 +855,8 @@ export async function POST(req: NextRequest) {
             .slice(0, 1500)
         : (jinaText || item.description).slice(0, 1500)
 
+      if (isDuplicateSource(item.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
+
       // Claude 改寫
       const draft = await rewriteArticle(
         claude, item.title, item.description, bodyText, realUrl, category
@@ -830,11 +867,10 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
-      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
-      const imageUrl = isWatermarked
-        ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
+      // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
+      // 已知帶浮水印的來源即使未達門檻也照蓋
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked))
+        ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
@@ -842,7 +878,7 @@ export async function POST(req: NextRequest) {
       // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
       // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
       const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml, ogImage, realUrl
+        draft.content, articleHtml, ogImage, realUrl, isWatermarked
       )
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
