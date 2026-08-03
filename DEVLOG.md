@@ -4,6 +4,35 @@
 
 ---
 
+## v2026.08.03f｜2026-08-03｜修後台頂部 badge 有數字沒資料 + 退款申請改表格
+
+### 🔴 頂部彈窗「badge 有數字、展開沒資料」（兩層原因）
+月結／退款／儲值三個頂部彈窗的**數字**來自 `/api/admin/dashboard/pending`（service role，只做 `count(id)`），
+**清單**卻由前端 anon client 直接讀表 —— 兩邊來源不同，且清單這條路上有兩個獨立的錯：
+
+1. **RLS 靜默回空**：`settlement_snapshots`、`refund_requests` 皆 RLS 開啟且 **0 條 policy**，
+   `recharge_records` 的 policy 也不涵蓋 anon → 讀取不報錯、直接回空陣列
+2. **查詢用了不存在的欄位**（只修 RLS 仍然壞，這是第二層）：
+   - `settlement_snapshots` 無 `period_month` / `total_revenue` → 實為 `period_start`、`period_end`、`total_g`、`supplier_name`
+   - `refund_requests` 無 `amount`（實為 `amount_twd`）；且 `user_id` 的 FK 指向 **`auth.users`**，
+     無法 embed `public.users` → 改以 `user_id` 反查暱稱
+   - `recharge_records` 查詢本身正確，純粹被 RLS 擋掉
+
+因為 badge 只做 `count(id)` 不碰這些欄位，數字才會一直是對的。
+修法：清單與數字同源，一律由該 API 以 `getSupabaseAdmin()` 供應；render 端同步改欄位名。
+三支查詢已對 STG 實測 `error: none`。
+
+> 教訓：後台任何直接用 anon client 讀表的地方都是地雷（後台不走 Supabase Auth，永遠無 session）。
+> 且「build 過」不等於「查詢對」—— 欄位錯誤只有實際執行才會現形。
+
+### 退款申請改表格版型
+- 卡片列表改 table，樣式完全沿用 `/settlement-snapshots`（thead `bg-neutral-50 border-b`、
+  列 `hover:bg-neutral-50`、金額 `font-mono`、操作鈕 `px-2 py-1 text-xs`），不另創樣式
+- 狀態色改用共用 `Badge`；`statusVariantMap` 補 `rejected`（紅）/ `processed`（綠），
+  原本不在表內會 fallback 成灰色
+
+---
+
 ## v2026.08.03e｜2026-08-03｜盒玩新模組「賽璐璐風格販賣機」
 
 ### 新增 blindbox_mode4
