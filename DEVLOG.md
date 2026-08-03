@@ -4,6 +4,25 @@
 
 ---
 
+## v2026.08.03e｜2026-08-03｜盒玩新模組「賽璐璐風格販賣機」
+
+### 新增 blindbox_mode4
+- 素材放 `frontend/public/images/blindbox/mode4/`（賽璐璐動畫風機台主圖 + 取物口遮罩）
+- 後台三處選單同步：模組設定、新增商品、編輯商品
+
+### 沒有複製一份邏輯，改成換皮
+- 比對後確認 mode4 與「叢林探險」(mode3) **版位、盒子六面圖、按鈕圖完全相同**，只有 `main.png` / `hole_bg.png` 不同
+- 若照 mode2→mode3 的舊做法整份複製 674 行，日後改物理或動畫只會改到其中一台
+- 改為把 Mode3 的素材根目錄抽成 `assetBase` prop（預設 mode3，行為不變），Mode4 是一層薄包裝指到 `mode4/`
+
+### 順手收斂重複判斷
+- 「販賣機類主題」原本在 `blindbox/[id]/page.tsx` 三處各寫一份字串陣列，加新主題容易漏改（這次就有三處要改）
+- 收成單一 `VENDING_THEMES` 常數 + `isVendingTheme()`
+
+無 DB 變更（`machine_theme` 無 CHECK 限制）。實機截圖驗證盒子上架位置、取物口橢圓、三顆按鈕皆對齊。
+
+---
+
 ## v2026.08.03d｜2026-08-03｜公告自動發送 + 未讀機制 + 抽卡模組整理
 
 ### 公告自動發送（migration 415 + announcement-agent，每 2 小時整點）

@@ -17,11 +17,16 @@ import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
 import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
+import { BlindboxMachineMode4 } from '@/components/shop/BlindboxMachineMode4';
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
+
+/** 貨架販賣機類主題：由機台元件自己演出，不走過場影片 */
+const VENDING_THEMES = ['blindbox_mode2', 'blindbox_mode3', 'blindbox_mode4'];
+const isVendingTheme = (theme: unknown) => VENDING_THEMES.includes(theme as string);
 
 export default function BlindboxDetailPage() {
   const params = useParams();
@@ -266,8 +271,7 @@ export default function BlindboxDetailPage() {
       ]);
     }
 
-    const isVendingMachine = ['blindbox_mode2', 'blindbox_mode3'].includes((product as any)?.machine_theme);
-    if (isVendingMachine) {
+    if (isVendingTheme((product as any)?.machine_theme)) {
       setMode2DrawCount(1);
       setMode2State('animating');
     } else {
@@ -349,7 +353,7 @@ export default function BlindboxDetailPage() {
       if (refreshProfile) {
         refreshProfile();
       }
-      if (['blindbox_mode2', 'blindbox_mode3'].includes((product as any).machine_theme)) {
+      if (isVendingTheme((product as any).machine_theme)) {
         setMode2DrawCount(results.length);
         setMode2State('animating');
       } else {
@@ -421,8 +425,7 @@ export default function BlindboxDetailPage() {
 
   useEffect(() => {
     if (!isLoading && product) {
-      const theme = (product as any).machine_theme;
-      if (theme !== 'blindbox_mode2' && theme !== 'blindbox_mode3') {
+      if (!isVendingTheme((product as any).machine_theme)) {
         setIsMachineReady(true);
       }
     }
@@ -501,6 +504,21 @@ export default function BlindboxDetailPage() {
         ) : (product as any).machine_theme === 'blindbox_mode3' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode3
+              machineState={mode2State}
+              drawCount={mode2DrawCount}
+              boxImageUrl={(product as any).box_image_url ?? undefined}
+              remaining={product.remaining ?? 10}
+              onAnimationComplete={handleMode2AnimComplete}
+              onPush={() => {}}
+              onPurchase={handlePlay}
+              onTrial={handleTrial}
+              isSoldOut={isSoldOut}
+              onLoaded={() => setIsMachineReady(true)}
+            />
+          </div>
+        ) : (product as any).machine_theme === 'blindbox_mode4' ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <BlindboxMachineMode4
               machineState={mode2State}
               drawCount={mode2DrawCount}
               boxImageUrl={(product as any).box_image_url ?? undefined}
