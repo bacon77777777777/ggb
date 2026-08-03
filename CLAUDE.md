@@ -95,17 +95,31 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 所有 AI 單位為 `backend/app/api/cron/` 下的 API routes，由 pg_cron 定時呼叫：
 
-| Agent | 排程（台灣時間） | 職責 |
+> ⚠️ **排程以資料庫為準，不要照本表複誦**。本表為 2026-08-03 對 PROD `cron.job` 的核對結果；
+> 排程改過而文件沒跟上是常態（此表先前寫 news-agent「每 20 分鐘、12 篇/次」，實際是 6 小時 3 篇）。
+> 查詢：`SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;`
+> pg_cron 存的是 **UTC**，下表已換算為台灣時間（+8）。
+
+| Agent（jobname） | 排程（台灣時間） | 職責 |
 |-------|----------------|------|
-| `news-agent` | **每 20 分鐘** | 爬蟲三語 RSS → Claude 改寫 → 寫入 `news` 表，最多 12 篇/次 |
-| `daily-report` | 08:00 | 每日早報（待處理事項） |
-| `cfo-agent` | 08:30 | 代幣對帳、收入趨勢、廠商月結 |
-| `cmo-agent` | 09:00 | 行銷日報 + 跨部門行動建議 |
-| `supply-chain` | 10:30、22:30 | 超時出貨、零庫存警示 |
+| `news-agent-6h` | 02:00 / 08:00 / 14:00 / 20:00（每 6 小時） | 爬 RSS 與網頁 → Claude 改寫 → 寫入 `news` 表，**最多 3 篇/次**（一天 12 篇） |
+| `daily-line-report` | 08:00 | 每日早報（待處理事項） |
+| `cfo-agent-daily` | 08:30 | 代幣對帳、收入趨勢、廠商月結 |
+| `cmo-agent-daily` | 09:00 | 行銷日報 + 跨部門行動建議 |
+| `risk-scan-morning` / `risk-scan-evening` | 09:00、21:00 | 風控掃描 |
+| `ai-cto-morning` / `ai-cto-evening` | 10:00、22:00 | 技術面巡檢 |
+| `supply-chain-morning` / `-evening` | 10:30、22:30 | 超時出貨、零庫存警示 |
+| `auto-deliver` | 11:00 | 自動出貨 |
+| `platform-monitor` | 02:00 / 08:00 / 14:00 / 20:00 | 平台狀態監測 |
+| `ecpay-reconcile` | 每 3 小時 | 金流對帳 |
 | `health-check` | 每 10 分鐘 | DB 連線、ECPay 錯誤率、尖峰零交易 |
-| `market-intel` | 週一 11:00 | 競品爬取分析（8 家） |
-| `generate-content` | 09:00 | AI 文案草稿生成 |
-| `risk-scan` | 定時 | 風控掃描 |
+| `flag-pending-recharge` | 每 15 分鐘 | 標記待處理儲值 |
+| `risk-check` / `hourly-risk-check` | 每小時 :00 / :30 | 風控即時檢查 |
+| `market-intel-weekly` | 週日 11:30 | 競品爬取分析 |
+| `competitive-intel` / `dormant-wakeup` | 週一 10:00 | 競品情報 / 沉睡用戶喚醒 |
+| `market-discovery-monthly` / `monthly-settlement-snapshot` | 每月 1 日 10:00 | 市場探索 / 月結快照 |
+
+**`generate-content` 目前沒有排程**（route 存在但無對應 cron job），需要時才手動觸發。
 
 所有 cron route 驗證 `x-cron-secret` header（對應 `CRON_SECRET` env）。
 
@@ -132,6 +146,14 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 
 ### 情報系統（News）
 
+**news-agent 與前台情報頁是同一批資料**：agent 是唯一的內容產生者，
+前台 `/news` 與後台文章管理都只是讀 `news` 表，沒有其他來源。
+
+- **產出節奏**：每 6 小時一次、每次最多 3 篇 → 一天 12 篇
+- **來源**：RSS（電ホビ／PRTimes／Animate Times／巴哈 GNN）+ HTML 解析（玩具人 toy-people.com，站上宣告的 RSS 實際 404）+ Google News 查詢
+- **分類**：`figure` 公仔景品｜`gacha` 轉蛋｜`toy` 盒玩周邊｜`ichiban` 一番賞｜`tcg` 卡牌（分不出類時預設 `toy`；舊值 `general`/`blindbox` 已併入 `toy`）
+- **改寫規則**：標題與內文一律由 Claude 原創重寫，**繁中來源尤須重組句型**（照抄即侵權）；改寫前先用來源標題擋重複，避免重複文章浪費呼叫
+- **浮水印**：四角模板比對（`lib/dengekiWm.ts`），偵測到才在該角落蓋 GGB logo（`lib/newsBranding.ts`，agent 與回填腳本共用）。**不可用會退回固定角落的 `detectWatermarkCorner()`** —— 蓋錯角等於浮水印照樣露出
 - **資料表**：`news`（id, title, summary, content, image_url, source_url, category, tags, is_active, view_count）
 - **後台管理**：`backend/app/news/page.tsx` — 顯示全部文章（含 news-agent 自動生成），可批量上架/下架/刪除
 - **前台**：`frontend/app/news/` — 列表 + 內頁留言/讚

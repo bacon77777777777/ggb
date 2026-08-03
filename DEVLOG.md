@@ -4,6 +4,32 @@
 
 ---
 
+## v2026.08.03c｜2026-08-03｜AI 用量報表 + 彈幕暱稱可點 + 修正 cron 文件
+
+### AI 用量記錄與報表（migration 413，STG+PROD 已執行）
+Claude 回應本來就帶 `usage`，先前直接丟掉，導致「一天／一個月花多少」只能靠推算。
+- `lib/aiUsage.ts` 的 `createClaude(agent)` 包裝攔截 `messages.create` 自動記錄；**記錄為 fire-and-forget 且吞例外，絕不影響業務流程**（用量統計壞掉不該害 GB哥 不能回話）。串流呼叫原樣放行
+- 15 支既有的 `new Anthropic()` 全部改用此包裝，agent 名稱依路徑命名；日後新增 AI 功能只要用它就自動有紀錄
+- **只存 token 原始值，金額於查詢時換算** —— 金額寫死進 DB 的話，調價或換模型會讓歷史資料全錯；現在改 `MODEL_PRICING` 即可
+- 未知模型以最貴一檔估算，寧可高估也不讓帳面低於實際
+- 後台 `/ai-usage`（其他黑科技分組）：版型完全沿用機台報表（KPI 小卡 + SearchToolbar + SortableTableHeader + 每日明細），未自創 UI
+
+### 彈幕暱稱
+- 移除遮罩（原本 `1*3`），完整顯示並加底線
+- 點擊開啟 `PlayerProfileCard`，與首頁中獎跑馬燈同一個元件與互動
+- 整層維持 `pointer-events-none` 不擋機台操作，**只有暱稱單獨開啟點擊**
+
+### 修正 CLAUDE.md 的 cron 排程表
+照著文件回報給老闆時答錯（說 news-agent 每 20 分鐘，實際是每 6 小時 3 篇），故對 PROD `cron.job` 全表核對：
+- `news-agent` 每 20 分鐘 12 篇/次 → **每 6 小時 3 篇/次**（02/08/14/20 台灣時間）
+- `market-intel` 週一 11:00 → **週日 11:30**；`risk-scan`「定時」→ **09:00／21:00**
+- `generate-content` 記有 09:00 排程，**實際沒有對應 cron job**
+- 補上原本未列的 10 個 job（ai-cto／auto-deliver／platform-monitor／ecpay-reconcile 等）
+- 表頭加警語：**排程以 `cron.job` 為準、pg_cron 存 UTC 需 +8 換算** —— 文件會過期是常態，寫死「以 DB 為準」比修正一次數字更有價值
+- 情報系統一節補上 news-agent 與前台情報頁的關係（同一批資料、agent 是唯一內容來源）、產出節奏、來源、分類與改寫規則
+
+---
+
 ## v2026.08.03b｜2026-08-03｜修浮水印蓋錯角落（PROD 333 篇回填）+ 玩具人來源
 
 ### 🔴 浮水印蓋錯角落

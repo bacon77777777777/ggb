@@ -10,6 +10,7 @@ import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
 import { brandCoverImage } from '@/lib/newsBranding'
 import { detectWatermark, type WmCorner } from '@/lib/dengekiWm'
+import { createClaude } from '@/lib/aiUsage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -624,7 +625,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin()
-  const claude   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const claude   = createClaude('news-agent', process.env.ANTHROPIC_API_KEY)
 
   // 已寫入的 source_url 集合（防重複 URL）
   const { data: existingRows } = await supabase

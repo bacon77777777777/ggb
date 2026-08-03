@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import * as XLSX from 'xlsx'
+import { createClaude } from '@/lib/aiUsage'
 
 export const runtime = 'nodejs'
 
@@ -123,7 +124,7 @@ interface FieldMap {
 }
 
 async function detectColumns(headers: string[], sampleRows: any[][]): Promise<FieldMap> {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  const anthropic = createClaude('products-parse-xlsx', process.env.ANTHROPIC_API_KEY!)
   const headerStr  = headers.slice(0, 40).join('、')
   const rowSamples = sampleRows.slice(0, 3).map((row, i) =>
     `第${i + 1}筆: ` + headers.slice(0, 40).map((h, j) => `${h}=${String(row[j] ?? '').trim()}`).join('、')

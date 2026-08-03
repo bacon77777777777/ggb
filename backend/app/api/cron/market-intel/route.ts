@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 const pushLine = createLinePusher('line_push_market')
 
 export const dynamic = 'force-dynamic'
@@ -276,7 +277,7 @@ async function runFourLayerAnalysis(
     ? `\n【即時異常偵測】\n${anomalies.map(a => `• ${a.description}`).join('\n')}`
     : ''
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('market-intel', )
 
   // Step 1: 四層分析（內部使用）
   const analysisRes = await client.messages.create({
@@ -371,7 +372,7 @@ async function discoverNewCompetitors(
   if (allResults.length === 0) return []
 
   // 用 Claude 篩選出可能的競品平台
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('market-intel', )
   const existingDomains = existingUrls.map(u => {
     try { return new URL(u).hostname } catch { return u }
   })

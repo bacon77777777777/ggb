@@ -692,6 +692,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/agent-events': 'agent_events',
     '/competitor-intel': 'competitor_intel',
     '/content-drafts': 'content_drafts',
+    '/ai-usage': 'ai_usage',
   }
 
   const canAccess = (path: string) => {
@@ -811,6 +812,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '事件中心', path: '/agent-events', icon: IconEvents },
           { name: '競品情報', path: '/competitor-intel', icon: IconSearch },
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconSparkle },
+          { name: 'AI 用量', path: '/ai-usage', icon: IconBolt },
           { name: '工具', path: '/tools', icon: IconTools },
           { name: '殺率調整', path: '/settings/rates', icon: IconBolt },
           { name: 'Design System', path: '/design-system', icon: IconPalette },

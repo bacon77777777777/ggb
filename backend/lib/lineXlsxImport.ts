@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import crypto from 'crypto'
+import { createClaude } from './aiUsage'
 
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
 
@@ -156,7 +157,7 @@ function bestImage(results: { image: string }[], barcode: string | null): string
 async function nameVariantsByVision(productName: string, imageUrls: string[]): Promise<string[]> {
   if (!imageUrls.length) return []
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const client = createClaude('lineXlsxImport', process.env.ANTHROPIC_API_KEY!)
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,

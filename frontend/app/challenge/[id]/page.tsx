@@ -13,6 +13,9 @@ import SlotMachineVisual from '@/components/challenge/SlotMachineVisual';
 import SlotMachineClassic, { ReelOutcome, MachineLayout, setSfxMuted } from '@/components/challenge/SlotMachineClassic';
 import DanmakuLayer, { type DanmakuItem } from '@/components/challenge/DanmakuLayer';
 import EndingBar from '@/components/challenge/EndingBar';
+import dynamic from 'next/dynamic';
+
+const PlayerProfileCard = dynamic(() => import('@/components/ranking/PlayerProfileCard'), { ssr: false });
 import { inheritSchedule } from '@/lib/schedule';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
@@ -221,6 +224,8 @@ export default function MachinePage() {
     return () => clearInterval(t);
   }, [danmakuOff]);
   const [machineEnded, setMachineEnded] = useState(false);
+  // 點彈幕暱稱開玩家資訊卡（與首頁中獎跑馬燈相同互動）
+  const [profileUser, setProfileUser] = useState<{ id: string; nickname: string } | null>(null);
   const [pool, setPool] = useState<SlotPoolItem[]>([]);
   const [session, setSession] = useState<SlotSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -654,7 +659,11 @@ export default function MachinePage() {
   const renderMachineVisual = () => machineType === 'classic' ? (
     <div className="relative w-full">
       {!danmakuOff && (
-        <DanmakuLayer items={danmaku} paused={isRushActive || spinState === 'video'} />
+        <DanmakuLayer
+          items={danmaku}
+          paused={isRushActive || spinState === 'video'}
+          onNameClick={(id, nickname) => setProfileUser({ id, nickname })}
+        />
       )}
       <SlotMachineClassic
         spinState={spinState}
@@ -955,6 +964,15 @@ export default function MachinePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {profileUser && (
+        <PlayerProfileCard
+          userId={profileUser.id}
+          nickname={profileUser.nickname}
+          onWorship={() => {}}
+          onClose={() => setProfileUser(null)}
+        />
       )}
 
       {/* 閒置警告（最後 15 秒，畫面正中間） */}

@@ -16,6 +16,7 @@ import Image from 'next/image';
 
 export interface DanmakuItem {
   id: string;
+  userId: string | null;
   name: string;
   avatar: string | null;
   prize: string;
@@ -32,7 +33,11 @@ interface Flying extends DanmakuItem {
   duration: number;
 }
 
-export default function DanmakuLayer({ items, paused }: { items: DanmakuItem[]; paused?: boolean }) {
+export default function DanmakuLayer({ items, paused, onNameClick }: {
+  items: DanmakuItem[];
+  paused?: boolean;
+  onNameClick?: (userId: string, nickname: string) => void;
+}) {
   const [flying, setFlying] = useState<Flying[]>([]);
   const cursor = useRef(0);
   const seq = useRef(0);
@@ -83,7 +88,13 @@ export default function DanmakuLayer({ items, paused }: { items: DanmakuItem[]; 
               <Image src={f.avatar || '/images/avatar.png'} alt="" fill className="object-cover" unoptimized />
             </span>
             <span className="text-[11px] font-black text-white leading-none">
-              {f.name}
+              {/* 整層 pointer-events-none 不擋機台操作，只有暱稱單獨開啟點擊 */}
+              <span
+                className={f.userId ? 'underline underline-offset-2 pointer-events-auto cursor-pointer' : ''}
+                onClick={f.userId ? () => onNameClick?.(f.userId!, f.name) : undefined}
+              >
+                {f.name}
+              </span>
               <span className="text-white/60 mx-1">抽中</span>
               <span className="text-[#facc15]">{f.prize.length > 14 ? `${f.prize.slice(0, 14)}…` : f.prize}</span>
             </span>

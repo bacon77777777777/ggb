@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { formatTaiwanDate, getRevenueSummaryForPeriod } from './financeMetrics'
+import { createClaude } from './aiUsage'
 
 // ─── Taiwan timezone helpers ───────────────────────────────────────
 const TW_MS = 8 * 3600_000
@@ -1105,7 +1106,7 @@ async function classifyIntent(text: string): Promise<IntentType> {
   if (!apiKey) return matchIntentRegex(t)
 
   try {
-    const client = new Anthropic({ apiKey })
+    const client = createClaude('gbBro', )
     const resp = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 5,
@@ -1366,7 +1367,7 @@ async function handleExecute(text: string, lineUserId: string): Promise<string> 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '⚠️ GB哥目前離線（ANTHROPIC_API_KEY 未設定）'
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('gbBro', )
 
   const systemPrompt = `你是操作解析器。根據使用者的中文指令，判斷要呼叫哪個工具以及哪些參數。
 只用 tool_use 回應。若需要先查 ID（如商品名稱→product_id），請先用 run_sql 查詢。
@@ -1475,7 +1476,7 @@ async function handleOpenQuestion(text: string, lineUserId?: string): Promise<st
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '目前 AI 服務暫時不可用，請稍後再試。'
 
-  const client     = new Anthropic({ apiKey })
+  const client     = createClaude('gbBro', )
   const history    = lineUserId ? await loadHistory(lineUserId) : []
   const systemPromptText = await buildSystemPrompt()
   const messages: Anthropic.MessageParam[] = [

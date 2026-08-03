@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClaude } from '@/lib/aiUsage'
 
 type Prize = {
   name: string
@@ -710,7 +711,7 @@ const extractPrizesWithAI = async (pageText: string, hint: { name?: string; url:
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return []
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('tools-scrape', )
   const truncated = pageText.slice(0, 8000)
 
   const prompt = `你是商品資料擷取工具。從以下網頁文字中提取一番賞/轉蛋/盲盒商品的獎項清單。
