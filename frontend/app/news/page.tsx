@@ -29,11 +29,12 @@ interface NewsItem {
 
 const CATEGORIES = [
   { key: 'all',      label: '全部' },
-  { key: 'general',  label: '綜合' },
-  { key: 'ichiban',  label: '一番賞' },
+  { key: 'figure',   label: '公仔景品' },
   { key: 'gacha',    label: '轉蛋' },
-  { key: 'blindbox', label: '盒玩' },
+  { key: 'ichiban',  label: '一番賞' },
   { key: 'tcg',      label: '卡牌' },
+  { key: 'blindbox', label: '盒玩' },
+  { key: 'general',  label: '綜合' },
 ];
 
 

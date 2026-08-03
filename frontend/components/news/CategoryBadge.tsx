@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 const CATEGORY_LABELS: Record<string, string> = {
-  ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', general: '綜合',
+  ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', tcg: '卡牌', figure: '公仔景品', general: '綜合',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -9,6 +9,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   gacha:   'bg-orange-500',
   blindbox: 'bg-purple-500',
   tcg:     'bg-amber-500',
+  figure:  'bg-rose-500',
   general: 'bg-neutral-400',
 };
 

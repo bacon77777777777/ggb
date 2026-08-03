@@ -168,6 +168,23 @@ function extractBodyImage(html: string): string {
   return ''
 }
 
+// 內文配圖：沿用單圖的過濾規則，取前 N 張不重複的圖（文章 HTML 已抓過，不額外耗成本）
+function extractBodyImages(html: string, limit: number): string[] {
+  const out: string[] = []
+  for (const m of html.matchAll(/<img[^>]+src=["']([^"']{20,500})["'][^>]*/gi)) {
+    if (out.length >= limit) break
+    const tag = m[0]
+    if (/logo|icon|avatar|pixel|spacer|sprite|banner_\d+x\d+/i.test(tag)) continue
+    const url = m[1]
+    if (!url || url.startsWith('data:')) continue
+    if (!url.startsWith('http://') && !url.startsWith('https://')) continue
+    if (BLOCKED_IMG_DOMAINS.some(d => url.includes(d))) continue
+    if (out.includes(url)) continue
+    out.push(url)
+  }
+  return out
+}
+
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
 // 圖片帶站方浮水印的來源：不用其圖，改用平台預設圖
 const WATERMARKED_SOURCES = ['dengeki.com']
@@ -230,6 +247,57 @@ async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | 
 }
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
+/**
+ * 內文配圖：把來源文章的 2 張圖插進生成內容的段落之間
+ *
+ * 圖片來自已經抓下來的文章 HTML，不額外發請求、不做圖片生成，
+ * 成本僅為 R2 儲存。轉存 R2 而非直接外連，是因為部分來源站擋 hotlink。
+ * 帶浮水印的來源（如 dengeki）一律不取內文圖，避免整篇都是別站浮水印。
+ */
+async function injectBodyImages(
+  content: string,
+  articleHtml: string,
+  coverUrl: string,
+  pageUrl: string,
+  isWatermarked: boolean,
+): Promise<string> {
+  if (!content || !articleHtml || isWatermarked) return content
+
+  const candidates = extractBodyImages(articleHtml, 6)
+    .map(u => resolveImageUrl(u, pageUrl))
+    .filter(u => u && u !== coverUrl)
+  if (candidates.length === 0) return content
+
+  const hosted: string[] = []
+  for (const u of candidates) {
+    if (hosted.length >= 2) break
+    const r = await downloadImageToR2(u)
+    if (r) hosted.push(r)
+  }
+  if (hosted.length === 0) return content
+
+  // 插在第 1、2 個 </p> 之後；段落不足就接在文末
+  const parts = content.split('</p>')
+  if (parts.length <= 1) {
+    return content + hosted.map(figureHtml).join('')
+  }
+  let out = ''
+  let used = 0
+  parts.forEach((seg, i) => {
+    out += seg + (i < parts.length - 1 ? '</p>' : '')
+    const insertAfter = i === 0 || i === 2
+    if (insertAfter && used < hosted.length && i < parts.length - 1) {
+      out += figureHtml(hosted[used]); used++
+    }
+  })
+  if (used < hosted.length) out += hosted.slice(used).map(figureHtml).join('')
+  return out
+}
+
+function figureHtml(url: string): string {
+  return `<figure><img src="${url}" alt="" loading="lazy" /></figure>`
+}
+
 async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
@@ -392,7 +460,7 @@ async function rewriteArticle(
 
   const resp = await claude.messages.create({
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
+    max_tokens: 1800,
     messages: [{
       role: 'user',
       content: `你是吉吉比（GGB）台灣線上轉蛋平台的內容編輯，負責篩選「商品發售情報」。
@@ -405,7 +473,7 @@ ${combined}
 
 【嚴格篩選原則】
 只接受以下類型，其他一律回傳 null：
-✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋 新品上市、預售、到貨）
+✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋/公仔景品 新品上市、預售、到貨）
 ✅ 商品情報曝光（新品圖片首公開、品項公開）
 ✅ 聯名商品、限定版發售情報
 
@@ -421,9 +489,9 @@ ${combined}
 {
   "title": "吸引台灣玩家點擊的標題（繁體中文，25字以內，含商品名）",
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
-  "content": "<h2>小標</h2><p>段落...</p>（繁體中文，250-400字，2-3段，從玩家視角介紹商品特色與發售資訊）",
+  "content": "<h2>小標</h2><p>段落...</p><h2>小標</h2><p>段落...</p>（繁體中文，550-750字，4~5段並用 2~3 個 <h2> 分段，從玩家視角介紹：商品特色與造型細節、系列背景或角色亮點、發售與預購資訊、值得入手的理由；資訊不足處以既有內容延伸描述，不可捏造價格或日期）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|blindbox|tcg|general（能明確歸入前四類就不要用 general）"
+  "category": "ichiban|gacha|blindbox|tcg|figure|general（figure＝公仔/景品/模型/プライズ；能明確歸類就不要用 general）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -723,12 +791,18 @@ export async function POST(req: NextRequest) {
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
 
+      // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
+      // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
+      const contentWithImages = await injectBodyImages(
+        draft.content, articleHtml, ogImage, realUrl, isWatermarked
+      )
+
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id,
         title:      draft.title,
         summary:    draft.summary,
-        content:    draft.content,
+        content:    contentWithImages,
         image_url:  imageUrl,
         source_url: realUrl,
         category:   finalCategory,
