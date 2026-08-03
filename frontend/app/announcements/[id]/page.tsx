@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { markRead } from '@/lib/announcementRead';
 
 interface Announcement {
   id: string;
@@ -57,6 +58,9 @@ function linkify(text: string): React.ReactNode[] {
 
 export default function AnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>();
+
+  // 直接開網址進來也要標記已讀（不只從列表點進來）
+  useEffect(() => { if (id) markRead(String(id)); }, [id]);
   const [item, setItem] = useState<Announcement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
