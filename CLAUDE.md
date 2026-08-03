@@ -139,6 +139,23 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 - **bot 互動**：每篇新文章寫入後呼叫 `seed_bot_engagement_for_article(id)` DB function，種 2~5 則留言、3~12 個讚
 - **圖片 fallback**：og:image 抓不到時用 `NEXT_PUBLIC_FRONTEND_URL/images/banner_defaulet.png`（注意檔名 typo）
 
+**⚠️ 取材成本原則：不得引入新的付費服務**
+
+情報系統的所有取材與圖片處理，一律只能用「已經在付的東西」完成：
+
+| 允許 | 不允許 |
+|------|--------|
+| 公開 RSS / 公開網頁 HTML 解析 | 付費爬蟲 API、付費資料源 |
+| 既有的 Claude Haiku 改寫（已在預算內） | 圖片生成 API（DALL·E / Midjourney 等） |
+| 本地 sharp 影像處理（去浮水印、蓋 logo、壓縮） | 付費影像處理服務 |
+| R2 儲存（既有 bucket） | CAPTCHA 破解服務 |
+| 官方免費 API（申請 key 即可用者） | 任何需要月費／用量計費的新服務 |
+
+**同時不繞過站方的存取控制**：Cloudflare Turnstile、CAPTCHA 等是站方刻意部署的防護，
+不做繞過（例：130point.com、cardrush-sports.jp 皆為 Turnstile 保護，一律放棄該來源）。
+
+浮水印處理走本地模板比對（`backend/lib/dengekiWm.ts`），偵測到才蓋 GGB logo，零成本。
+
 ### GB哥（LINE AI 助手）
 
 - 入口：`backend/app/api/line/webhook/route.ts`

@@ -54,8 +54,21 @@ function maxNcc(region: Float32Array, rw: number, rh: number, tpl: Float32Array,
   return best
 }
 
-const WM_THRESHOLD = 0.3
+// 門檻依實測分佈訂定：
+//   帶浮水印 0.238~0.380（電ホビ 各式版面）
+//   乾淨圖   0.179~0.232（NBA 球員照、玩具人圖）
+// 取 0.26 落在兩群之間。仍有重疊風險，故已知帶浮水印的來源不靠門檻，
+// 一律以分數最高的角落強制蓋（見 news-agent 的 forceBrand）。
+const WM_THRESHOLD = 0.26
 
+/**
+ * @deprecated 請改用 detectWatermark()
+ *
+ * 這支在分數未達門檻時會回 'top-right' 當保底 —— 若呼叫端據此蓋 logo，
+ * 遇到浮水印其實在左上的圖就會蓋錯角落，浮水印照樣露出來
+ * （PROD 早期文章即因此蓋錯）。detectWatermark() 回傳的 corner 是
+ * 分數最高的角落，不會退回固定值。
+ */
 export async function detectWatermarkCorner(buf: Buffer): Promise<WmCorner> {
   try {
     const tpl = await getTemplate()
