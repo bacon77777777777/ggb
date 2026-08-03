@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
+import { detectWatermark, detectWatermarkCorner, type WmCorner } from '@/lib/dengekiWm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -26,8 +26,8 @@ type Locale = 'TW' | 'JP' | 'US'
 const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
   // ── 繁體中文（台灣）
   { q: '一番賞 發售',         category: 'ichiban',  locale: 'TW' },
-  { q: '盒玩 發售 新品',      category: 'blindbox', locale: 'TW' },
-  { q: '盲盒 新品 上市',      category: 'blindbox', locale: 'TW' },
+  { q: '盒玩 發售 新品',      category: 'toy'    , locale: 'TW' },
+  { q: '盲盒 新品 上市',      category: 'toy'    , locale: 'TW' },
   { q: '轉蛋 新品 發售',      category: 'gacha',    locale: 'TW' },
   { q: '卡牌 新彈 發售',      category: 'tcg',      locale: 'TW' },
   { q: '扭蛋 新商品',         category: 'gacha',    locale: 'TW' },
@@ -36,29 +36,36 @@ const RSS_QUERIES: Array<{ q: string; category: string; locale: Locale }> = [
   { q: '一番くじ 予約',                  category: 'ichiban',  locale: 'JP' },
   { q: 'バンダイ ガシャポン 新商品',     category: 'gacha',    locale: 'JP' },
   { q: 'ガシャポン 発売 予約',           category: 'gacha',    locale: 'JP' },
-  { q: 'ブラインドボックス 新商品 発売', category: 'blindbox', locale: 'JP' },
-  { q: 'ポップマート 新商品',            category: 'blindbox', locale: 'JP' },
+  { q: 'ブラインドボックス 新商品 発売', category: 'toy'    , locale: 'JP' },
+  { q: 'ポップマート 新商品',            category: 'toy'    , locale: 'JP' },
   { q: 'ポケモンカード 新弾 発売',       category: 'tcg',      locale: 'JP' },
   { q: '遊戯王 OCG 新カード 発売',       category: 'tcg',      locale: 'JP' },
+  { q: 'ヴァイスシュヴァルツ 新弾',      category: 'tcg',      locale: 'JP' },
+  { q: 'ワンピースカードゲーム 新弾',    category: 'tcg',      locale: 'JP' },
+  { q: '寶可夢 卡牌 新彈',               category: 'tcg',      locale: 'TW' },
+  { q: '遊戲王 卡牌 新彈 上市',          category: 'tcg',      locale: 'TW' },
+  { q: '食玩 新商品 発売',               category: 'toy',      locale: 'JP' },
+  { q: 'ソフビ 新作 発売',               category: 'toy',      locale: 'JP' },
+  { q: 'TOPTOY 盲盒 新品',               category: 'toy',      locale: 'TW' },
   { q: 'デュエルマスターズ 新弾',        category: 'tcg',      locale: 'JP' },
   // ── 英文（全球）
   { q: 'gashapon new product release 2026', category: 'gacha',    locale: 'US' },
   { q: 'Pokemon TCG new set 2026',          category: 'tcg',      locale: 'US' },
-  { q: 'blind box figure new release',      category: 'blindbox', locale: 'US' },
-  { q: 'Pop Mart new figure',               category: 'blindbox', locale: 'US' },
+  { q: 'blind box figure new release',      category: 'toy'    , locale: 'US' },
+  { q: 'Pop Mart new figure',               category: 'toy'    , locale: 'US' },
   { q: 'Yu-Gi-Oh OCG new card 2026',        category: 'tcg',      locale: 'US' },
 ]
 
 // ── 直接 RSS 來源（非 Google News）──────────────────────────────────────────
 const DIRECT_FEEDS: Array<{ url: string; category: string; label: string }> = [
   // PR TIMES ホビー・玩具カテゴリ（日本企業プレスリリース）
-  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'general',  label: 'PRTimes-hobby' },
+  { url: 'https://prtimes.jp/rss/category/17.rss',     category: 'figure',   label: 'PRTimes-hobby' },
   // 電撃ホビーウェブ
-  { url: 'https://hobby.dengeki.com/feed/',             category: 'general',  label: 'DengekiHobby' },
+  { url: 'https://hobby.dengeki.com/feed/',             category: 'figure',   label: 'DengekiHobby' },
   // Animate Times
-  { url: 'https://www.animatetimes.com/rss.xml',       category: 'general',  label: 'AnimateTimes' },
+  { url: 'https://www.animatetimes.com/rss.xml',       category: 'figure',   label: 'AnimateTimes' },
   // 巴哈姆特 GNN 遊戲動漫新聞（繁中）
-  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'general',  label: 'GNN-TW' },
+  { url: 'https://gnn.gamer.com.tw/rss.xml',           category: 'figure',   label: 'GNN-TW' },
 ]
 
 const LOCALE_PARAMS: Record<Locale, { hl: string; gl: string; ceid: string }> = {
@@ -168,6 +175,23 @@ function extractBodyImage(html: string): string {
   return ''
 }
 
+// 內文配圖：沿用單圖的過濾規則，取前 N 張不重複的圖（文章 HTML 已抓過，不額外耗成本）
+function extractBodyImages(html: string, limit: number): string[] {
+  const out: string[] = []
+  for (const m of html.matchAll(/<img[^>]+src=["']([^"']{20,500})["'][^>]*/gi)) {
+    if (out.length >= limit) break
+    const tag = m[0]
+    if (/logo|icon|avatar|pixel|spacer|sprite|banner_\d+x\d+/i.test(tag)) continue
+    const url = m[1]
+    if (!url || url.startsWith('data:')) continue
+    if (!url.startsWith('http://') && !url.startsWith('https://')) continue
+    if (BLOCKED_IMG_DOMAINS.some(d => url.includes(d))) continue
+    if (out.includes(url)) continue
+    out.push(url)
+  }
+  return out
+}
+
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
 // 圖片帶站方浮水印的來源：不用其圖，改用平台預設圖
 const WATERMARKED_SOURCES = ['dengeki.com']
@@ -230,6 +254,90 @@ async function brandCoverImage(buf: Buffer, corner: WmCorner): Promise<Buffer | 
 }
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
+/**
+ * 內文配圖：把來源文章的 2 張圖插進生成內容的段落之間
+ *
+ * 圖片來自已經抓下來的文章 HTML，不額外發請求、不做圖片生成，
+ * 成本僅為 R2 儲存。轉存 R2 而非直接外連，是因為部分來源站擋 hotlink。
+ * 每張圖都會偵測浮水印，偵測到就比照封面蓋上 GGB logo 蓋掉，
+ * 沒偵測到就原樣轉存 —— 不會為了保險而在乾淨的圖上亂蓋 logo。
+ */
+async function injectBodyImages(
+  content: string,
+  articleHtml: string,
+  coverUrl: string,
+  pageUrl: string,
+): Promise<string> {
+  if (!content || !articleHtml) return content
+
+  const candidates = extractBodyImages(articleHtml, 6)
+    .map(u => resolveImageUrl(u, pageUrl))
+    .filter(u => u && u !== coverUrl)
+  if (candidates.length === 0) return content
+
+  const hosted: string[] = []
+  for (const u of candidates) {
+    if (hosted.length >= 2) break
+    // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
+    const r = await downloadSmartToR2(u)
+    if (r) hosted.push(r)
+  }
+  if (hosted.length === 0) return content
+
+  // 插在第 1、2 個 </p> 之後；段落不足就接在文末
+  const parts = content.split('</p>')
+  if (parts.length <= 1) {
+    return content + hosted.map(figureHtml).join('')
+  }
+  let out = ''
+  let used = 0
+  parts.forEach((seg, i) => {
+    out += seg + (i < parts.length - 1 ? '</p>' : '')
+    const insertAfter = i === 0 || i === 2
+    if (insertAfter && used < hosted.length && i < parts.length - 1) {
+      out += figureHtml(hosted[used]); used++
+    }
+  })
+  if (used < hosted.length) out += hosted.slice(used).map(figureHtml).join('')
+  return out
+}
+
+function figureHtml(url: string): string {
+  return `<figure><img src="${url}" alt="" loading="lazy" /></figure>`
+}
+
+/**
+ * 轉存到 R2，並在偵測到浮水印時蓋上 GGB logo
+ *
+ * 與 downloadBrandedToR2 的差別：那支是「已知來源帶浮水印」時無條件蓋，
+ * 這支是先偵測再決定 —— 沒浮水印就不要亂蓋 logo 破壞原圖。
+ * 只抓一次圖，偵測是本地模板比對，不產生額外費用。
+ */
+async function downloadSmartToR2(imgUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(imgUrl, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length < 3_000) return null
+
+    const wm = await detectWatermark(buf)
+    if (wm.found) {
+      const branded = await brandCoverImage(buf, wm.corner)
+      if (branded) {
+        const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
+        return await r2Upload(key, branded, 'image/jpeg')
+      }
+    }
+    const webp = await sharp(buf).resize(1200, null, { withoutEnlargement: true }).webp({ quality: 82 }).toBuffer()
+    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
+    return await r2Upload(key, webp, 'image/webp')
+  } catch { return null }
+}
+
 async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
@@ -252,8 +360,9 @@ async function downloadBrandedToR2(imgUrl: string): Promise<string | null> {
 function classifyByKeywords(text: string): string | null {
   if (/一番賞|一番くじ/.test(text)) return 'ichiban'
   if (/ガシャポン|ガチャ|カプセル|扭蛋|轉蛋/.test(text)) return 'gacha'
-  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG/i.test(text)) return 'tcg'
-  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART/i.test(text)) return 'blindbox'
+  if (/ポケモンカード|ポケカ|遊戯王|デュエマ|ヴァイス|カードゲーム|卡牌|TCG|新弾/i.test(text)) return 'tcg'
+  if (/景品|プライズ|フィギュア|公仔|手辦|模型|Figuarts|ROBOT魂|ねんどろいど|黏土人/i.test(text)) return 'figure'
+  if (/ブラインドボックス|盲盒|盒玩|ポップマート|POP ?MART|食玩|ソフビ|軟膠|周邊|グッズ/i.test(text)) return 'toy'
   return null
 }
 
@@ -392,7 +501,7 @@ async function rewriteArticle(
 
   const resp = await claude.messages.create({
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
+    max_tokens: 1800,
     messages: [{
       role: 'user',
       content: `你是吉吉比（GGB）台灣線上轉蛋平台的內容編輯，負責篩選「商品發售情報」。
@@ -405,7 +514,7 @@ ${combined}
 
 【嚴格篩選原則】
 只接受以下類型，其他一律回傳 null：
-✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋 新品上市、預售、到貨）
+✅ 新商品發售消息（轉蛋/一番賞/盒玩/卡牌/扭蛋/公仔景品 新品上市、預售、到貨）
 ✅ 商品情報曝光（新品圖片首公開、品項公開）
 ✅ 聯名商品、限定版發售情報
 
@@ -421,9 +530,9 @@ ${combined}
 {
   "title": "吸引台灣玩家點擊的標題（繁體中文，25字以內，含商品名）",
   "summary": "一句話摘要，說明什麼商品、何時發售或上市（40字以內）",
-  "content": "<h2>小標</h2><p>段落...</p>（繁體中文，250-400字，2-3段，從玩家視角介紹商品特色與發售資訊）",
+  "content": "<h2>小標</h2><p>段落...</p><h2>小標</h2><p>段落...</p>（繁體中文，550-750字，4~5段並用 2~3 個 <h2> 分段，從玩家視角介紹：商品特色與造型細節、系列背景或角色亮點、發售與預購資訊、值得入手的理由；資訊不足處以既有內容延伸描述，不可捏造價格或日期）",
   "tags": ["品牌","系列名","類型"],
-  "category": "ichiban|gacha|blindbox|tcg|general（能明確歸入前四類就不要用 general）"
+  "category": "ichiban|gacha|tcg|figure|toy（figure＝公仔/景品/模型/プライズ；toy＝盒玩/盲盒/食玩/周邊商品/軟膠/展會；分不出來就用 toy）"
 }
 
 若不符合篩選條件，直接回傳：null`,
@@ -464,8 +573,11 @@ function jaccardSim(a: Set<string>, b: Set<string>): number {
 const CATEGORY_TONE: Record<string, string> = {
   ichiban:  '一番賞景品，語氣可以興奮、期待、或喊衝',
   gacha:    '扭蛋/轉蛋商品，語氣可以可愛、期待、或問哪裡買',
-  blindbox: '盲盒/盒玩商品，語氣可以可愛、驚喜、或分享收藏心情',
+  toy:      '盒玩/盲盒/食玩/周邊商品，語氣可以可愛、驚喜、或分享收藏心情',
   tcg:      '集換式卡牌，語氣可以討論強度、卡圖、或問價格',
+  figure:   '公仔景品/模型，語氣可以讚嘆做工、討論比例、或喊要收',
+  // 舊分類值保留對照，避免既有文章取不到語氣設定
+  blindbox: '盒玩/盲盒商品，語氣可以可愛、驚喜、或分享收藏心情',
   general:  '周邊商品情報，語氣自然，依內容決定',
 }
 
@@ -635,12 +747,14 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
+      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadImageToR2(ogImage)) ?? ogImage)
-      const finalCategory = (draft.category && draft.category !== 'general')
+        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id, title: draft.title, summary: draft.summary, content: draft.content,
@@ -716,19 +830,27 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
+      // 已知帶浮水印的來源無條件蓋 logo（偵測失手也不會漏）；
+      // 其他來源走偵測式，若圖上真的有浮水印一樣會被蓋掉
       const imageUrl = isWatermarked
         ? ((await downloadBrandedToR2(ogImage)) ?? DEFAULT_NEWS_IMAGE)
-        : ((await downloadImageToR2(ogImage)) ?? ogImage)
-      const finalCategory = (draft.category && draft.category !== 'general')
+        : ((await downloadSmartToR2(ogImage)) ?? ogImage)
+      const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
-        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'general')
+        : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
+
+      // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
+      // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
+      const contentWithImages = await injectBodyImages(
+        draft.content, articleHtml, ogImage, realUrl
+      )
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
       const { error } = await supabase.from('news').insert({
         id,
         title:      draft.title,
         summary:    draft.summary,
-        content:    draft.content,
+        content:    contentWithImages,
         image_url:  imageUrl,
         source_url: realUrl,
         category:   finalCategory,

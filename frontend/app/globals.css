@@ -26,6 +26,13 @@ input, textarea, select, button {
   user-select: text;
 }
 
+/* 防止 iOS 長按圖片彈出下載選單 */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .dark body {
 }
 

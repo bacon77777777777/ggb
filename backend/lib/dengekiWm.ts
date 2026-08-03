@@ -54,6 +54,8 @@ function maxNcc(region: Float32Array, rw: number, rh: number, tpl: Float32Array,
   return best
 }
 
+const WM_THRESHOLD = 0.3
+
 export async function detectWatermarkCorner(buf: Buffer): Promise<WmCorner> {
   try {
     const tpl = await getTemplate()
@@ -78,6 +80,42 @@ export async function detectWatermarkCorner(buf: Buffer): Promise<WmCorner> {
       ['bottom-right', maxNcc(crop(W - regionW, H - regionH), regionW, regionH, tplEdge, tpl.w, tpl.h)],
     ]
     scores.sort((a, b) => b[1] - a[1])
-    return scores[0][1] >= 0.3 ? scores[0][0] : 'top-right'
+    return scores[0][1] >= WM_THRESHOLD ? scores[0][0] : 'top-right'
   } catch { return 'top-right' }
+}
+
+/**
+ * 同一套比對，但回傳是否真的偵測到浮水印（而非只回角落）
+ *
+ * detectWatermarkCorner() 找不到時會回 'top-right' 當保底，呼叫端無從得知
+ * 到底有沒有浮水印。內文配圖需要「沒浮水印就別亂蓋 logo」，故另開此介面。
+ *
+ * 限制：模板是電ホビ的浮水印，只認得這一種；其他站的浮水印不會被偵測到。
+ */
+export async function detectWatermark(buf: Buffer): Promise<{ corner: WmCorner; score: number; found: boolean }> {
+  try {
+    const tpl = await getTemplate()
+    const { data, info } = await sharp(buf).resize(600, null, { withoutEnlargement: true }).greyscale().raw().toBuffer({ resolveWithObject: true })
+    const W = info.width, H = info.height
+    const regionW = Math.min(Math.round(W * 0.42), W), regionH = Math.min(Math.round(H * 0.2), H)
+    if (regionW < tpl.w || regionH < tpl.h) return { corner: 'top-right', score: 0, found: false }
+    const tplEdge = edgeMap(tpl.data, tpl.w, tpl.h)
+    const crop = (x0: number, y0: number): Float32Array => {
+      const out = new Float32Array(regionW * regionH)
+      for (let y = 0; y < regionH; y++)
+        for (let x = 0; x < regionW; x++) out[y * regionW + x] = data[(y0 + y) * W + (x0 + x)]
+      return edgeMap(out as unknown as Uint8Array, regionW, regionH)
+    }
+    const scores: [WmCorner, number][] = [
+      ['top-left',     maxNcc(crop(0, 0), regionW, regionH, tplEdge, tpl.w, tpl.h)],
+      ['top-right',    maxNcc(crop(W - regionW, 0), regionW, regionH, tplEdge, tpl.w, tpl.h)],
+      ['bottom-left',  maxNcc(crop(0, H - regionH), regionW, regionH, tplEdge, tpl.w, tpl.h)],
+      ['bottom-right', maxNcc(crop(W - regionW, H - regionH), regionW, regionH, tplEdge, tpl.w, tpl.h)],
+    ]
+    scores.sort((a, b) => b[1] - a[1])
+    const [corner, score] = scores[0]
+    return { corner, score, found: score >= WM_THRESHOLD }
+  } catch {
+    return { corner: 'top-right', score: 0, found: false }
+  }
 }

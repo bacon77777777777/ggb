@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,6 +14,7 @@ import SlotMachineClassic, { ReelOutcome, MachineLayout, setSfxMuted } from '@/c
 import DanmakuLayer, { type DanmakuItem } from '@/components/challenge/DanmakuLayer';
 import EndingBar from '@/components/challenge/EndingBar';
 import { inheritSchedule } from '@/lib/schedule';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
 // 返還種類 → 滾輪演出組合（機率由 DB 權重決定，這裡純顯示映射）
 const RETURN_OUTCOME: Record<string, ReelOutcome> = {
@@ -179,7 +179,7 @@ export default function MachinePage() {
   }, []);
 
   const [machine, setMachine] = useState<SlotMachine | null>(null);
-  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null } | null>(null);
+  const [previewPrize, setPreviewPrize] = useState<{ name: string; image_url: string | null; level?: string; recycle_value?: number | null } | null>(null);
   // 機台總餘額板顯示值：按下 SPIN 即時扣款，回包後以 new_balance 校正；idle 時跟 profile 對齊
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [sfxMuted, setSfxMutedState] = useState(false);
@@ -729,7 +729,7 @@ export default function MachinePage() {
         <div
           key={item.id}
           className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
-          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url })}
+          onClick={() => prize && setPreviewPrize({ name: prize.name, image_url: prize.image_url, level: prize.level, recycle_value: prize.recycle_value })}
         >
           <div className="aspect-[63/88] w-full relative rounded-md overflow-hidden">
             {prize?.image_url ? (
@@ -770,11 +770,9 @@ export default function MachinePage() {
         {/* 標題列 */}
         <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
           <h2 className="text-sm font-black text-neutral-900 dark:text-neutral-50">獎池總覽</h2>
-          {isRushActive && (
-            <span className="text-xs font-bold text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 rounded-full">
-              ⚡ RUSH 模式
-            </span>
-          )}
+          {/* 原本此處有「⚡ RUSH 模式」標籤，已移除：
+              它跟著 isRushActive 即時切換，會在滾輪還沒停穩前就先消失，
+              等於提前洩漏這轉有沒有連中，破壞開獎的懸念 */}
         </div>
 
         {!hasContent && (
@@ -858,8 +856,6 @@ export default function MachinePage() {
       { label: '保底轉數', value: `${machine.floor_spin_count} 轉` },
       { label: '保底進度', value: `${Math.min(spinsThisTier, machine.floor_spin_count)} / ${machine.floor_spin_count}` },
     ];
-    // 機台專屬活動頁：機台設定優先，其次沿用主題共用的說明頁
-    const eventSlug = machine.event_slug || machine.slot_themes?.event_slug || null;
     return (
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-2 sm:space-y-4">
         <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
@@ -873,15 +869,13 @@ export default function MachinePage() {
               <span className="text-neutral-900 dark:text-neutral-50 font-black text-[13px] text-right">{value}</span>
             </div>
           ))}
-          {eventSlug && (
-            <div className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">機台說明</span>
-              <Link href={`/events/${eventSlug}`}
-                className="text-primary font-black text-[13px] text-right underline underline-offset-2 hover:opacity-80 transition-opacity">
-                前往查看
-              </Link>
-            </div>
-          )}
+          <div className="flex justify-between items-center py-1 sm:py-2 border-b border-dashed border-neutral-100 dark:border-neutral-800">
+            <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">規則說明</span>
+            <Link href="/challenge/rules"
+              className="text-primary font-black text-[13px] text-right underline underline-offset-2 hover:opacity-80 transition-opacity">
+              前往查看
+            </Link>
+          </div>
         </div>
 
         <div className="pt-1">
@@ -1221,38 +1215,7 @@ export default function MachinePage() {
         )}
       </AnimatePresence>
 
-      {/* 品項大圖預覽 */}
-      {previewPrize && typeof window !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[2600] bg-black/85 flex items-center justify-center p-4"
-          onClick={() => setPreviewPrize(null)}
-        >
-          <div
-            className="relative max-w-[88vw] max-h-[88vh] flex flex-col items-center gap-3"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewPrize(null)}
-              className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <span className="text-white text-base font-black text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
-              {previewPrize.name}
-            </span>
-            <Image
-              src={previewPrize.image_url || '/images/item_defaulet.png'}
-              alt={previewPrize.name}
-              width={600}
-              height={600}
-              className="max-w-full max-h-[75vh] object-contain rounded-2xl"
-              unoptimized
-            />
-          </div>
-        </div>,
-        document.body
-      )}
+      <PrizeDetailSheet prize={previewPrize} onClose={() => setPreviewPrize(null)} />
     </div>
   );
 }

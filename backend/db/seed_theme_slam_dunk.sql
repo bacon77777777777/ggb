@@ -3,8 +3,9 @@
 -- 複製自絕頂RUSH 的玩法參數（保底 200 轉 / 觸發 0.2% / 延續 30% 衰減 0.5 /
 -- 返還期望 38.7% → RTP ≈ 82%），僅更換視覺與名稱。
 --
--- 機台圖素：/images/slot/machine/sprite2.png（2048×1400，與現有模板同規格，
--- 故 machine_layout 留空沿用預設版位）。
+-- 機台圖素：後台「sprite 原圖直傳」上傳到 R2 的籃球組圖（2048×1400，與現有模板同規格，
+-- 故 machine_layout 留空沿用預設版位）。R2 bucket 為兩環境共用，故同一網址在 STG/PROD 皆可用。
+-- ⚠️ 勿改回 /images/slot/machine/sprite2.png —— 那是埃及主題的範例圖，不是本主題的圖素。
 --
 -- ⚠️ 建立後機台維持「未上架」：RUSH 獎池尚未填入卡片，
 --    若直接上架，玩家一轉就會撞到「此檔次獎池已售罄」。獎池補齊後再開。
@@ -23,7 +24,9 @@ INSERT INTO public.slot_themes (
   video_rush_win_strong, video_rush_win_god, video_rush_revival
 )
 SELECT
-  '灌籃SLAM DUNK', 'classic', '/images/slot/machine/sprite2.png', NULL, t.image_url,
+  '灌籃SLAM DUNK', 'classic',
+  'https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/slot-sprite-5-1785572357287.png',
+  NULL, t.image_url,
   5, t.supplier_id, 2, TRUE, 'slam-dunk',
   t.bet_tiers, t.spin_returns,
   t.trigger_rate, t.continue_rate, t.continue_rate_decay, t.min_rush_hits, t.floor_spin_count,

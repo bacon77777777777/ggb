@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Database } from '@/types/database.types';
-import { X } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
@@ -239,39 +238,17 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
         </div>
       )}
 
-      {/* 大圖預覽 modal */}
-      {previewPrize && typeof window !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[2600] bg-black/85 flex items-center justify-center p-4"
-          onClick={() => setPreviewPrize(null)}
-        >
-          <div
-            className="relative max-w-[88vw] max-h-[88vh] flex flex-col items-center gap-3"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewPrize(null)}
-              className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <span className="text-white text-base font-black drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)]">
-              {previewPrize.name}
-            </span>
-            <Image
-              src={brokenPrizeIds.has(previewPrize.id) || !previewPrize.image_url ? '/images/item_defaulet.png' : previewPrize.image_url}
-              alt={previewPrize.name}
-              width={600}
-              height={600}
-              className="max-w-full max-h-[75vh] object-contain rounded-2xl"
-              unoptimized
-              onError={() => markBroken(previewPrize.id)}
-            />
-          </div>
-        </div>,
-        document.body
-      )}
+      <PrizeDetailSheet
+        prize={previewPrize ? {
+          name: previewPrize.name,
+          image_url: brokenPrizeIds.has(previewPrize.id) ? null : previewPrize.image_url,
+          level: previewPrize.level,
+          total: previewPrize.total,
+          remaining: previewPrize.remaining,
+          probability: previewPrize.probability,
+        } : null}
+        onClose={() => setPreviewPrize(null)}
+      />
     </div>
   );
 }
