@@ -125,6 +125,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
             setPendingRechargeReview(d.pendingRechargeReview ?? 0)
             setMemberCount(d.totalMembers ?? 0)
             setOnlineCount(d.onlineCount ?? 0)
+            // 清單與 badge 同源，避免數字與內容對不上
+            setSettlementItems(d.settlementItems ?? [])
+            setRefundItems(d.refundItems ?? [])
+            setRechargeItems(d.rechargeItems ?? [])
           }
         })
         .catch(() => {})
@@ -154,28 +158,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         .order('submitted_at', { ascending: true })
       if (ordersData) setPendingOrders(ordersData)
 
-      // Fetch settlement / refund / recharge items for header popups
-      const [{ data: settData }, { data: refData }, { data: rcData }] = await Promise.all([
-        supabase.from('settlement_snapshots')
-          .select('id, period_month, total_revenue, supplier:suppliers(name)')
-          .eq('status', 'draft')
-          .order('period_month', { ascending: false })
-          .limit(10),
-        supabase.from('refund_requests')
-          .select('id, amount, reason, created_at, user:users(name)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase.from('recharge_records')
-          .select('id, amount, payment_method, created_at, user:users(name)')
-          .eq('needs_review', true)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(10),
-      ])
-      if (settData) setSettlementItems(settData)
-      if (refData)  setRefundItems(refData)
-      if (rcData)   setRechargeItems(rcData)
+      // 月結／退款／儲值三份清單改由 /api/admin/dashboard/pending 供應（service role），
+      // 與 badge 數字同源。原本走 anon client 會被 RLS 擋成空陣列。
     }
 
     fetchData()
