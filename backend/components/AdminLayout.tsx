@@ -1064,10 +1064,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                         {settlementItems.length > 0 ? settlementItems.map((s: any) => (
                           <button key={s.id} onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-neutral-900">{(s.supplier as any)?.name ?? '—'}</p>
-                              <p className="text-xs text-neutral-500">{s.period_month}</p>
+                              <p className="text-sm font-medium text-neutral-900">{s.supplier_name ?? '—'}</p>
+                              <p className="text-xs text-neutral-500">{s.period_start?.slice(0, 10)} ~ {s.period_end?.slice(0, 10)}</p>
                             </div>
-                            <span className="text-sm font-semibold text-amber-600">NT${(s.total_revenue ?? 0).toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-amber-600">{(s.total_g ?? 0).toLocaleString()} G</span>
                           </button>
                         )) : (
                           <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待確認月結</p></div>
@@ -1104,7 +1104,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               <p className="text-sm font-medium text-neutral-900">{(r.user as any)?.name ?? '—'}</p>
                               <p className="text-xs text-neutral-500 truncate max-w-[160px]">{r.reason ?? '無備註'}</p>
                             </div>
-                            <span className="text-sm font-semibold text-rose-600">NT${(r.amount ?? 0).toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-rose-600">NT${(r.amount_twd ?? 0).toLocaleString()}</span>
                           </button>
                         )) : (
                           <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待審退款</p></div>
