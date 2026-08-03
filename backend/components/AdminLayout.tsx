@@ -125,6 +125,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
             setPendingRechargeReview(d.pendingRechargeReview ?? 0)
             setMemberCount(d.totalMembers ?? 0)
             setOnlineCount(d.onlineCount ?? 0)
+            // 清單與 badge 同源，避免數字與內容對不上
+            setSettlementItems(d.settlementItems ?? [])
+            setRefundItems(d.refundItems ?? [])
+            setRechargeItems(d.rechargeItems ?? [])
           }
         })
         .catch(() => {})
@@ -154,28 +158,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         .order('submitted_at', { ascending: true })
       if (ordersData) setPendingOrders(ordersData)
 
-      // Fetch settlement / refund / recharge items for header popups
-      const [{ data: settData }, { data: refData }, { data: rcData }] = await Promise.all([
-        supabase.from('settlement_snapshots')
-          .select('id, period_month, total_revenue, supplier:suppliers(name)')
-          .eq('status', 'draft')
-          .order('period_month', { ascending: false })
-          .limit(10),
-        supabase.from('refund_requests')
-          .select('id, amount, reason, created_at, user:users(name)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase.from('recharge_records')
-          .select('id, amount, payment_method, created_at, user:users(name)')
-          .eq('needs_review', true)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(10),
-      ])
-      if (settData) setSettlementItems(settData)
-      if (refData)  setRefundItems(refData)
-      if (rcData)   setRechargeItems(rcData)
+      // 月結／退款／儲值三份清單改由 /api/admin/dashboard/pending 供應（service role），
+      // 與 badge 數字同源。原本走 anon client 會被 RLS 擋成空陣列。
     }
 
     fetchData()
@@ -1080,10 +1064,10 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                         {settlementItems.length > 0 ? settlementItems.map((s: any) => (
                           <button key={s.id} onClick={() => { router.push('/settlement-snapshots'); setIsSettlementOpen(false) }} className="w-full text-left px-4 py-3 hover:bg-neutral-50 border-b border-neutral-100 flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-neutral-900">{(s.supplier as any)?.name ?? '—'}</p>
-                              <p className="text-xs text-neutral-500">{s.period_month}</p>
+                              <p className="text-sm font-medium text-neutral-900">{s.supplier_name ?? '—'}</p>
+                              <p className="text-xs text-neutral-500">{s.period_start?.slice(0, 10)} ~ {s.period_end?.slice(0, 10)}</p>
                             </div>
-                            <span className="text-sm font-semibold text-amber-600">NT${(s.total_revenue ?? 0).toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-amber-600">{(s.total_g ?? 0).toLocaleString()} G</span>
                           </button>
                         )) : (
                           <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待確認月結</p></div>
@@ -1120,7 +1104,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               <p className="text-sm font-medium text-neutral-900">{(r.user as any)?.name ?? '—'}</p>
                               <p className="text-xs text-neutral-500 truncate max-w-[160px]">{r.reason ?? '無備註'}</p>
                             </div>
-                            <span className="text-sm font-semibold text-rose-600">NT${(r.amount ?? 0).toLocaleString()}</span>
+                            <span className="text-sm font-semibold text-rose-600">NT${(r.amount_twd ?? 0).toLocaleString()}</span>
                           </button>
                         )) : (
                           <div className="p-8 text-center text-neutral-400"><p className="text-sm">目前沒有待審退款</p></div>
