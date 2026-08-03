@@ -1,6 +1,7 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
+import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
@@ -19,11 +20,12 @@ interface RefundRequest {
   recharge: { id: number; order_number: string; amount: number; status: string } | null
 }
 
+// 顏色統一交由 Badge 的 statusVariantMap 決定，此處只留標籤文字
 const STATUS_META = {
-  pending:   { label: '待審核', cls: 'bg-yellow-50 text-yellow-700' },
-  approved:  { label: '已核准', cls: 'bg-primary text-primary' },
-  rejected:  { label: '已拒絕', cls: 'bg-red-50 text-red-600' },
-  processed: { label: '已處理', cls: 'bg-green-50 text-green-700' },
+  pending:   { label: '待審核' },
+  approved:  { label: '已核准' },
+  rejected:  { label: '已拒絕' },
+  processed: { label: '已處理' },
 }
 
 export default function RefundRequestsPage() {
@@ -144,66 +146,88 @@ export default function RefundRequestsPage() {
         ) : requests.length === 0 ? (
           <EmptyState message="無退款申請" />
         ) : (
-          <div className="space-y-3">
-            {requests.map(r => {
-              const sm = STATUS_META[r.status]
-              return (
-                <div key={r.id} className="bg-white rounded-xl border border-neutral-200 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-neutral-800">#{r.id}</span>
-                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${sm.cls}`}>{sm.label}</span>
-                        <span className="text-xs text-neutral-400">{new Date(r.created_at).toLocaleString('zh-TW')}</span>
-                      </div>
-                      <div className="text-sm text-neutral-700">
-                        <span className="font-medium">{r.user?.name || '(未命名)'}</span>
-                        <span className="text-neutral-400 ml-2">{r.user?.email}</span>
-                        <span className="ml-2 text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</span>
-                      </div>
-                      {r.recharge && (
-                        <div className="text-xs text-neutral-500">
-                          儲值單：{r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}，{r.recharge.status}）
-                        </div>
-                      )}
-                      <div className="text-sm text-neutral-600">原因：{r.reason}</div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold text-neutral-900">NT$ {Number(r.amount_twd).toLocaleString()}</p>
-                      {r.tokens_to_deduct > 0 && (
-                        <p className="text-xs text-rose-500">扣回 {r.tokens_to_deduct.toLocaleString()} G</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 管理員操作 */}
-                  {(r.status === 'pending' || r.status === 'approved') && (
-                    <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2">
-                      <input
-                        className="flex-1 border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                        placeholder="備註（選填）..."
-                        value={notes[r.id] ?? (r.admin_note ?? '')}
-                        onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
-                      />
-                      {r.status === 'pending' && (
-                        <>
-                          <button onClick={() => act(r.id, 'approve')} className="px-3 py-1.5 text-sm bg-primary text-primary rounded-lg hover:bg-blue-100">核准</button>
-                          <button onClick={() => act(r.id, 'reject')} className="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100">拒絕</button>
-                        </>
-                      )}
-                      {r.status === 'approved' && (
-                        <button onClick={() => act(r.id, 'process')} className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium">
-                          執行退款（扣代幣）
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {r.admin_note && r.status !== 'pending' && r.status !== 'approved' && (
-                    <div className="mt-2 text-xs text-neutral-500">備註：{r.admin_note}</div>
-                  )}
-                </div>
-              )
-            })}
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">#</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">會員</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">原因</th>
+                    <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">退款 (TWD)</th>
+                    <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">扣回 (G)</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">申請時間</th>
+                    <th className="text-center px-4 py-2 text-xs font-semibold text-neutral-500">狀態</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">備註</th>
+                    <th className="px-4 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map(r => {
+                    const sm = STATUS_META[r.status]
+                    const editable = r.status === 'pending' || r.status === 'approved'
+                    return (
+                      <tr key={r.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-neutral-800 whitespace-nowrap">#{r.id}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
+                          <div className="text-xs text-neutral-400">{r.user?.email}</div>
+                          <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
+                        </td>
+                        <td className="px-4 py-3 max-w-[220px]">
+                          <div className="text-neutral-600 truncate" title={r.reason}>{r.reason}</div>
+                          {r.recharge && (
+                            <div className="text-xs text-neutral-400 truncate">
+                              儲值單 {r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}）
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold text-neutral-900 whitespace-nowrap">
+                          {Number(r.amount_twd).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-rose-500 whitespace-nowrap">
+                          {r.tokens_to_deduct > 0 ? `-${r.tokens_to_deduct.toLocaleString()}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">
+                          {new Date(r.created_at).toLocaleString('zh-TW')}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge status={r.status}>{sm.label}</Badge>
+                        </td>
+                        <td className="px-4 py-3 max-w-[160px]">
+                          {editable ? (
+                            <input
+                              className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
+                              placeholder="備註..."
+                              value={notes[r.id] ?? (r.admin_note ?? '')}
+                              onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
+                            />
+                          ) : (
+                            <span className="text-xs text-neutral-400">{r.admin_note || '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 justify-end">
+                            {r.status === 'pending' && (
+                              <>
+                                <button onClick={() => act(r.id, 'approve')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100 whitespace-nowrap">核准</button>
+                                <button onClick={() => act(r.id, 'reject')} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 whitespace-nowrap">拒絕</button>
+                              </>
+                            )}
+                            {r.status === 'approved' && (
+                              <button onClick={() => act(r.id, 'process')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 whitespace-nowrap">執行退款</button>
+                            )}
+                            {r.status === 'processed' && r.processed_at && (
+                              <span className="text-xs text-neutral-400">{new Date(r.processed_at).toLocaleDateString('zh-TW')}</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

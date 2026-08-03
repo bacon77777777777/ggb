@@ -66,6 +66,9 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   published: 'success',
   archived: 'default',
   confirmed: 'info',
+  // 退款申請狀態
+  rejected: 'danger',
+  processed: 'success',
   // 中文草稿 / 工單狀態
   '待確認': 'warning',
   '已確認': 'info',
