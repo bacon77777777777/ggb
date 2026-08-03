@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 const pushLine = createLinePusher('line_push_market')
 
 export const dynamic = 'force-dynamic'
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY 未設定' }, { status: 500 })
   }
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('competitive-intel', )
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,

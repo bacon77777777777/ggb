@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 const pushLine = createLinePusher('line_push_cto')
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY missing' }, { status: 500 })
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('ai-cto', )
   const resolved: string[] = []
   const needsCode: string[] = []
 

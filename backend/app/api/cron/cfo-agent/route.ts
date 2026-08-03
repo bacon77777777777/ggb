@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { formatTaiwanDate, formatTaiwanTime } from '@/lib/financeMetrics'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 const pushLine = createLinePusher('line_push_cfo')
 
 export const dynamic = 'force-dynamic'
@@ -229,7 +230,7 @@ ${isMonday ? `## 個人代幣差異用戶（週一深查）\n${JSON.stringify(mi
 ${JSON.stringify(topupPending)}
 `.trim()
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('cfo-agent', )
   const res = await client.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 300,

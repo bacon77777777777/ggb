@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClaude } from '@/lib/aiUsage'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) return NextResponse.json({ error: '未設定 ANTHROPIC_API_KEY' }, { status: 500 })
 
-    const client = new Anthropic({ apiKey })
+    const client = createClaude('tools-ai-enrich', )
 
     const prizeList = (prizes as Prize[] || [])
       .slice(0, 10)

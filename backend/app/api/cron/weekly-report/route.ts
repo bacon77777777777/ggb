@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 
 export const dynamic = 'force-dynamic'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 const pushLine = createLinePusher('line_push_weekly')
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const anthropic = createClaude('weekly-report', process.env.ANTHROPIC_API_KEY!)
 
 export async function GET(req: NextRequest) { return POST(req) }
 

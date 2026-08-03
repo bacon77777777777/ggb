@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 
 const pushLine = createLinePusher('line_push_content')
 
@@ -45,7 +46,7 @@ async function generateTextContent(productName: string, style: Style, competitor
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return `[ANTHROPIC_API_KEY 未設定] ${productName} - ${style} 草稿`
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('generate-content', )
   const competitorBlock = competitorHint
     ? `\n競品本週動態（參考趨勢，不要直接提及對手品牌）：\n${competitorHint}\n`
     : ''

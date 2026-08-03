@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { createLinePusher } from '@/lib/linePush'
+import { createClaude } from '@/lib/aiUsage'
 const pushLine = createLinePusher('line_push_cmo')
 
 export const dynamic = 'force-dynamic'
@@ -146,7 +147,7 @@ async function analyzeWithClaude(metrics: any, isMonday: boolean): Promise<strin
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return '（AI 分析不可用）'
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('cmo-agent', )
   const funnel = (metrics.drawFunnel[0] ?? {}) as any
 
   const context = `

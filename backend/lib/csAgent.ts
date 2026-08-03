@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { queryEcpayTrade } from './ecpay'
+import { createClaude } from './aiUsage'
 
 const LINE_TOKEN    = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
 const ADMIN_PUSH_ID = process.env.NOTIFY_TARGET_ID ?? ''
@@ -319,7 +320,7 @@ export async function askCsAgent(message: string, lineUserId: string): Promise<C
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return { text: '客服系統暫時無法使用，請稍後再試。' }
 
-  const client = new Anthropic({ apiKey })
+  const client = createClaude('csAgent', )
 
   const systemPrompt = `你是吉吉比轉蛋平台的 AI 客服，負責幫助玩家解決問題。
 

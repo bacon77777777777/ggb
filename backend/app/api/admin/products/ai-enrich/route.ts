@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
+import { createClaude } from '@/lib/aiUsage'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -579,7 +580,7 @@ async function scrapeBandaiCatalog(barcode: string): Promise<{
 async function nameVariantsByVision(productName: string, imageUrls: string[]): Promise<string[]> {
   if (imageUrls.length === 0) return []
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const client = createClaude('products-ai-enrich', process.env.ANTHROPIC_API_KEY!)
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
@@ -709,7 +710,7 @@ interface ClaudeIdent {
   variant_names: string[]          // Claude 依訓練資料推測的品項名
 }
 async function claudeIdentify(name: string, type: string, count: number): Promise<ClaudeIdent> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+  const client = createClaude('products-ai-enrich', process.env.ANTHROPIC_API_KEY!)
   const typeZh: Record<string, string> = {
     ichiban: '一番賞', gacha: '轉蛋扭蛋', blindbox: '盒玩', card: '集換式卡牌', custom: '自製賞',
   }
@@ -781,7 +782,7 @@ async function generateVariantNames(
 
   const knownParts = (sitePrizes?.length ? sitePrizes : existingNames?.map(n => ({ grade: '', name: n })) ?? [])
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+    const client = createClaude('products-ai-enrich', process.env.ANTHROPIC_API_KEY!)
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 600,
