@@ -11,7 +11,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { AdminLayout, PageCard, ConfirmDialog } from '@/components'
+import { AdminLayout, PageCard, ConfirmDialog, DataTable, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -20,6 +20,12 @@ import { useToast } from '@/contexts/ToastContext'
 
 /** 只有這三種走 play_ichiban，才會用到 profit_rate */
 const APPLICABLE_TYPES = ['ichiban', 'card', 'custom']
+
+const TYPE_LABEL: Record<string, string> = {
+  ichiban: '一番賞',
+  card:    '抽卡',
+  custom:  '自製賞',
+}
 
 /** 總量佔比低於此值的賞項視為大獎，不必人工指定 */
 const MAJOR_PRIZE_RATIO = 0.05
@@ -35,6 +41,7 @@ interface Row {
   id: number
   name: string
   productCode: string | null
+  type: string
   prizes: Prize[]
   drawCount: number
 }
@@ -72,7 +79,7 @@ export default function RatesPage() {
     const load = async () => {
       const { data } = await supabase
         .from('products')
-        .select('id, product_code, name, profit_rate, product_prizes(level, name, total, probability)')
+        .select('id, product_code, name, type, profit_rate, product_prizes(level, name, total, probability)')
         .in('type', APPLICABLE_TYPES)
         .order('id', { ascending: false })
 
@@ -91,6 +98,7 @@ export default function RatesPage() {
         id: p.id,
         name: p.name,
         productCode: p.product_code,
+        type: p.type,
         prizes: (p.product_prizes ?? []).map((z: any) => ({
           level: z.level, name: z.name, total: z.total, probability: Number(z.probability ?? 0),
         })),
@@ -139,6 +147,70 @@ export default function RatesPage() {
     toast('已全部改回 100%，記得儲存')
   }
 
+  const columns: Column<Row>[] = [
+    {
+      key: 'type',
+      label: '類別',
+      render: r => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
+    },
+    {
+      key: 'name',
+      label: '商品',
+      className: 'font-medium',
+      render: r => (
+        <div className="min-w-0">
+          <div className="truncate">{r.name}</div>
+          {r.drawCount > 0 && (
+            <div className="text-xs text-neutral-400 mt-0.5">已開賣，不可調整</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'rate',
+      label: '殺率',
+      render: r => {
+        const rate = rates[r.id] ?? 1
+        const locked = r.drawCount > 0
+        return (
+          <div className="flex items-center gap-3 min-w-[240px]">
+            <input
+              type="range"
+              min={0} max={200} step={5}
+              value={Math.round(rate * 100)}
+              disabled={locked}
+              onChange={e => setRates({ ...rates, [r.id]: Number(e.target.value) / 100 })}
+              className="flex-1 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+            <span className={`w-12 text-right font-mono tabular-nums ${
+              rate === 1 ? 'text-neutral-400' : 'text-primary font-semibold'
+            }`}>
+              {Math.round(rate * 100)}%
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'prizes',
+      label: '大獎機率',
+      render: r => {
+        const majors = applyRate(r.prizes, rates[r.id] ?? 1).filter(p => p.major)
+        if (majors.length === 0) return <span className="text-neutral-400">無大獎賞項</span>
+        return (
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {majors.map(p => (
+              <span key={p.level + p.name} className="whitespace-nowrap">
+                <span className="text-neutral-500">{p.level}</span>
+                <span className="ml-1.5 font-mono tabular-nums">{p.adjusted.toFixed(2)}%</span>
+              </span>
+            ))}
+          </div>
+        )
+      },
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="殺率調整">
       <PageCard>
@@ -170,59 +242,13 @@ export default function RatesPage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <p className="py-12 text-center text-sm text-neutral-400">載入中…</p>
-        ) : visible.length === 0 ? (
-          <p className="py-12 text-center text-sm text-neutral-400">沒有符合的商品</p>
-        ) : (
-          <div className="divide-y divide-neutral-100">
-            {visible.map(row => {
-              const rate = rates[row.id] ?? 1
-              const locked = row.drawCount > 0
-              const majors = applyRate(row.prizes, rate).filter(p => p.major)
-
-              return (
-                <div key={row.id} className="py-4 flex items-center gap-6">
-                  <div className="w-64 flex-shrink-0 min-w-0">
-                    <div className="font-medium text-neutral-900 truncate">{row.name}</div>
-                    {locked && (
-                      <div className="mt-0.5"><Badge color="gray">已開賣，不可調整</Badge></div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <input
-                      type="range"
-                      min={0} max={200} step={5}
-                      value={Math.round(rate * 100)}
-                      disabled={locked}
-                      onChange={e => setRates({ ...rates, [row.id]: Number(e.target.value) / 100 })}
-                      className="flex-1 accent-primary disabled:opacity-40 disabled:cursor-not-allowed"
-                    />
-                    <span className={`w-12 text-right text-sm font-mono tabular-nums ${
-                      rate === 1 ? 'text-neutral-400' : 'text-primary font-semibold'
-                    }`}>
-                      {Math.round(rate * 100)}%
-                    </span>
-                  </div>
-
-                  <div className="w-72 flex-shrink-0 flex flex-wrap gap-x-4 gap-y-1 justify-end">
-                    {majors.length === 0 ? (
-                      <span className="text-xs text-neutral-400">無大獎賞項</span>
-                    ) : majors.map(p => (
-                      <span key={p.level + p.name} className="text-xs whitespace-nowrap">
-                        <span className="text-neutral-500">{p.level}</span>
-                        <span className="ml-1.5 font-mono tabular-nums text-neutral-900">
-                          {p.adjusted.toFixed(2)}%
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <DataTable
+          data={visible}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="沒有符合的商品"
+        />
       </PageCard>
 
       <ConfirmDialog
