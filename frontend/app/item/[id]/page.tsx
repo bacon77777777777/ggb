@@ -31,6 +31,14 @@ import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import NoticeBar from '@/components/promo/NoticeBar';
+
+/**
+ * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
+ * 這三種才有籤號、才有「種子事前封存、完抽後公開」可驗算，
+ * 轉蛋與盒玩走 play_gacha、沒有籤號，掛公平性警語會是錯的宣稱。
+ */
+const FAIR_ENGINE_TYPES = ['ichiban', 'card', 'custom'];
 
 function getRandomPackStyles(): string[] {
   return Array.from({ length: 9 }, () =>
@@ -1816,6 +1824,7 @@ export default function ProductDetailPage() {
             onTopUp={() => router.push('/topup')}
           />
         )}
+        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar placement="item_fair" />}
       </div>
     );
   }
@@ -2463,6 +2472,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
+      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar placement="item_fair" />}
     </div>
   );
 }

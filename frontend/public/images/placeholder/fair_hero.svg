@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900">
+  <rect width="1200" height="900" fill="#4a4a52"/>
+  <g stroke="#ffffff" stroke-opacity=".07" stroke-width="2">
+    <line x1="150" y1="0" x2="150" y2="900"/><line x1="300" y1="0" x2="300" y2="900"/><line x1="450" y1="0" x2="450" y2="900"/><line x1="600" y1="0" x2="600" y2="900"/><line x1="750" y1="0" x2="750" y2="900"/><line x1="900" y1="0" x2="900" y2="900"/><line x1="1050" y1="0" x2="1050" y2="900"/>
+    <line x1="0" y1="150" x2="1200" y2="150"/><line x1="0" y1="300" x2="1200" y2="300"/><line x1="0" y1="450" x2="1200" y2="450"/><line x1="0" y1="600" x2="1200" y2="600"/><line x1="0" y1="750" x2="1200" y2="750"/>
+  </g>
+  <g fill="#ffffff" fill-opacity=".45" font-family="system-ui,-apple-system,'Noto Sans TC',sans-serif" text-anchor="middle">
+    <text x="600.0" y="810" font-size="46" font-weight="700">公平性 主視覺</text>
+    <text x="600.0" y="858" font-size="34" fill-opacity=".6">1200 x 900</text>
+  </g>
+</svg>
