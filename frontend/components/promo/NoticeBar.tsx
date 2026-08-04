@@ -18,6 +18,27 @@ import { usePromos } from './usePromos';
 import { dismiss } from '@/lib/promoDismiss';
 
 /**
+ * 貼齊底部導航的上緣。
+ *
+ * 不寫死高度：導航列實際是 61px（h-[60px] + 1px 上框線）而非直覺的 56px，
+ * 釘在 56px 時底部 5px 會被導航（z-50）的白底蓋住，看得到的深色區比元素盒矮，
+ * 內容就算數學上置中也會顯得偏下。offsetHeight 已含 safe-area 的 padding。
+ */
+function useTabbarOffset() {
+  const [offset, setOffset] = useState<number | null>(null);
+  useEffect(() => {
+    const el = document.querySelector('[data-testid="mobile-tabbar"]') as HTMLElement | null;
+    if (!el) return;
+    const sync = () => setOffset(el.offsetHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return offset;
+}
+
+/**
  * 把自己的實際高度掛到 --promo-notice-h，讓頁面既有的浮動按鈕
  * （首頁的上架、排行榜）跟著上移。用量測而不是寫死高度，
  * 因為文案長度由後台決定，兩行與一行差 16px。
@@ -54,16 +75,17 @@ export default function NoticeBar({ placement }: { placement: string }) {
   const first = promos[0];   // 同一位置只顯示排序最前的一則，疊兩條會吃掉內容高度
   const promo = first && first.id !== closedId ? first : undefined;
   const ref = usePublishHeight(Boolean(promo));
+  const tabbarH = useTabbarOffset();
   if (!promo) return null;
 
   const body = (
     <>
       <Image
-        src="/images/ic.png" alt="" width={28} height={28}
-        className="flex-shrink-0 w-7 h-7"
+        src="/images/ic.png" alt="" width={24} height={24}
+        className="flex-shrink-0 w-6 h-6"
         unoptimized
       />
-      <p className="text-[11px] text-neutral-300 leading-[1.35] flex-1">
+      <p className="text-[11px] text-neutral-300 leading-[1.35] flex-1 relative -top-px">
         {promo.body}
         {promo.cta_href && promo.cta_text && (
           /* 用 primary-light 而非 primary：#EE4D2D 壓在深底上偏濁，淺一階才讀得出來 */
@@ -79,7 +101,7 @@ export default function NoticeBar({ placement }: { placement: string }) {
     <div
       ref={ref}
       className="fixed left-0 right-0 md:hidden z-40"
-      style={{ bottom: 'calc(56px + env(safe-area-inset-bottom))' }}
+      style={{ bottom: tabbarH ?? 'calc(61px + env(safe-area-inset-bottom))' }}
       data-testid="promo-notice-bar"
     >
       <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-1.5 flex items-center gap-2.5">
