@@ -2,6 +2,7 @@
 
 import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
 import PopupPanel from './PopupPanel'
+import Button from '@/components/ui/Button'
 import ScheduleFields from '@/components/ScheduleFields'
 import { Switch } from '@/components/ui'
 import { useState, useEffect, useRef } from 'react'
@@ -38,6 +39,7 @@ export default function BannersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'popup'>('home')
+  const [popupActions, setPopupActions] = useState<HTMLDivElement | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -344,18 +346,17 @@ export default function BannersPage() {
               </button>
             ))}
           </div>
-          {activeTab !== 'popup' && (
-            <button
-              onClick={handleAdd}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-            >
-              + 新增輪播圖
-            </button>
+          {activeTab === 'popup' ? (
+            /* 彈窗頁籤的操作列由 PopupPanel 以 portal 掛進來 ——
+               規則與新增都屬於彈窗自己的狀態，拉到這一層會變成無謂的 prop 傳遞 */
+            <div ref={setPopupActions} className="flex items-center gap-2 flex-shrink-0" />
+          ) : (
+            <Button onClick={handleAdd}>+ 新增輪播圖</Button>
           )}
         </div>
 
         {activeTab === 'popup' ? (
-          <PopupPanel />
+          <PopupPanel actionsSlot={popupActions} />
         ) : (
           <PageCard>
             <DataTable

@@ -8,9 +8,16 @@
  */
 
 import { useEffect, useState } from 'react'
-import { PageCard, Modal } from '@/components'
+import { createPortal } from 'react-dom'
+import { PageCard, Modal, DataTable, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
+import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import FileInput from '@/components/ui/FileInput'
+import Button from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import ScheduleFields from '@/components/ScheduleFields'
 import { useToast } from '@/contexts/ToastContext'
 
@@ -36,10 +43,6 @@ interface Rules {
   promo_dismiss_days: string
 }
 
-const PILL = 'px-3 py-2 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60'
-
-const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
-
 const EMPTY: Omit<Promo, 'id'> = {
   title: '',
   body: '',
@@ -54,7 +57,7 @@ const EMPTY: Omit<Promo, 'id'> = {
   sort_order: 0,
 }
 
-export default function PopupPanel() {
+export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement | null }) {
   const { toast } = useToast()
   const [promos, setPromos] = useState<Promo[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -198,122 +201,115 @@ export default function PopupPanel() {
     fetchPromos()
   }
 
-  const remove = async (p: Promo) => {
-    if (!confirm(`確定刪除「${p.title || p.body.slice(0, 16)}」？`)) return
-    await fetch(`/api/admin/promos?id=${p.id}`, { method: 'DELETE' })
+  const [pendingDelete, setPendingDelete] = useState<Promo | null>(null)
+
+  const remove = async () => {
+    if (!pendingDelete) return
+    await fetch(`/api/admin/promos?id=${pendingDelete.id}`, { method: 'DELETE' })
+    setPendingDelete(null)
     toast('已刪除')
     fetchPromos()
   }
 
   const isImagePopup = editing?.layout === 'image'
 
+  const columns: Column<Promo>[] = [
+    {
+      key: 'layout',
+      label: '版型',
+      render: p => (
+        <Badge color={p.layout === 'image' ? 'blue' : 'purple'}>
+          {p.layout === 'image' ? '純圖片' : '卡片'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'body',
+      label: '內容',
+      render: p => p.layout === 'image' ? (
+        <div className="flex items-center gap-2">
+          {p.image_url
+            ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
+            : <span className="text-red-500 text-xs">尚未設定圖片</span>}
+          <span className="text-neutral-400 text-xs line-clamp-1">{p.body}</span>
+        </div>
+      ) : (
+        <div className="max-w-md">
+          {p.title && <div className="font-medium text-neutral-900">{p.title}</div>}
+          <div className="text-neutral-500 line-clamp-2">{p.body}</div>
+        </div>
+      ),
+    },
+    { key: 'sort_order', label: '排序', sortable: true, className: 'font-mono' },
+    {
+      key: 'is_active',
+      label: '上架',
+      render: p => <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />,
+    },
+    {
+      key: 'actions',
+      label: '操作',
+      render: p => (
+        <div className="whitespace-nowrap">
+          <button onClick={() => openEditor(p)} className="text-primary hover:underline mr-3">編輯</button>
+          <button onClick={() => setPendingDelete(p)} className="text-red-500 hover:underline">刪除</button>
+        </div>
+      ),
+    },
+  ]
+
+  const actions = (
+    <>
+      {/* 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想 */}
+      <SelectField
+        className="w-auto"
+        value={rules.promo_audience}
+        disabled={savingRules}
+        onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
+      >
+        <option value="all">對象：全部</option>
+        <option value="logged_in">對象：已登入</option>
+        <option value="logged_out">對象：未登入</option>
+      </SelectField>
+
+      <SelectField
+        className="w-auto"
+        value={rules.promo_dismiss_mode}
+        disabled={savingRules}
+        onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
+      >
+        <option value="always">關閉後：每次都出現</option>
+        <option value="days">關閉後：隔幾天</option>
+        <option value="never">關閉後：不再出現</option>
+      </SelectField>
+
+      {rules.promo_dismiss_mode === 'days' && (
+        <Input
+          inputMode="numeric"
+          fullWidth={false}
+          className="w-16 text-center"
+          value={rules.promo_dismiss_days}
+          placeholder="天"
+          onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
+          onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
+        />
+      )}
+
+      <Button onClick={() => openEditor({ ...EMPTY })}>新增</Button>
+    </>
+  )
+
   return (
     <>
+      {actionsSlot && createPortal(actions, actionsSlot)}
       <PageCard>
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <p className="text-sm text-neutral-500 min-w-0">
-            進站後蓋在首頁上的彈窗。多則會依排序依序出現，關掉一則接著跳下一則。
-          </p>
-
-          {/* 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想。
-              放在新增鍵左邊而不是獨立區塊，省掉一整塊高度 */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <select
-              className={PILL}
-              value={rules.promo_audience}
-              disabled={savingRules}
-              onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
-            >
-              <option value="all">對象：全部</option>
-              <option value="logged_in">對象：已登入</option>
-              <option value="logged_out">對象：未登入</option>
-            </select>
-
-            <select
-              className={PILL}
-              value={rules.promo_dismiss_mode}
-              disabled={savingRules}
-              onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
-            >
-              <option value="always">關閉後：每次都出現</option>
-              <option value="days">關閉後：隔幾天</option>
-              <option value="never">關閉後：不再出現</option>
-            </select>
-
-            {rules.promo_dismiss_mode === 'days' && (
-              <input
-                type="text"
-                inputMode="numeric"
-                className={`${PILL} w-16 text-center`}
-                value={rules.promo_dismiss_days}
-                placeholder="天"
-                onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
-                onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
-              />
-            )}
-
-            <button
-              onClick={() => openEditor({ ...EMPTY })}
-              className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
-            >
-              新增
-            </button>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <p className="text-sm text-neutral-400 py-8 text-center">載入中…</p>
-        ) : promos.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-8 text-center">尚無首頁彈窗</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr className="text-left text-neutral-600">
-                  <th className="px-3 py-2 font-medium">版型</th>
-                  <th className="px-3 py-2 font-medium">內容</th>
-                  <th className="px-3 py-2 font-medium">排序</th>
-                  <th className="px-3 py-2 font-medium">上架</th>
-                  <th className="px-3 py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {promos.map(p => (
-                  <tr key={p.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-3 py-2.5">
-                      <Badge color={p.layout === 'image' ? 'blue' : 'purple'}>
-                        {p.layout === 'image' ? '純圖片' : '卡片'}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2.5 max-w-md">
-                      {p.layout === 'image' ? (
-                        <div className="flex items-center gap-2">
-                          {p.image_url
-                            ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
-                            : <span className="text-red-500 text-xs">尚未設定圖片</span>}
-                          <span className="text-neutral-400 text-xs">{p.body}</span>
-                        </div>
-                      ) : (
-                        <>
-                          {p.title && <div className="font-medium text-neutral-900">{p.title}</div>}
-                          <div className="text-neutral-500 line-clamp-2">{p.body}</div>
-                        </>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-neutral-600 tabular-nums">{p.sort_order}</td>
-                    <td className="px-3 py-2.5">
-                      <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />
-                    </td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => openEditor(p)} className="text-primary hover:underline mr-3">編輯</button>
-                      <button onClick={() => remove(p)} className="text-red-500 hover:underline">刪除</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          data={promos}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="尚無首頁彈窗"
+        />
       </PageCard>
 
       <Modal
@@ -326,21 +322,18 @@ export default function PopupPanel() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">版型</label>
-                <select
-                  className={INPUT}
+                <SelectField
                   value={editing.layout}
                   onChange={e => setEditing({ ...editing, layout: e.target.value as Promo['layout'] })}
                 >
                   <option value="card">卡片（統一模板，只填文字）</option>
                   <option value="image">純圖片（整張圖點擊即跳轉）</option>
-                </select>
+                </SelectField>
               </div>
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">排序</label>
-                <input
-                  type="text"
+                <Input
                   inputMode="numeric"
-                  className={INPUT}
                   value={dismissInput}
                   placeholder="0"
                   onChange={e => onDismissChange(e.target.value)}
@@ -352,7 +345,7 @@ export default function PopupPanel() {
             {editing.layout === 'card' && (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">標題</label>
-                <input className={INPUT} value={editing.title ?? ''}
+                <Input value={editing.title ?? ''}
                   onChange={e => setEditing({ ...editing, title: e.target.value })} />
               </div>
             )}
@@ -360,7 +353,7 @@ export default function PopupPanel() {
             {isImagePopup ? (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">圖片說明</label>
-                <input className={INPUT} value={editing.body}
+                <Input value={editing.body}
                   placeholder="例：跨年五折活動"
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
                 <p className="text-xs text-neutral-400 mt-1">
@@ -370,7 +363,7 @@ export default function PopupPanel() {
             ) : (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">內容</label>
-                <textarea className={INPUT} rows={4}
+                <Textarea rows={4}
                   value={editing.body}
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
                 <p className="text-xs text-neutral-400 mt-1">
@@ -383,10 +376,8 @@ export default function PopupPanel() {
             {(
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">圖片 *</label>
-                <input
-                  type="file"
+                <FileInput
                   accept="image/*"
-                  className={INPUT}
                   onChange={e => onPickImage(e.target.files?.[0] ?? null)}
                 />
                 {imagePreview && (
@@ -416,7 +407,7 @@ export default function PopupPanel() {
               {!isImagePopup && (
                 <div>
                   <label className="block text-sm text-neutral-600 mb-1">按鈕文字</label>
-                  <input className={INPUT} value={editing.cta_text ?? ''}
+                  <Input value={editing.cta_text ?? ''}
                     onChange={e => setEditing({ ...editing, cta_text: e.target.value })} />
                 </div>
               )}
@@ -424,8 +415,7 @@ export default function PopupPanel() {
                 <label className="block text-sm text-neutral-600 mb-1">
                   {isImagePopup ? '點擊後前往' : '按鈕連結'}
                 </label>
-                <select
-                  className={INPUT}
+                <SelectField
                   value={customHref ? '__custom__' : (editing.cta_href ?? '')}
                   onChange={e => {
                     const v = e.target.value
@@ -441,10 +431,10 @@ export default function PopupPanel() {
                     </option>
                   ))}
                   <option value="__custom__">其他頁面（自行填寫）</option>
-                </select>
+                </SelectField>
                 {customHref && (
-                  <input
-                    className={`${INPUT} mt-2`}
+                  <Input
+                    className="mt-2"
                     placeholder="/challenge"
                     value={editing.cta_href ?? ''}
                     onChange={e => setEditing({ ...editing, cta_href: e.target.value || null })}
@@ -461,23 +451,23 @@ export default function PopupPanel() {
             />
 
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setEditing(null)}
-                className="px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
-              >
-                {uploading ? '上傳圖片中…' : saving ? '儲存中…' : '儲存'}
-              </button>
+              <Button variant="secondary" onClick={() => setEditing(null)}>取消</Button>
+              <Button onClick={save} isLoading={saving}>
+                {uploading ? '上傳圖片中…' : '儲存'}
+              </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={remove}
+        type="danger"
+        title="刪除首頁彈窗"
+        message={`確定刪除「${pendingDelete?.title || pendingDelete?.body.slice(0, 16) || ''}」？`}
+      />
     </>
   )
 }
