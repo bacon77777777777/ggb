@@ -130,7 +130,9 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                 >
                   {promo.title && (
                     <h2
-                      className="flex-shrink-0 text-[20px] font-black leading-[1.35] text-[#8a4a00] text-balance overflow-hidden"
+                      /* 不用 text-balance：它會為了讓每行等長而提早斷行，
+                         右側明明還有空間卻換行。標題要盡量填滿一行 */
+                      className="flex-shrink-0 text-[20px] font-black leading-[1.35] text-[#0b3b8c] overflow-hidden"
                       style={{
                         display: '-webkit-box',
                         WebkitBoxOrient: 'vertical',
@@ -140,7 +142,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                       {promo.title}
                     </h2>
                   )}
-                  <p className="mt-2.5 flex-1 min-h-0 overflow-y-auto text-[15px] leading-[1.6] text-[#a06a2c] whitespace-pre-line">
+                  <p className="mt-2.5 flex-1 min-h-0 overflow-y-auto text-[15px] leading-[1.6] text-neutral-700 whitespace-pre-line">
                     {promo.body}
                   </p>
                 </div>
