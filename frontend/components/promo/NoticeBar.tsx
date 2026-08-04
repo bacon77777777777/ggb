@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { X } from 'lucide-react';
 import { usePromos } from './usePromos';
 import { dismiss } from '@/lib/promoDismiss';
@@ -57,6 +58,11 @@ export default function NoticeBar({ placement }: { placement: string }) {
 
   const body = (
     <>
+      <Image
+        src="/images/ic.png" alt="" width={28} height={28}
+        className="flex-shrink-0 w-7 h-7"
+        unoptimized
+      />
       <p className="text-[11px] text-neutral-300 leading-relaxed flex-1">
         {promo.body}
         {promo.cta_href && promo.cta_text && (
@@ -76,19 +82,19 @@ export default function NoticeBar({ placement }: { placement: string }) {
       style={{ bottom: 'calc(56px + env(safe-area-inset-bottom))' }}
       data-testid="promo-notice-bar"
     >
-      <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-2.5 flex items-start gap-2">
+      <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-2.5 flex items-center gap-2.5">
         {promo.cta_href ? (
-          <Link href={promo.cta_href} className="flex items-start gap-2 flex-1 min-w-0">
+          <Link href={promo.cta_href} className="flex items-center gap-2.5 flex-1 min-w-0">
             {body}
           </Link>
         ) : (
-          <div className="flex items-start gap-2 flex-1 min-w-0">{body}</div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">{body}</div>
         )}
         <button
           type="button"
           onClick={() => { setClosedId(promo.id); dismiss(promo.id, promo.dismiss_mode); }}
           aria-label="關閉提示"
-          className="flex-shrink-0 -mr-1 -mt-0.5 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
+          className="flex-shrink-0 -mr-1 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>
