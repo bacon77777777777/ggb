@@ -26,7 +26,6 @@ import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card
 import CardDrawAnimation from '@/components/card/CardDrawAnimation';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
 import { ImageButton } from '@/components/ui/ImageButton';
-import { useAlert } from '@/components/ui/AlertDialog';
 import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
@@ -359,7 +358,6 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated, refreshProfile } = useAuth();
   const { showToast } = useToast();
-  const { showAlert } = useAlert();
   const [supabase] = useState(() => createClient());
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);

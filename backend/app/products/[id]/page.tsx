@@ -267,34 +267,13 @@ export default function EditProductPage() {
   }, [formData.status])
 
   // 當商品上架且開賣時，自動生成 TXID Hash（基於 Seed）
-  useEffect(() => {
-    const checkAndGenerateTXIDHash = async () => {
-      // 檢查條件：狀態為 active（進行中）且有開賣時間，但還沒有 TXID Hash
-      if (formData.status === 'active' && formData.startedAt && !formData.txidHash) {
-        if (typeof window === 'undefined' || !window.crypto) {
-          return
-        }
-
-        try {
-          // 生成隨機 Seed
-          const seed = Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('')
-
-          const { calculateSeedHash } = await import('@/utils/drawLogicClient')
-          const hash = await calculateSeedHash(seed)
-
-          // 同時保存 Seed 和 TXID Hash
-          setFormData(prev => ({ ...prev, txidHash: hash, seed: seed }))
-          addLog('自動生成 TXID Hash', '商品管理', `商品「${formData.name || '未命名'}」已開賣，自動生成 TXID Hash 和 Seed`, 'success')
-        } catch (e) {
-          console.error('自動生成 TXID Hash 失敗:', e)
-        }
-      }
-    }
-
-    checkAndGenerateTXIDHash()
-  }, [formData.status, formData.startedAt, formData.name, addLog])
+  // 這裡原本會在「狀態 active 且有開賣時間」時，用 window.crypto 生一組 Seed
+  // 再算 calculateSeedHash 塞進 formData —— 但存檔那兩行是註解掉的，
+  // 所以那組值從來沒進過資料庫，只是畫面上好看。
+  //
+  // 現在更不能留：seed 與 txid_hash 由 seal_product_tickets 在排籤封存時寫入，
+  // txid_hash 就是對外公布的承諾值。這個 effect 會用一組假值蓋掉它，
+  // 管理員在後台看到的就會跟商品頁公布的、玩家拿去驗的那串不一樣。
   useEffect(() => {
     const fetchProduct = async () => {
       if (!productId) return
@@ -814,12 +793,12 @@ export default function EditProductPage() {
                     {formData.endedAt || '自動記錄中...'}
                   </div>
                 </div>
-                {formData.seed && (
+                {formData.txidHash && (
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-neutral-500 mb-1">Seed</label>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">承諾值（開賣時公布）</label>
                     <div className="flex gap-1">
-                      <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.seed}</div>
-                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.seed || ''); toast('已複製', 'success') } catch(_e){ /* clipboard unavailable */ } }}
+                      <div className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-mono text-neutral-600 truncate">{formData.txidHash}</div>
+                      <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(formData.txidHash || ''); toast('已複製', 'success') } catch(_e){ /* clipboard unavailable */ } }}
                         className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 text-xs whitespace-nowrap">複製</button>
                     </div>
                   </div>

@@ -215,7 +215,7 @@ export default function SealVerifyPage() {
             </Badge>
             <span className="text-sm text-neutral-500">
               已售出 {sold} / {seal.tickets}
-              {closedCount > 0 && `　平台回收 ${closedCount}`}
+              {closedCount > 0 && ` ・ 平台回收 ${closedCount}`}
             </span>
           </div>
           <DataTable data={tickets} columns={ticketColumns} keyField="id" emptyMessage="無資料" />
