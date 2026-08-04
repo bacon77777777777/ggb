@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { DataTable, type Column } from '@/components'
 
 interface DrawRecord {
   id: number
@@ -123,6 +124,52 @@ function calculateAdjustedPrizes(product: Product, profitRate: number) {
 }
 
 export default function ProductVerifyPage() {
+  const verifyColumns0: Column<any>[] = [
+    {
+      key: "c0",
+      label: "Nonce",
+      className: "font-mono text-neutral-700",
+      render: (result, index) => (<>{result.nonce}</>),
+    },
+    {
+      key: "c1",
+      label: "抽獎編號",
+      className: "font-mono text-neutral-700",
+      render: (result, index) => (<>{result.drawId}</>),
+    },
+    {
+      key: "c2",
+      label: "實際獎項",
+      className: "text-neutral-700",
+      render: (result, index) => (<>{result.actualPrize}</>),
+    },
+    {
+      key: "c3",
+      label: "計算獎項",
+      className: "text-neutral-700",
+      render: (result, index) => (<>{result.calculatedPrize}</>),
+    },
+    {
+      key: "c4",
+      label: "隨機數",
+      className: "font-mono text-neutral-600 text-xs",
+      render: (result, index) => (<>
+                            {result.randomValue.toFixed(6)}
+                          </>),
+    },
+    {
+      key: "c5",
+      label: "結果",
+      render: (result, index) => (<>
+                            {result.match ? (
+                              <span className="text-green-600 font-medium">✓ 通過</span>
+                            ) : (
+                              <span className="text-red-500 font-medium">✗ 失敗</span>
+                            )}
+                          </>),
+    },
+  ]
+
   const { toast } = useToast()
   const params = useParams()
   const productId = params.id as string
@@ -878,43 +925,14 @@ verifyDraws().then(results => {
                 </div>
               </div>
               <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white z-10">
-                    <tr className="border-b border-neutral-200">
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">Nonce</th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">實際獎項</th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">計算獎項</th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">隨機數</th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">結果</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {verificationResults.map((result, index) => (
-                      <tr 
-                        key={index} 
-                        className={`border-b border-neutral-100 ${
+                <DataTable
+  data={verificationResults}
+  columns={verifyColumns0}
+  keyField="id"
+  rowClassName={(result, index) => `border-b border-neutral-100 ${
                           result.match ? 'bg-green-50' : 'bg-red-50'
                         }`}
-                      >
-                        <td className="py-2 px-3 font-mono text-neutral-700">{result.nonce}</td>
-                        <td className="py-2 px-3 font-mono text-neutral-700">{result.drawId}</td>
-                        <td className="py-2 px-3 text-neutral-700">{result.actualPrize}</td>
-                        <td className="py-2 px-3 text-neutral-700">{result.calculatedPrize}</td>
-                        <td className="py-2 px-3 font-mono text-neutral-600 text-xs">
-                          {result.randomValue.toFixed(6)}
-                        </td>
-                        <td className="py-2 px-3">
-                          {result.match ? (
-                            <span className="text-green-600 font-medium">✓ 通過</span>
-                          ) : (
-                            <span className="text-red-500 font-medium">✗ 失敗</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+/>
               </div>
             </>
           )}

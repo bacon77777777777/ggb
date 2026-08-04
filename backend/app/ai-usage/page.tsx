@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminLayout, PageCard, SortableTableHeader, SearchToolbar, DateRangePicker } from '@/components'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/contexts/ToastContext'
+import { DataTable, type Column } from '@/components'
 
 /**
  * AI 用量
@@ -62,6 +63,34 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
 }
 
 export default function AiUsagePage() {
+  const aiusageColumns1: Column<any>[] = [
+    {
+      key: "c0",
+      label: "日期",
+      render: (d) => (<>{d.day}</>),
+    },
+    {
+      key: "c1",
+      label: "呼叫次數",
+      render: (d) => (<>{fmt(d.calls)}</>),
+    },
+    {
+      key: "c2",
+      label: "輸入 tokens",
+      render: (d) => (<>{fmt(d.input_tokens)}</>),
+    },
+    {
+      key: "c3",
+      label: "輸出 tokens",
+      render: (d) => (<>{fmt(d.output_tokens)}</>),
+    },
+    {
+      key: "c4",
+      label: "估算費用",
+      render: (d) => (<>{usd(d.cost_usd)}</>),
+    },
+  ]
+
   const { toast } = useToast()
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
@@ -224,28 +253,12 @@ export default function AiUsagePage() {
           <PageCard>
             <h3 className="font-semibold text-neutral-800 mb-3">每日用量</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    <th className={`${dc} text-left font-medium text-neutral-600`}>日期</th>
-                    <th className={`${dc} text-left font-medium text-neutral-600`}>呼叫次數</th>
-                    <th className={`${dc} text-left font-medium text-neutral-600`}>輸入 tokens</th>
-                    <th className={`${dc} text-left font-medium text-neutral-600`}>輸出 tokens</th>
-                    <th className={`${dc} text-left font-medium text-neutral-600`}>估算費用</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {daily.map(d => (
-                    <tr key={d.day} className="hover:bg-neutral-50 transition-colors">
-                      <td className={dc}>{d.day}</td>
-                      <td className={`${dc} tabular-nums`}>{fmt(d.calls)}</td>
-                      <td className={`${dc} tabular-nums`}>{fmt(d.input_tokens)}</td>
-                      <td className={`${dc} tabular-nums`}>{fmt(d.output_tokens)}</td>
-                      <td className={`${dc} tabular-nums font-medium`}>{usd(d.cost_usd)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+  data={daily}
+  columns={aiusageColumns1}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
             </div>
             <p className="mt-3 text-xs text-neutral-400">
               費用為依模型費率換算的估算值，實際帳單以 Anthropic 後台為準。匯率以 1 USD = 32 TWD 概算。

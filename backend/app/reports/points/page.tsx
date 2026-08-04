@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { DataTable, type Column } from '@/components'
 
 interface PointRow {
   id: string
@@ -21,6 +22,52 @@ const TASK_TYPE_LABEL: Record<string, string> = {
 }
 
 export default function PointsReportPage() {
+  const pointsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "font-mono whitespace-nowrap text-neutral-500 text-xs",
+      render: (r) => (<>
+                          {new Date(r.claimed_at).toLocaleString('zh-TW', { hour12: false })}
+                        </>),
+    },
+    {
+      key: "c1",
+      label: "用戶",
+      className: "whitespace-nowrap font-medium",
+      render: (r) => (<>{r.user_name}</>),
+    },
+    {
+      key: "c2",
+      label: "任務名稱",
+      className: "whitespace-nowrap",
+      render: (r) => (<>{r.task_title}</>),
+    },
+    {
+      key: "c3",
+      label: "任務類型",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            r.task_type === 'daily' ? 'bg-primary text-primary' :
+                            r.task_type === 'weekly' ? 'bg-purple-50 text-purple-700' :
+                            r.task_type === 'achievement' ? 'bg-amber-50 text-amber-700' :
+                            'bg-neutral-100 text-neutral-600'
+                          }`}>
+                            {TASK_TYPE_LABEL[r.task_type] ?? r.task_type}
+                          </span>
+                        </>),
+    },
+    {
+      key: "c4",
+      label: "積分",
+      className: "tabular-nums font-semibold text-indigo-600",
+      render: (r) => (<>
+                          +{fmt(r.reward_coins)}
+                        </>),
+    },
+  ]
+
   const today = new Date().toISOString().split('T')[0]
   const firstOfMonth = today.slice(0, 8) + '01'
 
@@ -122,39 +169,12 @@ export default function PointsReportPage() {
             <div className="py-16 text-center text-sm text-neutral-400">本期無積分領取紀錄</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['時間', '用戶', '任務名稱', '任務類型', '積分'].map(h => (
-                      <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {rows.map(r => (
-                    <tr key={r.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="py-2 px-3 font-mono whitespace-nowrap text-neutral-500 text-xs">
-                        {new Date(r.claimed_at).toLocaleString('zh-TW', { hour12: false })}
-                      </td>
-                      <td className="py-2 px-3 whitespace-nowrap font-medium">{r.user_name}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">{r.task_title}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          r.task_type === 'daily' ? 'bg-primary text-primary' :
-                          r.task_type === 'weekly' ? 'bg-purple-50 text-purple-700' :
-                          r.task_type === 'achievement' ? 'bg-amber-50 text-amber-700' :
-                          'bg-neutral-100 text-neutral-600'
-                        }`}>
-                          {TASK_TYPE_LABEL[r.task_type] ?? r.task_type}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 tabular-nums font-semibold text-indigo-600">
-                        +{fmt(r.reward_coins)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+  data={rows}
+  columns={pointsColumns}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
             </div>
           )}
         </div>

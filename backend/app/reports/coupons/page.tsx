@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { DataTable, type Column } from '@/components'
 
 interface CouponRow {
   id: string
@@ -26,6 +27,80 @@ const DISCOUNT_TYPE_LABEL: Record<string, string> = {
 }
 
 export default function CouponsReportPage() {
+  const couponsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "發放時間",
+      className: "font-mono text-xs text-neutral-500 whitespace-nowrap",
+      render: (r) => (<>
+                          {new Date(r.created_at).toLocaleString('zh-TW', { hour12: false })}
+                        </>),
+    },
+    {
+      key: "c1",
+      label: "到期",
+      className: "text-xs text-neutral-500 whitespace-nowrap",
+      render: (r) => (<>
+                          {r.expiry_date ? new Date(r.expiry_date).toLocaleDateString('zh-TW') : '無限期'}
+                        </>),
+    },
+    {
+      key: "c2",
+      label: "使用時間",
+      className: "font-mono text-xs whitespace-nowrap",
+      render: (r) => (<>
+                          {r.used_at
+                            ? <span className="text-green-600">{new Date(r.used_at).toLocaleString('zh-TW', { hour12: false })}</span>
+                            : <span className="text-neutral-400">未使用</span>}
+                        </>),
+    },
+    {
+      key: "c3",
+      label: "用戶",
+      className: "font-medium whitespace-nowrap",
+      render: (r) => (<>{r.user_name}</>),
+    },
+    {
+      key: "c4",
+      label: "折價券",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <div className="font-mono text-xs text-neutral-600">{r.coupon_code}</div>
+                          <div className="text-xs text-neutral-400">{r.coupon_title}</div>
+                        </>),
+    },
+    {
+      key: "c5",
+      label: "折扣類型",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <span className="px-2 py-0.5 rounded text-xs bg-primary text-primary">
+                            {DISCOUNT_TYPE_LABEL[r.discount_type] ?? r.discount_type}
+                          </span>
+                        </>),
+    },
+    {
+      key: "c6",
+      label: "折扣值",
+      className: "tabular-nums text-red-500 font-medium whitespace-nowrap",
+      render: (r) => (<>
+                          {r.discount_type === 'percent' ? `${r.discount_value}%`
+                            : r.discount_type === 'free_shipping' ? '免運'
+                            : `NT$ ${fmt(r.discount_value)}`}
+                        </>),
+    },
+    {
+      key: "c7",
+      label: "狀態",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <Badge variant={r.used_at ? 'success' : 'default'}>
+                            {r.used_at ? '已使用' : '未使用'}
+                          </Badge>
+                        </>),
+    },
+  ]
+
   const today = new Date().toISOString().split('T')[0]
   const firstOfMonth = today.slice(0, 8) + '01'
 
@@ -134,52 +209,12 @@ export default function CouponsReportPage() {
             <div className="py-16 text-center text-sm text-neutral-400">本期無折價券紀錄</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['發放時間', '到期', '使用時間', '用戶', '折價券', '折扣類型', '折扣值', '狀態'].map(h => (
-                      <th key={h} className="py-2 px-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {rows.map(r => (
-                    <tr key={r.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="py-2 px-3 font-mono text-xs text-neutral-500 whitespace-nowrap">
-                        {new Date(r.created_at).toLocaleString('zh-TW', { hour12: false })}
-                      </td>
-                      <td className="py-2 px-3 text-xs text-neutral-500 whitespace-nowrap">
-                        {r.expiry_date ? new Date(r.expiry_date).toLocaleDateString('zh-TW') : '無限期'}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-xs whitespace-nowrap">
-                        {r.used_at
-                          ? <span className="text-green-600">{new Date(r.used_at).toLocaleString('zh-TW', { hour12: false })}</span>
-                          : <span className="text-neutral-400">未使用</span>}
-                      </td>
-                      <td className="py-2 px-3 font-medium whitespace-nowrap">{r.user_name}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <div className="font-mono text-xs text-neutral-600">{r.coupon_code}</div>
-                        <div className="text-xs text-neutral-400">{r.coupon_title}</div>
-                      </td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded text-xs bg-primary text-primary">
-                          {DISCOUNT_TYPE_LABEL[r.discount_type] ?? r.discount_type}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 tabular-nums text-red-500 font-medium whitespace-nowrap">
-                        {r.discount_type === 'percent' ? `${r.discount_value}%`
-                          : r.discount_type === 'free_shipping' ? '免運'
-                          : `NT$ ${fmt(r.discount_value)}`}
-                      </td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <Badge variant={r.used_at ? 'success' : 'default'}>
-                          {r.used_at ? '已使用' : '未使用'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+  data={rows}
+  columns={couponsColumns}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
             </div>
           )}
         </div>

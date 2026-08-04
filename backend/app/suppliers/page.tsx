@@ -12,6 +12,7 @@ import { useToast } from '@/contexts/ToastContext'
 import EmptyState from '@/components/ui/EmptyState'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
+import { DataTable, type Column } from '@/components'
 
 interface Supplier {
   id: number
@@ -45,6 +46,78 @@ const EMPTY_FORM = {
 }
 
 export default function SuppliersPage() {
+  const suppliersColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "廠商名稱",
+      className: "font-medium text-neutral-900",
+      render: (s) => (<>{s.name}</>),
+    },
+    {
+      key: "c1",
+      label: "統編",
+      className: "text-neutral-600 font-mono text-xs",
+      render: (s) => (<>{s.tax_id ?? '—'}</>),
+    },
+    {
+      key: "c2",
+      label: "聯絡人",
+      className: "text-neutral-600",
+      render: (s) => (<>{s.contact_name ?? '—'}</>),
+    },
+    {
+      key: "c3",
+      label: "電話",
+      className: "text-neutral-600",
+      render: (s) => (<>{s.contact_phone ?? '—'}</>),
+    },
+    {
+      key: "c4",
+      label: "Email",
+      className: "text-neutral-500 text-xs",
+      render: (s) => (<>{s.contact_email ?? '—'}</>),
+    },
+    {
+      key: "c5",
+      label: "狀態",
+      render: (s) => (<>
+                          <Badge status={s.is_active ? 'active' : 'inactive'}>{s.is_active ? '啟用' : '停用'}</Badge>
+                        </>),
+    },
+    {
+      key: "c6",
+      label: "備註",
+      className: "text-neutral-500 max-w-[200px] truncate",
+      render: (s) => (<>{s.notes ?? '—'}</>),
+    },
+    {
+      key: "c7",
+      label: "建立時間",
+      className: "text-neutral-400 text-xs whitespace-nowrap",
+      render: (s) => (<>{formatDateTime(s.created_at)}</>),
+    },
+    {
+      key: "c8",
+      label: "操作",
+      render: (s) => (<>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEdit(s)}
+                              className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
+                            >
+                              編輯
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(s)}
+                              className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
+                            >
+                              刪除
+                            </button>
+                          </div>
+                        </>),
+    },
+  ]
+
   const { toast } = useToast()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
@@ -161,47 +234,12 @@ export default function SuppliersPage() {
             <EmptyState message="尚無廠商資料，點擊「新增廠商」開始建立" />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['廠商名稱', '統編', '聯絡人', '電話', 'Email', '狀態', '備註', '建立時間', '操作'].map((h) => (
-                      <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {suppliers.map((s) => (
-                    <tr key={s.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-neutral-900">{s.name}</td>
-                      <td className="px-4 py-3 text-neutral-600 font-mono text-xs">{s.tax_id ?? '—'}</td>
-                      <td className="px-4 py-3 text-neutral-600">{s.contact_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-neutral-600">{s.contact_phone ?? '—'}</td>
-                      <td className="px-4 py-3 text-neutral-500 text-xs">{s.contact_email ?? '—'}</td>
-                      <td className="px-4 py-3">
-                        <Badge status={s.is_active ? 'active' : 'inactive'}>{s.is_active ? '啟用' : '停用'}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-neutral-500 max-w-[200px] truncate">{s.notes ?? '—'}</td>
-                      <td className="px-4 py-3 text-neutral-400 text-xs whitespace-nowrap">{formatDateTime(s.created_at)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openEdit(s)}
-                            className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                          >
-                            編輯
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(s)}
-                            className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                          >
-                            刪除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+  data={suppliers}
+  columns={suppliersColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
+/>
             </div>
           )}
         </PageCard>
