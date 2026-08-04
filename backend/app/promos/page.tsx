@@ -73,6 +73,22 @@ export default function PromosPage() {
   const [editing, setEditing] = useState<(Omit<Promo, 'id'> & { id?: string }) | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // 天數用字串存，不直接綁 number：
+  //   綁 number 時清空欄位會被 Number('') 轉成 0 又寫回去，退位鍵等於無效；
+  //   而 React 對 type=number 在「數值相等」時不會覆蓋 DOM，所以 0 前面打 7 會留成 07。
+  const [dismissInput, setDismissInput] = useState('')
+
+  const openEditor = (p: (Omit<Promo, 'id'> & { id?: string })) => {
+    setEditing(p)
+    setDismissInput(String(p.dismiss_days))
+  }
+
+  // 只留數字，去掉前導零（07 → 7），但保留單獨的 0 與清空中的狀態
+  const onDismissChange = (raw: string) =>
+    setDismissInput(raw.replace(/\D/g, '').replace(/^0+(?=\d)/, ''))
+
+  const dismissDays = dismissInput === '' ? 0 : Number(dismissInput)
+
   const fetchPromos = async () => {
     setIsLoading(true)
     const res = await fetch('/api/admin/promos')
@@ -93,6 +109,7 @@ export default function PromosPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...editing,
+        dismiss_days: dismissDays,
         title:     editing.title || null,
         image_url: editing.image_url || null,
         cta_text:  editing.cta_text || null,
@@ -141,7 +158,7 @@ export default function PromosPage() {
             首頁彈窗與底部警語列的內容。玩家關閉後，依「再出現間隔」的天數才會再跳。
           </p>
           <button
-            onClick={() => setEditing({ ...EMPTY })}
+            onClick={() => openEditor({ ...EMPTY })}
             className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
           >
             新增
@@ -201,7 +218,7 @@ export default function PromosPage() {
                       <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />
                     </td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                      <button onClick={() => setEditing(p)} className="text-primary hover:underline mr-3">編輯</button>
+                      <button onClick={() => openEditor(p)} className="text-primary hover:underline mr-3">編輯</button>
                       <button onClick={() => remove(p)} className="text-red-500 hover:underline">刪除</button>
                     </td>
                   </tr>
@@ -344,8 +361,14 @@ export default function PromosPage() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">再出現間隔（天）</label>
-                <input type="number" min={0} className={INPUT} value={editing.dismiss_days}
-                  onChange={e => setEditing({ ...editing, dismiss_days: Number(e.target.value) })} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={INPUT}
+                  value={dismissInput}
+                  placeholder="0"
+                  onChange={e => onDismissChange(e.target.value)}
+                />
                 <p className="text-xs text-neutral-400 mt-1">0 = 關掉就不再出現</p>
               </div>
               <div>
