@@ -81,9 +81,42 @@ export default function PromosPage() {
   //   而 React 對 type=number 在「數值相等」時不會覆蓋 DOM，所以 0 前面打 7 會留成 07。
   const [dismissInput, setDismissInput] = useState('')
 
+  // 「點擊後前往」的下拉來源。除了活動頁，也保留自行填寫——
+  // 之後要導去 /challenge、/topup 這類非活動頁時才不會被鎖死
+  const [events, setEvents] = useState<{ slug: string; title: string }[]>([])
+  const [customHref, setCustomHref] = useState(false)
+
+  // 圖片選好後先留在本地預覽，按儲存才真的上傳，避免取消編輯留下孤兒檔
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [uploading, setUploading] = useState(false)
+
   const openEditor = (p: (Omit<Promo, 'id'> & { id?: string })) => {
     setEditing(p)
     setDismissInput(String(p.dismiss_days))
+    setImageFile(null)
+    setImagePreview(p.image_url ?? '')
+    const href = p.cta_href ?? ''
+    setCustomHref(!!href && !href.startsWith('/events/'))
+  }
+
+  const onPickImage = (file: File | null) => {
+    setImageFile(file)
+    setImagePreview(file ? URL.createObjectURL(file) : (editing?.image_url ?? ''))
+  }
+
+  /** 回傳最終要存的圖片網址；沒選新檔就沿用舊的 */
+  const uploadIfNeeded = async (): Promise<string | null> => {
+    if (!imageFile) return editing?.image_url || null
+    const ext = (imageFile.name.split('.').pop() || '').trim() || 'png'
+    const form = new FormData()
+    form.append('file', imageFile)
+    form.append('bucket', 'promos')
+    form.append('path', `promo-${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`)
+    const res = await fetch('/api/admin/upload', { method: 'POST', body: form })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(json?.error || '圖片上傳失敗')
+    return String(json?.publicUrl || '')
   }
 
   // 只留數字，去掉前導零（07 → 7），但保留單獨的 0 與清空中的狀態
@@ -102,12 +135,30 @@ export default function PromosPage() {
 
   useEffect(() => { fetchPromos() }, [])
 
+  useEffect(() => {
+    fetch('/api/admin/events')
+      .then(r => r.json())
+      .then(d => setEvents(Array.isArray(d) ? d : (d.events ?? [])))
+      .catch(() => {})
+  }, [])
+
   const save = async () => {
     if (!editing) return
     if (!editing.body.trim()) { toast(isImagePopup ? '請填圖片說明' : '內容不可空白', 'error'); return }
-    if (isImagePopup && !editing.image_url?.trim()) { toast('純圖片版需要圖片網址', 'error'); return }
+    if (isImagePopup && !imageFile && !editing.image_url) { toast('純圖片版需要上傳圖片', 'error'); return }
     if (editing.dismiss_mode === 'days' && dismissDays < 1) { toast('請填要隔幾天再出現', 'error'); return }
+
     setSaving(true)
+    let imageUrl: string | null
+    try {
+      setUploading(true)
+      imageUrl = await uploadIfNeeded()
+    } catch (e: any) {
+      setUploading(false); setSaving(false)
+      toast(e?.message || '圖片上傳失敗', 'error'); return
+    }
+    setUploading(false)
+
     const res = await fetch('/api/admin/promos', {
       method: editing.id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -115,7 +166,7 @@ export default function PromosPage() {
         ...editing,
         dismiss_days: dismissDays,
         title:     editing.title || null,
-        image_url: editing.image_url || null,
+        image_url: imageUrl,
         cta_text:  editing.cta_text || null,
         cta_href:  editing.cta_href || null,
       }),
@@ -315,10 +366,31 @@ export default function PromosPage() {
             {editing.kind === 'popup' && (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">
-                  圖片網址{isImagePopup ? '（必填）' : '（選填）'}
+                  圖片{isImagePopup ? ' *' : '（選填）'}
                 </label>
-                <input className={INPUT} value={editing.image_url ?? ''}
-                  onChange={e => setEditing({ ...editing, image_url: e.target.value })} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={INPUT}
+                  onChange={e => onPickImage(e.target.files?.[0] ?? null)}
+                />
+                {imagePreview && (
+                  <div className="mt-2 relative inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="預覽"
+                      className="max-h-48 rounded-lg border border-neutral-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(''); setEditing({ ...editing, image_url: null }) }}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-neutral-900 text-white text-xs leading-none"
+                      aria-label="移除圖片"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
                 <p className="text-xs text-neutral-400 mt-1">
                   {isImagePopup
                     ? '整張圖直接顯示，比例不限。建議寬度 1080 以上，文案畫在圖裡。'
@@ -339,8 +411,32 @@ export default function PromosPage() {
                 <label className="block text-sm text-neutral-600 mb-1">
                   {isImagePopup ? '點擊後前往' : '按鈕連結'}
                 </label>
-                <input className={INPUT} placeholder="/events/fairness" value={editing.cta_href ?? ''}
-                  onChange={e => setEditing({ ...editing, cta_href: e.target.value })} />
+                <select
+                  className={INPUT}
+                  value={customHref ? '__custom__' : (editing.cta_href ?? '')}
+                  onChange={e => {
+                    const v = e.target.value
+                    if (v === '__custom__') { setCustomHref(true); return }
+                    setCustomHref(false)
+                    setEditing({ ...editing, cta_href: v || null })
+                  }}
+                >
+                  <option value="">不跳轉</option>
+                  {events.map(ev => (
+                    <option key={ev.slug} value={`/events/${ev.slug}`}>
+                      {ev.title}（/events/{ev.slug}）
+                    </option>
+                  ))}
+                  <option value="__custom__">其他頁面（自行填寫）</option>
+                </select>
+                {customHref && (
+                  <input
+                    className={`${INPUT} mt-2`}
+                    placeholder="/challenge"
+                    value={editing.cta_href ?? ''}
+                    onChange={e => setEditing({ ...editing, cta_href: e.target.value || null })}
+                  />
+                )}
               </div>
             </div>
 
@@ -393,7 +489,7 @@ export default function PromosPage() {
               startAt={editing.start_at}
               endAt={editing.end_at}
               onChange={patch => setEditing({ ...editing, ...patch })}
-              inheritHint="留空＝立刻生效、永不下檔"
+              unlimitedToggle
             />
 
             <div className="flex justify-end gap-2 pt-2">
@@ -408,7 +504,7 @@ export default function PromosPage() {
                 disabled={saving}
                 className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
               >
-                {saving ? '儲存中…' : '儲存'}
+                {uploading ? '上傳圖片中…' : saving ? '儲存中…' : '儲存'}
               </button>
             </div>
           </div>

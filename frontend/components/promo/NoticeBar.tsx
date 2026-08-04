@@ -63,7 +63,7 @@ export default function NoticeBar({ placement }: { placement: string }) {
         className="flex-shrink-0 w-7 h-7"
         unoptimized
       />
-      <p className="text-[11px] text-neutral-300 leading-relaxed flex-1">
+      <p className="text-[11px] text-neutral-300 leading-[1.35] flex-1">
         {promo.body}
         {promo.cta_href && promo.cta_text && (
           /* 用 primary-light 而非 primary：#EE4D2D 壓在深底上偏濁，淺一階才讀得出來 */
@@ -82,7 +82,7 @@ export default function NoticeBar({ placement }: { placement: string }) {
       style={{ bottom: 'calc(56px + env(safe-area-inset-bottom))' }}
       data-testid="promo-notice-bar"
     >
-      <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-2.5 flex items-center gap-2.5">
+      <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-1.5 flex items-center gap-2.5">
         {promo.cta_href ? (
           <Link href={promo.cta_href} className="flex items-center gap-2.5 flex-1 min-w-0">
             {body}

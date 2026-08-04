@@ -41,6 +41,11 @@ interface Props {
   showEventLink?: boolean
   /** 繼承來源說明，例如「留空＝跟隨主題」 */
   inheritHint?: string
+  /**
+   * 改用「無限制」勾選框控制時間選擇器的顯示，並隱藏狀態標籤與提示文字。
+   * 預設 false —— 輪播圖、機台主題等既有頁面維持原本的呈現。
+   */
+  unlimitedToggle?: boolean
 }
 
 const STATE_LABEL: Record<ScheduleState, { text: string; variant: 'warning' | 'success' | 'danger' }> = {
@@ -57,11 +62,16 @@ const STATE_LABEL: Record<ScheduleState, { text: string; variant: 'warning' | 's
  *   已結束 → 仍在前台，但顯示為已結束（機台卡／活動頁 hero 蓋黑遮罩）
  */
 export default function ScheduleFields({
-  startAt, endAt, onChange, eventId, showEventLink, inheritHint,
+  startAt, endAt, onChange, eventId, showEventLink, inheritHint, unlimitedToggle,
 }: Props) {
   const [events, setEvents] = useState<EventOption[]>([])
   const state = scheduleState(startAt, endAt)
   const unlimited = !startAt && !endAt
+
+  // 「無限制」不能單看 startAt/endAt 是否為空：取消勾選的當下兩者仍是空的，
+  // 若直接由資料推導會立刻被勾回去，選擇器永遠打不開，故另存展開狀態。
+  const [showRange, setShowRange] = useState(!unlimited)
+  useEffect(() => { if (!unlimited) setShowRange(true) }, [unlimited])
 
   useEffect(() => {
     if (!showEventLink) return
@@ -75,12 +85,30 @@ export default function ScheduleFields({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-neutral-700">檔期</span>
-        {unlimited
+        {!unlimitedToggle && (unlimited
           ? <Badge variant="default">無限制</Badge>
-          : <Badge variant={STATE_LABEL[state].variant}>{STATE_LABEL[state].text}</Badge>}
-        {inheritHint && <span className="text-xs text-neutral-400">{inheritHint}</span>}
+          : <Badge variant={STATE_LABEL[state].variant}>{STATE_LABEL[state].text}</Badge>)}
+        {!unlimitedToggle && inheritHint && (
+          <span className="text-xs text-neutral-400">{inheritHint}</span>
+        )}
+        {unlimitedToggle && (
+          <label className="ml-auto flex items-center gap-1.5 text-sm text-neutral-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!showRange}
+              onChange={e => {
+                const on = e.target.checked
+                setShowRange(!on)
+                if (on) onChange({ start_at: null, end_at: null })
+              }}
+              className="w-4 h-4 rounded border-neutral-300 text-primary focus:ring-primary"
+            />
+            無限制
+          </label>
+        )}
       </div>
 
+      {(!unlimitedToggle || showRange) && (
       <DateRangePicker
         withTime
         placeholder="不限制（留空即無檔期）"
@@ -89,6 +117,7 @@ export default function ScheduleFields({
         onStartDateChange={v => onChange({ start_at: fromLocalInput(v) })}
         onEndDateChange={v => onChange({ end_at: fromLocalInput(v) })}
       />
+      )}
 
       {showEventLink && (
         <div>
