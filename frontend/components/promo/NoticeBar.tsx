@@ -88,7 +88,44 @@ function usePublishHeight(active: boolean) {
   return ref;
 }
 
-export default function NoticeBar() {
+/**
+ * 頂部導航的實際高度。導航列是 sticky（h-[57px] + 1px 下框線），
+ * 用量測而不是寫死：導航列版型改動時這條會自己跟上。
+ */
+function useNavbarOffset(active: boolean) {
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const sync = () => {
+      const el = document.querySelector('nav') as HTMLElement | null;
+      setOffset(el?.offsetHeight || 0);
+    };
+    sync();
+    const raf = requestAnimationFrame(sync);   // Suspense 骨架換本體那一幀
+    const ro = new ResizeObserver(sync);
+    ro.observe(document.body);
+    window.addEventListener('resize', sync);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener('resize', sync);
+    };
+  }, [active]);
+
+  return offset;
+}
+
+interface Props {
+  /**
+   * bottom（預設）＝首頁，貼在底部導航上緣。
+   * top ＝商品內頁，緊貼頂部導航下緣；那裡底部已被購買列佔滿，
+   * 再往下塞一條會把「立即抽獎」擠掉。
+   */
+  position?: 'top' | 'bottom';
+}
+
+export default function NoticeBar({ position = 'bottom' }: Props) {
   const { isAuthenticated, isLoading } = useAuth();
   const [closed, setClosed] = useState(false);
 
@@ -96,18 +133,23 @@ export default function NoticeBar() {
   const mode = isAuthenticated ? 'days' : 'always';
   const visible = !isLoading && !closed && shouldShow(NOTICE_ID, mode, LOGGED_IN_DISMISS_DAYS);
 
+  const isTop = position === 'top';
   const ref = usePublishHeight(visible);
   const tabbarH = useTabbarOffset();
+  const navH = useNavbarOffset(visible && isTop);
   if (!visible) return null;
 
   return (
     <div
       ref={ref}
       className="fixed left-0 right-0 md:hidden z-40"
-      style={{ bottom: tabbarH || 'calc(61px + env(safe-area-inset-bottom))' }}
+      style={isTop
+        ? { top: navH || 57 }
+        : { bottom: tabbarH || 'calc(61px + env(safe-area-inset-bottom))' }}
       data-testid="promo-notice-bar"
     >
-      <div className="bg-neutral-800 dark:bg-neutral-900 border-t border-white/5 px-4 py-1.5 flex items-center gap-2.5">
+      {/* 分隔線畫在朝向內容的那一側：貼底部時在上緣，貼頂部時在下緣 */}
+      <div className={`bg-neutral-800 dark:bg-neutral-900 ${isTop ? 'border-b' : 'border-t'} border-white/5 px-4 py-1.5 flex items-center gap-2.5`}>
         <Link href={CTA_HREF} className="flex items-center gap-2.5 flex-1 min-w-0">
           <Image
             src="/images/ic.png" alt="" width={24} height={24}
