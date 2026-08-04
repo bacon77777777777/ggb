@@ -176,6 +176,17 @@ function NavbarInner() {
         };
         void checkFollow();
       }
+    } else if (isFairnessPage) {
+      // /fairness/[id] 的 id 就是商品 id：導航列直接顯示商品名，
+      // 頁面本身才不需要再放一次標題（原本兩層標題重複）
+      const fairnessId = pathname.match(/^\/fairness\/([^/]+)$/)?.[1] || '';
+      if (/^\d+$/.test(fairnessId)) {
+        const fetchFairnessTitle = async () => {
+          const { data } = await supabase.from('products').select('name').eq('id', fairnessId).maybeSingle();
+          if (data) setProductName((data as any).name);
+        };
+        void fetchFairnessTitle();
+      }
     } else if (isNewsDetailPage) {
       // Extract UUID from path
       const match = pathname.match(/^\/news\/([^/]+)$/);
@@ -199,7 +210,7 @@ function NavbarInner() {
       setProductType(null);
       setIsProductFollowed(false);
     }
-  }, [pathname, user, isProductDetailPage, isSellDetailPage, isNewsDetailPage, supabase]);
+  }, [pathname, user, isProductDetailPage, isSellDetailPage, isNewsDetailPage, isFairnessPage, supabase]);
 
   const handleFollowToggle = async () => {
     if (!user) {
@@ -288,7 +299,8 @@ function NavbarInner() {
     if (pathname === '/exchange') return '交換';
     if (pathname === '/market') return '交換';
     if (pathname === '/ranking') return '排行榜';
-    if (pathname.startsWith('/fairness')) return '公平性驗證';
+    // 商品名撈到前先留空，不要先顯示「公平性驗證」再跳成商品名
+    if (pathname.startsWith('/fairness')) return productName || '';
     if (pathname.endsWith('/select')) return '選擇籤號';
     if (pathname.endsWith('/confirm')) return '確認購買';
     if (isSellDetailPage) return productName || '販售';

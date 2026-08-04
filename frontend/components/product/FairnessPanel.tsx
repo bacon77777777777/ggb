@@ -11,7 +11,7 @@
  */
 
 import Link from 'next/link';
-import { ShieldCheck, Info } from 'lucide-react';
+import Image from 'next/image';
 import CopyableTruncatedField from '@/components/ui/CopyableTruncatedField';
 
 interface Props {
@@ -27,9 +27,12 @@ export default function FairnessPanel({ productId, commitment, isSealed, isSoldO
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
       <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent-emerald/10 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-5 h-5 sm:w-7 sm:h-7 text-accent-emerald stroke-[2.5]" />
-        </div>
+        {/* 與底部警語列（NoticeBar）同一顆圖標，玩家兩處看到的是同一個東西 */}
+        <Image
+          src="/images/ic.png" alt="" width={48} height={48}
+          className="w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0"
+          unoptimized
+        />
         <div>
           <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">
             公平性驗證
@@ -41,14 +44,12 @@ export default function FairnessPanel({ productId, commitment, isSealed, isSoldO
       </div>
 
       <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">
-        <div className="flex items-center gap-2 text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
-          <Info className="w-3.5 h-3.5 stroke-[3]" />
+        <div className="text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
           這一檔怎麼驗
         </div>
         <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed">
-          開賣前，每一號籤對應哪個獎品就已經排好並封存，同時公布下面這串驗證碼。
-          這一檔結束後會公開完整的對照表，你可以拿它算一次，
-          算出來必須跟這串一模一樣 —— 只要中途改過一個字，兩邊就對不上。
+          開賣前就把每支籤的獎品排定封存，並公布下方驗證碼。
+          結束後公開對照表，你可以自己算一次核對 —— 中途改過一個字就對不上。
         </p>
       </div>
 

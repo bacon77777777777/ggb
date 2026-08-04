@@ -16,8 +16,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronLeft, Copy, Check, ExternalLink } from 'lucide-react';
+import { Copy, Check, ExternalLink } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,7 +53,6 @@ export default function FairnessVerifyPage() {
   const [supabase] = useState(() => createClient());
   const { isAuthenticated } = useAuth();
 
-  const [productName, setProductName] = useState('');
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
   const [seal, setSeal] = useState<SealInfo | null>(null);
   const [myTickets, setMyTickets] = useState<{ ticket_number: number; prize_level: string }[]>([]);
@@ -84,7 +82,6 @@ export default function FairnessVerifyPage() {
         return;
       }
 
-      setProductName(product.name ?? '');
       setPrizes((prizeRows ?? []) as PrizeRow[]);
       setSeal((sealData ?? { sealed: false }) as SealInfo);
 
@@ -175,39 +172,21 @@ export default function FairnessVerifyPage() {
           <div className="text-sm text-red-500">{error}</div>
         ) : (
           <>
-            {/* 標題 */}
-            <div className="flex items-center gap-3">
-              <Link
-                href={`/item/${productId}`}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex-shrink-0"
-                aria-label="回商品頁"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Link>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 truncate">
-                  {productName}
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-                  開賣前排好的抽獎對照表
-                </p>
-              </div>
-            </div>
+            {/* 標題由全站導航列顯示（商品名），這裡不再重複一層 */}
 
             {!seal?.sealed ? (
               <Card>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                  這個商品是在對照表機制上線前開賣的，沒有可以公開的對照表。
-                  之後上架的商品都會有。
+                  這一檔在對照表機制上線前就開賣了，沒有可公開的對照表。之後上架的都會有。
                 </p>
               </Card>
             ) : (
               <>
                 {/* 承諾值 */}
                 <Card>
-                  <SectionTitle>平台開賣時公布的驗證碼</SectionTitle>
+                  <SectionTitle>開賣時的驗證碼</SectionTitle>
                   <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                    {`這串數字在 ${seal.sealed_at ? new Date(seal.sealed_at).toLocaleString('zh-TW') : '開賣時'} 就公布了。它是整張對照表的指紋 —— 表只要被改過一個字，指紋就會完全不同。`}
+                    {`${seal.sealed_at ? new Date(seal.sealed_at).toLocaleString('zh-TW') : '開賣時'} 公布。對照表改過一個字，這串就會完全不同。`}
                   </p>
                   <code className="block text-[11px] sm:text-xs font-mono break-all bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-neutral-700 dark:text-neutral-200">
                     {seal.commitment}
@@ -221,10 +200,8 @@ export default function FairnessVerifyPage() {
                   <Card>
                     <SectionTitle>對照表尚未公開</SectionTitle>
                     <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                      這一檔還在販售中。現在就公開，等於直接告訴大家幾號籤有大獎，所以要等這一檔結束後才會公開。
-                    </p>
-                    <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                      你可以先把上面那串驗證碼存起來。等這一檔結束回來這頁，對照表算出來的指紋必須跟你存的那串一模一樣。
+                      販售中不能公開，否則等於公告幾號有大獎。
+                      先把上面的驗證碼存起來，結束後回來對，必須一模一樣。
                     </p>
                     {myTickets.length > 0 && (
                       <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
@@ -238,8 +215,9 @@ export default function FairnessVerifyPage() {
                     {/* 自己動手驗 */}
                     <Card>
                       <SectionTitle>自己驗一次</SectionTitle>
+                      {/* 「用外面的工具最準」拿掉了：下面就有一顆「用外部工具驗」，講兩次是廢話 */}
                       <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                        把下面整段複製起來，貼到任何一個 SHA-256 工具裡，算出來的結果要跟上面那串驗證碼一樣。不用信我們的按鈕，用外面的工具最準。
+                        複製下面整段，貼到任一 SHA-256 工具，算出來要跟上面的驗證碼一樣。
                       </p>
 
                       <div className="relative">
@@ -293,10 +271,9 @@ export default function FairnessVerifyPage() {
 
                     {/* 數量對照 */}
                     <Card>
-                      <SectionTitle>每一種獎品的數量</SectionTitle>
-                      <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                        對照表裡實際排了幾張，跟商品頁上公告的數量一不一樣。
-                      </p>
+                      {/* 表頭已經是「公告 / 表裡 / 結果」，不需要再用一句話重述一遍 */}
+                      <SectionTitle>獎品數量</SectionTitle>
+                      <div className="mb-3" />
                       <div className="overflow-x-auto -mx-1 px-1">
                         <table className="w-full text-sm">
                           <thead>
@@ -326,7 +303,7 @@ export default function FairnessVerifyPage() {
                       {lastOnePrizes.length > 0 && (
                         <p className="mt-3 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
                           {lastOnePrizes.map(p => p.level).join('、')}
-                          不在上面的表裡 —— 它不是抽出來的，是直接給抽走最後一張籤的人。
+                          不在表裡 —— 它不是抽出來的，是給抽走最後一張的人。
                         </p>
                       )}
                     </Card>
@@ -336,7 +313,7 @@ export default function FairnessVerifyPage() {
                       <Card>
                         <SectionTitle>你抽到的</SectionTitle>
                         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                          對照表上你那幾號籤原本就排的獎品，跟你實際拿到的一不一樣。
+                          表上排定的，跟你實際拿到的。
                         </p>
                         <div className="space-y-1.5">
                           {myTickets.map(t => {
@@ -367,7 +344,7 @@ export default function FairnessVerifyPage() {
                       <SectionTitle>完整對照表</SectionTitle>
                       {closedSet.size > 0 && (
                         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                          灰色的 {closedSet.size} 張是這一檔結束時沒有賣出去的，由平台收回。
+                          灰色 {closedSet.size} 張未售出，由平台收回。
                         </p>
                       )}
                       <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-1.5">
