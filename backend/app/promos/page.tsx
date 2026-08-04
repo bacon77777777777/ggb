@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { AdminLayout, PageCard, Modal } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
+import ScheduleFields from '@/components/ScheduleFields'
 import { useToast } from '@/contexts/ToastContext'
 
 interface Promo {
@@ -363,9 +364,9 @@ export default function PromosPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm text-neutral-600 mb-1">關閉後</label>
+            <div>
+              <label className="block text-sm text-neutral-600 mb-1">玩家按下叉叉後</label>
+              <div className="flex gap-2">
                 <select
                   className={INPUT}
                   value={editing.dismiss_mode}
@@ -379,26 +380,21 @@ export default function PromosPage() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    className={`${INPUT} mt-2`}
+                    className={`${INPUT} max-w-[110px]`}
                     value={dismissInput}
                     placeholder="天數"
                     onChange={e => onDismissChange(e.target.value)}
                   />
                 )}
               </div>
-              <div>
-                <label className="block text-sm text-neutral-600 mb-1">開始時間</label>
-                <input type="datetime-local" className={INPUT}
-                  value={editing.start_at ? editing.start_at.slice(0, 16) : ''}
-                  onChange={e => setEditing({ ...editing, start_at: e.target.value ? new Date(e.target.value).toISOString() : null })} />
-              </div>
-              <div>
-                <label className="block text-sm text-neutral-600 mb-1">結束時間</label>
-                <input type="datetime-local" className={INPUT}
-                  value={editing.end_at ? editing.end_at.slice(0, 16) : ''}
-                  onChange={e => setEditing({ ...editing, end_at: e.target.value ? new Date(e.target.value).toISOString() : null })} />
-              </div>
             </div>
+
+            <ScheduleFields
+              startAt={editing.start_at}
+              endAt={editing.end_at}
+              onChange={patch => setEditing({ ...editing, ...patch })}
+              inheritHint="留空＝立刻生效、永不下檔"
+            />
 
             <div className="flex justify-end gap-2 pt-2">
               <button
