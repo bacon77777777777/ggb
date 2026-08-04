@@ -219,7 +219,7 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
       label: '版型',
       render: p => (
         <Badge color={p.layout === 'image' ? 'blue' : 'purple'}>
-          {p.layout === 'image' ? '純圖片' : '卡片'}
+          {p.layout === 'image' ? '純圖片' : '公告'}
         </Badge>
       ),
     },
@@ -326,7 +326,7 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                   value={editing.layout}
                   onChange={e => setEditing({ ...editing, layout: e.target.value as Promo['layout'] })}
                 >
-                  <option value="card">卡片（統一模板，只填文字）</option>
+                  <option value="card">公告（統一模板，只填文字）</option>
                   <option value="image">純圖片（整張圖點擊即跳轉）</option>
                 </SelectField>
               </div>
@@ -368,7 +368,7 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
                 <p className="text-xs text-neutral-400 mt-1">
                   寫給玩家看的話，不要出現路徑、欄位名或內部代號。
-                  卡片版使用統一模板底圖，只需填標題、內文與按鈕文字。
+                  公告版使用統一模板底圖，只需填標題、內文與按鈕文字。
                 </p>
               </div>
             )}
