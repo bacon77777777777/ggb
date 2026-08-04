@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1440" width="1080" height="1440">
+  <rect width="1080" height="1440" fill="#8a8a92"/>
+  <rect x="1" y="1" width="1078" height="1438" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/>
+  <g fill="#ffffff" fill-opacity=".8" font-family="system-ui,-apple-system,'Noto Sans TC',sans-serif" text-anchor="middle">
+    <text x="540.0" y="696.0" font-size="72" font-weight="700">純圖片彈窗</text>
+    <text x="540.0" y="776.0" font-size="52" fill-opacity=".55">1080 x 1440</text>
+    <text x="540.0" y="850.0" font-size="38" fill-opacity=".45">比例不限，整張圖直接顯示</text>
+  </g>
+</svg>

@@ -19,6 +19,8 @@ export interface PrizeInfo {
 interface Props {
   prize: PrizeInfo | null;
   onClose: () => void;
+  /** 一番賞／抽卡／自製賞這類「開賣前排定籤號」的玩法，傳 true 就不顯示機率 */
+  sealed?: boolean;
 }
 
 function getLevelStyle(level: string): string {
@@ -36,7 +38,7 @@ function getLevelStyle(level: string): string {
   return 'text-neutral-500';
 }
 
-export default function PrizeDetailSheet({ prize, onClose }: Props) {
+export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -72,7 +74,14 @@ export default function PrizeDetailSheet({ prize, onClose }: Props) {
       ),
     });
   }
-  if (prize?.probability !== undefined && prize.probability !== null && prize.probability > 0) {
+  // 機率只給轉蛋、盒玩這類「每抽當下獨立隨機」的玩法看 —— 那裡的 probability
+  // 就是真的機率。一番賞／抽卡／自製賞的獎項在開賣前就排定封存，決定結果的是
+  // 籤號不是機率，顯示 product_prizes.probability 等於給玩家一個跟實際無關的數字。
+  // 那三種要看的是 /fairness/[id] 的對照表。
+  if (
+    !sealed &&
+    prize?.probability !== undefined && prize.probability !== null && prize.probability > 0
+  ) {
     // DB 兩種存法並存：<=1 視為小數（0.25），>1 視為已是百分比數值（25）
     const pct = prize.probability <= 1 ? prize.probability * 100 : prize.probability;
     rows.push({

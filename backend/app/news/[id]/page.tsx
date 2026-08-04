@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
+import FileInput from '@/components/ui/FileInput'
+import Textarea from '@/components/ui/Textarea'
 
 const CATEGORY_LABELS: Record<string, string> = {
   ichiban:  '一番賞',
@@ -133,9 +135,9 @@ export default function NewsEditPage() {
           </PageCard>
 
           <PageCard title="內容（HTML）">
-            <textarea value={form.content ?? ''}
+            <Textarea value={form.content ?? ''}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              className={`${inputCls} font-mono`}
+              className="font-mono"
               style={{ minHeight: '420px', resize: 'vertical' }}
               placeholder="<h2>小標</h2><p>段落...</p>" />
           </PageCard>
@@ -184,7 +186,7 @@ export default function NewsEditPage() {
                   isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50'
                 }`}>
                   {isUploading ? '...' : '上傳'}
-                  <input type="file" accept="image/*" className="hidden" disabled={isUploading}
+                  <FileInput accept="image/*" className="hidden" disabled={isUploading}
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
                 </label>
               </div>

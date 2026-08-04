@@ -10,6 +10,9 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 // Define interfaces for local state
 interface User {
@@ -83,7 +86,167 @@ interface WarehouseItem {
 }
 
 export default function UserDetailPage() {
+  const idColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "text-neutral-500 whitespace-nowrap font-mono text-xs",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                    </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "類型",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
+                                      {isPending && (
+                                        <Badge variant="warning" className="ml-1">{statusMap[row.status] ?? row.status}</Badge>
+                                      )}
+                                      {row.status === 'failed' && (
+                                        <Badge variant="danger" className="ml-1">失敗</Badge>
+                                      )}
+                                    </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "說明",
+      className: "text-neutral-700 max-w-[180px] truncate",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>{row.description}</>)
+      },
+    },
+    {
+      key: "c3",
+      label: "面額",
+      className: "text-right font-mono text-neutral-600 text-xs",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      {row.recharge_amount != null ? Number(row.recharge_amount).toLocaleString() : '—'}
+                                    </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "贈送",
+      className: "text-right font-mono text-neutral-600 text-xs",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      {row.recharge_bonus != null && row.recharge_bonus > 0 ? `+${Number(row.recharge_bonus).toLocaleString()}` : row.recharge_bonus != null ? '—' : '—'}
+                                    </>)
+      },
+    },
+    {
+      key: "c5",
+      label: "異動 (G)",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      {isPending ? '—' : `${isPos ? '+' : ''}${Number(row.delta).toLocaleString()}`}
+                                    </>)
+      },
+    },
+    {
+      key: "c6",
+      label: "累計餘額",
+      className: "text-right font-mono text-neutral-700",
+      render: (row: any, i: number) => {
+        const isPos = row.delta > 0
+                                const isPending = row.type === 'recharge' && row.status !== 'success'
+                                const typeMap: Record<string, { label: string; cls: string }> = {
+                                  recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
+                                  draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
+                                  dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
+                                  manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
+                                  test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
+                                }
+                                const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
+                                const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
+        return (<>
+                                      {!isPending && row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
+                                    </>)
+      },
+    },
+  ]
+
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const router = useRouter()
   const params = useParams()
   const userId = params.id as string
@@ -427,6 +590,7 @@ export default function UserDetailPage() {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
       </AdminLayout>
     )
   }
@@ -474,9 +638,11 @@ export default function UserDetailPage() {
               <button
                 onClick={() => {
                   const newStatus = userStatus === 'active' ? 'inactive' : 'active'
-                  if (confirm(`確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`)) {
-                    handleStatusUpdate(newStatus)
-                  }
+                  confirm({
+                    title: '確認操作',
+                    message: `確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`,
+                    onConfirm: () => handleStatusUpdate(newStatus),
+                  })
                 }}
                 className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
                   userStatus === 'active'
@@ -506,7 +672,7 @@ export default function UserDetailPage() {
             <button
               onClick={() => {
                 if (userStatus === 'frozen') {
-                  if (confirm('確定解除此帳號凍結？')) handleRiskAction('unfreeze')
+                  confirm({ title: '確認操作', message: "\u78ba\u5b9a\u89e3\u9664\u6b64\u5e33\u865f\u51cd\u7d50\uff1f", onConfirm: () => handleRiskAction('unfreeze') })
                 } else {
                   const reason = prompt('凍結原因（可選）：') ?? undefined
                   if (reason !== null) handleRiskAction('freeze', reason || undefined)
@@ -539,7 +705,7 @@ export default function UserDetailPage() {
             <button
               onClick={() => {
                 if (user?.isSuspicious) {
-                  if (confirm('確定解除可疑標記？')) handleRiskAction('unflag')
+                  confirm({ title: '確認操作', message: "\u78ba\u5b9a\u89e3\u9664\u53ef\u7591\u6a19\u8a18\uff1f", onConfirm: () => handleRiskAction('unflag') })
                 } else {
                   const reason = prompt('標記原因（可選）：') ?? undefined
                   if (reason !== null) handleRiskAction('flag', reason || undefined)
@@ -1014,64 +1180,12 @@ export default function UserDetailPage() {
                   ) : (
                     <>
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-neutral-50 border-b border-neutral-200">
-                            <tr>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">時間</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">類型</th>
-                              <th className="text-left px-3 py-2 text-xs font-semibold text-neutral-500">說明</th>
-                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">面額</th>
-                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">贈送</th>
-                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">異動 (G)</th>
-                              <th className="text-right px-3 py-2 text-xs font-semibold text-neutral-500">累計餘額</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ledger.map((row: any, i: number) => {
-                              const isPos = row.delta > 0
-                              const isPending = row.type === 'recharge' && row.status !== 'success'
-                              const typeMap: Record<string, { label: string; cls: string }> = {
-                                recharge:  { label: '儲值',     cls: 'bg-green-50 text-green-700' },
-                                draw:      { label: '抽獎',     cls: 'bg-rose-50 text-rose-700' },
-                                dismantle: { label: '拆解退',   cls: 'bg-amber-50 text-amber-700' },
-                                manual:    { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
-                                marketing: { label: '行銷贈點', cls: 'bg-orange-50 text-orange-600' },
-                                test:      { label: '測試',     cls: 'bg-neutral-100 text-neutral-500' },
-                              }
-                              const statusMap: Record<string, string> = { pending: '處理中', failed: '失敗', success: '' }
-                              const meta = typeMap[row.type] ?? { label: row.type, cls: 'bg-neutral-100 text-neutral-600' }
-                              return (
-                                <tr key={i} className={`border-b border-neutral-100 hover:bg-neutral-50 ${isPending ? 'opacity-60' : ''}`}>
-                                  <td className="px-3 py-2 text-neutral-500 whitespace-nowrap font-mono text-xs">
-                                    {new Date(row.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${meta.cls}`}>{meta.label}</span>
-                                    {isPending && (
-                                      <Badge variant="warning" className="ml-1">{statusMap[row.status] ?? row.status}</Badge>
-                                    )}
-                                    {row.status === 'failed' && (
-                                      <Badge variant="danger" className="ml-1">失敗</Badge>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2 text-neutral-700 max-w-[180px] truncate">{row.description}</td>
-                                  <td className="px-3 py-2 text-right font-mono text-neutral-600 text-xs">
-                                    {row.recharge_amount != null ? Number(row.recharge_amount).toLocaleString() : '—'}
-                                  </td>
-                                  <td className="px-3 py-2 text-right font-mono text-neutral-600 text-xs">
-                                    {row.recharge_bonus != null && row.recharge_bonus > 0 ? `+${Number(row.recharge_bonus).toLocaleString()}` : row.recharge_bonus != null ? '—' : '—'}
-                                  </td>
-                                  <td className={`px-3 py-2 text-right font-semibold font-mono ${isPending ? 'text-neutral-400' : isPos ? 'text-green-600' : 'text-rose-600'}`}>
-                                    {isPending ? '—' : `${isPos ? '+' : ''}${Number(row.delta).toLocaleString()}`}
-                                  </td>
-                                  <td className="px-3 py-2 text-right font-mono text-neutral-700">
-                                    {!isPending && row.balance_after !== null ? Number(row.balance_after).toLocaleString() : '—'}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
+                        <DataTable
+  data={ledger}
+  columns={idColumns}
+  keyField="id"
+  rowClassName={(row: any) => `border-b border-neutral-100 hover:bg-neutral-50 ${row.type === 'recharge' && row.status !== 'success' ? 'opacity-60' : ''}`}
+/>
                       </div>
                       <div className="flex items-center justify-between pt-3 text-sm text-neutral-500">
                         <span>共 {ledgerTotal.toLocaleString()} 筆</span>

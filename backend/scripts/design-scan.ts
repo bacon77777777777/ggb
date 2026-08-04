@@ -28,6 +28,25 @@ const FORBIDDEN = [
   { type: 'text-gray-',       regex: /\btext-gray-\d+\b/g,        fix: '改用 text-neutral-*' },
 ]
 
+/**
+ * 元件面規則：該用 Design System 元件卻手刻。
+ * 只掃 app/ 下的頁面 —— components/ 底下的元件定義本來就要寫原生標籤。
+ */
+const HANDROLLED = [
+  { type: '手刻 table',    regex: /<(?:table|thead)\b/g,                              fix: '改用 <DataTable columns={...}>' },
+  { type: '手刻 select',   regex: /<select\b/g,                                       fix: '改用 <SelectField>' },
+  { type: '手刻 textarea', regex: /<textarea\b/g,                                     fix: '改用 <Textarea>' },
+  // className="hidden" 的 file input 是由 ref 程式觸發的正當寫法，FileInput 會渲染出可見控制項
+  { type: '手刻 file 上傳', regex: /<input(?![^>]*className="hidden")[^>]*type="file"/g,   fix: '改用 <FileInput>' },
+  { type: '手刻 input',    regex: /<input\b(?![^>]*type="(?:checkbox|radio|file)")[^>]*className=/g, fix: '改用 <Input>' },
+  { type: '手刻 button',   regex: /<button[^>]*className="[^"]*\bbg-(?:primary|neutral-100)\b/g,   fix: '改用 <Button variant=...>' },
+  // 只抓原生 confirm（參數是字串）—— 專案已有 useConfirmDialog()，
+  // 它的呼叫形式是 confirm({ ... })，不算違規
+  { type: '原生 confirm',  regex: /(?:window\.)?confirm\(\s*['"\`]/g,                   fix: '改用 useConfirmDialog()' },
+  // 要有半透明底色才算彈窗遮罩；純 fixed inset-0 多半是關閉用的點擊區
+  { type: '自製 overlay',  regex: /className="[^"]*fixed inset-0[^"]*bg-black\//g,      fix: '改用 <Modal>' },
+]
+
 // 掃描時排除的路徑片段
 const EXCLUDE = [
   'node_modules', '.next', '.git',
@@ -71,10 +90,14 @@ async function main() {
     if (shouldExclude(rel)) continue
     filesScanned++
 
+    // components/ 底下是元件定義，寫原生標籤是正常的
+    const isPage = rel.startsWith('app' + path.sep)
+    const rules = isPage ? [...FORBIDDEN, ...HANDROLLED] : FORBIDDEN
+
     const lines = fs.readFileSync(abs, 'utf-8').split('\n')
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
-      for (const p of FORBIDDEN) {
+      for (const p of rules) {
         p.regex.lastIndex = 0
         let m
         while ((m = p.regex.exec(line)) !== null) {

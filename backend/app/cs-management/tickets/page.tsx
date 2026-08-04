@@ -5,6 +5,7 @@ import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { TableEmpty } from '@/components/ui/EmptyState'
+import Textarea from '@/components/ui/Textarea'
 
 interface CsTicket {
   id: string
@@ -163,12 +164,11 @@ export default function CsTicketsPage() {
 
                             <div>
                               <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">內部備註</p>
-                              <textarea
+                              <Textarea
                                 rows={2}
                                 value={notes[t.id] ?? (t.admin_note || '')}
                                 onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
-                                placeholder="填寫處理記錄…"
-                                className="w-full px-3 py-2 text-[13px] rounded-lg border border-neutral-200 bg-white text-neutral-800 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                placeholder="填寫處理記錄…" className="text-[13px] text-neutral-800 resize-none"
                                 onClick={e => e.stopPropagation()}
                               />
                             </div>

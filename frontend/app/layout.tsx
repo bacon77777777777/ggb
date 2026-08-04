@@ -4,6 +4,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import FooterWrapper from '@/components/FooterWrapper';
 import MobileTabbar from '@/components/MobileTabbar';
+import { RouteTransitionProvider } from '@/components/ui/RouteTransition';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AlertProvider } from '@/components/ui/AlertDialog';
@@ -118,6 +119,7 @@ export default function RootLayout({
             <AlertProvider>
               <ToastProvider>
                 <FeatureFlagsProvider>
+                  <RouteTransitionProvider>
                   <PwaInputFocusFix />
                   <PwaPullToRefresh />
                   <AnalyticsTracker />
@@ -127,6 +129,7 @@ export default function RootLayout({
                   </main>
                   <FooterWrapper />
                   <MobileTabbar />
+                  </RouteTransitionProvider>
                 </FeatureFlagsProvider>
               </ToastProvider>
             </AlertProvider>

@@ -560,6 +560,9 @@ function ProfileContent() {
   const [shippingFeeCvsFamily, setShippingFeeCvsFamily] = useState(65);
   const [shippingFeeCvsHilife, setShippingFeeCvsHilife] = useState(60);
   const [shippingFeeCvsOk, setShippingFeeCvsOk] = useState(60);
+  const [shippingFeeHomeLarge, setShippingFeeHomeLarge] = useState(120);
+  const [freeThresholdCvs, setFreeThresholdCvs] = useState(7);
+  const [freeThresholdHome, setFreeThresholdHome] = useState(15);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(7);
 
   // Auto-scroll refs
@@ -764,8 +767,15 @@ function ProfileContent() {
     if (hasLargePackage) setLogisticsType('HOME');
   }, [hasLargePackage]);
 
+  // 必須與 DB 的 calc_delivery_fee() 完全一致 —— 兩邊算出來不同時，
+  // create_delivery_order 會以 FEE_MISMATCH 擋下整筆出貨
   const currentShippingFee = React.useMemo(() => {
-    if (selectedForDelivery.length >= freeShippingThreshold) return 0;
+    // 含大件不適用免運，且走大件價（真實宅配成本遠高於一般件）
+    if (hasLargePackage) return shippingFeeHomeLarge;
+
+    const threshold = logisticsType === 'CVS' ? freeThresholdCvs : freeThresholdHome;
+    if (selectedForDelivery.length >= threshold) return 0;
+
     if (logisticsType === 'CVS') {
       switch (logisticsSubType) {
         case 'UNIMART': return shippingFeeCvs711;
@@ -776,7 +786,9 @@ function ProfileContent() {
       }
     }
     return shippingFeeHome;
-  }, [selectedForDelivery.length, freeShippingThreshold, logisticsType, logisticsSubType, shippingFeeHome, shippingFeeCvs, shippingFeeCvs711, shippingFeeCvsFamily, shippingFeeCvsHilife, shippingFeeCvsOk]);
+  }, [selectedForDelivery.length, hasLargePackage, shippingFeeHomeLarge, freeThresholdCvs, freeThresholdHome,
+      logisticsType, logisticsSubType, shippingFeeHome, shippingFeeCvs, shippingFeeCvs711,
+      shippingFeeCvsFamily, shippingFeeCvsHilife, shippingFeeCvsOk]);
 
 
   const filteredDismantledItems = React.useMemo(() => {
@@ -1174,7 +1186,8 @@ function ProfileContent() {
     supabase.from('platform_settings').select('key,value').in('key', [
         'shipping_fee_home', 'shipping_fee_cvs',
         'shipping_fee_cvs_711', 'shipping_fee_cvs_family', 'shipping_fee_cvs_hilife', 'shipping_fee_cvs_ok',
-        'free_shipping_threshold'
+        'free_shipping_threshold',
+        'free_shipping_threshold_cvs', 'free_shipping_threshold_home', 'shipping_fee_home_large',
       ])
       .then(({ data }) => {
         if (!data) return;
@@ -1186,6 +1199,9 @@ function ProfileContent() {
         if (map.shipping_fee_cvs_hilife) setShippingFeeCvsHilife(Number(map.shipping_fee_cvs_hilife));
         if (map.shipping_fee_cvs_ok) setShippingFeeCvsOk(Number(map.shipping_fee_cvs_ok));
         if (map.free_shipping_threshold) setFreeShippingThreshold(Number(map.free_shipping_threshold));
+        if (map.free_shipping_threshold_cvs) setFreeThresholdCvs(Number(map.free_shipping_threshold_cvs));
+        if (map.free_shipping_threshold_home) setFreeThresholdHome(Number(map.free_shipping_threshold_home));
+        if (map.shipping_fee_home_large) setShippingFeeHomeLarge(Number(map.shipping_fee_home_large));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2340,9 +2356,8 @@ function ProfileContent() {
 
               {/* 出貨說明 */}
               {activeWarehouseTab === 'all' && (
-                <div className="bg-neutral-800 dark:bg-neutral-900 px-4 py-2.5 flex items-start gap-2 flex-shrink-0">
-                  <span className="text-neutral-400 text-[11px] mt-px flex-shrink-0">⚠</span>
-                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                <div className="bg-neutral-800 dark:bg-neutral-900 px-4 py-1.5 flex-shrink-0">
+                  <p className="text-[11px] text-neutral-300 leading-[1.45]">
                     訂單以廠商為單位分批出貨，每次申請限同一廠商品項。含公仔等大尺寸品項因超商包裝規格限制，一律以宅配方式出貨。
                   </p>
                 </div>

@@ -286,26 +286,38 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
 
 ## 後台 UI 設計慣例（Design System — 絕對禁止自創畫面）
 
-後台有完整的 Design System，**所有後台頁面必須使用以下元件，不可自己用 tailwind 組出類似效果的替代品**：
+**動手前先看 `backend/components/` 與 `backend/components/ui/` 有沒有現成元件。**
+清單如下（有這個元件就不准用 tailwind 自己組等效的東西）：
 
-```tsx
-import { AdminLayout, PageCard, Modal, SearchToolbar, SortableTableHeader } from '@/components'
-import Badge from '@/components/ui/Badge'
-import Switch from '@/components/ui/Switch'
-import { useToast } from '@/contexts/ToastContext'
-```
+| 需求 | 用這個 | 不要寫 |
+|------|--------|--------|
+| 頁面外框 | `AdminLayout`（傳 `pageTitle`） | 自訂容器 |
+| 內容卡片 | `PageCard` | `bg-white rounded-xl border...` |
+| 資料表格 | `DataTable` + `type Column`（含排序、載入中、空狀態） | 手刻 `<table><thead>` |
+| 列表工具列 | `SearchToolbar`（搜尋＋新增＋篩選＋密度＋欄位開關） | 自組 flex 工具列 |
+| 彈窗 | `Modal`（`isOpen`/`onClose`/`title`） | `fixed inset-0` overlay |
+| 刪除確認 | `ConfirmDialog` | `window.confirm()` |
+| 文字輸入 | `ui/Input` | `<input className="w-full px-3 py-2 border...">` |
+| 多行輸入 | `ui/Textarea` | `<textarea className=...>` |
+| 下拉選單 | `ui/SelectField`（另有 `compact`） | `<select className=...>` |
+| 檔案上傳 | `ui/FileInput` | `<input type="file" className=...>` |
+| 按鈕 | `ui/Button`（`variant` / `size` / `isLoading`） | `<button className="px-4 py-2 bg-primary...">` |
+| 標籤 | `ui/Badge`（`color`） | 自製小圓角標籤 |
+| 開關 | `ui/Switch`（`checked`/`onCheckedChange`） | 自製 toggle |
+| 空狀態 | `ui/EmptyState` | 自己寫「尚無資料」 |
+| 骨架屏 | `ui/Skeleton`、`ui/TableSkeleton` | 自製灰塊 |
+| 檔期設定 | `ScheduleFields`（時區換算正確，另有 `unlimitedToggle`） | 自刻 `datetime-local` |
+| 日期 | `DatePicker` / `DateRangePicker` / `DateTimePicker` / `YearMonthPicker` | 生 input |
+| 訊息提示 | `useToast()` → `toast('訊息')` / `toast('訊息', 'error')` | 自製浮層 |
 
-- **AdminLayout**：所有後台頁面的最外層容器，傳 `pageTitle`
-- **PageCard**：內容卡片，取代自訂的 `bg-white rounded-xl border...` 區塊
-- **Modal**：彈窗，傳 `isOpen` / `onClose` / `title`。**禁止自製 fixed inset-0 overlay**
-- **SearchToolbar**：列表頁的搜尋列 + 新增按鈕 + 篩選 + 密度 + 欄位開關，全部整合在這個元件
-- **SortableTableHeader**：可排序的 `<th>`
-- **Badge**：稀有度、標籤等小標籤（有 `color` prop：gray/blue/purple/amber/green/red）
-- **Switch**：上架/啟用切換開關（取代自製 toggle）
-- **useToast()**：成功/失敗訊息，用 `toast('訊息')` / `toast('訊息', 'error')`
-- **Input 統一樣式**：`w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm`
-- **Table 統一樣式**：thead `bg-neutral-50 border-b border-neutral-200`、tbody `divide-y divide-neutral-100`、行 `hover:bg-neutral-50 transition-colors`
-- **Button 統一樣式**：主要 `px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60`、次要 `px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors`
+其餘現成元件：`StatsCard`、`FilterTags`、`TagSelector`、`CopyableID`、`AlertDialog`、
+`SortableTableHeader`、`CsvImportWizard`、`XlsxImportWizard`、`ShippingProgress`。
+
+**⚠ 沒有對應元件時才寫 tailwind**，且必須沿用既有樣式：
+主要按鈕 `px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60`、
+次要按鈕 `px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors`。
+**寫之前先確認上表真的沒有** —— 過去多次「自創畫面」都是因為只看了這幾行配方就動手，
+沒去翻 `components/` 目錄。
 
 **寫新頁面前必看參考**：`backend/app/slot/page.tsx`（列表 + 篩選 + modal）、`backend/app/slot/prizes/page.tsx`（同類型 CRUD）。
 
@@ -353,6 +365,8 @@ import { useToast } from '@/contexts/ToastContext'
   - 永遠不直接 push main，除非明確說「推正」
 - 後台 API 統一用 `getSupabaseAdmin()`，前台用 `createClient()`（anon key）
 - 財務對帳公式：`expected = recharge_total + manual_total - draw_total - refund_deducted`
+  （出貨運費走 `token_adjustments`、type 為 `manual`，已含在 manual_total 內；
+  migration 426 之前的訂單沒有入帳，那段期間的差額即為運費）
 - 稽核軌跡：所有管理員操作都呼叫 `logAdminAction()`
 - `is_bot` 排除：所有統計/報表都過濾機器人帳號
 

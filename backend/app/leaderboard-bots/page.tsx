@@ -5,6 +5,9 @@ import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import SelectField from '@/components/ui/SelectField'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 interface Bot {
   id: number
@@ -40,7 +43,87 @@ const BLANK: Partial<Bot> = {
 }
 
 export default function LeaderboardBotsPage() {
+  const leaderboardbotsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "排序",
+      className: "text-neutral-400 font-mono text-xs",
+      render: (bot) => (<>{bot.sort_order}</>),
+    },
+    {
+      key: "c1",
+      label: "機器人",
+      render: (bot) => (<>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
+                            <Image src={bot.avatar_url} alt={bot.nickname} fill className="object-cover" unoptimized />
+                          </div>
+                          <span className="font-medium text-neutral-800">{bot.nickname}</span>
+                        </div>
+                      </>),
+    },
+    {
+      key: "c2",
+      label: "稱號",
+      render: (bot) => (<>
+                        {bot.title_name ? (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${COLOR_STYLES[bot.title_color || 'gold'] || COLOR_STYLES.gold}`}>
+                            {bot.title_name}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300">—</span>
+                        )}
+                      </>),
+    },
+    {
+      key: "c3",
+      label: "賞金榜",
+      className: "text-right text-neutral-600 font-mono",
+      render: (bot) => (<>{bot.whale_score.toLocaleString()}</>),
+    },
+    {
+      key: "c4",
+      label: "轉蛋榜",
+      className: "text-right text-neutral-600 font-mono",
+      render: (bot) => (<>{bot.draws_score}</>),
+    },
+    {
+      key: "c5",
+      label: "狀態",
+      className: "text-center",
+      render: (bot) => (<>
+                        <button
+                          onClick={() => handleToggleActive(bot)}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                            bot.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                          }`}
+                        >
+                          {bot.is_active ? '啟用' : '停用'}
+                        </button>
+                      </>),
+    },
+    {
+      key: "c6",
+      label: "操作",
+      render: (bot) => (<>
+                        <div className="flex items-center gap-1 justify-end">
+                          <button onClick={() => startEdit(bot)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button onClick={() => handleDelete(bot.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </>),
+    },
+  ]
+
   const [bots, setBots] = useState<Bot[]>([])
+  const { confirm, dialogProps } = useConfirmDialog()
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Partial<Bot>>(BLANK)
@@ -83,9 +166,14 @@ export default function LeaderboardBotsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除這個機器人？')) return
-    await fetch(`/api/admin/leaderboard-bots?id=${id}`, { method: 'DELETE' })
-    setBots(prev => prev.filter(b => b.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這個機器人？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/leaderboard-bots?id=${id}`, { method: 'DELETE' })
+      setBots(prev => prev.filter(b => b.id !== id))
+      },
+    })
   }
 
   const startEdit = (bot: Bot) => {
@@ -219,72 +307,16 @@ export default function LeaderboardBotsPage() {
           <div className="bg-white rounded-xl border border-neutral-200"><CardSkeleton rows={6} /></div>
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr className="bg-neutral-50 border-b border-neutral-100">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 w-10">排序</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">機器人</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">稱號</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">賞金榜</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">轉蛋榜</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-neutral-500">狀態</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-50">
-                {bots.map(bot => (
-                  <tr key={bot.id} className={`border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${!bot.is_active ? 'opacity-40' : ''}`}>
-                    <td className="px-4 py-3 text-neutral-400 font-mono text-xs">{bot.sort_order}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
-                          <Image src={bot.avatar_url} alt={bot.nickname} fill className="object-cover" unoptimized />
-                        </div>
-                        <span className="font-medium text-neutral-800">{bot.nickname}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {bot.title_name ? (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${COLOR_STYLES[bot.title_color || 'gold'] || COLOR_STYLES.gold}`}>
-                          {bot.title_name}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right text-neutral-600 font-mono">{bot.whale_score.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-neutral-600 font-mono">{bot.draws_score}</td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleToggleActive(bot)}
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                          bot.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
-                        }`}
-                      >
-                        {bot.is_active ? '啟用' : '停用'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => startEdit(bot)} className="p-1.5 text-neutral-400 hover:text-neutral-600 rounded">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button onClick={() => handleDelete(bot.id)} className="p-1.5 text-neutral-400 hover:text-red-500 rounded">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+  data={bots}
+  columns={leaderboardbotsColumns}
+  keyField="id"
+  rowClassName={(bot) => `border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${!bot.is_active ? 'opacity-40' : ''}`}
+/>
           </div>
         )}
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

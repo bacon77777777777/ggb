@@ -20,7 +20,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const resolvedSections = await Promise.all((sections || []).map(async section => {
     if (section.type === 'product_ref' && section.content?.product_id) {
       const [{ data: product }, { data: prizes }] = await Promise.all([
-        supabase.from('products').select('id, name, product_type').eq('id', section.content.product_id).single(),
+        // 玩法類別在 products.type；product_type 是舊欄位，整張表都是 NULL
+        supabase.from('products').select('id, name, type').eq('id', section.content.product_id).single(),
         supabase.from('product_prizes')
           .select('id, level, name, image_url, total, remaining, probability, recycle_value')
           .eq('product_id', section.content.product_id)

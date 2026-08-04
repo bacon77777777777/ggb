@@ -4,6 +4,11 @@ import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
 interface MonitorLog {
@@ -79,7 +84,77 @@ function Badge({ meta }: { meta: { label: string; color: string } }) {
 }
 
 export default function DevLogsPage() {
+  // 這三個原本定義在下方的 IIFE 內；表格改用 DataTable 後 columns 的 render
+  // 需要引用它們，故提到元件層
+  const statusColor = (s: string) =>
+    s === 'ok' ? 'text-green-600 bg-green-50 border-green-200'
+    : s === 'warning' ? 'text-amber-600 bg-amber-50 border-amber-200'
+    : s === 'error' ? 'text-red-600 bg-red-50 border-red-200'
+    : 'text-neutral-400 bg-neutral-50 border-neutral-200'
+  const statusDot = (s: string) =>
+    s === 'ok' ? 'bg-green-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
+  const statusLabel = (s: string) =>
+    s === 'ok' ? '正常' : s === 'warning' ? '注意' : s === 'error' ? '異常' : '未知'
+
+  const devlogsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "whitespace-nowrap text-neutral-500",
+      render: (log) => (<>
+                                      {new Date(log.checked_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                    </>),
+    },
+    {
+      key: "c1",
+      label: "DB (MB)",
+      className: "font-mono",
+      render: (log) => (<>{log.supabase_db_mb ?? '—'}</>),
+    },
+    {
+      key: "c2",
+      label: "R2 (MB)",
+      className: "font-mono",
+      render: (log) => (<>{log.r2_size_mb ?? '—'}</>),
+    },
+    {
+      key: "c3",
+      label: "R2 檔數",
+      className: "font-mono",
+      render: (log) => (<>{log.r2_objects?.toLocaleString() ?? '—'}</>),
+    },
+    {
+      key: "c4",
+      label: "Vercel",
+      render: (log) => (<>
+                                      <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.vercel_status)}`}>
+                                        {log.vercel_deploy_state ?? log.vercel_status}
+                                      </span>
+                                    </>),
+    },
+    {
+      key: "c5",
+      label: "GitHub CI",
+      render: (log) => (<>
+                                      <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.github_status)}`}>
+                                        {log.github_ci_conclusion ?? log.github_status}
+                                      </span>
+                                    </>),
+    },
+    {
+      key: "c6",
+      label: "整體",
+      render: (log) => (<>
+                                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${statusColor(log.overall_status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${statusDot(log.overall_status)}`} />
+                                        {statusLabel(log.overall_status)}
+                                      </span>
+                                    </>),
+    },
+  ]
+
   const [logs, setLogs] = useState<DevLog[]>([])
+  const { confirm, dialogProps } = useConfirmDialog()
   const [meetings, setMeetings] = useState<MeetingLog[]>([])
   const [monitorLogs, setMonitorLogs] = useState<MonitorLog[]>([])
   const [monitorLoading, setMonitorLoading] = useState(false)
@@ -186,15 +261,25 @@ export default function DevLogsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除這筆紀錄？')) return
-    await fetch(`/api/admin/dev-logs?id=${id}`, { method: 'DELETE' })
-    setLogs(prev => prev.filter(l => l.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這筆紀錄？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/dev-logs?id=${id}`, { method: 'DELETE' })
+      setLogs(prev => prev.filter(l => l.id !== id))
+      },
+    })
   }
 
   const handleMeetingDelete = async (id: number) => {
-    if (!confirm('確定要刪除這筆會議記錄？')) return
-    await fetch(`/api/admin/meeting-logs?id=${id}`, { method: 'DELETE' })
-    setMeetings(prev => prev.filter(m => m.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這筆會議記錄？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/meeting-logs?id=${id}`, { method: 'DELETE' })
+      setMeetings(prev => prev.filter(m => m.id !== id))
+      },
+    })
   }
 
   const startEdit = (log: DevLog) => {
@@ -305,9 +390,8 @@ export default function DevLogsPage() {
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
-                <input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
-                  placeholder="e.g. v1.2.0"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
+                  placeholder="e.g. v1.2.0" />
               </div>
               {form.type === 'issue' && (
                 <div>
@@ -322,15 +406,13 @@ export default function DevLogsPage() {
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
-              <input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="簡短描述這筆紀錄"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+              <Input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="簡短描述這筆紀錄" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">說明</label>
-              <textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                rows={3} placeholder="詳細說明、重現步驟、解決方案…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
+              <Textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3} placeholder="詳細說明、重現步驟、解決方案…" className="resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setForm(BLANK) }}
@@ -353,27 +435,23 @@ export default function DevLogsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
-                <input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="會議名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="會議名稱" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">時間 *</label>
-                <input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">參與人</label>
-              <input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
-                placeholder="e.g. 王小明、李大華"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+              <Input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
+                placeholder="e.g. 王小明、李大華" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">會議內容</label>
-              <textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
-                rows={6} placeholder="討論事項、決議結論、待辦事項…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
+              <Textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
+                rows={6} placeholder="討論事項、決議結論、待辦事項…" className="resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setMeetingForm(MEETING_BLANK) }}
@@ -587,15 +665,6 @@ export default function DevLogsPage() {
                   </div>
                 ) : (() => {
                   const latest = monitorLogs[0]
-                  const statusColor = (s: string) =>
-                    s === 'ok' ? 'text-green-600 bg-green-50 border-green-200'
-                    : s === 'warning' ? 'text-amber-600 bg-amber-50 border-amber-200'
-                    : s === 'error' ? 'text-red-600 bg-red-50 border-red-200'
-                    : 'text-neutral-400 bg-neutral-50 border-neutral-200'
-                  const statusDot = (s: string) =>
-                    s === 'ok' ? 'bg-green-500' : s === 'warning' ? 'bg-amber-400' : s === 'error' ? 'bg-red-500' : 'bg-neutral-300'
-                  const statusLabel = (s: string) =>
-                    s === 'ok' ? '正常' : s === 'warning' ? '注意' : s === 'error' ? '異常' : '未知'
 
                   return (
                     <>
@@ -675,43 +744,12 @@ export default function DevLogsPage() {
                           <span className="text-sm font-semibold text-neutral-700">歷史紀錄</span>
                         </div>
                         <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead className="bg-neutral-50 border-b border-neutral-200">
-                              <tr>
-                                {['時間', 'DB (MB)', 'R2 (MB)', 'R2 檔數', 'Vercel', 'GitHub CI', '整體'].map(h => (
-                                  <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-50">
-                              {monitorLogs.map(log => (
-                                <tr key={log.id} className="hover:bg-neutral-50">
-                                  <td className="px-4 py-2 whitespace-nowrap text-neutral-500">
-                                    {new Date(log.checked_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </td>
-                                  <td className="px-4 py-2 font-mono">{log.supabase_db_mb ?? '—'}</td>
-                                  <td className="px-4 py-2 font-mono">{log.r2_size_mb ?? '—'}</td>
-                                  <td className="px-4 py-2 font-mono">{log.r2_objects?.toLocaleString() ?? '—'}</td>
-                                  <td className="px-4 py-2">
-                                    <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.vercel_status)}`}>
-                                      {log.vercel_deploy_state ?? log.vercel_status}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <span className={`px-1.5 py-0.5 rounded text-xs ${statusColor(log.github_status)}`}>
-                                      {log.github_ci_conclusion ?? log.github_status}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${statusColor(log.overall_status)}`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${statusDot(log.overall_status)}`} />
-                                      {statusLabel(log.overall_status)}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          <DataTable
+  data={monitorLogs}
+  columns={devlogsColumns}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50"}
+/>
                         </div>
                       </div>
                     </>
@@ -792,6 +830,7 @@ export default function DevLogsPage() {
           </>
         )}
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

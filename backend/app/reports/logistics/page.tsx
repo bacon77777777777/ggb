@@ -4,6 +4,7 @@ import { AdminLayout, PageCard, SearchToolbar, DateRangePicker } from '@/compone
 import { useState, useEffect, useMemo } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { DataTable, type Column } from '@/components'
 
 interface LogisticsRecord {
   id: number
@@ -53,6 +54,77 @@ function exportCSV(filename: string, headers: string[], rows: (string | number)[
 }
 
 export default function LogisticsReportPage() {
+  const logisticsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "提交時間",
+      className: "font-mono whitespace-nowrap text-neutral-500",
+      render: (r) => (<>{formatDateTime(r.submitted_at)}</>),
+    },
+    {
+      key: "c1",
+      label: "訂單編號",
+      className: "font-mono whitespace-nowrap font-medium",
+      render: (r) => (<>{r.order_number}</>),
+    },
+    {
+      key: "c2",
+      label: "用戶",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <div className="font-medium text-neutral-900">{r.user?.name || '—'}</div>
+                          <div className="text-xs text-neutral-400">{r.user?.email || ''}</div>
+                        </>),
+    },
+    {
+      key: "c3",
+      label: "物流類型",
+      className: "whitespace-nowrap text-neutral-600",
+      render: (r) => (<>
+                          {LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type}
+                          {r.logistics_subtype && <span className="ml-1 text-xs text-neutral-400">({r.logistics_subtype})</span>}
+                        </>),
+    },
+    {
+      key: "c4",
+      label: "物流單號",
+      className: "font-mono whitespace-nowrap",
+      render: (r) => (<>{r.tracking_number || '—'}</>),
+    },
+    {
+      key: "c5",
+      label: "運費",
+      className: "font-mono whitespace-nowrap font-medium",
+      render: (r) => (<>
+                          {r.total_amount > 0 ? <span className="text-red-500">−${r.total_amount}</span> : '—'}
+                        </>),
+    },
+    {
+      key: "c6",
+      label: "獎品數",
+      className: "text-center",
+      render: (r) => (<>{r.items.length}</>),
+    },
+    {
+      key: "c7",
+      label: "狀態",
+      className: "whitespace-nowrap",
+      render: (r) => (<>
+                          <span className={`px-2 py-1 rounded text-xs ${statusColor(r.status)}`}>
+                            {STATUS_TEXT[r.status] || r.status}
+                          </span>
+                        </>),
+    },
+    {
+      key: "c8",
+      label: "出貨時間",
+      className: "font-mono whitespace-nowrap text-neutral-500",
+      render: (r) => (<>
+                          {r.shipped_at ? formatDateTime(r.shipped_at) : '—'}
+                        </>),
+    },
+  ]
+
   const [records, setRecords] = useState<LogisticsRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -202,44 +274,12 @@ export default function LogisticsReportPage() {
             ) : filtered.length === 0 ? (
               <div className="py-12 text-center text-neutral-400">無資料</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr className="border-b border-neutral-200 text-left">
-                    {['提交時間', '訂單編號', '用戶', '物流類型', '物流單號', '運費', '獎品數', '狀態', '出貨時間'].map(h => (
-                      <th key={h} className="py-2 px-3 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(r => (
-                    <tr key={r.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="py-2 px-3 font-mono whitespace-nowrap text-neutral-500">{formatDateTime(r.submitted_at)}</td>
-                      <td className="py-2 px-3 font-mono whitespace-nowrap font-medium">{r.order_number}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <div className="font-medium text-neutral-900">{r.user?.name || '—'}</div>
-                        <div className="text-xs text-neutral-400">{r.user?.email || ''}</div>
-                      </td>
-                      <td className="py-2 px-3 whitespace-nowrap text-neutral-600">
-                        {LOGISTICS_TYPE_TEXT[r.logistics_type] || r.logistics_type}
-                        {r.logistics_subtype && <span className="ml-1 text-xs text-neutral-400">({r.logistics_subtype})</span>}
-                      </td>
-                      <td className="py-2 px-3 font-mono whitespace-nowrap">{r.tracking_number || '—'}</td>
-                      <td className="py-2 px-3 font-mono whitespace-nowrap font-medium">
-                        {r.total_amount > 0 ? <span className="text-red-500">−${r.total_amount}</span> : '—'}
-                      </td>
-                      <td className="py-2 px-3 text-center">{r.items.length}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs ${statusColor(r.status)}`}>
-                          {STATUS_TEXT[r.status] || r.status}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 font-mono whitespace-nowrap text-neutral-500">
-                        {r.shipped_at ? formatDateTime(r.shipped_at) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+  data={filtered}
+  columns={logisticsColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50"}
+/>
             )}
           </div>
         </PageCard>

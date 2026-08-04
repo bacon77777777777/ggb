@@ -42,6 +42,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '商品已售完或未上架' }, { status: 400 })
     }
 
+    // 封存過的商品一律不走這裡。這支用的是舊的 determinePrize（機率 × 殺率），
+    // 跟開賣前排定的封存表無關，寫進去的 draw_records 會直接變成
+    // 驗證頁上的「與表不符」—— 而那正是我們要玩家拿來抓平台作弊的訊號。
+    // 目前沒有任何 UI 呼叫這支，留著是為了不動到可能存在的外部整合。
+    if (product.sealed_at) {
+      return NextResponse.json({
+        error: '此商品已排籤封存，請改用前台抽獎流程（play_ichiban_locked）',
+      }, { status: 400 })
+    }
+
     // 4. 獲取獎項配置
     const { data: prizesData, error: prizesError } = await supabase
       .from('product_prizes')

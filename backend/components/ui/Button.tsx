@@ -41,7 +41,7 @@ export default function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap',
         'transition-all duration-200 focus:outline-none focus:ring-1',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         variantStyles[variant],

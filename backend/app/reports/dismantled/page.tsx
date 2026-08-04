@@ -7,6 +7,7 @@ import { TableEmpty } from '@/components/ui/EmptyState'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SelectField from '@/components/ui/SelectField'
+import { DataTable, type Column } from '@/components'
 
 interface Supplier { id: number; name: string }
 interface DismantleRow {
@@ -27,6 +28,65 @@ function fmt(n: number) {
 }
 
 export default function DismantledReportPage() {
+  const dismantledColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "text-xs text-neutral-500 font-mono whitespace-nowrap",
+      render: (row) => (<>
+                        {new Date(row.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </>),
+    },
+    {
+      key: "c1",
+      label: "用戶",
+      render: (row) => (<>
+                        <Link href={`/users/${row.user_id}`} className="text-primary hover:underline font-medium text-xs">
+                          {row.userName}
+                        </Link>
+                      </>),
+    },
+    {
+      key: "c2",
+      label: "商品",
+      render: (row) => (<>
+                        <Link href={`/products/${row.product_id}`} className="text-neutral-700 hover:text-primary hover:underline text-xs">
+                          {row.productName}
+                        </Link>
+                      </>),
+    },
+    {
+      key: "c3",
+      label: "賞項",
+      className: "text-xs text-neutral-600",
+      render: (row) => (<>{row.prize_name}</>),
+    },
+    {
+      key: "c4",
+      label: "等級",
+      render: (row) => (<>
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-700">
+                          {row.prize_level}
+                        </span>
+                      </>),
+    },
+    {
+      key: "c5",
+      label: "退代幣",
+      className: "text-right",
+      render: (row) => (<>
+                        <span className="text-sm font-bold text-red-500">−{row.recycle_value}</span>
+                        <span className="text-xs text-neutral-400 ml-1">G</span>
+                      </>),
+    },
+    {
+      key: "c6",
+      label: "廠商",
+      className: "text-xs text-neutral-500",
+      render: (row) => (<>{row.supplierName}</>),
+    },
+  ]
+
   const today = new Date().toISOString().split('T')[0]
   const firstOfMonth = today.slice(0, 8) + '01'
 
@@ -147,55 +207,14 @@ export default function DismantledReportPage() {
         {/* 明細表 */}
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">時間</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">用戶</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">商品</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">賞項</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">等級</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-neutral-500">退代幣</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-neutral-500">廠商</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <TableSkeleton rows={6} cols={7} />
-                ) : rows.length === 0 ? (
-                  <TableEmpty colSpan={7} message="此區間無分解紀錄" />
-                ) : rows.map(row => (
-                  <tr key={row.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                    <td className="px-4 py-2.5 text-xs text-neutral-500 font-mono whitespace-nowrap">
-                      {new Date(row.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Link href={`/users/${row.user_id}`} className="text-primary hover:underline font-medium text-xs">
-                        {row.userName}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Link href={`/products/${row.product_id}`} className="text-neutral-700 hover:text-primary hover:underline text-xs">
-                        {row.productName}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-neutral-600">{row.prize_name}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-700">
-                        {row.prize_level}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <span className="text-sm font-bold text-red-500">−{row.recycle_value}</span>
-                      <span className="text-xs text-neutral-400 ml-1">G</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-neutral-500">{row.supplierName}</td>
-                  </tr>
-                ))}
-              </tbody>
-              {rows.length > 0 && !loading && (
-                <tfoot>
-                  <tr className="bg-neutral-50 border-t-2 border-neutral-200">
+            <DataTable
+  data={rows}
+  columns={dismantledColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
+  isLoading={loading}
+  emptyMessage="此區間無分解紀錄"
+  footer={<><tr className="bg-neutral-50 border-t-2 border-neutral-200">
                     <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-neutral-700">
                       合計 {fmt(rows.length)} 筆
                     </td>
@@ -203,10 +222,8 @@ export default function DismantledReportPage() {
                       −{fmt(totalTokens)} G
                     </td>
                     <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+                  </tr></>}
+/>
           </div>
         </div>
 

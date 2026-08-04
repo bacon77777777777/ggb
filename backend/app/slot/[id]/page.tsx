@@ -8,6 +8,14 @@ import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
 import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
+import FileInput from '@/components/ui/FileInput'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import SelectField from '@/components/ui/SelectField'
+import Button from '@/components/ui/Button'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +58,6 @@ interface Machine {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
 const BTN_GHOST   = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
 
@@ -85,9 +92,81 @@ function calcStats(p: number, N: number, minHits: number, continueRate: number) 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function SlotThemeDetailPage() {
+  const idColumns1: Column<any>[] = [
+    {
+      key: "c0",
+      label: "編號",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <span className="text-base font-black text-neutral-700">#{machine.machine_number}</span>
+                              <span className="ml-2 text-xs text-neutral-400">ID:{machine.id}</span>
+                            </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "RUSH獎池",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              {rushCount > 0 ? <Badge color="purple">{rushCount} 件</Badge> : <span className="text-xs text-neutral-400">—</span>}
+                            </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "普通返還",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              {returnCount > 0 ? <Badge color="blue">{returnCount} 種</Badge> : <span className="text-xs text-neutral-400">—</span>}
+                            </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "上架",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <Switch checked={machine.is_active} onCheckedChange={() => handleToggleMachine(machine)} />
+                            </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "前台",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <a href={`/challenge?machine=${machine.id}`} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline">預覽 ↗</a>
+                            </>)
+      },
+    },
+    {
+      key: "c5",
+      label: "操作",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <button onClick={() => handleRemoveMachine(machine.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
+                            </>)
+      },
+    },
+  ]
+
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
 
   const [theme, setTheme]       = useState<SlotTheme | null>(null)
   const [prizes, setPrizes]     = useState<ThemePrize[]>([])
@@ -288,13 +367,18 @@ export default function SlotThemeDetailPage() {
   }
 
   const handleDeletePoolItem = async (item: PoolItem) => {
-    if (!confirm('確定從所有機台移除此獎品？')) return
-    const res = await fetch(
-      `/api/admin/slot/themes/${id}/pool?pool_item_id=${item.id}`,
-      { method: 'DELETE' }
-    )
-    if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
-    else toast('移除失敗', 'error')
+    confirm({
+      title: '確認操作',
+      message: "確定從所有機台移除此獎品？",
+      onConfirm: async () => {
+      const res = await fetch(
+        `/api/admin/slot/themes/${id}/pool?pool_item_id=${item.id}`,
+        { method: 'DELETE' }
+      )
+      if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
+      else toast('移除失敗', 'error')
+      },
+    })
   }
 
   const handleSaveRecycleValue = async () => {
@@ -357,10 +441,15 @@ export default function SlotThemeDetailPage() {
   }
 
   const handleRemoveMachine = async (machineId: number) => {
-    if (!confirm('確定移除此機台？')) return
-    const res = await fetch(`/api/admin/slot/themes/${id}/machines?machine_id=${machineId}`, { method: 'DELETE' })
-    if (res.ok) { toast('已移除'); fetchData() }
-    else toast('移除失敗', 'error')
+    confirm({
+      title: '確認操作',
+      message: "確定移除此機台？",
+      onConfirm: async () => {
+      const res = await fetch(`/api/admin/slot/themes/${id}/machines?machine_id=${machineId}`, { method: 'DELETE' })
+      if (res.ok) { toast('已移除'); fetchData() }
+      else toast('移除失敗', 'error')
+      },
+    })
   }
 
   const handleToggleMachine = async (machine: Machine) => {
@@ -459,7 +548,7 @@ export default function SlotThemeDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2">
                   <Field label="主題名稱">
-                    <input type="text" className={INPUT} value={form.name ?? ''}
+                    <Input value={form.name ?? ''}
                       onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                   </Field>
                 </div>
@@ -470,17 +559,17 @@ export default function SlotThemeDetailPage() {
                   </div>
                 </Field>
                 <Field label="排序">
-                  <input type="number" className={INPUT} value={form.sort_order ?? 0}
+                  <Input type="number" value={form.sort_order ?? 0}
                     onChange={e => setForm(p => ({ ...p, sort_order: parseInt(e.target.value) }))} />
                 </Field>
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="廠商 ID">
-                  <input type="number" className={INPUT} value={form.supplier_id ?? ''}
+                  <Input type="number" value={form.supplier_id ?? ''}
                     onChange={e => setForm(p => ({ ...p, supplier_id: parseInt(e.target.value) || null }))} />
                 </Field>
                 <Field label="活動頁連結（event_slug）">
-                  <input type="text" className={INPUT} placeholder="例：1（→ /events/1）" value={form.event_slug ?? ''}
+                  <Input placeholder="例：1（→ /events/1）" value={form.event_slug ?? ''}
                     onChange={e => setForm(p => ({ ...p, event_slug: e.target.value || null }))} />
                 </Field>
               </div>
@@ -494,10 +583,10 @@ export default function SlotThemeDetailPage() {
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="機台圖片">
-                  <input type="file" accept="image/*" onChange={e => {
+                  <FileInput accept="image/*" onChange={e => {
                     const f = e.target.files?.[0]
                     if (f) { setMachineImageFile(f); setMachineImagePreview(URL.createObjectURL(f)) }
-                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  }} className="text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
                   {machineImagePreview && (
                     <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
                       <img src={machineImagePreview} alt="" className="w-full h-full object-cover" />
@@ -505,10 +594,10 @@ export default function SlotThemeDetailPage() {
                   )}
                 </Field>
                 <Field label="機台組圖（sprite，2048×1400 模板）">
-                  <input type="file" accept="image/png" onChange={e => {
+                  <FileInput accept="image/png" onChange={e => {
                     const f = e.target.files?.[0]
                     if (f) { setSpriteFile(f); setSpritePreview(URL.createObjectURL(f)) }
-                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  }} className="text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
                   {spritePreview ? (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="w-24 h-16 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-900">
@@ -527,7 +616,7 @@ export default function SlotThemeDetailPage() {
               </div>
               <div className="mt-4">
                 <Field label="機台版位覆蓋（JSON，選填）">
-                  <textarea rows={5} className={INPUT + ' font-mono text-xs'} value={layoutStr}
+                  <Textarea rows={5} className="font-mono text-xs" value={layoutStr}
                     onChange={e => setLayoutStr(e.target.value)}
                     placeholder={'留空使用預設版位。範例：\n{"reels":{"t":39,"h":17,"cols":[{"l":19.5,"w":18.5},{"l":42},{"l":63.5}]},"marquee":{"t":16},"scoreboard":{"t":30}}'}
                   />
@@ -572,7 +661,7 @@ export default function SlotThemeDetailPage() {
               <p className="text-xs text-neutral-400 mb-3">最多 5 個，以逗號分隔。決定玩家可選的 G 幣投注金額。</p>
               <div className="flex items-center gap-3">
                 <div className="relative flex-1 max-w-sm">
-                  <input type="text" className={INPUT + ' pr-12' + (parsedTiers.length > 5 ? ' border-red-400' : '')}
+                  <Input className={"pr-12" + (parsedTiers.length > 5 ? ' border-red-400' : '')}
                     placeholder="100,300,500,1000,2000"
                     value={betTiersInput}
                     onChange={e => setBetTiersInput(e.target.value)}
@@ -599,7 +688,7 @@ export default function SlotThemeDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <Field label="觸發率（每轉）">
                   <div className="relative">
-                    <input type="number" step={0.01} min={0.01} max={100} className={INPUT + ' pr-8'}
+                    <Input type="number" step={0.01} min={0.01} max={100} className="pr-8"
                       value={triggerRateStr}
                       onChange={e => setTriggerRateStr(e.target.value)}
                       onBlur={e => {
@@ -613,7 +702,7 @@ export default function SlotThemeDetailPage() {
                   </div>
                 </Field>
                 <Field label="保底轉數">
-                  <input type="number" min={1} className={INPUT}
+                  <Input type="number" min={1}
                     value={N > 0 ? N : ''}
                     onChange={e => setForm(prev => ({ ...prev, floor_spin_count: parseInt(e.target.value) }))}
                   />
@@ -631,14 +720,14 @@ export default function SlotThemeDetailPage() {
                   })()}
                 </Field>
                 <Field label="RUSH 保底連數">
-                  <input type="number" min={1} max={10} className={INPUT}
+                  <Input type="number" min={1} max={10}
                     value={minHits > 0 ? minHits : ''}
                     onChange={e => setForm(prev => ({ ...prev, min_rush_hits: parseInt(e.target.value) }))}
                   />
                 </Field>
                 <Field label="RUSH 延續率">
                   <div className="relative">
-                    <input type="number" step={0.01} min={0} max={99.99} className={INPUT + ' pr-8'}
+                    <Input type="number" step={0.01} min={0} max={99.99} className="pr-8"
                       value={continueRateStr}
                       onChange={e => setContinueRateStr(e.target.value)}
                       onBlur={e => {
@@ -653,7 +742,7 @@ export default function SlotThemeDetailPage() {
                 </Field>
                 <Field label="延續率遞減係數">
                   <div className="relative">
-                    <input type="number" step={1} min={1} max={100} className={INPUT + ' pr-8'}
+                    <Input type="number" step={1} min={1} max={100} className="pr-8"
                       value={decayStr}
                       onChange={e => setDecayStr(e.target.value)}
                       onBlur={e => {
@@ -749,9 +838,7 @@ export default function SlotThemeDetailPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleAutoAssignLevels} className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
-                    ✦ 自動分配賞等
-                  </button>
+                  <Button variant="secondary" size="sm" onClick={handleAutoAssignLevels}>✦ 自動分配賞等</Button>
                   <button onClick={openAddPrize} className={BTN_PRIMARY}>+ 加入獎品</button>
                 </div>
               </div>
@@ -824,9 +911,8 @@ export default function SlotThemeDetailPage() {
                             <td className="px-4 py-3">
                               {isEditingThis ? (
                                 <div className="flex items-center gap-1">
-                                  <input
-                                    type="number" min={0} autoFocus
-                                    className="w-24 px-2 py-1 border border-primary rounded text-sm"
+                                  <Input
+                                    type="number" min={0} autoFocus className="w-24 border-primary"
                                     value={editingRecycle!.value}
                                     onChange={e => setEditingRecycle({ name: prizeName, value: e.target.value })}
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveRecycleValue(); if (e.key === 'Escape') setEditingRecycle(null) }}
@@ -877,45 +963,12 @@ export default function SlotThemeDetailPage() {
               <div className="py-12 text-center text-sm text-neutral-400">尚無機台</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      {['編號', 'RUSH獎池', '普通返還', '上架', '前台', '操作'].map(h => (
-                        <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {machines.map(machine => {
-                      const rushCount   = machine.slot_pool_items?.filter(p => p.rush_only && !p.coin_return).length ?? 0
-                      const returnCount = machine.slot_pool_items?.filter(p => p.coin_return).length ?? 0
-                      return (
-                        <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="text-base font-black text-neutral-700">#{machine.machine_number}</span>
-                            <span className="ml-2 text-xs text-neutral-400">ID:{machine.id}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {rushCount > 0 ? <Badge color="purple">{rushCount} 件</Badge> : <span className="text-xs text-neutral-400">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            {returnCount > 0 ? <Badge color="blue">{returnCount} 種</Badge> : <span className="text-xs text-neutral-400">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Switch checked={machine.is_active} onCheckedChange={() => handleToggleMachine(machine)} />
-                          </td>
-                          <td className="px-4 py-3">
-                            <a href={`/challenge?machine=${machine.id}`} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline">預覽 ↗</a>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => handleRemoveMachine(machine.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                <DataTable
+  data={machines}
+  columns={idColumns1}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
               </div>
             )}
           </PageCard>
@@ -927,9 +980,7 @@ export default function SlotThemeDetailPage() {
         <div className="space-y-4">
           {/* 品項搜尋選擇 */}
           <Field label="選擇品項">
-            <input
-              type="text"
-              className={INPUT}
+            <Input
               placeholder="搜尋品項名稱..."
               value={prizeSearch}
               onChange={e => { setPrizeSearch(e.target.value); setSelectedPrize(null) }}
@@ -963,16 +1014,16 @@ export default function SlotThemeDetailPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="投注檔次">
-              <select className={INPUT} value={addForm.min_bet}
+              <SelectField value={addForm.min_bet}
                 onChange={e => setAddForm(p => ({ ...p, min_bet: e.target.value }))}>
                 <option value="">全檔次皆可</option>
                 {parsedTiers.map(t => (
                   <option key={t.coins} value={String(t.coins)}>{t.coins.toLocaleString()} G 以上</option>
                 ))}
-              </select>
+              </SelectField>
             </Field>
             <Field label="每台庫存">
-              <input type="number" className={INPUT} min={0}
+              <Input type="number" min={0}
                 value={addForm.remaining}
                 onChange={e => setAddForm(p => ({ ...p, remaining: e.target.value }))}
                 placeholder="空白 = 不限" />
@@ -987,6 +1038,7 @@ export default function SlotThemeDetailPage() {
           </div>
         </div>
       </Modal>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }
@@ -1047,7 +1099,7 @@ function VideoTab({ theme, onSave }: { theme: SlotTheme; onSave: (u: Record<stri
                   slot.key.includes('strong') ? 'bg-amber-100 text-amber-700' :
                   slot.key.includes('revival') ? 'bg-green-100 text-green-700' :
                   slot.key.includes('anticipation') ? 'bg-neutral-100 text-neutral-600' :
-                  'bg-blue-100 text-blue-700'
+                  'bg-blue-100 text-primary'
                 }`}>{slot.badge}</span>
                 <span className="text-sm font-semibold text-neutral-700">{slot.label}</span>
               </div>
@@ -1067,7 +1119,7 @@ function VideoTab({ theme, onSave }: { theme: SlotTheme; onSave: (u: Record<stri
                 <span className="block w-full text-center px-3 py-2 text-xs text-primary border border-primary rounded-lg hover:bg-primary/5 cursor-pointer transition-colors">
                   {isUploading ? '上傳中...' : url ? '重新上傳' : '上傳影片'}
                 </span>
-                <input type="file" accept="video/*" className="hidden" disabled={!!uploading}
+                <FileInput accept="video/*" className="hidden" disabled={!!uploading}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(slot.key, f) }} />
               </label>
             </PageCard>

@@ -5,6 +5,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import SelectField from '@/components/ui/SelectField'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Event {
@@ -94,26 +97,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   )
 }
-const inputCls = "w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-const textareaCls = inputCls + " resize-none"
 
 function HeroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
   const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
   return (
     <div className="space-y-3">
-      <Field label="Eyebrow（小標籤）"><input className={inputCls} value={c.eyebrow as string} onChange={e => set('eyebrow', e.target.value)} placeholder="GGB EVENT" /></Field>
-      <Field label="大標題"><input className={inputCls} value={c.title as string} onChange={e => set('title', e.target.value)} placeholder="夏日轉蛋祭" /></Field>
-      <Field label="副標題"><textarea className={textareaCls} rows={2} value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
-      <Field label="強調文字（虛線框）"><input className={inputCls} value={c.highlight_text as string} onChange={e => set('highlight_text', e.target.value)} placeholder="儲值加碼 2倍票券" /></Field>
-      <Field label="狀態 Badge"><input className={inputCls} value={c.badge_text as string} onChange={e => set('badge_text', e.target.value)} placeholder="進行中 / 2026.07.27" /></Field>
+      <Field label="Eyebrow（小標籤）"><Input value={c.eyebrow as string} onChange={e => set('eyebrow', e.target.value)} placeholder="GGB EVENT" /></Field>
+      <Field label="大標題"><Input value={c.title as string} onChange={e => set('title', e.target.value)} placeholder="夏日轉蛋祭" /></Field>
+      <Field label="副標題"><Textarea rows={2} value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="強調文字（虛線框）"><Input value={c.highlight_text as string} onChange={e => set('highlight_text', e.target.value)} placeholder="儲值加碼 2倍票券" /></Field>
+      <Field label="狀態 Badge"><Input value={c.badge_text as string} onChange={e => set('badge_text', e.target.value)} placeholder="進行中 / 2026.07.27" /></Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="CTA 按鈕文字"><input className={inputCls} value={c.cta_text as string} onChange={e => set('cta_text', e.target.value)} /></Field>
-        <Field label="CTA 連結 URL"><input className={inputCls} value={c.cta_url as string} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
+        <Field label="CTA 按鈕文字"><Input value={c.cta_text as string} onChange={e => set('cta_text', e.target.value)} /></Field>
+        <Field label="CTA 連結 URL"><Input value={c.cta_url as string} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
       </div>
       <div className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
         <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">背景影片（可選，P3功能）</span>
-        <Field label="影片 URL（R2/CDN mp4）"><input className={inputCls} value={c.bg_video_url as string || ''} onChange={e => set('bg_video_url', e.target.value)} placeholder="https://r2.ggb.com.tw/videos/xxx.mp4" /></Field>
-        <Field label="Poster 圖（影片載入前顯示）"><input className={inputCls} value={c.bg_poster_url as string || ''} onChange={e => set('bg_poster_url', e.target.value)} placeholder="https://..." /></Field>
+        <Field label="影片 URL（R2/CDN mp4）"><Input value={c.bg_video_url as string || ''} onChange={e => set('bg_video_url', e.target.value)} placeholder="https://r2.ggb.com.tw/videos/xxx.mp4" /></Field>
+        <Field label="Poster 圖（影片載入前顯示）"><Input value={c.bg_poster_url as string || ''} onChange={e => set('bg_poster_url', e.target.value)} placeholder="https://..." /></Field>
       </div>
     </div>
   )
@@ -123,9 +124,9 @@ function TextForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
   const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string} onChange={e => set('h2', e.target.value)} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
-      <Field label="內文"><textarea className={textareaCls} rows={5} value={c.body as string} onChange={e => set('body', e.target.value)} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string} onChange={e => set('h2', e.target.value)} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="內文"><Textarea rows={5} value={c.body as string} onChange={e => set('body', e.target.value)} /></Field>
     </div>
   )
 }
@@ -140,15 +141,15 @@ function StatsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
   const removeStat = (i: number) => onChange({ ...c, stats: stats.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} placeholder="活動數據" /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} placeholder="活動數據" /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">指標（最多 4 個，2 欄或 4 欄排列）</label>
         {stats.map((s, i) => (
           <div key={i} className="flex gap-2 items-center border border-neutral-100 rounded-lg p-2 bg-neutral-50">
-            <input className={inputCls + ' flex-1'} placeholder="數值（如 100+）" value={s.v} onChange={e => setStat(i, 'v', e.target.value)} />
-            <input className={inputCls + ' flex-1'} placeholder="說明（如 參與獎品）" value={s.l} onChange={e => setStat(i, 'l', e.target.value)} />
-            <input type="color" value={s.color || '#ffd24a'} onChange={e => setStat(i, 'color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none" title="數值顏色" />
+            <Input className="flex-1" placeholder="數值（如 100+）" value={s.v} onChange={e => setStat(i, 'v', e.target.value)} />
+            <Input className="flex-1" placeholder="說明（如 參與獎品）" value={s.l} onChange={e => setStat(i, 'l', e.target.value)} />
+            <Input type="color" value={s.color || '#ffd24a'} onChange={e => setStat(i, 'color', e.target.value)} className="w-9 h-9 cursor-pointer flex-none" title="數值顏色" />
             <button onClick={() => removeStat(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none">×</button>
           </div>
         ))}
@@ -163,24 +164,24 @@ function FukuroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v:
   const chips = (c.chips as string[]) || []
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
       <Field label="框底色風格">
-        <select className={inputCls} value={c.variant as string || 'gold'} onChange={e => set('variant', e.target.value)}>
+        <SelectField value={c.variant as string || 'gold'} onChange={e => set('variant', e.target.value)}>
           <option value="gold">金/橙（預設）— 適合優惠/特賣</option>
           <option value="accent">主題色 — 適合特別說明</option>
-        </select>
+        </SelectField>
       </Field>
       <div className="border border-neutral-200 rounded-xl p-3 space-y-3 bg-neutral-50">
         <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">框內容</span>
-        <Field label="框內大標題 (ft)"><input className={inputCls} value={c.ft as string || ''} onChange={e => set('ft', e.target.value)} placeholder="限時優惠標題" /></Field>
-        <Field label="說明文字 (fb)"><textarea className={textareaCls} rows={3} value={c.fb as string || ''} onChange={e => set('fb', e.target.value)} placeholder="詳細說明..." /></Field>
-        <Field label="強調第二行 (fb2, accent 色)"><input className={inputCls} value={c.fb2 as string || ''} onChange={e => set('fb2', e.target.value)} placeholder="如：額外贈送 4 張票券" /></Field>
+        <Field label="框內大標題 (ft)"><Input value={c.ft as string || ''} onChange={e => set('ft', e.target.value)} placeholder="限時優惠標題" /></Field>
+        <Field label="說明文字 (fb)"><Textarea rows={3} value={c.fb as string || ''} onChange={e => set('fb', e.target.value)} placeholder="詳細說明..." /></Field>
+        <Field label="強調第二行 (fb2, accent 色)"><Input value={c.fb2 as string || ''} onChange={e => set('fb2', e.target.value)} placeholder="如：額外贈送 4 張票券" /></Field>
         <Field label="Chip 標籤（每行一個）">
-          <textarea className={textareaCls} rows={3} value={chips.join('\n')} placeholder={'20代幣包\n50代幣包\n100代幣包'} onChange={e => set('chips', e.target.value.split('\n').filter(Boolean))} />
+          <Textarea rows={3} value={chips.join('\n')} placeholder={'20代幣包\n50代幣包\n100代幣包'} onChange={e => set('chips', e.target.value.split('\n').filter(Boolean))} />
         </Field>
       </div>
-      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={3} value={c.callout as string || ''} onChange={e => set('callout', e.target.value)} placeholder="⚠ 注意：..." /></Field>
+      <Field label="底部注意事項（虛線框）"><Textarea rows={3} value={c.callout as string || ''} onChange={e => set('callout', e.target.value)} placeholder="⚠ 注意：..." /></Field>
     </div>
   )
 }
@@ -196,24 +197,24 @@ function RelForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Re
   const removeRow = (i: number) => onChange({ ...c, rows: rows.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">比較列（左欄名稱，右欄金色數值＋說明）</label>
         {rows.map((r, i) => (
           <div key={i} className="border border-neutral-100 rounded-lg p-3 bg-neutral-50 space-y-2">
             <div className="flex gap-2 items-center">
-              <input type="color" value={r.name_color || '#ff7a7a'} onChange={e => setRow(i, 'name_color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none" title="名稱顏色" />
-              <input className={inputCls + ' flex-1'} placeholder="名稱（如：S賞）" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} />
-              <input className={inputCls + ' flex-1'} placeholder="數值/等級（如：★★★★）" value={r.value} onChange={e => setRow(i, 'value', e.target.value)} />
+              <Input type="color" value={r.name_color || '#ff7a7a'} onChange={e => setRow(i, 'name_color', e.target.value)} className="w-9 h-9 cursor-pointer flex-none" title="名稱顏色" />
+              <Input className="flex-1" placeholder="名稱（如：S賞）" value={r.name} onChange={e => setRow(i, 'name', e.target.value)} />
+              <Input className="flex-1" placeholder="數值/等級（如：★★★★）" value={r.value} onChange={e => setRow(i, 'value', e.target.value)} />
               <button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none">×</button>
             </div>
-            <input className={inputCls} placeholder="說明（如：最高稀有度）" value={r.desc || ''} onChange={e => setRow(i, 'desc', e.target.value)} />
+            <Input placeholder="說明（如：最高稀有度）" value={r.desc || ''} onChange={e => setRow(i, 'desc', e.target.value)} />
           </div>
         ))}
         <button onClick={addRow} className="text-xs text-primary font-bold hover:underline">+ 新增列</button>
       </div>
-      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
+      <Field label="底部注意事項（虛線框）"><Textarea rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
     </div>
   )
 }
@@ -229,23 +230,23 @@ function RuleForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
   const removeRule = (i: number) => onChange({ ...c, rules: rules.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">規則卡（2欄排列，標題＋說明，偶數格數效果最佳）</label>
         {rules.map((r, i) => (
           <div key={i} className="flex gap-2 items-start border border-neutral-100 rounded-lg p-2 bg-neutral-50">
-            <input type="color" value={r.title_color || '#c026d3'} onChange={e => setRule(i, 'title_color', e.target.value)} className="w-9 h-9 rounded cursor-pointer border border-neutral-200 flex-none mt-0.5" title="標題顏色" />
+            <Input type="color" value={r.title_color || '#c026d3'} onChange={e => setRule(i, 'title_color', e.target.value)} className="w-9 h-9 cursor-pointer flex-none mt-0.5" title="標題顏色" />
             <div className="flex-1 space-y-2">
-              <input className={inputCls} placeholder="標題（如：最高稀有）" value={r.title} onChange={e => setRule(i, 'title', e.target.value)} />
-              <input className={inputCls} placeholder="說明（如：每 100 抽必得一張 SS 賞）" value={r.desc} onChange={e => setRule(i, 'desc', e.target.value)} />
+              <Input placeholder="標題（如：最高稀有）" value={r.title} onChange={e => setRule(i, 'title', e.target.value)} />
+              <Input placeholder="說明（如：每 100 抽必得一張 SS 賞）" value={r.desc} onChange={e => setRule(i, 'desc', e.target.value)} />
             </div>
             <button onClick={() => removeRule(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none mt-1">×</button>
           </div>
         ))}
         <button onClick={addRule} className="text-xs text-primary font-bold hover:underline">+ 新增規則</button>
       </div>
-      <Field label="底部注意事項（虛線框）"><textarea className={textareaCls} rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
+      <Field label="底部注意事項（虛線框）"><Textarea rows={2} value={c.callout as string || ''} onChange={e => onChange({ ...c, callout: e.target.value })} placeholder="⚠ 補充說明..." /></Field>
     </div>
   )
 }
@@ -260,15 +261,15 @@ function StepsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
   const removeStep = (i: number) => onChange({ ...c, steps: steps.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         {steps.map((s, i) => (
           <div key={i} className="flex gap-2 items-start border border-neutral-100 rounded-lg p-3 bg-neutral-50">
             <span className="text-xs font-black text-neutral-400 mt-2.5 w-4 text-center">{i + 1}</span>
             <div className="flex-1 space-y-2">
-              <input className={inputCls} placeholder="步驟標題" value={s.title} onChange={e => setStep(i, 'title', e.target.value)} />
-              <input className={inputCls} placeholder="說明" value={s.description} onChange={e => setStep(i, 'description', e.target.value)} />
+              <Input placeholder="步驟標題" value={s.title} onChange={e => setStep(i, 'title', e.target.value)} />
+              <Input placeholder="說明" value={s.description} onChange={e => setStep(i, 'description', e.target.value)} />
             </div>
             <button onClick={() => removeStep(i)} className="text-red-400 hover:text-red-600 mt-2 text-lg leading-none">×</button>
           </div>
@@ -290,8 +291,8 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
   const removeCard = (i: number) => onChange({ ...c, cards: cards.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-3">
         {cards.map((card, i) => (
           <div key={i} className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
@@ -300,26 +301,26 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
               <button onClick={() => removeCard(i)} className="text-red-400 hover:text-red-600 text-sm">刪除</button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input className={inputCls} placeholder="標籤（SS賞 / 大賞）" value={card.tag} onChange={e => setCard(i, 'tag', e.target.value)} />
-              <select className={inputCls} value={card.variant} onChange={e => setCard(i, 'variant', e.target.value)}>
+              <Input placeholder="標籤（SS賞 / 大賞）" value={card.tag} onChange={e => setCard(i, 'tag', e.target.value)} />
+              <SelectField value={card.variant} onChange={e => setCard(i, 'variant', e.target.value)}>
                 <option value="star">一般</option>
                 <option value="grand">豪華（accent 發光）</option>
-              </select>
+              </SelectField>
             </div>
-            <input className={inputCls} placeholder="圖片 URL（可選，顯示在卡片頂部）" value={card.image_url || ''} onChange={e => setCard(i, 'image_url', e.target.value)} />
-            <input className={inputCls} placeholder="卡片標題" value={card.title} onChange={e => setCard(i, 'title', e.target.value)} />
-            <input className={inputCls} placeholder="副說明" value={card.subtitle} onChange={e => setCard(i, 'subtitle', e.target.value)} />
+            <Input placeholder="圖片 URL（可選，顯示在卡片頂部）" value={card.image_url || ''} onChange={e => setCard(i, 'image_url', e.target.value)} />
+            <Input placeholder="卡片標題" value={card.title} onChange={e => setCard(i, 'title', e.target.value)} />
+            <Input placeholder="副說明" value={card.subtitle} onChange={e => setCard(i, 'subtitle', e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
-              <input className={inputCls} placeholder="數字（如 1）" value={card.value} onChange={e => setCard(i, 'value', e.target.value)} />
-              <input className={inputCls} placeholder="單位（如 名）" value={card.unit} onChange={e => setCard(i, 'unit', e.target.value)} />
+              <Input placeholder="數字（如 1）" value={card.value} onChange={e => setCard(i, 'value', e.target.value)} />
+              <Input placeholder="單位（如 名）" value={card.unit} onChange={e => setCard(i, 'unit', e.target.value)} />
             </div>
-            <textarea className={textareaCls} rows={2} placeholder="備註（每行一條）"
+            <Textarea rows={2} placeholder="備註（每行一條）"
               value={(card.extras || []).join('\n')} onChange={e => setCard(i, 'extras', e.target.value.split('\n'))} />
           </div>
         ))}
         <button onClick={addCard} className="text-xs text-primary font-bold hover:underline">+ 新增卡片</button>
       </div>
-      <Field label="底部備註"><textarea className={textareaCls} rows={2} value={c.note as string} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
+      <Field label="底部備註"><Textarea rows={2} value={c.note as string} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
     </div>
   )
 }
@@ -343,10 +344,10 @@ function TableForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
 
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <Field label="強調欄（第幾欄，0起算；空白=無）">
-        <input type="number" className={inputCls} value={c.highlight_col as number ?? ''} min={0}
+        <Input type="number" value={c.highlight_col as number ?? ''} min={0}
           onChange={e => onChange({ ...c, highlight_col: e.target.value === '' ? undefined : Number(e.target.value) })} />
       </Field>
       <div className="space-y-2">
@@ -354,7 +355,7 @@ function TableForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
         <div className="flex flex-wrap gap-2">
           {columns.map((col, i) => (
             <div key={i} className="flex items-center gap-1">
-              <input className={inputCls + ' w-28'} value={col} placeholder={`欄${i+1}`} onChange={e => setCol(i, e.target.value)} />
+              <Input className="w-28" value={col} placeholder={`欄${i+1}`} onChange={e => setCol(i, e.target.value)} />
               <button onClick={() => removeCol(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-5">×</button>
             </div>
           ))}
@@ -366,7 +367,7 @@ function TableForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
         {rows.map((row, ri) => (
           <div key={ri} className="flex items-center gap-1 flex-wrap">
             {row.map((cell, ci) => (
-              <input key={ci} className={inputCls + ' w-28'} value={cell} placeholder={ci === 0 ? '列標題' : `欄${ci+1}`}
+              <Input key={ci} className="w-28" value={cell} placeholder={ci === 0 ? '列標題' : `欄${ci+1}`}
                 onChange={e => setCell(ri, ci, e.target.value)} />
             ))}
             <button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 text-lg leading-none w-5">×</button>
@@ -374,7 +375,7 @@ function TableForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
         ))}
         <button onClick={addRow} className="text-xs text-primary font-bold hover:underline">+ 加列</button>
       </div>
-      <Field label="底部備註"><input className={inputCls} value={c.note as string || ''} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
+      <Field label="底部備註"><Input value={c.note as string || ''} onChange={e => onChange({ ...c, note: e.target.value })} /></Field>
     </div>
   )
 }
@@ -390,24 +391,24 @@ function GalleryForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v
   const removeItem = (i: number) => onChange({ ...c, items: items.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">媒體項目</label>
         {items.map((item, i) => (
           <div key={i} className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
             <div className="flex items-center justify-between">
-              <select className={inputCls + ' w-28'} value={item.media_type} onChange={e => setItem(i, 'media_type', e.target.value)}>
+              <SelectField className="w-28" value={item.media_type} onChange={e => setItem(i, 'media_type', e.target.value)}>
                 <option value="image">圖片</option>
                 <option value="video">影片</option>
-              </select>
+              </SelectField>
               <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-sm">刪除</button>
             </div>
-            <input className={inputCls} placeholder="URL（R2 圖片 or mp4）" value={item.url} onChange={e => setItem(i, 'url', e.target.value)} />
+            <Input placeholder="URL（R2 圖片 or mp4）" value={item.url} onChange={e => setItem(i, 'url', e.target.value)} />
             {item.media_type === 'video' && (
-              <input className={inputCls} placeholder="Poster 圖 URL（影片封面）" value={item.poster || ''} onChange={e => setItem(i, 'poster', e.target.value)} />
+              <Input placeholder="Poster 圖 URL（影片封面）" value={item.poster || ''} onChange={e => setItem(i, 'poster', e.target.value)} />
             )}
-            <input className={inputCls} placeholder="說明文字（可選）" value={item.caption || ''} onChange={e => setItem(i, 'caption', e.target.value)} />
+            <Input placeholder="說明文字（可選）" value={item.caption || ''} onChange={e => setItem(i, 'caption', e.target.value)} />
           </div>
         ))}
         <button onClick={addItem} className="text-xs text-primary font-bold hover:underline">+ 新增媒體</button>
@@ -427,16 +428,16 @@ function FeaturesForm({ c, onChange }: { c: Record<string, unknown>; onChange: (
   const removeItem = (i: number) => onChange({ ...c, items: items.filter((_, idx) => idx !== i) })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <div className="space-y-2">
         <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wide">特色項目（建議 4 個）</label>
         {items.map((item, i) => (
           <div key={i} className="flex gap-2 items-start border border-neutral-100 rounded-lg p-2 bg-neutral-50">
-            <input className={inputCls + ' w-20'} placeholder="emoji / URL" value={item.icon} onChange={e => setItem(i, 'icon', e.target.value)} />
+            <Input className="w-20" placeholder="emoji / URL" value={item.icon} onChange={e => setItem(i, 'icon', e.target.value)} />
             <div className="flex-1 space-y-2">
-              <input className={inputCls} placeholder="標題" value={item.title} onChange={e => setItem(i, 'title', e.target.value)} />
-              <input className={inputCls} placeholder="說明" value={item.desc} onChange={e => setItem(i, 'desc', e.target.value)} />
+              <Input placeholder="標題" value={item.title} onChange={e => setItem(i, 'title', e.target.value)} />
+              <Input placeholder="說明" value={item.desc} onChange={e => setItem(i, 'desc', e.target.value)} />
             </div>
             <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-lg leading-none w-7 flex-none mt-1">×</button>
           </div>
@@ -451,17 +452,17 @@ function CountdownForm({ c, onChange }: { c: Record<string, unknown>; onChange: 
   const set = (k: string, v: unknown) => onChange({ ...c, [k]: v })
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string || ''} onChange={e => set('h2', e.target.value)} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string || ''} onChange={e => set('subtitle', e.target.value)} /></Field>
       <Field label="目標時間（ISO 8601）">
-        <input type="datetime-local" className={inputCls}
+        <Input type="datetime-local"
           value={c.target_at ? new Date(c.target_at as string).toISOString().slice(0, 16) : ''}
           onChange={e => set('target_at', e.target.value ? new Date(e.target.value).toISOString() : '')} />
       </Field>
-      <Field label="到期後顯示文字"><input className={inputCls} value={c.expired_text as string || ''} onChange={e => set('expired_text', e.target.value)} /></Field>
+      <Field label="到期後顯示文字"><Input value={c.expired_text as string || ''} onChange={e => set('expired_text', e.target.value)} /></Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="CTA 按鈕文字（未到期顯示）"><input className={inputCls} value={c.cta_text as string || ''} onChange={e => set('cta_text', e.target.value)} /></Field>
-        <Field label="CTA 連結 URL"><input className={inputCls} value={c.cta_url as string || ''} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
+        <Field label="CTA 按鈕文字（未到期顯示）"><Input value={c.cta_text as string || ''} onChange={e => set('cta_text', e.target.value)} /></Field>
+        <Field label="CTA 連結 URL"><Input value={c.cta_url as string || ''} onChange={e => set('cta_url', e.target.value)} placeholder="/shop/xxx" /></Field>
       </div>
     </div>
   )
@@ -474,9 +475,9 @@ function StickyCtaForm({ c, onChange }: { c: Record<string, unknown>; onChange: 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 font-semibold">
         每個活動頁只能加一個 sticky_cta，它會固定在畫面底部，不跟其他 sections 一起捲動。
       </div>
-      <Field label="按鈕文字"><input className={inputCls} value={c.text as string || ''} onChange={e => set('text', e.target.value)} placeholder="立即參加" /></Field>
-      <Field label="連結 URL"><input className={inputCls} value={c.url as string || ''} onChange={e => set('url', e.target.value)} placeholder="/shop/xxx" /></Field>
-      <Field label="小字說明（按鈕下方）"><input className={inputCls} value={c.sub_text as string || ''} onChange={e => set('sub_text', e.target.value)} placeholder="限時優惠・每人限購一次" /></Field>
+      <Field label="按鈕文字"><Input value={c.text as string || ''} onChange={e => set('text', e.target.value)} placeholder="立即參加" /></Field>
+      <Field label="連結 URL"><Input value={c.url as string || ''} onChange={e => set('url', e.target.value)} placeholder="/shop/xxx" /></Field>
+      <Field label="小字說明（按鈕下方）"><Input value={c.sub_text as string || ''} onChange={e => set('sub_text', e.target.value)} placeholder="限時優惠・每人限購一次" /></Field>
     </div>
   )
 }
@@ -485,9 +486,9 @@ function HighlightForm({ c, onChange }: { c: Record<string, unknown>; onChange: 
   const set = (k: string, v: string) => onChange({ ...c, [k]: v })
   return (
     <div className="space-y-3">
-      <Field label="標題"><input className={inputCls} value={c.title as string} onChange={e => set('title', e.target.value)} /></Field>
-      <Field label="內文"><textarea className={textareaCls} rows={4} value={c.body as string} onChange={e => set('body', e.target.value)} /></Field>
-      <Field label="底部補充"><input className={inputCls} value={c.footer as string} onChange={e => set('footer', e.target.value)} /></Field>
+      <Field label="標題"><Input value={c.title as string} onChange={e => set('title', e.target.value)} /></Field>
+      <Field label="內文"><Textarea rows={4} value={c.body as string} onChange={e => set('body', e.target.value)} /></Field>
+      <Field label="底部補充"><Input value={c.footer as string} onChange={e => set('footer', e.target.value)} /></Field>
     </div>
   )
 }
@@ -495,8 +496,8 @@ function HighlightForm({ c, onChange }: { c: Record<string, unknown>; onChange: 
 function CtaForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Field label="按鈕文字"><input className={inputCls} value={c.text as string} onChange={e => onChange({ ...c, text: e.target.value })} /></Field>
-      <Field label="連結 URL"><input className={inputCls} value={c.url as string} onChange={e => onChange({ ...c, url: e.target.value })} /></Field>
+      <Field label="按鈕文字"><Input value={c.text as string} onChange={e => onChange({ ...c, text: e.target.value })} /></Field>
+      <Field label="連結 URL"><Input value={c.url as string} onChange={e => onChange({ ...c, url: e.target.value })} /></Field>
     </div>
   )
 }
@@ -504,13 +505,13 @@ function CtaForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Re
 function ProductRefForm({ c, onChange, products }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; products: Product[] }) {
   return (
     <div className="space-y-3">
-      <Field label="標題 H2"><input className={inputCls} value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
-      <Field label="副標"><input className={inputCls} value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
+      <Field label="標題 H2"><Input value={c.h2 as string} onChange={e => onChange({ ...c, h2: e.target.value })} /></Field>
+      <Field label="副標"><Input value={c.subtitle as string} onChange={e => onChange({ ...c, subtitle: e.target.value })} /></Field>
       <Field label="綁定商品（自動拉獎品清單）">
-        <select className={inputCls} value={c.product_id as string} onChange={e => onChange({ ...c, product_id: e.target.value })}>
+        <SelectField value={c.product_id as string} onChange={e => onChange({ ...c, product_id: e.target.value })}>
           <option value="">-- 選擇商品 --</option>
           {products.map(p => <option key={p.id} value={p.id}>#{p.id} {p.name}</option>)}
-        </select>
+        </SelectField>
       </Field>
     </div>
   )
@@ -554,7 +555,7 @@ function SectionRow({ section, idx, total, products, onSave, onDelete, onMoveUp,
             className="w-7 h-7 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 disabled:opacity-30 transition-colors text-sm">↑</button>
           <button onClick={e => { e.stopPropagation(); onMoveDown(section.id) }} disabled={idx === total - 1}
             className="w-7 h-7 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 disabled:opacity-30 transition-colors text-sm">↓</button>
-          <button onClick={e => { e.stopPropagation(); if (confirm('確定刪除此 section？')) onDelete(section.id) }}
+          <button onClick={e => { e.stopPropagation(); if (confirm("\u78ba\u5b9a\u522a\u9664\u6b64 section\uff1f")) onDelete(section.id) }}
             className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 transition-colors text-sm">×</button>
           <span className="text-neutral-300 text-sm ml-1">{open ? '▲' : '▼'}</span>
         </div>
@@ -664,27 +665,26 @@ export default function EventEditPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">活動標題</label>
-                <input className={inputCls} value={meta.title || ''} onChange={e => setMeta(m => ({ ...m, title: e.target.value }))} />
+                <Input value={meta.title || ''} onChange={e => setMeta(m => ({ ...m, title: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Slug（/events/___）</label>
-                <input className={inputCls + ' font-mono'} value={meta.slug || ''} onChange={e => setMeta(m => ({ ...m, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} />
+                <Input className="font-mono" value={meta.slug || ''} onChange={e => setMeta(m => ({ ...m, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} />
               </div>
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">風格</label>
-                <select value={meta.theme_mode ?? 'dark'}
-                  onChange={e => setMeta(m => ({ ...m, theme_mode: e.target.value as 'dark' | 'light', bg_color: THEME_BG[e.target.value as 'dark' | 'light'] }))}
-                  className={inputCls}>
+                <SelectField value={meta.theme_mode ?? 'dark'}
+                  onChange={e => setMeta(m => ({ ...m, theme_mode: e.target.value as 'dark' | 'light', bg_color: THEME_BG[e.target.value as 'dark' | 'light'] }))}>
                   <option value="dark">深色</option>
                   <option value="light">淺色</option>
-                </select>
+                </SelectField>
               </div>
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">主題色</label>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <input type="color" value={meta.accent_color || '#c026d3'} onChange={e => setMeta(m => ({ ...m, accent_color: e.target.value }))} className="w-9 h-9 rounded-lg cursor-pointer border border-neutral-200" />
+                  <Input type="color" value={meta.accent_color || '#c026d3'} onChange={e => setMeta(m => ({ ...m, accent_color: e.target.value }))} className="w-9 h-9 cursor-pointer" />
                   <span className="text-xs font-mono text-neutral-400">{meta.accent_color}</span>
                 </div>
               </div>
@@ -699,27 +699,25 @@ export default function EventEditPage() {
               <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
                 活動分類 <span className="font-normal text-neutral-400">（僅供後台篩選，不影響前台）</span>
               </label>
-              <select value={meta.kind || 'other'}
-                onChange={e => setMeta(m => ({ ...m, kind: e.target.value }))}
-                className={inputCls}>
+              <SelectField value={meta.kind || 'other'}
+                onChange={e => setMeta(m => ({ ...m, kind: e.target.value }))}>
                 <option value="machine">機台檔期</option>
                 <option value="campaign">行銷活動</option>
                 <option value="guide">說明指南</option>
                 <option value="other">其他</option>
-              </select>
+              </SelectField>
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
                 分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
               </label>
-              <select value={meta.linked_category_id || ''}
-                onChange={e => setMeta(m => ({ ...m, linked_category_id: e.target.value || null }))}
-                className={inputCls}>
+              <SelectField value={meta.linked_category_id || ''}
+                onChange={e => setMeta(m => ({ ...m, linked_category_id: e.target.value || null }))}>
                 <option value="">不連結分類</option>
                 {availableCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">

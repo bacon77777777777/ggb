@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface NewsArticle {
   id: string
@@ -55,6 +57,7 @@ function savePrefs(patch: Record<string, unknown>) {
 
 export default function NewsPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const prefs  = loadPrefs()
   const router = useRouter()
 
@@ -166,11 +169,16 @@ export default function NewsPage() {
   }
 
   const handleBatchDelete = async () => {
-    if (!confirm(`確定要刪除選取的 ${selectedIds.size} 篇文章嗎？`)) return
-    const ids = [...selectedIds]
-    await supabase.from('news').delete().in('id', ids)
-    setNews(prev => prev.filter(n => !selectedIds.has(n.id)))
-    setSelectedIds(new Set())
+    confirm({
+      title: '確認操作',
+      message: `確定要刪除選取的 ${selectedIds.size} 篇文章嗎？`,
+      onConfirm: async () => {
+      const ids = [...selectedIds]
+      await supabase.from('news').delete().in('id', ids)
+      setNews(prev => prev.filter(n => !selectedIds.has(n.id)))
+      setSelectedIds(new Set())
+      },
+    })
   }
 
   // ─── 上架開關 ─────────────────────────────────────────────────────────────
@@ -183,10 +191,15 @@ export default function NewsPage() {
 
   // ─── 刪除 ────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
-    if (!confirm('確定要刪除此文章嗎？')) return
-    const { error } = await supabase.from('news').delete().eq('id', id)
-    if (!error) setNews(prev => prev.filter(n => n.id !== id))
-    else toast('刪除失敗', 'error')
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除此文章嗎？",
+      onConfirm: async () => {
+      const { error } = await supabase.from('news').delete().eq('id', id)
+      if (!error) setNews(prev => prev.filter(n => n.id !== id))
+      else toast('刪除失敗', 'error')
+      },
+    })
   }
 
   // ─── 編輯 / 新增 ──────────────────────────────────────────────────────────
@@ -414,6 +427,7 @@ export default function NewsPage() {
         </PageCard>
 
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

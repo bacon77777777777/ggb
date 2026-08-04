@@ -5,6 +5,9 @@ import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import { DataTable, type Column } from '@/components'
 
 interface RefundRequest {
   id: number
@@ -29,6 +32,141 @@ const STATUS_META = {
 }
 
 export default function RefundRequestsPage() {
+  const refundrequestsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "#",
+      className: "font-medium text-neutral-800 whitespace-nowrap",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>#{r.id}</>)
+      },
+    },
+    {
+      key: "c1",
+      label: "會員",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
+                            <div className="text-xs text-neutral-400">{r.user?.email}</div>
+                            <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
+                          </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "原因",
+      className: "max-w-[220px]",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            <div className="text-neutral-600 truncate" title={r.reason}>{r.reason}</div>
+                            {r.recharge && (
+                              <div className="text-xs text-neutral-400 truncate">
+                                儲值單 {r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}）
+                              </div>
+                            )}
+                          </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "退款 (TWD)",
+      className: "text-right font-mono font-semibold text-neutral-900 whitespace-nowrap",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            {Number(r.amount_twd).toLocaleString()}
+                          </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "扣回 (G)",
+      className: "text-right font-mono text-rose-500 whitespace-nowrap",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            {r.tokens_to_deduct > 0 ? `-${r.tokens_to_deduct.toLocaleString()}` : '—'}
+                          </>)
+      },
+    },
+    {
+      key: "c5",
+      label: "申請時間",
+      className: "text-xs text-neutral-500 whitespace-nowrap",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            {new Date(r.created_at).toLocaleString('zh-TW')}
+                          </>)
+      },
+    },
+    {
+      key: "c6",
+      label: "狀態",
+      className: "text-center",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            <Badge status={r.status}>{sm.label}</Badge>
+                          </>)
+      },
+    },
+    {
+      key: "c7",
+      label: "備註",
+      className: "max-w-[160px]",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            {editable ? (
+                              <Input className="text-xs"
+                                placeholder="備註..."
+                                value={notes[r.id] ?? (r.admin_note ?? '')}
+                                onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
+                              />
+                            ) : (
+                              <span className="text-xs text-neutral-400">{r.admin_note || '—'}</span>
+                            )}
+                          </>)
+      },
+    },
+    {
+      key: "c8",
+      label: "",
+      render: (r) => {
+        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
+                      const editable = r.status === 'pending' || r.status === 'approved'
+        return (<>
+                            <div className="flex items-center gap-1 justify-end">
+                              {r.status === 'pending' && (
+                                <>
+                                  <button onClick={() => act(r.id, 'approve')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100 whitespace-nowrap">核准</button>
+                                  <button onClick={() => act(r.id, 'reject')} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 whitespace-nowrap">拒絕</button>
+                                </>
+                              )}
+                              {r.status === 'approved' && (
+                                <button onClick={() => act(r.id, 'process')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 whitespace-nowrap">執行退款</button>
+                              )}
+                              {r.status === 'processed' && r.processed_at && (
+                                <span className="text-xs text-neutral-400">{new Date(r.processed_at).toLocaleDateString('zh-TW')}</span>
+                              )}
+                            </div>
+                          </>)
+      },
+    },
+  ]
+
   const [requests, setRequests] = useState<RefundRequest[]>([])
   const [filterStatus, setFilterStatus] = useState('pending')
   const [loading, setLoading]           = useState(false)
@@ -114,24 +252,24 @@ export default function RefundRequestsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">用戶 UUID *</label>
-                <input className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="user UUID" />
+                <Input value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="user UUID" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">儲值單 ID（選填）</label>
-                <input className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.rechargeId} onChange={e => setForm(f => ({ ...f, rechargeId: e.target.value }))} placeholder="recharge_records.id" />
+                <Input value={form.rechargeId} onChange={e => setForm(f => ({ ...f, rechargeId: e.target.value }))} placeholder="recharge_records.id" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">退款金額 (TWD) *</label>
-                <input type="number" className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.amountTwd} onChange={e => setForm(f => ({ ...f, amountTwd: e.target.value }))} />
+                <Input type="number" value={form.amountTwd} onChange={e => setForm(f => ({ ...f, amountTwd: e.target.value }))} />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">扣回代幣 (G)</label>
-                <input type="number" className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.tokensToClaim} onChange={e => setForm(f => ({ ...f, tokensToClaim: e.target.value }))} />
+                <Input type="number" value={form.tokensToClaim} onChange={e => setForm(f => ({ ...f, tokensToClaim: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 block mb-1">退款原因 *</label>
-              <textarea className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" rows={2} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
+              <Textarea rows={2} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
             </div>
             <div className="flex gap-2">
               <button onClick={submitForm} disabled={submitting} className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50">送出</button>
@@ -148,85 +286,12 @@ export default function RefundRequestsPage() {
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">#</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">會員</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">原因</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">退款 (TWD)</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">扣回 (G)</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">申請時間</th>
-                    <th className="text-center px-4 py-2 text-xs font-semibold text-neutral-500">狀態</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">備註</th>
-                    <th className="px-4 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map(r => {
-                    const sm = STATUS_META[r.status]
-                    const editable = r.status === 'pending' || r.status === 'approved'
-                    return (
-                      <tr key={r.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-neutral-800 whitespace-nowrap">#{r.id}</td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
-                          <div className="text-xs text-neutral-400">{r.user?.email}</div>
-                          <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
-                        </td>
-                        <td className="px-4 py-3 max-w-[220px]">
-                          <div className="text-neutral-600 truncate" title={r.reason}>{r.reason}</div>
-                          {r.recharge && (
-                            <div className="text-xs text-neutral-400 truncate">
-                              儲值單 {r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}）
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono font-semibold text-neutral-900 whitespace-nowrap">
-                          {Number(r.amount_twd).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-rose-500 whitespace-nowrap">
-                          {r.tokens_to_deduct > 0 ? `-${r.tokens_to_deduct.toLocaleString()}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-neutral-500 whitespace-nowrap">
-                          {new Date(r.created_at).toLocaleString('zh-TW')}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge status={r.status}>{sm.label}</Badge>
-                        </td>
-                        <td className="px-4 py-3 max-w-[160px]">
-                          {editable ? (
-                            <input
-                              className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
-                              placeholder="備註..."
-                              value={notes[r.id] ?? (r.admin_note ?? '')}
-                              onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
-                            />
-                          ) : (
-                            <span className="text-xs text-neutral-400">{r.admin_note || '—'}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 justify-end">
-                            {r.status === 'pending' && (
-                              <>
-                                <button onClick={() => act(r.id, 'approve')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100 whitespace-nowrap">核准</button>
-                                <button onClick={() => act(r.id, 'reject')} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 whitespace-nowrap">拒絕</button>
-                              </>
-                            )}
-                            {r.status === 'approved' && (
-                              <button onClick={() => act(r.id, 'process')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 whitespace-nowrap">執行退款</button>
-                            )}
-                            {r.status === 'processed' && r.processed_at && (
-                              <span className="text-xs text-neutral-400">{new Date(r.processed_at).toLocaleDateString('zh-TW')}</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <DataTable
+  data={requests}
+  columns={refundrequestsColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
+/>
             </div>
           </div>
         )}

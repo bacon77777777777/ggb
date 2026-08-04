@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface Category {
   id: string
@@ -18,6 +20,7 @@ interface Category {
 
 export default function CategoriesPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -133,20 +136,25 @@ export default function CategoriesPage() {
       return
     }
 
-    if (!confirm('確定要刪除此分類嗎？')) return
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除此分類嗎？",
+      onConfirm: async () => {
 
-    try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', category.id)
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .delete()
+          .eq('id', category.id)
 
-      if (error) throw error
-      fetchData()
-    } catch (error) {
-      console.error('Error deleting category:', error)
-      toast('刪除失敗', 'error')
-    }
+        if (error) throw error
+        fetchData()
+      } catch (error) {
+        console.error('Error deleting category:', error)
+        toast('刪除失敗', 'error')
+      }
+      },
+    })
   }
 
   const handleSubmit = async () => {
@@ -342,6 +350,7 @@ export default function CategoriesPage() {
           </div>
         </Modal>
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

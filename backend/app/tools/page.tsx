@@ -341,7 +341,7 @@ export default function ToolsPage() {
                       setInputUrl(c.url)
                       setShowCompetitors(false)
                     }}
-                    className="px-3 py-1 text-xs font-medium bg-neutral-900 text-white rounded-md hover:bg-black transition-colors shrink-0"
+                    className="px-3 py-1 text-xs font-medium bg-neutral-900 text-white rounded-lg hover:bg-black transition-colors shrink-0"
                   >
                     帶入
                   </button>
@@ -396,7 +396,7 @@ export default function ToolsPage() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
               <div className="text-sm text-neutral-600">
                 共 {items.length} 筆
-                {doneCount > 0 && <span className="ml-2 text-emerald-600 font-medium">成功 {doneCount}</span>}
+                {doneCount > 0 && <span className="ml-2 text-green-600 font-medium">成功 {doneCount}</span>}
                 {errorCount > 0 && <span className="ml-2 text-red-500">失敗 {errorCount}</span>}
               </div>
               <button
@@ -548,9 +548,9 @@ export default function ToolsPage() {
                             {it.scrapeStatus === 'loading' && <span className="text-xs text-neutral-500 animate-pulse">抓取中...</span>}
                             {it.scrapeStatus === 'error' && <span className="text-xs text-red-500">失敗</span>}
                             {it.scrapeStatus === 'ok' && it.aiStatus === 'loading' && <span className="text-xs text-amber-500">AI補齊...</span>}
-                            {it.scrapeStatus === 'ok' && it.aiStatus === 'ok' && <span className="text-xs text-emerald-600">完成</span>}
-                            {it.scrapeStatus === 'ok' && it.aiStatus === 'skipped' && <span className="text-xs text-emerald-600">完成</span>}
-                            {it.scrapeStatus === 'ok' && it.aiStatus === 'pending' && <span className="text-xs text-emerald-500">✓ 已抓取</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'ok' && <span className="text-xs text-green-600">完成</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'skipped' && <span className="text-xs text-green-600">完成</span>}
+                            {it.scrapeStatus === 'ok' && it.aiStatus === 'pending' && <span className="text-xs text-green-500">✓ 已抓取</span>}
                           </td>
                         </tr>
 

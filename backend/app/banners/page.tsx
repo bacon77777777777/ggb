@@ -1,16 +1,21 @@
 'use client'
 
 import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
+import PopupPanel from './PopupPanel'
+import Button from '@/components/ui/Button'
 import ScheduleFields from '@/components/ScheduleFields'
 import { Switch } from '@/components/ui'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const PAGE_TABS = [
   { value: 'home', label: '首頁輪播圖' },
   { value: 'challenge', label: '挑戰頁輪播圖' },
+  { value: 'popup', label: '首頁彈窗' },
 ]
 
 interface Banner {
@@ -29,13 +34,15 @@ interface Banner {
 
 export default function BannersPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const savingLock = useRef(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  const [activeTab, setActiveTab] = useState<'home' | 'challenge'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'popup'>('home')
+  const [popupActions, setPopupActions] = useState<HTMLDivElement | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -103,7 +110,7 @@ export default function BannersPage() {
       event_id: null,
       sort_order: 0,
       is_active: true,
-      page: activeTab,
+      page: activeTab === 'popup' ? 'home' : activeTab,
       imageFile: null,
       imagePreview: ''
     })
@@ -111,23 +118,28 @@ export default function BannersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除此輪播圖嗎？')) return
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除此輪播圖嗎？",
+      onConfirm: async () => {
 
-    try {
-      const res = await fetch(`/api/banners/${id}`, {
-        method: 'DELETE',
-      })
-      
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || '刪除失敗')
+      try {
+        const res = await fetch(`/api/banners/${id}`, {
+          method: 'DELETE',
+        })
+        
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.error || '刪除失敗')
+        }
+
+        fetchData()
+      } catch (error: any) {
+        console.error('Error deleting banner:', error)
+        toast(error.message || '刪除失敗', 'error')
       }
-
-      fetchData()
-    } catch (error: any) {
-      console.error('Error deleting banner:', error)
-      toast(error.message || '刪除失敗', 'error')
-    }
+      },
+    })
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,8 +343,8 @@ export default function BannersPage() {
             {PAGE_TABS.map(tab => (
               <button
                 key={tab.value}
-                onClick={() => setActiveTab(tab.value as 'home' | 'challenge')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                onClick={() => setActiveTab(tab.value as typeof activeTab)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.value
                     ? 'bg-white text-primary shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-700'
@@ -342,22 +354,27 @@ export default function BannersPage() {
               </button>
             ))}
           </div>
-          <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            + 新增輪播圖
-          </button>
+          {activeTab === 'popup' ? (
+            /* 彈窗頁籤的操作列由 PopupPanel 以 portal 掛進來 ——
+               規則與新增都屬於彈窗自己的狀態，拉到這一層會變成無謂的 prop 傳遞 */
+            <div ref={setPopupActions} className="flex items-center gap-2 flex-shrink-0" />
+          ) : (
+            <Button onClick={handleAdd}>+ 新增輪播圖</Button>
+          )}
         </div>
 
-        <PageCard>
-          <DataTable
-            data={filteredBanners}
-            columns={columns}
-            keyField="id"
-            emptyMessage="尚無輪播圖資料"
-          />
-        </PageCard>
+        {activeTab === 'popup' ? (
+          <PopupPanel actionsSlot={popupActions} />
+        ) : (
+          <PageCard>
+            <DataTable
+              data={filteredBanners}
+              columns={columns}
+              keyField="id"
+              emptyMessage="尚無輪播圖資料"
+            />
+          </PageCard>
+        )}
 
         <Modal
           isOpen={isModalOpen}
@@ -431,7 +448,7 @@ export default function BannersPage() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
-                {PAGE_TABS.map(tab => (
+                {PAGE_TABS.filter(t => t.value !== 'popup').map(tab => (
                   <button
                     key={tab.value}
                     type="button"
@@ -498,6 +515,7 @@ export default function BannersPage() {
           </div>
         </Modal>
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

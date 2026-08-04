@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { DataTable, type Column } from '@/components'
 
 const IconSearch = ({ size = 16 }: { size?: number }) => <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
 const IconCoin = ({ size = 18 }: { size?: number }) => <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -37,6 +38,73 @@ const TYPE_LABEL: Record<string, { label: string; color: string }> = {
 }
 
 export default function TokenLedgerPage() {
+  const tokenledgerColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "text-neutral-500 whitespace-nowrap",
+      render: (row, i) => {
+        const isPositive = row.delta > 0
+                      const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
+        return (<>
+                            {new Date(row.created_at).toLocaleString('zh-TW', {
+                              month: '2-digit', day: '2-digit',
+                              hour: '2-digit', minute: '2-digit',
+                            })}
+                          </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "類型",
+      render: (row, i) => {
+        const isPositive = row.delta > 0
+                      const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
+        return (<>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${meta.color}`}>
+                              {meta.label}
+                            </span>
+                          </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "說明",
+      className: "text-neutral-700 max-w-xs truncate",
+      render: (row, i) => {
+        const isPositive = row.delta > 0
+                      const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
+        return (<>{row.description}</>)
+      },
+    },
+    {
+      key: "c3",
+      label: "異動",
+      render: (row, i) => {
+        const isPositive = row.delta > 0
+                      const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
+        return (<>
+                            <span className="inline-flex items-center gap-0.5">
+                              {isPositive ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />}
+                              {isPositive ? '+' : ''}{row.delta.toLocaleString()}
+                            </span>
+                          </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "累計餘額",
+      className: "text-right text-neutral-700 font-mono",
+      render: (row, i) => {
+        const isPositive = row.delta > 0
+                      const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
+        return (<>
+                            {row.balance_after !== null ? row.balance_after.toLocaleString() : '—'}
+                          </>)
+      },
+    },
+  ]
+
   const [searchQ, setSearchQ]       = useState('')
   const [userResults, setUserResults] = useState<UserResult[]>([])
   const [selectedUser, setSelectedUser] = useState<UserResult | null>(null)
@@ -136,54 +204,14 @@ export default function TokenLedgerPage() {
 
           {/* 明細表 */}
           <div className="border border-neutral-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 border-b border-neutral-200">
-                <tr>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">時間</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">類型</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">說明</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">異動</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">累計餘額</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingLedger ? (
-                  <TableSkeleton rows={5} cols={5} />
-                ) : ledger.length === 0 ? (
-                  <TableEmpty colSpan={5} message="無代幣異動紀錄" />
-                ) : (
-                  ledger.map((row, i) => {
-                    const isPositive = row.delta > 0
-                    const meta = TYPE_LABEL[row.type] ?? { label: row.type, color: 'text-neutral-600 bg-neutral-100' }
-                    return (
-                      <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
-                        <td className="px-4 py-2 text-neutral-500 whitespace-nowrap">
-                          {new Date(row.created_at).toLocaleString('zh-TW', {
-                            month: '2-digit', day: '2-digit',
-                            hour: '2-digit', minute: '2-digit',
-                          })}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${meta.color}`}>
-                            {meta.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-neutral-700 max-w-xs truncate">{row.description}</td>
-                        <td className={`px-4 py-2 text-right font-semibold whitespace-nowrap ${isPositive ? 'text-green-600' : 'text-rose-600'}`}>
-                          <span className="inline-flex items-center gap-0.5">
-                            {isPositive ? <IconArrowUp size={12} /> : <IconArrowDown size={12} />}
-                            {isPositive ? '+' : ''}{row.delta.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-right text-neutral-700 font-mono">
-                          {row.balance_after !== null ? row.balance_after.toLocaleString() : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+            <DataTable
+  data={ledger}
+  columns={tokenledgerColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50"}
+  isLoading={loadingLedger}
+  emptyMessage="無代幣異動紀錄"
+/>
           </div>
 
           {/* 分頁 + 合計 */}

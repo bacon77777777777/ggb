@@ -9,6 +9,8 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter, useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 
 export default function OrderDetailPage() {
   const { toast } = useToast()
@@ -324,37 +326,33 @@ export default function OrderDetailPage() {
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
                     物流單號
                   </label>
-                  <input
-                    type="text"
+                  <Input
                     value={shipment.trackingNumber || ''}
-                    readOnly
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg bg-neutral-50"
+                    readOnly className="bg-neutral-50"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
                     配送方式
                   </label>
-                  <select 
+                  <SelectField 
                     value={shippingMethod}
                     onChange={(e) => setShippingMethod(e.target.value)}
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option>宅配</option>
                     <option>超商取貨</option>
                     <option>門市自取</option>
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
                     備註
                   </label>
-                  <textarea
+                  <Textarea
                     rows={3}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="配送備註..."
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <div className="flex items-center gap-3 pt-2">

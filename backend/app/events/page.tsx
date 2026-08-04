@@ -6,6 +6,10 @@ import { useToast } from '@/contexts/ToastContext'
 import { useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 import Link from 'next/link'
+import Input from '@/components/ui/Input'
+import SelectField from '@/components/ui/SelectField'
+import Modal from '@/components/Modal'
+import Button from '@/components/ui/Button'
 
 interface Event {
   id: string
@@ -336,24 +340,31 @@ export default function EventsPage() {
       </PageCard>
 
       {/* New Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
-            <div className="px-6 pt-6 pb-4 border-b border-neutral-100 flex-none">
-              <h2 className="text-lg font-bold text-neutral-900">新增活動</h2>
-            </div>
-            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="新增活動"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} isLoading={isSaving}>建立並編輯</Button>
+          </div>
+        }
+      >
+        {isModalOpen && (
+          <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">活動標題</label>
-                <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="夏日轉蛋祭" className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="夏日轉蛋祭" className="rounded-xl" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Slug（網址）</label>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-neutral-400">/lp/</span>
-                  <input type="text" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                    placeholder="summer-gacha-2026" className="flex-1 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono" />
+                  <Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                    placeholder="summer-gacha-2026" className="flex-1 rounded-xl font-mono" />
                 </div>
               </div>
               <div className="flex gap-4">
@@ -361,11 +372,11 @@ export default function EventsPage() {
                   <label className="block text-xs font-semibold text-neutral-500 mb-2">風格</label>
                   <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-0.5 w-fit">
                     <button onClick={() => setForm(f => ({ ...f, theme_mode: 'dark', bg_color: THEME_BG.dark }))}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${form.theme_mode === 'dark' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${form.theme_mode === 'dark' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
                       深色
                     </button>
                     <button onClick={() => setForm(f => ({ ...f, theme_mode: 'light', bg_color: THEME_BG.light }))}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${form.theme_mode === 'light' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${form.theme_mode === 'light' ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
                       淺色
                     </button>
                   </div>
@@ -373,7 +384,7 @@ export default function EventsPage() {
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-2">主題色</label>
                   <div className="flex items-center gap-2">
-                    <input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-9 h-9 rounded-lg cursor-pointer border border-neutral-200" />
+                    <Input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-9 h-9 cursor-pointer" />
                     <span className="text-xs font-mono text-neutral-500">{form.accent_color}</span>
                   </div>
                 </div>
@@ -381,39 +392,28 @@ export default function EventsPage() {
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">開始時間</label>
-                  <input type="datetime-local" value={form.start_at} onChange={e => setForm(f => ({ ...f, start_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <Input type="datetime-local" value={form.start_at} onChange={e => setForm(f => ({ ...f, start_at: e.target.value }))} className="rounded-xl" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">結束時間</label>
-                  <input type="datetime-local" value={form.end_at} onChange={e => setForm(f => ({ ...f, end_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <Input type="datetime-local" value={form.end_at} onChange={e => setForm(f => ({ ...f, end_at: e.target.value }))} className="rounded-xl" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
                   分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
                 </label>
-                <select value={form.linked_category_id}
-                  onChange={e => setForm(f => ({ ...f, linked_category_id: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <SelectField value={form.linked_category_id}
+                  onChange={e => setForm(f => ({ ...f, linked_category_id: e.target.value }))} className="rounded-xl">
                   <option value="">不連結分類</option>
                   {availableCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
-            </div>
-            <div className="px-6 pb-6 flex justify-end gap-3 border-t border-neutral-100 pt-4 flex-none">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors">取消</button>
-              <button onClick={handleCreate} disabled={isSaving}
-                className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60">
-                {isSaving ? '建立中...' : '建立並編輯'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Delete Confirm */}
       {deleteTarget && (

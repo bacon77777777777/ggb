@@ -1,560 +1,412 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+/**
+ * 公平性驗證（玩家端）
+ *
+ * 舊版要玩家自己算 HMAC 再跑一次配獎邏輯 —— 那是算不出來的：
+ * 舊機制的權重會隨「在你之前誰抽走了什麼」改變，玩家沒有那份順序，
+ * 頁面上那顆「驗證」按鈕其實只是重算了一個 hash，證明不了獎項對不對。
+ *
+ * 現在整檔的籤在開賣前就排好並封存，驗證只剩三件事，都不需要懂密碼學：
+ *   1. 開賣時公布承諾值 → 完抽後公開對照表 → 兩者用 SHA-256 對得上
+ *      = 這張表開賣前就固定了，中途沒被改
+ *   2. 表裡你的籤號 → 對照倉庫拿到的東西 = 沒被掉包
+ *   3. 數表裡各賞等的數量 → 對照商品頁公告 = 沒有短少
+ */
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Copy, Check, ExternalLink } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { createClient } from '@/lib/supabase/client';
-import type { Database } from '@/types/database.types';
-import { calculateSeedHash, verifyDraw, determinePrize, generateRandomValue } from '@/utils/drawLogicClient';
 import { useAuth } from '@/contexts/AuthContext';
-import CopyableTruncatedField from '@/components/ui/CopyableTruncatedField';
 
-type ProductRow = Database['public']['Tables']['products']['Row'];
+interface SealInfo {
+  sealed: boolean;
+  revealed?: boolean;
+  commitment?: string;
+  tickets?: number;
+  sealed_at?: string;
+  seal_text?: string;
+  closed_out?: number[] | null;
+}
+
+interface PrizeRow {
+  level: string;
+  name: string;
+  total: number;
+}
+
+async function sha256(text: string) {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+const THIRD_PARTY_TOOL = 'https://emn178.github.io/online-tools/sha256.html';
 
 export default function FairnessVerifyPage() {
   const params = useParams();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const productId = Number(params?.id);
   const [supabase] = useState(() => createClient());
-  const [product, setProduct] = useState<ProductRow | null>(null);
+  const { isAuthenticated } = useAuth();
+
+  const [productName, setProductName] = useState('');
+  const [prizes, setPrizes] = useState<PrizeRow[]>([]);
+  const [seal, setSeal] = useState<SealInfo | null>(null);
+  const [myTickets, setMyTickets] = useState<{ ticket_number: number; prize_level: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  const [seedInput, setSeedInput] = useState('');
-  const [seedHashMatch, setSeedHashMatch] = useState<boolean | null>(null);
-  const [seedHashExpected, setSeedHashExpected] = useState<string | null>(null);
-  const [seedHashCalculated, setSeedHashCalculated] = useState<string | null>(null);
-  const [isVerifyingSeed, setIsVerifyingSeed] = useState(false);
-
-  const [nonceInput, setNonceInput] = useState('');
-  const [expectedTxidHashInput, setExpectedTxidHashInput] = useState('');
-  const [txidHashCalculated, setTxidHashCalculated] = useState<string | null>(null);
-  const [txidHashMatch, setTxidHashMatch] = useState<boolean | null>(null);
-  const [isVerifyingDraw, setIsVerifyingDraw] = useState(false);
-  const [verifiedPrize, setVerifiedPrize] = useState<{ level: string; name: string } | null>(null);
-  const [prizesForVerification, setPrizesForVerification] = useState<
-    { level: string; name: string; probability: number }[]
-  >([]);
-  const [drawSecret, setDrawSecret] = useState<string | null>(null);
-
+  const [recalculated, setRecalculated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const [userTickets, setUserTickets] = useState<
-    { ticket_number: number; txid_hash: string | null }[]
-  >([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
-
-  const hasSeedForDraw = !!((seedInput && seedInput.trim()) || product?.seed);
-  const hasNonceForDraw = !!(nonceInput && nonceInput.trim());
-  const hasTxidHashForDraw = !!(expectedTxidHashInput && expectedTxidHashInput.trim());
-  const isVerifyDrawDisabled = isVerifyingDraw || !hasSeedForDraw || !hasNonceForDraw || !hasTxidHashForDraw;
-
   useEffect(() => {
-    const prefillNonce = searchParams.get('nonce');
-    const prefillTxid = searchParams.get('txid_hash');
-    if (prefillNonce) {
-      setNonceInput(prefillNonce);
+    if (!Number.isFinite(productId)) {
+      setError('找不到這個商品');
+      setIsLoading(false);
+      return;
     }
-    if (prefillTxid) {
-      setExpectedTxidHashInput(prefillTxid);
-    }
-  }, [searchParams]);
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
+    const load = async () => {
+      const [{ data: product }, { data: prizeRows }, { data: sealData }] = await Promise.all([
+        supabase.from('products').select('name').eq('id', productId).single(),
+        supabase.from('product_prizes').select('level, name, total').eq('product_id', productId),
+        supabase.rpc('get_ticket_seal', { p_product_id: productId }),
+      ]);
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-        const productId = Number(rawId);
-        if (!productId || Number.isNaN(productId)) {
-          setError('找不到商品');
-          setIsLoading(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', productId)
-          .single();
-
-        if (error) throw error;
-
-        setProduct(data);
-
-        const isEndedOrSoldOut =
-          data.status === 'ended' ||
-          (typeof data.remaining === 'number' && data.remaining <= 0);
-
-        // 抽獎金鑰＝公開 Seed + 私密 Secret，Secret 僅在完抽後公開（未完抽回傳 null）。
-        // 開賣中若公開，任何人都能反推每張未抽票券的獎項並狙擊大賞。
-        const { data: secret } = await supabase.rpc('get_draw_secret', {
-          p_product_id: productId,
-        });
-        setDrawSecret(typeof secret === 'string' && secret ? secret : null);
-
-        if (isEndedOrSoldOut && data.seed) {
-          setSeedInput(data.seed);
-        } else {
-          setSeedInput('');
-        }
-        setSeedHashExpected(data.txid_hash || null);
-
-        const { data: prizeRows, error: prizeError } = await supabase
-          .from('product_prizes')
-          .select('level, name, probability')
-          .eq('product_id', productId)
-          .order('level', { ascending: true });
-
-        if (prizeError) {
-          console.error('載入獎項設定失敗', prizeError);
-        } else {
-          type PrizeRow = { level: string | null; name: string | null; probability: number | null };
-          const rows: PrizeRow[] = (prizeRows ?? []) as PrizeRow[];
-          const filteredPrizes = rows.filter((p) => {
-            if (p.probability === null) return false;
-            if (p.level === 'Last One' || p.level === 'LAST ONE') return false;
-            if (p.level !== null && p.level.includes('最後賞')) return false;
-            return true;
-          });
-
-          setPrizesForVerification(
-            filteredPrizes.map((p) => ({
-              level: p.level ?? '',
-              name: p.name ?? '',
-              probability: p.probability ?? 0,
-            })),
-          );
-        }
-      } catch (err) {
-        console.error('載入商品失敗', err);
-        setError('載入商品失敗，請稍後再試');
-      } finally {
+      if (!product) {
+        setError('找不到這個商品');
         setIsLoading(false);
+        return;
       }
-    };
 
-    fetchProduct();
-  }, [params, supabase, searchParams]);
+      setProductName(product.name ?? '');
+      setPrizes((prizeRows ?? []) as PrizeRow[]);
+      setSeal((sealData ?? { sealed: false }) as SealInfo);
 
-  useEffect(() => {
-    const fetchUserTickets = async () => {
-      if (!product || !isAuthenticated || isAuthLoading) return;
-      try {
-        setIsLoadingTickets(true);
-        const { data, error } = await supabase
+      // 只撈自己的籤，用來在表裡標出「這幾張是我的」
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: mine } = await supabase
           .from('draw_records')
-          .select('ticket_number, txid_hash')
-          .eq('product_id', product.id)
-          .order('ticket_number', { ascending: true });
-
-        if (error) {
-          console.error('載入籤號失敗', error);
-          return;
-        }
-
-        const filtered =
-          data?.filter((row) => row.ticket_number !== null) ?? [];
-
-        setUserTickets(
-          filtered.map((row) => ({
-            ticket_number: row.ticket_number as number,
-            txid_hash: row.txid_hash as string | null,
-          })),
-        );
-      } catch (err) {
-        console.error('載入籤號失敗', err);
-      } finally {
-        setIsLoadingTickets(false);
+          .select('ticket_number, prize_level')
+          .eq('product_id', productId)
+          .eq('user_id', user.id)
+          .order('ticket_number');
+        setMyTickets(mine ?? []);
       }
+
+      setIsLoading(false);
     };
 
-    fetchUserTickets();
-  }, [product, supabase, isAuthenticated, isAuthLoading]);
+    load().catch(() => {
+      setError('讀取失敗，請稍後再試');
+      setIsLoading(false);
+    });
+  }, [productId, supabase]);
 
-  const handleVerifySeed = async () => {
-    if (!product || !product.txid_hash) {
-      setError('此商品尚未提供 Seed Hash 驗證');
-      return;
-    }
+  /** 封存原文解析成「籤號 → 賞等」*/
+  const assignment = useMemo(() => {
+    if (!seal?.seal_text) return [];
+    return seal.seal_text
+      .split('\n')
+      .map(line => line.match(/^(\d+):(.+)$/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map(m => ({ ticket: Number(m[1]), level: m[2] }));
+  }, [seal?.seal_text]);
 
-    const seed = seedInput.trim();
-    if (!seed) {
-      setError('請輸入 Seed');
-      return;
-    }
+  /** 表裡實際數量 vs 商品頁公告數量 */
+  const counts = useMemo(() => {
+    if (assignment.length === 0) return [];
+    const inTable = new Map<string, number>();
+    for (const a of assignment) inTable.set(a.level, (inTable.get(a.level) ?? 0) + 1);
 
-    try {
-      setIsVerifyingSeed(true);
-      setError(null);
-      setSeedHashMatch(null);
+    const announced = new Map<string, number>();
+    for (const p of prizes) announced.set(p.level, (announced.get(p.level) ?? 0) + p.total);
 
-      const calculated = await calculateSeedHash(seed);
-      setSeedHashCalculated(calculated);
-      setSeedHashExpected(product.txid_hash);
-      setSeedHashMatch(calculated === product.txid_hash);
-    } catch (err) {
-      console.error('Seed 驗證失敗', err);
-      setError('Seed 驗證失敗，請稍後再試');
-      setSeedHashMatch(null);
-    } finally {
-      setIsVerifyingSeed(false);
-    }
+    return [...new Set([...inTable.keys(), ...announced.keys()])]
+      .sort((a, b) => a.localeCompare(b, 'zh-Hant'))
+      .map(level => ({
+        level,
+        inTable: inTable.get(level) ?? 0,
+        announced: announced.get(level) ?? 0,
+      }))
+      // 最後賞不在對照表裡（它不是抽出來的），列出來只會看起來像短少
+      .filter(c => c.inTable > 0);
+  }, [assignment, prizes]);
+
+  const myTicketSet = useMemo(() => new Set(myTickets.map(t => t.ticket_number)), [myTickets]);
+  const closedSet = useMemo(() => new Set(seal?.closed_out ?? []), [seal?.closed_out]);
+
+  const recalculate = useCallback(async () => {
+    if (!seal?.seal_text) return;
+    setRecalculated(await sha256(seal.seal_text));
+  }, [seal?.seal_text]);
+
+  const copySealText = async () => {
+    if (!seal?.seal_text || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(seal.seal_text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleVerifyDraw = async () => {
-    if (!product) {
-      setError('找不到商品');
-      return;
-    }
-
-    const seed = seedInput.trim();
-    const nonce = Number(nonceInput.trim());
-    const expectedHash = expectedTxidHashInput.trim();
-
-    if (!seed) {
-      setError('請輸入 Seed');
-      return;
-    }
-
-    if (!Number.isFinite(nonce) || nonce < 0) {
-      setError('請輸入正確的籤號 / Nonce');
-      return;
-    }
-
-    if (!expectedHash) {
-      setError('請輸入欲驗證的 TXID Hash');
-      return;
-    }
-
-    try {
-      setIsVerifyingDraw(true);
-      setError(null);
-      setTxidHashCalculated(null);
-      setTxidHashMatch(null);
-      setVerifiedPrize(null);
-
-      // TXID Hash 由公開 Seed 計算，隨時可驗；
-      // 獎項對應需再加上完抽後才公開的 Secret，未公開前只驗得了雜湊。
-      const result = await verifyDraw(seed, nonce, expectedHash);
-      setTxidHashCalculated(result.txidHash);
-      setTxidHashMatch(result.hashMatch);
-
-      if (drawSecret && prizesForVerification.length > 0) {
-        const randomValue = await generateRandomValue({
-          seed: `${seed}:${drawSecret}`,
-          nonce,
-        });
-        setVerifiedPrize(determinePrize(randomValue, prizesForVerification));
-      } else {
-        setVerifiedPrize(null);
-      }
-    } catch (err) {
-      console.error('抽獎驗證失敗', err);
-      setError('抽獎驗證失敗，請稍後再試');
-      setTxidHashCalculated(null);
-      setTxidHashMatch(null);
-      setVerifiedPrize(null);
-    } finally {
-      setIsVerifyingDraw(false);
-    }
-  };
-
-  const phpCode = `// 以下為示意驗證程式碼，請依本平台提供的 Seed 與 Nonce 驗證 TXID Hash
-// Seed: 商品級隨機種子
-// Nonce: 序號（例如籤號）
-// 驗證方式請參考平台提供的 TypeScript 示例程式碼
-
-type TXID = {
-  seed: string;
-  nonce: number;
-};
-
-function generateTXID(seed: string, nonce: number): TXID {
-  return { seed, nonce };
-}
-
-async function sha256(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function hmacToRandom(seed: string, nonce: number): Promise<number> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(seed);
-  const messageData = encoder.encode(String(nonce));
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, messageData);
-  const bytes = new Uint8Array(signature);
-  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  const slice = hex.slice(0, 16);
-  const intValue = parseInt(slice, 16);
-  const maxValue = parseInt('ffffffffffffffff', 16);
-  return intValue / maxValue;
-}
-
-async function verifyDraw(seed: string, nonce: number, expectedHash: string) {
-  const txid = generateTXID(seed, nonce);
-  const txidHash = await sha256(txid.seed + ':' + String(txid.nonce));
-  const randomValue = await hmacToRandom(txid.seed, txid.nonce);
-  const hashMatch = txidHash === expectedHash;
-
-  return { txid, txidHash, randomValue, hashMatch };
-}`;
-
-  const handleCopyCode = async () => {
-    try {
-      if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-      await navigator.clipboard.writeText(phpCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('複製程式碼失敗', err);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
+        <IpLoader />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
-        {isLoading && (
-          <div className="min-h-[70vh] flex items-center justify-center">
-            <IpLoader />
-          </div>
-        )}
-
-        {error && !isLoading && (
-          <div className="text-sm text-red-500">
-            {error}
-          </div>
-        )}
-
-        {product && !isLoading && !error && (
-          <div className="space-y-5 sm:space-y-6">
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <Link
-                  href={product ? `/item/${product.id}` : '/'}
-                  className="hidden sm:flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-200 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Link>
-                <div className="space-y-0.5">
-                  <h1 className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-50">
-                    {product?.name || '公平性驗證'}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-                    本工具用於驗證 Seed 與單筆抽獎結果是否與平台紀錄一致。
-                  </p>
-                </div>
-              </div>
-              <div className="text-xs sm:text-sm font-black text-neutral-700 dark:text-neutral-200">
-                Seed 驗證
-              </div>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-1.5">
-                  <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                    商品 Seed
-                  </div>
-                  <CopyableTruncatedField
-                    value={seedInput}
-                    onChange={setSeedInput}
-                    placeholder="完抽後才會公開 Seed"
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleVerifySeed}
-                disabled={isVerifyingSeed}
-                className="w-full mt-1 inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm sm:text-base font-black py-2.5 sm:py-3 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6 sm:py-10 space-y-4 sm:space-y-5">
+        {error ? (
+          <div className="text-sm text-red-500">{error}</div>
+        ) : (
+          <>
+            {/* 標題 */}
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/item/${productId}`}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex-shrink-0"
+                aria-label="回商品頁"
               >
-                {isVerifyingSeed ? '驗證中...' : '驗證 Seed 與 Seed Hash'}
-              </button>
-              <div className="mt-2 space-y-1.5 text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400">
-                <p className="break-all leading-relaxed">
-                  Seed Hash（平台公開值）：{seedHashExpected || '尚未提供'}
+                <ChevronLeft className="w-4 h-4" />
+              </Link>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 truncate">
+                  {productName}
+                </h1>
+                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+                  開賣前排好的抽獎對照表
                 </p>
-                <p className="break-all leading-relaxed">
-                  Seed 重新計算 Hash：{seedHashCalculated || '—'}
-                </p>
-                <div className="flex items-baseline gap-1">
-                  <span>驗證結果：</span>
-                  <span
-                    className={[
-                      'text-[12px] sm:text-sm font-black',
-                      seedHashMatch === null
-                        ? 'text-neutral-500 dark:text-neutral-400'
-                        : seedHashMatch
-                          ? 'text-accent-emerald dark:text-accent-emerald'
-                          : 'text-red-500 dark:text-red-400',
-                    ].join(' ')}
-                  >
-                    {seedHashMatch === null
-                      ? '—'
-                      : seedHashMatch
-                        ? '一致'
-                        : '不一致'}
-                  </span>
-                </div>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4">
-              <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                單筆抽獎驗證
-              </div>
-              <div className="space-y-2">
-                <div className="text-[11px] sm:text-xs font-black text-neutral-500 dark:text-neutral-400">
-                  您在此商品已抽到的籤號
-                </div>
-                {isLoadingTickets && (
-                  <span className="text-[11px] sm:text-xs text-neutral-400">
-                    載入中...
-                  </span>
-                )}
-                {!isLoadingTickets && userTickets.length === 0 && (
-                  <span className="text-[11px] sm:text-xs text-neutral-400">
-                    尚無抽獎紀錄
-                  </span>
-                )}
-                {!isLoadingTickets && userTickets.length > 0 && (
-                  <div className="max-h-[144px] sm:max-h-[200px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
-                    <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5 sm:gap-2">
-                      {userTickets.map((t) => (
+            {!seal?.sealed ? (
+              <Card>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  這個商品是在對照表機制上線前開賣的，沒有可以公開的對照表。
+                  之後上架的商品都會有。
+                </p>
+              </Card>
+            ) : (
+              <>
+                {/* 承諾值 */}
+                <Card>
+                  <SectionTitle>平台開賣時公布的驗證碼</SectionTitle>
+                  <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+                    這串數字在 {seal.sealed_at ? new Date(seal.sealed_at).toLocaleString('zh-TW') : '開賣時'} 就公布了。
+                    它是整張對照表的指紋 —— 表只要被改過一個字，指紋就會完全不同。
+                  </p>
+                  <code className="block text-[11px] sm:text-xs font-mono break-all bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-neutral-700 dark:text-neutral-200">
+                    {seal.commitment}
+                  </code>
+                  <p className="mt-3 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+                    共 {seal.tickets} 張籤
+                  </p>
+                </Card>
+
+                {!seal.revealed ? (
+                  <Card>
+                    <SectionTitle>對照表尚未公開</SectionTitle>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                      這一檔還在販售中。現在就公開，等於直接告訴大家幾號籤有大獎，
+                      所以要等這一檔結束後才會公開。
+                    </p>
+                    <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                      你可以先把上面那串驗證碼存起來。等這一檔結束回來這頁，
+                      對照表算出來的指紋必須跟你存的那串一模一樣。
+                    </p>
+                    {myTickets.length > 0 && (
+                      <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+                        你在這一檔抽了 {myTickets.length} 張，籤號：
+                        {myTickets.map(t => t.ticket_number).join('、')}
+                      </p>
+                    )}
+                  </Card>
+                ) : (
+                  <>
+                    {/* 自己動手驗 */}
+                    <Card>
+                      <SectionTitle>自己驗一次</SectionTitle>
+                      <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+                        把下面整段複製起來，貼到任何一個 SHA-256 工具裡，
+                        算出來的結果要跟上面那串驗證碼一樣。不用信我們的按鈕，用外面的工具最準。
+                      </p>
+
+                      <div className="relative">
+                        <pre className="text-[11px] sm:text-xs font-mono bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 pr-12 max-h-56 overflow-auto text-neutral-700 dark:text-neutral-200 whitespace-pre">
+                          {seal.seal_text}
+                        </pre>
                         <button
-                          key={t.ticket_number}
                           type="button"
-                          onClick={() => {
-                            setNonceInput(String(t.ticket_number));
-                            if (t.txid_hash) {
-                              setExpectedTxidHashInput(t.txid_hash);
-                            }
-                          }}
-                          className="px-2.5 py-1 rounded-full border border-neutral-200 dark:border-neutral-700 text-[11px] sm:text-xs font-black font-sans text-neutral-700 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-colors"
+                          onClick={copySealText}
+                          className="absolute top-2 right-2 flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+                          aria-label="複製對照表"
                         >
-                          {t.ticket_number}
+                          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                         </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                    籤號 / Nonce
-                  </div>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={nonceInput}
-                    onChange={(e) => setNonceInput(e.target.value)}
-                    placeholder="請輸入您當時抽到的籤號或序號"
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-sm font-black text-neutral-900 dark:text-neutral-50 outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                    抽獎紀錄中的 TXID Hash
-                  </div>
-                  <CopyableTruncatedField
-                    value={expectedTxidHashInput}
-                    onChange={setExpectedTxidHashInput}
-                    placeholder="請貼上您在抽獎紀錄中看到的 TXID Hash"
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleVerifyDraw}
-                disabled={isVerifyDrawDisabled}
-                className="w-full mt-1 inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm sm:text-base font-black py-2.5 sm:py-3 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-              >
-                {isVerifyingDraw ? '驗證中...' : '驗證這一抽'}
-              </button>
-              <div className="mt-2 space-y-1.5 text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400">
-                <div className="space-y-1">
-                  <div>重新計算的 TXID Hash：</div>
-                  <div className="font-mono break-all">{txidHashCalculated || '—'}</div>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span>Hash 是否一致：</span>
-                  <span
-                    className={[
-                      'text-[12px] sm:text-sm font-black',
-                      txidHashMatch === null
-                        ? 'text-neutral-500 dark:text-neutral-400'
-                        : txidHashMatch
-                          ? 'text-accent-emerald dark:text-accent-emerald'
-                          : 'text-red-500 dark:text-red-400',
-                    ].join(' ')}
-                  >
-                    {txidHashMatch === null
-                      ? '—'
-                      : txidHashMatch
-                        ? '一致'
-                        : '不一致'}
-                  </span>
-                </div>
-                <p>
-                  這一抽依目前機率對應獎項：
-                  {verifiedPrize ? `${verifiedPrize.level} ${verifiedPrize.name}` : '—'}
-                </p>
-                {!drawSecret && (
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    本商品尚未完抽，獎項驗證金鑰暫不公開（若開賣中即公開，任何人都能反推未抽籤號的獎項）。
-                    完抽後金鑰自動公開，屆時可在此完整驗證每一抽。TXID Hash 則隨時可驗。
-                  </p>
-                )}
-              </div>
-            </div>
+                      </div>
 
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 sm:p-4 space-y-2.5 sm:space-y-3">
-              <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                驗證程式碼（示意）
-              </div>
-              <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
-                以下為示意驗證程式碼片段，實際以本平台提供的 TypeScript 版本為準，您可以在任何支援 HMAC-SHA256 與 SHA256 的環境中重現驗證流程。
-              </p>
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs sm:text-sm font-black text-neutral-500 dark:text-neutral-400">
-                  驗證程式碼概要
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-neutral-900 text-white text-[11px] sm:text-xs font-black hover:bg-neutral-800 transition-colors"
-                >
-                  {copied ? '已複製' : '複製程式碼'}
-                </button>
-              </div>
-              <pre className="bg-neutral-900 text-neutral-50 rounded-xl p-3 sm:p-4 text-[11px] sm:text-xs overflow-x-auto">
-<code>{phpCode}</code>
-              </pre>
-            </div>
-          </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={recalculate}
+                          className="inline-flex items-center justify-center rounded-xl bg-primary text-white text-sm font-black px-4 py-2.5 hover:bg-primary/90 transition-colors"
+                        >
+                          在這頁算一次
+                        </button>
+                        <a
+                          href={THIRD_PARTY_TOOL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-sm font-black px-4 py-2.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                        >
+                          用外部工具驗
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      {recalculated && (
+                        <div className="mt-3">
+                          <code className="block text-[11px] sm:text-xs font-mono break-all bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-neutral-700 dark:text-neutral-200">
+                            {recalculated}
+                          </code>
+                          <p className={`mt-2 text-sm font-black ${
+                            recalculated === seal.commitment ? 'text-green-600' : 'text-red-500'
+                          }`}>
+                            {recalculated === seal.commitment
+                              ? '跟開賣時公布的驗證碼一致 —— 這張表沒有被改過'
+                              : '與驗證碼不一致，請聯繫客服'}
+                          </p>
+                        </div>
+                      )}
+                    </Card>
+
+                    {/* 數量對照 */}
+                    <Card>
+                      <SectionTitle>每一種獎品的數量</SectionTitle>
+                      <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+                        對照表裡實際排了幾張，跟商品頁上公告的數量一不一樣。
+                      </p>
+                      <div className="overflow-x-auto -mx-1 px-1">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-neutral-400 dark:text-neutral-500 border-b border-neutral-100 dark:border-neutral-800">
+                              <th className="py-2 font-black">獎品</th>
+                              <th className="py-2 font-black text-right tabular-nums">公告</th>
+                              <th className="py-2 font-black text-right tabular-nums">表裡</th>
+                              <th className="py-2 font-black text-right">結果</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                            {counts.map(c => (
+                              <tr key={c.level}>
+                                <td className="py-2 font-black text-neutral-800 dark:text-neutral-100">{c.level}</td>
+                                <td className="py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-300">{c.announced}</td>
+                                <td className="py-2 text-right tabular-nums text-neutral-600 dark:text-neutral-300">{c.inTable}</td>
+                                <td className={`py-2 text-right font-black ${
+                                  c.inTable === c.announced ? 'text-green-600' : 'text-red-500'
+                                }`}>
+                                  {c.inTable === c.announced ? '相符' : '不符'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+
+                    {/* 你的籤 */}
+                    {isAuthenticated && myTickets.length > 0 && (
+                      <Card>
+                        <SectionTitle>你抽到的</SectionTitle>
+                        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+                          對照表上你那幾號籤原本就排的獎品，跟你實際拿到的一不一樣。
+                        </p>
+                        <div className="space-y-1.5">
+                          {myTickets.map(t => {
+                            const inTable = assignment.find(a => a.ticket === t.ticket_number)?.level;
+                            const ok = inTable === t.prize_level;
+                            return (
+                              <div key={t.ticket_number} className="flex items-center justify-between text-sm py-1.5">
+                                <span className="text-neutral-500 dark:text-neutral-400 tabular-nums">
+                                  {t.ticket_number} 號
+                                </span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-neutral-800 dark:text-neutral-100 font-black">
+                                    {t.prize_level}
+                                  </span>
+                                  <span className={`font-black ${ok ? 'text-green-600' : 'text-red-500'}`}>
+                                    {ok ? '相符' : '不符'}
+                                  </span>
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* 完整對照表 */}
+                    <Card>
+                      <SectionTitle>完整對照表</SectionTitle>
+                      {closedSet.size > 0 && (
+                        <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
+                          灰色的 {closedSet.size} 張是這一檔結束時沒有賣出去的，由平台收回。
+                        </p>
+                      )}
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-1.5">
+                        {assignment.map(a => {
+                          const mine = myTicketSet.has(a.ticket);
+                          const closed = closedSet.has(a.ticket);
+                          return (
+                            <div
+                              key={a.ticket}
+                              className={`rounded-lg px-2 py-1.5 text-center text-xs ${
+                                mine
+                                  ? 'bg-primary text-white'
+                                  : closed
+                                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600'
+                                    : 'bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-300'
+                              }`}
+                            >
+                              <div className="tabular-nums opacity-70">{a.ticket}</div>
+                              <div className="font-black truncate">{a.level}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl p-3 sm:p-4">
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-sm sm:text-base font-black text-neutral-900 dark:text-neutral-50 mb-1.5">
+      {children}
+    </h2>
   );
 }
