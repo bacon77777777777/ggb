@@ -365,6 +365,8 @@ cd backend && npx tsx scripts/seed_bot_draws.ts
   - 永遠不直接 push main，除非明確說「推正」
 - 後台 API 統一用 `getSupabaseAdmin()`，前台用 `createClient()`（anon key）
 - 財務對帳公式：`expected = recharge_total + manual_total - draw_total - refund_deducted`
+  （出貨運費走 `token_adjustments`、type 為 `manual`，已含在 manual_total 內；
+  migration 426 之前的訂單沒有入帳，那段期間的差額即為運費）
 - 稽核軌跡：所有管理員操作都呼叫 `logAdminAction()`
 - `is_bot` 排除：所有統計/報表都過濾機器人帳號
 
