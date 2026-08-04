@@ -19,6 +19,7 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePromos, type SitePromo } from './usePromos';
 import { dismiss } from '@/lib/promoDismiss';
+import { useRouteTransition } from '@/components/ui/RouteTransition';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
 const TEMPLATE_BG = '/images/bg.png';
@@ -29,6 +30,7 @@ const EXIT_MS         = 220;   // 與退場動畫時間相當
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
   const { promos, rules, isLoaded } = usePromos(placement);
+  const { navigate } = useRouteTransition();
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
@@ -60,6 +62,18 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
 
   // 沒圖就退回卡片版，否則會彈出一個全空的彈窗
   const isImageOnly = promo.layout === 'image' && !!promo.image_url;
+
+  /**
+   * 點 CTA / 圖片：立刻蓋上全屏 loading 再換頁。
+   * 只呼叫 close() 的話，彈窗會先收起、畫面停在舊頁等路由切換，
+   * 看起來像按了沒反應。
+   */
+  const go = (href: string | null) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    dismiss(promo.id, rules.dismissMode);
+    if (href) navigate(href);
+    else setVisible(false);
+  };
 
   const close = () => {
     setVisible(false);
@@ -96,7 +110,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                  裁掉的很可能就是標題，變形至少看得出來要換圖。 */
               <Link
                 href={promo.cta_href || '#'}
-                onClick={close}
+                onClick={go(promo.cta_href)}
                 className="relative block w-full"
                 style={{ aspectRatio: '800 / 1189' }}
               >
@@ -153,7 +167,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                 {promo.cta_text && (
                   <Link
                     href={promo.cta_href || '#'}
-                    onClick={close}
+                    onClick={go(promo.cta_href)}
                     className="absolute flex items-center justify-center text-white text-[15px] font-black active:scale-[0.97] transition-transform"
                     style={{ left: '22.38%', top: '85.95%', width: '55.25%', height: '8.49%' }}
                   >

@@ -34,6 +34,7 @@ interface Promo {
   start_at: string | null
   end_at: string | null
   sort_order: number
+  created_at?: string
 }
 
 /** 全站統一的投放規則（platform_settings），逐則不再各自設定 */
@@ -71,6 +72,8 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
     promo_audience: 'all', promo_dismiss_mode: 'always', promo_dismiss_days: '7',
   })
   const [savingRules, setSavingRules] = useState(false)
+  const [sortField, setSortField] = useState<'sort_order' | 'layout'>('sort_order')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [dismissInput, setDismissInput] = useState('')
 
   // 「點擊後前往」的下拉來源。除了活動頁，也保留自行填寫——
@@ -223,6 +226,14 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
 
   const isImagePopup = editing?.layout === 'image'
 
+  // 排序欄相同時以建立時間為次要鍵，否則兩筆同為 0 時每次讀取順序都可能不同
+  const sortedPromos = [...promos].sort((a, b) => {
+    const va = sortField === 'layout' ? a.layout : a.sort_order
+    const vb = sortField === 'layout' ? b.layout : b.sort_order
+    if (va !== vb) return (va < vb ? -1 : 1) * (sortDir === 'asc' ? 1 : -1)
+    return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+  })
+
   const columns: Column<Promo>[] = [
     {
       key: 'layout',
@@ -314,11 +325,17 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
       {actionsSlot && createPortal(actions, actionsSlot)}
       <PageCard>
         <DataTable
-          data={promos}
+          data={sortedPromos}
           columns={columns}
           keyField="id"
           isLoading={isLoading}
           emptyMessage="尚無首頁彈窗"
+          sortField={sortField}
+          sortDirection={sortDir}
+          onSort={f => {
+            if (f === sortField) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+            else { setSortField(f as typeof sortField); setSortDir('asc') }
+          }}
         />
       </PageCard>
 

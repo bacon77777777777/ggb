@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { X, Trophy } from 'lucide-react';
 import { scheduleState, inheritSchedule, untilText, filterBannersBySchedule } from '@/lib/schedule';
+import { useRouteTransition } from '@/components/ui/RouteTransition';
 
 interface BetTier { label: string; coins: number }
 
@@ -468,6 +469,7 @@ function MachineCard({
 
 export default function ChallengePage() {
   const router = useRouter();
+  const { navigate } = useRouteTransition();
   const supabase = createClient();
 
   const [machines, setMachines] = useState<SlotMachine[]>([]);
@@ -767,8 +769,10 @@ export default function ChallengePage() {
                     if (isOccupied) return; // 他人使用中或寬限期，不可進入
 
                     if (isMine && expiresAt > now) {
-                      // 我的寬限期 → 直接回到機台
-                      router.push(`/challenge/${machine.id}`);
+                      // 我的寬限期 → 直接回到機台。
+                      // 用 navigate 而非 router.push：先蓋上全屏 loading 再換頁，
+                      // 否則點下去畫面沒反應，玩家會以為沒按到而重複點
+                      navigate(`/challenge/${machine.id}`);
                       return;
                     }
 
@@ -791,9 +795,9 @@ export default function ChallengePage() {
           machineNumber={themeIndexMap.get(entering.id) ?? 1}
           onClose={() => setEntering(null)}
           onConfirm={bet => {
-            const m = entering;
-            setEntering(null);
-            router.push(`/challenge/${m.id}?bet=${bet}`);
+            // 不先關彈窗再換頁 —— 那會讓畫面停在機台列表上等路由，
+            // 看起來像關掉彈窗之後什麼都沒發生。直接蓋 loading 過去。
+            navigate(`/challenge/${entering.id}?bet=${bet}`);
           }}
         />
       )}
