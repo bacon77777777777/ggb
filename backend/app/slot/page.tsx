@@ -7,6 +7,7 @@ import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 interface SlotTheme {
   id: number
@@ -35,6 +36,108 @@ const DEFAULT_FORM = {
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
 export default function SlotThemesPage() {
+  const slotColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "主題",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <div className="flex items-center gap-3">
+                              {theme.image_url ? (
+                                <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 flex-shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 flex items-center justify-center text-lg">🎰</div>
+                              )}
+                              <div>
+                                <div className="font-semibold text-neutral-900">{theme.name}</div>
+                                <div className="text-xs text-neutral-400">{theme.suppliers?.name ?? '—'}</div>
+                              </div>
+                            </div>
+                          </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "機台",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <span className="text-neutral-700 font-bold">{activeMachines}</span>
+                            <span className="text-neutral-400">/{totalMachines} 台上架</span>
+                          </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "投注檔次",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <div className="flex flex-wrap gap-1">
+                              {(theme.bet_tiers ?? []).map((t: any, i: any) => (
+                                <span key={i} className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded">
+                                  {t.coins.toLocaleString()} G
+                                </span>
+                              ))}
+                            </div>
+                          </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "機率設定",
+      className: "text-xs text-neutral-500",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <div>觸發 {(theme.trigger_rate * 100).toFixed(2)}%</div>
+                            <div>延續 {(theme.continue_rate * 100).toFixed(0)}%</div>
+                            <div>保底 {theme.floor_spin_count} 轉</div>
+                          </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "上架",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <Switch checked={theme.is_active} onCheckedChange={() => toggleActive(theme)} />
+                          </>)
+      },
+    },
+    {
+      key: "c5",
+      label: "操作",
+      render: (theme) => {
+        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
+                      const totalMachines  = theme.slot_machines?.length ?? 0
+        return (<>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => router.push(`/slot/${theme.id}`)}
+                                className="text-primary text-sm font-medium"
+                              >
+                                設定
+                              </button>
+                              <button
+                                onClick={() => handleDelete(theme)}
+                                className="text-red-500 hover:text-red-700 text-sm font-medium"
+                              >
+                                刪除
+                              </button>
+                            </div>
+                          </>)
+      },
+    },
+  ]
+
   const router = useRouter()
   const { toast } = useToast()
   const { confirm, dialogProps } = useConfirmDialog()
@@ -156,81 +259,12 @@ export default function SlotThemesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {['主題', '機台', '投注檔次', '機率設定', '上架', '操作'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {filtered.map(theme => {
-                    const activeMachines = theme.slot_machines?.filter(m => m.is_active).length ?? 0
-                    const totalMachines  = theme.slot_machines?.length ?? 0
-                    return (
-                      <tr key={theme.id} className="hover:bg-neutral-50 transition-colors">
-                        {/* 主題 */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {theme.image_url ? (
-                              <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 flex-shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 flex items-center justify-center text-lg">🎰</div>
-                            )}
-                            <div>
-                              <div className="font-semibold text-neutral-900">{theme.name}</div>
-                              <div className="text-xs text-neutral-400">{theme.suppliers?.name ?? '—'}</div>
-                            </div>
-                          </div>
-                        </td>
-                        {/* 機台數 */}
-                        <td className="px-4 py-3">
-                          <span className="text-neutral-700 font-bold">{activeMachines}</span>
-                          <span className="text-neutral-400">/{totalMachines} 台上架</span>
-                        </td>
-                        {/* 投注檔次 */}
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {(theme.bet_tiers ?? []).map((t, i) => (
-                              <span key={i} className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded">
-                                {t.coins.toLocaleString()} G
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        {/* 機率 */}
-                        <td className="px-4 py-3 text-xs text-neutral-500">
-                          <div>觸發 {(theme.trigger_rate * 100).toFixed(2)}%</div>
-                          <div>延續 {(theme.continue_rate * 100).toFixed(0)}%</div>
-                          <div>保底 {theme.floor_spin_count} 轉</div>
-                        </td>
-                        {/* 上架 */}
-                        <td className="px-4 py-3">
-                          <Switch checked={theme.is_active} onCheckedChange={() => toggleActive(theme)} />
-                        </td>
-                        {/* 操作 */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => router.push(`/slot/${theme.id}`)}
-                              className="text-primary text-sm font-medium"
-                            >
-                              設定
-                            </button>
-                            <button
-                              onClick={() => handleDelete(theme)}
-                              className="text-red-500 hover:text-red-700 text-sm font-medium"
-                            >
-                              刪除
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <DataTable
+  data={filtered}
+  columns={slotColumns}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
             </div>
           )}
         </PageCard>

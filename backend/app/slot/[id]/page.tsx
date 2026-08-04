@@ -15,6 +15,7 @@ import SelectField from '@/components/ui/SelectField'
 import Button from '@/components/ui/Button'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import { DataTable, type Column } from '@/components'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,77 @@ function calcStats(p: number, N: number, minHits: number, continueRate: number) 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function SlotThemeDetailPage() {
+  const idColumns1: Column<any>[] = [
+    {
+      key: "c0",
+      label: "編號",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <span className="text-base font-black text-neutral-700">#{machine.machine_number}</span>
+                              <span className="ml-2 text-xs text-neutral-400">ID:{machine.id}</span>
+                            </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "RUSH獎池",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              {rushCount > 0 ? <Badge color="purple">{rushCount} 件</Badge> : <span className="text-xs text-neutral-400">—</span>}
+                            </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "普通返還",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              {returnCount > 0 ? <Badge color="blue">{returnCount} 種</Badge> : <span className="text-xs text-neutral-400">—</span>}
+                            </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "上架",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <Switch checked={machine.is_active} onCheckedChange={() => handleToggleMachine(machine)} />
+                            </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "前台",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <a href={`/challenge?machine=${machine.id}`} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline">預覽 ↗</a>
+                            </>)
+      },
+    },
+    {
+      key: "c5",
+      label: "操作",
+      render: (machine) => {
+        const rushCount   = machine.slot_pool_items?.filter((p: any) => p.rush_only && !p.coin_return).length ?? 0
+                        const returnCount = machine.slot_pool_items?.filter((p: any) => p.coin_return).length ?? 0
+        return (<>
+                              <button onClick={() => handleRemoveMachine(machine.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
+                            </>)
+      },
+    },
+  ]
+
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
@@ -891,45 +963,12 @@ export default function SlotThemeDetailPage() {
               <div className="py-12 text-center text-sm text-neutral-400">尚無機台</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      {['編號', 'RUSH獎池', '普通返還', '上架', '前台', '操作'].map(h => (
-                        <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {machines.map(machine => {
-                      const rushCount   = machine.slot_pool_items?.filter(p => p.rush_only && !p.coin_return).length ?? 0
-                      const returnCount = machine.slot_pool_items?.filter(p => p.coin_return).length ?? 0
-                      return (
-                        <tr key={machine.id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="text-base font-black text-neutral-700">#{machine.machine_number}</span>
-                            <span className="ml-2 text-xs text-neutral-400">ID:{machine.id}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {rushCount > 0 ? <Badge color="purple">{rushCount} 件</Badge> : <span className="text-xs text-neutral-400">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            {returnCount > 0 ? <Badge color="blue">{returnCount} 種</Badge> : <span className="text-xs text-neutral-400">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Switch checked={machine.is_active} onCheckedChange={() => handleToggleMachine(machine)} />
-                          </td>
-                          <td className="px-4 py-3">
-                            <a href={`/challenge?machine=${machine.id}`} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline">預覽 ↗</a>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => handleRemoveMachine(machine.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">移除</button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                <DataTable
+  data={machines}
+  columns={idColumns1}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
+/>
               </div>
             )}
           </PageCard>

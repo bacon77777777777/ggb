@@ -7,6 +7,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import SelectField from '@/components/ui/SelectField'
+import { DataTable, type Column } from '@/components'
 
 interface Snapshot {
   id: number
@@ -47,6 +48,104 @@ function periodMonths(count = 12) {
 }
 
 export default function SettlementSnapshotsPage() {
+  const settlementsnapshotsColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "廠商",
+      className: "font-medium text-neutral-800",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>{row.supplier_name}</>)
+      },
+    },
+    {
+      key: "c1",
+      label: "商品消費 (G)",
+      className: "text-right font-mono text-neutral-600",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>{Number(row.total_g).toLocaleString()}</>)
+      },
+    },
+    {
+      key: "c2",
+      label: "ECPay",
+      className: "text-right font-mono text-rose-500",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>-{Number(row.ecpay_fee).toLocaleString()}</>)
+      },
+    },
+    {
+      key: "c3",
+      label: "分解退",
+      className: "text-right font-mono text-amber-600",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>-{Number(row.dismantle_total).toLocaleString()}</>)
+      },
+    },
+    {
+      key: "c4",
+      label: "應付 (TWD)",
+      className: "text-right font-mono font-semibold text-neutral-900",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>{fmt(row.supplier_net)}</>)
+      },
+    },
+    {
+      key: "c5",
+      label: "備註",
+      className: "max-w-[160px]",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
+                                  placeholder="備註..."
+                                  value={editNote[row.id] ?? (row.note ?? '')}
+                                  onChange={e => setEditNote(prev => ({ ...prev, [row.id]: e.target.value }))}
+                                  onBlur={() => saveNote(row.id)}
+                                />
+                              </div>
+                            </>)
+      },
+    },
+    {
+      key: "c6",
+      label: "狀態",
+      className: "text-center",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>
+                              <Badge status={row.status}>{sm.label}</Badge>
+                            </>)
+      },
+    },
+    {
+      key: "c7",
+      label: "",
+      render: (row) => {
+        const sm = STATUS_META[row.status as keyof typeof STATUS_META]
+        return (<>
+                              <div className="flex items-center gap-1 justify-end">
+                                {row.status === 'draft' && (
+                                  <button onClick={() => updateStatus(row.id, 'confirmed')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100">確認</button>
+                                )}
+                                {row.status === 'confirmed' && (
+                                  <button onClick={() => updateStatus(row.id, 'paid')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">標記已付款</button>
+                                )}
+                                {row.status === 'paid' && row.paid_at && (
+                                  <span className="text-xs text-neutral-400">{new Date(row.paid_at).toLocaleDateString('zh-TW')}</span>
+                                )}
+                              </div>
+                            </>)
+      },
+    },
+  ]
+
   const { toast } = useToast()
   const [snapshots, setSnapshots]   = useState<Snapshot[]>([])
   const [filterMonth, setFilterMonth] = useState('')
@@ -180,61 +279,12 @@ export default function SettlementSnapshotsPage() {
                   </div>
                   {allPaid && <span className="text-xs text-green-600 font-medium">✓ 全部已付款</span>}
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">廠商</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">商品消費 (G)</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">ECPay</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500">分解退</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-neutral-500 font-semibold">應付 (TWD)</th>
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">備註</th>
-                      <th className="text-center px-4 py-2 text-xs font-semibold text-neutral-500">狀態</th>
-                      <th className="px-4 py-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(row => {
-                      const sm = STATUS_META[row.status]
-                      return (
-                        <tr key={row.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-neutral-800">{row.supplier_name}</td>
-                          <td className="px-4 py-3 text-right font-mono text-neutral-600">{Number(row.total_g).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono text-rose-500">-{Number(row.ecpay_fee).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-600">-{Number(row.dismantle_total).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right font-mono font-semibold text-neutral-900">{fmt(row.supplier_net)}</td>
-                          <td className="px-4 py-3 max-w-[160px]">
-                            <div className="flex items-center gap-1">
-                              <input
-                                className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
-                                placeholder="備註..."
-                                value={editNote[row.id] ?? (row.note ?? '')}
-                                onChange={e => setEditNote(prev => ({ ...prev, [row.id]: e.target.value }))}
-                                onBlur={() => saveNote(row.id)}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <Badge status={row.status}>{sm.label}</Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1 justify-end">
-                              {row.status === 'draft' && (
-                                <button onClick={() => updateStatus(row.id, 'confirmed')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100">確認</button>
-                              )}
-                              {row.status === 'confirmed' && (
-                                <button onClick={() => updateStatus(row.id, 'paid')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100">標記已付款</button>
-                              )}
-                              {row.status === 'paid' && row.paid_at && (
-                                <span className="text-xs text-neutral-400">{new Date(row.paid_at).toLocaleDateString('zh-TW')}</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                <DataTable
+  data={rows}
+  columns={settlementsnapshotsColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
+/>
               </div>
             )
           })

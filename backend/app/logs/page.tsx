@@ -8,6 +8,7 @@ import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
+import { DataTable, type Column } from '@/components'
 
 interface LogEntry {
   id: number
@@ -56,6 +57,70 @@ function getEventDetail(event: UserEventEntry): string {
 }
 
 export default function LogsPage() {
+  const logsColumns1: Column<any>[] = [
+    {
+      key: "c0",
+      label: "時間",
+      className: "text-sm text-neutral-700 font-mono whitespace-nowrap",
+      render: (event) => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (<>
+                                {formatDateTime(event.createdAt)}
+                              </>)
+      },
+    },
+    {
+      key: "c1",
+      label: "事件",
+      className: "whitespace-nowrap",
+      render: (event) => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (<>
+                                <span className={`px-2 py-0.5 text-xs rounded-full ${EVENT_COLOR[event.eventType] || 'bg-neutral-100 text-neutral-600'}`}>
+                                  {EVENT_LABEL[event.eventType] || event.eventType}
+                                </span>
+                              </>)
+      },
+    },
+    {
+      key: "c2",
+      label: "用戶",
+      className: "text-sm text-neutral-500 whitespace-nowrap",
+      render: (event) => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (<>
+                                {event.userId ? (
+                                  <a href={`/users/${event.userId}`} className="text-primary hover:underline">
+                                    {event.userName}
+                                  </a>
+                                ) : event.userName}
+                              </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "詳情",
+      className: "text-sm text-neutral-600 whitespace-nowrap",
+      render: (event) => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (<>
+                                {getEventDetail(event)}
+                              </>)
+      },
+    },
+    {
+      key: "c4",
+      label: "IP",
+      render: (event) => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (<>
+                                {event.ip || '-'}
+                                {isSuspicious && <span className="ml-1 text-xs">⚠️</span>}
+                              </>)
+      },
+    },
+  ]
+
   const [activeTab, setActiveTab] = useState<'admin' | 'user'>('admin')
 
   // --- Admin logs state ---
@@ -402,48 +467,12 @@ export default function LogsPage() {
                 <CardSkeleton rows={4} />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-50 border-b border-neutral-200">
-                      <tr className="border-b border-neutral-200">
-                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">時間</th>
-                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">事件</th>
-                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">用戶</th>
-                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">詳情</th>
-                        <th className="py-2 px-2 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">IP</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUserEvents.slice(0, ueDisplayCount).map((event) => {
-                        const isSuspicious = suspiciousIps.has(event.ip)
-                        return (
-                          <tr key={event.id} className={`border-b border-neutral-100 ${isSuspicious ? 'bg-red-50' : 'hover:bg-neutral-50'}`}>
-                            <td className="py-2 px-2 text-sm text-neutral-700 font-mono whitespace-nowrap">
-                              {formatDateTime(event.createdAt)}
-                            </td>
-                            <td className="py-2 px-2 whitespace-nowrap">
-                              <span className={`px-2 py-0.5 text-xs rounded-full ${EVENT_COLOR[event.eventType] || 'bg-neutral-100 text-neutral-600'}`}>
-                                {EVENT_LABEL[event.eventType] || event.eventType}
-                              </span>
-                            </td>
-                            <td className="py-2 px-2 text-sm text-neutral-500 whitespace-nowrap">
-                              {event.userId ? (
-                                <a href={`/users/${event.userId}`} className="text-primary hover:underline">
-                                  {event.userName}
-                                </a>
-                              ) : event.userName}
-                            </td>
-                            <td className="py-2 px-2 text-sm text-neutral-600 whitespace-nowrap">
-                              {getEventDetail(event)}
-                            </td>
-                            <td className={`py-2 px-2 text-sm font-mono whitespace-nowrap ${isSuspicious ? 'text-red-600 font-semibold' : 'text-neutral-500'}`}>
-                              {event.ip || '-'}
-                              {isSuspicious && <span className="ml-1 text-xs">⚠️</span>}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  <DataTable
+  data={filteredUserEvents.slice(0, ueDisplayCount)}
+  columns={logsColumns1}
+  keyField="id"
+  rowClassName={(event: any) => `border-b border-neutral-100 ${suspiciousIps.has(event.ip) ? 'bg-red-50' : 'hover:bg-neutral-50'}`}
+/>
                   {ueDisplayCount < filteredUserEvents.length && (
                     <div ref={ueObserverTarget} className="py-8 text-center">
                       {ueLoadingMore && <div className="flex items-center justify-center gap-2 text-neutral-500"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div><span className="text-sm">載入中...</span></div>}

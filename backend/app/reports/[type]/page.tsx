@@ -11,6 +11,7 @@ import EmptyState, { TableEmpty } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import SelectField from '@/components/ui/SelectField'
 import SortableTableHeader from '@/components/SortableTableHeader'
+import { DataTable, type Column } from '@/components'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -84,6 +85,164 @@ function CompletionBar({ pct }: { pct: number }) {
 }
 
 export default function ReportPage() {
+  const typeColumns0: Column<any>[] = [
+    {
+      key: "c0",
+      label: "日期",
+      className: "font-mono text-xs",
+      render: (d) => (<>{d.date}</>),
+    },
+    {
+      key: "c1",
+      label: "儲值金額(TWD)",
+      className: "text-right font-semibold",
+      render: (d) => (<>{d.recharge.toLocaleString()}</>),
+    },
+    {
+      key: "c2",
+      label: "抽獎次數",
+      className: "text-right",
+      render: (d) => (<>{d.draws.toLocaleString()}</>),
+    },
+    {
+      key: "c3",
+      label: "新用戶數",
+      className: "text-right",
+      render: (d) => (<>{d.newUsers.toLocaleString()}</>),
+    },
+  ]
+
+  const typeColumns2: Column<any>[] = [
+    {
+      key: "c0",
+      label: "日期",
+      className: "text-neutral-600 whitespace-nowrap",
+      render: (r) => (<>{formatDateTime(r.created_at)}</>),
+    },
+    {
+      key: "c1",
+      label: "訂單編號",
+      className: "font-mono text-xs",
+      render: (r) => (<>{r.order_number}</>),
+    },
+    {
+      key: "c2",
+      label: "用戶",
+      className: "whitespace-nowrap",
+      render: (r) => (<>{r.user?.name ?? '—'}</>),
+    },
+    {
+      key: "c3",
+      label: "Email",
+      className: "text-neutral-500 text-xs",
+      render: (r) => (<>{r.user?.email ?? '—'}</>),
+    },
+    {
+      key: "c4",
+      label: "金額(TWD)",
+      className: "font-semibold text-right",
+      render: (r) => (<>{(r.amount ?? 0).toLocaleString()}</>),
+    },
+    {
+      key: "c5",
+      label: "贈點",
+      className: "text-right",
+      render: (r) => (<>{r.bonus ?? 0}</>),
+    },
+    {
+      key: "c6",
+      label: "付款方式",
+      className: "text-neutral-500",
+      render: (r) => (<>{r.payment_method ?? '—'}</>),
+    },
+    {
+      key: "c7",
+      label: "狀態",
+      render: (r) => (<>
+                            <Badge status={r.status}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
+                          </>),
+    },
+  ]
+
+  const typeColumns3: Column<any>[] = [
+    {
+      key: "c0",
+      label: "日期",
+      className: "text-neutral-600 whitespace-nowrap",
+      render: (d) => (<>{formatDateTime(d.created_at)}</>),
+    },
+    {
+      key: "c1",
+      label: "用戶",
+      className: "whitespace-nowrap",
+      render: (d) => (<>{d.user?.name ?? '—'}</>),
+    },
+    {
+      key: "c2",
+      label: "Email",
+      className: "text-neutral-500 text-xs",
+      render: (d) => (<>{d.user?.email ?? '—'}</>),
+    },
+    {
+      key: "c3",
+      label: "商品",
+      render: (d) => (<>{d.product?.name ?? '—'}</>),
+    },
+    {
+      key: "c4",
+      label: "消耗代幣(G)",
+      className: "text-right font-semibold",
+      render: (d) => (<>{(d.product?.price ?? 0).toLocaleString()}</>),
+    },
+    {
+      key: "c5",
+      label: "獎品等級",
+      render: (d) => (<>
+                            {d.prize_level ? <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">{d.prize_level}</span> : '—'}
+                          </>),
+    },
+    {
+      key: "c6",
+      label: "獎品名稱",
+      className: "text-neutral-700",
+      render: (d) => (<>{d.prize_name ?? '—'}</>),
+    },
+    {
+      key: "c7",
+      label: "狀態",
+      render: (d) => (<>
+                            <Badge status={d.status}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
+                          </>),
+    },
+  ]
+
+  const typeColumns4: Column<any>[] = [
+    {
+      key: "c0",
+      label: "日期",
+      className: "font-mono text-xs text-neutral-600",
+      render: (d) => (<>{d.date}</>),
+    },
+    {
+      key: "c1",
+      label: "活躍用戶數",
+      className: "text-right font-semibold text-primary",
+      render: (d) => (<>{d.count}</>),
+    },
+    {
+      key: "c2",
+      label: "",
+      render: (d) => {
+        const max = behaviorData?.topSearches[0]?.count || 1
+        return (<>
+                                    <div className="bg-neutral-100 rounded-full h-1.5">
+                                      <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${Math.round(d.count / max * 100)}%` }} />
+                                    </div>
+                                  </>)
+      },
+    },
+  ]
+
   const { toast } = useToast()
   const { type } = useParams<{ type: string }>()
   const reportType = (type as ReportType) || 'overview'
@@ -428,33 +587,18 @@ export default function ReportPage() {
                       <h3 className="font-semibold text-neutral-900">每日明細</h3>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 border-b border-neutral-200">
-                          <tr>
-                            {['日期', '儲值金額(TWD)', '抽獎次數', '新用戶數'].map(h => (
-                              <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-100">
-                          {dailyBreakdown.map(d => (
-                            <tr key={d.date} className="hover:bg-neutral-50">
-                              <td className="px-4 py-2 font-mono text-xs">{d.date}</td>
-                              <td className="px-4 py-2 text-right font-semibold">{d.recharge.toLocaleString()}</td>
-                              <td className="px-4 py-2 text-right">{d.draws.toLocaleString()}</td>
-                              <td className="px-4 py-2 text-right">{d.newUsers.toLocaleString()}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                          <tr>
+                      <DataTable
+  data={dailyBreakdown}
+  columns={typeColumns0}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50"}
+  footer={<><tr>
                             <td className="px-4 py-2 text-sm font-semibold text-neutral-700">合計</td>
                             <td className="px-4 py-2 text-right font-bold">{dailyBreakdown.reduce((s, d) => s + d.recharge, 0).toLocaleString()}</td>
                             <td className="px-4 py-2 text-right font-bold">{dailyBreakdown.reduce((s, d) => s + d.draws, 0).toLocaleString()}</td>
                             <td className="px-4 py-2 text-right font-bold">{dailyBreakdown.reduce((s, d) => s + d.newUsers, 0).toLocaleString()}</td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                          </tr></>}
+/>
                     </div>
                   </div>
                 )}
@@ -583,38 +727,17 @@ export default function ReportPage() {
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無儲值紀錄</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      {['日期', '訂單編號', '用戶', 'Email', '金額(TWD)', '贈點', '付款方式', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {rechargeData.map(r => (
-                      <tr key={r.id} className="hover:bg-neutral-50">
-                        <td className="px-4 py-2 text-neutral-600 whitespace-nowrap">{formatDateTime(r.created_at)}</td>
-                        <td className="px-4 py-2 font-mono text-xs">{r.order_number}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{r.user?.name ?? '—'}</td>
-                        <td className="px-4 py-2 text-neutral-500 text-xs">{r.user?.email ?? '—'}</td>
-                        <td className="px-4 py-2 font-semibold text-right">{(r.amount ?? 0).toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right">{r.bonus ?? 0}</td>
-                        <td className="px-4 py-2 text-neutral-500">{r.payment_method ?? '—'}</td>
-                        <td className="px-4 py-2">
-                          <Badge status={r.status}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                    <tr>
+                <DataTable
+  data={rechargeData}
+  columns={typeColumns2}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50"}
+  footer={<><tr>
                       <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計（完成）</td>
                       <td className="px-4 py-2 text-right font-bold">{rechargeData.filter(r => r.status === 'completed').reduce((s, r) => s + (r.amount ?? 0), 0).toLocaleString()}</td>
                       <td colSpan={3} />
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tr></>}
+/>
               </div>
             )}
           </div>
@@ -640,40 +763,17 @@ export default function ReportPage() {
               <div className="py-20 text-center text-neutral-400 text-sm">此區間無消費紀錄</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr>
-                      {['日期', '用戶', 'Email', '商品', '消耗代幣(G)', '獎品等級', '獎品名稱', '狀態'].map(h => (
-                        <th key={h} className="text-left px-4 py-2 text-xs font-semibold text-neutral-500 whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {consumptionData.map(d => (
-                      <tr key={d.id} className="hover:bg-neutral-50">
-                        <td className="px-4 py-2 text-neutral-600 whitespace-nowrap">{formatDateTime(d.created_at)}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{d.user?.name ?? '—'}</td>
-                        <td className="px-4 py-2 text-neutral-500 text-xs">{d.user?.email ?? '—'}</td>
-                        <td className="px-4 py-2">{d.product?.name ?? '—'}</td>
-                        <td className="px-4 py-2 text-right font-semibold">{(d.product?.price ?? 0).toLocaleString()}</td>
-                        <td className="px-4 py-2">
-                          {d.prize_level ? <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">{d.prize_level}</span> : '—'}
-                        </td>
-                        <td className="px-4 py-2 text-neutral-700">{d.prize_name ?? '—'}</td>
-                        <td className="px-4 py-2">
-                          <Badge status={d.status}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-neutral-50 border-t border-neutral-200">
-                    <tr>
+                <DataTable
+  data={consumptionData}
+  columns={typeColumns3}
+  keyField="id"
+  rowClassName={() => "hover:bg-neutral-50"}
+  footer={<><tr>
                       <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-neutral-700">合計消費代幣</td>
                       <td className="px-4 py-2 text-right font-bold">{consumptionData.reduce((s, d) => s + (d.product?.price ?? 0), 0).toLocaleString()} G</td>
                       <td colSpan={3} />
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tr></>}
+/>
               </div>
             )}
           </div>
@@ -701,31 +801,12 @@ export default function ReportPage() {
                     <p className="text-sm text-neutral-400 py-4 text-center">此區間無資料</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-neutral-50 border-b border-neutral-200">
-                          <tr className="border-b border-neutral-100">
-                            <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">日期</th>
-                            <th className="text-right py-2 px-3 text-xs font-semibold text-neutral-500">活躍用戶數</th>
-                            <th className="py-2 px-3 w-40"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            const max = Math.max(...behaviorData.dailyActiveUsers.map(d => d.count), 1)
-                            return behaviorData.dailyActiveUsers.map(d => (
-                              <tr key={d.date} className="border-b border-neutral-50 hover:bg-neutral-50">
-                                <td className="py-2 px-3 font-mono text-xs text-neutral-600">{d.date}</td>
-                                <td className="py-2 px-3 text-right font-semibold text-primary">{d.count}</td>
-                                <td className="py-2 px-3">
-                                  <div className="bg-neutral-100 rounded-full h-1.5">
-                                    <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${Math.round(d.count / max * 100)}%` }} />
-                                  </div>
-                                </td>
-                              </tr>
-                            ))
-                          })()}
-                        </tbody>
-                      </table>
+                      <DataTable
+  data={behaviorData.dailyActiveUsers}
+  columns={typeColumns4}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-50 hover:bg-neutral-50"}
+/>
                     </div>
                   )}
                 </div>
@@ -763,7 +844,7 @@ export default function ReportPage() {
                     ) : (
                       <div className="space-y-2">
                         {(() => {
-                          const max = behaviorData.topSeries[0]?.count || 1
+                          const max = behaviorData?.topSeries[0]?.count || 1
                           return behaviorData.topSeries.map((item, i) => (
                             <div key={item.series} className="flex items-center gap-3">
                               <span className="text-xs text-neutral-400 w-5 text-right">{i + 1}</span>
