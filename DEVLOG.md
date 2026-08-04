@@ -4,6 +4,66 @@
 
 ---
 
+## v2026.08.04a｜2026-08-04｜後台 Design System 全面遷移 + 首頁彈窗系統 + 換頁 loading
+
+### 後台 Design System 遷移（272 → 53 處，-80%）
+起因是做「首頁彈窗」時又手刻了 table 與 select，老闆問「為何每次做新頁面都會創新」。
+**根因不是沒看規範，是 CLAUDE.md 本身有問題**：元件清單只列 7 個（實際有 34 個），
+`DataTable`、`SelectField`、`Input`、`Button`、`FileInput`、`ConfirmDialog` 全沒列到；
+更糟的是清單後面直接給了 Input/Table/Button 的生 tailwind 配方，等於在教人手刻。
+已改寫成完整對照表（需求→用哪個元件→不要寫什麼），配方降級為「確認沒有對應元件時才用」。
+
+`scripts/design-scan.ts` 原本只查顏色 token，加上「該用元件卻手刻」規則（只對 app/ 套用）。
+過程中修掉三條誤報：`confirm(` 把既有的 `useConfirmDialog()` 也算違規（32 處裡 10 處是假警報）、
+`type="file"` 把 ref 觸發的隱藏 input 算進去、overlay 把 tooltip 的透明點擊區算進去。
+
+| 類型 | 起始 | 現在 |
+|------|------|------|
+| input / textarea / select / button / file | 130 | **0** |
+| token（emerald / ring-2 / rounded-md / blue-5xx） | 20 | **0** |
+| 原生 confirm | 32 | 7 |
+| 自製 overlay | 6 | 4 |
+| 手刻 table | 84 | 42 |
+
+**DataTable 新增 `footer` prop**（渲染 `<tfoot>`，有資料才顯示）—— 報表的合計列本來就是
+會一直存在的需求，補上這個能力比繞過它合理。
+
+共動 38 個後台頁面。剩餘 53 處為已知例外：table 的 th/td 動態欄、tbody 多種列型
+（分組列、展開列）；confirm 在子元件內或混在 JSX 事件處理器中；overlay 是圖片燈箱。
+
+遷移踩到的坑（都由 typecheck 擋下，未進 commit）：
+- 用 regex 抓 JSX 標籤會被屬性裡箭頭函式的 `>` 截斷 → 改逐字掃描追蹤引號與括號深度
+- `cn()` 是「同前綴保留最後出現」，舊 className 留著會反過來蓋掉元件樣式
+- import 插進多行 import 的大括號中間、hook 插進 `useState<T>(初值)` 中間
+- `Column<any>` 讓 render 的 item 變 any，再索引具名型別違反 noImplicitAny（17 處）
+- `rowClassName` 拿不到原本在 map 主體算出的區域變數 → 就地重算
+
+### 首頁彈窗系統（migration 416~424）
+併入「輪播圖管理」第三個頁籤，兩種版型：
+- **公告**：統一模板底圖（`bg.png` 800×1189），只填主標／內文／按鈕文字
+- **純圖片 banner**：整張圖點擊即跳轉，同比例 800×1189（多則排隊時尺寸才不會忽大忽小）
+
+投放規則（對象、關閉後）改為全站統一放 `platform_settings`，逐則只留排序；
+關閉狀態仍逐則記錄，所以新公告不會因為玩家關過舊的就不跳。多則依排序排隊，關一則跳下一則。
+
+**底部公平性警語列改為前台寫死**，不做後台設定 —— 這條專為公平性存在，
+做成可編輯只會被拿去放不相干訊息。規則依登入狀態：未登入每次都出現、已登入關閉後 7 天。
+
+### 換頁先蓋 loading
+彈窗 CTA 與機台「確認檔次」原本是先關彈窗再 `router.push`，畫面停在舊頁等路由，
+看起來像沒反應。新增 `RouteTransitionProvider` 掛在 layout：動作當下立刻蓋
+`ProductLoadingScreen`，pathname 變了才收。遮罩在 layout 層，來源元件卸載也不會跟著消失。
+
+### 順帶修掉的既有缺陷
+- **前台讀不到運費設定**：`platform_settings` 開了 RLS 卻沒有任何 policy，anon 讀出來是空陣列，
+  後台改運費前台不會生效（預設值剛好等於當前值所以看不出來）。已用前綴白名單開放。
+- **推廣素材的版型與關閉規則存不進去**：API 白名單漏了新增的欄位，更新照樣回傳成功卻沒寫入。
+  已補上編譯期守衛，漏欄位會編譯失敗。
+- **警語列底部 5px 被導航列蓋住**：導航列實際 61px 而非 56px，改讀 `offsetHeight` 定位。
+- `Button` 補 `whitespace-nowrap`（在 flex 容器被壓縮會從中間斷行）。
+
+---
+
 ## v2026.08.03g｜2026-08-04｜公平性推廣（首頁彈窗 + 底部警語列 + 說明頁）
 
 競品分析指出我們的公平性機制對手沒有，但前台一句話都沒提。查下來發現**機制其實早就做好了**
