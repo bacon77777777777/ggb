@@ -4,6 +4,28 @@
 
 ---
 
+## v2026.08.04e｜2026-08-04｜盒玩模組預設對前台無效 + 首頁彈窗背景可滑動
+
+### 🔴 後台設了盒玩全站模組預設，前台照樣顯示別的模組
+`/blindbox/[id]` **只讀 `product.machine_theme`，從未 fallback 到 `module_settings`**。
+PROD 該盒玩商品的 `machine_theme` 是**空字串**，四處判斷全部落空 → 掉到最後的影片版分支，
+後台把全站預設改成 `blindbox_mode4` 前台完全沒反應。
+
+- 轉蛋走的 `/item/[id]` 本來就有 `product.machine_theme || moduleSettings[type]` 這段，
+  **只有盒玩這頁漏掉** —— 所以設轉蛋預設會生效、設盒玩不會
+- 改為 `effectiveTheme = 商品自訂 || 全站預設`，3 處 `isVendingTheme` 與 3 個模組分支全部改吃它，
+  並訂閱 `module_settings` 變更即時更新
+- 已用 anon 角色實測 PROD 讀得到 `blindbox_mode4`（該表有 `public read` policy），fallback 確實生效
+
+> 之後新增任何「全站預設 + 商品覆蓋」的模組頁，務必確認前台真的有讀 `module_settings`。
+
+### 首頁彈窗遮罩後方仍可手勢滾動
+- 開啟時 `document.body.style.overflow = 'hidden'`（同 `components/ui/Modal.tsx`）
+- 遮罩加 `overscroll-contain` 並攔截 `touchmove` —— iOS Safari 光靠 body overflow 擋不住手勢；
+  只在事件目標為遮罩本身時 `preventDefault`，卡片內文（長公告）仍可捲動
+
+---
+
 ## v2026.08.04d｜2026-08-04｜封存機制實機 QA：Playwright 跑完整流程
 
 前面三版都只驗到 psql 層。這次用 Playwright 實際跑瀏覽器，前台後台各兩個情境。

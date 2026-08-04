@@ -37,6 +37,8 @@ export default function BlindboxDetailPage() {
 
   const [product, setProduct] = useState<ProductRow | null>(null);
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
+  // 全站模組預設：商品沒指定主題時要吃這個（同 item/[id] 的作法）
+  const [defaultTheme, setDefaultTheme] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
@@ -103,6 +105,28 @@ export default function BlindboxDetailPage() {
       });
     };
   }, [bgVideos]);
+
+  // 實際生效的主題：商品自訂優先，沒設（null / 空字串）才用全站預設
+  const effectiveTheme = ((product as any)?.machine_theme || defaultTheme) ?? null;
+
+  // 全站模組預設（後台「模組設定」）。商品自己沒設主題時就吃這個 ——
+  // 原本本頁只讀 product.machine_theme，導致後台改了全站預設前台完全沒反應。
+  useEffect(() => {
+    const load = () => {
+      supabase
+        .from('module_settings')
+        .select('product_type, machine_theme')
+        .eq('product_type', 'blindbox')
+        .maybeSingle()
+        .then(({ data }) => { if (data) setDefaultTheme((data as any).machine_theme ?? null); });
+    };
+    load();
+    const channel = supabase
+      .channel('blindbox_module_settings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'module_settings' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase]);
 
   useEffect(() => {
     const el = bgVideoRef.current;
@@ -271,7 +295,7 @@ export default function BlindboxDetailPage() {
       ]);
     }
 
-    if (isVendingTheme((product as any)?.machine_theme)) {
+    if (isVendingTheme(effectiveTheme)) {
       setMode2DrawCount(1);
       setMode2State('animating');
     } else {
@@ -353,7 +377,7 @@ export default function BlindboxDetailPage() {
       if (refreshProfile) {
         refreshProfile();
       }
-      if (isVendingTheme((product as any).machine_theme)) {
+      if (isVendingTheme(effectiveTheme)) {
         setMode2DrawCount(results.length);
         setMode2State('animating');
       } else {
@@ -425,7 +449,7 @@ export default function BlindboxDetailPage() {
 
   useEffect(() => {
     if (!isLoading && product) {
-      if (!isVendingTheme((product as any).machine_theme)) {
+      if (!isVendingTheme(effectiveTheme)) {
         setIsMachineReady(true);
       }
     }
@@ -486,7 +510,7 @@ export default function BlindboxDetailPage() {
       style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
     >
       <div className="bg-neutral-950 shadow-card border border-neutral-900 overflow-hidden">
-        {(product as any).machine_theme === 'blindbox_mode2' ? (
+        {effectiveTheme === 'blindbox_mode2' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode2
               machineState={mode2State}
@@ -501,7 +525,7 @@ export default function BlindboxDetailPage() {
               onLoaded={() => setIsMachineReady(true)}
             />
           </div>
-        ) : (product as any).machine_theme === 'blindbox_mode3' ? (
+        ) : effectiveTheme === 'blindbox_mode3' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode3
               machineState={mode2State}
@@ -516,7 +540,7 @@ export default function BlindboxDetailPage() {
               onLoaded={() => setIsMachineReady(true)}
             />
           </div>
-        ) : (product as any).machine_theme === 'blindbox_mode4' ? (
+        ) : effectiveTheme === 'blindbox_mode4' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode4
               machineState={mode2State}

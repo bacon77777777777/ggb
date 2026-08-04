@@ -57,6 +57,15 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     return () => clearTimeout(t);
   }, [current]);
 
+  // 彈窗開著時鎖住背景捲動（同 components/ui/Modal.tsx 的作法）。
+  // 這個 effect 必須放在下面的 early return 之前，否則 promo 為 null 時
+  // hook 數量會變動。
+  useEffect(() => {
+    if (!visible) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [visible]);
+
   const promo = current;
   if (!promo) return null;
 
@@ -89,12 +98,15 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[120] flex flex-col items-center justify-center px-8 bg-black/60 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[120] flex flex-col items-center justify-center px-8 bg-black/60 backdrop-blur-[2px] overscroll-contain"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           data-testid="promo-popup"
+          /* iOS Safari 光靠 body overflow:hidden 擋不住手勢，
+             遮罩本身要吃掉 touchmove；卡片內文那塊需要捲動，故不用 touch-action:none */
+          onTouchMove={e => { if (e.target === e.currentTarget) e.preventDefault(); }}
         >
           <motion.div
             className={`w-full max-w-[330px] ${isImageOnly ? 'rounded-3xl overflow-hidden shadow-2xl' : ''}`}
