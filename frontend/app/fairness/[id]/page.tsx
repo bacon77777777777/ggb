@@ -16,8 +16,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronLeft, Copy, Check, ExternalLink } from 'lucide-react';
+import { Copy, Check, ExternalLink } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,7 +53,6 @@ export default function FairnessVerifyPage() {
   const [supabase] = useState(() => createClient());
   const { isAuthenticated } = useAuth();
 
-  const [productName, setProductName] = useState('');
   const [prizes, setPrizes] = useState<PrizeRow[]>([]);
   const [seal, setSeal] = useState<SealInfo | null>(null);
   const [myTickets, setMyTickets] = useState<{ ticket_number: number; prize_level: string }[]>([]);
@@ -84,7 +82,6 @@ export default function FairnessVerifyPage() {
         return;
       }
 
-      setProductName(product.name ?? '');
       setPrizes((prizeRows ?? []) as PrizeRow[]);
       setSeal((sealData ?? { sealed: false }) as SealInfo);
 
@@ -175,24 +172,7 @@ export default function FairnessVerifyPage() {
           <div className="text-sm text-red-500">{error}</div>
         ) : (
           <>
-            {/* 標題 */}
-            <div className="flex items-center gap-3">
-              <Link
-                href={`/item/${productId}`}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex-shrink-0"
-                aria-label="回商品頁"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Link>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-50 truncate">
-                  {productName}
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-                  開賣前排好的抽獎對照表
-                </p>
-              </div>
-            </div>
+            {/* 標題由全站導航列顯示（商品名），這裡不再重複一層 */}
 
             {!seal?.sealed ? (
               <Card>
