@@ -121,17 +121,26 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   unoptimized
                 />
 
-                {/* 文字區：米白內板往內縮，下緣停在按鈕上方 */}
+                {/* 文字區：米白內板往內縮，下緣停在按鈕上方。
+                    標題固定不捲動，內文吃剩餘高度並自行捲動 ——
+                    整塊一起捲的話，標題會被捲出畫面，玩家就不知道在講什麼 */}
                 <div
-                  className="absolute flex flex-col overflow-y-auto"
+                  className="absolute flex flex-col"
                   style={{ left: '9%', right: '9%', top: '23%', bottom: '17.5%' }}
                 >
                   {promo.title && (
-                    <h2 className="text-[17px] font-black leading-[1.4] text-[#8a4a00] text-balance">
+                    <h2
+                      className="flex-shrink-0 text-[20px] font-black leading-[1.35] text-[#8a4a00] text-balance overflow-hidden"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 3,   // 超過三行以刪節號收尾
+                      }}
+                    >
                       {promo.title}
                     </h2>
                   )}
-                  <p className="mt-2.5 text-[12.5px] leading-[1.65] text-[#a06a2c] whitespace-pre-line">
+                  <p className="mt-2.5 flex-1 min-h-0 overflow-y-auto text-[15px] leading-[1.6] text-[#a06a2c] whitespace-pre-line">
                     {promo.body}
                   </p>
                 </div>

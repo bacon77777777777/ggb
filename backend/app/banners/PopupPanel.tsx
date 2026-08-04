@@ -76,7 +76,9 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
   // 「點擊後前往」的下拉來源。除了活動頁，也保留自行填寫——
   // 之後要導去 /challenge、/topup 這類非活動頁時才不會被鎖死
   const [events, setEvents] = useState<{ slug: string; title: string }[]>([])
-  const [customHref, setCustomHref] = useState(false)
+  const [announcements, setAnnouncements] = useState<{ id: string; title: string }[]>([])
+  /** 連結目標的種類，由現有 cta_href 反推 */
+  const [linkKind, setLinkKind] = useState<'none' | 'event' | 'announcement'>('none')
 
   // 圖片選好後先留在本地預覽，按儲存才真的上傳，避免取消編輯留下孤兒檔
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -89,7 +91,11 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
     setImageFile(null)
     setImagePreview(p.image_url ?? '')
     const href = p.cta_href ?? ''
-    setCustomHref(!!href && !href.startsWith('/events/'))
+    setLinkKind(
+      href.startsWith('/events/') ? 'event'
+        : href.startsWith('/announcements/') ? 'announcement'
+        : 'none',
+    )
   }
 
   const onPickImage = (file: File | null) => {
@@ -154,6 +160,10 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
     fetch('/api/admin/events')
       .then(r => r.json())
       .then(d => setEvents(Array.isArray(d) ? d : (d.events ?? [])))
+      .catch(() => {})
+    fetch('/api/admin/announcements')
+      .then(r => r.json())
+      .then(d => setAnnouncements(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [])
 
@@ -319,6 +329,13 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
       >
         {editing && (
           <div className="space-y-4">
+            <ScheduleFields
+              startAt={editing.start_at}
+              endAt={editing.end_at}
+              onChange={patch => setEditing({ ...editing, ...patch })}
+              unlimitedToggle
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">版型</label>
@@ -338,7 +355,6 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                   placeholder="0"
                   onChange={e => onDismissChange(e.target.value)}
                 />
-                <p className="text-xs text-neutral-400 mt-1">數字小的先跳</p>
               </div>
             </div>
 
@@ -366,14 +382,10 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                 <Textarea rows={4}
                   value={editing.body}
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
-                <p className="text-xs text-neutral-400 mt-1">
-                  寫給玩家看的話，不要出現路徑、欄位名或內部代號。
-                  公告版使用統一模板底圖，只需填標題、內文與按鈕文字。
-                </p>
               </div>
             )}
 
-            {(
+            {isImagePopup && (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">圖片 *</label>
                 <FileInput
@@ -398,7 +410,7 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                   </div>
                 )}
                 <p className="text-xs text-neutral-400 mt-1">
-                  整張圖直接顯示，比例不限。建議寬度 1080 以上，文案畫在圖裡。
+                  圖片尺寸為 800 x 1189
                 </p>
               </div>
             )}
@@ -416,39 +428,42 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
                   {isImagePopup ? '點擊後前往' : '按鈕連結'}
                 </label>
                 <SelectField
-                  value={customHref ? '__custom__' : (editing.cta_href ?? '')}
+                  value={linkKind}
                   onChange={e => {
-                    const v = e.target.value
-                    if (v === '__custom__') { setCustomHref(true); return }
-                    setCustomHref(false)
-                    setEditing({ ...editing, cta_href: v || null })
+                    // 換種類時把目標清掉，否則會留下上一種的路徑
+                    setLinkKind(e.target.value as typeof linkKind)
+                    setEditing({ ...editing, cta_href: null })
                   }}
                 >
-                  <option value="">不跳轉</option>
-                  {events.map(ev => (
-                    <option key={ev.slug} value={`/events/${ev.slug}`}>
-                      {ev.title}（/events/{ev.slug}）
-                    </option>
-                  ))}
-                  <option value="__custom__">其他頁面（自行填寫）</option>
+                  <option value="none">不跳轉</option>
+                  <option value="event">活動頁</option>
+                  <option value="announcement">公告</option>
                 </SelectField>
-                {customHref && (
-                  <Input
-                    className="mt-2"
-                    placeholder="/challenge"
-                    value={editing.cta_href ?? ''}
-                    onChange={e => setEditing({ ...editing, cta_href: e.target.value || null })}
-                  />
-                )}
               </div>
             </div>
 
-            <ScheduleFields
-              startAt={editing.start_at}
-              endAt={editing.end_at}
-              onChange={patch => setEditing({ ...editing, ...patch })}
-              unlimitedToggle
-            />
+            {linkKind !== 'none' && (
+              <div>
+                <label className="block text-sm text-neutral-600 mb-1">
+                  {linkKind === 'event' ? '選擇活動頁' : '選擇公告'}
+                </label>
+                <SelectField
+                  value={editing.cta_href ?? ''}
+                  onChange={e => setEditing({ ...editing, cta_href: e.target.value || null })}
+                >
+                  <option value="">請選擇</option>
+                  {linkKind === 'event'
+                    ? events.map(ev => (
+                        <option key={ev.slug} value={`/events/${ev.slug}`}>{ev.title}</option>
+                      ))
+                    : announcements.map(a => (
+                        <option key={a.id} value={`/announcements/${a.id}`}>{a.title}</option>
+                      ))}
+                </SelectField>
+              </div>
+            )}
+
+
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setEditing(null)}>取消</Button>
