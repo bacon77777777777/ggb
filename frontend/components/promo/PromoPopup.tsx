@@ -126,7 +126,9 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                     整塊一起捲的話，標題會被捲出畫面，玩家就不知道在講什麼 */}
                 <div
                   className="absolute flex flex-col"
-                  style={{ left: '9%', right: '9%', top: '23%', bottom: '17.5%' }}
+                  /* top 用百分比而非固定 24px：卡片在小螢幕會等比縮小，
+                     寫死 px 的話留白會相對變大 */
+                  style={{ left: '9%', right: '9%', top: '27.9%', bottom: '17.5%' }}
                 >
                   {promo.title && (
                     <h2
