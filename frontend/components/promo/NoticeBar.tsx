@@ -10,7 +10,7 @@
  * 桌機版的公平性露出走首頁區塊，不做浮動列（桌機沒有底部導航可以貼）。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { usePromos } from './usePromos';
@@ -46,7 +46,12 @@ function usePublishHeight(active: boolean) {
 
 export default function NoticeBar({ placement }: { placement: string }) {
   const { promos } = usePromos('notice', placement);
-  const promo = promos[0];   // 同一位置只顯示排序最前的一則，疊兩條會吃掉內容高度
+  // always 模式的 dismiss 不落地（才能下次再出現），所以收起來要靠本地狀態，
+  // 否則按了叉叉畫面不會有反應
+  const [closedId, setClosedId] = useState<string | null>(null);
+
+  const first = promos[0];   // 同一位置只顯示排序最前的一則，疊兩條會吃掉內容高度
+  const promo = first && first.id !== closedId ? first : undefined;
   const ref = usePublishHeight(Boolean(promo));
   if (!promo) return null;
 
@@ -81,7 +86,7 @@ export default function NoticeBar({ placement }: { placement: string }) {
         )}
         <button
           type="button"
-          onClick={() => dismiss(promo.id)}
+          onClick={() => { setClosedId(promo.id); dismiss(promo.id, promo.dismiss_mode); }}
           aria-label="關閉提示"
           className="flex-shrink-0 -mr-1 -mt-0.5 p-1 text-neutral-500 hover:text-neutral-300 transition-colors"
         >

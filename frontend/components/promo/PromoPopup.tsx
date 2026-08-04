@@ -38,7 +38,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
 
   const close = () => {
     setVisible(false);
-    dismiss(promo.id);
+    dismiss(promo.id, promo.dismiss_mode);
   };
 
   return (

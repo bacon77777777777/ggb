@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { scheduleState } from '@/lib/schedule';
-import { shouldShow } from '@/lib/promoDismiss';
+import { shouldShow, type DismissMode } from '@/lib/promoDismiss';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface SitePromo {
@@ -19,6 +19,7 @@ export interface SitePromo {
   layout: 'card' | 'image';
   start_at: string | null;
   end_at: string | null;
+  dismiss_mode: DismissMode;
   dismiss_days: number;
   sort_order: number;
 }
@@ -59,7 +60,7 @@ export function usePromos(kind: 'popup' | 'notice', placement: string) {
         rows.filter(
           p => matchesAudience(p.audience) &&
                scheduleState(p.start_at, p.end_at) === 'running' &&
-               shouldShow(p.id, p.dismiss_days),
+               shouldShow(p.id, p.dismiss_mode, p.dismiss_days),
         ),
       );
       setIsLoaded(true);
@@ -68,7 +69,7 @@ export function usePromos(kind: 'popup' | 'notice', placement: string) {
     void load();
 
     // 同一頁把某則關掉後，其他位置要立刻跟著收起來
-    const onDismiss = () => setPromos(prev => prev.filter(p => shouldShow(p.id, p.dismiss_days)));
+    const onDismiss = () => setPromos(prev => prev.filter(p => shouldShow(p.id, p.dismiss_mode, p.dismiss_days)));
     window.addEventListener('ggb:promoDismissed', onDismiss);
     return () => {
       cancelled = true;

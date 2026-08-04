@@ -27,6 +27,7 @@ interface Promo {
   is_active: boolean
   start_at: string | null
   end_at: string | null
+  dismiss_mode: 'always' | 'days' | 'never'
   dismiss_days: number
   sort_order: number
 }
@@ -62,6 +63,7 @@ const EMPTY: Omit<Promo, 'id'> = {
   is_active: true,
   start_at: null,
   end_at: null,
+  dismiss_mode: 'days',
   dismiss_days: 7,
   sort_order: 0,
 }
@@ -103,6 +105,7 @@ export default function PromosPage() {
     if (!editing) return
     if (!editing.body.trim()) { toast(isImagePopup ? '請填圖片說明' : '內容不可空白', 'error'); return }
     if (isImagePopup && !editing.image_url?.trim()) { toast('純圖片版需要圖片網址', 'error'); return }
+    if (editing.dismiss_mode === 'days' && dismissDays < 1) { toast('請填要隔幾天再出現', 'error'); return }
     setSaving(true)
     const res = await fetch('/api/admin/promos', {
       method: editing.id ? 'PATCH' : 'POST',
@@ -212,7 +215,9 @@ export default function PromosPage() {
                     </td>
                     <td className="px-3 py-2.5 text-neutral-600">{AUDIENCE_LABEL[p.audience]}</td>
                     <td className="px-3 py-2.5 text-neutral-600">
-                      {p.dismiss_days === 0 ? '關閉後不再出現' : `${p.dismiss_days} 天`}
+                      {p.dismiss_mode === 'always' ? '每次都出現'
+                        : p.dismiss_mode === 'never' ? '關閉後不再出現'
+                        : `${p.dismiss_days} 天`}
                     </td>
                     <td className="px-3 py-2.5">
                       <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />
@@ -360,16 +365,26 @@ export default function PromosPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm text-neutral-600 mb-1">再出現間隔（天）</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
+                <label className="block text-sm text-neutral-600 mb-1">關閉後</label>
+                <select
                   className={INPUT}
-                  value={dismissInput}
-                  placeholder="0"
-                  onChange={e => onDismissChange(e.target.value)}
-                />
-                <p className="text-xs text-neutral-400 mt-1">0 = 關掉就不再出現</p>
+                  value={editing.dismiss_mode}
+                  onChange={e => setEditing({ ...editing, dismiss_mode: e.target.value as Promo['dismiss_mode'] })}
+                >
+                  <option value="always">每次進來都出現</option>
+                  <option value="days">隔幾天再出現</option>
+                  <option value="never">不再出現</option>
+                </select>
+                {editing.dismiss_mode === 'days' && (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={`${INPUT} mt-2`}
+                    value={dismissInput}
+                    placeholder="天數"
+                    onChange={e => onDismissChange(e.target.value)}
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">開始時間</label>

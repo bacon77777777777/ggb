@@ -28,24 +28,24 @@ function write(map: DismissMap) {
   } catch { /* 私密模式等寫不進去時忽略，最多是關不掉，不影響瀏覽 */ }
 }
 
-export function dismiss(promoId: string) {
+/**
+ * always = 關閉只對這次有效，下次再進到該頁照樣出現
+ * days   = 關閉後 dismissDays 天內不再出現
+ * never  = 關掉就不再出現
+ */
+export type DismissMode = 'always' | 'days' | 'never'
+
+export function dismiss(promoId: string, mode: DismissMode) {
+  if (mode === 'always') return   // 不落地，才能下次再出現
   const map = read()
   map[promoId] = Date.now()
   write(map)
 }
 
-/**
- * @param dismissDays 0 表示關掉就永久不再出現
- */
-export function shouldShow(promoId: string, dismissDays: number): boolean {
+export function shouldShow(promoId: string, mode: DismissMode, dismissDays: number): boolean {
+  if (mode === 'always') return true
   const at = read()[promoId]
   if (!at) return true
-  if (dismissDays <= 0) return false
+  if (mode === 'never') return false
   return Date.now() - at >= dismissDays * 24 * 60 * 60 * 1000
-}
-
-/** 首頁彈窗只在「這個瀏覽器第一次看到這則」時跳，之後靠 dismiss_days 控制 */
-export function markSeen(promoId: string) {
-  const map = read()
-  if (map[promoId] === undefined) write({ ...map, [promoId]: Date.now() })
 }
