@@ -2340,8 +2340,8 @@ function ProfileContent() {
 
               {/* 出貨說明 */}
               {activeWarehouseTab === 'all' && (
-                <div className="bg-neutral-800 dark:bg-neutral-900 px-4 py-2.5 flex items-start gap-2 flex-shrink-0">
-                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                <div className="bg-neutral-800 dark:bg-neutral-900 px-4 py-1.5 flex-shrink-0">
+                  <p className="text-[11px] text-neutral-300 leading-[1.45]">
                     訂單以廠商為單位分批出貨，每次申請限同一廠商品項。含公仔等大尺寸品項因超商包裝規格限制，一律以宅配方式出貨。
                   </p>
                 </div>
