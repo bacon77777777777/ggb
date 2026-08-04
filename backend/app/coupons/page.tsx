@@ -108,7 +108,7 @@ export default function CouponsPage() {
   const handleDelete = async (coupon: CouponRow) => {
     confirm({
       title: '確認操作',
-      message: "確定要刪除折價券「${coupon.title}」嗎？",
+      message: `確定要刪除折價券「${coupon.title}」嗎？`,
       onConfirm: async () => {
       try {
         const { error } = await supabase

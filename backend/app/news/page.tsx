@@ -171,7 +171,7 @@ export default function NewsPage() {
   const handleBatchDelete = async () => {
     confirm({
       title: '確認操作',
-      message: "確定要刪除選取的 ${selectedIds.size} 篇文章嗎？",
+      message: `確定要刪除選取的 ${selectedIds.size} 篇文章嗎？`,
       onConfirm: async () => {
       const ids = [...selectedIds]
       await supabase.from('news').delete().in('id', ids)

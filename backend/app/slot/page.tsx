@@ -211,7 +211,7 @@ export default function SlotThemesPage() {
   const handleDelete = async (theme: SlotTheme) => {
     confirm({
       title: '確認操作',
-      message: "確定刪除主題「${theme.name}」？旗下機台將被解除關聯（session 歷史保留）。",
+      message: `確定刪除主題「${theme.name}」？旗下機台將被解除關聯（session 歷史保留）。`,
       onConfirm: async () => {
       const res = await fetch(`/api/admin/slot/themes/${theme.id}`, { method: 'DELETE' })
       if (res.ok) { toast('已刪除'); fetchThemes() }
