@@ -22,23 +22,21 @@ interface Promo {
   cta_text: string | null
   cta_href: string | null
   placements: string[]
-  audience: 'all' | 'logged_in' | 'logged_out'
   layout: 'card' | 'image'
   is_active: boolean
   start_at: string | null
   end_at: string | null
-  dismiss_mode: 'always' | 'days' | 'never'
-  dismiss_days: number
   sort_order: number
 }
 
-const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
-
-const AUDIENCE_LABEL: Record<Promo['audience'], string> = {
-  all:        '全部',
-  logged_in:  '已登入',
-  logged_out: '未登入',
+/** 全站統一的投放規則（platform_settings），逐則不再各自設定 */
+interface Rules {
+  promo_audience: 'all' | 'logged_in' | 'logged_out'
+  promo_dismiss_mode: 'always' | 'days' | 'never'
+  promo_dismiss_days: string
 }
+
+const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
 const EMPTY: Omit<Promo, 'id'> = {
   title: '',
@@ -47,13 +45,10 @@ const EMPTY: Omit<Promo, 'id'> = {
   cta_text: '',
   cta_href: '',
   placements: ['home'],
-  audience: 'all',
   layout: 'card',
   is_active: true,
   start_at: null,
   end_at: null,
-  dismiss_mode: 'days',
-  dismiss_days: 7,
   sort_order: 0,
 }
 
@@ -64,9 +59,13 @@ export default function PopupPanel() {
   const [editing, setEditing] = useState<(Omit<Promo, 'id'> & { id?: string }) | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // 天數用字串存，不直接綁 number：
+  // 排序用字串存，不直接綁 number：
   //   綁 number 時清空欄位會被 Number('') 轉成 0 又寫回去，退位鍵等於無效；
   //   而 React 對 type=number 在「數值相等」時不會覆蓋 DOM，所以 0 前面打 7 會留成 07。
+  const [rules, setRules] = useState<Rules>({
+    promo_audience: 'all', promo_dismiss_mode: 'always', promo_dismiss_days: '7',
+  })
+  const [savingRules, setSavingRules] = useState(false)
   const [dismissInput, setDismissInput] = useState('')
 
   // 「點擊後前往」的下拉來源。除了活動頁，也保留自行填寫——
@@ -81,7 +80,7 @@ export default function PopupPanel() {
 
   const openEditor = (p: (Omit<Promo, 'id'> & { id?: string })) => {
     setEditing(p)
-    setDismissInput(String(p.dismiss_days))
+    setDismissInput(String(p.sort_order))
     setImageFile(null)
     setImagePreview(p.image_url ?? '')
     const href = p.cta_href ?? ''
@@ -111,7 +110,6 @@ export default function PopupPanel() {
   const onDismissChange = (raw: string) =>
     setDismissInput(raw.replace(/\D/g, '').replace(/^0+(?=\d)/, ''))
 
-  const dismissDays = dismissInput === '' ? 0 : Number(dismissInput)
 
   const fetchPromos = async () => {
     setIsLoading(true)
@@ -124,6 +122,30 @@ export default function PopupPanel() {
   useEffect(() => { fetchPromos() }, [])
 
   useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(r => r.json())
+      .then((d: Record<string, string>) => setRules(prev => ({
+        promo_audience:     (d.promo_audience as Rules['promo_audience']) || prev.promo_audience,
+        promo_dismiss_mode: (d.promo_dismiss_mode as Rules['promo_dismiss_mode']) || prev.promo_dismiss_mode,
+        promo_dismiss_days: d.promo_dismiss_days || prev.promo_dismiss_days,
+      })))
+      .catch(() => {})
+  }, [])
+
+  const saveRules = async (patch: Partial<Rules>) => {
+    const next = { ...rules, ...patch }
+    setRules(next)
+    setSavingRules(true)
+    const res = await fetch('/api/admin/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    })
+    setSavingRules(false)
+    toast(res.ok ? '已更新投放規則' : '儲存失敗', res.ok ? undefined : 'error')
+  }
+
+  useEffect(() => {
     fetch('/api/admin/events')
       .then(r => r.json())
       .then(d => setEvents(Array.isArray(d) ? d : (d.events ?? [])))
@@ -134,7 +156,6 @@ export default function PopupPanel() {
     if (!editing) return
     if (!editing.body.trim()) { toast(isImagePopup ? '請填圖片說明' : '內容不可空白', 'error'); return }
     if (isImagePopup && !imageFile && !editing.image_url) { toast('純圖片版需要上傳圖片', 'error'); return }
-    if (editing.dismiss_mode === 'days' && dismissDays < 1) { toast('請填要隔幾天再出現', 'error'); return }
 
     setSaving(true)
     let imageUrl: string | null
@@ -152,7 +173,7 @@ export default function PopupPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...editing,
-        dismiss_days: dismissDays,
+        sort_order: dismissInput === '' ? 0 : Number(dismissInput),
         title:     editing.title || null,
         image_url: imageUrl,
         cta_text:  editing.cta_text || null,
@@ -189,7 +210,7 @@ export default function PopupPanel() {
       <PageCard>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-neutral-500">
-進站後蓋在首頁上的彈窗。一次只會跳排序最前的一則。
+            進站後蓋在首頁上的彈窗。多則會依排序依序出現，關掉一則接著跳下一則。
           </p>
           <button
             onClick={() => openEditor({ ...EMPTY })}
@@ -197,6 +218,56 @@ export default function PopupPanel() {
           >
             新增
           </button>
+        </div>
+
+        {/* 投放規則為全站共用：逐則各設一次只會讓每次新增都要重想，
+            多則排隊時規則不一致也更難解釋 */}
+        <div className="mb-5 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-medium text-neutral-700">投放規則</span>
+            <span className="text-xs text-neutral-400">
+              全站共用，套用到所有彈窗{savingRules ? '（儲存中…）' : ''}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 max-w-xl">
+            <div>
+              <label className="block text-sm text-neutral-600 mb-1">對象</label>
+              <select
+                className={INPUT}
+                value={rules.promo_audience}
+                onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
+              >
+                <option value="all">全部</option>
+                <option value="logged_in">已登入</option>
+                <option value="logged_out">未登入（拉新）</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-600 mb-1">玩家按下叉叉後</label>
+              <div className="flex gap-2">
+                <select
+                  className={INPUT}
+                  value={rules.promo_dismiss_mode}
+                  onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
+                >
+                  <option value="always">每次進來都出現</option>
+                  <option value="days">隔幾天再出現</option>
+                  <option value="never">不再出現</option>
+                </select>
+                {rules.promo_dismiss_mode === 'days' && (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className={`${INPUT} max-w-[110px]`}
+                    value={rules.promo_dismiss_days}
+                    placeholder="天數"
+                    onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
+                    onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {isLoading ? (
@@ -210,8 +281,7 @@ export default function PopupPanel() {
                 <tr className="text-left text-neutral-600">
                   <th className="px-3 py-2 font-medium">版型</th>
                   <th className="px-3 py-2 font-medium">內容</th>
-                  <th className="px-3 py-2 font-medium">對象</th>
-                  <th className="px-3 py-2 font-medium">再出現</th>
+                  <th className="px-3 py-2 font-medium">排序</th>
                   <th className="px-3 py-2 font-medium">上架</th>
                   <th className="px-3 py-2 font-medium"></th>
                 </tr>
@@ -239,12 +309,7 @@ export default function PopupPanel() {
                         </>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-neutral-600">{AUDIENCE_LABEL[p.audience]}</td>
-                    <td className="px-3 py-2.5 text-neutral-600">
-                      {p.dismiss_mode === 'always' ? '每次都出現'
-                        : p.dismiss_mode === 'never' ? '關閉後不再出現'
-                        : `${p.dismiss_days} 天`}
-                    </td>
+                    <td className="px-3 py-2.5 text-neutral-600 tabular-nums">{p.sort_order}</td>
                     <td className="px-3 py-2.5">
                       <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />
                     </td>
@@ -280,16 +345,16 @@ export default function PopupPanel() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-neutral-600 mb-1">對象</label>
-                <select
+                <label className="block text-sm text-neutral-600 mb-1">排序</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
                   className={INPUT}
-                  value={editing.audience}
-                  onChange={e => setEditing({ ...editing, audience: e.target.value as Promo['audience'] })}
-                >
-                  <option value="all">全部</option>
-                  <option value="logged_in">已登入</option>
-                  <option value="logged_out">未登入（拉新）</option>
-                </select>
+                  value={dismissInput}
+                  placeholder="0"
+                  onChange={e => onDismissChange(e.target.value)}
+                />
+                <p className="text-xs text-neutral-400 mt-1">數字小的先跳</p>
               </div>
             </div>
 
@@ -392,31 +457,6 @@ export default function PopupPanel() {
                     placeholder="/challenge"
                     value={editing.cta_href ?? ''}
                     onChange={e => setEditing({ ...editing, cta_href: e.target.value || null })}
-                  />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm text-neutral-600 mb-1">玩家按下叉叉後</label>
-              <div className="flex gap-2">
-                <select
-                  className={INPUT}
-                  value={editing.dismiss_mode}
-                  onChange={e => setEditing({ ...editing, dismiss_mode: e.target.value as Promo['dismiss_mode'] })}
-                >
-                  <option value="always">每次進來都出現</option>
-                  <option value="days">隔幾天再出現</option>
-                  <option value="never">不再出現</option>
-                </select>
-                {editing.dismiss_mode === 'days' && (
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={`${INPUT} max-w-[110px]`}
-                    value={dismissInput}
-                    placeholder="天數"
-                    onChange={e => onDismissChange(e.target.value)}
                   />
                 )}
               </div>

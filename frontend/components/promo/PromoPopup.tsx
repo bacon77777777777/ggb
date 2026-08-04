@@ -28,7 +28,7 @@ const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不�
 const EXIT_MS         = 220;   // 與退場動畫時間相當
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
-  const { promos, isLoaded } = usePromos(placement);
+  const { promos, rules, isLoaded } = usePromos(placement);
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
@@ -63,7 +63,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
 
   const close = () => {
     setVisible(false);
-    dismiss(promo.id, promo.dismiss_mode);
+    dismiss(promo.id, rules.dismissMode);
     const id = promo.id;
     setTimeout(() => {
       setClosedIds(prev => [...prev, id]);
@@ -91,11 +91,20 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
           >
             {/* 純圖片版：文案已經畫在圖裡，整張圖就是按鈕，比例由圖片自己決定 */}
             {isImageOnly ? (
-              <Link href={promo.cta_href || '#'} onClick={close} className="block">
+              /* 與卡片版同比例，多則排隊時尺寸才不會忽大忽小。
+                 比例不符用 fill 拉伸而不裁切：banner 的文案是畫在圖裡的，
+                 裁掉的很可能就是標題，變形至少看得出來要換圖。 */
+              <Link
+                href={promo.cta_href || '#'}
+                onClick={close}
+                className="relative block w-full"
+                style={{ aspectRatio: '800 / 1189' }}
+              >
                 <img
                   src={promo.image_url!}
                   alt={promo.body}
-                  className="w-full h-auto block"
+                  className="absolute inset-0 w-full h-full block"
+                  style={{ objectFit: 'fill' }}
                 />
               </Link>
             ) : (

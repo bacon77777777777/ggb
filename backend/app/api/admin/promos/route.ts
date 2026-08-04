@@ -9,20 +9,19 @@ const TABLE = 'site_promos'
  * 只允許前端送這些欄位，避免有人直接打 API 塞 id / created_at。
  *
  * ⚠ 新增資料表欄位時務必同步加進來 —— 漏掉不會報錯，
- * 而是更新照樣回傳成功、那個欄位卻沒寫入（layout 與 dismiss_mode 就這樣漏過）。
+ * 而是更新照樣回傳成功、那個欄位卻沒寫入（layout 與 dismiss_mode 就這樣漏過）
+ * 投放規則（對象／關閉後）已移到 platform_settings，不在此表。。
  * 下方的 assertWritableCoversTable 會在型別層擋住下一次遺漏。
  */
 const WRITABLE = [
   'kind', 'layout', 'title', 'body', 'image_url', 'cta_text', 'cta_href',
-  'placements', 'audience', 'is_active', 'start_at', 'end_at',
-  'dismiss_mode', 'dismiss_days', 'sort_order',
+  'placements', 'is_active', 'start_at', 'end_at', 'sort_order',
 ] as const
 
 /** 資料表所有「應可由後台編輯」的欄位。漏加進 WRITABLE 時，下面那行會編譯失敗 */
 type EditableColumn =
   | 'kind' | 'layout' | 'title' | 'body' | 'image_url' | 'cta_text' | 'cta_href'
-  | 'placements' | 'audience' | 'is_active' | 'start_at' | 'end_at'
-  | 'dismiss_mode' | 'dismiss_days' | 'sort_order'
+  | 'placements' | 'is_active' | 'start_at' | 'end_at' | 'sort_order'
 
 type MissingFromWritable = Exclude<EditableColumn, typeof WRITABLE[number]>
 const _writableCoversTable: MissingFromWritable extends never ? true : never = true
