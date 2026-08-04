@@ -20,7 +20,7 @@ interface Announcement {
 const CATEGORIES = ['消息', '活動', '系統'] as const
 
 const CATEGORY_COLORS: Record<string, string> = {
-  消息: 'bg-blue-100 text-blue-700',
+  消息: 'bg-blue-100 text-primary',
   活動: 'bg-green-100 text-green-700',
   系統: 'bg-neutral-100 text-neutral-600',
 }
@@ -217,7 +217,7 @@ export default function AnnouncementsPage() {
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="公告標題"
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
               <div className="flex gap-3">
@@ -226,7 +226,7 @@ export default function AnnouncementsPage() {
                   <select
                     value={form.category}
                     onChange={e => setForm(f => ({ ...f, category: e.target.value as Announcement['category'] }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 bg-white"
                   >
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
@@ -239,7 +239,7 @@ export default function AnnouncementsPage() {
                     type="datetime-local"
                     value={form.published_at}
                     onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function AnnouncementsPage() {
                   onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                   placeholder="公告內容（支援換行，網址會自動轉為連結）"
                   rows={6}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
                 />
               </div>
               <div className="flex items-center gap-6">

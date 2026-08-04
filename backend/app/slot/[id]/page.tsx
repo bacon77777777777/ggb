@@ -1047,7 +1047,7 @@ function VideoTab({ theme, onSave }: { theme: SlotTheme; onSave: (u: Record<stri
                   slot.key.includes('strong') ? 'bg-amber-100 text-amber-700' :
                   slot.key.includes('revival') ? 'bg-green-100 text-green-700' :
                   slot.key.includes('anticipation') ? 'bg-neutral-100 text-neutral-600' :
-                  'bg-blue-100 text-blue-700'
+                  'bg-blue-100 text-primary'
                 }`}>{slot.badge}</span>
                 <span className="text-sm font-semibold text-neutral-700">{slot.label}</span>
               </div>

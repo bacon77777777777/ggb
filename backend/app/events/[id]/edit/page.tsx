@@ -94,7 +94,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   )
 }
-const inputCls = "w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+const inputCls = "w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
 const textareaCls = inputCls + " resize-none"
 
 function HeroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {

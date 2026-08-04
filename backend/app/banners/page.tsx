@@ -336,7 +336,7 @@ export default function BannersPage() {
               <button
                 key={tab.value}
                 onClick={() => setActiveTab(tab.value as typeof activeTab)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.value
                     ? 'bg-white text-primary shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-700'
