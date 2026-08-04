@@ -36,6 +36,8 @@ interface Rules {
   promo_dismiss_days: string
 }
 
+const PILL = 'px-3 py-2 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60'
+
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
 const EMPTY: Omit<Promo, 'id'> = {
@@ -208,65 +210,54 @@ export default function PopupPanel() {
   return (
     <>
       <PageCard>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-neutral-500">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <p className="text-sm text-neutral-500 min-w-0">
             進站後蓋在首頁上的彈窗。多則會依排序依序出現，關掉一則接著跳下一則。
           </p>
-          <button
-            onClick={() => openEditor({ ...EMPTY })}
-            className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            新增
-          </button>
-        </div>
 
-        {/* 投放規則為全站共用：逐則各設一次只會讓每次新增都要重想，
-            多則排隊時規則不一致也更難解釋 */}
-        <div className="mb-5 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-neutral-700">投放規則</span>
-            <span className="text-xs text-neutral-400">
-              全站共用，套用到所有彈窗{savingRules ? '（儲存中…）' : ''}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 max-w-xl">
-            <div>
-              <label className="block text-sm text-neutral-600 mb-1">對象</label>
-              <select
-                className={INPUT}
-                value={rules.promo_audience}
-                onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
-              >
-                <option value="all">全部</option>
-                <option value="logged_in">已登入</option>
-                <option value="logged_out">未登入（拉新）</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-neutral-600 mb-1">玩家按下叉叉後</label>
-              <div className="flex gap-2">
-                <select
-                  className={INPUT}
-                  value={rules.promo_dismiss_mode}
-                  onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
-                >
-                  <option value="always">每次進來都出現</option>
-                  <option value="days">隔幾天再出現</option>
-                  <option value="never">不再出現</option>
-                </select>
-                {rules.promo_dismiss_mode === 'days' && (
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className={`${INPUT} max-w-[110px]`}
-                    value={rules.promo_dismiss_days}
-                    placeholder="天數"
-                    onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
-                    onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
-                  />
-                )}
-              </div>
-            </div>
+          {/* 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想。
+              放在新增鍵左邊而不是獨立區塊，省掉一整塊高度 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <select
+              className={PILL}
+              value={rules.promo_audience}
+              disabled={savingRules}
+              onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
+            >
+              <option value="all">對象：全部</option>
+              <option value="logged_in">對象：已登入</option>
+              <option value="logged_out">對象：未登入</option>
+            </select>
+
+            <select
+              className={PILL}
+              value={rules.promo_dismiss_mode}
+              disabled={savingRules}
+              onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
+            >
+              <option value="always">關閉後：每次都出現</option>
+              <option value="days">關閉後：隔幾天</option>
+              <option value="never">關閉後：不再出現</option>
+            </select>
+
+            {rules.promo_dismiss_mode === 'days' && (
+              <input
+                type="text"
+                inputMode="numeric"
+                className={`${PILL} w-16 text-center`}
+                value={rules.promo_dismiss_days}
+                placeholder="天"
+                onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
+                onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
+              />
+            )}
+
+            <button
+              onClick={() => openEditor({ ...EMPTY })}
+              className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
+            >
+              新增
+            </button>
           </div>
         </div>
 
