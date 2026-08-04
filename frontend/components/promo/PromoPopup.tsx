@@ -8,29 +8,51 @@
  * 手機單手操作誤觸率高，玩家會覺得被騙點。
  *
  * 延遲一拍再出現，避免和首頁本身的載入動畫疊在一起閃。
+ *
+ * 有多則上架時排隊顯示：關掉一則後接著跳下一則，依 sort_order 排序。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePromos } from './usePromos';
+import { usePromos, type SitePromo } from './usePromos';
 import { dismiss } from '@/lib/promoDismiss';
 
-const APPEAR_DELAY_MS = 700;
+const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
+const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
+const EXIT_MS         = 220;   // 與退場動畫時間相當
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
   const { promos, isLoaded } = usePromos(placement);
+  const [closedIds, setClosedIds] = useState<string[]>([]);
+  const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
-  const promo = promos[0];   // 一次只彈一則，連彈兩則等同洗版
 
+  const shownOnceRef = useRef(false);
+
+  // 挑下一則。
+  // 「正在顯示的那則」存成 state 而不是每次從 promos 取第一筆：
+  // 關閉會寫 localStorage 並觸發 usePromos 重新過濾，promos 會當場少一筆，
+  // 直接取第一筆的話退場動畫還沒跑完，卡片內容就先被換成下一則了。
   useEffect(() => {
-    if (!isLoaded || !promo) return;
-    const t = setTimeout(() => setVisible(true), APPEAR_DELAY_MS);
-    return () => clearTimeout(t);
-  }, [isLoaded, promo]);
+    if (!isLoaded || current) return;
+    const next = promos.find(p => !closedIds.includes(p.id));
+    if (next) setCurrent(next);
+  }, [isLoaded, promos, closedIds, current]);
 
+  // 進場延遲。刻意與上面拆開且只相依 current：
+  // 兩件事寫在同一個 effect 時，setCurrent 會讓 effect 重跑並執行 cleanup，
+  // 把還沒觸發的計時器清掉，結果彈窗永遠不會顯示。
+  useEffect(() => {
+    if (!current) return;
+    const delay = shownOnceRef.current ? NEXT_DELAY_MS : APPEAR_DELAY_MS;
+    const t = setTimeout(() => { shownOnceRef.current = true; setVisible(true); }, delay);
+    return () => clearTimeout(t);
+  }, [current]);
+
+  const promo = current;
   if (!promo) return null;
 
   // 沒圖就退回卡片版，否則會彈出一個全空的彈窗
@@ -39,6 +61,11 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   const close = () => {
     setVisible(false);
     dismiss(promo.id, promo.dismiss_mode);
+    const id = promo.id;
+    setTimeout(() => {
+      setClosedIds(prev => [...prev, id]);
+      setCurrent(null);          // 讓上面的 effect 接手挑下一則
+    }, EXIT_MS);
   };
 
   return (
