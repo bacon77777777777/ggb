@@ -5,6 +5,8 @@ import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 
 interface RefundRequest {
   id: number
@@ -114,24 +116,24 @@ export default function RefundRequestsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">用戶 UUID *</label>
-                <input className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="user UUID" />
+                <Input value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} placeholder="user UUID" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">儲值單 ID（選填）</label>
-                <input className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.rechargeId} onChange={e => setForm(f => ({ ...f, rechargeId: e.target.value }))} placeholder="recharge_records.id" />
+                <Input value={form.rechargeId} onChange={e => setForm(f => ({ ...f, rechargeId: e.target.value }))} placeholder="recharge_records.id" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">退款金額 (TWD) *</label>
-                <input type="number" className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.amountTwd} onChange={e => setForm(f => ({ ...f, amountTwd: e.target.value }))} />
+                <Input type="number" value={form.amountTwd} onChange={e => setForm(f => ({ ...f, amountTwd: e.target.value }))} />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 block mb-1">扣回代幣 (G)</label>
-                <input type="number" className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" value={form.tokensToClaim} onChange={e => setForm(f => ({ ...f, tokensToClaim: e.target.value }))} />
+                <Input type="number" value={form.tokensToClaim} onChange={e => setForm(f => ({ ...f, tokensToClaim: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 block mb-1">退款原因 *</label>
-              <textarea className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" rows={2} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
+              <Textarea rows={2} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
             </div>
             <div className="flex gap-2">
               <button onClick={submitForm} disabled={submitting} className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50">送出</button>
@@ -196,8 +198,7 @@ export default function RefundRequestsPage() {
                         </td>
                         <td className="px-4 py-3 max-w-[160px]">
                           {editable ? (
-                            <input
-                              className="text-xs border border-neutral-200 rounded px-3 py-0.5 w-full focus:outline-none"
+                            <Input className="text-xs"
                               placeholder="備註..."
                               value={notes[r.id] ?? (r.admin_note ?? '')}
                               onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}

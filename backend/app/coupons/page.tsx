@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 
 type DiscountType = 'fixed' | 'percentage'
 
@@ -296,11 +298,9 @@ export default function CouponsPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 名稱
               </label>
-              <input
-                type="text"
+              <Input
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
                 placeholder="例如：新會員折50元"
               />
             </div>
@@ -309,10 +309,9 @@ export default function CouponsPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 顯示描述
               </label>
-              <textarea
+              <Textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm h-20"
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="h-20"
                 placeholder="例如：首次下單滿 300 元折 50 元"
               />
             </div>
@@ -338,13 +337,12 @@ export default function CouponsPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   折扣數值
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   step="1"
                   value={formData.discount_value}
                   onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
                   placeholder={formData.discount_type === 'fixed' ? '例如：50' : '例如：10 代表 10%'}
                 />
               </div>
@@ -355,13 +353,12 @@ export default function CouponsPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   最低消費金額(TWD)
                 </label>
-                <input
+                <Input
                   type="number"
                   min="0"
                   step="1"
                   value={formData.min_spend}
                   onChange={(e) => setFormData({ ...formData, min_spend: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
                   placeholder="例如：300 (TWD)，留空代表無限制"
                 />
               </div>
@@ -370,11 +367,9 @@ export default function CouponsPage() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   折價券代碼
                 </label>
-                <input
-                  type="text"
+                <Input
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
                   placeholder="可留空代表僅系統發放"
                 />
               </div>

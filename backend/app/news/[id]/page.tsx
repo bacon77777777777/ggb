@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
+import FileInput from '@/components/ui/FileInput'
 
 const CATEGORY_LABELS: Record<string, string> = {
   ichiban:  '一番賞',
@@ -184,7 +185,7 @@ export default function NewsEditPage() {
                   isUploading ? 'bg-neutral-100 text-neutral-400 border-neutral-200' : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50'
                 }`}>
                   {isUploading ? '...' : '上傳'}
-                  <input type="file" accept="image/*" className="hidden" disabled={isUploading}
+                  <FileInput accept="image/*" className="hidden" disabled={isUploading}
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = '' }} />
                 </label>
               </div>

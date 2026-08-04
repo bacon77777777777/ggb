@@ -6,6 +6,8 @@ import { useToast } from '@/contexts/ToastContext'
 import { useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
 import Link from 'next/link'
+import Input from '@/components/ui/Input'
+import SelectField from '@/components/ui/SelectField'
 
 interface Event {
   id: string
@@ -345,15 +347,15 @@ export default function EventsPage() {
             <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">活動標題</label>
-                <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="夏日轉蛋祭" className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="夏日轉蛋祭" className="rounded-xl" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">Slug（網址）</label>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-neutral-400">/lp/</span>
-                  <input type="text" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                    placeholder="summer-gacha-2026" className="flex-1 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono" />
+                  <Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                    placeholder="summer-gacha-2026" className="flex-1 rounded-xl font-mono" />
                 </div>
               </div>
               <div className="flex gap-4">
@@ -373,7 +375,7 @@ export default function EventsPage() {
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-2">主題色</label>
                   <div className="flex items-center gap-2">
-                    <input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-9 h-9 rounded-lg cursor-pointer border border-neutral-200" />
+                    <Input type="color" value={form.accent_color} onChange={e => setForm(f => ({ ...f, accent_color: e.target.value }))} className="w-9 h-9 cursor-pointer" />
                     <span className="text-xs font-mono text-neutral-500">{form.accent_color}</span>
                   </div>
                 </div>
@@ -381,27 +383,24 @@ export default function EventsPage() {
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">開始時間</label>
-                  <input type="datetime-local" value={form.start_at} onChange={e => setForm(f => ({ ...f, start_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                  <Input type="datetime-local" value={form.start_at} onChange={e => setForm(f => ({ ...f, start_at: e.target.value }))} className="rounded-xl" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">結束時間</label>
-                  <input type="datetime-local" value={form.end_at} onChange={e => setForm(f => ({ ...f, end_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                  <Input type="datetime-local" value={form.end_at} onChange={e => setForm(f => ({ ...f, end_at: e.target.value }))} className="rounded-xl" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">
                   分類清單 <span className="font-normal text-neutral-400">（選填，LP 底部自動顯示該分類商品）</span>
                 </label>
-                <select value={form.linked_category_id}
-                  onChange={e => setForm(f => ({ ...f, linked_category_id: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30">
+                <SelectField value={form.linked_category_id}
+                  onChange={e => setForm(f => ({ ...f, linked_category_id: e.target.value }))} className="rounded-xl">
                   <option value="">不連結分類</option>
                   {availableCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             </div>
             <div className="px-6 pb-6 flex justify-end gap-3 border-t border-neutral-100 pt-4 flex-none">

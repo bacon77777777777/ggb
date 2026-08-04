@@ -8,6 +8,10 @@ import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
 import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
+import FileInput from '@/components/ui/FileInput'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import SelectField from '@/components/ui/SelectField'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +54,6 @@ interface Machine {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 const BTN_PRIMARY = 'px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60'
 const BTN_GHOST   = 'px-4 py-2 text-sm text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors'
 
@@ -459,7 +462,7 @@ export default function SlotThemeDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2">
                   <Field label="主題名稱">
-                    <input type="text" className={INPUT} value={form.name ?? ''}
+                    <Input value={form.name ?? ''}
                       onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                   </Field>
                 </div>
@@ -470,17 +473,17 @@ export default function SlotThemeDetailPage() {
                   </div>
                 </Field>
                 <Field label="排序">
-                  <input type="number" className={INPUT} value={form.sort_order ?? 0}
+                  <Input type="number" value={form.sort_order ?? 0}
                     onChange={e => setForm(p => ({ ...p, sort_order: parseInt(e.target.value) }))} />
                 </Field>
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="廠商 ID">
-                  <input type="number" className={INPUT} value={form.supplier_id ?? ''}
+                  <Input type="number" value={form.supplier_id ?? ''}
                     onChange={e => setForm(p => ({ ...p, supplier_id: parseInt(e.target.value) || null }))} />
                 </Field>
                 <Field label="活動頁連結（event_slug）">
-                  <input type="text" className={INPUT} placeholder="例：1（→ /events/1）" value={form.event_slug ?? ''}
+                  <Input placeholder="例：1（→ /events/1）" value={form.event_slug ?? ''}
                     onChange={e => setForm(p => ({ ...p, event_slug: e.target.value || null }))} />
                 </Field>
               </div>
@@ -494,10 +497,10 @@ export default function SlotThemeDetailPage() {
               </div>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="機台圖片">
-                  <input type="file" accept="image/*" onChange={e => {
+                  <FileInput accept="image/*" onChange={e => {
                     const f = e.target.files?.[0]
                     if (f) { setMachineImageFile(f); setMachineImagePreview(URL.createObjectURL(f)) }
-                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  }} className="text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
                   {machineImagePreview && (
                     <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-100">
                       <img src={machineImagePreview} alt="" className="w-full h-full object-cover" />
@@ -505,10 +508,10 @@ export default function SlotThemeDetailPage() {
                   )}
                 </Field>
                 <Field label="機台組圖（sprite，2048×1400 模板）">
-                  <input type="file" accept="image/png" onChange={e => {
+                  <FileInput accept="image/png" onChange={e => {
                     const f = e.target.files?.[0]
                     if (f) { setSpriteFile(f); setSpritePreview(URL.createObjectURL(f)) }
-                  }} className="w-full text-sm text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
+                  }} className="text-neutral-600 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200" />
                   {spritePreview ? (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="w-24 h-16 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-900">
@@ -527,7 +530,7 @@ export default function SlotThemeDetailPage() {
               </div>
               <div className="mt-4">
                 <Field label="機台版位覆蓋（JSON，選填）">
-                  <textarea rows={5} className={INPUT + ' font-mono text-xs'} value={layoutStr}
+                  <Textarea rows={5} className="font-mono text-xs" value={layoutStr}
                     onChange={e => setLayoutStr(e.target.value)}
                     placeholder={'留空使用預設版位。範例：\n{"reels":{"t":39,"h":17,"cols":[{"l":19.5,"w":18.5},{"l":42},{"l":63.5}]},"marquee":{"t":16},"scoreboard":{"t":30}}'}
                   />
@@ -572,7 +575,7 @@ export default function SlotThemeDetailPage() {
               <p className="text-xs text-neutral-400 mb-3">最多 5 個，以逗號分隔。決定玩家可選的 G 幣投注金額。</p>
               <div className="flex items-center gap-3">
                 <div className="relative flex-1 max-w-sm">
-                  <input type="text" className={INPUT + ' pr-12' + (parsedTiers.length > 5 ? ' border-red-400' : '')}
+                  <Input className={"pr-12" + (parsedTiers.length > 5 ? ' border-red-400' : '')}
                     placeholder="100,300,500,1000,2000"
                     value={betTiersInput}
                     onChange={e => setBetTiersInput(e.target.value)}
@@ -599,7 +602,7 @@ export default function SlotThemeDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <Field label="觸發率（每轉）">
                   <div className="relative">
-                    <input type="number" step={0.01} min={0.01} max={100} className={INPUT + ' pr-8'}
+                    <Input type="number" step={0.01} min={0.01} max={100} className="pr-8"
                       value={triggerRateStr}
                       onChange={e => setTriggerRateStr(e.target.value)}
                       onBlur={e => {
@@ -613,7 +616,7 @@ export default function SlotThemeDetailPage() {
                   </div>
                 </Field>
                 <Field label="保底轉數">
-                  <input type="number" min={1} className={INPUT}
+                  <Input type="number" min={1}
                     value={N > 0 ? N : ''}
                     onChange={e => setForm(prev => ({ ...prev, floor_spin_count: parseInt(e.target.value) }))}
                   />
@@ -631,14 +634,14 @@ export default function SlotThemeDetailPage() {
                   })()}
                 </Field>
                 <Field label="RUSH 保底連數">
-                  <input type="number" min={1} max={10} className={INPUT}
+                  <Input type="number" min={1} max={10}
                     value={minHits > 0 ? minHits : ''}
                     onChange={e => setForm(prev => ({ ...prev, min_rush_hits: parseInt(e.target.value) }))}
                   />
                 </Field>
                 <Field label="RUSH 延續率">
                   <div className="relative">
-                    <input type="number" step={0.01} min={0} max={99.99} className={INPUT + ' pr-8'}
+                    <Input type="number" step={0.01} min={0} max={99.99} className="pr-8"
                       value={continueRateStr}
                       onChange={e => setContinueRateStr(e.target.value)}
                       onBlur={e => {
@@ -653,7 +656,7 @@ export default function SlotThemeDetailPage() {
                 </Field>
                 <Field label="延續率遞減係數">
                   <div className="relative">
-                    <input type="number" step={1} min={1} max={100} className={INPUT + ' pr-8'}
+                    <Input type="number" step={1} min={1} max={100} className="pr-8"
                       value={decayStr}
                       onChange={e => setDecayStr(e.target.value)}
                       onBlur={e => {
@@ -824,9 +827,8 @@ export default function SlotThemeDetailPage() {
                             <td className="px-4 py-3">
                               {isEditingThis ? (
                                 <div className="flex items-center gap-1">
-                                  <input
-                                    type="number" min={0} autoFocus
-                                    className="w-24 px-2 py-1 border border-primary rounded text-sm"
+                                  <Input
+                                    type="number" min={0} autoFocus className="w-24 border-primary"
                                     value={editingRecycle!.value}
                                     onChange={e => setEditingRecycle({ name: prizeName, value: e.target.value })}
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveRecycleValue(); if (e.key === 'Escape') setEditingRecycle(null) }}
@@ -927,9 +929,7 @@ export default function SlotThemeDetailPage() {
         <div className="space-y-4">
           {/* 品項搜尋選擇 */}
           <Field label="選擇品項">
-            <input
-              type="text"
-              className={INPUT}
+            <Input
               placeholder="搜尋品項名稱..."
               value={prizeSearch}
               onChange={e => { setPrizeSearch(e.target.value); setSelectedPrize(null) }}
@@ -963,16 +963,16 @@ export default function SlotThemeDetailPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="投注檔次">
-              <select className={INPUT} value={addForm.min_bet}
+              <SelectField value={addForm.min_bet}
                 onChange={e => setAddForm(p => ({ ...p, min_bet: e.target.value }))}>
                 <option value="">全檔次皆可</option>
                 {parsedTiers.map(t => (
                   <option key={t.coins} value={String(t.coins)}>{t.coins.toLocaleString()} G 以上</option>
                 ))}
-              </select>
+              </SelectField>
             </Field>
             <Field label="每台庫存">
-              <input type="number" className={INPUT} min={0}
+              <Input type="number" min={0}
                 value={addForm.remaining}
                 onChange={e => setAddForm(p => ({ ...p, remaining: e.target.value }))}
                 placeholder="空白 = 不限" />
@@ -1067,7 +1067,7 @@ function VideoTab({ theme, onSave }: { theme: SlotTheme; onSave: (u: Record<stri
                 <span className="block w-full text-center px-3 py-2 text-xs text-primary border border-primary rounded-lg hover:bg-primary/5 cursor-pointer transition-colors">
                   {isUploading ? '上傳中...' : url ? '重新上傳' : '上傳影片'}
                 </span>
-                <input type="file" accept="video/*" className="hidden" disabled={!!uploading}
+                <FileInput accept="video/*" className="hidden" disabled={!!uploading}
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(slot.key, f) }} />
               </label>
             </PageCard>

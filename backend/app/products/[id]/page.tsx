@@ -39,6 +39,7 @@ import { generateTXID, calculateTXIDHash } from '@/utils/drawLogicClient'
 import { supabase } from '@/lib/supabaseClient'
 import { SmallItem } from '@/types/product'
 import { useToast } from '@/contexts/ToastContext'
+import FileInput from '@/components/ui/FileInput'
 
 function CategoryMultiSelect({ categories, selected, onChange }: {
   categories: { id: string; name: string }[]
@@ -653,7 +654,7 @@ export default function EditProductPage() {
               {/* Row 1: 名稱 + 圖（機台：主圖自動帶機台圖片，不可上傳） */}
               <div className="flex items-center gap-3">
                 {!isSlot && <label className="flex-shrink-0 cursor-pointer group relative">
-                  <input type="file" accept="image/*" className="hidden"
+                  <FileInput accept="image/*" className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) setFormData({ ...formData, image: file, imagePreview: URL.createObjectURL(file) })
@@ -673,8 +674,7 @@ export default function EditProductPage() {
                 </label>}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-neutral-500 mb-1">商品名稱 <span className="text-red-500">*</span></label>
-                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="請輸入商品名稱" required />
                 </div>
               </div>
@@ -720,8 +720,7 @@ export default function EditProductPage() {
                 </div>}
                 {!isSlot && <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">代理商</label>
-                  <input type="text" value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  <Input value={formData.distributor} onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                     placeholder="萬代南夢宮" />
                 </div>}
               </div>
@@ -730,14 +729,12 @@ export default function EditProductPage() {
               {!isSlot && <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">條碼</label>
-                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  <Input value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="font-mono"
                     placeholder="4549660718956" maxLength={50} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">系列</label>
-                  <input type="text" value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                  <Input value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
                     placeholder="寶可夢、鬼滅之刃..." />
                 </div>
                 {allCategories.length > 0 && (
@@ -749,11 +746,10 @@ export default function EditProductPage() {
                 )}
                 <div>
                   <label className="block text-xs font-medium text-neutral-500 mb-1">熱賣商品</label>
-                  <select value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}
-                    className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors">
+                  <SelectField value={formData.isHot ? '1' : '0'} onChange={e => setFormData({ ...formData, isHot: e.target.value === '1' })}>
                     <option value="0">否</option>
                     <option value="1">是</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>}
 
@@ -790,14 +786,12 @@ export default function EditProductPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
-                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   placeholder="0" required min="1" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
-                <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  className="w-full px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary hover:border-neutral-300 transition-colors"
+                <Input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
                   placeholder="0" min="0" step="0.01" />
               </div>
               <div>
@@ -888,10 +882,8 @@ export default function EditProductPage() {
                       {/* 圖片 + 品項名稱 */}
                       <div className="flex items-start gap-2.5">
                         <label className="flex-shrink-0 cursor-pointer group relative">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
+                          <FileInput
+                            accept="image/*" className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0]
                               if (file) {
@@ -933,15 +925,13 @@ export default function EditProductPage() {
                         </label>
                         <div className="flex-1 min-w-0">
                           <label className="block text-xs font-medium text-neutral-500 mb-1">品項名稱</label>
-                          <input
-                            type="text"
+                          <Input
                             value={prize.name}
                             onChange={(e) => {
                               const updated = [...prizes]
                               updated[index].name = e.target.value
                               setPrizes(updated)
                             }}
-                            className="w-full px-2.5 py-1.5 text-sm bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                             placeholder="例：A賞 草莓大耳狗吊飾"
                           />
                         </div>
@@ -988,7 +978,7 @@ export default function EditProductPage() {
                               {prize.total || 0}
                             </div>
                           ) : (
-                            <input
+                            <Input
                               type="number"
                               value={prize.total === 0 ? '' : prize.total}
                               onChange={(e) => {
@@ -998,8 +988,7 @@ export default function EditProductPage() {
                                 updated[index].total = Math.max(0, newTotal)
                                 updated[index].remaining = Math.max(0, prize.remaining + delta)
                                 setPrizes(updated)
-                              }}
-                              className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
+                              }} className="font-mono text-center"
                               min="1"
                               placeholder="0"
                             />
@@ -1025,15 +1014,14 @@ export default function EditProductPage() {
                         </div>}
                         <div>
                           <label className="block text-xs font-medium text-neutral-500 mb-1">品項價值 (G)</label>
-                          <input
+                          <Input
                             type="number"
                             value={prize.recycleValue === 0 ? '' : prize.recycleValue}
                             onChange={(e) => {
                               const updated = [...prizes]
                               updated[index].recycleValue = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
                               setPrizes(updated)
-                            }}
-                            className="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
+                            }} className="font-mono text-center"
                             min="0"
                             placeholder="0"
                           />
@@ -1087,7 +1075,7 @@ export default function EditProductPage() {
                             ) : (
                               <div className="flex-1">
                                 <div className="relative">
-                                  <input
+                                  <Input
                                     type="number"
                                     min={1}
                                     value={prize.decompose_value ?? ''}
@@ -1095,8 +1083,7 @@ export default function EditProductPage() {
                                       const updated = [...prizes]
                                       updated[index].decompose_value = e.target.value === '' ? null : parseInt(e.target.value) || null
                                       setPrizes(updated)
-                                    }}
-                                    className="w-full px-2 py-1 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                                    }} className="text-xs"
                                     placeholder={prize.decompose_type === 'percent' ? '例如 20' : '例如 50'}
                                   />
                                   {prize.decompose_type === 'percent' && (
@@ -1119,12 +1106,11 @@ export default function EditProductPage() {
                               </SelectField>
                             </div>
                             <div className="flex-1 relative">
-                              <input
+                              <Input
                                 type="number"
                                 value={10}
                                 disabled
-                                readOnly
-                                className="w-full px-2 py-0.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400 cursor-not-allowed font-mono"
+                                readOnly className="text-xs bg-neutral-50 text-neutral-400 cursor-not-allowed font-mono"
                               />
                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">幣</span>
                             </div>
@@ -1203,12 +1189,10 @@ export default function EditProductPage() {
           <div className="space-y-4">
             {/* 搜尋和篩選 */}
             <div className="space-y-3">
-              <input
-                type="text"
+              <Input
                 value={librarySearchQuery}
                 onChange={(e) => setLibrarySearchQuery(e.target.value)}
                 placeholder="搜尋小物名稱、分類..."
-                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
               />
               <SelectField
                 value={librarySelectedCategory}

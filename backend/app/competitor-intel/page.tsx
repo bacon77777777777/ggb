@@ -5,6 +5,8 @@ import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 
 interface Analysis {
   id: number
@@ -253,8 +255,7 @@ export default function CompetitorIntelPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-neutral-500 block mb-1">競品名稱 *</label>
-                    <input
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                    <Input
                       placeholder="例：KujiFlip、SlimeToy"
                       value={form.competitor}
                       onChange={e => setForm(f => ({ ...f, competitor: e.target.value }))}
@@ -271,8 +272,7 @@ export default function CompetitorIntelPage() {
                 </div>
                 <div>
                   <label className="text-xs text-neutral-500 block mb-1">內容 *（貼文文字、活動說明等）</label>
-                  <textarea
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                  <Textarea
                     rows={4}
                     placeholder="貼入競品貼文內容…"
                     value={form.content}
@@ -281,8 +281,7 @@ export default function CompetitorIntelPage() {
                 </div>
                 <div>
                   <label className="text-xs text-neutral-500 block mb-1">原始連結（選填）</label>
-                  <input
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                  <Input
                     placeholder="https://…"
                     value={form.url}
                     onChange={e => setForm(f => ({ ...f, url: e.target.value }))}

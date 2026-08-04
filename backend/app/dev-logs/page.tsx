@@ -4,6 +4,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
 interface MonitorLog {
@@ -305,9 +307,8 @@ export default function DevLogsPage() {
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">版本號</label>
-                <input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
-                  placeholder="e.g. v1.2.0"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input value={form.version ?? ''} onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
+                  placeholder="e.g. v1.2.0" />
               </div>
               {form.type === 'issue' && (
                 <div>
@@ -322,15 +323,13 @@ export default function DevLogsPage() {
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
-              <input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="簡短描述這筆紀錄"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+              <Input value={form.title ?? ''} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="簡短描述這筆紀錄" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">說明</label>
-              <textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                rows={3} placeholder="詳細說明、重現步驟、解決方案…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
+              <Textarea value={form.description ?? ''} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3} placeholder="詳細說明、重現步驟、解決方案…" className="resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setForm(BLANK) }}
@@ -353,27 +352,23 @@ export default function DevLogsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">標題 *</label>
-                <input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="會議名稱"
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input value={meetingForm.title ?? ''} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="會議名稱" />
               </div>
               <div>
                 <label className="text-xs text-neutral-500 mb-1 block">時間 *</label>
-                <input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                <Input type="datetime-local" value={meetingForm.meeting_at ?? ''} onChange={e => setMeetingForm(f => ({ ...f, meeting_at: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">參與人</label>
-              <input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
-                placeholder="e.g. 王小明、李大華"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20" />
+              <Input value={meetingForm.participants ?? ''} onChange={e => setMeetingForm(f => ({ ...f, participants: e.target.value }))}
+                placeholder="e.g. 王小明、李大華" />
             </div>
             <div>
               <label className="text-xs text-neutral-500 mb-1 block">會議內容</label>
-              <textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
-                rows={6} placeholder="討論事項、決議結論、待辦事項…"
-                className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 resize-none" />
+              <Textarea value={meetingForm.content ?? ''} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))}
+                rows={6} placeholder="討論事項、決議結論、待辦事項…" className="resize-none" />
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); setMeetingForm(MEETING_BLANK) }}

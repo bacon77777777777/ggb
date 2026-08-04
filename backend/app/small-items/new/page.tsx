@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import SelectField from '@/components/ui/SelectField'
+import Input from '@/components/ui/Input'
+import FileInput from '@/components/ui/FileInput'
+import Textarea from '@/components/ui/Textarea'
 
 export default function NewSmallItemPage() {
   const { toast } = useToast()
@@ -116,11 +119,9 @@ export default function NewSmallItemPage() {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               小物名稱 <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               placeholder="請輸入小物名稱"
               required
             />
@@ -156,11 +157,9 @@ export default function NewSmallItemPage() {
                   />
                 </div>
               )}
-              <input
-                type="file"
+              <FileInput
                 accept="image/*"
                 onChange={handleImageChange}
-                className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
                 required
               />
             </div>
@@ -170,10 +169,9 @@ export default function NewSmallItemPage() {
             <label className="block text-sm font-medium text-neutral-700 mb-2">
               描述
             </label>
-            <textarea
+            <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
               placeholder="請輸入小物描述（選填）"
               rows={3}
             />

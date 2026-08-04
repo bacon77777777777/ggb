@@ -4,6 +4,9 @@ import { AdminLayout, PageCard } from '@/components'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
+import SelectField from '@/components/ui/SelectField'
 
 interface Announcement {
   id: string
@@ -212,45 +215,40 @@ export default function AnnouncementsPage() {
             <div className="px-6 py-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">標題</label>
-                <input
-                  type="text"
+                <Input
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="公告標題"
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  placeholder="公告標題" className="rounded-xl"
                 />
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">分類</label>
-                  <select
+                  <SelectField
                     value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value as Announcement['category'] }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 bg-white"
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value as Announcement['category'] }))} className="rounded-xl"
                   >
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-neutral-500 mb-1.5">發布時間</label>
-                  <input
+                  <Input
                     type="datetime-local"
                     value={form.published_at}
-                    onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))} className="rounded-xl"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">內容</label>
-                <textarea
+                <Textarea
                   value={form.content}
                   onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                   placeholder="公告內容（支援換行，網址會自動轉為連結）"
-                  rows={6}
-                  className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                  rows={6} className="rounded-xl resize-none"
                 />
               </div>
               <div className="flex items-center gap-6">

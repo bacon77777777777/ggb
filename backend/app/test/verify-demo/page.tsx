@@ -10,6 +10,8 @@ import {
   generateRandomValue, 
   determinePrize 
 } from '@/utils/drawLogicClient'
+import Input from '@/components/ui/Input'
+import SelectField from '@/components/ui/SelectField'
 
 export default function VerifyDemoPage() {
   const [seed, setSeed] = useState('')  // Seed 在活動結束後才公布
@@ -460,15 +462,14 @@ export default function VerifyDemoPage() {
                 商品選擇
                 <span className="ml-2 text-xs text-neutral-500 font-normal">（選擇要測試的商品）</span>
               </label>
-              <select
+              <SelectField
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(parseInt(e.target.value))}
-                className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-sm"
               >
                 {allProducts.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
-              </select>
+              </SelectField>
               <p className="text-xs text-neutral-500 mt-1">
                 選擇要進行驗證測試的商品
               </p>
@@ -480,13 +481,11 @@ export default function VerifyDemoPage() {
                 活動開始時公布的 TXID Hash
               </label>
               <div className="flex gap-2">
-                <input
-                  type="text"
+                <Input
                   value={publishedHash}
                   disabled
                   readOnly
-                  placeholder="活動開始時會自動生成並顯示"
-                  className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
+                  placeholder="活動開始時會自動生成並顯示" className="flex-1 border-2 bg-neutral-50 font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
                 />
                 <button
                   onClick={async () => {
@@ -514,13 +513,11 @@ export default function VerifyDemoPage() {
                   <span className="ml-2 text-xs text-neutral-500 font-normal">（活動結束後公布）</span>
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
+                  <Input
                     value={seed}
                     disabled
                     readOnly
-                    placeholder={seed ? seed : "執行驗證測試時會自動公布"}
-                    className="flex-1 px-3 py-2 border-2 border-neutral-200 rounded-lg bg-neutral-50 text-sm font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
+                    placeholder={seed ? seed : "執行驗證測試時會自動公布"} className="flex-1 border-2 bg-neutral-50 font-mono text-neutral-600 cursor-not-allowed placeholder:text-neutral-400"
                   />
                   <button
                     onClick={publishSeed}
@@ -543,12 +540,11 @@ export default function VerifyDemoPage() {
                   序列號 (Nonce)
                   <span className="ml-2 text-xs text-neutral-500 font-normal">（抽獎序號）</span>
                 </label>
-                <input
+                <Input
                   type="number"
                   value={nonce}
                   onChange={(e) => setNonce(e.target.value)}
-                  min="1"
-                  className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors font-mono text-sm"
+                  min="1" className="font-mono"
                 />
                 <p className="text-xs text-neutral-500 mt-1">
                   用於指定要驗證的抽獎序號（從 1 開始）
@@ -599,12 +595,10 @@ export default function VerifyDemoPage() {
                       </div>
                     </div>
                     <div className="w-24">
-                      <input
-                        type="text"
+                      <Input
                         value={profitRate1.toFixed(2)}
                         readOnly
-                        disabled
-                        className="w-full px-2 py-1.5 border-2 border-neutral-300 rounded-lg bg-neutral-100 text-sm font-mono text-center text-neutral-600 cursor-not-allowed"
+                        disabled className="border-2 bg-neutral-100 font-mono text-center text-neutral-600 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -721,14 +715,13 @@ export default function VerifyDemoPage() {
                   </div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex-1 relative">
-                      <input
+                      <Input
                         type="range"
                         min="0.0"
                         max="3.0"
                         step="0.01"
                         value={profitRate2}
-                        onChange={(e) => setProfitRate2(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                        onChange={(e) => setProfitRate2(parseFloat(e.target.value))} className="h-2 bg-neutral-200 appearance-none cursor-pointer accent-orange-600"
                       />
                       <div className="relative mt-1" style={{ height: '18px' }}>
                         <span className="absolute text-xs text-neutral-500" style={{ left: '0%', transform: 'translateX(0)' }}>0%</span>
@@ -737,14 +730,13 @@ export default function VerifyDemoPage() {
                       </div>
                     </div>
                     <div className="w-24">
-                      <input
+                      <Input
                         type="number"
                         min="0.0"
                         max="3.0"
                         step="0.01"
                         value={profitRate2.toFixed(2)}
-                        onChange={(e) => setProfitRate2(parseFloat(e.target.value) || 1.0)}
-                        className="w-full px-2 py-1.5 border border-orange-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm font-mono text-center"
+                        onChange={(e) => setProfitRate2(parseFloat(e.target.value) || 1.0)} className="border-orange-300 font-mono text-center"
                       />
                     </div>
                   </div>
