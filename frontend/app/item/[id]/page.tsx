@@ -31,6 +31,7 @@ import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 
 /**
@@ -1236,23 +1237,10 @@ export default function ProductDetailPage() {
           ? validPrizes.reduce((acc, prize) => acc + (prize.total || 0), 0)
           : 0);
 
-  const fairnessHref = `/fairness/${product.id}`;
+  // 驗證頁不擋未登入。對外宣稱「公開可驗證」，卻要先註冊才看得到對照表，
+  // 那就不是公開的了。登入只影響「你抽到的」那一段能不能顯示。
   const isSoldOut =
     (typeof totalRemaining === 'number' && totalRemaining <= 0) || product.status === 'ended';
-
-  const handleGoToFairness = () => {
-    if (!isAuthenticated) {
-      showAlert({
-        title: '提示',
-        message: '請先登入會員',
-        type: 'info',
-        confirmText: '前往登入',
-        onConfirm: () => router.push(`/login?redirect=${encodeURIComponent(fairnessHref)}`),
-      });
-      return;
-    }
-    router.push(fairnessHref);
-  };
 
   if (product.type === 'gacha') {
     const gachaMachineTheme = (product as any).machine_theme || moduleSettings['gacha'] || 'gacha_classic'
@@ -1501,65 +1489,12 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
-              <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent-emerald/10 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-5 h-5 sm:w-7 sm:h-7 text-accent-emerald stroke-[2.5]" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">公平性驗證</h2>
-                  <p className="text-[13px] sm:text-sm text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-widest mt-0.5">確保抽獎過程的透明與公正</p>
-                </div>
-              </div>
-
-              <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">
-                <div className="flex items-center gap-2 text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
-                  <Info className="w-3.5 h-3.5 stroke-[3]" />
-                  公平性驗證機制
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed">
-                    每次抽獎會記錄隨機種子 Seed、籤號與對應的 TXID Hash。完抽後會公開 Seed，任何人都可以在公平性驗證頁輸入 Seed 與籤號，重算隨機值與 TXID Hash 來確認結果無法事後被修改。
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 pt-1 sm:pt-2">
-                <div className="space-y-1.5 sm:space-y-2.5">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5" /> 隨機種子 (TXID)
-                  </div>
-                  <CopyableTruncatedField
-                    value={(totalRemaining === 0 && product.seed) ? (product.seed as string) : ''}
-                    placeholder="完抽後公布"
-                    fieldClassName={cn(
-                      (totalRemaining === 0 && product.seed) ? '' : 'text-neutral-400 dark:text-neutral-500 tracking-widest'
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:space-y-2.5">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                    <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
-                  </div>
-                  <CopyableTruncatedField
-                    value={product.txid_hash || ''}
-                    placeholder="尚未生成，請稍後再試"
-                  />
-                </div>
-              </div>
-
-              {isSoldOut && (
-                <button
-                  type="button"
-                  onClick={handleGoToFairness}
-                  className="w-full flex items-center justify-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
-                >
-                  前往公平性驗證頁
-                </button>
-              )}
-            </div>
-
+            <FairnessPanel
+              productId={product.id}
+              commitment={(product as any).txid_hash ?? null}
+              isSealed={!!(product as any).sealed_at}
+              isSoldOut={isSoldOut}
+            />
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="px-3 sm:px-6 py-2 sm:py-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
                 <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">商品資訊</h3>
@@ -1727,7 +1662,11 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <PrizeDetailSheet prize={viewingPrize} onClose={() => setViewingPrize(null)} />
+        <PrizeDetailSheet
+          prize={viewingPrize}
+          onClose={() => setViewingPrize(null)}
+          sealed={FAIR_ENGINE_TYPES.includes(product.type)}
+        />
 
         {(() => {
           const cardTheme = (product as any).machine_theme || moduleSettings['card'];
@@ -2081,65 +2020,12 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 p-3 sm:p-6 space-y-3 sm:space-y-6">
-              <div className="flex items-center gap-3 sm:gap-4 border-b border-neutral-50 dark:border-neutral-800 pb-3 sm:pb-5">
-                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent-emerald/10 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-5 h-5 sm:w-7 sm:h-7 text-accent-emerald stroke-[2.5]" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-black text-neutral-900 dark:text-neutral-50 tracking-tight">公平性驗證</h2>
-                  <p className="text-[13px] sm:text-sm text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-widest mt-0.5">確保抽獎過程的透明與公正</p>
-                </div>
-              </div>
-
-              <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3 sm:p-5 space-y-3 sm:space-y-4">
-                <div className="flex items-center gap-2 text-primary font-black text-[13px] sm:text-sm uppercase tracking-widest">
-                  <Info className="w-3.5 h-3.5 stroke-[3]" />
-                  公平性驗證機制
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <p className="text-[13px] sm:text-sm text-neutral-500 dark:text-neutral-400 font-bold leading-relaxed">
-                    每次抽獎會記錄隨機種子 Seed、籤號與對應的 TXID Hash。完抽後會公開 Seed，任何人都可以在公平性驗證頁輸入 Seed 與籤號，重算隨機值與 TXID Hash 來確認結果無法事後被修改。
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 pt-1 sm:pt-2">
-                <div className="space-y-1.5 sm:space-y-2.5">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5" /> 隨機種子 (TXID)
-                  </div>
-                  <CopyableTruncatedField
-                    value={(totalRemaining === 0 && product.seed) ? (product.seed as string) : ''}
-                    placeholder="完抽後公布"
-                    fieldClassName={cn(
-                      (totalRemaining === 0 && product.seed) ? '' : 'text-neutral-400 dark:text-neutral-500 tracking-widest'
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:space-y-2.5">
-                  <div className="text-[13px] sm:text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                    <FileCheck className="w-3.5 h-3.5" /> 哈希值 (TXID Hash)
-                  </div>
-                  <CopyableTruncatedField
-                    value={product.txid_hash || ''}
-                    placeholder="尚未生成，請稍後再試"
-                  />
-                </div>
-              </div>
-
-              {isSoldOut && (
-                <button
-                  type="button"
-                  onClick={handleGoToFairness}
-                  className="w-full flex items-center justify-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-white text-[13px] sm:text-sm font-black shadow-sm hover:bg-primary/90 transition-colors"
-                >
-                  前往公平性驗證頁
-                </button>
-              )}
-            </div>
-
+            <FairnessPanel
+              productId={product.id}
+              commitment={(product as any).txid_hash ?? null}
+              isSealed={!!(product as any).sealed_at}
+              isSoldOut={isSoldOut}
+            />
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="px-3 sm:px-6 py-2 sm:py-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
                 <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">商品資訊</h3>
@@ -2248,7 +2134,11 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <PrizeDetailSheet prize={viewingPrize} onClose={() => setViewingPrize(null)} />
+        <PrizeDetailSheet
+          prize={viewingPrize}
+          onClose={() => setViewingPrize(null)}
+          sealed={FAIR_ENGINE_TYPES.includes(product.type)}
+        />
 
         <ActionBar hideOn="lg">
           <div className="flex items-center gap-4 w-full">

@@ -51,7 +51,7 @@ interface Prize { id: number; level: string; name: string; image_url: string | n
 interface Section {
   id: string; type: string; sort_order: number
   content: Record<string, unknown>
-  resolved?: { product: { id: number; name: string } | null; prizes: Prize[] }
+  resolved?: { product: { id: number; name: string; type?: string } | null; prizes: Prize[] }
 }
 
 const str = (v: unknown): string => (v as string) ?? ''
@@ -841,8 +841,13 @@ function StickyCtaSection({ c }: { c: Record<string, unknown> }) {
   )
 }
 
+const SEALED_TYPES = ['ichiban', 'card', 'custom']
+
 function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolved?: Section['resolved'] }) {
   const prizes = resolved?.prizes || []
+  // 一番賞／抽卡／自製賞的獎項在開賣前就排定，probability 跟實際結果無關，
+  // 顯示出來只會誤導；轉蛋、盒玩是當下獨立隨機，那裡的數字是真的
+  const showProbability = !SEALED_TYPES.includes(resolved?.product?.type ?? '')
   return (
     <section className="lpv-sec" style={{ paddingTop: 0 }}>
       {bool(c.h2) && <h2 className="lpv-h2">{c.h2 as string}</h2>}
@@ -861,8 +866,10 @@ function ProductRefSection({ c, resolved }: { c: Record<string, unknown>; resolv
             <div className="lpv-prize-level">{prize.level}</div>
             <div className="lpv-prize-name">{prize.name}</div>
             <div className="lpv-prize-meta">
-              {prize.remaining}/{prize.total}<br />
-              <span style={{ fontSize: 10 }}>{(prize.probability * 100).toFixed(2)}%</span>
+              {prize.remaining}/{prize.total}
+              {showProbability && (
+                <><br /><span style={{ fontSize: 10 }}>{(prize.probability * 100).toFixed(2)}%</span></>
+              )}
             </div>
           </div>
         ))}

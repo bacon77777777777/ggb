@@ -6,8 +6,12 @@
  * 只列一番賞／抽卡／自製賞 —— 轉蛋與盒玩的 play_gacha 根本沒讀 profit_rate，
  * 列出來只會讓人以為調了有用；機台走 slot_themes，不在這裡管。
  *
- * 一列一個商品：拉桿 + 大獎機率。拖動時機率即時變，不需要展開或按計算。
+ * 一列一個商品：拉桿 + 機率。拖動時機率即時變，不需要展開或按計算。
  * 「大獎」由數量佔比自動判定，不需要管理員設定。
+ *
+ * 只有還沒上架的商品能調。商品一上架就自動排籤封存，承諾值也同時公布出去，
+ * 這時再改殺率不會有任何效果（表已經排好），DB 也會直接擋下來 ——
+ * 讓拉桿還能拖只會讓管理員以為調到了。
  */
 
 import { useState, useMemo, useEffect } from 'react'
@@ -43,7 +47,7 @@ interface Row {
   productCode: string | null
   type: string
   prizes: Prize[]
-  drawCount: number
+  isSealed: boolean
 }
 
 /**
@@ -91,17 +95,14 @@ export default function RatesPage() {
     const load = async () => {
       const { data } = await supabase
         .from('products')
-        .select('id, product_code, name, type, profit_rate, product_prizes(level, name, total, probability)')
+        .select('id, product_code, name, type, profit_rate, sealed_at, product_prizes(level, name, total, probability)')
         .in('type', APPLICABLE_TYPES)
         .order('id', { ascending: false })
 
-      // 已開賣的不可調整，用抽獎筆數判定
-      const ids = (data ?? []).map((p: any) => p.id)
-      const { data: drawn } = ids.length
-        ? await supabase.from('draw_records').select('product_id').in('product_id', ids)
-        : { data: [] as any[] }
-      const counts = new Map<number, number>()
-      for (const d of drawn ?? []) counts.set(d.product_id, (counts.get(d.product_id) ?? 0) + 1)
+      // 已封存的不可調整。判定用 products.sealed_at 而不是抽獎筆數 ——
+      // 上架後還沒人抽的商品也已經封存，用抽獎筆數會讓它看起來還能改。
+      // 也不要直接查 product_ticket_seals：那張表是 service role only，
+      // 這裡的 anon client 只會拿到空陣列，而且不會報錯。
 
       const initial: Record<number, number> = {}
       for (const p of data ?? []) initial[p.id] = Number(p.profit_rate ?? 1)
@@ -114,7 +115,7 @@ export default function RatesPage() {
         prizes: (p.product_prizes ?? []).map((z: any) => ({
           level: z.level, name: z.name, total: z.total, probability: Number(z.probability ?? 0),
         })),
-        drawCount: counts.get(p.id) ?? 0,
+        isSealed: p.sealed_at !== null,
       })))
       setRates(initial)
       setSaved(initial)
@@ -132,12 +133,12 @@ export default function RatesPage() {
 
   // 已開賣的調不了，列出來只是雜訊；要看的話再切換
   const [showLocked, setShowLocked] = useState(false)
-  const lockedCount = useMemo(() => rows.filter(r => r.drawCount > 0).length, [rows])
+  const lockedCount = useMemo(() => rows.filter(r => r.isSealed).length, [rows])
 
   const visible = useMemo(() => {
     const k = keyword.trim().toLowerCase()
     const list = rows
-      .filter(r => showLocked || r.drawCount === 0)
+      .filter(r => showLocked || !r.isSealed)
       .filter(r => !k || r.name.toLowerCase().includes(k) || (r.productCode ?? '').toLowerCase().includes(k))
 
     const dir = sortDir === 'asc' ? 1 : -1
@@ -162,7 +163,7 @@ export default function RatesPage() {
 
   const resetAll = () => {
     const next = { ...rates }
-    for (const r of rows) if (r.drawCount === 0) next[r.id] = 1
+    for (const r of rows) if (!r.isSealed) next[r.id] = 1
     setRates(next)
     setConfirmReset(false)
     toast('已全部改回 100%，記得儲存')
@@ -183,8 +184,8 @@ export default function RatesPage() {
       render: r => (
         <div className="min-w-0">
           <div className="truncate">{r.name}</div>
-          {r.drawCount > 0 && (
-            <div className="text-xs text-neutral-400 mt-0.5">已開賣，不可調整</div>
+          {r.isSealed && (
+            <div className="text-xs text-neutral-400 mt-0.5">已上架封存，不可調整</div>
           )}
         </div>
       ),
@@ -195,7 +196,7 @@ export default function RatesPage() {
       sortable: true,
       render: r => {
         const rate = rates[r.id] ?? 1
-        const locked = r.drawCount > 0
+        const locked = r.isSealed
         return (
           <div className="flex items-center gap-3 min-w-[240px]">
             <input
@@ -276,7 +277,7 @@ export default function RatesPage() {
                 onClick={() => setShowLocked(v => !v)}
                 className="text-sm text-neutral-400 hover:text-neutral-600 whitespace-nowrap"
               >
-                {showLocked ? '隱藏' : '顯示'}已開賣（{lockedCount}）
+                {showLocked ? '隱藏' : '顯示'}已封存（{lockedCount}）
               </button>
             )}
           </div>
@@ -309,7 +310,7 @@ export default function RatesPage() {
         onConfirm={resetAll}
         type="warning"
         title="全部重置"
-        message="尚未開賣的商品全部改回 100%，已開賣的不受影響。"
+        message="尚未上架的商品全部改回 100%，已封存的不受影響。"
       />
     </AdminLayout>
   )
