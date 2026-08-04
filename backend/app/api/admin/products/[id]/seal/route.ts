@@ -61,13 +61,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .select('ticket_number, prize_level, user_id')
       .eq('product_id', productId)
 
-    // 名稱另外撈：draw_records 沒有到 users 的 FK，join 不了
+    // 名稱另外撈：draw_records 沒有到 users 的 FK，join 不了。
+    // 欄位是 users.name，不是 nickname —— 選錯欄位 Supabase 會回錯誤，
+    // 而 `?? []` 會把它吞掉，畫面上只會看到整欄的「—」，不會有任何徵兆
     const userIds = [...new Set((draws ?? []).map(d => d.user_id).filter(Boolean))]
-    const { data: users } = userIds.length
-      ? await db.from('users').select('id, nickname, email').in('id', userIds)
-      : { data: [] as any[] }
+    const { data: users, error: usersError } = userIds.length
+      ? await db.from('users').select('id, name, email').in('id', userIds)
+      : { data: [] as any[], error: null }
+    if (usersError) throw usersError
     const nameOf = new Map(
-      (users ?? []).map(u => [u.id, u.nickname || (u.email ?? '').split('@')[0] || null]),
+      (users ?? []).map(u => [u.id, u.name || (u.email ?? '').split('@')[0] || null]),
     )
 
     const drawOf = new Map((draws ?? []).map(d => [d.ticket_number, d]))

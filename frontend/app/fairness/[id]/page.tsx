@@ -135,9 +135,15 @@ export default function FairnessVerifyPage() {
         inTable: inTable.get(level) ?? 0,
         announced: announced.get(level) ?? 0,
       }))
-      // 最後賞不在對照表裡（它不是抽出來的），列出來只會看起來像短少
+      // 最後賞不列進表格。它不是抽出來的籤，列出來「表裡 0 張」看起來像短少
       .filter(c => c.inTable > 0);
   }, [assignment, prizes]);
+
+  /** 這一檔有沒有最後賞 —— 有的話要在數量對照下面講一句，不然玩家會以為它不見了 */
+  const lastOnePrizes = useMemo(
+    () => prizes.filter(p => ['Last One', 'LAST ONE', '最後賞'].includes(p.level)),
+    [prizes],
+  );
 
   const myTicketSet = useMemo(() => new Set(myTickets.map(t => t.ticket_number)), [myTickets]);
   const closedSet = useMemo(() => new Set(seal?.closed_out ?? []), [seal?.closed_out]);
@@ -201,8 +207,7 @@ export default function FairnessVerifyPage() {
                 <Card>
                   <SectionTitle>平台開賣時公布的驗證碼</SectionTitle>
                   <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                    這串數字在 {seal.sealed_at ? new Date(seal.sealed_at).toLocaleString('zh-TW') : '開賣時'} 就公布了。
-                    它是整張對照表的指紋 —— 表只要被改過一個字，指紋就會完全不同。
+                    {`這串數字在 ${seal.sealed_at ? new Date(seal.sealed_at).toLocaleString('zh-TW') : '開賣時'} 就公布了。它是整張對照表的指紋 —— 表只要被改過一個字，指紋就會完全不同。`}
                   </p>
                   <code className="block text-[11px] sm:text-xs font-mono break-all bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-neutral-700 dark:text-neutral-200">
                     {seal.commitment}
@@ -216,12 +221,10 @@ export default function FairnessVerifyPage() {
                   <Card>
                     <SectionTitle>對照表尚未公開</SectionTitle>
                     <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                      這一檔還在販售中。現在就公開，等於直接告訴大家幾號籤有大獎，
-                      所以要等這一檔結束後才會公開。
+                      這一檔還在販售中。現在就公開，等於直接告訴大家幾號籤有大獎，所以要等這一檔結束後才會公開。
                     </p>
                     <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                      你可以先把上面那串驗證碼存起來。等這一檔結束回來這頁，
-                      對照表算出來的指紋必須跟你存的那串一模一樣。
+                      你可以先把上面那串驗證碼存起來。等這一檔結束回來這頁，對照表算出來的指紋必須跟你存的那串一模一樣。
                     </p>
                     {myTickets.length > 0 && (
                       <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
@@ -236,8 +239,7 @@ export default function FairnessVerifyPage() {
                     <Card>
                       <SectionTitle>自己驗一次</SectionTitle>
                       <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
-                        把下面整段複製起來，貼到任何一個 SHA-256 工具裡，
-                        算出來的結果要跟上面那串驗證碼一樣。不用信我們的按鈕，用外面的工具最準。
+                        把下面整段複製起來，貼到任何一個 SHA-256 工具裡，算出來的結果要跟上面那串驗證碼一樣。不用信我們的按鈕，用外面的工具最準。
                       </p>
 
                       <div className="relative">
@@ -321,6 +323,12 @@ export default function FairnessVerifyPage() {
                           </tbody>
                         </table>
                       </div>
+                      {lastOnePrizes.length > 0 && (
+                        <p className="mt-3 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                          {lastOnePrizes.map(p => p.level).join('、')}
+                          不在上面的表裡 —— 它不是抽出來的，是直接給抽走最後一張籤的人。
+                        </p>
+                      )}
                     </Card>
 
                     {/* 你的籤 */}
