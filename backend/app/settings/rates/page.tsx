@@ -49,6 +49,9 @@ interface Row {
 /**
  * 套用殺率後的機率：大獎乘上殺率，其餘按比例補足到 100%。
  * 與 DB 的 play_ichiban 同一套規則，兩邊要一起改。
+ *
+ * 依賞等合併 —— 同一賞等常有多個品項（例如 C賞 有 4 個不同公仔），
+ * 逐筆列出會爆版，合併後才看得懂整體分佈。
  */
 function applyRate(prizes: Prize[], rate: number) {
   const totalOfAll = prizes.reduce((s, p) => s + p.total, 0)
@@ -58,11 +61,18 @@ function applyRate(prizes: Prize[], rate: number) {
   const minorSum = prizes.filter(p => !major(p)).reduce((s, p) => s + p.probability, 0)
   const minorFactor = minorSum > 0 ? Math.max(0, 100 - majorSum * rate) / minorSum : 1
 
-  return prizes.map(p => ({
-    ...p,
-    major: major(p),
-    adjusted: major(p) ? p.probability * rate : p.probability * minorFactor,
-  }))
+  const byLevel = new Map<string, { level: string; adjusted: number; major: boolean }>()
+  for (const p of prizes) {
+    const adjusted = major(p) ? p.probability * rate : p.probability * minorFactor
+    const hit = byLevel.get(p.level)
+    if (hit) {
+      hit.adjusted += adjusted
+      hit.major = hit.major || major(p)
+    } else {
+      byLevel.set(p.level, { level: p.level, adjusted, major: major(p) })
+    }
+  }
+  return [...byLevel.values()].sort((a, b) => a.level.localeCompare(b.level, 'zh-Hant'))
 }
 
 export default function RatesPage() {
@@ -74,6 +84,8 @@ export default function RatesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [sortField, setSortField] = useState<'type' | 'name' | 'rate'>('type')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     const load = async () => {
@@ -124,10 +136,19 @@ export default function RatesPage() {
 
   const visible = useMemo(() => {
     const k = keyword.trim().toLowerCase()
-    return rows
+    const list = rows
       .filter(r => showLocked || r.drawCount === 0)
       .filter(r => !k || r.name.toLowerCase().includes(k) || (r.productCode ?? '').toLowerCase().includes(k))
-  }, [rows, keyword, showLocked])
+
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...list].sort((a, b) => {
+      // 殺率用當前值（含尚未儲存的），排完才符合畫面上看到的
+      if (sortField === 'rate') return ((rates[a.id] ?? 1) - (rates[b.id] ?? 1)) * dir
+      const av = sortField === 'type' ? (TYPE_LABEL[a.type] ?? a.type) : a.name
+      const bv = sortField === 'type' ? (TYPE_LABEL[b.type] ?? b.type) : b.name
+      return av.localeCompare(bv, 'zh-Hant') * dir
+    })
+  }, [rows, keyword, showLocked, sortField, sortDir, rates])
 
   const save = async () => {
     setIsSaving(true)
@@ -151,11 +172,13 @@ export default function RatesPage() {
     {
       key: 'type',
       label: '類別',
+      sortable: true,
       render: r => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
     },
     {
       key: 'name',
       label: '商品',
+      sortable: true,
       className: 'font-medium',
       render: r => (
         <div className="min-w-0">
@@ -169,6 +192,7 @@ export default function RatesPage() {
     {
       key: 'rate',
       label: '殺率',
+      sortable: true,
       render: r => {
         const rate = rates[r.id] ?? 1
         const locked = r.drawCount > 0
@@ -176,7 +200,7 @@ export default function RatesPage() {
           <div className="flex items-center gap-3 min-w-[240px]">
             <input
               type="range"
-              min={0} max={200} step={5}
+              min={1} max={200} step={1}
               value={Math.round(rate * 100)}
               disabled={locked}
               onChange={e => setRates({ ...rates, [r.id]: Number(e.target.value) / 100 })}
@@ -193,18 +217,29 @@ export default function RatesPage() {
     },
     {
       key: 'prizes',
-      label: '大獎機率',
+      label: '機率',
       render: r => {
-        const majors = applyRate(r.prizes, rates[r.id] ?? 1).filter(p => p.major)
-        if (majors.length === 0) return <span className="text-neutral-400">無大獎賞項</span>
+        const levels = applyRate(r.prizes, rates[r.id] ?? 1)
+        if (levels.length === 0) return <span className="text-neutral-400">無賞項</span>
+        const sum = levels.reduce((s2, p) => s2 + p.adjusted, 0)
         return (
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {majors.map(p => (
-              <span key={p.level + p.name} className="whitespace-nowrap">
-                <span className="text-neutral-500">{p.level}</span>
-                <span className="ml-1.5 font-mono tabular-nums">{p.adjusted.toFixed(2)}%</span>
-              </span>
-            ))}
+          <div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {levels.map(p => (
+                <span key={p.level} className="whitespace-nowrap">
+                  <span className="text-neutral-500">{p.level}</span>
+                  <span className={`ml-1.5 font-mono tabular-nums ${
+                    p.major ? 'text-primary font-semibold' : ''
+                  }`}>
+                    {p.adjusted.toFixed(2)}%
+                  </span>
+                </span>
+              ))}
+            </div>
+            {/* 正常是 100%，不必顯示；只有資料有問題時才提示 */}
+            {Math.abs(sum - 100) >= 0.05 && (
+              <div className="mt-1 text-xs text-red-500">合計 {sum.toFixed(2)}%，配率資料有誤</div>
+            )}
           </div>
         )
       },
@@ -248,6 +283,12 @@ export default function RatesPage() {
           keyField="id"
           isLoading={isLoading}
           emptyMessage="沒有符合的商品"
+          sortField={sortField}
+          sortDirection={sortDir}
+          onSort={f => {
+            if (f === sortField) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+            else { setSortField(f as typeof sortField); setSortDir('asc') }
+          }}
         />
       </PageCard>
 
