@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
 import FileInput from '@/components/ui/FileInput'
+import Textarea from '@/components/ui/Textarea'
 
 const CATEGORY_LABELS: Record<string, string> = {
   ichiban:  '一番賞',
@@ -134,9 +135,9 @@ export default function NewsEditPage() {
           </PageCard>
 
           <PageCard title="內容（HTML）">
-            <textarea value={form.content ?? ''}
+            <Textarea value={form.content ?? ''}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              className={`${inputCls} font-mono`}
+              className="font-mono"
               style={{ minHeight: '420px', resize: 'vertical' }}
               placeholder="<h2>小標</h2><p>段落...</p>" />
           </PageCard>

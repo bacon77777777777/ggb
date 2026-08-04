@@ -12,6 +12,7 @@ import FileInput from '@/components/ui/FileInput'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import SelectField from '@/components/ui/SelectField'
+import Button from '@/components/ui/Button'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
@@ -765,9 +766,7 @@ export default function SlotThemeDetailPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleAutoAssignLevels} className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
-                    ✦ 自動分配賞等
-                  </button>
+                  <Button variant="secondary" size="sm" onClick={handleAutoAssignLevels}>✦ 自動分配賞等</Button>
                   <button onClick={openAddPrize} className={BTN_PRIMARY}>+ 加入獎品</button>
                 </div>
               </div>
