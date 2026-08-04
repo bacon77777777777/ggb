@@ -222,19 +222,30 @@ export default function RatesPage() {
         const levels = applyRate(r.prizes, rates[r.id] ?? 1)
         if (levels.length === 0) return <span className="text-neutral-400">無賞項</span>
         const sum = levels.reduce((s2, p) => s2 + p.adjusted, 0)
+
+        // 最爛賞（機率最高的普獎）獨立靠右固定欄位 ——
+        // 各商品賞等數量不同（5 個 vs 6 個），全部塞同一個 flex 會讓它左右飄
+        const worst = levels.reduce((a, b) => (b.adjusted > a.adjusted ? b : a))
+        const rest = levels.filter(p => p !== worst)
+
+        const cell = (p: typeof worst) => (
+          <span key={p.level} className="whitespace-nowrap">
+            <span className="text-neutral-500">{p.level}</span>
+            <span className={`ml-1.5 font-mono tabular-nums ${
+              p.major ? 'text-primary font-semibold' : ''
+            }`}>
+              {p.adjusted.toFixed(2)}%
+            </span>
+          </span>
+        )
+
         return (
           <div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {levels.map(p => (
-                <span key={p.level} className="whitespace-nowrap">
-                  <span className="text-neutral-500">{p.level}</span>
-                  <span className={`ml-1.5 font-mono tabular-nums ${
-                    p.major ? 'text-primary font-semibold' : ''
-                  }`}>
-                    {p.adjusted.toFixed(2)}%
-                  </span>
-                </span>
-              ))}
+            <div className="flex items-start gap-4">
+              <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1">
+                {rest.map(cell)}
+              </div>
+              <div className="w-28 flex-shrink-0 text-right">{cell(worst)}</div>
             </div>
             {/* 正常是 100%，不必顯示；只有資料有問題時才提示 */}
             {Math.abs(sum - 100) >= 0.05 && (
