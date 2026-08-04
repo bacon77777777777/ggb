@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { AdminLayout, PageCard, Modal } from '@/components'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface SlotTheme {
   id: number
@@ -35,6 +37,7 @@ const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outli
 export default function SlotThemesPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const [themes, setThemes] = useState<SlotTheme[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -103,9 +106,14 @@ export default function SlotThemesPage() {
   }
 
   const handleDelete = async (theme: SlotTheme) => {
-    if (!confirm(`確定刪除主題「${theme.name}」？旗下機台將被解除關聯（session 歷史保留）。`)) return
-    const res = await fetch(`/api/admin/slot/themes/${theme.id}`, { method: 'DELETE' })
-    if (res.ok) { toast('已刪除'); fetchThemes() }
+    confirm({
+      title: '確認操作',
+      message: "確定刪除主題「${theme.name}」？旗下機台將被解除關聯（session 歷史保留）。",
+      onConfirm: async () => {
+      const res = await fetch(`/api/admin/slot/themes/${theme.id}`, { method: 'DELETE' })
+      if (res.ok) { toast('已刪除'); fetchThemes() }
+      },
+    })
   }
 
   const filtered = themes.filter(t =>
@@ -307,6 +315,7 @@ export default function SlotThemesPage() {
           </div>
         </div>
       </Modal>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

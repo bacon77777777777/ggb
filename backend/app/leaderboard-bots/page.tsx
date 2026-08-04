@@ -5,6 +5,8 @@ import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import SelectField from '@/components/ui/SelectField'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface Bot {
   id: number
@@ -41,6 +43,7 @@ const BLANK: Partial<Bot> = {
 
 export default function LeaderboardBotsPage() {
   const [bots, setBots] = useState<Bot[]>([])
+  const { confirm, dialogProps } = useConfirmDialog()
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<Partial<Bot>>(BLANK)
@@ -83,9 +86,14 @@ export default function LeaderboardBotsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除這個機器人？')) return
-    await fetch(`/api/admin/leaderboard-bots?id=${id}`, { method: 'DELETE' })
-    setBots(prev => prev.filter(b => b.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這個機器人？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/leaderboard-bots?id=${id}`, { method: 'DELETE' })
+      setBots(prev => prev.filter(b => b.id !== id))
+      },
+    })
   }
 
   const startEdit = (bot: Bot) => {
@@ -285,6 +293,7 @@ export default function LeaderboardBotsPage() {
           </div>
         )}
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

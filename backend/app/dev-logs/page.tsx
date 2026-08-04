@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 // ── 監控 ────────────────────────────────────────────────────────────────────
 interface MonitorLog {
@@ -82,6 +84,7 @@ function Badge({ meta }: { meta: { label: string; color: string } }) {
 
 export default function DevLogsPage() {
   const [logs, setLogs] = useState<DevLog[]>([])
+  const { confirm, dialogProps } = useConfirmDialog()
   const [meetings, setMeetings] = useState<MeetingLog[]>([])
   const [monitorLogs, setMonitorLogs] = useState<MonitorLog[]>([])
   const [monitorLoading, setMonitorLoading] = useState(false)
@@ -188,15 +191,25 @@ export default function DevLogsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除這筆紀錄？')) return
-    await fetch(`/api/admin/dev-logs?id=${id}`, { method: 'DELETE' })
-    setLogs(prev => prev.filter(l => l.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這筆紀錄？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/dev-logs?id=${id}`, { method: 'DELETE' })
+      setLogs(prev => prev.filter(l => l.id !== id))
+      },
+    })
   }
 
   const handleMeetingDelete = async (id: number) => {
-    if (!confirm('確定要刪除這筆會議記錄？')) return
-    await fetch(`/api/admin/meeting-logs?id=${id}`, { method: 'DELETE' })
-    setMeetings(prev => prev.filter(m => m.id !== id))
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除這筆會議記錄？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/meeting-logs?id=${id}`, { method: 'DELETE' })
+      setMeetings(prev => prev.filter(m => m.id !== id))
+      },
+    })
   }
 
   const startEdit = (log: DevLog) => {
@@ -787,6 +800,7 @@ export default function DevLogsPage() {
           </>
         )}
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

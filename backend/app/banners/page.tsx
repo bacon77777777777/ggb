@@ -9,6 +9,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const PAGE_TABS = [
   { value: 'home', label: '首頁輪播圖' },
@@ -32,6 +34,7 @@ interface Banner {
 
 export default function BannersPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -115,23 +118,28 @@ export default function BannersPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('確定要刪除此輪播圖嗎？')) return
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除此輪播圖嗎？",
+      onConfirm: async () => {
 
-    try {
-      const res = await fetch(`/api/banners/${id}`, {
-        method: 'DELETE',
-      })
-      
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || '刪除失敗')
+      try {
+        const res = await fetch(`/api/banners/${id}`, {
+          method: 'DELETE',
+        })
+        
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.error || '刪除失敗')
+        }
+
+        fetchData()
+      } catch (error: any) {
+        console.error('Error deleting banner:', error)
+        toast(error.message || '刪除失敗', 'error')
       }
-
-      fetchData()
-    } catch (error: any) {
-      console.error('Error deleting banner:', error)
-      toast(error.message || '刪除失敗', 'error')
-    }
+      },
+    })
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -507,6 +515,7 @@ export default function BannersPage() {
           </div>
         </Modal>
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

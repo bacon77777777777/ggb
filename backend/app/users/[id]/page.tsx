@@ -10,6 +10,8 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import SelectField from '@/components/ui/SelectField'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 // Define interfaces for local state
 interface User {
@@ -84,6 +86,7 @@ interface WarehouseItem {
 
 export default function UserDetailPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const router = useRouter()
   const params = useParams()
   const userId = params.id as string
@@ -427,6 +430,7 @@ export default function UserDetailPage() {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
       </AdminLayout>
     )
   }
@@ -474,9 +478,11 @@ export default function UserDetailPage() {
               <button
                 onClick={() => {
                   const newStatus = userStatus === 'active' ? 'inactive' : 'active'
-                  if (confirm(`確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`)) {
-                    handleStatusUpdate(newStatus)
-                  }
+                  confirm({
+                    title: '確認操作',
+                    message: `確定要${userStatus === 'active' ? '停用' : '啟用'}此會員嗎？`,
+                    onConfirm: () => handleStatusUpdate(newStatus),
+                  })
                 }}
                 className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md ${
                   userStatus === 'active'
@@ -506,7 +512,7 @@ export default function UserDetailPage() {
             <button
               onClick={() => {
                 if (userStatus === 'frozen') {
-                  if (confirm('確定解除此帳號凍結？')) handleRiskAction('unfreeze')
+                  confirm({ title: '確認操作', message: "\u78ba\u5b9a\u89e3\u9664\u6b64\u5e33\u865f\u51cd\u7d50\uff1f", onConfirm: () => handleRiskAction('unfreeze') })
                 } else {
                   const reason = prompt('凍結原因（可選）：') ?? undefined
                   if (reason !== null) handleRiskAction('freeze', reason || undefined)
@@ -539,7 +545,7 @@ export default function UserDetailPage() {
             <button
               onClick={() => {
                 if (user?.isSuspicious) {
-                  if (confirm('確定解除可疑標記？')) handleRiskAction('unflag')
+                  confirm({ title: '確認操作', message: "\u78ba\u5b9a\u89e3\u9664\u53ef\u7591\u6a19\u8a18\uff1f", onConfirm: () => handleRiskAction('unflag') })
                 } else {
                   const reason = prompt('標記原因（可選）：') ?? undefined
                   if (reason !== null) handleRiskAction('flag', reason || undefined)

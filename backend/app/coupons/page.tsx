@@ -8,6 +8,8 @@ import { useToast } from '@/contexts/ToastContext'
 import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 type DiscountType = 'fixed' | 'percentage'
 
@@ -35,6 +37,7 @@ interface CouponFormState {
 
 export default function CouponsPage() {
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
   const [coupons, setCoupons] = useState<CouponRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -103,19 +106,24 @@ export default function CouponsPage() {
   }
 
   const handleDelete = async (coupon: CouponRow) => {
-    if (!confirm(`確定要刪除折價券「${coupon.title}」嗎？`)) return
-    try {
-      const { error } = await supabase
-        .from('coupons')
-        .delete()
-        .eq('id', coupon.id)
+    confirm({
+      title: '確認操作',
+      message: "確定要刪除折價券「${coupon.title}」嗎？",
+      onConfirm: async () => {
+      try {
+        const { error } = await supabase
+          .from('coupons')
+          .delete()
+          .eq('id', coupon.id)
 
-      if (error) throw error
-      await fetchCoupons()
-    } catch (error) {
-      console.error('Error deleting coupon:', error)
-      toast('刪除折價券失敗', 'error')
-    }
+        if (error) throw error
+        await fetchCoupons()
+      } catch (error) {
+        console.error('Error deleting coupon:', error)
+        toast('刪除折價券失敗', 'error')
+      }
+      },
+    })
   }
 
   const handleSubmit = async () => {
@@ -409,6 +417,7 @@ export default function CouponsPage() {
           </div>
         </Modal>
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

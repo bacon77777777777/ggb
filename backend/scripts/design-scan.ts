@@ -39,7 +39,9 @@ const HANDROLLED = [
   { type: '手刻 file 上傳', regex: /<input[^>]*type="file"/g,                          fix: '改用 <FileInput>' },
   { type: '手刻 input',    regex: /<input\b(?![^>]*type="(?:checkbox|radio|file)")[^>]*className=/g, fix: '改用 <Input>' },
   { type: '手刻 button',   regex: /<button[^>]*className="[^"]*\bbg-(?:primary|neutral-100)\b/g,   fix: '改用 <Button variant=...>' },
-  { type: '原生 confirm',  regex: /(?:window\.)?confirm\(/g,                          fix: '改用 <ConfirmDialog>' },
+  // 只抓原生 confirm（參數是字串）—— 專案已有 useConfirmDialog()，
+  // 它的呼叫形式是 confirm({ ... })，不算違規
+  { type: '原生 confirm',  regex: /(?:window\.)?confirm\(\s*['"\`]/g,                   fix: '改用 useConfirmDialog()' },
   { type: '自製 overlay',  regex: /className="[^"]*fixed inset-0[^"]*z-\[?\d/g,        fix: '改用 <Modal>' },
 ]
 

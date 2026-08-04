@@ -7,6 +7,8 @@ import { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface Analysis {
   id: number
@@ -50,6 +52,7 @@ export default function CompetitorIntelPage() {
   const [posts, setPosts]           = useState<Post[]>([])
   const [loading, setLoading]       = useState(false)
   const [triggering, setTriggering] = useState(false)
+  const { confirm, dialogProps } = useConfirmDialog()
   const [showForm, setShowForm]     = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -93,9 +96,14 @@ export default function CompetitorIntelPage() {
   }
 
   const removePost = async (id: number) => {
-    if (!confirm('確定刪除此筆情報？')) return
-    await fetch(`/api/admin/competitor-posts?id=${id}`, { method: 'DELETE' })
-    loadAll()
+    confirm({
+      title: '確認操作',
+      message: "確定刪除此筆情報？",
+      onConfirm: async () => {
+      await fetch(`/api/admin/competitor-posts?id=${id}`, { method: 'DELETE' })
+      loadAll()
+      },
+    })
   }
 
   const latest = analyses[0]
@@ -341,6 +349,7 @@ export default function CompetitorIntelPage() {
           </div>
         )}
       </div>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

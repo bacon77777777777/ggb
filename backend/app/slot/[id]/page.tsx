@@ -12,6 +12,8 @@ import FileInput from '@/components/ui/FileInput'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import SelectField from '@/components/ui/SelectField'
+import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -91,6 +93,7 @@ export default function SlotThemeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
+  const { confirm, dialogProps } = useConfirmDialog()
 
   const [theme, setTheme]       = useState<SlotTheme | null>(null)
   const [prizes, setPrizes]     = useState<ThemePrize[]>([])
@@ -291,13 +294,18 @@ export default function SlotThemeDetailPage() {
   }
 
   const handleDeletePoolItem = async (item: PoolItem) => {
-    if (!confirm('確定從所有機台移除此獎品？')) return
-    const res = await fetch(
-      `/api/admin/slot/themes/${id}/pool?pool_item_id=${item.id}`,
-      { method: 'DELETE' }
-    )
-    if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
-    else toast('移除失敗', 'error')
+    confirm({
+      title: '確認操作',
+      message: "確定從所有機台移除此獎品？",
+      onConfirm: async () => {
+      const res = await fetch(
+        `/api/admin/slot/themes/${id}/pool?pool_item_id=${item.id}`,
+        { method: 'DELETE' }
+      )
+      if (res.ok) { toast('已從所有機台移除'); fetchPoolItems() }
+      else toast('移除失敗', 'error')
+      },
+    })
   }
 
   const handleSaveRecycleValue = async () => {
@@ -360,10 +368,15 @@ export default function SlotThemeDetailPage() {
   }
 
   const handleRemoveMachine = async (machineId: number) => {
-    if (!confirm('確定移除此機台？')) return
-    const res = await fetch(`/api/admin/slot/themes/${id}/machines?machine_id=${machineId}`, { method: 'DELETE' })
-    if (res.ok) { toast('已移除'); fetchData() }
-    else toast('移除失敗', 'error')
+    confirm({
+      title: '確認操作',
+      message: "確定移除此機台？",
+      onConfirm: async () => {
+      const res = await fetch(`/api/admin/slot/themes/${id}/machines?machine_id=${machineId}`, { method: 'DELETE' })
+      if (res.ok) { toast('已移除'); fetchData() }
+      else toast('移除失敗', 'error')
+      },
+    })
   }
 
   const handleToggleMachine = async (machine: Machine) => {
@@ -987,6 +1000,7 @@ export default function SlotThemeDetailPage() {
           </div>
         </div>
       </Modal>
+      {dialogProps && <ConfirmDialog {...dialogProps} />}
     </AdminLayout>
   )
 }

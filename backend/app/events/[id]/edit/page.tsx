@@ -555,7 +555,7 @@ function SectionRow({ section, idx, total, products, onSave, onDelete, onMoveUp,
             className="w-7 h-7 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 disabled:opacity-30 transition-colors text-sm">↑</button>
           <button onClick={e => { e.stopPropagation(); onMoveDown(section.id) }} disabled={idx === total - 1}
             className="w-7 h-7 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 disabled:opacity-30 transition-colors text-sm">↓</button>
-          <button onClick={e => { e.stopPropagation(); if (confirm('確定刪除此 section？')) onDelete(section.id) }}
+          <button onClick={e => { e.stopPropagation(); if (confirm("\u78ba\u5b9a\u522a\u9664\u6b64 section\uff1f")) onDelete(section.id) }}
             className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 transition-colors text-sm">×</button>
           <span className="text-neutral-300 text-sm ml-1">{open ? '▲' : '▼'}</span>
         </div>
