@@ -124,6 +124,67 @@ function calculateAdjustedPrizes(product: Product, profitRate: number) {
 }
 
 export default function ProductVerifyPage() {
+  const verifyColumns: Column<any>[] = [
+    {
+      key: "c0",
+      label: "序號",
+      className: "text-neutral-600 align-middle",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>{index + 1}</>)
+      },
+    },
+    {
+      key: "c1",
+      label: "抽獎編號",
+      className: "font-mono text-neutral-700 align-middle",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>{draw.drawId}</>)
+      },
+    },
+    {
+      key: "c2",
+      label: "籤號",
+      className: "align-middle",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>
+                                <span className="inline-flex items-center justify-center font-mono bg-primary px-2 py-1 rounded text-neutral-700 w-[3.5rem]">
+                                  {ticketNumber.toString().padStart(3, '0')}
+                                </span>
+                              </>)
+      },
+    },
+    {
+      key: "c3",
+      label: "使用者",
+      className: "text-neutral-700 align-middle",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>{draw.userName}</>)
+      },
+    },
+    {
+      key: "c4",
+      label: "獎項",
+      className: "text-neutral-700 align-middle",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>{draw.prize}</>)
+      },
+    },
+    {
+      key: "c5",
+      label: "時間",
+      className: "text-neutral-600 align-middle font-mono",
+      render: (draw, index) => {
+        const ticketNumber = draw.ticketNumber || draw.nonce
+        return (<>{draw.time}</>)
+      },
+    },
+  ]
+
   const verifyColumns0: Column<any>[] = [
     {
       key: "c0",
@@ -978,38 +1039,12 @@ verifyDraws().then(results => {
               <div className={`${!isDistributionExpanded ? 'max-h-96 overflow-y-hidden' : ''}`}>
                 {/* 抽獎記錄列表 */}
                 <div className="overflow-x-auto mb-6">
-                  <table className="w-full text-sm">
-                    <thead className="bg-neutral-50 border-b border-neutral-200">
-                      <tr className="border-b border-neutral-200">
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">序號</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">抽獎編號</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">籤號</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">使用者</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">獎項</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-neutral-500">時間</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draws.map((draw, index) => {
-                        const ticketNumber = draw.ticketNumber || draw.nonce
-                        
-                        return (
-                          <tr key={draw.id} className="border-b border-neutral-100">
-                            <td className="py-2 px-3 text-neutral-600 align-middle">{index + 1}</td>
-                            <td className="py-2 px-3 font-mono text-neutral-700 align-middle">{draw.drawId}</td>
-                            <td className="py-2 px-3 align-middle">
-                              <span className="inline-flex items-center justify-center font-mono bg-primary px-2 py-1 rounded text-neutral-700 w-[3.5rem]">
-                                {ticketNumber.toString().padStart(3, '0')}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-neutral-700 align-middle">{draw.userName}</td>
-                            <td className="py-2 px-3 text-neutral-700 align-middle">{draw.prize}</td>
-                            <td className="py-2 px-3 text-neutral-600 align-middle font-mono">{draw.time}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  <DataTable
+  data={draws}
+  columns={verifyColumns}
+  keyField="id"
+  rowClassName={() => "border-b border-neutral-100"}
+/>
                 </div>
               </div>
               {!isDistributionExpanded && (

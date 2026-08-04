@@ -53,6 +53,10 @@ interface DataTableProps<T> {
   isLoadingMore?: boolean
   totalCount?: number
   
+  // 合計列。報表最下方的「合計」那一行，資料有值時才渲染 <tfoot>。
+  // 傳 <tr><td colSpan=...>…</td></tr>，欄數可用 footerColSpan 算。
+  footer?: ReactNode
+
   // 空狀態
   emptyMessage?: string
 
@@ -87,6 +91,7 @@ export default function DataTable<T extends { id: number | string }>({
   onLoadMore,
   isLoadingMore = false,
   totalCount,
+  footer,
   emptyMessage = '沒有資料',
   visibleColumns,
   isLoading = false
@@ -297,6 +302,12 @@ export default function DataTable<T extends { id: number | string }>({
             })
           )}
         </tbody>
+        {/* 有資料才顯示合計，空表格掛一行「合計 0」只會讓人以為壞了 */}
+        {footer && data.length > 0 && (
+          <tfoot className="bg-neutral-50 border-t border-neutral-200">
+            {footer}
+          </tfoot>
+        )}
       </table>
 
       {/* 無限滾動載入區 */}
