@@ -1603,8 +1603,11 @@ export default function ProductDetailPage() {
 
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-        {/* Mobile < 1024px */}
-        <div className="block lg:hidden overflow-x-hidden pb-32 pt-14">
+        {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
+        <div
+          className="block lg:hidden overflow-x-hidden pb-32"
+          style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+        >
           <div
             className="w-full flex justify-center"
             style={{ marginBottom: Math.round(375 * (932 / 750) * (cardScale - 1)) }}
@@ -1761,13 +1764,18 @@ export default function ProductDetailPage() {
             onTopUp={() => router.push('/topup')}
           />
         )}
-        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
+        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12 pt-14">
+    // pt 加上警語列高度（--promo-notice-h 由 NoticeBar 量測後掛上）：
+    // 警語列是 fixed，不留這段內容會被它蓋住
+    <div
+      className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12"
+      style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+    >
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
           <div className="lg:col-span-4 lg:sticky lg:top-20">
@@ -2360,7 +2368,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
-      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
+      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
     </div>
   );
 }

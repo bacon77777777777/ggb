@@ -231,8 +231,13 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
 
     /* ── SECTIONS ── */
     .lpv-sec{padding:64px 18px;max-width:1000px;margin:0 auto;}
-    .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;color:${textColor};}
-    .lpv-h2s{text-align:center;font-size:13px;margin-top:8px;margin-bottom:34px;
+    /* 標題的下間距原本完全靠副標的 margin-bottom 撐；沒有副標的區塊（例：公平驗證頁的
+       「三步驟」「在哪裡看」）標題就直接貼著內容。標題自己要有下間距，有副標時才收窄。
+       line-height 也要蓋掉全域 h1~h6 的 1 —— 中文字在 44px 下會擠成一團。 */
+    .lpv-h2{text-align:center;font-weight:900;font-size:clamp(26px,7vw,44px);letter-spacing:1px;
+      line-height:1.25;margin-bottom:34px;color:${textColor};}
+    .lpv-h2:has(+ .lpv-h2s){margin-bottom:8px;}
+    .lpv-h2s{text-align:center;font-size:13px;margin-top:0;margin-bottom:34px;
       font-weight:700;letter-spacing:.5px;line-height:1.7;color:${subtitleColor};}
     .lpv-pp{background:${sectionTitleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
     .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
