@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface SitePromo {
   id: string;
-  kind: 'popup' | 'notice';
   title: string | null;
   body: string;
   image_url: string | null;
@@ -25,13 +24,14 @@ export interface SitePromo {
 }
 
 /**
- * 取出「此時此地該顯示」的推廣素材。
+ * 取出「此時此地該顯示」的首頁彈窗。
+ * 警語列不走這裡 —— 它的內容與規則寫死在 NoticeBar，不做後台設定。
  *
  * 檔期沿用 lib/schedule 那套（與後台、DB 的 schedule_state 同規則），
  * 只是這裡 upcoming 與 ended 都直接不顯示——推廣素材沒有「顯示為已結束」
  * 這種狀態，過期就該消失。
  */
-export function usePromos(kind: 'popup' | 'notice', placement: string) {
+export function usePromos(placement: string) {
   const [promos, setPromos] = useState<SitePromo[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -46,7 +46,7 @@ export function usePromos(kind: 'popup' | 'notice', placement: string) {
       const { data } = await supabase
         .from('site_promos')
         .select('*')
-        .eq('kind', kind)
+        .eq('kind', 'popup')
         .eq('is_active', true)
         .contains('placements', [placement])
         .order('sort_order', { ascending: true });
@@ -75,7 +75,7 @@ export function usePromos(kind: 'popup' | 'notice', placement: string) {
       cancelled = true;
       window.removeEventListener('ggb:promoDismissed', onDismiss);
     };
-  }, [kind, placement, isAuthenticated, isAuthLoading]);
+  }, [placement, isAuthenticated, isAuthLoading]);
 
   return { promos, isLoaded };
 }

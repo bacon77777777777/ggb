@@ -1,14 +1,14 @@
 'use client'
 
 /**
- * 推廣素材管理 —— 首頁彈窗與底部警語列
+ * 首頁彈窗管理 —— 輪播圖管理頁的第三個頁籤
  *
- * 首波內容是公平性推廣，但機制是通用的：活動推廣、公告都用同一張表，
- * 差在 kind（彈窗／警語列）與 placements（出現在哪些頁）。
+ * 底部警語列不在這裡：它的內容與出現規則寫死在前台 NoticeBar，
+ * 那條專為公平性存在，做成可編輯只會被拿去放不相干的訊息。
  */
 
 import { useEffect, useState } from 'react'
-import { AdminLayout, PageCard, Modal } from '@/components'
+import { PageCard, Modal } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
 import ScheduleFields from '@/components/ScheduleFields'
@@ -16,7 +16,6 @@ import { useToast } from '@/contexts/ToastContext'
 
 interface Promo {
   id: string
-  kind: 'popup' | 'notice'
   title: string | null
   body: string
   image_url: string | null
@@ -35,16 +34,6 @@ interface Promo {
 
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
-const KIND_LABEL: Record<Promo['kind'], string> = {
-  popup:  '首頁彈窗',
-  notice: '底部警語列',
-}
-
-const PLACEMENT_OPTIONS = [
-  { value: 'home',      label: '首頁' },
-  { value: 'item_fair', label: '一番賞／抽卡／自製賞內頁' },
-]
-
 const AUDIENCE_LABEL: Record<Promo['audience'], string> = {
   all:        '全部',
   logged_in:  '已登入',
@@ -52,7 +41,6 @@ const AUDIENCE_LABEL: Record<Promo['audience'], string> = {
 }
 
 const EMPTY: Omit<Promo, 'id'> = {
-  kind: 'popup',
   title: '',
   body: '',
   image_url: '',
@@ -69,7 +57,7 @@ const EMPTY: Omit<Promo, 'id'> = {
   sort_order: 0,
 }
 
-export default function PromosPage() {
+export default function PopupPanel() {
   const { toast } = useToast()
   const [promos, setPromos] = useState<Promo[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -194,23 +182,14 @@ export default function PromosPage() {
     fetchPromos()
   }
 
-  const isImagePopup = editing?.kind === 'popup' && editing.layout === 'image'
-
-  const togglePlacement = (v: string) => {
-    if (!editing) return
-    const has = editing.placements.includes(v)
-    setEditing({
-      ...editing,
-      placements: has ? editing.placements.filter(x => x !== v) : [...editing.placements, v],
-    })
-  }
+  const isImagePopup = editing?.layout === 'image'
 
   return (
-    <AdminLayout pageTitle="推廣素材">
+    <>
       <PageCard>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-neutral-500">
-            首頁彈窗與底部警語列的內容。玩家關閉後，依「再出現間隔」的天數才會再跳。
+進站後蓋在首頁上的彈窗。一次只會跳排序最前的一則。
           </p>
           <button
             onClick={() => openEditor({ ...EMPTY })}
@@ -223,15 +202,14 @@ export default function PromosPage() {
         {isLoading ? (
           <p className="text-sm text-neutral-400 py-8 text-center">載入中…</p>
         ) : promos.length === 0 ? (
-          <p className="text-sm text-neutral-400 py-8 text-center">尚無推廣素材</p>
+          <p className="text-sm text-neutral-400 py-8 text-center">尚無首頁彈窗</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr className="text-left text-neutral-600">
-                  <th className="px-3 py-2 font-medium">類型</th>
+                  <th className="px-3 py-2 font-medium">版型</th>
                   <th className="px-3 py-2 font-medium">內容</th>
-                  <th className="px-3 py-2 font-medium">出現位置</th>
                   <th className="px-3 py-2 font-medium">對象</th>
                   <th className="px-3 py-2 font-medium">再出現</th>
                   <th className="px-3 py-2 font-medium">上架</th>
@@ -242,13 +220,12 @@ export default function PromosPage() {
                 {promos.map(p => (
                   <tr key={p.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-3 py-2.5">
-                      <Badge color={p.kind === 'popup' ? 'purple' : 'gray'}>{KIND_LABEL[p.kind]}</Badge>
-                      {p.kind === 'popup' && p.layout === 'image' && (
-                        <span className="ml-1"><Badge color="blue">純圖片</Badge></span>
-                      )}
+                      <Badge color={p.layout === 'image' ? 'blue' : 'purple'}>
+                        {p.layout === 'image' ? '純圖片' : '卡片'}
+                      </Badge>
                     </td>
                     <td className="px-3 py-2.5 max-w-md">
-                      {p.kind === 'popup' && p.layout === 'image' ? (
+                      {p.layout === 'image' ? (
                         <div className="flex items-center gap-2">
                           {p.image_url
                             ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
@@ -261,9 +238,6 @@ export default function PromosPage() {
                           <div className="text-neutral-500 line-clamp-2">{p.body}</div>
                         </>
                       )}
-                    </td>
-                    <td className="px-3 py-2.5 text-neutral-600">
-                      {p.placements.map(v => PLACEMENT_OPTIONS.find(o => o.value === v)?.label ?? v).join('、') || '—'}
                     </td>
                     <td className="px-3 py-2.5 text-neutral-600">{AUDIENCE_LABEL[p.audience]}</td>
                     <td className="px-3 py-2.5 text-neutral-600">
@@ -289,20 +263,20 @@ export default function PromosPage() {
       <Modal
         isOpen={!!editing}
         onClose={() => setEditing(null)}
-        title={editing?.id ? '編輯推廣素材' : '新增推廣素材'}
+        title={editing?.id ? '編輯首頁彈窗' : '新增首頁彈窗'}
       >
         {editing && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-neutral-600 mb-1">類型</label>
+                <label className="block text-sm text-neutral-600 mb-1">版型</label>
                 <select
                   className={INPUT}
-                  value={editing.kind}
-                  onChange={e => setEditing({ ...editing, kind: e.target.value as Promo['kind'] })}
+                  value={editing.layout}
+                  onChange={e => setEditing({ ...editing, layout: e.target.value as Promo['layout'] })}
                 >
-                  <option value="popup">首頁彈窗</option>
-                  <option value="notice">底部警語列</option>
+                  <option value="card">卡片（圖＋標題＋內文＋按鈕）</option>
+                  <option value="image">純圖片（整張圖點擊即跳轉）</option>
                 </select>
               </div>
               <div>
@@ -319,21 +293,7 @@ export default function PromosPage() {
               </div>
             </div>
 
-            {editing.kind === 'popup' && (
-              <div>
-                <label className="block text-sm text-neutral-600 mb-1">版型</label>
-                <select
-                  className={INPUT}
-                  value={editing.layout}
-                  onChange={e => setEditing({ ...editing, layout: e.target.value as Promo['layout'] })}
-                >
-                  <option value="card">卡片（圖＋標題＋內文＋按鈕）</option>
-                  <option value="image">純圖片（整張圖點擊即跳轉）</option>
-                </select>
-              </div>
-            )}
-
-            {editing.kind === 'popup' && editing.layout === 'card' && (
+            {editing.layout === 'card' && (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">標題</label>
                 <input className={INPUT} value={editing.title ?? ''}
@@ -354,7 +314,7 @@ export default function PromosPage() {
             ) : (
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">內容</label>
-                <textarea className={INPUT} rows={editing.kind === 'popup' ? 4 : 2}
+                <textarea className={INPUT} rows={4}
                   value={editing.body}
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
                 <p className="text-xs text-neutral-400 mt-1">
@@ -363,7 +323,7 @@ export default function PromosPage() {
               </div>
             )}
 
-            {editing.kind === 'popup' && (
+            {(
               <div>
                 <label className="block text-sm text-neutral-600 mb-1">
                   圖片{isImagePopup ? ' *' : '（選填）'}
@@ -441,26 +401,6 @@ export default function PromosPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-neutral-600 mb-1">出現位置</label>
-              <div className="flex flex-wrap gap-2">
-                {PLACEMENT_OPTIONS.map(o => (
-                  <button
-                    key={o.value}
-                    type="button"
-                    onClick={() => togglePlacement(o.value)}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      editing.placements.includes(o.value)
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <label className="block text-sm text-neutral-600 mb-1">玩家按下叉叉後</label>
               <div className="flex gap-2">
                 <select
@@ -510,6 +450,6 @@ export default function PromosPage() {
           </div>
         )}
       </Modal>
-    </AdminLayout>
+    </>
   )
 }

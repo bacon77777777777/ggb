@@ -21,7 +21,7 @@ import { dismiss } from '@/lib/promoDismiss';
 const APPEAR_DELAY_MS = 700;
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
-  const { promos, isLoaded } = usePromos('popup', placement);
+  const { promos, isLoaded } = usePromos(placement);
   const [visible, setVisible] = useState(false);
   const promo = promos[0];   // 一次只彈一則，連彈兩則等同洗版
 

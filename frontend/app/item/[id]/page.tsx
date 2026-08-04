@@ -1824,7 +1824,7 @@ export default function ProductDetailPage() {
             onTopUp={() => router.push('/topup')}
           />
         )}
-        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar placement="item_fair" />}
+        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
       </div>
     );
   }
@@ -2472,7 +2472,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
-      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar placement="item_fair" />}
+      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
     </div>
   );
 }

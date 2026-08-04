@@ -1766,7 +1766,7 @@ export default function Home() {
         <Image src="/images/topbar/2b.png" alt="排行榜" width={36} height={36} className="drop-shadow-lg" />
       </Link>
 
-      <NoticeBar placement="home" />
+      <NoticeBar />
       <PromoPopup placement="home" />
     </div>
   );
