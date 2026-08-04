@@ -275,7 +275,7 @@ export default function PopupPanel() {
                   value={editing.layout}
                   onChange={e => setEditing({ ...editing, layout: e.target.value as Promo['layout'] })}
                 >
-                  <option value="card">卡片（圖＋標題＋內文＋按鈕）</option>
+                  <option value="card">卡片（統一模板，只填文字）</option>
                   <option value="image">純圖片（整張圖點擊即跳轉）</option>
                 </select>
               </div>
@@ -319,15 +319,14 @@ export default function PopupPanel() {
                   onChange={e => setEditing({ ...editing, body: e.target.value })} />
                 <p className="text-xs text-neutral-400 mt-1">
                   寫給玩家看的話，不要出現路徑、欄位名或內部代號。
+                  卡片版使用統一模板底圖，只需填標題、內文與按鈕文字。
                 </p>
               </div>
             )}
 
             {(
               <div>
-                <label className="block text-sm text-neutral-600 mb-1">
-                  圖片{isImagePopup ? ' *' : '（選填）'}
-                </label>
+                <label className="block text-sm text-neutral-600 mb-1">圖片 *</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -352,9 +351,7 @@ export default function PopupPanel() {
                   </div>
                 )}
                 <p className="text-xs text-neutral-400 mt-1">
-                  {isImagePopup
-                    ? '整張圖直接顯示，比例不限。建議寬度 1080 以上，文案畫在圖裡。'
-                    : '顯示在標題上方，會裁切成 4:3。建議 1080 x 810。'}
+                  整張圖直接顯示，比例不限。建議寬度 1080 以上，文案畫在圖裡。
                 </p>
               </div>
             )}

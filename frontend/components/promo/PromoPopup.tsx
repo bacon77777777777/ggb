@@ -20,6 +20,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePromos, type SitePromo } from './usePromos';
 import { dismiss } from '@/lib/promoDismiss';
 
+/** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
+const TEMPLATE_BG = '/images/bg.png';
+
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
 const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
 const EXIT_MS         = 220;   // 與退場動畫時間相當
@@ -80,9 +83,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
           data-testid="promo-popup"
         >
           <motion.div
-            className={`w-full max-w-[330px] rounded-3xl overflow-hidden shadow-2xl ${
-              isImageOnly ? '' : 'bg-white dark:bg-neutral-900'
-            }`}
+            className={`w-full max-w-[330px] ${isImageOnly ? 'rounded-3xl overflow-hidden shadow-2xl' : ''}`}
             initial={{ scale: 0.88, y: 12 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, opacity: 0 }}
@@ -98,39 +99,46 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                 />
               </Link>
             ) : (
-              <>
-            {promo.image_url && (
-              /* 圖片本身也是入口——主視覺比按鈕更容易被點，只讓按鈕可點會浪費這個面積 */
-              <Link
-                href={promo.cta_href || '#'}
-                onClick={close}
-                className="relative block w-full aspect-[4/3] bg-neutral-100 dark:bg-neutral-800"
-              >
-                <Image src={promo.image_url} alt="" fill className="object-cover" unoptimized />
-              </Link>
-            )}
+              /* 卡片版＝統一模板：底圖已含外框、緞帶與按鈕，文字依量測出的版位疊上去。
+                 模板不裁切也不自己畫底色，容器比例綁死 800/1189，
+                 這樣喇叭超出卡片的部分才不會被切掉。 */
+              <div className="relative w-full" style={{ aspectRatio: '800 / 1189' }}>
+                <Image
+                  src={TEMPLATE_BG}
+                  alt=""
+                  fill
+                  priority
+                  className="object-contain select-none pointer-events-none"
+                  unoptimized
+                />
 
-            <div className="px-6 pt-6 pb-5">
-              {promo.title && (
-                <h2 className="text-[19px] font-black leading-[1.35] text-neutral-900 dark:text-neutral-50 text-balance">
-                  {promo.title}
-                </h2>
-              )}
-              <p className="mt-3 text-[13px] leading-relaxed text-neutral-600 dark:text-neutral-300 whitespace-pre-line">
-                {promo.body}
-              </p>
-
-              {promo.cta_href && promo.cta_text && (
-                <Link
-                  href={promo.cta_href}
-                  onClick={close}
-                  className="mt-5 flex items-center justify-center w-full h-12 rounded-full bg-primary text-white text-[15px] font-black shadow-lg active:scale-[0.98] transition-transform"
+                {/* 文字區：米白內板往內縮，下緣停在按鈕上方 */}
+                <div
+                  className="absolute flex flex-col overflow-y-auto"
+                  style={{ left: '9%', right: '9%', top: '23%', bottom: '17.5%' }}
                 >
-                  {promo.cta_text}
-                </Link>
-              )}
-            </div>
-              </>
+                  {promo.title && (
+                    <h2 className="text-[17px] font-black leading-[1.4] text-[#8a4a00] text-balance">
+                      {promo.title}
+                    </h2>
+                  )}
+                  <p className="mt-2.5 text-[12.5px] leading-[1.65] text-[#a06a2c] whitespace-pre-line">
+                    {promo.body}
+                  </p>
+                </div>
+
+                {/* 按鈕文字疊在底圖已經畫好的橘色藥丸上 */}
+                {promo.cta_text && (
+                  <Link
+                    href={promo.cta_href || '#'}
+                    onClick={close}
+                    className="absolute flex items-center justify-center text-white text-[15px] font-black active:scale-[0.97] transition-transform"
+                    style={{ left: '22.38%', top: '85.95%', width: '55.25%', height: '8.49%' }}
+                  >
+                    {promo.cta_text}
+                  </Link>
+                )}
+              </div>
             )}
           </motion.div>
 
