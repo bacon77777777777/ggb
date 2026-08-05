@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/Toast';
 import { trackEvent, trackPageView, trackScrollDepth } from '@/lib/trackEvent';
 import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
+import { useRequireLogin } from '@/hooks/useRequireLogin';
 
 interface NewsItem {
   id: string;
@@ -306,6 +307,7 @@ export default function NewsDetailPage() {
   const newsId  = params.id as string;
   const supabase = createClient();
   const { user } = useAuth();
+  const requireLogin = useRequireLogin();
 
   const { showToast } = useToast();
   const [item, setItem]           = useState<NewsItem | null>(null);
@@ -371,6 +373,9 @@ export default function NewsDetailPage() {
   }, [newsId]);
 
   const handleLike = async () => {
+    // 未登入就先擋。不擋的話樂觀更新完會被 401 回滾 ——
+    // 愛心亮起來又暗掉，看起來像壞掉
+    if (!requireLogin('登入後就可以幫這篇按讚')) return;
     setLikeAnim(true);
     setTimeout(() => setLikeAnim(false), 400);
     const nextLiked = !liked;
@@ -390,12 +395,13 @@ export default function NewsDetailPage() {
   };
 
   const handleCommentLike = useCallback(async (commentId: string) => {
+    if (!requireLogin('登入後就可以幫這則留言按讚')) return;
     setComments(prev => prev.map(c => c.id === commentId
       ? { ...c, is_liked: !c.is_liked, likes_count: c.likes_count + (c.is_liked ? -1 : 1) }
       : c
     ));
     await fetch(`/api/news/comments/${commentId}/like`, { method: 'POST' });
-  }, []);
+  }, [requireLogin]);
 
   const handleCommentDelete = useCallback(async (commentId: string) => {
     setComments(prev => prev.filter(c => c.id !== commentId));
@@ -403,7 +409,9 @@ export default function NewsDetailPage() {
   }, []);
 
   const handleSubmit = async (text: string) => {
-    if (!user) { alert('請先登入才能留言'); return; }
+    // 原本是 alert('請先登入才能留言')。瀏覽器原生彈窗跟站上其他提示長得不一樣，
+    // 而且只是講一句話、沒有給人一條路走
+    if (!requireLogin('登入後就可以留言')) return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/news/${newsId}/comments`, {

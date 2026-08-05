@@ -18,6 +18,13 @@ function AuthContent() {
   const router = useRouter()
   const { user } = useAuth()
   const messageParam = searchParams.get('message')
+  // 登入完要回哪裡。使用者多半是為了某個動作（按讚、留言）才被導來這裡，
+  // 登完丟他回首頁等於要他自己找回原本那一頁。
+  // 只收站內路徑 —— 吃外部網址等於開了一個轉址漏洞。
+  const nextParam = (() => {
+    const raw = searchParams.get('next') ?? ''
+    return raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
+  })()
   const errorParam = searchParams.get('error')
   
   // State Machine
@@ -94,7 +101,7 @@ function AuthContent() {
     if (error) {
       handleError(error)
     } else {
-      router.push('/')
+      router.push(nextParam)
       router.refresh()
     }
   }
@@ -186,7 +193,7 @@ function AuthContent() {
       if (uid) {
         supabase.rpc('complete_registration_referral', { p_user_id: uid }).then(undefined, () => {})
       }
-      router.push('/?message=註冊成功')
+      router.push(nextParam === '/' ? '/?message=註冊成功' : nextParam)
       router.refresh()
     }
   }
