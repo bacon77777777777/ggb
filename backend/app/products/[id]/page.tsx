@@ -394,6 +394,13 @@ export default function EditProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // 廠商必填。新增頁本來就擋，編輯頁沒擋 —— 等於可以把既有商品改回未指定，
+    // 前台倉庫就會出現「未知廠商」，而出貨是以廠商為單位分批的
+    if (!formData.supplierId) {
+      toast('請選擇廠商', 'warning')
+      return
+    }
+
     // 盒玩/轉蛋：數量不能低於已抽數量；新品項數量必須 >= 1
     if (isGachaType) {
       for (const prize of prizes) {
@@ -706,9 +713,11 @@ export default function EditProductPage() {
                   </SelectField>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">
+                    廠商 <span className="text-red-500">*</span>
+                  </label>
                   <SelectField value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}>
-                    <option value="">— 未指定 —</option>
+                    <option value="">— 請選擇廠商 —</option>
                     {suppliers.map((s) => (
                       <option key={s.id} value={String(s.id)}>{s.name}</option>
                     ))}
@@ -798,9 +807,18 @@ export default function EditProductPage() {
                   placeholder="選擇時間" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
+                {/* 抽籤販售是 0 元抽，售價不適用。原本 required min=1 會讓
+                    抽籤販售的商品完全存不了檔，而瀏覽器原生驗證的訊息是
+                    「Value must be greater than or equal to 1」，看不出跟售價有關 */}
+                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                  售價 (G) {!isLottery && <span className="text-red-500">*</span>}
+                </label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0" required min="1" />
+                  placeholder="0" required={!isLottery} min={isLottery ? 0 : 1}
+                  disabled={isLottery} />
+                {isLottery && (
+                  <p className="mt-1 text-xs text-neutral-400">抽籤販售免費抽，價金設在各品項的「寄出應付」</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
