@@ -354,8 +354,10 @@ PROD 兩筆主題被清，「絕頂RUSH」從 migration 363/364 的 seed 還原�
 
 商品 0、抽獎 0、機器人 101、文章 492、廠商 3、機台主題 1、排程 25 支全開。
 
-⚠️ **上線前必做**：建好真實商品後執行 `npx tsx scripts/seed_bot_draws.ts`
-補回機器人抽獎紀錄，否則排行榜與活躍度是空的。
+⚠️ ~~**上線前必做**：建好真實商品後執行 `npx tsx scripts/seed_bot_draws.ts`
+補回機器人抽獎紀錄，否則排行榜與活躍度是空的。~~
+**（此條已作廢，見 v2026.08.05g／v2026.08.05j）**：機器人展示資料一律不進
+`draw_records`，排行榜走 `leaderboard_bot_daily_stats`、跑馬燈即時組合。
 另需在後台重建被 CASCADE 清掉的那個機台主題。
 
 Migrations `454`，STG / PROD 皆已套用。

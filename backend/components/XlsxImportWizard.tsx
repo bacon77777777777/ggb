@@ -483,10 +483,6 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
     setFailCount(fail)
     setErrors(errs.slice(0, 10))
     setStep('done')
-
-    if (ok > 0) {
-      fetch('/api/admin/seed-bot-draws', { method: 'POST', credentials: 'include' }).catch(() => {})
-    }
   }
 
   const allSelected  = products.length > 0 && products.every(p => p.selected)
