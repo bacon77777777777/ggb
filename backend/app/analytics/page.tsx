@@ -19,6 +19,7 @@ interface Admin {
   username: string
   nickname: string
   role_id: number
+  supplier_id: number | null
   status: 'active' | 'inactive'
   last_login_at: string | null
   created_at: string
@@ -34,6 +35,7 @@ export default function AdminsPage() {
   
   const [admins, setAdmins] = useState<Admin[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,16 +52,26 @@ export default function AdminsPage() {
     username: '',
     nickname: '',
     role_id: 0,
+    supplier_id: 0,
     status: 'active' as 'active' | 'inactive',
     password: ''
   })
+
+  // 廠商角色的帳號必須綁定廠商，否則登入後每一頁都是空的（而且看不出原因）。
+  // 資料層有觸發器擋，這裡是讓表單先問清楚，不要等資料庫報錯
+  const selectedRoleName = roles.find(r => r.id === formData.role_id)?.name
+  const needsSupplier = selectedRoleName === 'supplier'
 
   // 載入資料
   const fetchData = async () => {
     try {
       setIsLoading(true)
       
-      const [rolesRes, adminsRes] = await Promise.all([fetch('/api/admin/roles'), fetch('/api/admin/admins')])
+      const [rolesRes, adminsRes, suppliersRes] = await Promise.all([
+        fetch('/api/admin/roles'),
+        fetch('/api/admin/admins'),
+        fetch('/api/admin/suppliers'),
+      ])
 
       if (!rolesRes.ok) {
         throw new Error(await rolesRes.text())
@@ -73,6 +85,12 @@ export default function AdminsPage() {
 
       setRoles(Array.isArray(rolesData) ? rolesData : [])
       setAdmins(Array.isArray(adminsData) ? adminsData : [])
+
+      // 廠商清單只有建廠商帳號時才用得到，抓不到也不該讓整頁載入失敗
+      if (suppliersRes.ok) {
+        const sup = await suppliersRes.json()
+        setSuppliers(Array.isArray(sup) ? sup : [])
+      }
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -190,12 +208,17 @@ export default function AdminsPage() {
         toast('請填寫完整資料', 'warning')
         return
       }
+      if (needsSupplier && !formData.supplier_id) {
+        toast('廠商角色必須選擇所屬廠商', 'warning')
+        return
+      }
 
       const payload = {
         id: editingAdmin ? editingAdmin.id : undefined,
         username: formData.username,
         nickname: formData.nickname,
         role_id: formData.role_id,
+        supplier_id: needsSupplier ? formData.supplier_id || null : null,
         status: formData.status,
         password: formData.password || undefined,
       } as const
@@ -235,6 +258,7 @@ export default function AdminsPage() {
       username: admin.username,
       nickname: admin.nickname || '',
       role_id: admin.role_id,
+      supplier_id: admin.supplier_id ?? 0,
       status: admin.status,
       password: '' // 不回填密碼
     })
@@ -248,6 +272,7 @@ export default function AdminsPage() {
       username: '',
       nickname: '',
       role_id: roles[0]?.id || 0,
+      supplier_id: 0,
       status: 'active',
       password: ''
     })
@@ -437,6 +462,7 @@ export default function AdminsPage() {
               username: '',
               nickname: '',
               role_id: 0,
+      supplier_id: 0,
               status: 'active',
               password: ''
             })
@@ -502,6 +528,26 @@ export default function AdminsPage() {
                  ))}
                </SelectField>
              </div>
+             {needsSupplier && (
+               <div>
+                 <label className="block text-sm font-medium text-neutral-700 mb-1">
+                   所屬廠商 <span className="text-red-500">*</span>
+                 </label>
+                 <SelectField
+                   value={formData.supplier_id}
+                   onChange={e => setFormData({ ...formData, supplier_id: Number(e.target.value) })}
+                   className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
+                 >
+                   <option value={0} disabled>請選擇廠商</option>
+                   {suppliers.map(sup => (
+                     <option key={sup.id} value={sup.id}>{sup.name}</option>
+                   ))}
+                 </SelectField>
+                 <p className="mt-1 text-xs text-neutral-400">
+                   這個帳號只會看到這家廠商的商品，而且只能編輯 —— 不能刪除、不能看公平性驗證，也看不到會員。
+                 </p>
+               </div>
+             )}
              <div>
                <label className="block text-sm font-medium text-neutral-700 mb-1">
                  狀態

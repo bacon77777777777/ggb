@@ -10,6 +10,7 @@ type AdminPayload = {
   username: string
   nickname?: string
   role_id: number
+  supplier_id?: number | null
   status: AdminStatus
   password?: string
 }
@@ -28,6 +29,7 @@ export async function GET() {
         username,
         nickname,
         role_id,
+        supplier_id,
         status,
         last_login_at,
         created_at,
@@ -61,6 +63,17 @@ export async function POST(request: Request) {
     const status = (body.status === 'inactive' ? 'inactive' : 'active') as AdminStatus
     const nickname = String(body.nickname || '')
     const password = body.password ? String(body.password) : ''
+    // 廠商角色一定要綁廠商。資料層有觸發器擋（migration 468），
+    // 但錯誤訊息從資料庫冒上來對使用者不友善，這裡先擋一次講清楚
+    const supplierId = body.supplier_id ? Number(body.supplier_id) : null
+
+    const { data: roleRow } = await getSupabaseAdmin().from('roles').select('name').eq('id', roleId).maybeSingle()
+    if (roleRow?.name === 'supplier' && !supplierId) {
+      return NextResponse.json({ error: '廠商角色必須指定所屬廠商' }, { status: 400 })
+    }
+    if (roleRow?.name !== 'supplier' && supplierId) {
+      return NextResponse.json({ error: '只有廠商角色可以指定所屬廠商' }, { status: 400 })
+    }
 
     if (!username || !Number.isFinite(roleId) || roleId <= 0) {
       return NextResponse.json({ error: '資料不完整' }, { status: 400 })
@@ -70,6 +83,7 @@ export async function POST(request: Request) {
       username,
       nickname,
       role_id: roleId,
+      supplier_id: supplierId,
       status,
     }
 
