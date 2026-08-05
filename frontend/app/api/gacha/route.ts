@@ -50,19 +50,29 @@ export async function POST(request: NextRequest) {
     //   抽卡/自製賞 → 賞等票號引擎（票號後端自動配，前台維持選數量購買）
     const { data: productRow } = await userSupabase
       .from('products')
-      .select('type')
+      .select('type, sale_mode')
       .eq('id', productId)
       .single()
 
+    // 抽籤販售自己一條路：0 元、不吃優惠券、有每人次數上限，
+    // 硬要塞進 play_ichiban_auto_locked 會變成一堆 if
+    const isLottery = productRow?.sale_mode === 'lottery'
     const isTicketBased = productRow?.type === 'card' || productRow?.type === 'custom'
-    const rpcName = isTicketBased ? 'play_ichiban_auto_locked' : 'play_gacha_locked'
+    const rpcName = isLottery
+      ? 'play_lottery'
+      : isTicketBased ? 'play_ichiban_auto_locked' : 'play_gacha_locked'
 
-    const { data, error } = await userSupabase.rpc(rpcName, {
-      p_product_id: productId,
-      p_count: count,
-      p_use_points: usePoints ?? false,
-      p_coupon_id: couponId ?? null,
-    })
+    const { data, error } = await userSupabase.rpc(
+      rpcName,
+      isLottery
+        ? { p_product_id: productId, p_count: count }
+        : {
+            p_product_id: productId,
+            p_count: count,
+            p_use_points: usePoints ?? false,
+            p_coupon_id: couponId ?? null,
+          },
+    )
 
     if (error) throw error
 
@@ -80,7 +90,8 @@ export async function POST(request: NextRequest) {
     const rpcData = data as any
     const prizesArray: any[] = Array.isArray(rpcData)
       ? rpcData
-      : Array.isArray(rpcData?.prizes) ? rpcData.prizes : []
+      : Array.isArray(rpcData?.prizes) ? rpcData.prizes
+      : Array.isArray(rpcData?.results) ? rpcData.results : []
 
     return NextResponse.json({
       prizes: prizesArray.map((p: any) => ({
@@ -90,6 +101,9 @@ export async function POST(request: NextRequest) {
       })),
       new_balance: rpcData?.new_balance,
       discount_amount: rpcData?.discount_amount,
+      // 抽籤販售：回傳已抽次數讓前台更新剩餘可抽
+      used_by_me: rpcData?.used_by_me,
+      per_user_limit: rpcData?.per_user_limit,
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '抽獎失敗' }, { status: 500 })
