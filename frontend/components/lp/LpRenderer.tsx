@@ -379,9 +379,14 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     /* ── GALLERY ── */
     .lpv-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
     @media(min-width:600px){.lpv-gallery{grid-template-columns:repeat(3,1fr);}}
+    /* 高度自適應：原本寫死 aspect-ratio 9/11，正方形素材會被裁掉上下。
+       改成讓圖片自己的比例決定高度，換素材就不用回頭調 CSS。
+       影片沒有 intrinsic size 可依靠，仍給一個比例避免載入前塌成 0 高。 */
     .lpv-gitem{position:relative;border-radius:14px;overflow:hidden;border:1px solid ${borderMid};
-      background:${cardDarker};aspect-ratio:9/11;}
-    .lpv-gitem img,.lpv-gitem video{width:100%;height:100%;object-fit:cover;}
+      background:${cardDarker};}
+    .lpv-gitem img{display:block;width:100%;height:auto;}
+    .lpv-gitem video{display:block;width:100%;height:100%;object-fit:cover;}
+    .lpv-gitem:has(video){aspect-ratio:9/11;}
     .lpv-gcap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;
       background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));}
     /* 圖說疊在 lpv-gcap 的黑色漸層上，固定白字。
