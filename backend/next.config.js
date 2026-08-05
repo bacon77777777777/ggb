@@ -2,6 +2,14 @@ const { withSentryConfig } = require('@sentry/nextjs')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 驗證用的 production build 可以輸出到別的資料夾，避免打壞正在跑的 dev server。
+  //   NEXT_DIST_DIR=.next-verify npm run build
+  // 不設就是預設的 .next。
+  //
+  // 會有這個是因為：dev server 跑著的時候在同一個目錄執行 `npm run build`，
+  // production 產物會覆蓋 .next，dev server 接著就會 500（找不到 chunk / manifest）。
+  // 那不是 Next.js 需要重啟，是被自己人打壞的。
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   images: {
     remotePatterns: [
       {
