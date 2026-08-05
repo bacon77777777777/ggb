@@ -55,7 +55,7 @@ interface ParseResult {
   products: ParsedRow[]
 }
 
-interface Supplier { id: number; name: string }
+interface Supplier { id: number; name: string; is_platform?: boolean }
 
 interface Props {
   isOpen: boolean
@@ -213,6 +213,11 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
 
   const selectedCount = rows.filter(r => r.selected).length
 
+  // 機台是平台自營的玩法，外部廠商不供貨也不該上架。
+  // /api/admin/suppliers 對廠商帳號只會回自己那一家，所以這個判斷等同
+  // 「我是平台自營廠商嗎」；平台管理員拿得到全部，清單裡一定有自營那家。
+  const canUseSlot = suppliers.some(s => s.is_platform)
+
   const title =
     step === 'upload' ? '智能批量上架'
     : step === 'review' ? `已解析 ${result?.stats.total ?? 0} 筆商品`
@@ -294,7 +299,15 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               廠商想照我們的格式填？下載標準範本
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {PRODUCT_TYPES.map(t => (
+              {/* 混合範本放第一個並標成主要樣式 —— 廠商的一份 list 常常同時
+                  有一番賞和轉蛋，分類型的範本反而讓他不知道要下載哪個 */}
+              <a
+                href="/api/admin/products/import/template?type=all"
+                className="px-2.5 py-1 text-xs font-semibold text-primary bg-primary/5 border border-primary/30 rounded-md hover:bg-primary/10 transition-colors"
+              >
+                多類別混合（推薦）
+              </a>
+              {PRODUCT_TYPES.filter(t => t.value !== 'slot' || canUseSlot).map(t => (
                 <a
                   key={t.value}
                   href={`/api/admin/products/import/template?type=${t.value}`}
@@ -304,6 +317,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 </a>
               ))}
             </div>
+            <p className="mt-1.5 text-xs text-neutral-400">
+              上傳時不用挑類型 —— 系統逐列讀「商品類型」欄位判斷，同一個檔案可以混。
+            </p>
           </div>
         </div>
       )}

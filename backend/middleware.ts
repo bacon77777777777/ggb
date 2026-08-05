@@ -56,7 +56,11 @@ const SUPPLIER_API_ALLOW: string[] = [
  */
 const SUPPLIER_API_DENY: string[] = [
   '/api/admin/products/batch',
-  '/api/admin/products/import/commit',
+  // 整條批量匯入都不給 —— 只擋最後的 commit 的話，廠商會傳完檔案、看完預覽，
+  // 按下上架才收到 403，那比一開始就沒有按鈕更糟。
+  // 批量匯入本來就是平台人員拿廠商給的 list 來做的。
+  '/api/admin/products/import',
+  '/api/admin/products/upload-images',
 ]
 const SUPPLIER_API_DENY_SUFFIX: string[] = ['/seal', '/seal-now', '/close-out', '/verify']
 

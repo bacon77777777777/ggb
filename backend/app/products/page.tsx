@@ -789,25 +789,27 @@ export default function ProductsPage() {
             onSearchChange={setSearchQuery}
             showExportCSV={true}
             onExportCSV={handleExportCSV}
-            showAddButton={true}
+            showAddButton={!isSupplier}
             addButtonText="+ 新增商品"
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <>
-                <button
+                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架、上傳圖片都是平台的事。
+                    批量上架本來就是平台人員拿廠商給的 list 來匯入，不是廠商自己來。 */}
+                {!isSupplier && <button
                   onClick={() => setIsBulkOpen(true)}
                   className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   智能批量上架
-                </button>
-                <button
+                </button>}
+                {!isSupplier && <button
                   onClick={() => zipRef.current?.click()}
                   disabled={zipUploading}
                   className="h-9 px-4 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-60 transition-colors text-sm font-medium whitespace-nowrap"
                   title="上傳 .zip 壓縮檔，批量將圖片放入 Storage"
                 >
                   {zipUploading ? '上傳中...' : '上傳圖片'}
-                </button>
+                </button>}
                 <input ref={zipRef} type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
                 {zipResult && (
                   <span className={`text-xs font-medium px-2 py-1 rounded ${zipResult.failed > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>

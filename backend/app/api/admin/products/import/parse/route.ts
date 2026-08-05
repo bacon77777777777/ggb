@@ -179,14 +179,29 @@ export async function POST(request: Request) {
     let prizeGroups: PrizeGroup[]
     let mappingSource: 'profile' | 'rules'
 
+    const ruleMapping = detectFieldMapping(headers)
+    const rulePrizeGroups = detectPrizeGroups(headers)
+
     if (profile) {
-      mapping = profile.mapping as Record<string, string | null>
-      prizeGroups = profile.prize_groups as PrizeGroup[]
+      // 記憶優先，規則補洞。
+      //
+      // 只用記憶的話，規則改善傳不進去 —— 實測就踩到：修好「上架狀態」的別名之後
+      // 重新上傳同一份範本，命中數沒變，因為指紋認得就直接套上次那份不完整的對應。
+      // 而記憶又不能丟：它可能是人工修正過的，比規則準。
+      // 所以記憶裡有值的欄位以記憶為準，記憶沒對到的才拿規則的來補。
+      const stored = profile.mapping as Record<string, string | null>
+      mapping = { ...ruleMapping }
+      for (const [k, v] of Object.entries(stored)) {
+        if (v) mapping[k] = v
+      }
+      // 品項分組整組沿用 —— 那是橫向展開的結構，混搭會對錯欄
+      const storedGroups = profile.prize_groups as PrizeGroup[]
+      prizeGroups = storedGroups?.length ? storedGroups : rulePrizeGroups
       mappingSource = 'profile'
     } else {
       // ── 第 2 層：規則比對 ──
-      mapping = detectFieldMapping(headers)
-      prizeGroups = detectPrizeGroups(headers)
+      mapping = ruleMapping
+      prizeGroups = rulePrizeGroups
       mappingSource = 'rules'
     }
 
@@ -391,10 +406,13 @@ export async function POST(request: Request) {
         }, { onConflict: 'supplier_id,fingerprint' })
       }
     } else if (profile) {
+      // 把補洞後的對應寫回去 —— 否則每次都要重新補一遍
       await supabase.from('supplier_import_profiles')
         .update({
+          mapping,
           use_count: (profile.use_count ?? 0) + 1,
           last_used_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', profile.id)
     }

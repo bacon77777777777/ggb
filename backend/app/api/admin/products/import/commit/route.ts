@@ -55,6 +55,15 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin()
     const now = new Date().toISOString()
 
+    // 機台是平台自營的玩法。只擋範本下載是化妝品 ——
+    // 廠商在「商品類型」欄位打「機台」照樣能匯入，所以這裡也要擋。
+    let canUseSlot = session.supplierScope === undefined
+    if (!canUseSlot && session.supplierScope != null) {
+      const { data } = await supabase
+        .from('suppliers').select('is_platform').eq('id', session.supplierScope).maybeSingle()
+      canUseSlot = data?.is_platform === true
+    }
+
     const results: { row?: number; name: string; ok: boolean; id?: number; error?: string; noPrize?: boolean }[] = []
 
     for (const item of items) {
@@ -62,6 +71,9 @@ export async function POST(request: Request) {
       try {
         if (!name) throw new Error('缺少商品名稱')
         if (!item.product?.supplier_id) throw new Error('缺少廠商')
+        if (item.product?.type === 'slot' && !canUseSlot) {
+          throw new Error('機台商品僅限平台上架')
+        }
 
         const prizes = (item.prizes ?? []).filter(p => Number(p.total) >= 1)
 

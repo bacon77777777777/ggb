@@ -50,6 +50,9 @@ export async function POST(request: Request) {
   try {
     const scope = await requireAdminScope()
     if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 廠商只能看與編輯自己的商品，不能新增（老闆定的：操作只有編輯）。
+    // 介面上的按鈕已經藏起來，但藏起來的按鈕擋不住直接打 API
+    if (scope.isSupplier) return NextResponse.json({ error: '廠商帳號不能新增商品' }, { status: 403 })
 
     const body = (await request.json()) as CreateProductPayload
     // 廠商送上來的 supplier_id 一律以 session 為準 —— 不能自己指定成別家
