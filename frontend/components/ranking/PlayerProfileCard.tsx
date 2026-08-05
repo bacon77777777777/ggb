@@ -19,6 +19,7 @@ interface PlayerProfile {
   nickname: string;
   avatar_url: string;
   total_draws: number;
+  worship_count: number;
   total_spent: number;
   title: { id: string; name: string; color_key: string } | null;
   badges: Badge[];
@@ -106,19 +107,20 @@ const BADGE_NAME: Record<string, string> = {
 // ── 與 DB mock 用戶（00000000-...0001~0010）一致的假資料 ──
 const MOCK_USER_DATA: Record<number, {
   draws: number;
+  worships: number;
   title: { id: string; name: string; color_key: string } | null;
   earnedBadgeIds: string[];
 }> = {
-  1: { draws: 512, title: { id: 'legend_whale',   name: '傳說課長',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','draw_100','topup_100000','first_topup'] },
-  2: { draws: 284, title: { id: 'gacha_addict',   name: '轉蛋狂熱者', color_key: 'purple' }, earnedBadgeIds: ['first_draw','draw_30','draw_100','draw_500'] },
-  3: { draws: 167, title: { id: 'lucky_king',     name: '歐皇',       color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3'] },
-  4: { draws: 739, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3','lucky_10'] },
-  5: { draws: 92,  title: { id: 'full_attendance',name: '全勤戰士',   color_key: 'blue'   }, earnedBadgeIds: ['first_draw','login_streak_7','login_streak_30'] },
-  6: { draws: 445, title: { id: 'popularity_king',name: '人氣王',     color_key: 'green'  }, earnedBadgeIds: ['first_draw','refer_1','refer_5','refer_20'] },
-  7: { draws: 203, title: null,                                                               earnedBadgeIds: ['first_draw','draw_30','draw_100'] },
-  8: { draws: 318, title: { id: 'full_power',     name: '火力全開',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','single_day_100'] },
-  9: { draws: 651, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_10'] },
-  10:{ draws: 421, title: { id: 'fate_ruler',     name: '命運支配者', color_key: 'gold'   }, earnedBadgeIds: ['first_draw','draw_500','draw_1000','draw_5000'] },
+  1: { draws: 512, worships: 1254, title: { id: 'legend_whale',   name: '傳說課長',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','draw_100','topup_100000','first_topup'] },
+  2: { draws: 284, worships: 486, title: { id: 'gacha_addict',   name: '轉蛋狂熱者', color_key: 'purple' }, earnedBadgeIds: ['first_draw','draw_30','draw_100','draw_500'] },
+  3: { draws: 167, worships: 912, title: { id: 'lucky_king',     name: '歐皇',       color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3'] },
+  4: { draws: 739, worships: 1607, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3','lucky_10'] },
+  5: { draws: 92,  worships: 73, title: { id: 'full_attendance',name: '全勤戰士',   color_key: 'blue'   }, earnedBadgeIds: ['first_draw','login_streak_7','login_streak_30'] },
+  6: { draws: 445, worships: 2038, title: { id: 'popularity_king',name: '人氣王',     color_key: 'green'  }, earnedBadgeIds: ['first_draw','refer_1','refer_5','refer_20'] },
+  7: { draws: 203, worships: 145, title: null,                                                               earnedBadgeIds: ['first_draw','draw_30','draw_100'] },
+  8: { draws: 318, worships: 660, title: { id: 'full_power',     name: '火力全開',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','single_day_100'] },
+  9: { draws: 651, worships: 1183, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_10'] },
+  10:{ draws: 421, worships: 397, title: { id: 'fate_ruler',     name: '命運支配者', color_key: 'gold'   }, earnedBadgeIds: ['first_draw','draw_500','draw_1000','draw_5000'] },
 };
 
 const TOTAL_BADGES = 29;
@@ -162,6 +164,7 @@ function buildFakeProfile(
     nickname: '', // caller uses propNickname
     avatar_url: avatarUrl,
     total_draws: data.draws,
+    worship_count: data.worships,
     total_spent: 0,
     title,
     badges,
@@ -249,6 +252,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
           nickname: propNickname || '',
           avatar_url: propAvatarUrl || '',
           total_draws: 0,
+          worship_count: 0,
           total_spent: 0,
           title: null,
           badges: Array.from({ length: TOTAL_BADGES }, (_, i) => ({
@@ -375,11 +379,16 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       >
                         {loading ? '...' : displayName}
                       </p>
-                      {/* 轉蛋次數 */}
+                      {/* 轉蛋次數 / 被膜拜次數 */}
                       {!loading && (
-                        <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
-                          累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
-                        </p>
+                        <>
+                          <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
+                            累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
+                          </p>
+                          <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
+                            被膜拜 {(profile?.worship_count ?? 0).toLocaleString()} 次
+                          </p>
+                        </>
                       )}
                     </div>
                   </div>

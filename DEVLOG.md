@@ -4,6 +4,120 @@
 
 ---
 
+## v2026.08.05i｜2026-08-05｜機台的每一轉要不要算抽獎次數
+
+### 問題
+
+老闆問「機台的每一轉，要算抽獎次數嗎（任務跟成就）」。查下來同一件事有三種答案：
+
+| 統計面向 | 機台每轉原本算不算 |
+|---|---|
+| `draw_records` 落列 | 每轉都算（退幣也寫一列） |
+| 排行榜抽獎榜 | 每轉都算，沒濾退幣 |
+| 「火力全開」單日100抽勳章 | 每轉都算，沒濾退幣 |
+| `users.total_draws`（小卡累計轉蛋 + 抽獎勳章） | 只有中品項那轉算 |
+| `draw_count` 任務（每日/每週/成就） | 完全不算 |
+
+兩個方向都在傷人。實測（STG）：機台最低檔 10 代幣/轉，轉蛋單抽中位 150 —— 15 倍差；
+轉過的 235 轉裡 202 轉是退幣（86%），單一玩家單日最高 196 轉。
+機台玩家單日隨手吃掉「火力全開」的 1200 積分、抽獎榜當天 196 分，
+轉蛋玩家要花 29,400 代幣才追得上。反過來純機台玩家的「完成1次抽獎」永遠 0/1，
+因為 `/api/slot/[id]/spin` 根本沒推任何任務事件。
+
+### 定案：抽到 RUSH 獎池品項才算一抽
+
+退幣是找零，不是抽獎結果。折算後約 7 轉中 1 次品項 = 70 代幣/抽，
+跟轉蛋單抽 150 同一個量級，不再是 15 倍。
+
+- `/api/slot/[id]/spin` 在 `!is_coin_return` 時推 `draw_count` + `check_achievements`
+- `check_achievements`、`track_mission_event`、`get_leaderboard_draws` 一律排除 `coin_return`
+- `get_leaderboard_lucky/unlucky/whales` 不用改 —— 退幣列的 `product_id`
+  和 `product_prize_id` 都是 NULL，INNER JOIN 本來就排除了
+
+機台不推 `spend_amount`：那個事件現在是拿「抽了幾次」當「花了幾代幣」在算
+（`/api/gacha` 傳的 `p_data.amount` 是抽數），機台照著推只會讓它更歪。**這條待修。**
+
+### 順帶抓到：total_draws 被重複累加 1.5 倍
+
+`play_gacha` 在迴圈裡自己 `+1`，而 `/api/gacha` 又呼叫
+`track_mission_event('draw_count')`，那裡面也 `+count`。
+STG 實測玩家「123」欄位記 5411，實際只有 3475 筆紀錄（其中 404 筆退幣）。
+也就是小卡的「累計轉蛋」灌水 1.5 倍，抽獎勳章在真實抽數的一半就解鎖。
+
+改成單一來源：**只有 `track_mission_event('draw_count')` 能動 `total_draws`**，
+`play_gacha` / `play_ichiban_auto` / `play_slot_locked` 裡的累加全部拔掉。
+回填真實玩家（機器人不動 —— 它們沒有 `draw_records`，一起回填會全部歸零）。
+STG：5411 → 3071，與實際一致。
+
+### 順帶抓到：STG 的成就從來沒解鎖過
+
+465 收尾實跑驗證時，PROD 正常、STG 直接炸 `column "birthday" does not exist`。
+`users` 欄位 diff 只差這一項。順便把 `check_achievements` 對齊 PROD 版 ——
+STG 舊版少了 `total_worships`，所以「排行榜信徒」（膜拜 50 次）也永遠判不出來。
+
+### Migration
+
+- `465_draw_count_single_source.sql`
+- `466_stg_birthday_and_achievements_sync.sql`
+
+---
+
+## v2026.08.05h｜2026-08-05｜資訊小卡顯示「被膜拜」次數，並修好膜拜寫入的表
+
+### 這次做了什麼
+
+玩家資訊小卡在「累計轉蛋 N 次」下面多一行「被膜拜 N 次」。
+機器人一併補上展示用的膜拜紀錄，真實玩家膜拜機器人會直接累加上去。
+
+### 順帶抓到的問題：PROD 的膜拜按了等於沒按
+
+兩個環境的 `worship_player()` 各寫各的表：
+
+| 環境 | 寫入 | 資訊小卡從哪數 |
+|---|---|---|
+| STG | `worship_logs` | `worship_logs` ✓ |
+| PROD | `user_worship_logs` | `worship_logs` ✗ |
+
+排行榜上有「膜拜1次」的每日任務和「排行榜信徒」成就，玩家天天按，
+數字永遠停在同一個值。合成一版統一寫 `worship_logs`，PROD 那張空的舊表移除。
+
+合的時候兩處刻意不照抄 STG 版：
+
+- **日期改台北時區**。STG 版用 `CURRENT_DATE`（UTC），台灣時間凌晨 0~8 點
+  會算成前一天，那段時間可以多膜拜一次
+- **拿掉 `WHEN OTHERS THEN RETURN success:false, SQLERRM`**。PROD 的
+  「表不存在」就是被這種攔截器吞成一句「膜拜失敗」的，沒人知道整張表沒建
+
+### 機器人的膜拜資料怎麼種
+
+`worship_logs` 是純社交表：不碰庫存、不進財務對帳、不影響銷量統計，
+所以直接寫真實資料列即可，不需要另做一份展示用的假來源
+（跟跑馬燈、排行榜的處理方式不同，是因為那兩個的來源表 `draw_records` 會扣庫存）。
+
+依 `total_draws` 加權，但這件事錯了兩次才對：
+
+1. 第一版 `ORDER BY random() / total_draws` —— 抽最多的人幾乎每次都中，
+   200 個機器人只有 26 個被膜拜過
+2. 第二版換成加權抽樣、壓縮權重，還是只有 19~30 個，而且次數全是 300 的倍數 ——
+   `CROSS JOIN LATERAL` 沒引用到外層的日期，PostgreSQL 每個膜拜者只求值一次，
+   等於「一個人 300 天都膜拜同一個對象」
+
+改用 `md5(膜拜者, 日期, 對象)` 當亂數來源，強制每天重選，順帶讓結果可重現。
+最後分布：200 個機器人全部有，最少 5 次、中位數 29~59、最多 118 次。
+
+### 中獎跑馬燈只播大獎
+
+轉蛋和盒玩不限制（沒有賞等之分），一番賞／抽卡／自製賞／機台則只播庫存 < 10 的品項。
+
+### Migration
+
+- `461_marquee_big_prizes_only.sql`
+- `462_worship_count_and_prod_table.sql`
+- `463_seed_bot_worship.sql`
+- `464_unify_worship_player.sql`
+
+---
+
 ## v2026.08.05g｜2026-08-05｜中獎跑馬燈的機器人改為純展示
 
 ### 為什麼要改
