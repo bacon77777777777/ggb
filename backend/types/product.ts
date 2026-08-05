@@ -39,6 +39,8 @@ export interface Product {
   releaseYear?: string
   releaseMonth?: string
   distributor?: string
+  supplierId?: number | null
+  supplierName?: string
   rarity?: number
   majorPrizes?: string[]
 }
