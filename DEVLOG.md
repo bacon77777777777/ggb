@@ -89,7 +89,16 @@ bot 池改取全部 101 個，讚上限提到 101。留言約 1/4 是純 emoji�
 （stack depth exceeded，商品根本存不起來）；`draw_records.status` 有個沒被任何
 migration 註解提過的 CHECK constraint，`lost` / `expired` 要加進去。
 
-Migrations `438`~`445`，STG / PROD 皆已套用（445 的 cron 只在 PROD，STG 沒有 pg_cron）。
+### 商品編號沒有自動產生
+
+編號規則一直是 `10000000 + id`，但這件事只寫在 migration 393 的一次性 backfill 裡 ——
+欄位沒有 default、沒有 trigger，新增商品的程式也沒補。所以 393 之後建立的商品全部沒編號：
+STG 8 筆（5 台機台 + 3 檔抽籤販售）、PROD 5 筆，後台商品列表的「編號」欄就是空的。
+
+改成 `BEFORE INSERT` trigger（不用 DEFAULT 是因為 DEFAULT 取不到同一列的 id），
+並補齊既有空值。兩環境現在都是 0 筆無編號，全站 `product_code = 10000000 + id` 一致。
+
+Migrations `438`~`448`，STG / PROD 皆已套用（445 的 cron 只在 PROD，STG 沒有 pg_cron）。
 
 **適用範圍**：一番賞、抽卡、自製賞（三者共用同一套封存排籤與抽獎引擎）。
 
