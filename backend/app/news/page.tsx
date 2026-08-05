@@ -156,14 +156,20 @@ export default function NewsPage() {
   // ─── 批量操作 ─────────────────────────────────────────────────────────────
   const handleBatchPublish = async () => {
     const ids = [...selectedIds]
-    await supabase.from('news').update({ is_active: true }).in('id', ids)
+    await fetch('/api/admin/news', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ ids, is_active: true }),
+    })
     setNews(prev => prev.map(n => selectedIds.has(n.id) ? { ...n, is_active: true } : n))
     setSelectedIds(new Set())
   }
 
   const handleBatchUnpublish = async () => {
     const ids = [...selectedIds]
-    await supabase.from('news').update({ is_active: false }).in('id', ids)
+    await fetch('/api/admin/news', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ ids, is_active: false }),
+    })
     setNews(prev => prev.map(n => selectedIds.has(n.id) ? { ...n, is_active: false } : n))
     setSelectedIds(new Set())
   }
@@ -174,7 +180,10 @@ export default function NewsPage() {
       message: `確定要刪除選取的 ${selectedIds.size} 篇文章嗎？`,
       onConfirm: async () => {
       const ids = [...selectedIds]
-      await supabase.from('news').delete().in('id', ids)
+      await fetch('/api/admin/news', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ids, action: 'delete' }),
+      })
       setNews(prev => prev.filter(n => !selectedIds.has(n.id)))
       setSelectedIds(new Set())
       },
@@ -185,8 +194,11 @@ export default function NewsPage() {
   const handleToggleActive = async (article: NewsArticle) => {
     const next = !article.is_active
     setNews(prev => prev.map(n => n.id === article.id ? { ...n, is_active: next } : n))
-    const { error } = await supabase.from('news').update({ is_active: next }).eq('id', article.id)
-    if (error) { fetchData(); toast('更新失敗', 'error') }
+    const res = await fetch('/api/admin/news', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ id: article.id, is_active: next }),
+    })
+    if (!res.ok) { fetchData(); toast('更新失敗', 'error') }
   }
 
   // ─── 刪除 ────────────────────────────────────────────────────────────────
@@ -195,8 +207,11 @@ export default function NewsPage() {
       title: '確認操作',
       message: "確定要刪除此文章嗎？",
       onConfirm: async () => {
-      const { error } = await supabase.from('news').delete().eq('id', id)
-      if (!error) setNews(prev => prev.filter(n => n.id !== id))
+      const res = await fetch('/api/admin/news', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ids: [id], action: 'delete' }),
+      })
+      if (res.ok) setNews(prev => prev.filter(n => n.id !== id))
       else toast('刪除失敗', 'error')
       },
     })

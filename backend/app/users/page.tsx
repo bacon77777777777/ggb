@@ -428,11 +428,14 @@ function UsersPage() {
             
             // Update Supabase
             try {
-              const { error } = await supabase
-                .from('users')
-                .update({ status: newStatus })
-                .eq('id', user.id)
-                
+              const res = await fetch(`/api/admin/users/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ status: newStatus }),
+              })
+              const error = res.ok ? null : await res.json().catch(() => ({ error: '更新失敗' }))
+
               if (error) {
                 console.error('Error updating status:', error)
                 // Revert
@@ -669,11 +672,13 @@ function UsersPage() {
                       setConfirmModal(prev => ({ ...prev, isOpen: false }))
                       
                       try {
-                        const { error } = await supabase
-                          .from('users')
-                          .update({ status: 'active' })
-                          .in('id', selectedIds)
-                        if (error) console.error('Error batch updating:', error)
+                        await Promise.all(selectedIds.map(id =>
+                          fetch(`/api/admin/users/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ status: 'active' }),
+                          })))
                       } catch (err) {
                         console.error('Error:', err)
                       }
@@ -708,11 +713,13 @@ function UsersPage() {
                       setConfirmModal(prev => ({ ...prev, isOpen: false }))
                       
                       try {
-                        const { error } = await supabase
-                          .from('users')
-                          .update({ status: 'inactive' })
-                          .in('id', selectedIds)
-                        if (error) console.error('Error batch updating:', error)
+                        await Promise.all(selectedIds.map(id =>
+                          fetch(`/api/admin/users/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ status: 'inactive' }),
+                          })))
                       } catch (err) {
                         console.error('Error:', err)
                       }

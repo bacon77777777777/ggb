@@ -4,6 +4,70 @@
 
 ---
 
+## v2026.08.05l｜2026-08-05｜收回匿名金鑰的寫入權限（上線硬阻擋）
+
+### 起因
+
+做廠商權限（migration 468）時順手稽核 RLS，發現一件比廠商越權嚴重得多的事。
+
+前後台的瀏覽器都用 anon key 連 Supabase，而那把金鑰是 `NEXT_PUBLIC_` 開頭、
+**公開在前台的 JS bundle 裡**。同時 PROD 有 23 張表、STG 有 31 張表的 RLS 政策是
+`ALL ... USING (true)` —— 拿到那把金鑰的人可以改全站商品價格、刪光商品與廠商、
+竄改文章。STG 更誇張，`admins` 和 `roles` 也全開，任何人能自己建一個超級管理員帳號。
+
+### 先證明它是真的
+
+第一次測是用不存在的 id 打 PATCH/DELETE，回 200/204 就當成「可寫」—— 那是錯的。
+RLS 擋住和「0 筆符合」都回 204，分不出來。
+
+改用對照實驗：在 STG 的 `banners` 上還原舊政策、對真實資料列下手。
+
+```
+[A] 舊政策（ALL USING true）：sort_order 0 → 8888   ★ 匿名金鑰改掉了真實資料
+[B] 新政策：                  sort_order 0 → 0      ✓ 擋下
+```
+
+### 改法
+
+讀取照舊（前台要顯示商品），寫入一律收回給 service_role。
+service_role 會繞過 RLS，所以後台的 `getSupabaseAdmin()` 完全不受影響。
+
+要動的是「用瀏覽器 anon key 直接寫資料庫」的五個後台頁面，全部改走後台 API：
+
+| 頁面 | 原本 | 現在 |
+|---|---|---|
+| `settings/rates` 殺率 | `products.update` | `PUT /api/admin/products/[id]` |
+| `users` 停用/啟用 | `users.update` | `PUT /api/admin/users/[id]` |
+| `news` 列表與編輯 | `news` insert/update/delete | 新增 `/api/admin/news` |
+| `coupons` | `coupons` CRUD | 新增 `/api/admin/coupons` |
+| `categories` | `categories` CRUD | 既有 GET 補上寫入方法 |
+
+分三類處理：
+
+- **前台要讀的**（products、product_prizes、banners、categories、module_settings、
+  menu_products、suppliers、news）→ 保留匿名 SELECT，收回寫入
+- **前台不讀的**（tags、product_tag_links、slot_prizes、product_ticket_plan、dev_logs）
+  → 讀寫都收回
+- **玩家自己的資料**（notifications、cs_tickets）→ 改成 `auth.uid() = user_id`
+- **只該由 RPC/後台寫的**（draw_records、order_items、action_logs、user_events、
+  search_logs、visit_logs）→ 移除匿名 INSERT。實查後確認前台沒有任何直接寫入點
+
+### 兩個要注意的細節
+
+`users` 的「Allow trigger insert」政策移除後，註冊會不會壞？不會 ——
+建 `public.users` 的 `handle_new_user` 是 SECURITY DEFINER，本來就繞過 RLS。
+（有先確認過才敢移除。）
+
+`news` 的匿名 UPDATE 收掉之後，前台的瀏覽數就寫不進去了。
+開一支 `increment_news_view()` SECURITY DEFINER 函數只讓它動 `view_count` 這一欄，
+前台改呼叫 RPC。整張表開放寫入只為了加一個瀏覽數，代價不成比例。
+
+### Migration
+
+- `470_lock_down_anon_writes.sql`
+
+---
+
 ## v2026.08.05k｜2026-08-05｜批量上架補圖片檔名解析與日文翻譯
 
 ### 圖片檔名對回網址（免費）
