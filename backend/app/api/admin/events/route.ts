@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       end_at: body.end_at || null,
       linked_category_id: body.linked_category_id || null,
       theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
+      // 首屏獨立於內容區。沒帶就維持 dark —— 既有活動頁視覺不變
+      hero_mode: ['dark','light','follow'].includes(body.hero_mode) ? body.hero_mode : 'dark',
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   await logAdminAction({ adminId: admin.adminId, action: 'create_event', detail: { slug: body.slug, title: body.title }, ip: req.headers.get('x-forwarded-for') ?? '' })

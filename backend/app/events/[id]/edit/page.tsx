@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
 import ScheduleFields from '@/components/ScheduleFields'
 import Input from '@/components/ui/Input'
+import ImageUploadField from '@/components/ui/ImageUploadField'
 import Textarea from '@/components/ui/Textarea'
 import SelectField from '@/components/ui/SelectField'
 
@@ -16,6 +17,7 @@ interface Event {
   is_active: boolean; start_at: string | null; end_at: string | null; kind: string | null
   linked_category_id: string | null
   theme_mode: 'dark' | 'light'
+  hero_mode?: 'dark' | 'light' | 'follow'
 }
 interface Section { id: string; type: SectionType; sort_order: number; content: Record<string, unknown> }
 type SectionType = 'hero' | 'text' | 'steps' | 'cards' | 'highlight' | 'cta' | 'product_ref' | 'stats' | 'fukuro' | 'rel' | 'rule' | 'table' | 'gallery' | 'features' | 'countdown' | 'sticky_cta'
@@ -114,7 +116,8 @@ function HeroForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: R
       <div className="border border-neutral-200 rounded-xl p-3 space-y-2 bg-neutral-50">
         <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide">背景影片（可選，P3功能）</span>
         <Field label="影片 URL（R2/CDN mp4）"><Input value={c.bg_video_url as string || ''} onChange={e => set('bg_video_url', e.target.value)} placeholder="https://r2.ggb.com.tw/videos/xxx.mp4" /></Field>
-        <Field label="Poster 圖（影片載入前顯示）"><Input value={c.bg_poster_url as string || ''} onChange={e => set('bg_poster_url', e.target.value)} placeholder="https://..." /></Field>
+        <ImageUploadField label="Poster 圖" hint="（影片載入前顯示）"
+          value={c.bg_poster_url as string || ''} onChange={v => set('bg_poster_url', v)} />
       </div>
     </div>
   )
@@ -307,7 +310,8 @@ function CardsForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v: 
                 <option value="grand">豪華（accent 發光）</option>
               </SelectField>
             </div>
-            <Input placeholder="圖片 URL（可選，顯示在卡片頂部）" value={card.image_url || ''} onChange={e => setCard(i, 'image_url', e.target.value)} />
+            <ImageUploadField label="卡片圖" hint="（可選，顯示在卡片頂部）"
+              value={card.image_url || ''} onChange={v => setCard(i, 'image_url', v)} />
             <Input placeholder="卡片標題" value={card.title} onChange={e => setCard(i, 'title', e.target.value)} />
             <Input placeholder="副說明" value={card.subtitle} onChange={e => setCard(i, 'subtitle', e.target.value)} />
             <div className="grid grid-cols-2 gap-2">
@@ -404,9 +408,12 @@ function GalleryForm({ c, onChange }: { c: Record<string, unknown>; onChange: (v
               </SelectField>
               <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 text-sm">刪除</button>
             </div>
-            <Input placeholder="URL（R2 圖片 or mp4）" value={item.url} onChange={e => setItem(i, 'url', e.target.value)} />
+            {item.media_type === 'video'
+              ? <Input placeholder="影片 URL（mp4）" value={item.url} onChange={e => setItem(i, 'url', e.target.value)} />
+              : <ImageUploadField label="圖片" value={item.url} onChange={v => setItem(i, 'url', v)} />}
             {item.media_type === 'video' && (
-              <Input placeholder="Poster 圖 URL（影片封面）" value={item.poster || ''} onChange={e => setItem(i, 'poster', e.target.value)} />
+              <ImageUploadField label="Poster 圖" hint="（影片載入前顯示）"
+                value={item.poster || ''} onChange={v => setItem(i, 'poster', v)} />
             )}
             <Input placeholder="說明文字（可選）" value={item.caption || ''} onChange={e => setItem(i, 'caption', e.target.value)} />
           </div>
@@ -681,6 +688,17 @@ export default function EventEditPage() {
                   <option value="light">淺色</option>
                 </SelectField>
               </div>
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-neutral-500 mb-1.5">首屏配色</label>
+                <SelectField value={meta.hero_mode ?? 'dark'}
+                  onChange={e => setMeta(m => ({ ...m, hero_mode: e.target.value as 'dark' | 'light' | 'follow' }))}>
+                  <option value="dark">深色（電影感，預設）</option>
+                  <option value="light">淺色</option>
+                  <option value="follow">跟隨上方風格</option>
+                </SelectField>
+              </div>
+            </div>
+            <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-neutral-500 mb-1.5">主題色</label>
                 <div className="flex items-center gap-2 mt-0.5">
