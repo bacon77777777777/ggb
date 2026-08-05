@@ -4,6 +4,145 @@
 
 ---
 
+## v2026.08.05m｜2026-08-05｜補開沒啟用的 RLS、藏起三個秘密欄位、廠商權限收窄
+
+### 470 沒修乾淨的兩類洞
+
+470 只處理了「RLS 有開但政策寬鬆」。之後才發現還有兩類：
+
+**洞一：RLS 根本沒啟用。** PROD 7 張、STG 25 張表的 `relrowsecurity = false`。
+RLS 沒開的話政策寫了也不會生效 —— STG 的 `public.users` 就是這樣：
+明明有 `auth.uid() = id` 政策，實測用 anon key 打 REST API 照樣讀得到
+全站會員的 email 與代幣餘額。STG 受影響的還有 `refund_requests`、
+`settlement_snapshots`（廠商月結）、`line_conversations`（GB哥對話）、`user_ip_log`。
+
+**洞二：SELECT 政策是整列開放，沒有欄位概念。** 470 給 products 加的
+`FOR SELECT USING (true)` 包含這三欄：
+
+| 欄位 | 為什麼不能公開 |
+|---|---|
+| `seed` | 抽獎種子。commit-reveal 的秘密值，公開等於玩家能預先算出每一抽的結果（`txid_hash` 才是該公開的 commitment） |
+| `profit_rate` | 殺率。平台商業機密 |
+| `cost` | 進貨成本。商業機密，廠商之間也不該互相看到 |
+
+實測 anon key 三欄全讀得到。RLS 不做欄位過濾，改用 PostgreSQL 的欄位級 GRANT
+（PostgREST 會遵守，選到沒授權的欄位直接 42501）。
+
+副作用：`select('*')` 會展開成所有欄位，撞到沒授權的就整個查詢失敗。
+前台 10 處 `select('*')` 改成明確欄位清單（`lib/productColumns.ts`）。
+
+### 差點擋掉一個刻意的設計
+
+本來連 `product_prizes.probability` 也要擋，寫到一半發現 `PrizeDetailSheet`
+的註解寫得很清楚：轉蛋／盒玩是「每抽當下獨立隨機」，機率對玩家有意義，
+本來就該顯示；籤號制才不顯示。那是刻意的產品決策，不是漏洞。收手。
+
+### 實測驗收（STG）
+
+```
+匿名讀 seed                 → 42501 permission denied  ✓
+匿名讀 profit_rate          → 42501 permission denied  ✓
+匿名讀 users                → []                       ✓
+匿名讀 settlement_snapshots → []                       ✓
+匿名讀 id,name,price,type   → 正常                     ✓
+匿名讀 probability          → 正常（刻意保留）         ✓
+```
+
+### 廠商權限收窄
+
+老闆定案：「廠商帳號只需要看到他自己的商品的商品管理列表，且操作只有編輯，
+不得刪除跟驗證」「不該讓廠商看到會員」。
+
+從 468 的 `{products, orders, reports_products}` 收成 `{products}`：
+
+- `orders` 拿掉 —— 配送管理會顯示玩家姓名、電話、收件地址
+- `reports_products` 拿掉 —— 消費明細逐筆列出是誰買的
+
+進銷存不另開頁面：商品管理列表本來就有庫存（`remaining`）與銷量（`sales`），
+廠商要的資訊在那裡看得到，而且不會連帶露出玩家。
+
+公平性驗證頁也不給 —— 那是平台對玩家的承諾，讓供貨方看得到封存內容
+等於把驗證的意義抵銷掉。
+
+三層都要擋，因為介面藏起來的按鈕擋不住直接打 API：
+
+| 層 | 做法 |
+|---|---|
+| 介面 | 商品列表依 `supplier_id` 過濾、刪除與驗證按鈕不顯示 |
+| middleware | 頁面只放行 `/products`；API 白名單收成四項，另加 `/seal`、`/close-out`、`/verify`、`/batch` 禁區 |
+| API | `PUT` 先查 `supplier_id` 確認擁有權；`DELETE` 對廠商直接 403；`POST` 與批量匯入強制蓋成自己的 `supplier_id` |
+
+### Migration
+
+- `471_enable_rls_and_hide_secrets.sql`
+- `472_supplier_products_only.sql`
+
+---
+
+## v2026.08.05l｜2026-08-05｜收回匿名金鑰的寫入權限（上線硬阻擋）
+
+### 起因
+
+做廠商權限（migration 468）時順手稽核 RLS，發現一件比廠商越權嚴重得多的事。
+
+前後台的瀏覽器都用 anon key 連 Supabase，而那把金鑰是 `NEXT_PUBLIC_` 開頭、
+**公開在前台的 JS bundle 裡**。同時 PROD 有 23 張表、STG 有 31 張表的 RLS 政策是
+`ALL ... USING (true)` —— 拿到那把金鑰的人可以改全站商品價格、刪光商品與廠商、
+竄改文章。STG 更誇張，`admins` 和 `roles` 也全開，任何人能自己建一個超級管理員帳號。
+
+### 先證明它是真的
+
+第一次測是用不存在的 id 打 PATCH/DELETE，回 200/204 就當成「可寫」—— 那是錯的。
+RLS 擋住和「0 筆符合」都回 204，分不出來。
+
+改用對照實驗：在 STG 的 `banners` 上還原舊政策、對真實資料列下手。
+
+```
+[A] 舊政策（ALL USING true）：sort_order 0 → 8888   ★ 匿名金鑰改掉了真實資料
+[B] 新政策：                  sort_order 0 → 0      ✓ 擋下
+```
+
+### 改法
+
+讀取照舊（前台要顯示商品），寫入一律收回給 service_role。
+service_role 會繞過 RLS，所以後台的 `getSupabaseAdmin()` 完全不受影響。
+
+要動的是「用瀏覽器 anon key 直接寫資料庫」的五個後台頁面，全部改走後台 API：
+
+| 頁面 | 原本 | 現在 |
+|---|---|---|
+| `settings/rates` 殺率 | `products.update` | `PUT /api/admin/products/[id]` |
+| `users` 停用/啟用 | `users.update` | `PUT /api/admin/users/[id]` |
+| `news` 列表與編輯 | `news` insert/update/delete | 新增 `/api/admin/news` |
+| `coupons` | `coupons` CRUD | 新增 `/api/admin/coupons` |
+| `categories` | `categories` CRUD | 既有 GET 補上寫入方法 |
+
+分三類處理：
+
+- **前台要讀的**（products、product_prizes、banners、categories、module_settings、
+  menu_products、suppliers、news）→ 保留匿名 SELECT，收回寫入
+- **前台不讀的**（tags、product_tag_links、slot_prizes、product_ticket_plan、dev_logs）
+  → 讀寫都收回
+- **玩家自己的資料**（notifications、cs_tickets）→ 改成 `auth.uid() = user_id`
+- **只該由 RPC/後台寫的**（draw_records、order_items、action_logs、user_events、
+  search_logs、visit_logs）→ 移除匿名 INSERT。實查後確認前台沒有任何直接寫入點
+
+### 兩個要注意的細節
+
+`users` 的「Allow trigger insert」政策移除後，註冊會不會壞？不會 ——
+建 `public.users` 的 `handle_new_user` 是 SECURITY DEFINER，本來就繞過 RLS。
+（有先確認過才敢移除。）
+
+`news` 的匿名 UPDATE 收掉之後，前台的瀏覽數就寫不進去了。
+開一支 `increment_news_view()` SECURITY DEFINER 函數只讓它動 `view_count` 這一欄，
+前台改呼叫 RPC。整張表開放寫入只為了加一個瀏覽數，代價不成比例。
+
+### Migration
+
+- `470_lock_down_anon_writes.sql`
+
+---
+
 ## v2026.08.05k｜2026-08-05｜批量上架補圖片檔名解析與日文翻譯
 
 ### 圖片檔名對回網址（免費）

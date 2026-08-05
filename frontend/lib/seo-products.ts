@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import type { Database } from '@/types/database.types'
 import { getSiteUrl } from '@/lib/site'
+import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 type DbProduct = Database['public']['Tables']['products']['Row']
 
@@ -30,7 +31,7 @@ export async function fetchProductById(productId: number): Promise<DbProduct | n
 
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_PUBLIC_COLUMNS)
     .eq('id', productId)
     .single()
 

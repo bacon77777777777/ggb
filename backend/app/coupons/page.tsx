@@ -111,12 +111,8 @@ export default function CouponsPage() {
       message: `確定要刪除折價券「${coupon.title}」嗎？`,
       onConfirm: async () => {
       try {
-        const { error } = await supabase
-          .from('coupons')
-          .delete()
-          .eq('id', coupon.id)
-
-        if (error) throw error
+        const res = await fetch(`/api/admin/coupons?id=${coupon.id}`, { method: 'DELETE', credentials: 'include' })
+        if (!res.ok) throw new Error('刪除失敗')
         await fetchCoupons()
       } catch (error) {
         console.error('Error deleting coupon:', error)
@@ -157,18 +153,17 @@ export default function CouponsPage() {
 
     try {
       if (editingCoupon) {
-        const { error } = await supabase
-          .from('coupons')
-          .update(payload)
-          .eq('id', editingCoupon.id)
-
-        if (error) throw error
+        const res = await fetch('/api/admin/coupons', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ id: editingCoupon.id, ...payload }),
+        })
+        if (!res.ok) throw new Error('更新失敗')
       } else {
-        const { error } = await supabase
-          .from('coupons')
-          .insert([payload])
-
-        if (error) throw error
+        const res = await fetch('/api/admin/coupons', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error('新增失敗')
       }
 
       setIsModalOpen(false)

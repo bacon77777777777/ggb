@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminScope, forceSupplierField, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import crypto from 'crypto'
@@ -17,11 +17,12 @@ const generateTempProductCode = () => `TEMP-${Date.now()}-${crypto.randomBytes(4
 
 export async function POST(request: Request) {
   try {
-    const session = await requireAdminSession()
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = (await request.json()) as CreateProductPayload
-    const product = body?.product || null
+    // 廠商送上來的 supplier_id 一律以 session 為準 —— 不能自己指定成別家
+    const product = body?.product ? forceSupplierField(body.product, scope) : null
     if (!product?.name) return NextResponse.json({ error: '缺少商品資料' }, { status: 400 })
 
     const supabaseAdmin = getSupabaseAdmin()
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
     const { data: finalProduct } = await supabaseAdmin.from('products').select('*').eq('id', newProductId).single()
 
     await logAdminAction({
-      adminId: session.adminId,
+      adminId: scope.adminId,
       action: '新增商品',
       targetType: 'product',
       targetId: String(newProductId),
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ product: finalProduct || { ...created, product_code: newProductCode } })
   } catch (e: any) {
+    if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: e?.message || '新增商品失敗' }, { status: 500 })
   }
 }

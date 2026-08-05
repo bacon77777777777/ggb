@@ -89,11 +89,17 @@ export default function NewsEditPage() {
       }
       if (isNew) {
         const newId = Math.floor(10000000 + Math.random() * 90000000).toString()
-        const { error } = await supabase.from('news').insert([{ ...payload, id: newId }])
-        if (error) { toast('儲存失敗：' + error.message, 'error'); return }
+        const res = await fetch('/api/admin/news', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ ...payload, id: newId }),
+        })
+        if (!res.ok) { toast('儲存失敗：' + ((await res.json().catch(() => ({}))).error ?? ''), 'error'); return }
       } else {
-        const { error } = await supabase.from('news').update(payload).eq('id', id)
-        if (error) { toast('儲存失敗：' + error.message, 'error'); return }
+        const res = await fetch('/api/admin/news', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ id, ...payload }),
+        })
+        if (!res.ok) { toast('儲存失敗：' + ((await res.json().catch(() => ({}))).error ?? ''), 'error'); return }
       }
       router.push('/news')
     } finally { setIsSaving(false) }

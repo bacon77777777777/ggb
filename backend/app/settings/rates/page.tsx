@@ -154,7 +154,12 @@ export default function RatesPage() {
   const save = async () => {
     setIsSaving(true)
     for (const id of changed) {
-      await supabase.from('products').update({ profit_rate: rates[id] }).eq('id', id)
+      await fetch(`/api/admin/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ product: { profit_rate: rates[id] } }),
+      })
     }
     setSaved({ ...rates })
     setIsSaving(false)

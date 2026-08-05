@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Database } from '@/types/database.types';
 import ProductCard from '@/components/ProductCard';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
@@ -70,7 +71,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       try {
         const { data } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('status', 'active')
           .neq('type', 'slot')
           .neq('id', productId)

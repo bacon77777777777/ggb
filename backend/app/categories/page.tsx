@@ -142,12 +142,8 @@ export default function CategoriesPage() {
       onConfirm: async () => {
 
       try {
-        const { error } = await supabase
-          .from('categories')
-          .delete()
-          .eq('id', category.id)
-
-        if (error) throw error
+        const res = await fetch(`/api/admin/categories?id=${category.id}`, { method: 'DELETE', credentials: 'include' })
+        if (!res.ok) throw new Error('刪除失敗')
         fetchData()
       } catch (error) {
         console.error('Error deleting category:', error)
@@ -171,18 +167,17 @@ export default function CategoriesPage() {
       }
 
       if (editingCategory) {
-        const { error } = await supabase
-          .from('categories')
-          .update(payload)
-          .eq('id', editingCategory.id)
-
-        if (error) throw error
+        const res = await fetch('/api/admin/categories', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ id: editingCategory.id, ...payload }),
+        })
+        if (!res.ok) throw new Error('更新失敗')
       } else {
-        const { error } = await supabase
-          .from('categories')
-          .insert([payload])
-
-        if (error) throw error
+        const res = await fetch('/api/admin/categories', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error('新增失敗')
       }
 
       setIsModalOpen(false)

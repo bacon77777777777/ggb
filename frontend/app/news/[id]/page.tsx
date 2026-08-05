@@ -341,7 +341,9 @@ export default function NewsDetailPage() {
       .then(({ data }) => {
         setItem(data);
         setIsLoading(false);
-        if (data) supabase.from('news').update({ view_count: (data.view_count ?? 0) + 1 }).eq('id', data.id);
+        // 瀏覽數走 RPC。news 的匿名 UPDATE 政策已收回（migration 470）——
+        // 原本是整張表對匿名開放寫入，等於任何人都能竄改站上文章。
+        if (data) supabase.rpc('increment_news_view', { p_news_id: data.id });
       });
   }, [newsId]);
 

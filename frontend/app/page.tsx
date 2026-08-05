@@ -21,6 +21,7 @@ import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
 import NoticeBar from '@/components/promo/NoticeBar';
+import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -115,7 +116,7 @@ export default function Home() {
         const result = await withTimeout(
           supabase
             .from('products')
-            .select('*')
+            .select(PRODUCT_PUBLIC_COLUMNS)
             .neq('status', 'pending')
             .neq('type', 'slot')
             .order('created_at', { ascending: false }) as unknown as Promise<ProductsQueryResult>,
