@@ -109,7 +109,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
           onTouchMove={e => { if (e.target === e.currentTarget) e.preventDefault(); }}
         >
           <motion.div
-            className={`w-full max-w-[330px] ${isImageOnly ? 'rounded-3xl overflow-hidden shadow-2xl' : ''}`}
+            className={`w-full max-w-[330px] ${isImageOnly ? 'rounded-3xl overflow-hidden' : ''}`}
             initial={{ scale: 0.88, y: 12 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.94, opacity: 0 }}
