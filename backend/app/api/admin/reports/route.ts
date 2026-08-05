@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminScope } from '@/lib/requireAdmin'
 
 export async function GET(request: NextRequest) {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const scope = await requireAdminScope()
+  if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const tab = searchParams.get('tab') || 'overview'
   const start = searchParams.get('start')
   const end = searchParams.get('end')
-  const supplierId = searchParams.get('supplierId')
+  // 廠商帳號不管網址帶什麼 supplierId，一律看自己那家。
+  // 只靠前端下拉限制是不夠的 —— 網址參數改一下就繞過去了
+  const supplierId = scope?.supplierScope != null
+    ? String(scope.supplierScope)
+    : searchParams.get('supplierId')
   const productType = searchParams.get('type')
 
   const supabase = getSupabaseAdmin()

@@ -40,6 +40,8 @@ const SUPPLIER_API_ALLOW: string[] = [
   '/api/admin/products',          // 商品（route 內依 supplier_id 限縮，且擋掉刪除）
   '/api/admin/categories',        // 編輯商品時要選分類
   '/api/admin/upload',            // 上傳商品圖
+  '/api/admin/suppliers',         // 結算頁的廠商下拉（route 內只回自己那家）
+  '/api/admin/reports',           // 廠商結算（route 內強制蓋成自己的 supplierId）
 ]
 
 /**
@@ -188,7 +190,10 @@ export function middleware(request: NextRequest) {
   // 廠商只有商品管理，連公平性驗證頁都不給 —— 那是平台對玩家的承諾，
   // 讓供貨方看得到封存內容等於把驗證的意義抵銷掉
   if (session.role === 'supplier') {
-    const ok = pathname === '/products' || (pathname.startsWith('/products/') && !pathname.endsWith('/verify'))
+    const ok =
+      pathname === '/products' ||
+      (pathname.startsWith('/products/') && !pathname.endsWith('/verify')) ||
+      pathname === '/reports/settlement'
     if (!ok) return NextResponse.redirect(new URL('/products', request.url))
     return NextResponse.next()
   }
