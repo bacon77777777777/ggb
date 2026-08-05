@@ -39,6 +39,7 @@ interface ParsedRow {
   missing: string[]
   filled: FilledInfo[]
   warnings: string[]
+  needsTranslation: string[]
   selected?: boolean
 }
 
@@ -49,6 +50,7 @@ interface ParseResult {
   stats: {
     total: number; ready: number; needsAttention: number
     mappedFields: number; totalFields: number; autoFilled: number; noPrize: number
+    missingImages: number; knownImages: number; needsTranslation: number
   }
   products: ParsedRow[]
 }
@@ -76,6 +78,8 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [committing, setCommitting] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [translated, setTranslated] = useState<{ count: number; costUsd: number } | null>(null)
   const [outcome, setOutcome] = useState<{ ok: number; fail: number; results: any[] } | null>(null)
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const reset = useCallback(() => {
     setStep('upload'); setResult(null); setRows([]); setOutcome(null)
     setExpanded(new Set()); setParsing(false); setCommitting(false)
+    setTranslating(false); setTranslated(null)
     if (fileRef.current) fileRef.current.value = ''
   }, [])
 
@@ -152,6 +157,44 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       toast(e instanceof Error ? e.message : '上架失敗', 'error')
     } finally {
       setCommitting(false)
+    }
+  }
+
+  /**
+   * 日文名稱翻譯 —— 整個流程裡唯一要錢的動作，所以做成按鈕而不是自動執行，
+   * 而且按鈕上直接寫預估金額。整批一次送出（不是逐筆），成本差五倍。
+   */
+  const translate = async () => {
+    const names = [...new Set(rows.flatMap(r => r.needsTranslation))]
+    if (!names.length) return
+    setTranslating(true)
+    try {
+      const res = await fetch('/api/admin/products/import/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ names }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || '翻譯失敗')
+
+      const map: Record<string, string> = json.translations ?? {}
+      const n = Object.keys(map).length
+      if (n === 0) { toast('沒有需要更動的名稱'); return }
+
+      setRows(prev => prev.map(r => {
+        const product = { ...r.product }
+        if (typeof product.name === 'string' && map[product.name]) product.name = map[product.name]
+        const prizes = r.prizes.map(pz =>
+          typeof pz.name === 'string' && map[pz.name] ? { ...pz, name: map[pz.name] } : pz)
+        return { ...r, product, prizes, needsTranslation: [] }
+      }))
+      setTranslated({ count: n, costUsd: json.usage?.costUsd ?? 0 })
+      toast(`已翻譯 ${n} 個名稱`)
+    } catch (e: unknown) {
+      toast(e instanceof Error ? e.message : '翻譯失敗', 'error')
+    } finally {
+      setTranslating(false)
     }
   }
 
@@ -281,6 +324,34 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
             ))}
           </div>
+
+          {(result.stats.needsTranslation > 0 || result.stats.missingImages > 0) && (
+            <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5">
+              {result.stats.needsTranslation > 0 && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-amber-800">
+                    {result.stats.needsTranslation} 個名稱含日文。英文不會動
+                    （MASTERLISE 這類官方產品線名稱翻掉就搜不到了）。
+                  </p>
+                  <Button size="sm" variant="outline" onClick={translate} isLoading={translating}>
+                    翻成台灣繁中（約 US${(0.0004 + result.stats.needsTranslation * 0.00012).toFixed(3)}）
+                  </Button>
+                </div>
+              )}
+              {translated && (
+                <p className="text-xs text-green-700">
+                  已翻譯 {translated.count} 個名稱，實際花費 US${translated.costUsd}
+                </p>
+              )}
+              {result.stats.missingImages > 0 && (
+                <p className="text-xs text-amber-800">
+                  {result.stats.missingImages} 個商品的圖片檔名在圖庫裡找不到
+                  （目前圖庫有 {result.stats.knownImages} 張）。
+                  先用商品頁的「上傳圖片」丟圖片壓縮檔，再重新匯入就會自動對上。
+                </p>
+              )}
+            </div>
+          )}
 
           <p className="text-xs text-neutral-500">
             欄位對應：

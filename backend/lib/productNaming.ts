@@ -22,6 +22,19 @@ import * as OpenCC from 'opencc-js'
 const s2twp = OpenCC.Converter({ from: 'cn', to: 'twp' })
 
 /**
+ * 日文新字體 → 繁體（蔵→藏、竜→龍、桜→櫻、剣→劍、沢→澤…）。
+ *
+ * 只在字串「確定是日文」時才套用，判準是含假名。原因是這個轉換表會把
+ * 台灣正字改成舊字形：真→眞、研→硏、郎→郞、即→卽、台→臺、瓶→甁。
+ * 對純漢字字串無差別套用的話，正確的繁中商品名會被改壞，
+ * 而純漢字本來就分不出中日 —— 分不出來就不該猜。
+ *
+ * 含假名的字串沒有這個風險：那必定是日文，轉換必定是對的。
+ * 分不出來的（純漢字日文名）留給 AI 翻譯那層處理。
+ */
+const jp2t = OpenCC.Converter({ from: 'jp', to: 'tw' })
+
+/**
  * 中國用語 → 台灣用語。
  * key 用轉繁之後的字形（因為這一步跑在 opencc 後面），簡體寫法一併收以防漏網。
  */
@@ -46,6 +59,13 @@ const TW_TERMS: [RegExp, string][] = [
   [/數碼寶貝/g, '數碼寶貝'],
   [/聖鬥士星矢/g, '聖鬥士星矢'],
   [/龍貓/g, '龍貓'],
+
+  // opencc 的台灣變體有兩處會轉成「教育部標準字」而不是實際寫法，改回來。
+  // 放在 TW_TERMS 裡是因為它必須跑在 opencc 之後。
+  //   臺：台北→臺北、一台→一臺，那是公文書寫法，商品名沒人這樣寫
+  //   汙：標準字是汙，但台灣實際上寫「污」（污點、污漬）
+  [/臺/g, '台'],
+  [/汙/g, '污'],
 
   // 一般用字
   [/質量(?=好|佳|優|不錯)/g, '品質'],
@@ -75,7 +95,12 @@ export function hasSimplified(s: string): boolean {
 export function normalizeToTaiwan(raw: string): string {
   if (!raw) return raw
 
-  let s = s2twp(String(raw))
+  let s = String(raw)
+
+  // 日文新字體只在確定是日文時轉，見 jp2t 的說明
+  if (hasJapanese(s)) s = jp2t(s)
+
+  s = s2twp(s)
 
   for (const [re, to] of TW_TERMS) s = s.replace(re, to)
 
@@ -88,8 +113,12 @@ export function normalizeToTaiwan(raw: string): string {
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
     // 連續空白收成一個
     .replace(/[ \t]{2,}/g, ' ')
-    // 括號前後的多餘空白
-    .replace(/\s*([（(])\s*/g, ' $1').replace(/\s*([）)])\s*/g, '$1 ')
+    // 括號旁的多餘空白收成一個 —— 只收斂既有的，不無中生有。
+    // 第一版寫成 /\s*([（(])\s*/ → ' $1'，等於每個左括號前都硬塞一個空格，
+    // 實測 395 個本來就正確的名稱裡有 112 個被這樣「改」掉。
+    // 名稱跟廠商給的不一致，對帳跟搜尋都會出問題。
+    .replace(/[ \t]+([（(])/g, ' $1')
+    .replace(/([）)])[ \t]+/g, '$1 ')
     .trim()
 
   return s
