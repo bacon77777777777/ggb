@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminScope, forceSupplierField, scopeToSupplier, ScopeError } from '@/lib/requireAdmin'
+import { requireAdminScope, forceSupplierField, scopeToSupplier, stripSecretsForSupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import crypto from 'crypto'
@@ -39,7 +39,7 @@ export async function GET() {
 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data ?? [])
+    return NextResponse.json((data ?? []).map(row => stripSecretsForSupplier(row, scope)))
   } catch (e: unknown) {
     if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: e instanceof Error ? e.message : '讀取失敗' }, { status: 500 })
@@ -50,6 +50,9 @@ export async function POST(request: Request) {
   try {
     const scope = await requireAdminScope()
     if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 廠商只能看與編輯自己的商品，不能新增（老闆定的：操作只有編輯）。
+    // 介面上的按鈕已經藏起來，但藏起來的按鈕擋不住直接打 API
+    if (scope.isSupplier) return NextResponse.json({ error: '廠商帳號不能新增商品' }, { status: 403 })
 
     const body = (await request.json()) as CreateProductPayload
     // 廠商送上來的 supplier_id 一律以 session 為準 —— 不能自己指定成別家

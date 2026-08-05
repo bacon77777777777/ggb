@@ -34,6 +34,7 @@ import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { useRequireLogin } from '@/hooks/useRequireLogin';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -359,6 +360,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, refreshProfile } = useAuth();
+  const requireLogin = useRequireLogin();
   const { showToast } = useToast();
   const [supabase] = useState(() => createClient());
 
@@ -587,10 +589,10 @@ export default function ProductDetailPage() {
   }, [user, product, supabase]);
 
   const handleFollowToggle = async () => {
-    if (!user || !product) {
-      router.push('/login');
-      return;
-    }
+    // 原本是直接 router.push('/login')：沒說為什麼被丟走，登入完也回不到這個商品
+    if (!requireLogin('登入後就可以收藏這個商品，開賣時會通知你')) return;
+    // requireLogin 回 true 就代表有登入，但 TypeScript 推不出來，補一次縮小型別
+    if (!user || !product) return;
 
     const newStatus = !isFollowed;
     setIsFollowed(newStatus);

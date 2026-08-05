@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { trackEvent } from '@/lib/trackEvent';
 import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
+import { useRequireLogin } from '@/hooks/useRequireLogin';
 
 interface NewsItem {
   id: string;
@@ -199,7 +200,12 @@ export default function NewsPage() {
     }
   };
 
+  const requireLogin = useRequireLogin();
+
   const handleLike = async (id: string) => {
+    // 未登入就先擋下來。不擋的話會樂觀更新完再被 401 回滾 ——
+    // 愛心先亮起來又暗掉，看起來像壞掉而不是「你要先登入」
+    if (!requireLogin('登入後就可以幫這篇按讚')) return;
     setAll(prev => prev.map(a => a.id === id
       ? { ...a, liked: !a.liked, likes_count: a.likes_count + (a.liked ? -1 : 1) }
       : a

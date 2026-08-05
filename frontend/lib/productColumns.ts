@@ -17,9 +17,13 @@
  * 靠的是 select 字串的字面量型別，只要經過 join 或 + 就會退化成 string，
  * 查詢結果的型別跟著變成 GenericStringError，整個檔案的型別檢查就垮了。
  *
- * 新增商品欄位時如果前台要用，記得加進來。
+ * 新增商品欄位時如果前台要用，記得加進來 —— 但**要先確認資料表真的有那一欄**。
+ * 這份清單第一版是照 types/database.types.ts 產的，而那份型別檔把
+ * product_prizes 的 probability 錯放在 products 底下，結果整個首頁的商品查詢
+ * 42703 column does not exist、一個商品都載不出來。
+ * 型別檔不等於資料表，要對 information_schema 驗。
  */
 
-export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, probability, remaining_count, is_hot, txid_hash, is_preorder, preorder_available_at, distributor, series, supplier_id, created_at'
+export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, is_preorder, preorder_available_at, distributor, series, supplier_id, created_at'
 
 export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, created_at'

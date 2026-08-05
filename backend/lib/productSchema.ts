@@ -200,7 +200,7 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'status', label: '上架狀態', kind: 'text', fallback: 'pending',
-    aliases: [/^狀態$/i, /^status$/i, /販售狀態/i, /^上架$/i, /^上下架$/i],
+    aliases: [/上架狀態/i, /^狀態$/i, /^status$/i, /販售狀態/i, /^上架$/i, /^上下架$/i],
     example: '上架', note: '上架 / 待上架，留空為待上架',
   },
   {
@@ -235,7 +235,7 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'lottery_per_user_draws', label: '每人抽籤上限', kind: 'int',
-    aliases: [/每人.*次數/i, /每人上限/i, /lottery.*per.*user/i],
+    aliases: [/每人.*次數/i, /每人.*上限/i, /lottery.*per.*user/i],
     example: '', note: '抽籤販售專用',
   },
   {

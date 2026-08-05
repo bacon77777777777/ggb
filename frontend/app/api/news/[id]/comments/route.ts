@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data: comments, error } = await admin
     .from('news_comments')
-    .select('id, news_id, user_id, content, created_at')
+    .select('id, news_id, user_id, content, created_at, bot_likes')
     .eq('news_id', newsId)
     .order('created_at', { ascending: true })
 
@@ -57,7 +57,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const result = comments.map(c => ({
     ...c,
     user: userMap[c.user_id] ?? { name: '用戶', avatar_url: null },
-    likes_count: likeCountMap[c.id] ?? 0,
+    // 顯示數 = 展示底數 + 真實按讚數。
+    // 真實玩家的按讚照舊寫在 news_comment_likes，這裡只是疊加上去 ——
+    // 前台看不到「誰按的」，所以沒必要為了一個數字塞 200 隻機器人的按讚紀錄
+    likes_count: (c.bot_likes ?? 0) + (likeCountMap[c.id] ?? 0),
     is_liked: myLikedSet.has(c.id),
     is_own: user ? c.user_id === user.id : false,
   }))

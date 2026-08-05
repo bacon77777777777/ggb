@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession, requireAdminScope, assertOwnedBySupplier, ScopeError } from '@/lib/requireAdmin'
+import { requireAdminScope, assertOwnedBySupplier, stripSecretsForSupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
@@ -13,6 +13,41 @@ async function pushLineAlert(text: string) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ to: id, messages: [{ type: 'text', text }] }),
   }).catch(() => {})
+}
+
+/**
+ * 單筆商品
+ *
+ * 編輯頁原本從瀏覽器用 anon key 查 `select('*', product_prizes(*))`。
+ * migration 471 把 seed / cost / profit_rate 從 anon 撤掉之後，`*` 展開會 42501，
+ * 編輯頁整頁載不出來。改走 service role，並依身份濾掉廠商不該看的欄位。
+ */
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { id } = await params
+    const productId = Number(id)
+    if (!Number.isFinite(productId)) return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
+
+    const { data, error } = await getSupabaseAdmin()
+      .from('products')
+      .select('*, product_prizes(*)')
+      .eq('id', productId)
+      .single()
+
+    if (error || !data) return NextResponse.json({ error: error?.message || '找不到商品' }, { status: 404 })
+
+    assertOwnedBySupplier(scope, data.supplier_id)
+    return NextResponse.json(stripSecretsForSupplier(data, scope))
+  } catch (e: unknown) {
+    if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
+    return NextResponse.json({ error: e instanceof Error ? e.message : '讀取失敗' }, { status: 500 })
+  }
 }
 
 export async function PUT(
