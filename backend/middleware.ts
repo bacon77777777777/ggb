@@ -124,6 +124,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/events',                 permission: 'events' },
   { prefix: '/cs-management',          permission: 'cs_management' },
   { prefix: '/ai-usage',               permission: 'tools' },
+  { prefix: '/analytics-overview',     permission: 'reports_overview' },
   { prefix: '/design-system',          permission: 'tools' },
   { prefix: '/frontend-design-system', permission: 'tools' },
   // 父層保底：/reports/xxx 各自的規則前綴更長，會優先命中

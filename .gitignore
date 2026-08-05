@@ -37,3 +37,6 @@ yarn-error.log*
 # Local bulk import artifacts
 backend/public/images/item/
 .env*
+
+# 驗證用的 production build 輸出（見 next.config 的 distDir）
+.next-verify/

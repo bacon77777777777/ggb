@@ -4,6 +4,55 @@
 
 ---
 
+## v2026.08.05o｜2026-08-05｜側欄權限預設放行、商品列表被欄位級授權擋掉
+
+老闆用廠商帳號實測，抓到兩個問題。
+
+### 一、側欄看得到「分析頁」與「其他黑科技」整組
+
+`AdminLayout` 的 `canAccess()` 寫的是：
+
+```ts
+const perm = PATH_PERMISSION_MAP[path]
+if (!perm) return true        // ← 沒規則就放行
+```
+
+48 個選單項目裡有 3 個沒有權限對應（`/analytics-overview`、`/design-system`、
+`/frontend-design-system`），於是對所有角色可見。
+
+這跟前一版修 middleware 的是同一類錯誤：**漏掉的後果應該是「看不到」而不是
+「都看得到」**。補上那三個對應，並把預設改成 `return false`。
+middleware 也補上 `/analytics-overview`（前一版漏了）。
+
+### 二、商品管理整頁空白（我自己造成的回歸）
+
+`Error fetching products: {}`。原因是後台商品列表從瀏覽器用 anon key 查
+`select('*, prizes:product_prizes(*)')`，而 migration 471 用欄位級授權把
+`seed` / `cost` / `profit_rate` 從 anon 撤掉了 —— `*` 展開會撞到那三欄，
+整個查詢 42501。
+
+前台我有改成明確欄位清單，但**漏了後台**。而且後台不能照做：那張表本來就要
+顯示「成本」與「殺率」兩欄，非拿到那些欄位不可。
+
+所以改成走 service role：新增 `GET /api/admin/products`，商品頁改呼叫它。
+
+順帶把廠商範圍的過濾搬到伺服器端。前一版是在前端加 `.eq('supplier_id', ...)`，
+那只是介面效果 —— 改一下請求就繞過去了。
+
+### 實測（STG）
+
+三家廠商各建一個帳號登入，查 `GET /api/admin/products`：
+
+```
+吉吉比   (id=3) → 3 筆，其中不屬於他的：0
+奇幻工房 (id=2) → 10 筆，其中不屬於他的：0
+靈感文創 (id=1) → 39 筆，其中不屬於他的：0
+```
+
+（全站共 52 筆。測完帳號已清除。）
+
+---
+
 ## v2026.08.05n｜2026-08-05｜廠商帳號可建可用：所屬廠商欄位 + 只看自己的結算
 
 ### 新增管理者選了「廠商」就存不進去

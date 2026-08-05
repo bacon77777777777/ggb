@@ -12,7 +12,7 @@ import SmartImportWizard from '@/components/SmartImportWizard'
 import { useAdmin } from '@/contexts/AdminContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
@@ -30,8 +30,9 @@ export default function ProductsPage() {
   // 廠商帳號只能看到自己供貨的商品，而且只能編輯 —— 不能刪除、不能看公平性驗證。
   // 這裡是介面層的限制；真正的把關在 API（middleware 白名單 + assertOwnedBySupplier），
   // 因為介面藏起來的按鈕擋不住直接打 API。
+  // 只用來決定介面上要不要顯示刪除／驗證按鈕。
+  // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
-  const supplierScope = isSupplier ? adminUser?.supplierId ?? null : null
 
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
@@ -45,19 +46,24 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true)
-      let query = supabase
-        .from('products')
-        .select('*, prizes:product_prizes(*)')
-        .order('created_at', { ascending: false })
-
-      if (supplierScope !== null) query = query.eq('supplier_id', supplierScope)
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error fetching products:', error)
+      // 走後台 API（service role）。瀏覽器的 anon key 讀不到 cost 與 profit_rate
+      // ——那兩欄在 migration 471 被欄位級授權擋掉了，而這張表要顯示成本與殺率。
+      // 廠商範圍的過濾也一併在伺服器端做，前端加條件只是介面效果。
+      const res = await fetch('/api/admin/products', { credentials: 'include' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        console.error('Error fetching products:', j.error || res.status)
+        toast(j.error || '載入商品失敗', 'error')
         return
       }
+      const data = await res.json()
+
+      // 廠商名稱要另外查 —— 商品表只有 supplier_id。
+      // 廠商帳號呼叫這支只會拿到自己那一家（見 API 的 scopeToSupplier）
+      fetch('/api/admin/suppliers', { credentials: 'include' })
+        .then(r => (r.ok ? r.json() : []))
+        .then(list => { if (Array.isArray(list)) setSuppliers(list) })
+        .catch(() => {})
 
       if (data) {
         const mappedProducts: Product[] = data.map((p: any) => ({
@@ -68,6 +74,7 @@ export default function ProductsPage() {
           type: p.type,
           price: p.price,
           cost: p.cost ?? undefined,
+          supplierId: p.supplier_id ?? null,
           remaining: p.remaining,
           status: p.status,
           sales: p.sales,
@@ -206,6 +213,13 @@ export default function ProductsPage() {
     })
   }
   const [searchQuery, setSearchQuery] = useState('')
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([])
+  const [selectedSupplier, setSelectedSupplier] = useState('all')
+  // 商品表只有 supplier_id，名稱要靠這張對照表
+  const supplierNameById = useMemo(
+    () => new Map(suppliers.map(sup => [sup.id, sup.name])),
+    [suppliers]
+  )
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [categories, setCategories] = useState<string[]>([])
 
@@ -236,9 +250,9 @@ export default function ProductsPage() {
   const observerTarget = useRef<HTMLDivElement>(null)
   
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('products', 'compact', {
-    productCode: true, name: true, type: true, price: true, cost: true,
-    stockAndSales: true, majorStatus: true, visibility: true, createdAt: true,
-    startedAt: true, endedAt: true, operations: true
+    productCode: true, name: true, type: true, price: true,
+    stockAndSales: true, supplier: true, majorStatus: true, cost: true,
+    visibility: true, createdAt: true, startedAt: true, endedAt: true, operations: true
   })
   
   const [selectedMajorStatus, setSelectedMajorStatus] = useState<'all' | 'normal' | 'depleted'>('all')
@@ -564,6 +578,7 @@ export default function ProductsPage() {
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getDisplayCode(product).includes(searchQuery) ||
       product.prizes.some(prize => prize.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const matchSupplier = selectedSupplier === 'all' || String(product.supplierId ?? '') === selectedSupplier
     const matchCategory = selectedCategory === 'all' || product.category === selectedCategory
     const matchStatus = selectedStatus === 'all' || product.status === selectedStatus
     const matchType = selectedType === 'all' || (product.type || 'ichiban') === selectedType
@@ -577,7 +592,7 @@ export default function ProductsPage() {
     })()
     // 熱門商品篩選
     const matchHot = !selectedHot || product.isHot
-    return matchSearch && matchCategory && matchStatus && matchType && matchMajorStatus && matchLowStock && matchHot
+    return matchSearch && matchSupplier && matchCategory && matchStatus && matchType && matchMajorStatus && matchLowStock && matchHot
   })
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -593,6 +608,11 @@ export default function ProductsPage() {
       case 'type': aValue = a.type || 'ichiban'; bValue = b.type || 'ichiban'; break
       case 'price': aValue = a.price; bValue = b.price; break
       case 'cost': aValue = a.cost ?? -1; bValue = b.cost ?? -1; break
+      // 依廠商名稱排（不是 id）—— 表格顯示的是名稱，照 id 排使用者看不出規律
+      case 'supplier':
+        aValue = supplierNameById.get(a.supplierId ?? -1) ?? ''
+        bValue = supplierNameById.get(b.supplierId ?? -1) ?? ''
+        break
       case 'stockAndSales': 
         // 根據庫存排序（庫存 = 所有獎項剩餘數量總和）
         aValue = a.prizes.reduce((sum, prize) => sum + prize.remaining, 0)
@@ -644,7 +664,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setDisplayCount(20)
-  }, [searchQuery, selectedCategory, selectedStatus, selectedType, selectedMajorStatus, selectedLowStock, selectedHot, sortField, sortDirection])
+  }, [searchQuery, selectedSupplier, selectedCategory, selectedStatus, selectedType, selectedMajorStatus, selectedLowStock, selectedHot, sortField, sortDirection])
 
   // 統計資料
   const totalProducts = products.length
@@ -805,9 +825,10 @@ export default function ProductsPage() {
               { key: 'name', label: '名稱', visible: visibleColumns.name },
               { key: 'type', label: '類別', visible: visibleColumns.type },
               { key: 'price', label: '價格(G)', visible: visibleColumns.price },
-              { key: 'cost', label: '成本', visible: visibleColumns.cost },
               { key: 'stockAndSales', label: '庫存/銷量', visible: visibleColumns.stockAndSales },
+              ...(isSupplier ? [] : [{ key: 'supplier', label: '廠商', visible: visibleColumns.supplier }]),
               { key: 'majorStatus', label: '大獎狀態', visible: visibleColumns.majorStatus },
+              { key: 'cost', label: '成本', visible: visibleColumns.cost },
               { key: 'visibility', label: '上架', visible: visibleColumns.visibility },
               { key: 'createdAt', label: '建立時間', visible: visibleColumns.createdAt },
               { key: 'operations', label: '操作', visible: visibleColumns.operations }
@@ -843,6 +864,17 @@ export default function ProductsPage() {
                   { value: 'slot', label: '機台' }
                 ]
               },
+              ...(isSupplier ? [] : [{
+                key: 'supplier',
+                label: '廠商',
+                type: 'select' as const,
+                value: selectedSupplier,
+                onChange: setSelectedSupplier,
+                options: [
+                  { value: 'all', label: '全部廠商' },
+                  ...suppliers.map(sup => ({ value: String(sup.id), label: sup.name })),
+                ],
+              }]),
               {
                 key: 'category',
                 label: '分類',
@@ -974,19 +1006,24 @@ export default function ProductsPage() {
                       價格(G)
                     </SortableTableHeader>
                   )}
-                  {visibleColumns.cost && (
-                    <SortableTableHeader sortKey="cost" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
-                      成本
-                    </SortableTableHeader>
-                  )}
                   {visibleColumns.stockAndSales && (
                     <SortableTableHeader sortKey="stockAndSales" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                       庫存/銷量
                     </SortableTableHeader>
                   )}
+                  {visibleColumns.supplier && !isSupplier && (
+                    <SortableTableHeader sortKey="supplier" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      廠商
+                    </SortableTableHeader>
+                  )}
                   {visibleColumns.majorStatus && (
                     <SortableTableHeader sortKey="majorStatus" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                       大獎狀態
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.cost && (
+                    <SortableTableHeader sortKey="cost" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      成本
                     </SortableTableHeader>
                   )}
                   {visibleColumns.visibility && (
@@ -1112,11 +1149,6 @@ export default function ProductsPage() {
                           <span className="whitespace-nowrap">{product.price}</span>
                         </td>
                       )}
-                      {visibleColumns.cost && (
-                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
-                          <span className="whitespace-nowrap">{product.cost != null ? product.cost : '–'}</span>
-                        </td>
-                      )}
                       {visibleColumns.stockAndSales && (
                         <td className={`${getDensityClasses()} text-sm whitespace-nowrap`}>
                           {(() => {
@@ -1138,6 +1170,11 @@ export default function ProductsPage() {
                           })()}
                         </td>
                       )}
+                      {visibleColumns.supplier && !isSupplier && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>
+                          {supplierNameById.get(product.supplierId ?? -1) ?? <span className="text-neutral-400">未指定</span>}
+                        </td>
+                      )}
                       {visibleColumns.majorStatus && (
                         <td className={`${getDensityClasses()} whitespace-nowrap`}>
                           {getMajorStatus(product) === 'none' ? (
@@ -1151,6 +1188,11 @@ export default function ProductsPage() {
                               正常
                             </span>
                           )}
+                        </td>
+                      )}
+                      {visibleColumns.cost && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>
+                          <span className="whitespace-nowrap">{product.cost != null ? product.cost : '–'}</span>
                         </td>
                       )}
                       {visibleColumns.visibility && product.type === 'slot' && (
