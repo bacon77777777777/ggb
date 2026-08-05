@@ -33,6 +33,7 @@ import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
+import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -1022,7 +1023,7 @@ export default function ProductDetailPage() {
 
       const { data: productData, error: productError } = await supabase
         .from('products')
-        .select('*')
+        .select(PRODUCT_PUBLIC_COLUMNS)
         .eq('id', productId)
         .neq('status', 'pending')
         .single();
@@ -1060,7 +1061,7 @@ export default function ProductDetailPage() {
 
       const { data: prizesData, error: prizesError } = await supabase
         .from('product_prizes')
-        .select('*')
+        .select(PRIZE_PUBLIC_COLUMNS)
         .eq('product_id', productId)
         .order('level', { ascending: true });
       
@@ -1069,7 +1070,7 @@ export default function ProductDetailPage() {
 
       const { data: recData } = await supabase
         .from('products')
-        .select('*')
+        .select(PRODUCT_PUBLIC_COLUMNS)
         .neq('id', productId)
         .eq('status', 'active')
         .limit(4);

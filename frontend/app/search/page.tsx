@@ -12,6 +12,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { cn, formatViewCount } from '@/lib/utils';
 import { trackPageView, trackEvent } from '@/lib/trackEvent';
+import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 
@@ -72,7 +73,7 @@ export default function SearchPage() {
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('type', 'gacha')
           .neq('status', 'pending')
           .order('is_hot', { ascending: false })

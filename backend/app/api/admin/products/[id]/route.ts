@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminSession, requireAdminScope, assertOwnedBySupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
@@ -20,12 +20,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAdminSession()
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
     const productId = Number(id)
     if (!Number.isFinite(productId)) return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
+
+    // 廠商只能改自己的商品。介面已經只列出自己的，但擋不住直接打 API 帶別人的 id
+    if (scope.isSupplier) {
+      const { data: owner } = await getSupabaseAdmin()
+        .from('products').select('supplier_id').eq('id', productId).single()
+      assertOwnedBySupplier(scope, owner?.supplier_id)
+    }
 
     const body = await request.json()
     const product = body?.product || null
@@ -83,7 +90,7 @@ export async function PUT(
       .single()
 
     await logAdminAction({
-      adminId: session.adminId,
+      adminId: scope.adminId,
       action: '修改商品',
       targetType: 'product',
       targetId: String(productId),
@@ -93,6 +100,7 @@ export async function PUT(
 
     return NextResponse.json({ product: updated })
   } catch (e: any) {
+    if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: e?.message || '更新失敗' }, { status: 500 })
   }
 }
@@ -102,12 +110,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAdminSession()
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
     const productId = Number(id)
     if (!Number.isFinite(productId)) return NextResponse.json({ error: 'Invalid product id' }, { status: 400 })
+
+    // 廠商不得刪除商品。老闆定的：廠商只有編輯，沒有刪除，也沒有公平性驗證。
+    // 介面上的刪除鈕已經藏起來，但藏起來的按鈕擋不住直接打 API
+    if (scope.isSupplier) {
+      return NextResponse.json({ error: '廠商帳號不能刪除商品' }, { status: 403 })
+    }
 
     const supabaseAdmin = getSupabaseAdmin()
 
@@ -116,7 +130,7 @@ export async function DELETE(
     if (error) throw error
 
     await logAdminAction({
-      adminId: session.adminId,
+      adminId: scope.adminId,
       action: '刪除商品',
       targetType: 'product',
       targetId: String(productId),
@@ -125,11 +139,12 @@ export async function DELETE(
     })
 
     pushLineAlert(
-      `🗑️ 管理員敏感操作\n操作：刪除商品\n管理員ID：${session.adminId}\n商品：${product?.name ?? productId}`
+      `🗑️ 管理員敏感操作\n操作：刪除商品\n管理員ID：${scope.adminId}\n商品：${product?.name ?? productId}`
     )
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
+    if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: e?.message || '刪除失敗' }, { status: 500 })
   }
 }

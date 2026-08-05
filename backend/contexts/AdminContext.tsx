@@ -8,6 +8,8 @@ interface AdminUser {
   nickname: string
   role: string
   permissions: string[]
+  /** 廠商角色專用：這個帳號屬於哪一家廠商。非廠商角色為 null。 */
+  supplierId?: number | null
 }
 
 interface AdminContextType {

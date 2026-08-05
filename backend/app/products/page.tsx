@@ -9,6 +9,7 @@ import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
 import SmartImportWizard from '@/components/SmartImportWizard'
+import { useAdmin } from '@/contexts/AdminContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
@@ -25,6 +26,13 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true)
   
   const [products, setProducts] = useState<Product[]>([])
+  const { user: adminUser } = useAdmin()
+  // 廠商帳號只能看到自己供貨的商品，而且只能編輯 —— 不能刪除、不能看公平性驗證。
+  // 這裡是介面層的限制；真正的把關在 API（middleware 白名單 + assertOwnedBySupplier），
+  // 因為介面藏起來的按鈕擋不住直接打 API。
+  const isSupplier = adminUser?.role === 'supplier'
+  const supplierScope = isSupplier ? adminUser?.supplierId ?? null : null
+
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
@@ -37,10 +45,14 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true)
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select('*, prizes:product_prizes(*)')
         .order('created_at', { ascending: false })
+
+      if (supplierScope !== null) query = query.eq('supplier_id', supplierScope)
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching products:', error)
@@ -1227,16 +1239,18 @@ export default function ProductsPage() {
                         }`} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
                             <Link href={`/products/${product.id}`} className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap">編輯</Link>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(product)
-                              }}
-                              className="text-red-500 hover:text-red-700 text-sm font-medium whitespace-nowrap"
-                            >
-                              刪除
-                            </button>
-                            {product.txidHash && (
+                            {!isSupplier && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(product)
+                                }}
+                                className="text-red-500 hover:text-red-700 text-sm font-medium whitespace-nowrap"
+                              >
+                                刪除
+                              </button>
+                            )}
+                            {!isSupplier && product.txidHash && (
                               <Link 
                                 href={`/products/${product.id}/verify`} 
                                 className="text-primary hover:text-primary text-sm font-medium whitespace-nowrap"

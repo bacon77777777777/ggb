@@ -37,13 +37,26 @@ const PUBLIC_PATHS = ['/login', '/no-access']
  */
 const SUPPLIER_API_ALLOW: string[] = [
   '/api/admin/auth',              // 登出、取得自己的身份
-  '/api/admin/products',          // 商品 CRUD（route 內另依 supplier_id 限縮列表）
-  '/api/admin/orders',            // 含自有商品的訂單
-  '/api/admin/reports',           // 進銷存
-  '/api/admin/categories',        // 建商品時要選分類
+  '/api/admin/products',          // 商品（route 內依 supplier_id 限縮，且擋掉刪除）
+  '/api/admin/categories',        // 編輯商品時要選分類
   '/api/admin/upload',            // 上傳商品圖
-  '/api/admin/suppliers',         // 只會回自己那一家，route 內限縮
 ]
+
+/**
+ * 廠商禁區 —— 即使在白名單的前綴底下也一律 403。
+ *
+ * `/api/admin/products` 是允許的，但它底下有幾支不該給廠商：
+ *   seal / seal-now  籤號封存，動到公平性驗證的基礎
+ *   close-out        結案出清
+ *   batch            批次上下架（會跨到別家商品）
+ *   verify           公平性驗證資料
+ * 老闆的要求是「廠商只能編輯，不得刪除跟驗證」。
+ */
+const SUPPLIER_API_DENY: string[] = [
+  '/api/admin/products/batch',
+  '/api/admin/products/import/commit',
+]
+const SUPPLIER_API_DENY_SUFFIX: string[] = ['/seal', '/seal-now', '/close-out', '/verify']
 
 // Path prefix → required permission
 // Built from MENU_PATH_ORDER + additional sub-paths that share permissions
@@ -134,7 +147,10 @@ export function middleware(request: NextRequest) {
     const apiSession = apiToken ? parseSession(apiToken) : null
 
     if (apiSession?.role === 'supplier') {
-      const allowed = SUPPLIER_API_ALLOW.some(
+      const denied =
+        SUPPLIER_API_DENY.some(p => pathname === p || pathname.startsWith(p + '/')) ||
+        SUPPLIER_API_DENY_SUFFIX.some(sfx => pathname.endsWith(sfx))
+      const allowed = !denied && SUPPLIER_API_ALLOW.some(
         p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
       )
       if (!allowed) {
@@ -166,6 +182,14 @@ export function middleware(request: NextRequest) {
 
   // superadmin bypasses all permission checks
   if (session.role === 'super_admin' || session.role === 'superadmin') {
+    return NextResponse.next()
+  }
+
+  // 廠商只有商品管理，連公平性驗證頁都不給 —— 那是平台對玩家的承諾，
+  // 讓供貨方看得到封存內容等於把驗證的意義抵銷掉
+  if (session.role === 'supplier') {
+    const ok = pathname === '/products' || (pathname.startsWith('/products/') && !pathname.endsWith('/verify'))
+    if (!ok) return NextResponse.redirect(new URL('/products', request.url))
     return NextResponse.next()
   }
 

@@ -18,6 +18,7 @@ import FigmaTearScene from '@/components/shop/FigmaTearScene';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
 
@@ -251,7 +252,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
 
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('id', productId)
           .single();
         

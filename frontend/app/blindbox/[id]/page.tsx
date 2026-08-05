@@ -20,6 +20,7 @@ import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
 import { BlindboxMachineMode4 } from '@/components/shop/BlindboxMachineMode4';
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
+import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
@@ -159,7 +160,7 @@ export default function BlindboxDetailPage() {
 
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('id', productId)
           .neq('status', 'pending')
           .single();
@@ -179,7 +180,7 @@ export default function BlindboxDetailPage() {
 
         const { data: prizesData, error: prizesError } = await supabase
           .from('product_prizes')
-          .select('*')
+          .select(PRIZE_PUBLIC_COLUMNS)
           .eq('product_id', productId)
           .order('level', { ascending: true });
 
@@ -469,7 +470,7 @@ export default function BlindboxDetailPage() {
       if (product?.id) {
         const { data } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('id', product.id)
           .single();
         if (data) setProduct(data as ProductRow);

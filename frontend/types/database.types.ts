@@ -13,6 +13,20 @@ type TableDef<Row, Insert = Row, Update = Partial<Row>> = {
   Relationships: unknown[]
 }
 
+/**
+ * 前台讀得到的資料表形狀。
+ *
+ * 刻意不含 products.seed / cost / profit_rate ——
+ * 那幾欄已經在資料庫用欄位級授權擋掉（migration 471），前台選它們會直接
+ * 42501 permission denied。型別留著只會讓人以為拿得到值。
+ *   seed        抽獎種子，公開等於玩家能預先算出每一抽的結果
+ *   profit_rate 殺率，商業機密
+ *   cost        進貨成本，商業機密
+ *
+ * product_prizes.probability 則刻意保留 —— 轉蛋／盒玩是「每抽當下獨立隨機」，
+ * 機率對玩家有意義，PrizeDetailSheet 本來就會顯示（籤號制才不顯示）。
+ * （release_date 是舊版留下的欄位，資料表裡早就沒有了。）
+ */
 export interface Database {
   public: {
     Tables: {
@@ -45,15 +59,15 @@ export interface Database {
         price: number
         total_count: number
         remaining: number
+        probability: number | null
         remaining_count: number
         is_hot: boolean
-        release_date: string | null
-        seed: string | null
         txid_hash: string | null
         is_preorder: boolean | null
         preorder_available_at: string | null
         distributor: string | null
         series: string | null
+        supplier_id: number | null
         created_at: string
       }>
 
@@ -65,7 +79,6 @@ export interface Database {
         name: string
         image_url: string | null
         quantity: number | null
-        probability: number | null
         created_at: string | null
       }>
 

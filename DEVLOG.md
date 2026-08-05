@@ -4,6 +4,81 @@
 
 ---
 
+## v2026.08.05m｜2026-08-05｜補開沒啟用的 RLS、藏起三個秘密欄位、廠商權限收窄
+
+### 470 沒修乾淨的兩類洞
+
+470 只處理了「RLS 有開但政策寬鬆」。之後才發現還有兩類：
+
+**洞一：RLS 根本沒啟用。** PROD 7 張、STG 25 張表的 `relrowsecurity = false`。
+RLS 沒開的話政策寫了也不會生效 —— STG 的 `public.users` 就是這樣：
+明明有 `auth.uid() = id` 政策，實測用 anon key 打 REST API 照樣讀得到
+全站會員的 email 與代幣餘額。STG 受影響的還有 `refund_requests`、
+`settlement_snapshots`（廠商月結）、`line_conversations`（GB哥對話）、`user_ip_log`。
+
+**洞二：SELECT 政策是整列開放，沒有欄位概念。** 470 給 products 加的
+`FOR SELECT USING (true)` 包含這三欄：
+
+| 欄位 | 為什麼不能公開 |
+|---|---|
+| `seed` | 抽獎種子。commit-reveal 的秘密值，公開等於玩家能預先算出每一抽的結果（`txid_hash` 才是該公開的 commitment） |
+| `profit_rate` | 殺率。平台商業機密 |
+| `cost` | 進貨成本。商業機密，廠商之間也不該互相看到 |
+
+實測 anon key 三欄全讀得到。RLS 不做欄位過濾，改用 PostgreSQL 的欄位級 GRANT
+（PostgREST 會遵守，選到沒授權的欄位直接 42501）。
+
+副作用：`select('*')` 會展開成所有欄位，撞到沒授權的就整個查詢失敗。
+前台 10 處 `select('*')` 改成明確欄位清單（`lib/productColumns.ts`）。
+
+### 差點擋掉一個刻意的設計
+
+本來連 `product_prizes.probability` 也要擋，寫到一半發現 `PrizeDetailSheet`
+的註解寫得很清楚：轉蛋／盒玩是「每抽當下獨立隨機」，機率對玩家有意義，
+本來就該顯示；籤號制才不顯示。那是刻意的產品決策，不是漏洞。收手。
+
+### 實測驗收（STG）
+
+```
+匿名讀 seed                 → 42501 permission denied  ✓
+匿名讀 profit_rate          → 42501 permission denied  ✓
+匿名讀 users                → []                       ✓
+匿名讀 settlement_snapshots → []                       ✓
+匿名讀 id,name,price,type   → 正常                     ✓
+匿名讀 probability          → 正常（刻意保留）         ✓
+```
+
+### 廠商權限收窄
+
+老闆定案：「廠商帳號只需要看到他自己的商品的商品管理列表，且操作只有編輯，
+不得刪除跟驗證」「不該讓廠商看到會員」。
+
+從 468 的 `{products, orders, reports_products}` 收成 `{products}`：
+
+- `orders` 拿掉 —— 配送管理會顯示玩家姓名、電話、收件地址
+- `reports_products` 拿掉 —— 消費明細逐筆列出是誰買的
+
+進銷存不另開頁面：商品管理列表本來就有庫存（`remaining`）與銷量（`sales`），
+廠商要的資訊在那裡看得到，而且不會連帶露出玩家。
+
+公平性驗證頁也不給 —— 那是平台對玩家的承諾，讓供貨方看得到封存內容
+等於把驗證的意義抵銷掉。
+
+三層都要擋，因為介面藏起來的按鈕擋不住直接打 API：
+
+| 層 | 做法 |
+|---|---|
+| 介面 | 商品列表依 `supplier_id` 過濾、刪除與驗證按鈕不顯示 |
+| middleware | 頁面只放行 `/products`；API 白名單收成四項，另加 `/seal`、`/close-out`、`/verify`、`/batch` 禁區 |
+| API | `PUT` 先查 `supplier_id` 確認擁有權；`DELETE` 對廠商直接 403；`POST` 與批量匯入強制蓋成自己的 `supplier_id` |
+
+### Migration
+
+- `471_enable_rls_and_hide_secrets.sql`
+- `472_supplier_products_only.sql`
+
+---
+
 ## v2026.08.05l｜2026-08-05｜收回匿名金鑰的寫入權限（上線硬阻擋）
 
 ### 起因

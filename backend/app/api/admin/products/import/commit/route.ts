@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminSession, requireAdminScope, forceSupplierField } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import { PRODUCT_IMPORT_FIELDS, type ProductType } from '@/lib/productSchema'
@@ -45,7 +45,7 @@ interface CommitItem {
 
 export async function POST(request: Request) {
   try {
-    const session = await requireAdminSession()
+    const session = await requireAdminScope()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
@@ -72,7 +72,8 @@ export async function POST(request: Request) {
         const noPrize = prizes.length === 0
 
         const seed = generateSeedHex()
-        const clean = pick(item.product, ALLOWED_PRODUCT_KEYS)
+        // 廠商帳號批量匯入時，supplier_id 一律蓋成自己的
+        const clean = forceSupplierField(pick(item.product, ALLOWED_PRODUCT_KEYS), session)
 
         // 系列留空時從商品名推斷，跟單筆新增的行為一致
         const series = clean.series || (await detectSeriesFromName(name, supabase)) || null
