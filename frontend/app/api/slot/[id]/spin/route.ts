@@ -47,6 +47,22 @@ export async function POST(
 
     if (error) throw error
 
+    // 抽到 RUSH 獎池品項才算一抽 —— 退幣是找零，不是抽獎結果。
+    // 實測一台下來 86% 的轉是退幣，若每轉都算，機台玩家單日 196 轉
+    // 就吃掉「火力全開 單日100抽」，轉蛋玩家要花 29,400 代幣才追得上。
+    // 折算後約 7 轉中 1 次品項 = 70 代幣/抽，跟轉蛋單抽 150 同一量級。
+    //
+    // 這裡不推 spend_amount：那個事件目前是拿「抽了幾次」當「花了幾代幣」
+    // 在算（見 /api/gacha 的 p_data.amount），機台照著推只會讓它更歪。
+    const spin = data as { is_coin_return?: boolean } | null
+    if (spin && !spin.is_coin_return) {
+      // Fire-and-forget: 不阻塞轉動的回應
+      Promise.allSettled([
+        userSupabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: 1 } }),
+        userSupabase.rpc('check_achievements', { p_user_id: user.id }),
+      ]).catch(() => {})
+    }
+
     return NextResponse.json(data)
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '挑戰失敗' }, { status: 500 })
