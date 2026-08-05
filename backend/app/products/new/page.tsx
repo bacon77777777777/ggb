@@ -697,8 +697,8 @@ export default function NewProductPage() {
                     {lotteryBlanks !== null && (
                       <span className={lotteryBlanks < 0 ? 'text-red-500 font-medium' : 'text-neutral-700 font-medium'}>
                         {lotteryBlanks < 0
-                          ? `　品項共 ${lotteryWins} 個，超過總次數 ${formData.lotteryTotalDraws}`
-                          : `　目前為 ${lotteryBlanks} 張`}
+                          ? ` ・ 品項共 ${lotteryWins} 個，超過總次數 ${formData.lotteryTotalDraws}`
+                          : ` ・ 目前為 ${lotteryBlanks} 張`}
                       </span>
                     )}
                   </p>
