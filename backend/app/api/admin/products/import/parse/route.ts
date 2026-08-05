@@ -10,6 +10,7 @@ import {
   type ProductType, type PrizeGroup,
 } from '@/lib/productSchema'
 import { normalizeProductNames } from '@/lib/productNaming'
+import { r2ListFilenames, r2PublicUrl } from '@/lib/r2'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -41,6 +42,8 @@ interface ParsedRow {
   /** 補齊了什麼、從哪來 —— 要讓人看得到系統動過手腳 */
   filled: { key: string; label: string; value: unknown; source: string }[]
   warnings: string[]
+  /** 含日文、L1 處理不了的名稱。前端據此決定要不要花錢翻譯 */
+  needsTranslation: string[]
 }
 
 function readWorkbook(buf: Buffer, filename: string): { headers: string[]; rows: Record<string, string>[] } {
@@ -104,6 +107,31 @@ async function loadSiteStats(supplierId: number | null): Promise<SiteStats> {
   return { bySeries, bySupplierType }
 }
 
+/**
+ * 圖片欄位解析
+ *
+ * 廠商的圖片欄位有三種寫法，要分開處理：
+ *   1. 完整網址 https://...        → 原樣採用
+ *   2. 站內路徑 /images/...        → 原樣採用
+ *   3. 純檔名 01KEVC....webp       → 對回 R2 的 products/<檔名>
+ *
+ * 第 3 種是最常見的（競品匯出格式就是），而原本會被整串當成網址寫進資料表，
+ * 前台渲染出來就是破圖。所以先把 bucket 裡的檔名列一次建對應表，
+ * 對得到才換成網址，對不到就留 null 並提醒去上傳圖片壓縮檔。
+ */
+function makeImageResolver(known: Set<string>) {
+  return (raw: string | null): { url: string | null; missing: string | null } => {
+    const v = (raw ?? '').trim()
+    if (!v) return { url: null, missing: null }
+    if (/^https?:\/\//i.test(v) || v.startsWith('/')) return { url: v, missing: null }
+
+    // 只取檔名，廠商偶爾會連資料夾一起寫（images/foo.webp）
+    const file = v.split(/[\\/]/).pop() ?? v
+    if (known.has(file)) return { url: r2PublicUrl(`products/${file}`), missing: null }
+    return { url: null, missing: file }
+  }
+}
+
 const median = (xs: number[]) => {
   if (!xs.length) return null
   const s = [...xs].sort((a, b) => a - b)
@@ -164,6 +192,16 @@ export async function POST(request: Request) {
 
     const stats = await loadSiteStats(supplierId)
 
+    // R2 裡已經有哪些圖。列一次就好 —— 一批 100 個商品可能有上千張圖，
+    // 逐張打 HEAD 會慢到讓解析超時
+    let knownImages = new Set<string>()
+    try {
+      knownImages = await r2ListFilenames('products/')
+    } catch {
+      // 列不到就當作全部沒上傳。解析仍然要能完成，只是圖片會全部標成待補
+    }
+    const resolveImage = makeImageResolver(knownImages)
+
     // ── 逐筆組裝 ──
     const parsed: ParsedRow[] = []
 
@@ -194,6 +232,14 @@ export async function POST(request: Request) {
         if (v !== null && v !== undefined && v !== '') product[def.key] = v
       }
 
+      // 商品主圖：檔名對回 R2 網址
+      const missingImages: string[] = []
+      if (product.image_url) {
+        const r = resolveImage(String(product.image_url))
+        product.image_url = r.url
+        if (r.missing) missingImages.push(r.missing)
+      }
+
       // 虛擬欄位：上市時間單欄 → 拆成年 / 月
       const rd = product._release_date
       if (rd) {
@@ -218,7 +264,11 @@ export async function POST(request: Request) {
           name,
           total,
           remaining: total,
-          image_url: g.imageCol ? (String(raw[g.imageCol] ?? '').trim() || null) : null,
+          image_url: (() => {
+            const r = resolveImage(g.imageCol ? String(raw[g.imageCol] ?? '') : null)
+            if (r.missing) missingImages.push(r.missing)
+            return r.url
+          })(),
           probability: 0,
           recycle_value: 0,
           sale_price: 0,
@@ -302,17 +352,16 @@ export async function POST(request: Request) {
           source: '簡繁轉換 + 台灣用語',
         })
       }
-      if (naming.needsTranslation.length > 0) {
-        warnings.push(`${naming.needsTranslation.length} 個名稱含日文，需要翻譯才會是台灣說法`)
-      }
 
       // ── 警告（不擋上架，只是要讓人知道）──
       const zeroQty = prizes.filter(p => !p.total || Number(p.total) < 1)
       if (zeroQty.length) {
         warnings.push(`${zeroQty.length} 個品項數量為 0，上架時會被略過`)
       }
-      if (!product.image_url) warnings.push('沒有商品主圖')
-      if (prizes.some(p => !p.image_url)) warnings.push('部分品項缺圖')
+      if (missingImages.length) {
+        warnings.push(`${missingImages.length} 張圖尚未上傳（例：${missingImages[0]}），請用「上傳圖片」丟圖片壓縮檔後重新匯入`)
+      }
+      if (!product.image_url && !missingImages.length) warnings.push('沒有商品主圖')
       if (!prizes.length) warnings.push('廠商沒給品項，會以「待上架」建立，補完品項再開賣')
 
       parsed.push({
@@ -322,6 +371,7 @@ export async function POST(request: Request) {
         missing: missingRequired(product, type),
         filled,
         warnings,
+        needsTranslation: naming.needsTranslation,
       })
     }
 
@@ -351,6 +401,8 @@ export async function POST(request: Request) {
 
     const readyCount = parsed.filter(p => p.missing.length === 0 && p.prizes.length > 0).length
     const noPrizeCount = parsed.filter(p => p.prizes.length === 0).length
+    const missingImageCount = parsed.filter(p => p.warnings.some(w => w.includes('尚未上傳'))).length
+    const jpNames = [...new Set(parsed.flatMap(p => p.needsTranslation))]
 
     return NextResponse.json({
       fingerprint,
@@ -366,6 +418,9 @@ export async function POST(request: Request) {
         totalFields: PRODUCT_IMPORT_FIELDS.length,
         autoFilled: parsed.reduce((a, p) => a + p.filled.length, 0),
         noPrize: noPrizeCount,
+        missingImages: missingImageCount,
+        knownImages: knownImages.size,
+        needsTranslation: jpNames.length,
       },
       products: parsed,
     })
