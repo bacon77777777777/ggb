@@ -216,8 +216,16 @@ function extractBodyImages(html: string, limit: number): string[] {
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
-// 圖片帶站方浮水印的來源：不用其圖，改用平台預設圖
-const WATERMARKED_SOURCES = ['dengeki.com']
+// 圖片帶站方浮水印的來源，以及該站浮水印慣用的角落。
+//
+// detectWatermark 沒過門檻時會回「分數最高的角」—— 那是雜訊挑出來的，
+// 拿去蓋等於隨機選一角。實測電擊的圖：浮水印在右下，卻被蓋在左下，
+// 結果 GGB logo 和電ホビ 的浮水印同時出現在同一張圖上。
+// 這種來源本來就知道浮水印在哪，偵測失敗時就用已知值，不要用雜訊。
+const WATERMARK_FALLBACK_CORNER: Record<string, 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = {
+  'dengeki.com': 'bottom-right',
+}
+const WATERMARKED_SOURCES = Object.keys(WATERMARK_FALLBACK_CORNER)
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
@@ -249,7 +257,7 @@ async function injectBodyImages(
   for (const u of candidates) {
     if (hosted.length >= 2) break
     // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
-    const r = await downloadSmartToR2(u, forceBrand)
+    const r = await downloadSmartToR2(u, forceBrand, pageUrl)
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -273,7 +281,9 @@ async function injectBodyImages(
 }
 
 function figureHtml(url: string): string {
-  return `<figure><img src="${url}" alt="" loading="lazy" /></figure>`
+  // 來源圖多半只有 800px，讓它跟著容器寬度拉伸就會糊。
+  // max-width 讓它最多顯示到原始尺寸，容器再寬也不放大
+  return `<figure style="margin:1.5rem auto;max-width:800px"><img src="${url}" alt="" loading="lazy" style="width:100%;height:auto;border-radius:8px" /></figure>`
 }
 
 /**
@@ -284,7 +294,7 @@ function figureHtml(url: string): string {
  * forceBrand 供已知帶浮水印的來源使用：即使偵測未達門檻也照蓋，避免漏網。
  * 只抓一次圖，偵測為本地模板比對，不產生額外費用。
  */
-async function downloadSmartToR2(imgUrl: string, forceBrand = false): Promise<string | null> {
+async function downloadSmartToR2(imgUrl: string, forceBrand = false, sourceUrl = ''): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
       headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
@@ -297,14 +307,25 @@ async function downloadSmartToR2(imgUrl: string, forceBrand = false): Promise<st
 
     // 四個角落都比對；已知帶浮水印的來源即使偵測未達門檻也照蓋（用偵測到分數最高的角）
     const wm = await detectWatermark(buf)
+    // 偵測沒過門檻時，wm.corner 只是雜訊裡分數最高的角，不能拿來蓋。
+    // 已知來源用查表的固定角，查不到才退回偵測值
+    const fallbackKey = Object.keys(WATERMARK_FALLBACK_CORNER)
+      .find(d => sourceUrl.includes(d) || imgUrl.includes(d))
+    const corner = wm.found
+      ? wm.corner
+      : (fallbackKey ? WATERMARK_FALLBACK_CORNER[fallbackKey] : wm.corner)
+
     if (wm.found || forceBrand) {
-      const branded = await brandCoverImage(buf, wm.corner)
+      const branded = await brandCoverImage(buf, corner)
       if (branded) {
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
         return await r2Upload(key, branded, 'image/jpeg')
       }
     }
-    const webp = await sharp(buf).resize(1200, null, { withoutEnlargement: true }).webp({ quality: 82 }).toBuffer()
+    // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完 220KB → 44KB，
+    // 放到內文的容器寬度就明顯糊掉。改成 92 並把上限拉到 1600 ——
+    // withoutEnlargement 保證不會把小圖硬撐大，只是不再多壓一手。
+    const webp = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
     return await r2Upload(key, webp, 'image/webp')
   } catch { return null }
@@ -487,6 +508,15 @@ ${combined}
 請用不同的句型與敘述順序重組，不可只改幾個字就當作改寫。
 商品名稱、品牌、系列名、發售日期、價格等事實資訊必須忠實保留，
 但描述、評論、鋪陳一律用自己的話寫。
+
+【假名一律不留】標題與內文都不可出現平假名或片假名。台灣讀者看不懂
+「ゾイド」「ズゴック」「ムチュート」「デク」這種字，看到只會直接跳過。
+處理方式：
+- 有台灣官方譯名就用官方譯名（ゾイド→索斯機獸、ズゴック→茲寇克、デク→出久）
+- 沒有官方譯名但有官方英文/羅馬字就用英文（萬代的產品線名如 MASTERLISE、
+  ichiban kuji 的英文標示等，台灣玩家本來就用英文搜尋）
+- 兩者都沒有就音譯成中文
+英文與數字可以保留，那不影響閱讀。
 
 通過篩選後，改寫成繁體中文（台灣用語），輸出 JSON，只輸出 JSON 不加說明：
 {
@@ -790,14 +820,23 @@ export async function POST(req: NextRequest) {
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
       // 已知帶浮水印的來源即使未達門檻也照蓋
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked))
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl))
         ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()
+      // 內文配圖。這條路徑（DIRECT_FEEDS：電擊ホビー / PR TIMES / Animate Times）
+      // 原本完全沒有這一步 —— 另外兩條有，只有這條漏了。
+      // 而 485 篇文章裡有 359 篇是走這條進來的，所以「內文都沒有圖」看起來像
+      // 功能沒做，其實是主力來源那條路徑根本沒接上。
+      // articleHtml 抓不到就退回 RSS 的 content:encoded，跟 Google News 那條一致。
+      const contentWithImages = await injectBodyImages(
+        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked
+      )
+
       const { error } = await supabase.from('news').insert({
-        id, title: draft.title, summary: draft.summary, content: draft.content,
+        id, title: draft.title, summary: draft.summary, content: contentWithImages,
         image_url: imageUrl, source_url: realUrl,
         category: finalCategory, tags: draft.tags ?? [], is_active: !!imageUrl,
       })
@@ -874,7 +913,7 @@ export async function POST(req: NextRequest) {
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
       // 已知帶浮水印的來源即使未達門檻也照蓋
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked))
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl))
         ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category

@@ -36,5 +36,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ com
     .select('*', { count: 'exact', head: true })
     .eq('comment_id', commentId)
 
-  return NextResponse.json({ liked: !existing, count: count ?? 0 })
+  // 回傳給前台的數字要跟列表一致：展示底數 + 真實按讚數。
+  // 只回真實數的話，按下去的瞬間數字會從「底數+n」掉到「n」，看起來像扣錯
+  const { data: c } = await admin
+    .from('news_comments')
+    .select('bot_likes')
+    .eq('id', commentId)
+    .maybeSingle()
+
+  return NextResponse.json({ liked: !existing, count: (c?.bot_likes ?? 0) + (count ?? 0) })
 }

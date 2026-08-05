@@ -59,7 +59,6 @@ export interface Database {
         price: number
         total_count: number
         remaining: number
-        probability: number | null
         remaining_count: number
         is_hot: boolean
         txid_hash: string | null
