@@ -37,6 +37,7 @@ const HOLE_T = (HOLE_TOP / 932) * CSS_H;
 const HOLE_B = HOLE_T + (HOLE_H / 932) * CSS_H;
 const PHYS_L = HOLE_L - 10;
 const PHYS_R = HOLE_R + 10;
+const CENTER_X = (HOLE_L + HOLE_R) / 2;   // 落地後箱子往這裡集中
 const FRONT_FLOOR = HOLE_B + BOX_R * 0.5;
 const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 
@@ -234,6 +235,14 @@ export function BlindboxMachineMode3({
           b.angleY += (BASE_AY - b.angleY) * 0.35;
           b.avX = 0;
           b.avY = 0;
+          // 落地後往中間滾一小段。多抽時箱子會散在取物口兩側，
+          // 集中起來才好點；用 angleZ 跟著位移轉，看起來是滾不是滑。
+          const dxToCenter = CENTER_X - b.x;
+          if (Math.abs(dxToCenter) > 1.5) {
+            const roll = Math.sign(dxToCenter) * Math.min(Math.abs(dxToCenter) * 3.2, 90) * dt;
+            b.x      += roll;
+            b.angleZ += (roll / BOX_R) * (180 / Math.PI) * 0.45;
+          }
         }
 
         // Floor collision
@@ -401,8 +410,8 @@ export function BlindboxMachineMode3({
           vy:       rand(100, 150),
           angleZ:   -0.087,                         // matches rotateZ(-5deg)
           avZ:      tipRight ? rand(1.5, 3.5) : rand(-3.5, -1.5),
-          angleX:   22,                             // matches rotateX(22deg)
-          avX:      rand(-70, -40),                 // deg/s — tumbles forward during fall
+          angleX:   -52,                            // 接上 CSS 結束姿態 rotateX(-52deg)
+          avX:      rand(-38, -18),                 // deg/s — 落下時繼續往前翻，但別翻過頭
           angleY:   20,                             // matches rotateY(20deg)
           avY:      rand(-30, 30),
           depth:    SLOTS[slotIdx].depth,
@@ -481,8 +490,8 @@ export function BlindboxMachineMode3({
         @keyframes ggb-3d-eject-c${c} {
           0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
           40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(14px); }
-          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(${ry68}deg) translateY(15px); }
-          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg)  rotateY(20deg) rotateZ(-5deg) translateY(18px); }
+          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-32deg) rotateY(${ry68}deg) translateY(15px); }
+          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-52deg) rotateY(20deg) rotateZ(-5deg) translateY(18px); }
         }
         @keyframes ggb-3d-shuffle-transform-c${c} {
           0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
@@ -519,7 +528,7 @@ export function BlindboxMachineMode3({
               innerTransition   = 'transform 1.0s ease-out';
             } else {
               innerAnimation    = `ggb-3d-eject-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
-              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(-52deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
               innerTransition   = 'none';
             }
           } else if (s === 'shuffling') {

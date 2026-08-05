@@ -22,6 +22,7 @@ import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
+import LotteryDrawModal from '@/components/shop/LotteryDrawModal';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
 import CardDrawAnimation from '@/components/card/CardDrawAnimation';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
@@ -375,6 +376,9 @@ export default function ProductDetailPage() {
   
   // Purchase Flow State
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  // 抽籤販售：0 元抽，走自己的彈窗（PurchaseConfirmationModal 整支是繞著付款在轉）
+  const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
+  const [lotteryUsed, setLotteryUsed] = useState(0);
   const [isGachaOpen, setIsGachaOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wonPrizes, setWonPrizes] = useState<Prize[]>([]);
@@ -677,7 +681,16 @@ export default function ProductDetailPage() {
     }
   };
 
+  // 抽籤販售：0 元抽、有每人次數上限、中籤後寄出才付款
+  const isLotterySale = (product as any)?.sale_mode === 'lottery';
+
   const handleDrawClick = () => {
+    if (isLotterySale) {
+      if (!user) { router.push('/login'); return; }
+      setIsLotteryModalOpen(true);
+      return;
+    }
+
     if (product?.type === 'ichiban') {
       if (!user) {
         router.push('/login');
@@ -694,6 +707,17 @@ export default function ProductDetailPage() {
     console.log('[GA] event: begin_checkout', { items: [{ item_id: product?.id, item_name: product?.name }] });
     setIsPurchaseModalOpen(true);
   };
+
+  // 抽籤販售：進頁就撈自己抽過幾次，彈窗要顯示「你還可以抽幾次」
+  useEffect(() => {
+    if (!isLotterySale || !user || !product?.id) return;
+    supabase
+      .from('draw_records')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', product.id)
+      .eq('user_id', user.id)
+      .then(({ count }) => setLotteryUsed(count ?? 0));
+  }, [isLotterySale, user, product?.id, supabase]);
 
   const handleChangePack = () => {
     const newStyles = getRandomPackStyles();
@@ -757,6 +781,7 @@ export default function ProductDetailPage() {
 
     if (product.status === 'ended' || product.remaining === 0) {
       setIsPurchaseModalOpen(false);
+      setIsLotteryModalOpen(false);
       showToast('商品已完抽', 'info');
       return;
     }
@@ -765,6 +790,7 @@ export default function ProductDetailPage() {
 
     // For non-card types, open GachaMachine immediately so user sees animation right away
     const isCardType = product.type === 'card';
+    setIsLotteryModalOpen(false);
     if (!isCardType) {
       setIsPurchaseModalOpen(false);
       setWonPrizes([]);
@@ -789,7 +815,9 @@ export default function ProductDetailPage() {
         const err = await drawRes.json().catch(() => ({}));
         throw new Error(err.error || '購買失敗，請稍後再試');
       }
-      const data = (await drawRes.json()).prizes;
+      const drawJson = await drawRes.json();
+      const data = drawJson.prizes;
+      if (typeof drawJson.used_by_me === 'number') setLotteryUsed(drawJson.used_by_me);
 
       if (!data || !Array.isArray(data) || data.length === 0) {
         throw new Error('購買失敗，商品可能已售完或剩餘數量不足');
@@ -1321,7 +1349,8 @@ export default function ProductDetailPage() {
               style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
               onClick={handleChangePack}
             />
-            <ImageButton src="/images/gacha/btn1.png" alt="立即開包" text={isSoldOut ? '查看結果' : '立即開包'}
+            <ImageButton src="/images/gacha/btn1.png" alt="立即開包"
+              text={isSoldOut ? '查看結果' : isLotterySale ? '免費抽籤' : '立即開包'}
               className="absolute" textClassName="text-base md:text-lg"
               style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
               onClick={isSoldOut ? handleShowResults : handleDrawClick}
@@ -1752,7 +1781,7 @@ export default function ProductDetailPage() {
           />
         )}
 
-        {product && (
+        {product && !isLotterySale && (
           <PurchaseConfirmationModal
             isOpen={isPurchaseModalOpen}
             onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
@@ -1762,6 +1791,19 @@ export default function ProductDetailPage() {
             userPoints={user?.points || 0}
             isProcessing={isProcessing}
             onTopUp={() => router.push('/topup')}
+          />
+        )}
+        {product && isLotterySale && (
+          <LotteryDrawModal
+            isOpen={isLotteryModalOpen}
+            onClose={() => !isProcessing && setIsLotteryModalOpen(false)}
+            onConfirm={(n) => handlePurchaseConfirm(n)}
+            isProcessing={isProcessing}
+            productName={product.name}
+            perUserLimit={(product as any).lottery_per_user_draws ?? 0}
+            usedByMe={lotteryUsed}
+            remainingTickets={product.remaining ?? 0}
+            salePrices={prizes.map(p => (p as any).sale_price ?? 0)}
           />
         )}
         {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
@@ -2182,9 +2224,11 @@ export default function ProductDetailPage() {
             >
               {totalRemaining === 0
                 ? '查看結果'
-                : product.type === 'ichiban'
-                  ? '立即抽獎'
-                  : '立即轉蛋'}
+                : isLotterySale
+                  ? '免費抽籤'
+                  : product.type === 'ichiban'
+                    ? '立即抽獎'
+                    : '立即轉蛋'}
             </Button>
           </div>
         </ActionBar>
@@ -2206,7 +2250,7 @@ export default function ProductDetailPage() {
           />
         )}
 
-        {product && (
+        {product && !isLotterySale && (
           <PurchaseConfirmationModal
             isOpen={isPurchaseModalOpen}
             onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
@@ -2216,6 +2260,20 @@ export default function ProductDetailPage() {
             userPoints={user?.points || 0}
             isProcessing={isProcessing}
             onTopUp={() => router.push('/topup')}
+          />
+        )}
+        {/* 一番賞／自製賞的抽籤販售也走同一個彈窗 */}
+        {product && isLotterySale && (
+          <LotteryDrawModal
+            isOpen={isLotteryModalOpen}
+            onClose={() => !isProcessing && setIsLotteryModalOpen(false)}
+            onConfirm={(n) => handlePurchaseConfirm(n)}
+            isProcessing={isProcessing}
+            productName={product.name}
+            perUserLimit={(product as any).lottery_per_user_draws ?? 0}
+            usedByMe={lotteryUsed}
+            remainingTickets={product.remaining ?? 0}
+            salePrices={prizes.map(p => (p as any).sale_price ?? 0)}
           />
         )}
 

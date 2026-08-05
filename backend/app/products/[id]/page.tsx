@@ -116,6 +116,10 @@ export default function EditProductPage() {
     endedAt: '',
     txidHash: '',
     seed: '',
+    // 抽籤販售（只有抽卡用得到）
+    saleMode: 'normal',
+    lotteryTotalDraws: '',
+    lotteryPerUserDraws: '',
     selectedTagIds: [] as string[],
     selectedCategoryIds: [] as string[],
   })
@@ -170,6 +174,7 @@ export default function EditProductPage() {
     recycleValue: number
     decompose_type: 'auto' | 'percent' | 'fixed'
     decompose_value: number | null
+    salePrice: number
   }>>([])
   const [savedFormData, setSavedFormData] = useState<typeof formData | null>(null)
   const [savedPrizes, setSavedPrizes] = useState<typeof prizes>([])
@@ -321,6 +326,9 @@ export default function EditProductPage() {
             category: product.category || '',
             categoryId: product.category_id || '',
             type: product.type || 'ichiban',
+            saleMode: product.sale_mode || 'normal',
+            lotteryTotalDraws: product.lottery_total_draws?.toString() ?? '',
+            lotteryPerUserDraws: product.lottery_per_user_draws?.toString() ?? '',
             remaining: product.remaining.toString(),
             totalCount: product.total_count?.toString() || '0',
             isHot: product.is_hot,
@@ -360,10 +368,14 @@ export default function EditProductPage() {
             probability: prize.probability,
             recycleValue: prize.recycle_value ?? 0,
             decompose_type: prize.decompose_type || 'auto',
+            salePrice: prize.sale_price ?? 0,
             decompose_value: prize.decompose_value ?? null,
           }))
-          setPrizes(loadedPrizes)
-          setSavedPrizes(loadedPrizes)
+          // 「未中獎」由 ensure_lottery_blank_prize() 自動維護，
+          // 列出來只會讓管理員以為可以改它，而封存後 DB 會直接擋下
+          const editablePrizes = loadedPrizes.filter((p: { level: string }) => p.level !== '未中獎')
+          setPrizes(editablePrizes)
+          setSavedPrizes(editablePrizes)
         }
       } catch (e) {
         console.error('Error loading product:', e)
@@ -381,6 +393,13 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // 廠商必填。新增頁本來就擋，編輯頁沒擋 —— 等於可以把既有商品改回未指定，
+    // 前台倉庫就會出現「未知廠商」，而出貨是以廠商為單位分批的
+    if (!formData.supplierId) {
+      toast('請選擇廠商', 'warning')
+      return
+    }
 
     // 盒玩/轉蛋：數量不能低於已抽數量；新品項數量必須 >= 1
     if (isGachaType) {
@@ -444,6 +463,11 @@ export default function EditProductPage() {
         name: formData.name,
         category: formData.category,
         type: formData.type,
+        // 只有抽卡能開抽籤販售；其他類別一律寫回 normal，
+        // 免得改過類別的商品留著一組永遠不會生效的設定
+        sale_mode: isLottery ? 'lottery' : 'normal',
+        lottery_total_draws:    isLottery ? Number(formData.lotteryTotalDraws)    || null : null,
+        lottery_per_user_draws: isLottery ? Number(formData.lotteryPerUserDraws) || null : null,
         price: parseInt(formData.price) || 0,
         cost: formData.cost ? parseFloat(formData.cost) : null,
         remaining: calculatedRemaining,
@@ -484,6 +508,7 @@ export default function EditProductPage() {
           probability: prize.probability,
           recycle_value: Math.max(0, Math.round(prize.recycleValue) || 0),
           decompose_type: prize.decompose_type || 'auto',
+          sale_price: prize.salePrice || 0,
           decompose_value: prize.decompose_value ?? null,
         }
 
@@ -572,6 +597,22 @@ export default function EditProductPage() {
   ]
   // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
   const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
+  // 抽籤販售給走封存排籤的三種：它們共用同一套引擎，邏輯完全相同
+  const canLottery = ['ichiban', 'card', 'custom'].includes(formData.type)
+  const isLottery  = canLottery && formData.saleMode === 'lottery'
+  // 落選張數即時算：設錯要當場看得到，不是存檔被 DB 擋才知道
+  // 「未中獎」是封存時系統自動補的，不是管理員設的賞項，不能算進加總
+  const lotteryWins = prizes
+    .filter(p => p.level !== '未中獎')
+    .reduce((sum, p) => sum + (Number(p.total) || 0), 0)
+  const lotteryBlanks = isLottery && formData.lotteryTotalDraws
+    ? Number(formData.lotteryTotalDraws) - lotteryWins
+    : null
+  // 抽籤販售的分母是「總抽獎次數」，不是各賞項加總 —— 落選籤也在池子裡，
+  // 用賞項加總會把 2/40 顯示成 10%，管理員照這個數字定價就虧了
+  const probabilityBase = isLottery && Number(formData.lotteryTotalDraws) > 0
+    ? Number(formData.lotteryTotalDraws)
+    : calculatedTotalCount
   // 轉蛋/盒玩：機率制，等級固定「普通」，數量可疊加
   const isGachaType = ['gacha', 'blindbox'].includes(formData.type)
   const defaultLevel = formData.type === 'gacha' ? 'Normal / Common' : '普通款'
@@ -672,9 +713,11 @@ export default function EditProductPage() {
                   </SelectField>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-500 mb-1">廠商</label>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">
+                    廠商 <span className="text-red-500">*</span>
+                  </label>
                   <SelectField value={formData.supplierId} onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}>
-                    <option value="">— 未指定 —</option>
+                    <option value="">— 請選擇廠商 —</option>
                     {suppliers.map((s) => (
                       <option key={s.id} value={String(s.id)}>{s.name}</option>
                     ))}
@@ -764,9 +807,18 @@ export default function EditProductPage() {
                   placeholder="選擇時間" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-500 mb-1">售價 (G) <span className="text-red-500">*</span></label>
+                {/* 抽籤販售是 0 元抽，售價不適用。原本 required min=1 會讓
+                    抽籤販售的商品完全存不了檔，而瀏覽器原生驗證的訊息是
+                    「Value must be greater than or equal to 1」，看不出跟售價有關 */}
+                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                  售價 (G) {!isLottery && <span className="text-red-500">*</span>}
+                </label>
                 <Input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="0" required min="1" />
+                  placeholder="0" required={!isLottery} min={isLottery ? 0 : 1}
+                  disabled={isLottery} />
+                {isLottery && (
+                  <p className="mt-1 text-xs text-neutral-400">抽籤販售免費抽，價金設在各品項的「寄出應付」</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 mb-1">成本</label>
@@ -783,7 +835,61 @@ export default function EditProductPage() {
                   <option value="5">5★</option>
                 </SelectField>
               </div>
+              {canLottery && (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">販售模式</label>
+                  <SelectField
+                    value={formData.saleMode}
+                    onChange={(e) => setFormData({ ...formData, saleMode: e.target.value })}
+                  >
+                    <option value="normal">一般販售</option>
+                    <option value="lottery">抽籤販售（0 元抽，中籤才付款）</option>
+                  </SelectField>
+                </div>
+              )}
             </div>
+
+            {/* 抽籤販售：兩個上限都必須設，少一個等於沒有上限，DB 也會擋 */}
+            {isLottery && (
+              <div className="mt-3 p-3 bg-primary/5 border border-primary/10 rounded-lg">
+                <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
+                  玩家免費抽，抽中才有資格買。中籤品項在申請寄出時支付下方各品項的「寄出應付」金額，
+                  不可分解，30 天內未申請寄送就失效。上方的「售價」對這個模式不生效。
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">
+                      整檔總抽獎次數 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="number" min="1" placeholder="例如 500"
+                      value={formData.lotteryTotalDraws}
+                      onChange={(e) => setFormData({ ...formData, lotteryTotalDraws: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-500 mb-1">
+                      每人可抽次數 <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="number" min="1" placeholder="例如 5"
+                      value={formData.lotteryPerUserDraws}
+                      onChange={(e) => setFormData({ ...formData, lotteryPerUserDraws: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-neutral-500">
+                  總次數扣掉下方各品項數量加總，剩下的自動成為「未中獎」的籤
+                  {lotteryBlanks !== null && (
+                    <span className={lotteryBlanks < 0 ? 'text-red-500 font-medium' : 'text-neutral-700 font-medium'}>
+                      {lotteryBlanks < 0
+                        ? ` ・ 品項共 ${lotteryWins} 個，超過總次數 ${formData.lotteryTotalDraws}`
+                        : ` ・ 目前為 ${lotteryBlanks} 張`}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
             {/* 完抽時間 / Seed（條件顯示） */}
             {formData.status === 'ended' && (
               <div className="grid grid-cols-2 gap-3 mt-3">
@@ -984,8 +1090,8 @@ export default function EditProductPage() {
                           <div className="px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-neutral-600 text-center">
                             {isLastOneLevel(prize.level)
                               ? '最後賞'
-                              : (calculatedTotalCount > 0 && prize.total > 0
-                                  ? ((prize.total / calculatedTotalCount) * 100).toFixed(1) + '%'
+                              : (probabilityBase > 0 && prize.total > 0
+                                  ? ((prize.total / probabilityBase) * 100).toFixed(1) + '%'
                                   : '0%'
                                 )
                             }
@@ -1005,6 +1111,23 @@ export default function EditProductPage() {
                             placeholder="0"
                           />
                         </div>
+                        {/* 抽籤販售才有：中籤後申請寄出要付的金額 */}
+                        {isLottery && (
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-500 mb-1">寄出應付 (G)</label>
+                            <Input
+                              type="number"
+                              value={prize.salePrice === 0 ? '' : prize.salePrice}
+                              onChange={(e) => {
+                                const updated = [...prizes]
+                                updated[index].salePrice = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                setPrizes(updated)
+                              }} className="font-mono text-center"
+                              min="0"
+                              placeholder="0"
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* 低階賞資源庫按鈕 */}
@@ -1107,7 +1230,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null }])
+                    setPrizes([{ id: `p${Date.now()}`, name: '', level: isGachaType ? defaultLevel : '', image: '', imageFile: null as File | null, imagePreview: '', total: 0, remaining: 0, probability: 0, recycleValue: 0, decompose_type: 'auto' as const, decompose_value: null as number | null, salePrice: 0 }])
                   }}
                   className="w-full text-center py-10 border-2 border-dashed border-neutral-200 rounded-lg bg-neutral-50 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
                 >
@@ -1136,6 +1259,7 @@ export default function EditProductPage() {
                       recycleValue: 0,
                       decompose_type: 'auto' as const,
                       decompose_value: null as number | null,
+                      salePrice: 0,
                     }
                     setPrizes([...prizes, newPrize])
                   }}

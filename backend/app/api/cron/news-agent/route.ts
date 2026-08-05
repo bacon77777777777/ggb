@@ -108,6 +108,9 @@ interface RssItem {
   pubDate:     string
   source:      string
   rssImage:    string  // enclosure / media:thumbnail / content:encoded 內的圖片
+  // content:encoded 原文。抓 RSS 時就一起下載了，不是額外請求。
+  // 文章頁抓不到時用它當內文配圖的來源（電擊的 feed 一則就帶 18 張圖）
+  rssHtml:     string
 }
 
 function parseRss(xml: string): RssItem[] {
@@ -135,7 +138,7 @@ function parseRss(xml: string): RssItem[] {
       contentEncoded.match(/<img[^>]+src=["']([^"']+)/i)?.[1] ??
       block.match(/<img[^>]+src=["']([^"']+)/i)?.[1] ??
       ''
-    if (title && link) items.push({ title, link, description: desc, pubDate, source, rssImage })
+    if (title && link) items.push({ title, link, description: desc, pubDate, source, rssImage, rssHtml: contentEncoded })
   }
   return items
 }
@@ -712,6 +715,7 @@ export async function POST(req: NextRequest) {
 
       // 玩具人圖片無浮水印，仍走偵測式轉存（偵測到才蓋 logo）
       const imageUrl = (await downloadSmartToR2(ogImage)) ?? ogImage
+      // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
       const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
@@ -756,7 +760,7 @@ export async function POST(req: NextRequest) {
       const realUrl = item.link
       if (!realUrl || existing.has(realUrl)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
-      const articleHtml = await fetchText(realUrl, 8_000)
+      const articleHtml = await fetchText(realUrl, 15_000)
       let ogImage = articleHtml
         ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
         : resolveImageUrl(item.rssImage, realUrl)
@@ -835,7 +839,7 @@ export async function POST(req: NextRequest) {
       if (existing.has(realUrl) || existing.has(item.link)) { results.skipped++; results.skipReasons.duplicate++; continue }
 
       // 抓實際文章頁：取 og:image + body text（若 block 仍繼續用 RSS 資料）
-      const articleHtml = await fetchText(realUrl, 8_000)
+      const articleHtml = await fetchText(realUrl, 15_000)
       let ogImage = articleHtml
         ? (resolveImageUrl(extractOgImage(articleHtml), realUrl) || resolveImageUrl(extractBodyImage(articleHtml), realUrl))
         : resolveImageUrl(item.rssImage, realUrl)
@@ -878,8 +882,12 @@ export async function POST(req: NextRequest) {
 
       // 內文配圖：從已抓過的文章 HTML 取 2 張（非封面），轉存 R2 後插在段落之間。
       // 不做圖片生成、不額外請求文章頁，成本只有 R2 儲存。
+      // 文章頁抓不到就退回 RSS 的 content:encoded。
+      // 電擊的文章頁常在 8 秒內回不來（160KB、三種 UA 都試過），
+      // 封面因為有 item.rssImage 兜底所以看不出來，內文圖卻是直接整段放棄 ——
+      // 489 篇裡只有 1 篇有內文圖就是這樣來的。
       const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml, ogImage, realUrl, isWatermarked
+        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked
       )
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()

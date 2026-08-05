@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
@@ -31,37 +32,8 @@ interface Egg {
   angularVelocity: number;
 }
 
-const useDropSound = () => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const lastPlayRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/spinopel-open-a-egg-carton-345737.mp3');
-    audio.preload = 'auto';
-    audioRef.current = audio;
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-        audioRef.current.load();
-      }
-    };
-  }, []);
-
-  const play = useCallback(() => {
-    const now = Date.now();
-    if (now - lastPlayRef.current < 500) return;
-    lastPlayRef.current = now;
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    void audio.play().catch(() => {});
-  }, []);
-
-  return play;
-};
+// 掉落音效改走共用播放器（lib/sfx）—— 原本每支各自 new Audio 加 500ms 防抖，
+// 但音檔長 1.12 秒，兩次觸發間隔在 500~1123ms 之間就會截斷重播、疊在一起
 
 export function GachaMachineVisual(props: GachaMachineVisualProps) {
   const {
@@ -154,36 +126,6 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
     return eggs;
   };
 
-  const manualPushSoundRef = useRef<HTMLAudioElement | null>(null);
-  const autoPushSoundRef = useRef<HTMLAudioElement | null>(null);
-  const lastAutoPlayRef = useRef<number>(0);
-  const lastManualPlayRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const manual = new Audio('/audio/gachapush.mp3');
-    manual.preload = 'auto';
-    manualPushSoundRef.current = manual;
-
-    const auto = new Audio('/audio/gacha.mp3');
-    auto.preload = 'auto';
-    autoPushSoundRef.current = auto;
-
-    return () => {
-      if (manualPushSoundRef.current) {
-        manualPushSoundRef.current.pause();
-        manualPushSoundRef.current.src = '';
-        manualPushSoundRef.current.load();
-      }
-      if (autoPushSoundRef.current) {
-        autoPushSoundRef.current.pause();
-        autoPushSoundRef.current.src = '';
-        autoPushSoundRef.current.load();
-      }
-    };
-  }, []);
-  const playDropSound = useDropSound();
   const [eggs, setEggs] = useState<Egg[]>(() => createInitialEggs());
   const eggsRef = useRef<Egg[]>(eggs);
   const [dropEggSrc, setDropEggSrc] = useState<string>(EGG_IMAGES[0]);
@@ -238,12 +180,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
     if (isShaking && !prevIsShaking.current && applyShakeImpulseRef.current) {
       if (pushSoundMode === 'auto') {
-        const now = Date.now();
-        if (now - lastAutoPlayRef.current >= 500) {
-          lastAutoPlayRef.current = now;
-          const audio = autoPushSoundRef.current;
-          if (audio) { audio.currentTime = 0; void audio.play().catch(() => {}); }
-        }
+        playSfx(SFX.gachaAuto);
       }
       const repeats = Math.max(1, Math.floor(shakeRepeats));
       const baseInterval = pushSoundMode === 'manual' ? 0 : 1000;
@@ -278,10 +215,10 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         setDropEggSrc(pool[nextIndex]);
       }
 
-      playDropSound();
+      playSfx(SFX.eggDrop);
     }
     prevIsDropping.current = isDropping;
-  }, [isDropping, isSoldOut, hasHighTierPending, playDropSound]);
+  }, [isDropping, isSoldOut, hasHighTierPending]);
 
   useEffect(() => {
     let frameId: number;
@@ -546,12 +483,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
         }}
         onClick={() => {
           if (isSoldOut || disableButtons) return;
-          const now = Date.now();
-          if (now - lastManualPlayRef.current >= 500) {
-            lastManualPlayRef.current = now;
-            const audio = manualPushSoundRef.current;
-            if (audio) { audio.currentTime = 0; void audio.play().catch(() => {}); }
-          }
+          playSfx(SFX.gachaPush);
           if (onPush) onPush();
         }}
       />

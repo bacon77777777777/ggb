@@ -114,6 +114,10 @@ interface WarehouseItem {
   supplierId?: number | null;
   supplierName?: string;
   prizeTotal?: number;
+  /** 抽籤販售中籤品項：申請寄出時要付的價金。一般商品為 0 */
+  salePrice?: number;
+  /** 抽籤販售中籤品項的保留到期時間 */
+  expiresAt?: string | null;
 }
 
 interface DeliveryOrder {
@@ -345,18 +349,24 @@ interface GroupedDrawHistoryItem {
     txid_hash?: string | null;
     prize_level?: string | null;
     prize_name?: string | null;
+    /** 抽籤販售中籤品項的保留到期時間 */
+    expires_at?: string | null;
     product_prizes: {
       level: string;
       name: string;
       image_url: string;
       recycle_value: number;
       total?: number;
+      /** 抽籤販售：中籤後寄出應付金額 */
+      sale_price?: number;
     } | null;
     admin_recycle_pool: { recycle_value: number; created_at: string }[] | null;
     products: {
       name: string;
       price?: number;
       type?: string;
+      /** normal | lottery */
+      sale_mode?: string;
       status?: string;
       remaining?: number;
       supplier_id?: number | null;
@@ -756,6 +766,15 @@ function ProfileContent() {
     const pending = items.filter(i => i.status === 'pending_delivery');
     return [...active, ...pending];
   }, [filteredWarehouseItems, lockedSupplierName]);
+
+  // 抽籤販售的價金：與運費分開算、分開顯示。
+  // 這只是給玩家看的，實際扣款由 create_delivery_order 用
+  // lottery_purchase_total() 自己重算，前端算錯也不會被少收。
+  const lotteryPurchaseTotal = React.useMemo(() => {
+    return warehouseItems
+      .filter(i => selectedForDelivery.includes(i.id))
+      .reduce((sum, i) => sum + (i.salePrice ?? 0), 0);
+  }, [warehouseItems, selectedForDelivery]);
 
   const hasLargePackage = React.useMemo(() => {
     return warehouseItems
@@ -1223,8 +1242,9 @@ function ProfileContent() {
               status,
               prize_level,
               prize_name,
-              product_prizes ( level, name, image_url, recycle_value, total ),
-              products ( name, price, type, supplier_id, suppliers ( id, name ) )
+              expires_at,
+              product_prizes ( level, name, image_url, recycle_value, total, sale_price ),
+              products ( name, price, type, sale_mode, supplier_id, suppliers ( id, name ) )
             `)
             .eq('user_id', user.id)
             .in('status', ['in_warehouse', 'pending_delivery'])
@@ -1239,6 +1259,11 @@ function ProfileContent() {
             const productType = item.products?.type || 'unknown';
             const isPreorder = false;
             const preorderAvailableAt = null;
+
+            // 抽籤販售：中籤品項在申請寄出時才付價金，且有保留期限
+            const salePrice = item.products?.sale_mode === 'lottery'
+              ? (item.product_prizes?.sale_price ?? 0) : 0;
+            const expiresAt = (item as any).expires_at ?? null;
 
             const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
             const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
@@ -1262,6 +1287,8 @@ function ProfileContent() {
               supplierId: item.products?.supplier_id ?? null,
               supplierName: item.products?.suppliers?.name ?? '未知廠商',
               prizeTotal: item.product_prizes?.total ?? 999,
+              salePrice,
+              expiresAt,
             };
           });
           setWarehouseItems(items);
@@ -1962,8 +1989,18 @@ function ProfileContent() {
 
   const handleDismantleClick = () => {
     if (selectedForDelivery.length === 0) return;
-    
+
     const selectedItems = warehouseItems.filter(item => selectedForDelivery.includes(item.id));
+
+    // 抽籤販售的中籤品項是 0 元抽來的，能分解就等於沒付錢換到 G 幣。
+    // DB 那邊已經擋死（dismantle_prizes 直接跳過），這裡先擋是為了給看得懂的訊息 ——
+    // 不然玩家會看到「分解 0 件、獲得 0 代幣」而不知道為什麼。
+    const lotteryItems = selectedItems.filter(i => (i.salePrice ?? 0) > 0);
+    if (lotteryItems.length > 0) {
+      showToast('抽籤商品不能回收成 G 幣，只能申請寄送', 'error');
+      return;
+    }
+
     const totalValue = selectedItems.reduce((sum, item) => sum + (item.recycleValue || 0), 0);
     const count = selectedItems.length;
     
@@ -2878,6 +2915,25 @@ function ProfileContent() {
                                           </span>
                                         ),
                                       },
+                                      {
+                                        // 抽籤商品：把「要付多少、什麼時候到期」放在看得到的地方。
+                                        // 一般商品這欄是空的，不另外多一個表格
+                                        key: 'lottery',
+                                        header: '抽籤商品',
+                                        className: 'w-[150px]',
+                                        render: (item) => (item.salePrice ?? 0) > 0 ? (
+                                          <div className="whitespace-nowrap">
+                                            <div className="text-[12px] font-black text-accent-red">
+                                              寄出應付 {item.salePrice} G
+                                            </div>
+                                            {item.expiresAt && (
+                                              <div className="text-[11px] text-neutral-400 mt-0.5">
+                                                {new Date(item.expiresAt).toLocaleDateString('zh-TW')} 前申請
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : <span className="text-neutral-300">—</span>,
+                                      },
                                     ]}
                                     rows={pageRows}
                                     rowKey={(r) => String(r.id)}
@@ -3148,6 +3204,16 @@ function ProfileContent() {
                             再加 {freeShippingThreshold - selectedForDelivery.length} 件可免運
                           </p>
                         )}
+                        {lotteryPurchaseTotal > 0 && (
+                          <div className={cn("flex justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700", isDesktop ? "text-sm" : "text-[13px]")}>
+                            <span className="text-neutral-500 dark:text-neutral-400 font-bold">抽籤商品價金</span>
+                            <div className="flex items-center gap-1">
+                              <Image src="/images/gcoin.png" alt="G" width={16} height={16} className="object-contain" />
+                              <span className="font-black text-accent-red font-amount tracking-tighter">{lotteryPurchaseTotal}</span>
+                              <span className="font-bold text-accent-red text-[13px]">代幣</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-3">
                         <p className={cn("font-black text-neutral-900 dark:text-white", isDesktop ? "text-sm" : "text-[13px]")}>配送方式</p>
@@ -3363,7 +3429,10 @@ function ProfileContent() {
                           isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base"
                         )}
                       >
-                        {isSubmittingDelivery ? '處理中...' : currentShippingFee > 0 ? `確認支付 ${currentShippingFee} 代幣` : '確認配送'}
+                        {isSubmittingDelivery ? '處理中...'
+                          : (currentShippingFee + lotteryPurchaseTotal) > 0
+                            ? `確認支付 ${currentShippingFee + lotteryPurchaseTotal} 代幣`
+                            : '確認配送'}
                       </button>
                     </div>
                   </motion.div>

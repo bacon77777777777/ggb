@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
@@ -37,6 +38,7 @@ const HOLE_T = (HOLE_TOP / 932) * CSS_H;
 const HOLE_B = HOLE_T + (HOLE_H / 932) * CSS_H;
 const PHYS_L = HOLE_L - 10;
 const PHYS_R = HOLE_R + 10;
+const CENTER_X = (HOLE_L + HOLE_R) / 2;   // 落地後箱子往這裡集中
 const FRONT_FLOOR = HOLE_B + BOX_R * 0.5;
 const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 
@@ -132,17 +134,15 @@ export interface BlindboxMachineMode2Props {
 
 function useBoxSounds() {
   const shuffleRef = useRef<HTMLAudioElement | null>(null);
-  const dropRef    = useRef<HTMLAudioElement | null>(null);
   const machineRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     shuffleRef.current = new Audio('/audio/changebox.mp3');
-    dropRef.current    = new Audio('/audio/spinopel-open-a-egg-carton-345737.mp3');
     machineRef.current = new Audio('/audio/gacha.mp3');
     machineRef.current.loop = true;
-    [shuffleRef, dropRef, machineRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
+    [shuffleRef, machineRef].forEach(r => { if (r.current) r.current.preload = 'auto'; });
     return () => {
-      [shuffleRef, dropRef, machineRef].forEach(r => {
+      [shuffleRef, machineRef].forEach(r => {
         if (r.current) { r.current.pause(); r.current.src = ''; }
       });
     };
@@ -173,7 +173,9 @@ function useBoxSounds() {
 
   return {
     playShuffle:  () => play(shuffleRef, 0.7),
-    playDrop:     () => play(dropRef, 0.8),
+    // 掉落音效走共用播放器：音檔長 1.12 秒，原本沒有任何防重複，
+    // 多抽時一箱接一箱會把還在播的攔腰截斷重來
+    playDrop:     () => playSfx(SFX.eggDrop, { volume: 0.8 }),
     startMachine,
     stopMachine,
   };
@@ -302,6 +304,14 @@ export function BlindboxMachineMode2({
           b.angleY += (BASE_AY - b.angleY) * 0.35;
           b.avX = 0;
           b.avY = 0;
+          // 落地後往中間滾一小段。多抽時箱子會散在取物口兩側，
+          // 集中起來才好點；用 angleZ 跟著位移轉，看起來是滾不是滑。
+          const dxToCenter = CENTER_X - b.x;
+          if (Math.abs(dxToCenter) > 1.5) {
+            const roll = Math.sign(dxToCenter) * Math.min(Math.abs(dxToCenter) * 3.2, 90) * dt;
+            b.x      += roll;
+            b.angleZ += (roll / BOX_R) * (180 / Math.PI) * 0.45;
+          }
         }
 
         const floorY = b.depth === 0 ? FRONT_FLOOR : BACK_FLOOR;
@@ -464,8 +474,8 @@ export function BlindboxMachineMode2({
           vy:       rand(100, 150),
           angleZ:   -0.087,
           avZ:      tipRight ? rand(1.5, 3.5) : rand(-3.5, -1.5),
-          angleX:   22,
-          avX:      rand(-70, -40),
+          angleX:   -52,
+          avX:      rand(-38, -18),
           angleY:   20,
           avY:      rand(-30, 30),
           depth:    SLOTS[slotIdx].depth,
@@ -544,8 +554,8 @@ export function BlindboxMachineMode2({
         @keyframes ggb-3d-eject-m2-c${c} {
           0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
           40%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg) translateY(14px); }
-          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-8deg)  rotateY(${ry68}deg) translateY(15px); }
-          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg)  rotateY(20deg) rotateZ(-5deg) translateY(18px); }
+          68%  { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-32deg) rotateY(${ry68}deg) translateY(15px); }
+          100% { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-52deg) rotateY(20deg) rotateZ(-5deg) translateY(18px); }
         }
         @keyframes ggb-3d-shuffle-transform-m2-c${c} {
           0%   { transform: perspective(300px) scale(${SHELF_SCALE}) rotateX(-20deg) rotateY(${ry}deg); }
@@ -582,7 +592,7 @@ export function BlindboxMachineMode2({
               innerTransition   = 'transform 1.0s ease-out';
             } else {
               innerAnimation    = `ggb-3d-eject-m2-c${slot.col} 1s cubic-bezier(0.3,0,0.7,1) forwards`;
-              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(22deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
+              innerTransform    = `perspective(300px) scale(${SHELF_SCALE}) rotateX(-52deg) rotateY(20deg) rotateZ(-5deg) translateY(18px)`;
               innerTransition   = 'none';
             }
           } else if (s === 'shuffling') {
