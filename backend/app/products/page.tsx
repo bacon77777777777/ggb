@@ -8,8 +8,7 @@ import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
-import CsvImportWizard from '@/components/CsvImportWizard'
-import XlsxImportWizard from '@/components/XlsxImportWizard'
+import SmartImportWizard from '@/components/SmartImportWizard'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, Fragment } from 'react'
@@ -27,7 +26,6 @@ export default function ProductsPage() {
   
   const [products, setProducts] = useState<Product[]>([])
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [isXlsxOpen, setIsXlsxOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
   const zipRef = useRef<HTMLInputElement>(null)
@@ -765,10 +763,10 @@ export default function ProductsPage() {
             children={
               <>
                 <button
-                  onClick={() => setIsXlsxOpen(true)}
+                  onClick={() => setIsBulkOpen(true)}
                   className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
-                  智能批量匯入
+                  智能批量上架
                 </button>
                 <button
                   onClick={() => zipRef.current?.click()}
@@ -1372,17 +1370,10 @@ export default function ProductsPage() {
           </div>
         </PageCard>
 
-        {/* 智能 CSV 匯入 Wizard */}
-        <CsvImportWizard
+        <SmartImportWizard
           isOpen={isBulkOpen}
           onClose={() => setIsBulkOpen(false)}
-          onImported={() => { fetchProducts(); setIsBulkOpen(false) }}
-        />
-        {/* 智能 Excel 匯入 Wizard */}
-        <XlsxImportWizard
-          isOpen={isXlsxOpen}
-          onClose={() => setIsXlsxOpen(false)}
-          onImported={() => { fetchProducts(); setIsXlsxOpen(false) }}
+          onImported={() => { fetchProducts() }}
         />
       </div>
 
