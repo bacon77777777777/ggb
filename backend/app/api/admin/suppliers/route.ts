@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminSession, requireAdminScope, scopeToSupplier } from '@/lib/requireAdmin'
 
 export async function GET() {
-  const session = await requireAdminSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const scope = await requireAdminScope()
+  if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  // 廠商帳號只會拿到自己那一家。結算頁的廠商下拉因此只有一個選項，
+  // 也就沒辦法切去看別家的數字
+  let query = supabase
     .from('suppliers')
     .select('*')
     .order('name', { ascending: true })
+  query = scopeToSupplier(query, scope, 'id')
+
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])

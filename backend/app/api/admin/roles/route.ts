@@ -41,6 +41,9 @@ export async function POST(request: Request) {
         .update({
           display_name: body.display_name,
           permissions: body.permissions,
+          // 沒帶 updated_at 的話，從權限管理頁改過的角色看起來還停在
+          // migration 執行的時間 —— 查「這個權限是誰什麼時候改的」會查錯方向
+          updated_at: new Date().toISOString(),
         })
         .eq('id', body.id)
 
