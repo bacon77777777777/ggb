@@ -6,7 +6,8 @@
 --    TRUNCATE products ... CASCADE 會把 draw_records 整張清空 —— CASCADE 是
 --    連帶清空引用表，不是套用該外鍵的 ON DELETE SET NULL。
 --    所以 288 第 3 段那個 DELETE ... WHERE 真實用戶 是永遠刪不到東西的死碼。
---    此版本不再假裝保留，改為明講「機器人紀錄也會清掉，測完跑 seed_bot_draws.ts 補回」。
+--    此版本不再假裝保留，改為明講「機器人紀錄也會清掉」。
+--    （2026-08-05 起不需要補回：機器人的六個前台展示點都不依賴 draw_records）
 --
 -- 2. 288 沒清機台相關：slot_spin_logs 會留著，slot_machines 的保底進度、
 --    佔用狀態、當日計數也不會重設，壓測會拿到髒的起始值。
@@ -105,7 +106,7 @@ VALUES (
   '壓測前資料清除',
   '執行 migration 427。清除：商品／廠商／輪播圖、所有交易與行為資料、真實用戶帳號、機台紀錄與狀態。'
   '保留：管理員、平台設定、dev_logs、news 文章、AI 記憶、機器人帳號、活動頁、首頁彈窗、機台主題。'
-  '注意：機器人的 draw_records 會被 products CASCADE 一併清除，測後需執行 scripts/seed_bot_draws.ts 補回。',
+  '注意：機器人的 draw_records 會被 products CASCADE 一併清除，但不需補回 —— 前台展示點都走獨立資料來源。',
   'improvement', 'released', 'high'
 );
 

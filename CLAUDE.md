@@ -276,11 +276,21 @@ curl -X POST https://admin.ggb.com.tw/api/admin/storage/clear-products \
 ### 執行後
 腳本自動寫入一筆 `dev_logs`（type=improvement, title=全站資料清除）記錄此次操作。
 
-**執行後必做**：新增商品後，在本 repo 執行補回腳本：
-```bash
-cd backend && npx tsx scripts/seed_bot_draws.ts
-```
-補回機器人假抽獎記錄（約 8,000 筆）。機器人帳號本身保留，只有 draw_records 需要重建。排行榜分數隔天 cron 自動補回，不需手動處理。
+**執行後不需要補機器人抽獎紀錄**（`seed_bot_draws.ts` 已於 2026-08-05 移除）。
+
+機器人在前台六個展示點全部走獨立資料來源，都不依賴 `draw_records`：
+
+| 展示點 | 資料來源 |
+|--------|----------|
+| 排行榜（抽獎／課金） | `leaderboard_bot_daily_stats`，隔天 cron 自動補 |
+| 玩家資訊小卡 | `user_titles` / `user_badges` |
+| 情報頁留言／按讚 | `news_comments` / `news_likes` |
+| 機台彈幕 | `slot_danmaku_bots` |
+| 中獎跑馬燈 | `get_winning_records` 即時從上架商品組合（migration 460） |
+
+**不要再往 `draw_records` 塞假抽獎**：那張表同時是庫存扣減、銷量統計
+（`sync_product_sales` 沒有濾 `is_bot`）、以及公平性驗證逐籤比對的依據。
+假抽獎會佔走真實籤號、灌水後台銷量，並讓玩家在驗證頁看到「與表不符」。
 
 ---
 
