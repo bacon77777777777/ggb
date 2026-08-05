@@ -96,3 +96,26 @@ export function forceSupplierField<T extends Record<string, unknown>>(
   if (scope.supplierScope === undefined) return payload
   return { ...payload, supplier_id: scope.supplierScope }
 }
+
+/**
+ * 廠商拿不到的商品欄位。
+ *
+ * 介面上沒顯示不代表沒送出去 —— 後台 API 回的是整列 JSON，
+ * 廠商打開 devtools 就看得到。實測廠商帳號拿到的商品 JSON 裡確實有這兩欄。
+ *
+ *   seed         抽獎種子。拿到它就能預先算出每一抽的結果，
+ *                整套公平性設計對這個帳號失效（txid_hash 是公開的 commitment，可以留）
+ *   profit_rate  殺率。平台調整獲利的槓桿，不該讓供貨方看見
+ */
+const SUPPLIER_HIDDEN_PRODUCT_FIELDS = ['seed', 'profit_rate'] as const
+
+/** 依身份決定要不要把商品的秘密欄位拿掉。平台管理員原樣回傳。 */
+export function stripSecretsForSupplier<T extends Record<string, unknown>>(
+  row: T,
+  scope: AdminScope,
+): T {
+  if (scope.supplierScope === undefined) return row
+  const out = { ...row }
+  for (const k of SUPPLIER_HIDDEN_PRODUCT_FIELDS) delete out[k]
+  return out
+}

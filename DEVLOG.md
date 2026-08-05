@@ -4,6 +4,76 @@
 
 ---
 
+## v2026.08.05p｜2026-08-05｜廠商拿得到 seed 與殺率（介面沒顯示不代表沒送出去）
+
+### 老闆的問題
+
+「這邊機率如果殺率有調整，會跟著變動嗎？如果會，那就要針對角色帳號隱藏欄位。」
+
+查下來**不會**：商品列表展開的那個百分比是 `剩餘數量 / 全部剩餘 × 100`，
+不是 `product_prizes.probability`。而 `profit_rate` 只被
+`seal_product_tickets` / `play_ichiban` / `play_lottery` 使用 ——
+它決定大獎排在籤號序列的哪個位置，不改變數量。所以那個數字跟殺率無關，
+而且廠商從旁邊的「15/15」自己就算得出來，藏起來沒有意義。
+
+### 但方向是對的，漏洞在另一條路
+
+介面沒顯示不代表沒送出去。後台 API 回的是整列 JSON，廠商打開 devtools 就看得到。
+實測廠商帳號拿到的商品 JSON：
+
+```
+seed         = "5f7856c5305665b08b7611098b95b7fe..."   ← 抽獎種子
+profit_rate  = 1                                        ← 殺率
+```
+
+`seed` 尤其嚴重 —— 拿到它就能預先算出每一抽的結果，整套公平性設計對這個帳號失效。
+（`txid_hash` 是公開的 commitment，可以留。）
+
+新增 `stripSecretsForSupplier()`，列表與單筆 API 都套用。平台管理員原樣回傳。
+
+### 順帶：編輯頁也是壞的
+
+`/products/[id]` 也用 anon key 查 `select('*, product_prizes(*)')`，
+被 migration 471 的欄位級授權擋掉，整頁載不出來。跟商品列表同樣的問題，
+上一版只修了列表沒修編輯頁。新增 `GET /api/admin/products/[id]`（service role
+＋擁有權檢查＋秘密欄位過濾），編輯頁改走它。
+
+### 實測（STG，測完已清除帳號）
+
+```
+平台管理員  列表: seed=有 profit_rate=有 cost=有 ｜單筆: 同上
+廠商帳號    列表: seed=無 profit_rate=無 cost=有 ｜單筆: 同上
+
+廠商（綁廠商1）查廠商2的商品 id=54/55/56 → 403 這筆資料不屬於你的廠商
+廠商改別家商品 PUT id=54                  → 403 這筆資料不屬於你的廠商
+```
+
+`cost` 保留 —— 那是平台向這家廠商的進貨成本，他本來就知道。
+
+---
+
+## v2026.08.05q｜2026-08-05｜驗證用的 build 不再打壞 dev server
+
+「怎麼修一個東西都要重啟」—— 這幾次全是我造成的，不是 Next.js 的問題。
+
+dev server 跑著的時候在同一個目錄執行 `npm run build`，production 產物會覆蓋
+`.next`，dev server 接著就找不到自己的 chunk 與 manifest，一路 500。
+Next.js dev 本來就有 HMR，改程式碼根本不用重啟。
+
+兩邊 `next.config` 加上 `distDir` 覆寫：
+
+```
+NEXT_DIST_DIR=.next-verify npm run build
+```
+
+不設就是預設的 `.next`，Vercel 部署不受影響。驗證過：跑完整 production build，
+兩個 dev server 都還是 200。
+
+（注意：`next build` 會自動把 distDir 寫進 `tsconfig.json` 的 include，
+用完記得 `git checkout tsconfig.json`。）
+
+---
+
 ## v2026.08.05o｜2026-08-05｜側欄權限預設放行、商品列表被欄位級授權擋掉
 
 老闆用廠商帳號實測，抓到兩個問題。

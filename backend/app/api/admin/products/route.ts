@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminScope, forceSupplierField, scopeToSupplier, ScopeError } from '@/lib/requireAdmin'
+import { requireAdminScope, forceSupplierField, scopeToSupplier, stripSecretsForSupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import crypto from 'crypto'
@@ -39,7 +39,7 @@ export async function GET() {
 
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data ?? [])
+    return NextResponse.json((data ?? []).map(row => stripSecretsForSupplier(row, scope)))
   } catch (e: unknown) {
     if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: e instanceof Error ? e.message : '讀取失敗' }, { status: 500 })

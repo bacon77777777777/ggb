@@ -284,18 +284,15 @@ export default function EditProductPage() {
       if (!productId) return
 
       try {
-        const { data: product, error } = await supabase
-          .from('products')
-          .select(`
-            *,
-            product_prizes (*)
-          `)
-          .eq('id', productId)
-          .single()
-
-        if (error) {
-          throw error
+        // 走後台 API（service role）。瀏覽器的 anon key 讀不到 cost / profit_rate / seed
+        // ——那三欄在 migration 471 被欄位級授權擋掉了，`select('*')` 會整個 42501。
+        // 這支也會依身份濾掉廠商不該看的欄位，並確認這筆商品真的屬於他。
+        const res = await fetch(`/api/admin/products/${productId}`, { credentials: 'include' })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          throw new Error(j.error || '載入商品失敗')
         }
+        const product = await res.json()
 
         if (product) {
           setProductCode(product.product_code)
