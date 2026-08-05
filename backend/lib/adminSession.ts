@@ -5,6 +5,8 @@ export type AdminSessionPayload = {
   exp: number
   role?: string
   permissions?: string[]
+  /** 廠商角色專用：這個帳號屬於哪一家廠商。非廠商角色不會有這個欄位。 */
+  supplierId?: number
 }
 
 const base64UrlEncode = (buf: Buffer) =>
