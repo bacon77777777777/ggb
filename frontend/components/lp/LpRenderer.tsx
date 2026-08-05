@@ -46,6 +46,8 @@ interface EventData {
   is_active: boolean; start_at: string | null; end_at: string | null
   linked_category_id: string | null
   theme_mode: 'dark' | 'light'
+  /** 首屏配色：dark 固定深色（預設）／light 固定淺色／follow 跟隨 theme_mode */
+  hero_mode?: 'dark' | 'light' | 'follow'
 }
 interface Prize { id: number; level: string; name: string; image_url: string | null; total: number; remaining: number; probability: number; recycle_value: number | null }
 interface Section {
@@ -63,8 +65,11 @@ function hexRgb(hex: string): [number, number, number] {
 }
 const clamp = (v: number) => Math.min(255, Math.max(0, Math.round(v)))
 
-function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
+function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?: string }) {
   const isDark = (vars.theme ?? 'dark') === 'dark'
+  // 首屏可以獨立於內容區設定深淺：'內容淺色但首屏深色' 是合理的組合，
+  // 綁死的話管理員切到淺色會看到最上面一大塊還是黑的，以為沒生效
+  const heroDark = (vars.hero ?? 'dark') === 'follow' ? isDark : (vars.hero ?? 'dark') === 'dark'
   const [ar,ag,ab] = hexRgb(vars.accent)
   const [br,bg_,bb] = hexRgb(vars.bg)
   const a = `${ar},${ag},${ab}`
@@ -128,14 +133,21 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
   const textSemi68     = isDark ? 'rgba(255,255,255,.68)' : 'rgba(0,0,0,.78)'
   const textSemi42     = isDark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.55)'
   const overlayFaint   = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'
-  // Hero is ALWAYS dark regardless of theme (cinematic section)
-  const heroBg         = isDark ? 'transparent' : '#0a0610'
-  // Card surface computed from the hero's fixed dark bg (10,6,16)
-  const heroCardDarker = `rgb(${clamp(10+3+ar*0.02)},${clamp(6+3+ag*0.02)},${clamp(16+3+ab*0.02)})`
-  const heroVeilStop   = 'rgba(10,6,16,.65)'
-  const heroSubColor   = '#ecd8f0'
-  const arasaColor     = '#f3e0ff'
-  const scrollColor    = 'rgba(255,255,255,.3)'
+  // 首屏配色。深色是原本的電影感版本，淺色是為了讓「整頁淺色」真的整頁淺色
+  const heroBg         = heroDark ? (isDark ? 'transparent' : '#0a0610') : '#ffffff'
+  const heroCardDarker = heroDark
+    ? `rgb(${clamp(13+ar*0.02)},${clamp(9+ag*0.02)},${clamp(19+ab*0.02)})`
+    : `rgb(${clamp(246-ar*0.02)},${clamp(246-ag*0.02)},${clamp(248-ab*0.02)})`
+  // veil 是為了讓四周壓暗、中間透出主視覺；淺色時要反過來壓亮
+  const heroVeilStop   = heroDark ? 'rgba(10,6,16,.65)' : 'rgba(255,255,255,.55)'
+  const heroVeilEdge   = heroDark ? '#0a0610' : '#ffffff'
+  const heroSubColor   = heroDark ? '#ecd8f0' : `rgb(${clamp(ar*.55)},${clamp(ag*.45)},${clamp(ab*.55)})`
+  const arasaColor     = heroDark ? '#f3e0ff' : `rgb(${clamp(ar*.60)},${clamp(ag*.50)},${clamp(ab*.60)})`
+  const scrollColor    = heroDark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.35)'
+  // 主標的漸層在淺色底上要夠深才讀得到，深色底則沿用原本的亮色漸層
+  const heroTitleGrad  = heroDark ? titleGrad : sectionTitleGrad
+  const heroEndedColor = heroDark ? '#fff' : '#111'
+  const heroBeamOpacity = heroDark ? 1 : 0.35
   const calloutBg      = isDark ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.05)'
   const calloutColor   = isDark ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.75)'
   const highlightBg    = isDark ? `linear-gradient(180deg,${cardDark},rgba(0,0,0,.5))` : `linear-gradient(180deg,${cardDark},rgba(255,255,255,.5))`
@@ -183,16 +195,17 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
       background:rgba(0,0,0,.68);backdrop-filter:blur(2px);}
-    .lpv-hero .h-ended span{color:#fff;font-weight:900;letter-spacing:2px;
-      font-size:clamp(20px,5.5vw,34px);text-shadow:0 2px 12px rgba(0,0,0,.6);}
+    .lpv-hero .h-ended span{color:${heroEndedColor};font-weight:900;letter-spacing:2px;
+      font-size:clamp(20px,5.5vw,34px);text-shadow:0 2px 12px ${heroDark ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.18)'};}
     .lpv-hero .h-scatter img{position:absolute;display:block;will-change:transform;}
     .lpv-hero .h-bg{position:absolute;inset:0;
       background:radial-gradient(72% 42% at 50% 8%,${borderStrong},transparent 46%),
                  radial-gradient(50% 28% at 50% 0%,${borderMid},transparent 52%);}
     .lpv-hero .h-beam{position:absolute;top:-14%;left:50%;transform:translateX(-50%);
-      width:76%;height:32%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(30px);}
+      width:76%;height:32%;background:radial-gradient(closest-side,${glow20},transparent);filter:blur(30px);
+      opacity:${heroBeamOpacity};}
     .lpv-hero .h-veil{position:absolute;inset:0;
-      background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,#0a0610 92%);}
+      background:radial-gradient(120% 92% at 50% 34%,transparent,${heroVeilStop} 55%,${heroVeilEdge} 92%);}
     .lpv-eyebrow{position:relative;z-index:3;font-size:12px;letter-spacing:7px;color:${accentLight};
       font-weight:800;margin-bottom:16px;text-transform:uppercase;opacity:.9;}
     /* line-height 需 >=1.1：中文字身高於行框，而 background-clip:text 只在
@@ -200,7 +213,7 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
        padding-block 再留一點餘裕給 drop-shadow 與較高的字型。 */
     .lpv-title{position:relative;z-index:3;font-family:'Arial Black','Noto Sans JP',sans-serif;
       font-weight:900;line-height:1.12;padding-block:.04em;letter-spacing:2px;font-size:clamp(34px,9.5vw,78px);
-      background:${titleGrad};
+      background:${heroTitleGrad};
       -webkit-background-clip:text;background-clip:text;color:transparent;
       filter:drop-shadow(0 4px 26px ${glow40});}
     .lpv-gems{position:relative;z-index:3;display:flex;gap:10px;justify-content:center;margin-top:18px;}
@@ -366,12 +379,20 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light' }) {
     /* ── GALLERY ── */
     .lpv-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
     @media(min-width:600px){.lpv-gallery{grid-template-columns:repeat(3,1fr);}}
+    /* 高度自適應：原本寫死 aspect-ratio 9/11，正方形素材會被裁掉上下。
+       改成讓圖片自己的比例決定高度，換素材就不用回頭調 CSS。
+       影片沒有 intrinsic size 可依靠，仍給一個比例避免載入前塌成 0 高。 */
     .lpv-gitem{position:relative;border-radius:14px;overflow:hidden;border:1px solid ${borderMid};
-      background:${cardDarker};aspect-ratio:9/11;}
-    .lpv-gitem img,.lpv-gitem video{width:100%;height:100%;object-fit:cover;}
+      background:${cardDarker};}
+    .lpv-gitem img{display:block;width:100%;height:auto;}
+    .lpv-gitem video{display:block;width:100%;height:100%;object-fit:cover;}
+    .lpv-gitem:has(video){aspect-ratio:9/11;}
     .lpv-gcap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;
       background:linear-gradient(180deg,transparent,rgba(0,0,0,.85));}
-    .lpv-gcn{font-weight:900;font-size:15px;}
+    /* 圖說疊在 lpv-gcap 的黑色漸層上，固定白字。
+       不設 color 會繼承主題文字色 —— 淺色主題下就是深字疊深底，讀不到 */
+    .lpv-gcn{font-weight:900;font-size:15px;color:#fff;
+      text-shadow:0 1px 3px rgba(0,0,0,.5);}
     .lpv-gbadge{position:absolute;top:8px;left:8px;font-size:9px;font-weight:900;
       letter-spacing:1px;padding:3px 8px;border-radius:999px;
       background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);}
@@ -976,7 +997,7 @@ export default function LpRenderer({ slug }: { slug: string }) {
 
   return (
     <div ref={containerRef} className="lpv" style={{ position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto', background: event.bg_color, paddingBottom: stickySection ? 90 : 0 }}>
-      <style>{css({ bg: event.bg_color, accent: event.accent_color, theme: event.theme_mode })}</style>
+      <style>{css({ bg: event.bg_color, accent: event.accent_color, theme: event.theme_mode, hero: event.hero_mode })}</style>
       <div className="lpv-topbar">
         <button onClick={() => router.back()} className="lpv-topbtn" aria-label="返回">
           <ChevronLeft size={20} strokeWidth={2.5} />

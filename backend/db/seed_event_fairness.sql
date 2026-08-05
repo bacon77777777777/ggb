@@ -52,7 +52,7 @@ FROM public.events e,
   {
     "h2": "在哪裡看",
     "items": [
-      { "media_type": "image", "url": "/images/placeholder/fair_step1.svg", "caption": "商品頁最下方" },
+      { "media_type": "image", "url": "/images/placeholder/fair_step1.svg", "caption": "商品頁下方" },
       { "media_type": "image", "url": "/images/placeholder/fair_step2.svg", "caption": "倉庫每一件品項" },
       { "media_type": "image", "url": "/images/placeholder/fair_step3.svg", "caption": "驗算頁自己重算" }
     ],

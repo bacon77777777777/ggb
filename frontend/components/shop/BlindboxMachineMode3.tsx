@@ -563,6 +563,11 @@ export function BlindboxMachineMode3({
               <div style={{
                 width: '100%', height: '100%',
                 transformStyle: 'preserve-3d',
+                // 旋轉軸在盒子「底部前緣」，不是幾何中心。
+                // 用中心當軸的話，頂部往前傾的同時底部會往後翹，
+                // 看起來像盒子懸空翻轉；真實的盒子是被推到架緣後
+                // 以底部前緣為支點翻落下去。
+                transformOrigin: `50% 100% ${BOX_D / 2}px`,
                 transform: innerTransform,
                 transition: innerTransition !== 'none' ? innerTransition : undefined,
                 ...(innerAnimation ? { animation: innerAnimation } : {}),
@@ -586,6 +591,8 @@ export function BlindboxMachineMode3({
             height:   BOX_H,
             zIndex:   b.depth === 0 ? 10 : 8,
             transformStyle: 'preserve-3d',
+            // 與貨架上的盒子用同一個支點，交接那一幀才不會跳位
+            transformOrigin: `50% 100% ${BOX_D / 2}px`,
             transform: [
               `perspective(300px)`,
               `scale(${SHELF_SCALE * (b.depth === 1 ? BACK_SCALE : 1)})`,

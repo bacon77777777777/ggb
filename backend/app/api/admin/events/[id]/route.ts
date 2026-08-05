@@ -28,6 +28,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       end_at: body.end_at || null,
       linked_category_id: body.linked_category_id ?? null,
       theme_mode: body.theme_mode === 'light' ? 'light' : 'dark',
+      // 首屏獨立於內容區。沒帶就維持 dark —— 既有活動頁視覺不變
+      hero_mode: ['dark','light','follow'].includes(body.hero_mode) ? body.hero_mode : 'dark',
       kind: body.kind ?? 'other',
     }).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
