@@ -30,8 +30,9 @@ export default function ProductsPage() {
   // 廠商帳號只能看到自己供貨的商品，而且只能編輯 —— 不能刪除、不能看公平性驗證。
   // 這裡是介面層的限制；真正的把關在 API（middleware 白名單 + assertOwnedBySupplier），
   // 因為介面藏起來的按鈕擋不住直接打 API。
+  // 只用來決定介面上要不要顯示刪除／驗證按鈕。
+  // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
-  const supplierScope = isSupplier ? adminUser?.supplierId ?? null : null
 
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
@@ -45,19 +46,17 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true)
-      let query = supabase
-        .from('products')
-        .select('*, prizes:product_prizes(*)')
-        .order('created_at', { ascending: false })
-
-      if (supplierScope !== null) query = query.eq('supplier_id', supplierScope)
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error fetching products:', error)
+      // 走後台 API（service role）。瀏覽器的 anon key 讀不到 cost 與 profit_rate
+      // ——那兩欄在 migration 471 被欄位級授權擋掉了，而這張表要顯示成本與殺率。
+      // 廠商範圍的過濾也一併在伺服器端做，前端加條件只是介面效果。
+      const res = await fetch('/api/admin/products', { credentials: 'include' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        console.error('Error fetching products:', j.error || res.status)
+        toast(j.error || '載入商品失敗', 'error')
         return
       }
+      const data = await res.json()
 
       if (data) {
         const mappedProducts: Product[] = data.map((p: any) => ({

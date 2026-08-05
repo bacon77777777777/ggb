@@ -677,13 +677,20 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/competitor-intel': 'competitor_intel',
     '/content-drafts': 'content_drafts',
     '/ai-usage': 'ai_usage',
+    '/analytics-overview': 'reports_overview',
+    '/design-system': 'tools',
+    '/frontend-design-system': 'tools',
   }
 
   const canAccess = (path: string) => {
     if (!user) return false
     if (user.role === 'super_admin' || user.role === 'superadmin') return true
     const perm = PATH_PERMISSION_MAP[path]
-    if (!perm) return true
+    // 沒有對應權限的選單項目一律不顯示。
+    // 原本這裡是 `if (!perm) return true`（沒規則就放行），結果新增選單時
+    // 忘了補權限對應，那一項就對所有角色可見 —— 廠商帳號因此看得到
+    // 「分析頁」和「其他黑科技」整組。漏掉的後果應該是「看不到」而不是「都看得到」。
+    if (!perm) return false
     return (user.permissions || []).includes(perm)
   }
 

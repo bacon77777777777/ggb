@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminScope, forceSupplierField, ScopeError } from '@/lib/requireAdmin'
+import { requireAdminScope, forceSupplierField, scopeToSupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 import crypto from 'crypto'
@@ -14,6 +14,37 @@ type CreateProductPayload = {
 const generateSeedHex = () => crypto.randomBytes(32).toString('hex')
 const sha256Hex = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
 const generateTempProductCode = () => `TEMP-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`
+
+/**
+ * 商品列表
+ *
+ * 後台原本是從瀏覽器用 anon key 直接查 `select('*', prizes:product_prizes(*))`。
+ * migration 471 用欄位級授權把 seed / cost / profit_rate 從 anon 撤掉之後，
+ * `*` 會展開到那三欄而整個查詢 42501 —— 商品管理頁就空了。
+ *
+ * 而後台是真的需要 cost（表格有「成本」欄）與 profit_rate（殺率），
+ * 所以只能走 service role。順帶把廠商範圍的過濾搬到伺服器端：
+ * 原本在前端加 `.eq('supplier_id', ...)`，那只是介面效果，改一下請求就繞過去了。
+ */
+export async function GET() {
+  try {
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    let query = getSupabaseAdmin()
+      .from('products')
+      .select('*, prizes:product_prizes(*)')
+      .order('created_at', { ascending: false })
+    query = scopeToSupplier(query, scope)
+
+    const { data, error } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data ?? [])
+  } catch (e: unknown) {
+    if (e instanceof ScopeError) return NextResponse.json({ error: e.message }, { status: 403 })
+    return NextResponse.json({ error: e instanceof Error ? e.message : '讀取失敗' }, { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
