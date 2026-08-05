@@ -68,19 +68,44 @@ async function main() {
 
   console.log(`解析出 ${entries.length} 個版本條目`)
 
-  // 取得已存在的 version 清單（避免重複）
+  // 已存在的條目：連內文一起取回，才判斷得出「有改過但沒同步」
   const { data: existing } = await supabase
     .from('dev_logs')
-    .select('version, title')
+    .select('id, version, title, description')
     .like('version', 'v2026%')
 
-  const existingKeys = new Set((existing ?? []).map((r: any) => `${r.version}::${r.title}`))
+  const existingByVersion = new Map(
+    (existing ?? []).map((r: any) => [r.version, r]),
+  )
 
-  const toInsert = entries.filter(e => !existingKeys.has(`${e.version}::${e.title}`))
-  console.log(`需要新增 ${toInsert.length} 筆（跳過 ${entries.length - toInsert.length} 筆已存在）`)
+  const toInsert = entries.filter(e => !existingByVersion.has(e.version))
+
+  // 同一個版本的內容被補寫是常態（推版後又發現問題、補上修法），
+  // 原本只 INSERT 不 UPDATE，所以第一次同步之後的所有修改都進不了資料庫，
+  // 後台開發紀錄看到的會是舊版內文，而且完全沒有徵兆。
+  const toUpdate = entries.filter(e => {
+    const cur = existingByVersion.get(e.version)
+    return cur && (cur.description !== e.description || cur.title !== e.title)
+  })
+
+  console.log(
+    `需要新增 ${toInsert.length} 筆、更新 ${toUpdate.length} 筆` +
+    `（跳過 ${entries.length - toInsert.length - toUpdate.length} 筆未異動）`,
+  )
+
+  for (const entry of toUpdate) {
+    const cur = existingByVersion.get(entry.version)
+    const { error } = await supabase
+      .from('dev_logs')
+      .update({ title: entry.title, description: entry.description })
+      .eq('id', cur.id)
+    if (error) console.error(`❌ ${entry.version} 更新失敗:`, error.message)
+    else console.log(`♻️  ${entry.version}｜內文已更新`)
+  }
 
   if (toInsert.length === 0) {
-    console.log('全部已同步，無需操作')
+    if (toUpdate.length === 0) console.log('全部已同步，無需操作')
+    else console.log('\n同步完成')
     return
   }
 
