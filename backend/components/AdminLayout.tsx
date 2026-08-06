@@ -1031,11 +1031,28 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {/* 麵包屑導航 — 自動從 sidebar menuGroups 推算，永遠和左側欄對齊 */}
                 {(() => {
                   const crumbs: Breadcrumb[] = breadcrumbs ?? (() => {
+                    /*
+                     * 先全域找完全相符，找不到才退回前綴比對。
+                     *
+                     * 原本是逐群組「先完全相符、再前綴」，於是 /products/import
+                     * 在前面的「抽獎管理」群組就被 /products 的前綴攔下來，
+                     * 麵包屑顯示成「抽獎管理 › 商品管理」，但它其實在「其他黑科技」底下。
+                     * 巢狀路徑只要跟別組的頂層路徑同前綴就會踩到。
+                     */
                     for (const group of menuGroups) {
-                      const item = group.items.find(i => i.path === pathname) ?? group.items.find(i => pathname.startsWith(i.path + '/'))
-                      if (item) return [{ label: group.title }, { label: item.name }]
+                      const exact = group.items.find(i => i.path === pathname)
+                      if (exact) return [{ label: group.title }, { label: exact.name }]
                     }
-                    return []
+                    // 前綴比對時取最長的那個，/products/import/5 才不會又被 /products 搶走
+                    let best: { group: string; item: string; len: number } | null = null
+                    for (const group of menuGroups) {
+                      for (const i of group.items) {
+                        if (pathname.startsWith(i.path + '/') && (!best || i.path.length > best.len)) {
+                          best = { group: group.title, item: i.name, len: i.path.length }
+                        }
+                      }
+                    }
+                    return best ? [{ label: best.group }, { label: best.item }] : []
                   })()
                   if (!crumbs.length) return null
                   return (
