@@ -16,7 +16,8 @@ import Image from 'next/image';
 import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
 import { Plus, Store, Repeat2, Tag } from 'lucide-react';
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { useFeatureFlags, type FlagState } from '@/contexts/FeatureFlagsContext';
+import { useToast } from '@/components/ui/Toast';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
@@ -1756,25 +1757,27 @@ export default function Home() {
         之後若要補，改這裡的 md:hidden 或在導覽列加連結都可以。
       */}
       <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
-        {flags.market && (
-          <FloatingEntry href="/market" label="交易所">
+        {/* 一律「關閉才消失、維護中照樣顯示」。
+            維護中的入口點下去不換頁，改跳提示 —— 直接把圖標藏掉的話，
+            玩家會以為功能被拿掉了；留著才知道只是暫時停一下 */}
+        {flagStates.market !== 'off' && (
+          <FloatingEntry href="/market" label="交易所" state={flagStates.market}>
             <Store className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {flags.sell && (
-          <FloatingEntry href="/sell" label="販售">
+        {flagStates.sell !== 'off' && (
+          <FloatingEntry href="/sell" label="販售" state={flagStates.sell}>
             <Tag className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {flags.exchange && (
-          <FloatingEntry href="/exchange" label="卡牌交換">
+        {flagStates.exchange !== 'off' && (
+          <FloatingEntry href="/exchange" label="卡牌交換" state={flagStates.exchange}>
             <Repeat2 className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格。
-            關閉時整顆消失；維護中仍留著，讓玩家知道它還在（進去才說明） */}
+        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格 */}
         {categoryState('slot', flagStates, false) !== 'off' && (
-          <FloatingEntry href="/challenge" label="挑戰">
+          <FloatingEntry href="/challenge" label="挑戰" state={categoryState('slot', flagStates, false)}>
             <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
           </FloatingEntry>
         )}
@@ -1786,19 +1789,34 @@ export default function Home() {
   );
 }
 
-/** 右下角的懸浮入口。幾顆共用同一組樣式，疊起來像同一組東西 */
-function FloatingEntry({ href, label, className = '', children }: {
+/**
+ * 右下角的懸浮入口。幾顆共用同一組樣式，疊起來像同一組東西。
+ *
+ * state 為 maintenance 時圖標照樣顯示（稍微淡化），但點下去不換頁、改跳提示。
+ * 這是刻意的：藏起來玩家會以為功能被拿掉，留著才知道只是暫時停一下。
+ */
+function FloatingEntry({ href, label, state = 'on', className = '', children }: {
   href: string;
   label: string;
+  state?: FlagState;
   className?: string;
   children: React.ReactNode;
 }) {
+  const { showToast } = useToast();
+  const isMaintenance = state === 'maintenance';
+  const base = `flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${isMaintenance ? 'opacity-60' : ''} ${className}`;
+
   return (
     <Link
       href={href}
       aria-label={label}
-      title={label}
-      className={`flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${className}`}
+      title={isMaintenance ? `${label}（維護中）` : label}
+      className={base}
+      onClick={e => {
+        if (!isMaintenance) return;
+        e.preventDefault();
+        showToast(`${label}維護中，敬請見諒`, 'info');
+      }}
     >
       {children}
     </Link>

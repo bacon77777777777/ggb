@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 
@@ -24,6 +25,9 @@ function NavbarInner() {
   const searchParams = useSearchParams();
   const { user, logout, isLoading, isAuthenticated } = useAuth();
   const { showToast } = useToast();
+  // 儲值維護中時「立即儲值」不換頁、改跳提示
+  const { states: featureStates } = useFeatureFlags();
+  const rechargeState = featureStates.recharge;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMessagesMoreOpen, setIsMessagesMoreOpen] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
@@ -943,7 +947,23 @@ function NavbarInner() {
                   </div>
 
                   <div className="space-y-0.5">
-                    <Link href="/topup" onClick={() => setIsMenuOpen(false)} className="w-full bg-primary text-white text-[14px] font-black py-2.5 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1.5">
+                    {/* 儲值維護中：按鈕留著但不換頁，改跳提示。
+                        /topup 本身也有維護說明，這裡是讓玩家按之前就知道 */}
+                    <Link
+                      href="/topup"
+                      onClick={e => {
+                        if (rechargeState === 'maintenance') {
+                          e.preventDefault();
+                          showToast('儲值維護中，敬請見諒', 'info');
+                          return;
+                        }
+                        setIsMenuOpen(false);
+                      }}
+                      className={cn(
+                        "w-full bg-primary text-white text-[14px] font-black py-2.5 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1.5",
+                        rechargeState === 'maintenance' && "opacity-60"
+                      )}
+                    >
                       立即儲值
                     </Link>
                     
