@@ -2578,7 +2578,10 @@ function ProfileContent() {
                             <button onClick={handleDismantleClick} className="flex-1 bg-accent-red text-white h-[44px] rounded-xl text-base font-black">分解</button>
                             {selectedForDelivery.length <= 10 && (
                               <>
-                                {flags.exchange && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
+                                {/* 這顆按鈕寫的是交易所（marketplace）的資料，
+                                    旗標卻掛在卡牌交換上 —— 關掉卡牌交換會連帶讓
+                                    交易所不能上架，關掉交易所反而按鈕還在 */}
+                                {flags.market && selectedForDelivery.length === 1 && warehouseItems.find(i => i.id === selectedForDelivery[0] && isMajorGrade(i.grade)) && (
                                   (() => {
                                     const item = warehouseItems.find(i => i.id === selectedForDelivery[0])!;
                                     return (
@@ -2643,7 +2646,7 @@ function ProfileContent() {
                           >
                             分解 ({selectedForDelivery.length})
                           </button>
-                          {flags.exchange && (() => {
+                          {flags.market && (() => {
                             if (selectedForDelivery.length > 10) return null;
                             if (selectedForDelivery.length !== 1) return null;
                             const item = warehouseItems.find(i => i.id === selectedForDelivery[0]);
