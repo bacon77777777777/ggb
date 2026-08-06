@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard, Switch } from '@/components'
+import { AdminLayout, PageCard } from '@/components'
 import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
@@ -579,11 +579,15 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     {TRADE_ITEMS.map(item => {
                       const on = Boolean(flags?.[item.key])
                       return (
-                        <Row key={item.key} title={item.label} desc={item.desc}>
-                          <Switch
-                            checked={on}
+                        <Row key={item.key} title={item.label} desc={item.desc} state={on ? 'on' : 'off'}>
+                          <Segmented
+                            value={on ? 'on' : 'off'}
                             disabled={!ready || isSaving}
-                            onCheckedChange={(v) => toggleFlag(item.key, v)}
+                            options={[
+                              { v: 'on', label: '開放', tone: 'on' },
+                              { v: 'off', label: '關閉', tone: 'off' },
+                            ]}
+                            onChange={(v) => toggleFlag(item.key, v === 'on')}
                           />
                         </Row>
                       )
@@ -607,11 +611,16 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     <Row
                       title="儲值"
                       desc="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+                      state={flags?.recharge === false ? 'off' : 'on'}
                     >
-                      <Switch
-                        checked={flags?.recharge !== false}
+                      <Segmented
+                        value={flags?.recharge === false ? 'off' : 'on'}
                         disabled={!ready || isSaving}
-                        onCheckedChange={(v) => toggleFlag('recharge', v)}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'off', label: '關閉', tone: 'off' },
+                        ]}
+                        onChange={(v) => toggleFlag('recharge', v === 'on')}
                       />
                     </Row>
                   </div>
@@ -651,11 +660,15 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                   <div className="divide-y divide-neutral-100">
                     {LINE_PUSH_ITEMS.map((item) => (
                       <Row key={item.key} title={item.label} desc={item.desc}>
-                        <Switch
-                          checked={pushFlags[item.key]}
+                        <Segmented
+                          value={pushFlags[item.key] ? 'on' : 'off'}
                           disabled={isPushLoading || isPushSaving}
-                          onCheckedChange={(checked) => {
-                            const next = { ...pushFlags, [item.key]: checked }
+                          options={[
+                            { v: 'on', label: '開啟', tone: 'on' },
+                            { v: 'off', label: '關閉', tone: 'off' },
+                          ]}
+                          onChange={(v) => {
+                            const next = { ...pushFlags, [item.key]: v === 'on' }
                             setPushFlags(next)
                             savePush(next)
                           }}
@@ -775,11 +788,10 @@ function Row({ title, desc, state, children }: {
 /**
  * 分段按鈕。
  *
- * 用在「選項有名字」的設定：類別的開放／維護／關閉是三態，
- * 販售收款的平台代收／雙方自理是兩種收款方式。這些用開關表達不了 ——
- * 開關只講得出「開」跟「不開」，講不出不開的時候是什麼。
- *
- * 單純的開/關（交換、交易所、儲值、GB哥通知）就用站上既有的 Switch。
+ * 全頁統一用它，不用 Switch。開關只表達得了「開」跟「不開」，
+ * 講不出不開的時候是什麼 —— 類別是三態，販售收款的兩個選項是兩種收款方式，
+ * 這些用開關根本表達不了。剩下的即使真的只有開/關，
+ * 把字寫出來也比讓人從顏色推語意可靠，順便讓整頁只有一種控制項。
  */
 function Segmented({ value, options, disabled, onChange, className = '' }: {
   value: string
