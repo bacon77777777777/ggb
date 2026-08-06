@@ -61,7 +61,7 @@ type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push'
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'maintenance', label: '站台維護' },
   { key: 'category',    label: '類別' },
-  { key: 'commerce',    label: '交易與金流' },
+  { key: 'commerce',    label: '金流' },
   { key: 'push',        label: 'GB哥通知' },
 ]
 
@@ -75,8 +75,8 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
-  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。跟交易所共用前台同一個入口，只能擇一。' },
-  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。跟交換共用前台同一個入口，只能擇一。' },
+  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。跟交易所共用前台同一個入口，只能擇一 —— 開了這個，交易所會自動關掉。' },
+  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。跟交換共用前台同一個入口，只能擇一 —— 開了這個，交換會自動關掉。' },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
@@ -548,7 +548,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                 <>
                   <SectionHead
                     title="類別"
-                    desc="決定前台提供哪些玩法。開放是正常販售；維護會留著分類頁籤、點進去說明暫時維護中；關閉則是分類頁籤與商品全部從前台消失，直接開連結也只看到「商品關閉中」。三種狀態都不影響玩家已經抽到的獎品。"
+                    desc="決定前台提供哪些玩法與入口。開放是正常販售；維護會留著分類頁籤、點進去說明暫時維護中；關閉則是分類頁籤與商品全部從前台消失，直接開連結也只看到「商品關閉中」。三種狀態都不影響玩家已經抽到的獎品。"
                   />
                   <div className="divide-y divide-neutral-100">
                     {CATEGORY_ITEMS.map(item => (
@@ -565,17 +565,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                         />
                       </Row>
                     ))}
-                  </div>
-                </>
-              )}
-
-              {section === 'commerce' && (
-                <>
-                  <SectionHead
-                    title="交易與金流"
-                    desc="玩家之間的交易入口，以及錢怎麼走。關掉之後前台不再顯示入口，進行中的交易不受影響。"
-                  />
-                  <div className="divide-y divide-neutral-100">
                     {TRADE_ITEMS.map(item => {
                       const on = Boolean(flags?.[item.key])
                       return (
@@ -592,6 +581,17 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                         </Row>
                       )
                     })}
+                  </div>
+                </>
+              )}
+
+              {section === 'commerce' && (
+                <>
+                  <SectionHead
+                    title="金流"
+                    desc="錢怎麼走。已經完成的交易與已購買的代幣都不受這裡影響。"
+                  />
+                  <div className="divide-y divide-neutral-100">
                     {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
                         不是「開／關」。用開關的話關掉之後錢跑哪去就看不出來了 */}
                     <Row
