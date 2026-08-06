@@ -8,11 +8,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // 指向 CSS 變數才有辦法讓後台改主題色。
+        // 一定要寫成 rgb(var(--x) / <alpha-value>)：站上大量使用 bg-primary/5
+        // 這種透明度寫法，直接塞色碼進變數的話那些類別會全部失效
         primary: {
-          DEFAULT: '#EE4D2D',
-          dark: '#D9441F',
-          light: '#FF7043',
-          soft: '#FFF4EF',
+          DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
+          dark: 'rgb(var(--primary-dark) / <alpha-value>)',
+          light: 'rgb(var(--primary-light) / <alpha-value>)',
+          soft: 'rgb(var(--primary-soft) / <alpha-value>)',
         },
         accent: {
           red: '#DC2626',    // 獎項/價格紅
