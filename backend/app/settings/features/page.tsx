@@ -128,7 +128,8 @@ export default function FeatureFlagsPage() {
 
   const ready = Boolean(flags) && !isLoading
   const pushOnCount = LINE_PUSH_ITEMS.filter(i => pushFlags[i.key]).length
-  const categoryCounts = CATEGORY_ITEMS.reduce(
+  // 交換與交易所也在「類別」那一區，一起算進摘要
+  const categoryCounts = [...CATEGORY_ITEMS, ...TRADE_ITEMS].reduce(
     (acc, i) => {
       const st = states?.[i.key] ?? 'on'
       acc[st] += 1
@@ -139,23 +140,9 @@ export default function FeatureFlagsPage() {
 
   const toggleFlag = (key: FeatureKey, checked: boolean) => {
     if (!flags) return
-    const apply = () => {
-      const next = { ...flags, [key]: checked }
-      setFlags(next)
-      save({ flags: next })
-    }
-    // 關掉儲值等於把金流斷開，跟關類別同一個量級，先問一次
-    if (key === 'recharge' && !checked) {
-      setPendingAction({
-        title: '關閉儲值？',
-        message: '玩家會無法儲值，綠界建單直接斷開，儲值頁顯示維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。',
-        confirmText: '關閉儲值',
-        type: 'danger',
-        run: apply,
-      })
-      return
-    }
-    apply()
+    const next = { ...flags, [key]: checked }
+    setFlags(next)
+    save({ flags: next })
   }
 
   const setState = (key: FeatureKey, v: FlagState, label: string) => {
@@ -165,13 +152,24 @@ export default function FeatureFlagsPage() {
       setStates(next)
       save({ states: next })
     }
-    // 關閉類別會讓前台整個分類消失（頁籤、商品、連結全部），
+    // 停掉儲值等於把金流斷開，跟關類別同一個量級，先問一次
+    if (key === 'recharge' && v !== 'on') {
+      setPendingAction({
+        title: '讓儲值進入維護？',
+        message: '玩家會無法儲值，綠界建單直接斷開，儲值頁顯示維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。',
+        confirmText: '啟動維護',
+        type: 'danger',
+        run: apply,
+      })
+      return
+    }
+    // 關閉會讓前台整個入口消失（頁籤、商品、連結全部），
     // 影響比維護大得多，先問一次。維護是可恢復的，不問
     if (v === 'off') {
       setPendingAction({
         title: `關閉「${label}」？`,
-        message: `前台會看不到${label}的分類頁籤與所有商品，直接開連結也只會看到「商品關閉中」。玩家已經抽到的獎品不受影響。若只是想暫停一下，請改選「維護」—— 分類頁籤會留著並說明稍後開放。`,
-        confirmText: '關閉類別',
+        message: `前台會看不到${label}的入口與所有內容，直接開連結也只會看到「商品關閉中」。玩家已經抽到的獎品不受影響。若只是想暫停一下，請改選「維護」—— 入口會留著並說明稍後開放。`,
+        confirmText: '確定關閉',
         type: 'danger',
         run: apply,
       })
@@ -414,7 +412,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
         <SummaryBar
           ready={ready && Boolean(maint)}
           scope={maint?.scope ?? 'off'}
-          rechargeOn={Boolean(flags?.recharge)}
+          rechargeOn={states?.recharge === 'on'}
           counts={categoryCounts}
         />
 
@@ -558,22 +556,20 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                         />
                       </Row>
                     ))}
-                    {TRADE_ITEMS.map(item => {
-                      const on = Boolean(flags?.[item.key])
-                      return (
-                        <Row key={item.key} title={item.label} desc={item.desc} state={on ? 'on' : 'off'}>
-                          <Segmented
-                            value={on ? 'on' : 'off'}
-                            disabled={!ready || isSaving}
-                            options={[
-                              { v: 'on', label: '開放', tone: 'on' },
-                              { v: 'off', label: '關閉', tone: 'off' },
-                            ]}
-                            onChange={(v) => toggleFlag(item.key, v === 'on')}
-                          />
-                        </Row>
-                      )
-                    })}
+                    {TRADE_ITEMS.map(item => (
+                      <Row key={item.key} title={item.label} desc={item.desc} state={states?.[item.key] ?? 'on'}>
+                        <Segmented
+                          value={states?.[item.key] ?? 'on'}
+                          disabled={!ready || isSaving}
+                          options={[
+                            { v: 'on', label: '開放', tone: 'on' },
+                            { v: 'maintenance', label: '維護', tone: 'warn' },
+                            { v: 'off', label: '關閉', tone: 'off' },
+                          ]}
+                          onChange={(v) => setState(item.key, v as FlagState, item.label)}
+                        />
+                      </Row>
+                    ))}
                   </div>
                 </>
               )}
@@ -588,7 +584,13 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
                         不是「開／關」。用開關的話關掉之後錢跑哪去就看不出來了 */}
                     <Row
-                      title="販售收款"
+                      // 販售類別不開的時候這個設定其實沒作用，在標題後面直接說 ——
+                      // 不然改了半天不知道為什麼前台沒反應
+                      title={
+                        states?.sell === 'maintenance' ? '販售收款（販售維護中）'
+                          : states?.sell === 'off' ? '販售收款（販售關閉中）'
+                            : '販售收款'
+                      }
                       desc="平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。"
                       state={flags?.sell_escrow ? 'on' : 'off'}
                     >
@@ -604,17 +606,19 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     </Row>
                     <Row
                       title="儲值"
-                      desc="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
-                      state={flags?.recharge === false ? 'off' : 'on'}
+                      desc="跟站台維護無關，可以單獨停。維護時綠界建單直接斷開，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+                      state={states?.recharge === 'on' ? 'on' : 'maintenance'}
                     >
+                      {/* 儲值沒有「關閉」—— 平台不可能不收錢，只會臨時停一下。
+                          多給一個永久關閉的選項只會讓人誤按 */}
                       <Segmented
-                        value={flags?.recharge === false ? 'off' : 'on'}
+                        value={states?.recharge === 'on' ? 'on' : 'maintenance'}
                         disabled={!ready || isSaving}
                         options={[
                           { v: 'on', label: '開放', tone: 'on' },
-                          { v: 'off', label: '關閉', tone: 'off' },
+                          { v: 'maintenance', label: '維護', tone: 'warn' },
                         ]}
-                        onChange={(v) => toggleFlag('recharge', v === 'on')}
+                        onChange={(v) => setState('recharge', v as FlagState, '儲值')}
                       />
                     </Row>
                   </div>
@@ -721,10 +725,10 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
 
   const parts: { text: string; warn: boolean }[] = [
     { text: scopeText, warn: scope !== 'off' },
-    { text: rechargeOn ? '儲值開放' : '儲值已關閉', warn: !rechargeOn },
+    { text: rechargeOn ? '儲值開放' : '儲值維護中', warn: !rechargeOn },
   ]
-  if (counts.maintenance > 0) parts.push({ text: `${counts.maintenance} 個類別維護中`, warn: true })
-  if (counts.off > 0) parts.push({ text: `${counts.off} 個類別已關閉`, warn: true })
+  if (counts.maintenance > 0) parts.push({ text: `${counts.maintenance} 項維護中`, warn: true })
+  if (counts.off > 0) parts.push({ text: `${counts.off} 項已關閉`, warn: true })
   if (counts.maintenance === 0 && counts.off === 0) parts.push({ text: '類別全部開放', warn: false })
 
   return (
