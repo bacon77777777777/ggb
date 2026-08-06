@@ -518,6 +518,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
     </svg>
   )
+  // 促銷方案（標籤）
+  const IconTag = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+    </svg>
+  )
   // 商品補齊（魔法棒）
   const IconSparkles = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -656,6 +662,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/modules': 'settings_modules',
     '/settings/features': 'settings_features',
     '/settings/theme': 'settings_theme',
+    '/settings/promotions': 'settings_features',
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
@@ -766,6 +773,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '文章管理', path: '/news', icon: IconNews },
           { name: '分類清單', path: '/categories', icon: IconCategories },
           { name: '抽獎模組設定', path: '/settings/modules', icon: IconPuzzle },
+          { name: '促銷方案', path: '/settings/promotions', icon: IconTag },
           { name: '功能開關', path: '/settings/features', icon: IconSliders },
           { name: '主題色', path: '/settings/theme', icon: IconPalette },
           { name: '管理員清單', path: '/analytics', icon: IconBadge },

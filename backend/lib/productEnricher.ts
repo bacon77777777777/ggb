@@ -41,6 +41,36 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+/**
+ * 從整頁文字裡挑出「跟商品有關」的那一段。
+ *
+ * 原本是 slice(0, 2500) 從頭切 —— 但購物網站的開頭全是導覽列
+ *（「全商品 映像ソフト 音楽ソフト おもちゃ・ホビー…」），真正的商品資訊
+ * 在後面。實測駿河屋抓到 3400 字，前 2500 字全是選單，等於送給 Claude 的
+ * 是一份目錄，難怪讀不出東西。
+ *
+ * 改成先找錨點：條碼、定価、発売日、メーカー 這些字出現的位置才是商品區塊，
+ * 從那裡往前退一點開始取。找不到錨點才退回從頭切。
+ */
+function relevantSlice(text: string, barcode: string | null, limit = 2500): string {
+  if (text.length <= limit) return text
+
+  const anchors: number[] = []
+  if (barcode) {
+    // 第一次出現通常在 <title>，第二次以後才是商品區塊
+    let i = text.indexOf(barcode)
+    if (i >= 0) { const j = text.indexOf(barcode, i + barcode.length); anchors.push(j >= 0 ? j : i) }
+  }
+  for (const kw of ['定価', '希望小売価格', '発売日', 'メーカー', 'ブランド', '全 ', '全4種', '全5種', 'ラインナップ']) {
+    const i = text.indexOf(kw)
+    if (i >= 0) anchors.push(i)
+  }
+  if (!anchors.length) return text.slice(0, limit)
+
+  const start = Math.max(0, Math.min(...anchors) - 300)
+  return text.slice(start, start + limit)
+}
+
 async function fetchText(url: string, timeout = 9000): Promise<string | null> {
   try {
     const r = await fetch(url, {
@@ -70,26 +100,28 @@ async function ddgLinks(query: string, limit = 4): Promise<string[]> {
  * 只有版面沒有商品，所以不放。
  */
 async function collectPages(name: string, barcode: string | null): Promise<string[]> {
-  const jobs: Promise<string | null>[] = []
+  const htmls: (string | null)[] = []
 
   if (barcode) {
-    jobs.push(fetchText(`https://www.suruga-ya.jp/search?search_word=${barcode}`))
+    // 駿河屋的搜尋頁只有摘要，商品頁才有完整的品名、廠商、定價與發售日。
+    // 搜尋頁找得到商品連結就再進去一層 —— 多一次往返換到的資訊差很多
+    const searchHtml = await fetchText(`https://www.suruga-ya.jp/search?search_word=${barcode}`)
+    if (searchHtml) {
+      htmls.push(searchHtml)
+      const detail = searchHtml.match(/\/product\/detail\/(\d+)/)?.[0]
+      if (detail) htmls.push(await fetchText(`https://www.suruga-ya.jp${detail}`))
+    }
   }
-  const query = barcode ? `${barcode}` : name
-  const links = await ddgLinks(query)
-  for (const u of links) jobs.push(fetchText(u))
 
-  // 條碼查不到東西時，再用名字查一輪
-  if (barcode && links.length === 0) {
-    for (const u of await ddgLinks(name)) jobs.push(fetchText(u))
-  }
+  // DDG 會限流，回空是常態而不是例外 —— 所以它是加分項不是主線。
+  // 條碼查不到就改用商品名再試一次
+  let links = await ddgLinks(barcode || name)
+  if (barcode && !links.length) links = await ddgLinks(name)
+  for (const u of links) htmls.push(await fetchText(u))
 
-  const htmls = await Promise.all(jobs)
   return htmls
     .filter((h): h is string => Boolean(h))
-    // 每頁只取前 2500 字。商品資訊都在前段，後面是購物流程與footer，
-    // 全部丟進去只是把 token 燒在版面上
-    .map(h => stripHtml(h).slice(0, 2500))
+    .map(h => relevantSlice(stripHtml(h), barcode))
     .filter(t => t.length > 200)
     .slice(0, 4)
 }
@@ -111,7 +143,14 @@ export interface EnrichedProduct {
 const SYSTEM = `你是台灣潮玩電商的商品建檔助理。使用者會給你一個日本商品的「廠商進貨單名稱」與幾段從商品頁抓下來的文字，你要整理出可以直接上架的資料。
 
 規則：
-1. 全部輸出繁體中文，用**台灣**的譯名與用語。這點最重要：
+1. 全部輸出繁體中文，用**台灣**的譯名與用語。這點最重要，而且是硬性規定：
+   **輸出的任何欄位都不可以殘留日文假名（ひらがな／カタカナ）或日文漢字寫法。**
+   作品名、角色名、系列名一律換成台灣官方譯名。實測漏掉的幾個：
+   - 姫ちゃんのリボン → 我是小甜甜
+   - 赤ずきんチャチャ → 小紅帽恰恰
+   - 神風怪盗ジャンヌ → 神風怪盜貞德
+   - 隣の怪物くん → 我的野蠻室友
+   查不到官方譯名時用意譯，也不要留日文原文。
    - ワンピース → 航海王（不是「海賊王」）
    - 鬼滅の刃 → 鬼滅之刃
    - ポケモン → 寶可夢（不是「神奇寶貝」）
@@ -119,6 +158,7 @@ const SYSTEM = `你是台灣潮玩電商的商品建檔助理。使用者會給�
    - ちいかわ → 吉伊卡哇
    - ホッキョクグマ → 北極熊
    - 角色名一律用台灣官方譯名（炭治郎、魯夫、皮卡丘…）
+   - 款式名如果是「作品名 + 角色名」的組合，兩段都要翻
 2. 商品名要像台灣電商的商品名，不要保留日文、不要保留廠商的貨號與裝箱資訊
    （例如「@30x5」「040」這種）。
 3. 款式（variants）就是這個扭蛋／盒玩／一番賞裡玩家會抽到的東西。
@@ -126,7 +166,8 @@ const SYSTEM = `你是台灣潮玩電商的商品建檔助理。使用者會給�
    level 一律填空字串。
 4. 只寫頁面文字裡真的有的資訊。**不要編造款式名稱**。
    讀不出款式就回空陣列，但如果頁面有寫「全4種」之類的字樣，
-   variant_count 要填 4。
+   variant_count 要填 4。variants 的數量若少於 variant_count，
+   代表頁面只列出了一部分，這是可以的 —— 不要為了湊數自己編。
 5. product_type 依頁面內容判斷是哪一種：
    ichiban（一番賞／一番くじ）、gacha（扭蛋／ガシャポン／ガチャ／カプセルトイ）、
    blindbox（盒玩／食玩／ブラインドボックス）、card（卡牌／トレカ）。

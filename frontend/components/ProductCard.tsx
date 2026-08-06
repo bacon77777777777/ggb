@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
+import { useProductPromotion } from '@/contexts/PromotionsContext';
 
 interface ProductCardProps {
   id: string | number;
@@ -31,6 +32,8 @@ export default function ProductCard(props: ProductCardProps) {
   // 維護中的類別照常列出（跟關閉不同），但卡片上要看得出來買不到 ——
   // 不然玩家點進去才發現，白跑一趟。用字跟商品頁一致
   const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
+  // 促銷標籤掛在左上角。右上角是「熱門」，兩個都有的時候各佔一角不會疊
+  const promo = useProductPromotion(props.id);
   const {
     id,
     name,
@@ -100,6 +103,11 @@ export default function ProductCard(props: ProductCardProps) {
           </div>
           
           <div className="absolute top-0 left-0 z-10 flex flex-col pointer-events-none">
+            {promo && (
+              <div className="h-6 px-2 inline-flex items-center rounded-tl-lg rounded-br-lg bg-accent-red text-white text-[11px] font-black border border-white/10 leading-none">
+                {promo.badgeText}
+              </div>
+            )}
             {isNew && !isHot && (
               <ProductBadge
                 type="new"

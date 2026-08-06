@@ -10,6 +10,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { AlertProvider } from '@/components/ui/AlertDialog';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { FeatureFlagsProvider } from '@/contexts/FeatureFlagsContext';
+import { PromotionsProvider } from '@/contexts/PromotionsContext';
 import PathnameKeyed from '@/components/PathnameKeyed';
 import PwaInputFocusFix from '@/components/PwaInputFocusFix';
 import PwaPullToRefresh from '@/components/PwaPullToRefresh';
@@ -128,6 +129,7 @@ export default async function RootLayout({
             <AlertProvider>
               <ToastProvider>
                 <FeatureFlagsProvider>
+                <PromotionsProvider>
                   <RouteTransitionProvider>
                   <PwaInputFocusFix />
                   <PwaPullToRefresh />
@@ -139,6 +141,7 @@ export default async function RootLayout({
                   <FooterWrapper />
                   <MobileTabbar />
                   </RouteTransitionProvider>
+                </PromotionsProvider>
                 </FeatureFlagsProvider>
               </ToastProvider>
             </AlertProvider>
