@@ -62,7 +62,7 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'maintenance', label: '站台維護' },
   { key: 'category',    label: '類別' },
   { key: 'commerce',    label: '交易與金流' },
-  { key: 'push',        label: '內部通知' },
+  { key: 'push',        label: 'GB哥通知' },
 ]
 
 const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
@@ -180,26 +180,37 @@ export default function FeatureFlagsPage() {
     apply()
   }
 
-  // 已經是這個狀態就不用問；點自己不該有反應
-  const requestScope = (v: string) => {
-    if ((maint?.scope ?? 'off') === v) return
+  /*
+   * 維護範圍前台與後台各一列。
+   *
+   * scope 那四個值本來就是兩個布林的組合（前台關不關 × 後台關不關），
+   * 排成四顆按鈕等於逼讀者自己把組合拆回來。分成兩列之後，
+   * 「我只想關前台」直接對應到「前台那一列選維護」。
+   */
+  const frontDown = maint?.scope === 'frontend' || maint?.scope === 'all'
+  const backDown = maint?.scope === 'backend' || maint?.scope === 'all'
+  const scopeOf = (f: boolean, b: boolean) => (f && b ? 'all' : f ? 'frontend' : b ? 'backend' : 'off')
+
+  const requestMaint = (side: 'front' | 'back', down: boolean) => {
+    if (!maint) return
+    const nextScope = side === 'front' ? scopeOf(down, backDown) : scopeOf(frontDown, down)
+    if (nextScope === maint.scope) return
+
+    const label = side === 'front' ? '前台' : '後台'
     setPendingAction({
-      title: v === 'off' ? '解除維護模式？' : '啟動維護模式？',
-      message:
-        v === 'off'
-          ? '解除後前台與後台立即恢復正常，最多 30 秒內全站生效。'
-          : v === 'frontend'
-            ? '所有玩家會被帶到維護頁，正在瀏覽的人最多 30 秒內也會被帶走。後台照常運作。'
-            : v === 'backend'
-              ? '超級管理員以外的管理員會被擋在後台外面。前台照常運作。'
-              : '前台玩家與後台一般管理員都會被擋下來。只有超級管理員進得去。',
-      confirmText: v === 'off' ? '解除維護' : '啟動維護',
-      type: v === 'off' ? 'info' : 'warning',
+      title: down ? `讓${label}進入維護？` : `解除${label}維護？`,
+      message: down
+        ? side === 'front'
+          ? '所有玩家會被帶到維護頁，正在瀏覽的人最多 30 秒內也會被帶走。'
+          : '超級管理員以外的管理員會被擋在後台外面，而且只有超級管理員能解除。'
+        : `${label}立即恢復正常，最多 30 秒內生效。`,
+      confirmText: down ? '啟動維護' : '解除維護',
+      type: down ? 'warning' : 'info',
       run: () => {
-        // 開維護時若還沒設過時間就自動帶一個；解除時清掉，
+        // 開維護時若還沒設過時間就自動帶一個；兩邊都恢復時清掉，
         // 否則下次開維護會沿用上次那個早就過去的時間
-        const until = v === 'off' ? '' : (maint?.until || defaultUntil())
-        saveMaint({ scope: v, message: maint?.message ?? '', until })
+        const until = nextScope === 'off' ? '' : (maint.until || defaultUntil())
+        saveMaint({ scope: nextScope, message: maint.message, until })
       },
     })
   }
@@ -397,13 +408,6 @@ function defaultUntil(): string {
 // 在 STG 複製出來的連結會把人帶去正式站，測不到剛才關的那個維護
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw'
 
-const MAINT_OPTIONS = [
-  { v: 'off',      label: '正常營運',   hint: '兩邊都開放',                         adminOnly: false },
-  { v: 'frontend', label: '只關前台',   hint: '玩家看維護頁，後台照常（最常用）',   adminOnly: false },
-  { v: 'backend',  label: '只關後台',   hint: '前台照常，一般管理員擋在外面',       adminOnly: true  },
-  { v: 'all',      label: '前後台都關', hint: '全站停機',                           adminOnly: true  },
-] as const
-
   return (
     <AdminLayout pageTitle="功能開關">
       <div className="space-y-3">
@@ -460,43 +464,46 @@ const MAINT_OPTIONS = [
                 <>
                   <SectionHead
                     title="站台維護"
-                    desc="臨時性的開關，處理完就改回來。前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走；後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。"
+                    desc="臨時性的開關，處理完就改回來。前台與後台分開設定 —— 維護的原因通常只影響一邊：改前台版面不必把後台鎖起來，而後台在改資料時前台反而更需要正常運作。"
                   />
 
-                  {/* 正常營運佔一半寬：那是預設狀態，也是最常按回來的那顆 */}
-                  <div className="flex flex-col gap-1.5 sm:flex-row">
-                    {MAINT_OPTIONS.map(o => {
-                      const active = (maint?.scope ?? 'off') === o.v
-                      const blocked = o.adminOnly && !isSuperAdmin
-                      return (
-                        <button
-                          key={o.v}
-                          type="button"
-                          disabled={!maint || maintSaving || blocked}
-                          onClick={() => requestScope(o.v)}
-                          title={blocked ? '僅超級管理員可以關閉後台' : undefined}
-                          className={`flex h-10 items-center justify-center rounded-lg border px-3 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                            o.v === 'off' ? 'sm:flex-[3]' : 'sm:flex-1'
-                          } ${
-                            active
-                              ? o.v === 'off'
-                                ? 'border-primary bg-primary/5 font-medium text-primary'
-                                : 'border-amber-400 bg-amber-50 font-medium text-amber-900'
-                              : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
-                          }`}
-                        >
-                          {o.label}
-                        </button>
-                      )
-                    })}
+                  <div className="divide-y divide-neutral-100">
+                    <Row
+                      title="前台"
+                      desc="維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。這是最常用的那一個 —— 改前台版面時後台反而要留著能用。"
+                      state={frontDown ? 'maintenance' : 'on'}
+                    >
+                      <Segmented
+                        value={frontDown ? 'maintenance' : 'on'}
+                        disabled={!maint || maintSaving}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'maintenance', label: '維護', tone: 'warn' },
+                        ]}
+                        onChange={(v) => requestMaint('front', v === 'maintenance')}
+                      />
+                    </Row>
+                    <Row
+                      title="後台"
+                      desc={isSuperAdmin
+                        ? '維護時超級管理員以外的管理員會被擋在外面。只有超級管理員能改這一項 —— 否則啟動之後就沒人能解除。'
+                        : '只有超級管理員能改這一項。一般管理員關掉後台會把自己鎖在外面，而且沒辦法再進來解除。'}
+                      state={backDown ? 'maintenance' : 'on'}
+                    >
+                      <Segmented
+                        value={backDown ? 'maintenance' : 'on'}
+                        disabled={!maint || maintSaving || !isSuperAdmin}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'maintenance', label: '維護', tone: 'warn' },
+                        ]}
+                        onChange={(v) => requestMaint('back', v === 'maintenance')}
+                      />
+                    </Row>
                   </div>
-                  {/* 說明只講「現在選的這個」是什麼意思，四個一起列會變成一堵字 */}
-                  <p className="mt-2.5 text-sm text-neutral-400">
-                    {MAINT_OPTIONS.find(o => o.v === (maint?.scope ?? 'off'))?.hint}
-                  </p>
 
                   {maint && maint.scope !== 'off' && (
-                    <div className="mt-5 space-y-4 border-t border-neutral-100 pt-5">
+                    <div className="divide-y divide-neutral-100 border-t border-neutral-100">
                       <Row title="玩家看到的訊息" desc="維護頁上那段話。留白會用預設文案。">
                         <div className="w-full sm:w-80">
                           <Textarea
@@ -614,30 +621,33 @@ const MAINT_OPTIONS = [
               {section === 'push' && (
                 <>
                   <SectionHead
-                    title="內部通知"
+                    title="GB哥通知"
                     desc="各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感 —— 關掉只是不推播，排程照常執行、報告照常寫進後台。"
+                    // 計數與批次操作靠右對齊，跟下面那一排開關同一條線
+                    right={
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-neutral-400 tabular-nums">
+                          已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isPushLoading || isPushSaving}
+                          onClick={() => setAllPush(true)}
+                          className="text-primary transition-colors hover:underline disabled:opacity-50"
+                        >
+                          全部開啟
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPushLoading || isPushSaving}
+                          onClick={() => setAllPush(false)}
+                          className="text-neutral-500 transition-colors hover:underline disabled:opacity-50"
+                        >
+                          全部關閉
+                        </button>
+                      </div>
+                    }
                   />
-                  <div className="mb-1 flex items-center gap-3 text-sm">
-                    <span className="text-neutral-400 tabular-nums">
-                      已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isPushLoading || isPushSaving}
-                      onClick={() => setAllPush(true)}
-                      className="text-primary transition-colors hover:underline disabled:opacity-50"
-                    >
-                      全部開啟
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPushLoading || isPushSaving}
-                      onClick={() => setAllPush(false)}
-                      className="text-neutral-500 transition-colors hover:underline disabled:opacity-50"
-                    >
-                      全部關閉
-                    </button>
-                  </div>
                   <div className="divide-y divide-neutral-100">
                     {LINE_PUSH_ITEMS.map((item) => (
                       <Row key={item.key} title={item.label} desc={item.desc}>
@@ -723,10 +733,13 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
 }
 
 /** 分區的標題與說明。說明直接寫在畫面上，不收進 hover —— 這一頁的重點就是看得懂 */
-function SectionHead({ title, desc }: { title: string; desc: string }) {
+function SectionHead({ title, desc, right }: { title: string; desc: string; right?: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <h2 className="text-xl font-medium text-neutral-900">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-medium text-neutral-900">{title}</h2>
+        {right}
+      </div>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-400">{desc}</p>
     </div>
   )
@@ -766,7 +779,7 @@ function Row({ title, desc, state, children }: {
  * 販售收款的平台代收／雙方自理是兩種收款方式。這些用開關表達不了 ——
  * 開關只講得出「開」跟「不開」，講不出不開的時候是什麼。
  *
- * 單純的開/關（交換、交易所、儲值、內部通知）就用站上既有的 Switch。
+ * 單純的開/關（交換、交易所、儲值、GB哥通知）就用站上既有的 Switch。
  */
 function Segmented({ value, options, disabled, onChange, className = '' }: {
   value: string
