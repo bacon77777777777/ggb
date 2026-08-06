@@ -141,13 +141,6 @@ export async function PUT(req: Request) {
     }
   }
 
-  // 交換與交易所只能擇一（前台是同一個入口，兩個都開會互相蓋掉）
-  const turnedOn = (k: FeatureKey) =>
-    (k in inputStates && nextStates[k] === 'on') || (k in inputFlags && normalizeBool(inputFlags[k]))
-  if (turnedOn('market')) nextStates.exchange = 'off'
-  if (turnedOn('exchange')) nextStates.market = 'off'
-  if (nextStates.exchange === 'on' && nextStates.market === 'on') nextStates.market = 'off'
-
   const nextFlags: Record<FeatureKey, boolean> = FEATURE_KEYS.reduce((acc, k) => {
     acc[k] = nextStates[k] === 'on'
     return acc

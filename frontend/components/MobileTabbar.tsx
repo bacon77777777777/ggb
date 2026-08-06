@@ -58,10 +58,19 @@ function MobileTabbarInner() {
     return null;
   }
 
+  /*
+   * 底部導航中央那一格只有一個位子。
+   *
+   * 交換與交易所本來被迫二選一就是為了搶這格 —— 後台的開關甚至會在你開一個時
+   * 自動關掉另一個。現在兩個可以同時開，這裡就讓交易所優先佔住中央
+   *（它是逛的、進出頻率高），交換之後改成像排行榜那樣的懸浮入口。
+   *
+   * ⚠️ 懸浮入口還沒做：兩個都開時，交換目前只能從會員頁進去。
+   */
   const centerTab = (() => {
     if (isFlagsLoading) return null;
-    if (flags.exchange && !flags.market) return { name: '交換', href: '/exchange', icon: Box, isCenter: true };
-    if (flags.market && !flags.exchange) return { name: '交易所', href: '/market', icon: Store, isCenter: true };
+    if (flags.market) return { name: '交易所', href: '/market', icon: Store, isCenter: true };
+    if (flags.exchange) return { name: '交換', href: '/exchange', icon: Box, isCenter: true };
     return null;
   })();
 

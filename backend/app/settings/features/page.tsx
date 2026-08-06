@@ -75,8 +75,8 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
-  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。跟交易所共用前台同一個入口，只能擇一 —— 開了這個，交易所會自動關掉。' },
-  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。跟交換共用前台同一個入口，只能擇一 —— 開了這個，交換會自動關掉。' },
+  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。' },
+  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。' },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {

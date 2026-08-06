@@ -96,7 +96,6 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
                 if (k in flagSrc) cachedFlags[k] = Boolean(flagSrc[k]);
                 cachedStates[k] = stateSrc?.[k] ?? (cachedFlags[k] ? 'on' : 'off');
               }
-              if (cachedFlags.exchange && cachedFlags.market) cachedFlags.market = false;
               if (!cancelled) {
                 setFlags(cachedFlags);
                 setStates(cachedStates);
@@ -118,7 +117,6 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
             ? (st as FlagState)
             : (next[key] ? 'on' : 'off');
         }
-        if (next.exchange && next.market) next.market = false;
         if (!cancelled) {
           setFlags(next);
           setStates(nextStates);
