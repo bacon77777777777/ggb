@@ -39,7 +39,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
-  const { flags, states: flagStates } = useFeatureFlags();
+  const { flags, states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const { user } = useAuth();
   // Map<series, score> — populated from get_user_series_preferences RPC
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
@@ -1757,26 +1757,34 @@ export default function Home() {
         之後若要補，改這裡的 md:hidden 或在導覽列加連結都可以。
       */}
       <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
-        {/* 一律「關閉才消失、維護中照樣顯示」。
-            維護中的入口點下去不換頁，改跳提示 —— 直接把圖標藏掉的話，
-            玩家會以為功能被拿掉了；留著才知道只是暫時停一下 */}
-        {flagStates.market !== 'off' && (
+        {/*
+          一律「關閉才消失、維護中照樣顯示」。
+          維護中的入口點下去不換頁，改跳提示 —— 直接把圖標藏掉的話，
+          玩家會以為功能被拿掉了；留著才知道只是暫時停一下。
+
+          旗標還沒載完時四顆全部不顯示（`!isFlagsLoading`）。
+          入口的取捨跟商品頁相反：商品頁載入中要當作 'on'，寧可多顯示半秒
+          也不要閃一下「維護中」；入口則寧可晚半秒出現，也不能讓已經關閉的
+          功能先閃出來被點到。原本是靠「DEFAULT_FLAGS 全 false」碰巧達到
+          這個效果，寫成明的才不會有人改了預設值就默默破功。
+        */}
+        {!isFlagsLoading && flagStates.market !== 'off' && (
           <FloatingEntry href="/market" label="交易所" state={flagStates.market}>
             <Store className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {flagStates.sell !== 'off' && (
+        {!isFlagsLoading && flagStates.sell !== 'off' && (
           <FloatingEntry href="/sell" label="販售" state={flagStates.sell}>
             <Tag className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {flagStates.exchange !== 'off' && (
+        {!isFlagsLoading && flagStates.exchange !== 'off' && (
           <FloatingEntry href="/exchange" label="卡牌交換" state={flagStates.exchange}>
             <Repeat2 className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
         {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格 */}
-        {categoryState('slot', flagStates, false) !== 'off' && (
+        {!isFlagsLoading && categoryState('slot', flagStates, false) !== 'off' && (
           <FloatingEntry href="/challenge" label="挑戰" state={categoryState('slot', flagStates, false)}>
             <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
           </FloatingEntry>

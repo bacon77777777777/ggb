@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
@@ -29,5 +30,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '修改月結快照',
+    targetType: 'settlement_snapshot',
+    targetId: String(id),
+    detail: {},
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json(data)
 }

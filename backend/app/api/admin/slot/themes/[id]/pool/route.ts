@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 // GET: 取得第一台機台的 rush_only pool items（代表所有機台）
 export async function GET(
@@ -82,6 +83,16 @@ export async function PATCH(
     .eq('name', prize_name)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '修改主題獎池品項',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: { prize_name, updates },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ success: true })
 }
 
@@ -130,6 +141,16 @@ export async function POST(
     .select()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '主題獎池新增品項',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: { inserted: data?.length ?? 0 },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ inserted: data?.length ?? 0 })
 }
 
@@ -180,6 +201,15 @@ export async function DELETE(
       .eq('display_name', prizeName)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '主題獎池移除品項',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: { prizeName },
+    ip: getClientIp(request),
+  })
 
   return NextResponse.json({ success: true })
 }

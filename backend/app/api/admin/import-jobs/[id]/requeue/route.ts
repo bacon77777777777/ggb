@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const runtime = 'nodejs'
 
@@ -34,6 +35,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // 工作本身也要回到補齊中，否則 cron 那支的 inner join 撈不到
   await supabase.from('import_jobs')
     .update({ status: 'enriching', updated_at: new Date().toISOString() }).eq('id', id)
+
+  await logAdminAction({
+    adminId: scope.adminId,
+    action: '重新補齊商品',
+    targetType: 'import_jobs',
+    targetId: String(id),
+    detail: { queued: rowIds.length },
+    ip: getClientIp(request),
+  })
 
   return NextResponse.json({ ok: true, queued: rowIds.length })
 }

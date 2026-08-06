@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -95,6 +96,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.from('sell_orders').update(patch).eq('id', id)
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '修改販售訂單',
+      targetType: 'sell_order',
+      targetId: String(id),
+      detail: { body },
+      ip: getClientIp(req),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

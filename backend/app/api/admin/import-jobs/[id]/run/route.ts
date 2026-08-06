@@ -15,6 +15,11 @@ export const maxDuration = 60
  *
  * 兩邊同時跑不會重複：撈到的列會先被標成 enriching。
  */
+/*
+ * 這支刻意不寫 action_logs：它是背景批次的推進器，開著補齊頁面時每 3 秒
+ * 就會被打一次，記進去會把稽核軌跡整個洗掉。人真的按下的動作
+ *（建立工作、重新補齊、匯入商品）在各自的路由裡都有記。
+ */
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const scope = await requireAdminScope()
   if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

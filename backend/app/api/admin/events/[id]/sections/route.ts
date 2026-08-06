@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminSession()
@@ -29,5 +30,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       content: body.content || {},
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '新增活動區塊',
+    targetType: 'event_section',
+    targetId: String(data?.id ?? ''),
+    detail: { event_id: id },
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json(data)
 }

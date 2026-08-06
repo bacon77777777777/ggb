@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const admin = await requireAdminSession()
@@ -47,5 +48,14 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '新增機台',
+    targetType: 'slot_machine',
+    targetId: String(data?.id ?? ''),
+    detail: { name },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ machine: data })
 }

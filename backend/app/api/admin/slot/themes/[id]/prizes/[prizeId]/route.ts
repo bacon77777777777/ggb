@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function PATCH(
   request: NextRequest,
@@ -26,11 +27,20 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '修改主題獎品',
+    targetType: 'slot_prize',
+    targetId: String(prizeId),
+    detail: { name: data?.name },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ prize: data })
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; prizeId: string }> }
 ) {
   const admin = await requireAdminSession()
@@ -41,5 +51,14 @@ export async function DELETE(
   const { error } = await supabase.from('slot_theme_prizes').delete().eq('id', prizeId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '刪除主題獎品',
+    targetType: 'slot_prize',
+    targetId: String(prizeId),
+    detail: {},
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ success: true })
 }

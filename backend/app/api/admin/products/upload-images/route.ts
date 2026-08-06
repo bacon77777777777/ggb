@@ -4,6 +4,7 @@ import { r2Upload } from '@/lib/r2'
 import { compressToWebP } from '@/lib/imageCompress'
 import AdmZip from 'adm-zip'
 import path from 'path'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -48,6 +49,14 @@ export async function POST(req: Request) {
       errors.push({ name: filename, error: String(e?.message || e) })
     }
   }
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '上傳商品圖片',
+    targetType: 'product',
+    detail: { uploaded: results.length, failed: errors.length },
+    ip: getClientIp(req),
+  })
 
   return NextResponse.json({
     ok: true,

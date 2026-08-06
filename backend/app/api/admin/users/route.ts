@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -207,6 +208,15 @@ export async function POST(request: Request) {
       await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => undefined)
       throw upsertError
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '新增會員',
+      targetType: 'user',
+      targetId: String(createdUser.id),
+      detail: { name: createdUser.name, email: createdUser.email },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({
       success: true,

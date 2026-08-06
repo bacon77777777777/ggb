@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { nanoid } from 'nanoid'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -110,6 +111,16 @@ export async function POST(request: Request) {
 
     if (updateErr) throw updateErr
     if (!updated?.length) return NextResponse.json({ error: '更新代幣失敗（0 rows affected）' }, { status: 500 })
+
+    // 手動補幣直接動到玩家餘額，對帳時一定要查得到是誰、補了多少、為什麼
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '手動儲值',
+      targetType: 'user',
+      targetId: String(user_id),
+      detail: { trade_no: tradeNo, tokens_after: newTokens, body },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true, trade_no: tradeNo, new_tokens: newTokens })
   } catch (error: any) {

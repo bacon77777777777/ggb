@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession, requireAdminScope, scopeToSupplier } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const scope = await requireAdminScope()
@@ -38,5 +39,14 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '新增廠商',
+    targetType: 'supplier',
+    targetId: String(data?.id ?? ''),
+    detail: { name: data?.name },
+    ip: getClientIp(request),
+  })
   return NextResponse.json(data, { status: 201 })
 }

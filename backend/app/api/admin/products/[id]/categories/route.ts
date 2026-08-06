@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminSession()
@@ -39,6 +40,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       toAdd.map(category_id => ({ category_id, product_id: productId, sort_order: 0 }))
     )
   }
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '設定商品分類',
+    targetType: 'product',
+    targetId: String(id),
+    detail: { category_ids: categoryIds },
+    ip: getClientIp(req),
+  })
 
   return NextResponse.json({ success: true })
 }

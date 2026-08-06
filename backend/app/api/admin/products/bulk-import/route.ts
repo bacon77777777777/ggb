@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminScope } from '@/lib/requireAdmin'
 import { parseVendorFile } from '@/lib/vendorFileParse'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -47,7 +48,15 @@ export async function POST(request: Request) {
     })
     const json = await res.json()
     if (!res.ok) return NextResponse.json({ error: json?.error ?? '上架失敗' }, { status: res.status })
-    return NextResponse.json(json)
+    await logAdminAction({
+    adminId: scope.adminId,
+    action: '批量上架商品',
+    targetType: 'product',
+    detail: { result: json },
+    ip: getClientIp(request),
+  })
+
+  return NextResponse.json(json)
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '上架失敗' }, { status: 500 })
   }
