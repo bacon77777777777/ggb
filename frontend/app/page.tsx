@@ -17,7 +17,7 @@ import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { isCategoryHidden, categoryState } from '@/lib/categoryFlags';
+import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
@@ -398,8 +398,9 @@ export default function Home() {
 
   const primaryTabs: { id: PrimaryTabId; label: string }[] = useMemo(() => {
     const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '綜合' }];
-    // 維護中的類別頁籤照常出現（後面加註記）—— 那是「暫時停一下」，
-    // 藏起來玩家會以為我們不做了。只有「關閉」才整個消失
+    // 維護中的類別頁籤照常出現 —— 那是「暫時停一下」，藏起來玩家會以為我們不做了。
+    // 只有「關閉」才整個消失。維護中不在頁籤上加註記：那會把每個頁籤撐得一長一短，
+    // 而且點進去本來就會說明，講兩次沒有比較清楚
     const CATEGORY_TABS: { id: PrimaryTabId; label: string; type: string }[] = [
       { id: 'ichiban',  label: '一番賞', type: 'ichiban' },
       { id: 'blindbox', label: '盒玩',   type: 'blindbox' },
@@ -409,9 +410,8 @@ export default function Home() {
     ];
     if (flags.sell) base.push({ id: 'sell', label: '販售' });
     for (const t of CATEGORY_TABS) {
-      const st = categoryState(t.type, flagStates, false);
-      if (st === 'off') continue;
-      base.push({ id: t.id, label: st === 'maintenance' ? `${t.label}（維護中）` : t.label });
+      if (categoryState(t.type, flagStates, false) === 'off') continue;
+      base.push({ id: t.id, label: t.label });
     }
     const menuTabs = menus.map((m) => ({ id: `menu:${m.id}` as PrimaryTabId, label: m.name }));
     return [...base, ...menuTabs];
@@ -467,9 +467,9 @@ export default function Home() {
     (products: ProductRow[]) => {
       return products.filter((product) => {
         if (activePrimaryTab === 'all') {
-          // 用 state 而不是 flags —— flags 在維護中是 false，
-          // 拿它來濾會把維護中的類別跟關閉的一起藏掉
-          return !isCategoryHidden(product.type, flagStates, false);
+          // 維護中與關閉的商品都不列出。差別在頁籤：維護中的頁籤還在，
+          // 點進去會說「此分類暫時維護中」；關閉的整個頁籤都不見
+          return categoryState(product.type, flagStates, false) === 'on';
         }
 
         if (activePrimaryTab.startsWith('menu:')) {
@@ -477,18 +477,19 @@ export default function Home() {
           const ids = menuProductIdsByMenuId[menuId];
           if (!ids) return false;
           // 自訂選單也要看類別開關 —— 選單是後台手動挑的商品清單，
-          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來。
-          // 維護中的留著，玩家該看得到它只是暫時停一下
-          if (isCategoryHidden(product.type, flagStates, false)) return false;
+          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來
+          if (categoryState(product.type, flagStates, false) !== 'on') return false;
           return ids.includes(Number(product.id));
         }
 
         if (activePrimaryTab === 'card') {
+          if (categoryState('card', flagStates, false) !== 'on') return false;
           const category = product.category || '';
           if (product.type === 'card') return true;
           return category.includes('卡') || category.toLowerCase().includes('card');
         }
 
+        if (categoryState(product.type, flagStates, false) !== 'on') return false;
         return product.type === activePrimaryTab;
       });
     },
@@ -1397,7 +1398,9 @@ export default function Home() {
                 : filteredProducts.length > 0
                   ? '到底了'
                   : !isLoading && !loadError
-                    ? '此分類暫無商品'
+                    ? (categoryState(activePrimaryTab, flagStates, false) === 'maintenance'
+                        ? '此分類暫時維護中'
+                        : '此分類暫無商品')
                     : ''}
             </div>
           )}

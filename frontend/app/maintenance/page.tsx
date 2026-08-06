@@ -57,7 +57,7 @@ export default async function MaintenancePage() {
      * 間距的分組：原本每一塊之間都是同樣的 gap-6，於是四個元素讀起來像四件不相干的事。
      * 改成三層 ——
      *   1. logo：品牌，離下面遠一點（它不是訊息的一部分）
-     *   2. 柴犬 + 維護中 + 說明 + 恢復時間：同一件事，彼此貼緊
+     *   2. 插圖 + 維護中 + 說明 + 恢復時間：同一件事，彼此貼緊
      *   3. 補充說明：次要，沉到底部
      */
     <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-y-auto bg-white px-6 py-10 text-center dark:bg-neutral-950">
@@ -74,15 +74,15 @@ export default async function MaintenancePage() {
       {/* 主訊息吃掉剩下的空間並置中，所以畫面高矮不同時 logo 與底部小字都待在原位 */}
       <div className="flex flex-1 flex-col items-center justify-center py-8">
         <Image
-          src="/loading/3.svg"
+          src="/images/maintain.png"
           alt=""
-          width={124}
-          height={124}
+          width={200}
+          height={200}
           priority
-          className="opacity-90"
+          className="h-auto w-[200px] max-w-[60vw] object-contain"
         />
 
-        {/* 柴犬與標題是同一個視覺單位，貼緊 */}
+        {/* 插圖與標題是同一個視覺單位，貼緊 */}
         <h1 className="mt-4 text-2xl font-black text-neutral-900 dark:text-neutral-50">
           維護中
         </h1>
