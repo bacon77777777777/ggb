@@ -47,6 +47,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: '無效的維護範圍' }, { status: 400 })
     }
 
+    // 關後台只有超級管理員能做 —— 因為只有超級管理員不受後台維護限制。
+    // 一般管理員按下去會把自己鎖在外面，而且沒有辦法再進來解除。
+    // 目前只有超級管理員拿得到 settings_features 權限，但那是權限設定的巧合，
+    // 不是規則；權限一改就會變成陷阱，所以在這裡寫死。
+    const isSuper = session.role === 'super_admin' || session.role === 'superadmin'
+    if ((scope === 'backend' || scope === 'all') && !isSuper) {
+      return NextResponse.json(
+        { error: '只有超級管理員可以關閉後台，否則你會把自己鎖在外面' },
+        { status: 403 },
+      )
+    }
+
     const supabase = getSupabaseAdmin()
     const rows: { key: string; value: string }[] = [
       { key: 'maintenance_scope',   value: scope },
