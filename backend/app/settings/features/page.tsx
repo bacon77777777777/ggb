@@ -66,9 +66,8 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string }[] = [
-  { key: 'sell_escrow', label: '販售金流' },
-  { key: 'exchange',    label: '交換' },
-  { key: 'market',      label: '交易所' },
+  { key: 'exchange', label: '交換' },
+  { key: 'market',   label: '交易所' },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
@@ -421,13 +420,12 @@ const MAINT_OPTIONS = [
           <SectionTitle
             title="營運狀態"
             info={<>
-              臨時性的開關，處理完就會改回來。
+              整站的維護開關，臨時性的，處理完就會改回來。
               前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
               後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
             </>}
           />
 
-          <SubLabel>站台</SubLabel>
           {/* 正常營運佔一半寬：那是預設狀態，也是最常按回來的那顆 */}
           <div className="flex flex-col gap-1.5 sm:flex-row">
             {MAINT_OPTIONS.map(o => {
@@ -499,22 +497,6 @@ const MAINT_OPTIONS = [
             </div>
           )}
 
-          <SubLabel>金流</SubLabel>
-          <ControlRow
-            label="儲值"
-            state={flags?.recharge === false ? 'off' : 'on'}
-            info="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
-          >
-            <Segmented
-              value={flags?.recharge === false ? 'off' : 'on'}
-              disabled={!ready || isSaving}
-              options={[
-                { v: 'on', label: '開放', tone: 'on' },
-                { v: 'off', label: '關閉', tone: 'off' },
-              ]}
-              onChange={(v) => toggleFlag('recharge', v === 'on')}
-            />
-          </ControlRow>
         </PageCard>
 
         <PageCard>
@@ -523,59 +505,103 @@ const MAINT_OPTIONS = [
             info="長期設定，決定平台提供什麼。跟維護模式不同，這裡改了就是常態，不會自己恢復。"
           />
 
-          <SubLabel
-            info={<>
-              <b>開放</b>：正常販售。<br />
-              <b>維護</b>：分類頁籤留著，點進去說明暫時維護中，商品買不到。用在臨時停一下。<br />
-              <b>關閉</b>：分類頁籤與商品全部從前台消失。用在不做這個類別了。<br />
-              兩種都不影響玩家已經抽到的獎品。
-            </>}
-          >
-            類別
-          </SubLabel>
-          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2 2xl:grid-cols-3">
-            {CATEGORY_ITEMS.map(item => (
-              <ControlRow key={item.key} label={item.label} state={states?.[item.key] ?? 'on'}>
-                <Segmented
-                  value={states?.[item.key] ?? 'on'}
-                  disabled={!ready || isSaving}
-                  options={[
-                    { v: 'on', label: '開放', tone: 'on' },
-                    { v: 'maintenance', label: '維護', tone: 'warn' },
-                    { v: 'off', label: '關閉', tone: 'off' },
-                  ]}
-                  onChange={(v) => setState(item.key, v as FlagState, item.label)}
-                />
-              </ControlRow>
-            ))}
-          </div>
-
-          <SubLabel
-            info={<>
-              「販售金流」是二手販售時由平台代收買家貨款；「交換」是卡牌一對一交換；
-              「交易所」是掛單買賣。交換與交易所共用前台同一個入口，只能擇一 ——
-              開了其中一個，另一個會自動關掉。關掉之後前台不再顯示入口，進行中的交易不受影響。
-            </>}
-          >
-            玩家交易
-          </SubLabel>
-          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2 2xl:grid-cols-3">
-            {TRADE_ITEMS.map(item => {
-              const on = Boolean(flags?.[item.key])
-              return (
-                <ControlRow key={item.key} label={item.label} state={on ? 'on' : 'off'}>
+          {/* 三個分組並排，組內上下排 —— 同一組的東西擺在一起才比得出來，
+              一組一組橫向流過去會讓「類別」的第四項跟「玩家交易」的第一項變成鄰居 */}
+          <div className="grid grid-cols-1 items-start gap-x-12 gap-y-6 lg:grid-cols-2 2xl:grid-cols-3">
+            <div>
+              <SubLabel
+                info={<>
+                  <b>開放</b>：正常販售。<br />
+                  <b>維護</b>：分類頁籤留著，點進去說明暫時維護中，商品買不到。用在臨時停一下。<br />
+                  <b>關閉</b>：分類頁籤與商品全部從前台消失。用在不做這個類別了。<br />
+                  兩種都不影響玩家已經抽到的獎品。
+                </>}
+              >
+                類別
+              </SubLabel>
+              {CATEGORY_ITEMS.map(item => (
+                <ControlRow key={item.key} label={item.label} state={states?.[item.key] ?? 'on'}>
                   <Segmented
-                    value={on ? 'on' : 'off'}
+                    value={states?.[item.key] ?? 'on'}
                     disabled={!ready || isSaving}
                     options={[
                       { v: 'on', label: '開放', tone: 'on' },
+                      { v: 'maintenance', label: '維護', tone: 'warn' },
                       { v: 'off', label: '關閉', tone: 'off' },
                     ]}
-                    onChange={(v) => toggleFlag(item.key, v === 'on')}
+                    onChange={(v) => setState(item.key, v as FlagState, item.label)}
                   />
                 </ControlRow>
-              )
-            })}
+              ))}
+            </div>
+
+            <div>
+              <SubLabel
+                info={<>
+                  「交換」是卡牌一對一交換，「交易所」是掛單買賣。
+                  兩者共用前台同一個入口，只能擇一 —— 開了其中一個，另一個會自動關掉。
+                  關掉之後前台不再顯示入口，進行中的交易不受影響。
+                </>}
+              >
+                玩家交易
+              </SubLabel>
+              {TRADE_ITEMS.map(item => {
+                const on = Boolean(flags?.[item.key])
+                return (
+                  <ControlRow key={item.key} label={item.label} state={on ? 'on' : 'off'}>
+                    <Segmented
+                      value={on ? 'on' : 'off'}
+                      disabled={!ready || isSaving}
+                      options={[
+                        { v: 'on', label: '開放', tone: 'on' },
+                        { v: 'off', label: '關閉', tone: 'off' },
+                      ]}
+                      onChange={(v) => toggleFlag(item.key, v === 'on')}
+                    />
+                  </ControlRow>
+                )
+              })}
+            </div>
+
+            <div>
+              <SubLabel>金流</SubLabel>
+              {/* 販售收款不是開關，是「錢經不經過平台」的二選一。
+                  原本叫「販售金流／開放關閉」，讀者看不出關掉之後錢跑哪去 */}
+              <ControlRow
+                label="販售收款"
+                state={flags?.sell_escrow ? 'on' : 'off'}
+                info={<>
+                  玩家二手販售時，買家的錢怎麼走。<br />
+                  <b>平台代收</b>：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。<br />
+                  <b>雙方自理</b>：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。
+                </>}
+              >
+                <Segmented
+                  value={flags?.sell_escrow ? 'on' : 'off'}
+                  disabled={!ready || isSaving}
+                  options={[
+                    { v: 'on', label: '平台代收', tone: 'on' },
+                    { v: 'off', label: '雙方自理', tone: 'off' },
+                  ]}
+                  onChange={(v) => toggleFlag('sell_escrow', v === 'on')}
+                />
+              </ControlRow>
+              <ControlRow
+                label="儲值"
+                state={flags?.recharge === false ? 'off' : 'on'}
+                info="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+              >
+                <Segmented
+                  value={flags?.recharge === false ? 'off' : 'on'}
+                  disabled={!ready || isSaving}
+                  options={[
+                    { v: 'on', label: '開放', tone: 'on' },
+                    { v: 'off', label: '關閉', tone: 'off' },
+                  ]}
+                  onChange={(v) => toggleFlag('recharge', v === 'on')}
+                />
+              </ControlRow>
+            </div>
           </div>
         </PageCard>
 
