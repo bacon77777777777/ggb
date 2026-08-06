@@ -499,21 +499,22 @@ const MAINT_OPTIONS = [
             </div>
           )}
 
-          <SubLabel
+          <SubLabel>金流</SubLabel>
+          <ControlRow
+            label="儲值"
+            state={flags?.recharge === false ? 'off' : 'on'}
             info="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
           >
-            儲值
-          </SubLabel>
-          <Segmented
-            className="max-w-[13rem]"
-            value={flags?.recharge === false ? 'off' : 'on'}
-            disabled={!ready || isSaving}
-            options={[
-              { v: 'on', label: '開放', tone: 'on' },
-              { v: 'off', label: '關閉', tone: 'off' },
-            ]}
-            onChange={(v) => toggleFlag('recharge', v === 'on')}
-          />
+            <Segmented
+              value={flags?.recharge === false ? 'off' : 'on'}
+              disabled={!ready || isSaving}
+              options={[
+                { v: 'on', label: '開放', tone: 'on' },
+                { v: 'off', label: '關閉', tone: 'off' },
+              ]}
+              onChange={(v) => toggleFlag('recharge', v === 'on')}
+            />
+          </ControlRow>
         </PageCard>
 
         <PageCard>
@@ -739,18 +740,20 @@ function SubLabel({ children, info }: { children: React.ReactNode; info?: React.
  * 原本名稱貼最左、控制項貼最右，寬螢幕上中間空一大片，眼睛要跳很遠。
  * 圓點是為了掃描：不讀字也知道哪一列不是開放狀態。
  */
-function ControlRow({ label, state, children }: {
+function ControlRow({ label, state, info, children }: {
   label: string
   state: FlagState
+  info?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-neutral-100 py-2">
-      <span className="flex w-[5.5rem] shrink-0 items-center gap-2">
+      <span className="flex w-[5.5rem] shrink-0 items-center gap-1.5">
         <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />
         <span className={`truncate text-[13px] font-bold ${state === 'on' ? 'text-neutral-900' : 'text-neutral-400'}`}>
           {label}
         </span>
+        {info && <InfoDot>{info}</InfoDot>}
       </span>
       {children}
     </div>
@@ -773,7 +776,7 @@ function Segmented({ value, options, disabled, onChange, className = '' }: {
   className?: string
 }) {
   return (
-    <div className={`flex shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 ${className}`}>
+    <div className={`flex w-fit shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 ${className}`}>
       {options.map(o => {
         const active = value === o.v
         return (
