@@ -368,9 +368,17 @@ export default function ProductDetailPage() {
   const [supabase] = useState(() => createClient());
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
-  // 維護中與關閉都不讓人進商品頁 —— 維護中的機台看起來正常卻按不動會像故障，
-  // 不如直接說明白。兩者只差在文案：維護中會回來，關閉不會
-  const isUnderMaintenance = isCategoryUnderMaintenance(product?.type, flagStates, isFlagsLoading);
+  /*
+   * 維護中與關閉都不讓人進商品頁，而且講同一句話。
+   *
+   * 兩者的差別在「類別還在不在」，那是首頁那一層的事：
+   * 維護中頁籤留著並說明暫時維護，關閉整個頁籤消失。
+   * 走到商品頁這一層，玩家要知道的只有「現在買不到」—— 再細分成
+   * 兩種說法只是多一種要理解的狀態。
+   */
+  const isCategoryClosedForPlay =
+    isCategoryHidden(product?.type, flagStates, isFlagsLoading) ||
+    isCategoryUnderMaintenance(product?.type, flagStates, isFlagsLoading);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
@@ -1262,17 +1270,12 @@ export default function ProductDetailPage() {
    * 跟維護中分開講：關閉是平台不做這個類別了，講「已下架」讓玩家死心；
    * 維護中是暫時停一下，那個不走這條路，繼續往下渲染整個商品頁。
    */
-  if (isCategoryHidden(product.type, flagStates, isFlagsLoading) || isUnderMaintenance) {
-    const label = CATEGORY_LABELS[categoryFlagKey(product.type) ?? 'gacha'];
+  if (isCategoryClosedForPlay) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6 text-center">
-        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">
-          {isUnderMaintenance ? `${label}維護中` : '商品已下架'}
-        </h1>
+        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">商品關閉中</h1>
         <p className="max-w-xs text-neutral-500 dark:text-neutral-400 font-bold mb-6 leading-relaxed">
-          {isUnderMaintenance
-            ? '這個分類正在調整，稍後就會開放。已經抽到的獎品都還在你的倉庫裡。'
-            : '這個商品已經沒有開放了。已經抽到的獎品都還在你的倉庫裡。'}
+          這個商品目前沒有開放。已經抽到的獎品都還在你的倉庫裡。
         </p>
         <div className="flex gap-3">
           <Link href="/warehouse">

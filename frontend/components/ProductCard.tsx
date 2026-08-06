@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { getItemImageForId, DEFAULT_ITEM_IMAGE as DEFAULT_IMAGE } from '@/lib/productImage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { isCategoryUnderMaintenance } from '@/lib/categoryFlags';
+import { categoryState } from '@/lib/categoryFlags';
 
 interface ProductCardProps {
   id: string | number;
@@ -28,8 +28,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard(props: ProductCardProps) {
-  // 維護中的類別照常列出（跟關閉不同），但卡片上要看得出來抽不了 ——
-  // 不然玩家點進去才發現，白跑一趟
+  // 維護中的類別照常列出（跟關閉不同），但卡片上要看得出來買不到 ——
+  // 不然玩家點進去才發現，白跑一趟。用字跟商品頁一致
   const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const {
     id,
@@ -127,10 +127,10 @@ export default function ProductCard(props: ProductCardProps) {
                 unoptimized
               />
             </div>
-          ) : isCategoryUnderMaintenance(type, flagStates, isFlagsLoading) && (
+          ) : categoryState(type, flagStates, isFlagsLoading) !== 'on' && (
             <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[8px] bg-black/50">
               <span className="rounded-full bg-amber-400 px-3 py-1 text-[12px] font-black text-amber-950">
-                維護中
+                關閉中
               </span>
             </div>
           )}
