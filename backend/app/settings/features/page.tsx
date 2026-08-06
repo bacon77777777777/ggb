@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard } from '@/components'
+import { AdminLayout, PageCard, Switch } from '@/components'
 import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
@@ -16,21 +16,22 @@ type LinePushKey =
   | 'line_push_finance' | 'line_push_deliver' | 'line_push_dormant' | 'line_push_recharge'
   | 'line_push_content' | 'line_push_cto'
 
-const LINE_PUSH_ITEMS: { key: LinePushKey; label: string }[] = [
-  { key: 'line_push_daily',    label: '每日早報' },
-  { key: 'line_push_cfo',      label: 'CFO 財務對帳' },
-  { key: 'line_push_cmo',      label: 'CMO 行銷日報' },
-  { key: 'line_push_supply',   label: '供應鏈警示' },
-  { key: 'line_push_health',   label: '健康監測' },
-  { key: 'line_push_market',   label: '市場 / 競品情報' },
-  { key: 'line_push_risk',     label: '風控掃描' },
-  { key: 'line_push_monitor',  label: '平台監測' },
-  { key: 'line_push_finance',  label: '對帳 / 月結' },
-  { key: 'line_push_deliver',  label: '自動出貨通知' },
-  { key: 'line_push_dormant',  label: '沉睡客喚回' },
-  { key: 'line_push_recharge', label: '待審核儲值' },
-  { key: 'line_push_content',  label: 'AI 文案生成' },
-  { key: 'line_push_cto',      label: 'AI CTO 報告' },
+// 說明只寫「推什麼」，不寫幾點推 —— 排程改在資料庫，寫死時間遲早會對不上
+const LINE_PUSH_ITEMS: { key: LinePushKey; label: string; desc: string }[] = [
+  { key: 'line_push_daily',    label: '每日早報',       desc: '當天待處理的事項總覽。' },
+  { key: 'line_push_cfo',      label: 'CFO 財務對帳',   desc: '代幣對帳、收入趨勢與廠商月結。' },
+  { key: 'line_push_cmo',      label: 'CMO 行銷日報',   desc: '行銷數據與跨部門的行動建議。' },
+  { key: 'line_push_supply',   label: '供應鏈警示',     desc: '超時未出貨與零庫存的商品。' },
+  { key: 'line_push_health',   label: '健康監測',       desc: '資料庫連線、金流錯誤率、尖峰時段零交易。' },
+  { key: 'line_push_market',   label: '市場 / 競品情報', desc: '競品爬取與市場探索的分析結果。' },
+  { key: 'line_push_risk',     label: '風控掃描',       desc: '異常帳號與可疑交易。' },
+  { key: 'line_push_monitor',  label: '平台監測',       desc: '平台整體狀態的定時回報。' },
+  { key: 'line_push_finance',  label: '對帳 / 月結',    desc: '綠界金流對帳與每月結算快照。' },
+  { key: 'line_push_deliver',  label: '自動出貨通知',   desc: '自動出貨跑完的結果。' },
+  { key: 'line_push_dormant',  label: '沉睡客喚回',     desc: '久未回訪的玩家名單。' },
+  { key: 'line_push_recharge', label: '待審核儲值',     desc: '卡住沒完成的儲值單。' },
+  { key: 'line_push_content',  label: 'AI 文案生成',    desc: 'AI 產出的行銷文案草稿。' },
+  { key: 'line_push_cto',      label: 'AI CTO 報告',    desc: '技術面的定期巡檢。' },
 ]
 
 const DEFAULT_PUSH_FLAGS = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
@@ -415,16 +416,19 @@ const MAINT_OPTIONS = [
 
         {loadError && (
           <PageCard>
-            <div className="text-sm font-bold text-neutral-700">
+            <div className="text-sm text-neutral-700">
               讀取功能開關失敗，請重新整理（若仍失敗可能是登入狀態過期）
             </div>
           </PageCard>
         )}
 
         <PageCard>
+          {/* 密度與字級照 Ant Design Pro 的個人設定頁：
+              導覽項目 40 高、內容標題 20px、每列 14px 標題配 14px 灰色說明。
+              後台其他頁面偏小偏粗，但這一頁的重點是看得懂，不是塞得多 */}
           <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
             {/* 分區導覽。手機上橫向捲動，桌機才靠左直排 */}
-            <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-40 lg:flex-col lg:overflow-visible lg:border-r lg:border-neutral-100 lg:px-0 lg:pb-0 lg:pr-4">
+            <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-56 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-r lg:border-neutral-100 lg:px-0 lg:pb-0 lg:pr-6">
               {SECTIONS.map(sc => {
                 const active = section === sc.key
                 // 這一區有沒有非預設的設定。不用點進去就知道哪裡動過
@@ -438,10 +442,10 @@ const MAINT_OPTIONS = [
                     key={sc.key}
                     type="button"
                     onClick={() => setSection(sc.key)}
-                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-[13px] font-bold transition-colors ${
+                    className={`flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-4 text-left text-sm transition-colors lg:px-6 ${
                       active
-                        ? 'bg-primary/5 text-primary'
-                        : 'text-neutral-500 hover:bg-neutral-50'
+                        ? 'bg-primary/5 font-medium text-primary'
+                        : 'text-neutral-600 hover:bg-neutral-50'
                     }`}
                   >
                     {sc.label}
@@ -471,14 +475,14 @@ const MAINT_OPTIONS = [
                           disabled={!maint || maintSaving || blocked}
                           onClick={() => requestScope(o.v)}
                           title={blocked ? '僅超級管理員可以關閉後台' : undefined}
-                          className={`flex min-h-[42px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                          className={`flex h-10 items-center justify-center rounded-lg border px-3 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                             o.v === 'off' ? 'sm:flex-[3]' : 'sm:flex-1'
                           } ${
                             active
                               ? o.v === 'off'
-                                ? 'border-primary bg-primary/5 text-primary'
-                                : 'border-amber-400 bg-amber-50 text-amber-900'
-                              : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                                ? 'border-primary bg-primary/5 font-medium text-primary'
+                                : 'border-amber-400 bg-amber-50 font-medium text-amber-900'
+                              : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300'
                           }`}
                         >
                           {o.label}
@@ -487,7 +491,7 @@ const MAINT_OPTIONS = [
                     })}
                   </div>
                   {/* 說明只講「現在選的這個」是什麼意思，四個一起列會變成一堵字 */}
-                  <p className="mt-2 text-xs font-bold text-neutral-400">
+                  <p className="mt-2.5 text-sm text-neutral-400">
                     {MAINT_OPTIONS.find(o => o.v === (maint?.scope ?? 'off'))?.hint}
                   </p>
 
@@ -568,25 +572,20 @@ const MAINT_OPTIONS = [
                     {TRADE_ITEMS.map(item => {
                       const on = Boolean(flags?.[item.key])
                       return (
-                        <Row key={item.key} title={item.label} desc={item.desc} state={on ? 'on' : 'off'}>
-                          <Segmented
-                            value={on ? 'on' : 'off'}
+                        <Row key={item.key} title={item.label} desc={item.desc}>
+                          <Switch
+                            checked={on}
                             disabled={!ready || isSaving}
-                            options={[
-                              { v: 'on', label: '開放', tone: 'on' },
-                              { v: 'off', label: '關閉', tone: 'off' },
-                            ]}
-                            onChange={(v) => toggleFlag(item.key, v === 'on')}
+                            onCheckedChange={(v) => toggleFlag(item.key, v)}
                           />
                         </Row>
                       )
                     })}
-                    {/* 販售收款不是開關，是「錢經不經過平台」的二選一。
-                        原本叫「販售金流／開放·關閉」，讀者看不出關掉之後錢跑哪去 */}
+                    {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
+                        不是「開／關」。用開關的話關掉之後錢跑哪去就看不出來了 */}
                     <Row
                       title="販售收款"
                       desc="平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。"
-                      state={flags?.sell_escrow ? 'on' : 'off'}
                     >
                       <Segmented
                         value={flags?.sell_escrow ? 'on' : 'off'}
@@ -601,16 +600,11 @@ const MAINT_OPTIONS = [
                     <Row
                       title="儲值"
                       desc="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
-                      state={flags?.recharge === false ? 'off' : 'on'}
                     >
-                      <Segmented
-                        value={flags?.recharge === false ? 'off' : 'on'}
+                      <Switch
+                        checked={flags?.recharge !== false}
                         disabled={!ready || isSaving}
-                        options={[
-                          { v: 'on', label: '開放', tone: 'on' },
-                          { v: 'off', label: '關閉', tone: 'off' },
-                        ]}
-                        onChange={(v) => toggleFlag('recharge', v === 'on')}
+                        onCheckedChange={(v) => toggleFlag('recharge', v)}
                       />
                     </Row>
                   </div>
@@ -623,16 +617,15 @@ const MAINT_OPTIONS = [
                     title="內部通知"
                     desc="各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感 —— 關掉只是不推播，排程照常執行、報告照常寫進後台。"
                   />
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="text-xs font-bold text-neutral-400 tabular-nums">
+                  <div className="mb-1 flex items-center gap-3 text-sm">
+                    <span className="text-neutral-400 tabular-nums">
                       已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
                     </span>
-                    <span className="text-neutral-200">|</span>
                     <button
                       type="button"
                       disabled={isPushLoading || isPushSaving}
                       onClick={() => setAllPush(true)}
-                      className="text-xs font-bold text-primary transition-colors hover:underline disabled:opacity-50"
+                      className="text-primary transition-colors hover:underline disabled:opacity-50"
                     >
                       全部開啟
                     </button>
@@ -640,36 +633,25 @@ const MAINT_OPTIONS = [
                       type="button"
                       disabled={isPushLoading || isPushSaving}
                       onClick={() => setAllPush(false)}
-                      className="text-xs font-bold text-neutral-500 transition-colors hover:underline disabled:opacity-50"
+                      className="text-neutral-500 transition-colors hover:underline disabled:opacity-50"
                     >
                       全部關閉
                     </button>
                   </div>
-                  {/* 十四項用標籤而不是一列一個控制項：這裡每一項都是同一種東西、
-                      也不影響玩家，不值得各佔一整列。點一下就切換，實心是開、空心是關 */}
-                  <div className="flex flex-wrap gap-2">
-                    {LINE_PUSH_ITEMS.map((item) => {
-                      const on = pushFlags[item.key]
-                      return (
-                        <button
-                          key={item.key}
-                          type="button"
+                  <div className="divide-y divide-neutral-100">
+                    {LINE_PUSH_ITEMS.map((item) => (
+                      <Row key={item.key} title={item.label} desc={item.desc}>
+                        <Switch
+                          checked={pushFlags[item.key]}
                           disabled={isPushLoading || isPushSaving}
-                          onClick={() => {
-                            const next = { ...pushFlags, [item.key]: !on }
+                          onCheckedChange={(checked) => {
+                            const next = { ...pushFlags, [item.key]: checked }
                             setPushFlags(next)
                             savePush(next)
                           }}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                            on
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-neutral-200 bg-white text-neutral-400 hover:border-neutral-300'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      )
-                    })}
+                        />
+                      </Row>
+                    ))}
                   </div>
                 </>
               )}
@@ -729,7 +711,7 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
   if (counts.maintenance === 0 && counts.off === 0) parts.push({ text: '類別全部開放', warn: false })
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[13px] font-bold">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-sm">
       {parts.map((p, i) => (
         <span key={p.text} className="flex items-center gap-2">
           {i > 0 && <span className="text-neutral-300">·</span>}
@@ -744,8 +726,8 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
 function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-base font-black text-neutral-900">{title}</h2>
-      <p className="mt-1 max-w-2xl text-xs font-bold leading-relaxed text-neutral-400">{desc}</p>
+      <h2 className="text-xl font-medium text-neutral-900">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-400">{desc}</p>
     </div>
   )
 }
@@ -764,13 +746,13 @@ function Row({ title, desc, state, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           {state && <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />}
-          <span className="text-[13px] font-black text-neutral-900">{title}</span>
+          <span className="text-sm text-neutral-900">{title}</span>
         </div>
-        {desc && <p className="mt-0.5 max-w-xl text-xs font-bold leading-relaxed text-neutral-400">{desc}</p>}
+        {desc && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-400">{desc}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -780,10 +762,11 @@ function Row({ title, desc, state, children }: {
 /**
  * 分段按鈕。
  *
- * 全頁的「會影響玩家的設定」統一用它，不用開關 —— 開關只表達得了開/關，
- * 類別是三態；而且一頁上開關、三段按鈕混用，讀者要分辨兩套語言。
- * 只有內部通知那十四項還是點擊式標籤：那是量大又不影響玩家的東西，
- * 控制項的份量該跟設定的份量相稱。
+ * 用在「選項有名字」的設定：類別的開放／維護／關閉是三態，
+ * 販售收款的平台代收／雙方自理是兩種收款方式。這些用開關表達不了 ——
+ * 開關只講得出「開」跟「不開」，講不出不開的時候是什麼。
+ *
+ * 單純的開/關（交換、交易所、儲值、內部通知）就用站上既有的 Switch。
  */
 function Segmented({ value, options, disabled, onChange, className = '' }: {
   value: string
@@ -802,13 +785,13 @@ function Segmented({ value, options, disabled, onChange, className = '' }: {
             type="button"
             disabled={disabled}
             onClick={() => onChange(o.v)}
-            className={`flex-1 whitespace-nowrap px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`flex-1 whitespace-nowrap px-3.5 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               active
                 ? o.tone === 'on'
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary font-medium text-white'
                   : o.tone === 'warn'
-                    ? 'bg-amber-400 text-amber-950'
-                    : 'bg-neutral-600 text-white'
+                    ? 'bg-amber-400 font-medium text-amber-950'
+                    : 'bg-neutral-600 font-medium text-white'
                 : 'bg-white text-neutral-500 hover:bg-neutral-50'
             }`}
           >
