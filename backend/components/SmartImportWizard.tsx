@@ -94,6 +94,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const [reparsing, setReparsing] = useState(false)
   // 留著上傳的檔案：改完欄位對應要拿同一份重跑解析
   const [file, setFile] = useState<File | null>(null)
+  // 整批的商品類型。廠商的進貨單常常沒有類型欄（一份檔案就是一種類型），
+  // 不給選的話會全部當成一番賞 —— 扭蛋清單被當成一番賞，賞等與籤號全是錯的
+  const [forcedType, setForcedType] = useState('')
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [committing, setCommitting] = useState(false)
@@ -127,6 +130,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const fd = new FormData()
       fd.append('file', file)
       fd.append('supplierId', supplierId)
+      if (forcedType) fd.append('type', forcedType)
 
       const res = await fetch('/api/admin/products/import/parse', {
         method: 'POST', body: fd, credentials: 'include',
@@ -320,6 +324,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       const fd = new FormData()
       fd.append('file', file)
       fd.append('supplierId', supplierId)
+      if (forcedType) fd.append('type', forcedType)
       fd.append('mappingOverride', JSON.stringify(nextMapping))
 
       const res = await fetch('/api/admin/products/import/parse', {
@@ -475,6 +480,22 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             </SelectField>
             <p className="mt-1 text-xs text-neutral-400">
               整批商品都會歸到這家廠商底下。廠商是必填欄位，檔案裡猜不出來。
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-neutral-500 mb-1.5">商品類型</label>
+            <SelectField value={forcedType} onChange={e => setForcedType(e.target.value)}>
+              <option value="">依檔案內容判斷</option>
+              <option value="gacha">整批都是轉蛋</option>
+              <option value="ichiban">整批都是一番賞</option>
+              <option value="blindbox">整批都是盒玩</option>
+              <option value="card">整批都是抽卡</option>
+              <option value="custom">整批都是自製賞</option>
+            </SelectField>
+            <p className="mt-1 text-xs text-neutral-400">
+              廠商的進貨單通常沒有類型欄，一份檔案就是一種類型。
+              不指定的話會全部當成一番賞 —— 扭蛋清單被當成一番賞，賞等與籤號就全錯了。
             </p>
           </div>
 

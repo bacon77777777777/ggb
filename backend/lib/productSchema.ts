@@ -113,7 +113,10 @@ export interface ImportFieldDef {
 export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'name', label: '商品名稱', kind: 'text', requiredFor: 'all',
-    aliases: [/^名稱$/i, /品名/i, /商品名/i, /產品名/i, /^name$/i, /title/i, /一番賞名/i, /商品タイトル/i],
+    // 「品名規格」排在「品名」前面是有原因的：實際的廠商進貨單裡，
+    // 「品名」那一欄放的是貨號（JXGB23342），真正的商品名在「品名規格」。
+    // 光靠順序不夠可靠，所以另外還有內容判斷（見 detectFieldMapping）
+    aliases: [/品名規格/i, /商品名/i, /產品名/i, /^品名$/i, /^名稱$/i, /^name$/i, /title/i, /一番賞名/i, /商品タイトル/i],
     example: '海賊王 一番賞 頂上決戰', note: '必填',
   },
   {
@@ -123,12 +126,12 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'price', label: '單抽價格', kind: 'int', requiredFor: ['ichiban', 'blindbox', 'gacha', 'card', 'custom'],
-    aliases: [/^價格$/i, /售價/i, /^price$/i, /金額/i, /單價/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i, /販売価格/i],
+    aliases: [/^價格$/i, /售價/i, /^price$/i, /金額/i, /單價/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i, /販売価格/i, /^售$/i],
     example: '150', note: '代幣。機台與抽籤販售填 0',
   },
   {
     key: 'total_count', label: '總籤數', kind: 'int', requiredFor: TICKETED_TYPES,
-    aliases: [/總籤/i, /總抽/i, /籤數/i, /抽數/i, /總數量/i, /^總數$/i, /total.*count/i, /^count$/i, /口数/i, /入数/i],
+    aliases: [/總籤/i, /總抽/i, /籤數/i, /抽數/i, /總數量/i, /^總數$/i, /備貨數量/i, /^數量$/i, /total.*count/i, /^count$/i, /口数/i, /入数/i],
     example: '80', note: '一番賞/抽卡/自製賞必填，會據此排定籤號',
   },
   {
@@ -173,7 +176,7 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'barcode', label: '產品條碼', kind: 'text',
-    aliases: [/條碼/i, /barcode/i, /^ean$/i, /^jan$/i, /^upc$/i, /商品條碼/i, /產品條碼/i],
+    aliases: [/條碼/i, /barcode/i, /^ean$/i, /^jan$/i, /^upc$/i, /商品條碼/i, /產品條碼/i, /國際條碼/i],
     example: '4570117575129', note: '選填',
   },
   {
@@ -425,10 +428,61 @@ const isAnchored = (a: RegExp) => a.source.startsWith('^') && a.source.endsWith(
  *
  * exclude 用來排除已經被品項欄位認領的標題 —— 那些欄位不該再被商品欄位搶走。
  */
+/**
+ * 看資料內容給的加減分。
+ *
+ * 光看標題不夠。真實的廠商進貨單長這樣：
+ *
+ *   品名      | 國際條碼      | （無標題） | 箱數 | 備貨數量 | 品名規格
+ *   JXGB23342 | 4570118233424 | 150       | 2    | 300      | BAN/polar bear bank夜燈公仔
+ *
+ * 「品名」那一欄放的是貨號，真正的商品名在「品名規格」；單價那一欄根本沒有標題。
+ * 只比對標題的話，商品名一定抓到貨號 —— 而商品名錯了，後面去搜圖、查品項的
+ * 關鍵字全部是錯的，整批就廢了。
+ *
+ * 所以再看一眼欄位裡實際裝的東西：商品名該有中日文、價格該是數字、
+ * 條碼該是一長串數字。這比任何標題別名都可靠，也讓沒有標題的欄位仍然對得上。
+ */
+function contentScore(def: ImportFieldDef, values: string[]): number {
+  const vals = values.map(v => String(v ?? '').trim()).filter(Boolean)
+  if (vals.length < 2) return 0
+
+  const ratio = (f: (v: string) => boolean) => vals.filter(f).length / vals.length
+  const isNumeric = (v: string) => /^-?[\d,.]+$/.test(v)
+  const hasCjk = (v: string) => /[\u4e00-\u9fff\u3040-\u30ff]/.test(v)
+  // JXGB23342、A-1234 這種貨號：純大寫英數，沒有任何中日文
+  const looksLikeCode = (v: string) => /^[A-Z0-9][A-Z0-9\-_]{3,}$/.test(v) && !hasCjk(v)
+
+  switch (def.key) {
+    case 'name': {
+      let s = 0
+      if (ratio(hasCjk) >= 0.5) s += 200        // 有中日文，幾乎確定是品名
+      if (ratio(looksLikeCode) >= 0.7) s -= 400 // 整欄都是貨號，絕對不是品名
+      if (ratio(isNumeric) >= 0.7) s -= 400     // 整欄都是數字，也不是
+      return s
+    }
+    case 'barcode':
+      // 條碼是 8~14 碼純數字。用這個把它跟一般數字欄分開
+      return ratio(v => /^\d{8,14}$/.test(v)) >= 0.7 ? 200 : -100
+    case 'price':
+    case 'total_count':
+    case 'cost':
+    case 'jp_price_yen':
+      if (ratio(isNumeric) < 0.5) return -300   // 不是數字就不可能是這些欄位
+      return ratio(v => /^\d{8,14}$/.test(v)) >= 0.7 ? -150 : 100  // 但也別把條碼當價格
+    case 'image_url':
+      return ratio(v => /^https?:\/\//i.test(v) || /\.(jpe?g|png|webp|gif)$/i.test(v)) >= 0.5 ? 200 : -50
+    default:
+      return 0
+  }
+}
+
 export function detectFieldMapping(
   headers: string[],
   fields = PRODUCT_IMPORT_FIELDS,
   exclude?: Set<string>,
+  /** 前幾列資料。有給就會一併看內容判斷，沒給就只比對標題 */
+  sample?: Record<string, string>[],
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {}
   for (const f of fields) result[f.key] = null
@@ -439,8 +493,18 @@ export function detectFieldMapping(
     const labelNorm = normHeader(field.label)
     for (const h of headers) {
       const t = h.trim()
-      if (!t || exclude?.has(h)) continue
+      if (exclude?.has(h)) continue
       const hn = normHeader(t)
+      // 沒有標題的欄位不能直接跳過 —— 那份廠商檔案的單價就是一欄無標題的數字。
+      // 只靠內容分數決定它是什麼，標題分數給 0。
+      // 「第3欄」是解析時給無標題欄位補的可定址名稱（見 readWorkbook），
+      // 對比對來說它跟沒有標題是同一件事
+      if (!t || /^第\d+欄$/.test(t)) {
+        if (!sample?.length) continue
+        const cs = contentScore(field, sample.map(r => r[h] ?? ''))
+        if (cs > 0) candidates.push({ fieldKey: field.key, header: h, score: cs - 500 })
+        continue
+      }
 
       let score = 0
       if (hn === labelNorm) {
@@ -452,6 +516,8 @@ export function detectFieldMapping(
         score -= idx * 5                   // 別名的排列順序仍有一點參考價值
         score -= Math.min(60, hn.length * 2) // 標題越長越可能是複合欄位（例：商品名稱備註）
       }
+      // 內容跟標題不合時，內容說了算 —— 「品名」欄裝的是貨號就是這種情形
+      if (sample?.length) score += contentScore(field, sample.map(r => r[h] ?? ''))
       candidates.push({ fieldKey: field.key, header: h, score })
     }
   }

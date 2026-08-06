@@ -10,7 +10,7 @@ import {
   missingRequired, headerFingerprint, TICKETED_TYPES, PROBABILITY_TYPES,
   type ProductType, type PrizeGroup,
 } from '@/lib/productSchema'
-import { normalizeProductNames } from '@/lib/productNaming'
+import { normalizeProductNames, stripVendorNoise } from '@/lib/productNaming'
 import { r2ListFilenames, r2PublicUrl } from '@/lib/r2'
 
 export const runtime = 'nodejs'
@@ -63,11 +63,36 @@ function readWorkbook(buf: Buffer, filename: string): { headers: string[]; rows:
     const sheet = wb.Sheets[name]
     const aoa = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, blankrows: false, defval: '' })
     if (aoa.length < 2) continue
-    const headers = (aoa[0] ?? []).map(h => String(h ?? '').trim())
-    const rows = aoa.slice(1)
-      .filter(r => r.some(c => String(c ?? '').trim() !== ''))
-      .map(r => Object.fromEntries(headers.map((h, i) => [h, String(r[i] ?? '')])))
-    return { headers, rows }
+
+    const rawHeaders = (aoa[0] ?? []).map(h => String(h ?? '').trim())
+    const dataRows = aoa.slice(1).filter(r => r.some(c => String(c ?? '').trim() !== ''))
+
+    /*
+     * 沒有標題、或標題重複的欄位要給一個能定址的名字。
+     *
+     * 原本是直接拿標題當 key，於是一整排空標題全部擠成同一個 key ''，
+     * 互相覆蓋之後只剩最後一個（通常是空的）。實際廠商檔案裡，
+     * 單價就是一欄沒有標題的數字 —— 那一欄因此永遠讀不到。
+     *
+     * 只有真的裝了東西的空標題欄才保留，不然一份 Excel 後面拖著二十個
+     * 空欄位，會全部變成「第7欄」「第8欄」…把畫面塞滿。
+     */
+    const headers: string[] = []
+    const seen = new Map<string, number>()
+    for (let c = 0; c < rawHeaders.length; c++) {
+      const h = rawHeaders[c]
+      if (!h) {
+        const hasData = dataRows.some(r => String(r[c] ?? '').trim() !== '')
+        headers.push(hasData ? `第${c + 1}欄` : `__empty_${c}`)
+        continue
+      }
+      const n = (seen.get(h) ?? 0) + 1
+      seen.set(h, n)
+      headers.push(n === 1 ? h : `${h}(${n})`)
+    }
+
+    const rows = dataRows.map(r => Object.fromEntries(headers.map((h, i) => [h, String(r[i] ?? '')])))
+    return { headers: headers.filter(h => !h.startsWith('__empty_')), rows }
   }
   return { headers: [], rows: [] }
 }
@@ -207,7 +232,10 @@ export async function POST(request: Request) {
       ...(verticalCols ? Object.values(verticalCols) : []),
     ])
 
-    const ruleMapping = detectFieldMapping(headers, PRODUCT_IMPORT_FIELDS, claimedByPrize)
+    // 前 20 列給欄位比對看內容。標題不可靠時（「品名」裝的是貨號、
+    // 單價那欄沒有標題），實際裝的東西才是最可靠的線索
+    const sample = rows.slice(0, 20)
+    const ruleMapping = detectFieldMapping(headers, PRODUCT_IMPORT_FIELDS, claimedByPrize, sample)
 
     if (profile) {
       // 記憶優先，規則補洞。
@@ -454,6 +482,21 @@ export async function POST(request: Request) {
       // 上架狀態的中文轉英文
       if (typeof product.status === 'string') {
         product.status = /上架|active|販售中|on/i.test(product.status) ? 'active' : 'pending'
+      }
+
+      // ── 進貨單的雜訊清掉（免費）──
+      // 「BAN/xxx @30x5 040」這種寫法對倉管有意義，對玩家沒有；
+      // 更關鍵的是帶著它去搜圖或查品項一定搜不到
+      if (typeof product.name === 'string') {
+        const cleaned = stripVendorNoise(product.name)
+        if (cleaned.name && cleaned.name !== product.name) {
+          filled.push({ key: 'name', label: '商品名稱', value: cleaned.name, source: '去除貨號與裝箱資訊' })
+          product.name = cleaned.name
+        }
+        if (cleaned.distributor && !product.distributor) {
+          product.distributor = cleaned.distributor
+          filled.push({ key: 'distributor', label: '代理商', value: cleaned.distributor, source: '商品名的廠牌代碼' })
+        }
       }
 
       // ── 名稱台灣化（免費）──
