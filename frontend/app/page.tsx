@@ -44,30 +44,21 @@ export default function Home() {
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
   // Map<series, score> — global platform popularity (used as default for new users)
   const [globalSeriesPop, setGlobalSeriesPop] = useState<Map<string, number>>(new Map());
-  const enabledPrimaryFeatureCount =
-    (flags.sell ? 1 : 0) +
-    (flags.ichiban ? 1 : 0) +
-    (flags.blindbox ? 1 : 0) +
-    (flags.gacha ? 1 : 0) +
-    (flags.card ? 1 : 0) +
-    (flags.custom ? 1 : 0);
+  /*
+   * 有幾個分類頁籤存在。
+   *
+   * 這裡問的是「頁籤在不在」，不是「能不能抽」，所以用 state 而不是 flags ——
+   * 維護中的 flags 是 false，拿它來數會把維護中的頁籤當成不存在，
+   * 於是下面那段 effect 一路把使用者踢回「綜合」，點都點不進去。
+   */
+  const visibleCategories = (['ichiban', 'blindbox', 'gacha', 'card', 'custom'] as const)
+    .filter(t => categoryState(t, flagStates, false) !== 'off');
+  const enabledPrimaryFeatureCount = visibleCategories.length + (flags.sell ? 1 : 0);
   const hasAnyPrimaryFeature = enabledPrimaryFeatureCount > 0;
   const hidePrimaryTabs = enabledPrimaryFeatureCount < 2;
   const singlePrimaryTab: PrimaryTabId | null =
     enabledPrimaryFeatureCount === 1
-      ? flags.sell
-        ? 'sell'
-        : flags.ichiban
-          ? 'ichiban'
-          : flags.blindbox
-            ? 'blindbox'
-            : flags.gacha
-              ? 'gacha'
-              : flags.card
-                ? 'card'
-                : flags.custom
-                  ? 'custom'
-                  : null
+      ? (flags.sell ? 'sell' : ((visibleCategories[0] as PrimaryTabId) ?? null))
       : null;
 
   const fetchData = useCallback(async () => {
@@ -417,21 +408,16 @@ export default function Home() {
     return [...base, ...menuTabs];
   }, [flagStates, flags.sell, menus]);
 
+  // 停在一個已經不存在的頁籤上要退回綜合。判斷用 'off' —— 維護中的頁籤還在，
+  // 踢掉的話玩家就看不到「此分類暫時維護中」那句說明了
   useEffect(() => {
-    const disabled =
+    const gone =
       (activePrimaryTab === 'sell' && !flags.sell) ||
-      (activePrimaryTab === 'ichiban' && !flags.ichiban) ||
-      (activePrimaryTab === 'blindbox' && !flags.blindbox) ||
-      (activePrimaryTab === 'gacha' && !flags.gacha) ||
-      (activePrimaryTab === 'card' && !flags.card) ||
-      (activePrimaryTab === 'custom' && !flags.custom);
-    if (!disabled) return;
-    if (singlePrimaryTab) {
-      setActivePrimaryTab(singlePrimaryTab);
-      return;
-    }
-    setActivePrimaryTab('all');
-  }, [activePrimaryTab, flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell, singlePrimaryTab]);
+      (activePrimaryTab !== 'sell' && !activePrimaryTab.startsWith('menu:') && activePrimaryTab !== 'all'
+        && categoryState(activePrimaryTab, flagStates, false) === 'off');
+    if (!gone) return;
+    setActivePrimaryTab(singlePrimaryTab ?? 'all');
+  }, [activePrimaryTab, flagStates, flags.sell, singlePrimaryTab]);
 
   useEffect(() => {
     if (!singlePrimaryTab) return;
