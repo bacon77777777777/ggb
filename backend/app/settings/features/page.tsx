@@ -435,12 +435,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
             <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-56 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-r lg:border-neutral-100 lg:px-0 lg:pb-0 lg:pr-6">
               {SECTIONS.map(sc => {
                 const active = section === sc.key
-                // 這一區有沒有非預設的設定。不用點進去就知道哪裡動過
-                const flagged =
-                  sc.key === 'maintenance' ? (maint?.scope ?? 'off') !== 'off'
-                    : sc.key === 'category' ? categoryCounts.maintenance + categoryCounts.off > 0
-                      : sc.key === 'commerce' ? flags?.recharge === false
-                        : false
                 return (
                   <button
                     key={sc.key}
@@ -453,7 +447,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     }`}
                   >
                     {sc.label}
-                    {flagged && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />}
                   </button>
                 )
               })}
@@ -597,6 +590,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     <Row
                       title="販售收款"
                       desc="平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。"
+                      state={flags?.sell_escrow ? 'on' : 'off'}
                     >
                       <Segmented
                         value={flags?.sell_escrow ? 'on' : 'off'}
@@ -659,7 +653,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                   />
                   <div className="divide-y divide-neutral-100">
                     {LINE_PUSH_ITEMS.map((item) => (
-                      <Row key={item.key} title={item.label} desc={item.desc}>
+                      <Row key={item.key} title={item.label} desc={item.desc} state={pushFlags[item.key] ? 'on' : 'off'}>
                         <Segmented
                           value={pushFlags[item.key] ? 'on' : 'off'}
                           disabled={isPushLoading || isPushSaving}
