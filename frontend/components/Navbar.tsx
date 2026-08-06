@@ -307,6 +307,7 @@ function NavbarInner() {
     if (pathname.startsWith('/item/') || pathname.startsWith('/blindbox/') || pathname.startsWith('/gacha/') || pathname.startsWith('/card/')) return productName || '商品詳情';
     if (isNewsDetailPage) return '';
     if (pathname === '/topup') return '儲值代幣';
+    if (pathname === '/challenge') return '挑戰';
     if (pathname === '/faq') return '常見問題';
     if (pathname === '/about') return '關於我們';
     if (pathname === '/terms') return '會員條款';
@@ -597,8 +598,10 @@ function NavbarInner() {
             isSearchPage ||
             isExchangeManagePage ||
             pathname === '/exchange' ||
-            pathname === '/ranking' ||
-            pathname === '/challenge'
+            pathname === '/ranking'
+            /* /challenge 原本也在這裡（手機隱藏頂部導航，因為底部導航有「挑戰」那格）。
+               挑戰改成首頁懸浮入口、不再是底部頁籤之後，手機端就必須有頂部導航，
+               否則進到挑戰頁沒有任何返回路徑 */
           ) && "hidden md:block"
         )}
         isSticky={!isProductDetailPage}

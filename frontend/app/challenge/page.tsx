@@ -638,7 +638,8 @@ export default function ChallengePage() {
   }, [machines]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
+    // pb 從 24 收到 8：底部導航已不在這一頁，原本那段是留給它的高度
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-8">
       {/* 閒置踢出提示（畫面正中間，5 秒後淡出） */}
       <AnimatePresence>
         {kickNotice && (
