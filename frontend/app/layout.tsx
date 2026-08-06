@@ -16,6 +16,7 @@ import PwaPullToRefresh from '@/components/PwaPullToRefresh';
 import AnalyticsTracker from '@/components/AnalyticsTracker';
 import { getSiteUrl } from '@/lib/site';
 import MaintenanceWatcher from '@/components/MaintenanceWatcher';
+import { getThemeCss } from '@/lib/serverTheme';
 
 const siteUrl = getSiteUrl();
 
@@ -101,11 +102,15 @@ export const viewport = {
   themeColor: '#ffffff',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 在伺服器端就把主題色算好塞進 <head>。
+  // 交給 client 端載入後再套的話，畫面會先閃一次預設色再變成設定色
+  const themeCss = await getThemeCss();
+
   return (
     <html lang="zh-TW">
       <head>
@@ -113,6 +118,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
+        {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       </head>
       <body className="min-h-screen flex flex-col font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
         <AuthProvider>

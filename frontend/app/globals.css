@@ -8,6 +8,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 主題色。存的是 RGB 通道值而不是色碼 —— 站上大量使用 bg-primary/5 這種
+ * 透明度寫法，Tailwind 的 <alpha-value> 只塞得進 rgb(R G B / <alpha>) 這個形式。
+ * 存色碼的話所有帶 /數字 的類別都會靜默失效。
+ *
+ * 這裡是預設值（跟改版前的顏色完全相同）。後台設定過主題色的話，
+ * layout 會在 <head> 再輸出一段 :root 蓋掉它。
+ */
+:root {
+  --primary: 238 77 45;        /* #EE4D2D */
+  --primary-dark: 217 68 31;   /* #D9441F */
+  --primary-light: 255 112 67; /* #FF7043 */
+  --primary-soft: 255 244 239; /* #FFF4EF */
+}
+
 * { box-sizing: border-box; }
 html, body { max-width: 100vw; }
 body { 
@@ -134,7 +149,7 @@ img {
 }
 
 .news-content a {
-  color: #EE4D2D;
+  color: rgb(var(--primary));
   text-decoration: underline;
 }
 

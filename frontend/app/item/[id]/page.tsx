@@ -1895,7 +1895,7 @@ export default function ProductDetailPage() {
                 
                 <div className="absolute top-0 right-0 z-10 flex flex-col items-end pointer-events-none">
                   {product.is_hot && (
-                    <div className="h-6 px-2 inline-flex items-center rounded-tr-lg rounded-bl-lg bg-[#EE4D2D] text-white text-[11px] font-black border border-white/10 leading-none transform origin-top-right scale-150">
+                    <div className="h-6 px-2 inline-flex items-center rounded-tr-lg rounded-bl-lg bg-primary text-white text-[11px] font-black border border-white/10 leading-none transform origin-top-right scale-150">
                       熱門
                     </div>
                   )}
