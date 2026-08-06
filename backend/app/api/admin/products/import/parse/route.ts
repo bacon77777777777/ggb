@@ -174,8 +174,8 @@ export async function POST(request: Request) {
   try {
     const scope = await requireAdminScope()
     if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // 廠商不該知道殺率這個機制存在。它照樣會被算出來寫進資料表，
-    // 只是不出現在「已自動補齊」清單裡，回傳的商品資料也拿掉
+    // 廠商連回傳的 JSON 裡都不該看到這個欄位 —— 介面沒顯示不代表沒送出去，
+    // 打開 devtools 就看得到。畫面上則是不分身份都不出現（見下方推導那段）
     const hideProfitRate = scope.supplierScope !== undefined
 
     const form = await request.formData()
@@ -428,17 +428,17 @@ export async function POST(request: Request) {
       }
       if (product.total_count) product.remaining = product.total_count
 
-      // 殺率：籤號制才有意義，沒填就 1.0（等於不設限，最保守）
+      /*
+       * 籤號制的商品要有這個值，沒填就取同廠商同類型的中位數，再沒有就 1.0
+       *（等於不設限，最保守）。
+       *
+       * 刻意不列進「已自動補齊」，也不出現在匯入流程的任何地方 ——
+       * 不分身份。這個機制連名字都不該在上架畫面上出現：
+       * 廠商看到會知道平台在調什麼，而平台自己要調的話有專門的頁面
+       *（系統設定 → 殺率調整），那裡才是它該在的位置。
+       */
       if (TICKETED_TYPES.includes(type) && product.profit_rate === undefined) {
-        const hist = median(stats.bySupplierType.get(type)?.profit ?? [])
-        product.profit_rate = hist ?? 1.0
-        // 廠商不該知道有這個機制。值照樣算、照樣寫進資料表，只是不列在畫面上
-        if (!hideProfitRate) {
-          filled.push({
-            key: 'profit_rate', label: '殺率', value: product.profit_rate,
-            source: hist !== null ? '同廠商同類型既有商品' : '預設值',
-          })
-        }
+        product.profit_rate = median(stats.bySupplierType.get(type)?.profit ?? []) ?? 1.0
       }
 
       // 機率制：沒給機率就按數量比例分配，總和必為 1
