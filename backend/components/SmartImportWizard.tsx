@@ -53,8 +53,20 @@ interface ParseResult {
     missingImages: number; knownImages: number; needsTranslation: number
   }
   prizeLayout?: 'vertical' | 'horizontal' | 'none'
+  headers: string[]
   products: ParsedRow[]
 }
+
+/** 對應編輯器上要露出來的欄位。全部 26 欄太多，只放最會抓錯、也最關鍵的那幾個 */
+const REMAPPABLE: { key: string; label: string }[] = [
+  { key: 'name',        label: '商品名稱' },
+  { key: 'type',        label: '商品類型' },
+  { key: 'price',       label: '單抽價格' },
+  { key: 'image_url',   label: '商品主圖' },
+  { key: 'total_count', label: '總籤數' },
+  { key: 'series',      label: '系列' },
+  { key: 'barcode',     label: '產品條碼' },
+]
 
 interface Supplier { id: number; name: string; is_platform?: boolean }
 
@@ -77,6 +89,11 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const [dragOver, setDragOver] = useState(false)
   const [result, setResult] = useState<ParseResult | null>(null)
   const [filling, setFilling] = useState<{ done: number; total: number; found: number } | null>(null)
+  // 欄位對應的人工修正。任何啟發式都不可能永遠猜對，但改一次就該記住
+  const [remapping, setRemapping] = useState(false)
+  const [reparsing, setReparsing] = useState(false)
+  // 留著上傳的檔案：改完欄位對應要拿同一份重跑解析
+  const [file, setFile] = useState<File | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [committing, setCommitting] = useState(false)
@@ -93,7 +110,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   }, [isOpen])
 
   const reset = useCallback(() => {
-    setStep('upload'); setResult(null); setRows([]); setOutcome(null)
+    setStep('upload'); setResult(null); setRows([]); setOutcome(null); setFile(null); setRemapping(false)
     setExpanded(new Set()); setParsing(false); setCommitting(false)
     setTranslating(false); setTranslated(null)
     if (fileRef.current) fileRef.current.value = ''
@@ -104,6 +121,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   // ── 解析 ──
   const parseFile = async (file: File) => {
     if (!supplierId) { toast('請先選擇廠商', 'error'); return }
+    setFile(file)
     setParsing(true)
     try {
       const fd = new FormData()
@@ -139,6 +157,79 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
    * 塞在同一個請求裡一定逾時。每批 40 筆，同時把進度顯示出來，
    * 不然使用者會以為當掉了。
    */
+  /**
+   * 補品項
+   *
+   * 廠商只給商品名、沒給品項是常態。原本就直接標成「待上架」丟回來，
+   * 要人自己一個一個去查官網再填 —— 但那正是「智能上架」該做的事。
+   *
+   * 走的是 ai-enrich 那支：它已經有 30 幾個官網的爬蟲（萬代、SEGA、FuRyu、
+   * 三麗鷗、SQUARE ENIX…），查得到就直接拿到整份賞等與品項名，順便拿到官方圖。
+   * 查不到才會退到 Claude 生成，那一段要錢，所以按鈕上寫清楚。
+   *
+   * 併發只開 2：那些官網不是給人爬的，打太快會被擋，擋了就整批都拿不到。
+   */
+  const fillPrizes = async () => {
+    const targets = rows
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.prizes.length === 0 && String(r.product.name ?? '').trim())
+    if (!targets.length) return 0
+
+    const next = rows.map(r => ({ ...r, prizes: [...r.prizes] }))
+    let filledCount = 0
+    let cursor = 0
+
+    const worker = async () => {
+      while (cursor < targets.length) {
+        const { r, i } = targets[cursor++]
+        setFilling(f => f ? { ...f, done: f.done + 1 } : f)
+        try {
+          const res = await fetch('/api/admin/products/ai-enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              product_name: r.product.name,
+              product_type: r.product.type,
+              barcode: r.product.barcode ?? null,
+              variants_count: Number(r.product.total_count) || 0,
+            }),
+          })
+          if (!res.ok) continue
+          const json = await res.json()
+          const variants = (json?.data?.variants ?? []) as { grade?: string; name?: string; image_url?: string | null }[]
+          if (!variants.length) continue
+
+          next[i].prizes = variants.map(v => ({
+            level: v.grade || '未分類',
+            name: v.name || '',
+            total: 1,
+            remaining: 1,
+            image_url: v.image_url ?? null,
+            probability: 0,
+            recycle_value: 0,
+            sale_price: 0,
+          })).filter(p => p.name)
+
+          if (!next[i].product.image_url && json?.data?.image_url) {
+            next[i].product.image_url = json.data.image_url
+          }
+          // 總籤數本來就是品項數量加總，補完品項要一起更新
+          const sum = next[i].prizes.reduce((a, p) => a + Number(p.total || 0), 0)
+          if (sum > 0) {
+            next[i].product.total_count = sum
+            next[i].product.remaining = sum
+          }
+          filledCount++
+        } catch { /* 單筆失敗不該中斷整批 */ }
+      }
+    }
+
+    await Promise.all([worker(), worker()])
+    setRows(next)
+    return filledCount
+  }
+
   const fillImages = async () => {
     type Task = { key: string; query: string; barcode?: string | null; reuse?: boolean }
     const tasks: Task[] = []
@@ -157,9 +248,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       })
     })
 
-    if (!tasks.length) { toast('沒有缺圖的項目'); return }
+    if (!tasks.length) return 0
 
-    setFilling({ done: 0, total: tasks.length, found: 0 })
+    setFilling(f => ({ done: 0, total: tasks.length, found: f?.found ?? 0 }))
     const next = rows.map(r => ({ ...r, prizes: r.prizes.map(z => ({ ...z })) }))
     let found = 0
 
@@ -185,12 +276,66 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
         setFilling({ done: Math.min(i + chunk.length, tasks.length), total: tasks.length, found })
       }
       setRows(next)
-      toast(`補到 ${found} 張圖，還有 ${tasks.length - found} 個項目沒找到`)
+      return found
     } catch (e: unknown) {
       setRows(next)  // 已經補到的先留著，不要因為後面失敗就整批丟掉
       toast(e instanceof Error ? e.message : '補圖失敗', 'error')
+      return found
+    }
+  }
+
+  /**
+   * 一鍵補齊：先查品項，再補圖。
+   *
+   * 兩件事分兩顆按鈕是我原本的做法，但使用者按的是「補齊」，
+   * 心裡想的就是「把缺的都補完」—— 拆成兩顆等於要人自己記得按第二次。
+   * 而且順序有意義：品項補完才知道有哪些品項要補圖。
+   */
+  const autoComplete = async () => {
+    const needPrize = rows.filter(r => r.prizes.length === 0 && r.product.name).length
+    setFilling({ done: 0, total: Math.max(needPrize, 1), found: 0 })
+    try {
+      const gotPrizes = needPrize ? await fillPrizes() : 0
+      const gotImages = await fillImages()
+      toast(
+        needPrize
+          ? `補了 ${gotPrizes} 個商品的品項、${gotImages} 張圖`
+          : `補了 ${gotImages} 張圖`,
+      )
     } finally {
       setFilling(null)
+    }
+  }
+
+  /**
+   * 手動改欄位對應，然後用改好的對應重跑一次解析。
+   *
+   * 存回廠商的格式記憶 —— 同一家廠商下次上傳同樣的格式就直接對，
+   * 不用再改一次。這比繼續加正則別名可靠：別名是猜的，人改的是確定的。
+   */
+  const applyMapping = async (nextMapping: Record<string, string | null>) => {
+    if (!file || !supplierId) return
+    setReparsing(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('supplierId', supplierId)
+      fd.append('mappingOverride', JSON.stringify(nextMapping))
+
+      const res = await fetch('/api/admin/products/import/parse', {
+        method: 'POST', body: fd, credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || '重新解析失敗')
+      const data = json as ParseResult
+      setResult(data)
+      setRows(data.products.map(p => ({ ...p, selected: true })))
+      setRemapping(false)
+      toast('已套用並記住這個對應')
+    } catch (e: unknown) {
+      toast(e instanceof Error ? e.message : '重新解析失敗', 'error')
+    } finally {
+      setReparsing(false)
     }
   }
 
@@ -409,20 +554,69 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             ))}
           </div>
 
+          {/* 欄位對應
+              自動比對再準也會有抓錯的時候，而且錯一個「商品名稱」整批就廢了。
+              直接把對應攤開讓人改，改完記進廠商的格式記憶 ——
+              下次同一份格式就不用再改。這比一直加正則別名可靠：
+              別名是猜的，人改的是確定的。 */}
+          <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-neutral-500">
+                {REMAPPABLE.filter(f => result.mapping[f.key]).map(f => `${f.label}→${result.mapping[f.key]}`).join('　') || '沒有對到任何主要欄位'}
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setRemapping(v => !v)}>
+                {remapping ? '收起' : '欄位對錯了？'}
+              </Button>
+            </div>
+
+            {remapping && (
+              <div className="mt-3 space-y-2 border-t border-neutral-100 pt-3">
+                <p className="text-[11px] text-neutral-400">
+                  選對之後按「重新解析」。這個對應會記在這家廠商底下，下次同樣格式直接套用。
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {REMAPPABLE.map(f => (
+                    <label key={f.key} className="flex items-center gap-2">
+                      <span className="w-20 shrink-0 text-xs text-neutral-600">{f.label}</span>
+                      <select
+                        defaultValue={result.mapping[f.key] ?? ''}
+                        onChange={e => { result.mapping[f.key] = e.target.value || null }}
+                        className="h-8 min-w-0 flex-1 rounded-lg border border-neutral-200 px-2 text-xs"
+                      >
+                        <option value="">（不對應）</option>
+                        {(result.headers ?? []).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => applyMapping(result.mapping)}
+                  isLoading={reparsing}
+                >
+                  重新解析
+                </Button>
+              </div>
+            )}
+          </div>
+
           {/* 缺圖的補圖入口。放在統計列正下方 —— 那是使用者看到「圖片是空的」
               之後第一個會找的地方 */}
           {(() => {
             const missingProduct = rows.filter(r => !r.product.image_url && r.product.name).length
-            const missingPrize = rows.reduce(
+            const missingPrizeImg = rows.reduce(
               (a, r) => a + r.prizes.filter(z => !z.image_url && z.name).length, 0)
-            const total = missingProduct + missingPrize
+            const noPrizeRows = rows.filter(r => r.prizes.length === 0 && r.product.name).length
+            const total = missingProduct + missingPrizeImg + noPrizeRows
             if (!total && !filling) return null
             return (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2.5">
                 {filling ? (
                   <>
                     <p className="text-xs text-blue-900">
-                      補圖中 {filling.done} / {filling.total}，已找到 {filling.found} 張
+                      補齊中 {filling.done} / {filling.total}…
                     </p>
                     <div className="h-1.5 w-28 shrink-0 overflow-hidden rounded-full bg-blue-100">
                       <div
@@ -434,11 +628,13 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
                 ) : (
                   <>
                     <p className="text-xs text-blue-900">
-                      還有 {total} 個項目沒有圖（商品主圖 {missingProduct}、品項 {missingPrize}）。
-                      可以自動去找，找到的會壓縮後存進自己的圖庫。
+                      {noPrizeRows > 0 && <>{noPrizeRows} 個商品沒有品項，會去官網查回來。</>}
+                      {(missingProduct + missingPrizeImg) > 0 && (
+                        <>還有 {missingProduct + missingPrizeImg} 個項目沒有圖，會自動找圖並壓縮後存進自己的圖庫。</>
+                      )}
                     </p>
-                    <Button size="sm" variant="outline" onClick={fillImages}>
-                      自動補圖
+                    <Button size="sm" variant="outline" onClick={autoComplete}>
+                      智能補齊
                     </Button>
                   </>
                 )}

@@ -157,6 +157,13 @@ export async function POST(request: Request) {
     const file = form.get('file') as File | null
     const supplierId = form.get('supplierId') ? Number(form.get('supplierId')) : null
     const forcedType = form.get('type') ? String(form.get('type')) as ProductType : null
+    // 人工修正過的欄位對應。自動比對再準也有抓錯的時候，
+    // 而且錯一個「商品名稱」整批就廢了 —— 讓人改一次比繼續加正則別名可靠
+    let mappingOverride: Record<string, string | null> | null = null
+    try {
+      const raw = form.get('mappingOverride')
+      if (raw) mappingOverride = JSON.parse(String(raw))
+    } catch { /* 壞掉的 JSON 就當作沒給，照原本的自動比對走 */ }
 
     if (!file) return NextResponse.json({ error: '沒有收到檔案' }, { status: 400 })
     if (!supplierId) return NextResponse.json({ error: '請先選擇廠商' }, { status: 400 })
@@ -223,6 +230,14 @@ export async function POST(request: Request) {
       mapping = ruleMapping
       prizeGroups = rulePrizeGroups
       mappingSource = 'rules'
+    }
+
+    // 人工修正蓋過一切。這是使用者看著自己的檔案指定的，比任何猜測都準
+    if (mappingOverride) {
+      for (const [k, v] of Object.entries(mappingOverride)) {
+        if (k in mapping) mapping[k] = v || null
+      }
+      mappingSource = 'profile'
     }
 
     const stats = await loadSiteStats(supplierId)
