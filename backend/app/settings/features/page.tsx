@@ -436,8 +436,8 @@ const MAINT_OPTIONS = [
 
       <PageCard>
         <FlagSection
-            title="玩法" items={items.play} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
-            info="關掉的玩法不會出現在前台的分類頁籤，既有商品也連帶隱藏。已經抽到的獎品不受影響。"
+            title="類別" items={items.play} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
+            info="關掉的類別不會出現在前台的分類頁籤，既有商品也連帶隱藏。已經抽到的獎品不受影響。"
         />
       </PageCard>
 
