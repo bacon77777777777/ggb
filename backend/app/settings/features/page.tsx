@@ -1,11 +1,10 @@
 'use client'
 
-import { AdminLayout, PageCard, Switch } from '@/components'
-import { useEffect, useMemo, useState } from 'react'
+import { AdminLayout, PageCard } from '@/components'
+import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import InfoDot from '@/components/ui/InfoDot'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 
@@ -56,6 +55,15 @@ const STATE_OPTIONS: { v: FlagState; label: string }[] = [
   { v: 'off',         label: '關閉' },
 ]
 
+type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push'
+
+const SECTIONS: { key: SectionKey; label: string }[] = [
+  { key: 'maintenance', label: '站台維護' },
+  { key: 'category',    label: '類別' },
+  { key: 'commerce',    label: '交易與金流' },
+  { key: 'push',        label: '內部通知' },
+]
+
 const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
   { key: 'ichiban',  label: '一番賞' },
   { key: 'blindbox', label: '盒玩' },
@@ -65,9 +73,9 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
   { key: 'sell',     label: '販售' },
 ]
 
-const TRADE_ITEMS: { key: FeatureKey; label: string }[] = [
-  { key: 'exchange', label: '交換' },
-  { key: 'market',   label: '交易所' },
+const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
+  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。跟交易所共用前台同一個入口，只能擇一。' },
+  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。跟交換共用前台同一個入口，只能擇一。' },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
@@ -215,8 +223,9 @@ export default function FeatureFlagsPage() {
       setMaintSaving(false)
     }
   }
-  // 推播預設收合：十四個開關是全頁最少動的東西，卻最佔版面
-  const [pushOpen, setPushOpen] = useState(false)
+  // 分區導覽。四個區塊分頁而不是一路往下捲 —— 每一列因此放得下一行說明，
+  // 不必把解釋全收進 hover 圓點裡
+  const [section, setSection] = useState<SectionKey>('maintenance')
   const [isPushLoading, setIsPushLoading] = useState(true)
   const [isPushSaving, setIsPushSaving] = useState(false)
 
@@ -396,9 +405,7 @@ const MAINT_OPTIONS = [
 
   return (
     <AdminLayout pageTitle="功能開關">
-      {/* 每個區塊各一張卡，外層用 space-y-4 隔開 —— 這是站上其他頁的既有慣例
-          （見 slot/[id]）。卡片直接相鄰會黏成一片，看不出分組 */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <SummaryBar
           ready={ready && Boolean(maint)}
           scope={maint?.scope ?? 'off'}
@@ -414,265 +421,260 @@ const MAINT_OPTIONS = [
           </PageCard>
         )}
 
-        {/* 卡片依「這個設定會不會恢復」分：
-            營運狀態是臨時的、隨時會改回來；前台功能是長期的，決定平台提供什麼 */}
         <PageCard>
-          <SectionTitle
-            title="營運狀態"
-            info={<>
-              整站的維護開關，臨時性的，處理完就會改回來。
-              前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
-              後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
-            </>}
-          />
-
-          {/* 正常營運佔一半寬：那是預設狀態，也是最常按回來的那顆 */}
-          <div className="flex flex-col gap-1.5 sm:flex-row">
-            {MAINT_OPTIONS.map(o => {
-              const active = (maint?.scope ?? 'off') === o.v
-              const blocked = o.adminOnly && !isSuperAdmin
-              return (
-                <button
-                  key={o.v}
-                  type="button"
-                  disabled={!maint || maintSaving || blocked}
-                  onClick={() => requestScope(o.v)}
-                  // 被鎖住的原因用原生提示，不佔版面高度
-                  title={blocked ? '僅超級管理員可以關閉後台' : o.hint}
-                  className={`flex min-h-[42px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                    o.v === 'off' ? 'sm:flex-[3]' : 'sm:flex-1'
-                  } ${
-                    active
-                      ? o.v === 'off'
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-amber-400 bg-amber-50 text-amber-900'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-                  }`}
-                >
-                  {o.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {maint && maint.scope !== 'off' && (
-            <div className="mt-4 space-y-3 rounded-xl bg-neutral-50 px-4 py-3.5">
-              <div>
-                <label className="mb-1 block text-xs font-black text-neutral-500">玩家看到的訊息</label>
-                <Textarea
-                  rows={2}
-                  value={maint.message}
-                  onChange={e => setMaint({ ...maint, message: e.target.value })}
-                  onBlur={() => saveMaint({ scope: maint.scope, message: maint.message, until: maint.until })}
-                  placeholder="系統維護中，我們正在做一些調整，很快就回來。"
-                />
-              </div>
-              <div className="max-w-xs">
-                {/* 用站上的 DateTimePicker，不要生原生 datetime-local ——
-                    原生的只有點右邊那顆小圖示才展開，跟其他頁面的操作方式不一致。
-                    它收的是 'YYYY-MM-DD HH:mm:ss'，資料庫存的是 ISO，兩邊要轉 */}
-                <label className="mb-1 block text-xs font-black text-neutral-500">預計恢復時間</label>
-                <DateTimePicker
-                  value={isoToLocal(maint.until)}
-                  placeholder="選擇預計恢復時間"
-                  onChange={(v) => {
-                    const next = { ...maint, until: localToIso(v) }
-                    setMaint(next)
-                    saveMaint({ scope: next.scope, message: next.message, until: next.until })
-                  }}
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-xs font-black text-neutral-500">
-                  維護期間自己進去驗證的連結
-                  <InfoDot>
-                    開一次就種 8 小時的通行 cookie，之後照常瀏覽。
-                    每次重新啟動維護都會換一把新金鑰，上次發出去的連結會失效。
-                  </InfoDot>
-                </div>
-                <code className="mt-1 block break-all font-mono text-xs text-neutral-700">
-                  {`${FRONTEND_URL}/?__mk=${maint.bypassKey}`}
-                </code>
-              </div>
-            </div>
-          )}
-
-        </PageCard>
-
-        <PageCard>
-          <SectionTitle
-            title="前台功能"
-            info="長期設定，決定平台提供什麼。跟維護模式不同，這裡改了就是常態，不會自己恢復。"
-          />
-
-          {/* 三個分組並排，組內上下排 —— 同一組的東西擺在一起才比得出來，
-              一組一組橫向流過去會讓「類別」的第四項跟「玩家交易」的第一項變成鄰居 */}
-          <div className="grid grid-cols-1 items-start gap-x-12 gap-y-6 lg:grid-cols-2 2xl:grid-cols-3">
-            <div>
-              <SubLabel
-                info={<>
-                  <b>開放</b>：正常販售。<br />
-                  <b>維護</b>：分類頁籤留著，點進去說明暫時維護中，商品買不到。用在臨時停一下。<br />
-                  <b>關閉</b>：分類頁籤與商品全部從前台消失。用在不做這個類別了。<br />
-                  兩種都不影響玩家已經抽到的獎品。
-                </>}
-              >
-                類別
-              </SubLabel>
-              {CATEGORY_ITEMS.map(item => (
-                <ControlRow key={item.key} label={item.label} state={states?.[item.key] ?? 'on'}>
-                  <Segmented
-                    value={states?.[item.key] ?? 'on'}
-                    disabled={!ready || isSaving}
-                    options={[
-                      { v: 'on', label: '開放', tone: 'on' },
-                      { v: 'maintenance', label: '維護', tone: 'warn' },
-                      { v: 'off', label: '關閉', tone: 'off' },
-                    ]}
-                    onChange={(v) => setState(item.key, v as FlagState, item.label)}
-                  />
-                </ControlRow>
-              ))}
-            </div>
-
-            <div>
-              <SubLabel
-                info={<>
-                  「交換」是卡牌一對一交換，「交易所」是掛單買賣。
-                  兩者共用前台同一個入口，只能擇一 —— 開了其中一個，另一個會自動關掉。
-                  關掉之後前台不再顯示入口，進行中的交易不受影響。
-                </>}
-              >
-                玩家交易
-              </SubLabel>
-              {TRADE_ITEMS.map(item => {
-                const on = Boolean(flags?.[item.key])
+          <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
+            {/* 分區導覽。手機上橫向捲動，桌機才靠左直排 */}
+            <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-40 lg:flex-col lg:overflow-visible lg:border-r lg:border-neutral-100 lg:px-0 lg:pb-0 lg:pr-4">
+              {SECTIONS.map(sc => {
+                const active = section === sc.key
+                // 這一區有沒有非預設的設定。不用點進去就知道哪裡動過
+                const flagged =
+                  sc.key === 'maintenance' ? (maint?.scope ?? 'off') !== 'off'
+                    : sc.key === 'category' ? categoryCounts.maintenance + categoryCounts.off > 0
+                      : sc.key === 'commerce' ? flags?.recharge === false
+                        : false
                 return (
-                  <ControlRow key={item.key} label={item.label} state={on ? 'on' : 'off'}>
-                    <Segmented
-                      value={on ? 'on' : 'off'}
-                      disabled={!ready || isSaving}
-                      options={[
-                        { v: 'on', label: '開放', tone: 'on' },
-                        { v: 'off', label: '關閉', tone: 'off' },
-                      ]}
-                      onChange={(v) => toggleFlag(item.key, v === 'on')}
-                    />
-                  </ControlRow>
+                  <button
+                    key={sc.key}
+                    type="button"
+                    onClick={() => setSection(sc.key)}
+                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-[13px] font-bold transition-colors ${
+                      active
+                        ? 'bg-primary/5 text-primary'
+                        : 'text-neutral-500 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {sc.label}
+                    {flagged && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />}
+                  </button>
                 )
               })}
-            </div>
+            </nav>
 
-            <div>
-              <SubLabel>金流</SubLabel>
-              {/* 販售收款不是開關，是「錢經不經過平台」的二選一。
-                  原本叫「販售金流／開放關閉」，讀者看不出關掉之後錢跑哪去 */}
-              <ControlRow
-                label="販售收款"
-                state={flags?.sell_escrow ? 'on' : 'off'}
-                info={<>
-                  玩家二手販售時，買家的錢怎麼走。<br />
-                  <b>平台代收</b>：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。<br />
-                  <b>雙方自理</b>：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。
-                </>}
-              >
-                <Segmented
-                  value={flags?.sell_escrow ? 'on' : 'off'}
-                  disabled={!ready || isSaving}
-                  options={[
-                    { v: 'on', label: '平台代收', tone: 'on' },
-                    { v: 'off', label: '雙方自理', tone: 'off' },
-                  ]}
-                  onChange={(v) => toggleFlag('sell_escrow', v === 'on')}
-                />
-              </ControlRow>
-              <ControlRow
-                label="儲值"
-                state={flags?.recharge === false ? 'off' : 'on'}
-                info="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
-              >
-                <Segmented
-                  value={flags?.recharge === false ? 'off' : 'on'}
-                  disabled={!ready || isSaving}
-                  options={[
-                    { v: 'on', label: '開放', tone: 'on' },
-                    { v: 'off', label: '關閉', tone: 'off' },
-                  ]}
-                  onChange={(v) => toggleFlag('recharge', v === 'on')}
-                />
-              </ControlRow>
-            </div>
-          </div>
-        </PageCard>
+            <div className="min-w-0 flex-1">
+              {section === 'maintenance' && (
+                <>
+                  <SectionHead
+                    title="站台維護"
+                    desc="臨時性的開關，處理完就改回來。前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走；後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。"
+                  />
 
-        {/* 推播預設收合：十四個開關鋪滿半頁，卻是全頁最少動的東西 */}
-        <PageCard>
-          <button
-            type="button"
-            onClick={() => setPushOpen(v => !v)}
-            className="flex w-full items-center justify-between gap-3 text-left"
-          >
-            <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
-              內部通知
-              <InfoDot>
-                各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感。
-                關掉只是不推播，排程照常執行、報告照常寫進後台。
-              </InfoDot>
-            </h2>
-            <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-neutral-400">
-              <span className="tabular-nums">已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}</span>
-              <span className={`transition-transform ${pushOpen ? 'rotate-180' : ''}`}>▾</span>
-            </span>
-          </button>
+                  {/* 正常營運佔一半寬：那是預設狀態，也是最常按回來的那顆 */}
+                  <div className="flex flex-col gap-1.5 sm:flex-row">
+                    {MAINT_OPTIONS.map(o => {
+                      const active = (maint?.scope ?? 'off') === o.v
+                      const blocked = o.adminOnly && !isSuperAdmin
+                      return (
+                        <button
+                          key={o.v}
+                          type="button"
+                          disabled={!maint || maintSaving || blocked}
+                          onClick={() => requestScope(o.v)}
+                          title={blocked ? '僅超級管理員可以關閉後台' : undefined}
+                          className={`flex min-h-[42px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            o.v === 'off' ? 'sm:flex-[3]' : 'sm:flex-1'
+                          } ${
+                            active
+                              ? o.v === 'off'
+                                ? 'border-primary bg-primary/5 text-primary'
+                                : 'border-amber-400 bg-amber-50 text-amber-900'
+                              : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                          }`}
+                        >
+                          {o.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {/* 說明只講「現在選的這個」是什麼意思，四個一起列會變成一堵字 */}
+                  <p className="mt-2 text-xs font-bold text-neutral-400">
+                    {MAINT_OPTIONS.find(o => o.v === (maint?.scope ?? 'off'))?.hint}
+                  </p>
 
-          {pushOpen && (
-            <div className="mt-3">
-              <div className="mb-2 flex gap-2">
-                <button
-                  type="button"
-                  disabled={isPushLoading || isPushSaving}
-                  onClick={() => setAllPush(true)}
-                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  全部開啟
-                </button>
-                <button
-                  type="button"
-                  disabled={isPushLoading || isPushSaving}
-                  onClick={() => setAllPush(false)}
-                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  全部關閉
-                </button>
-              </div>
-              {/* 十四項用標籤而不是開關：開關一項就佔一整列，十四列鋪下來就是那片灰。
-                  標籤點一下就切換，實心是開、空心是關，一排放得下四到五個 */}
-              <div className="flex flex-wrap gap-2">
-                {LINE_PUSH_ITEMS.map((item) => {
-                  const on = pushFlags[item.key]
-                  return (
+                  {maint && maint.scope !== 'off' && (
+                    <div className="mt-5 space-y-4 border-t border-neutral-100 pt-5">
+                      <Row title="玩家看到的訊息" desc="維護頁上那段話。留白會用預設文案。">
+                        <div className="w-full sm:w-80">
+                          <Textarea
+                            rows={2}
+                            value={maint.message}
+                            onChange={e => setMaint({ ...maint, message: e.target.value })}
+                            onBlur={() => saveMaint({ scope: maint.scope, message: maint.message, until: maint.until })}
+                            placeholder="系統維護中，我們正在做一些調整，很快就回來。"
+                          />
+                        </div>
+                      </Row>
+                      <Row title="預計恢復時間" desc="啟動時自動帶兩小時後的整點或半點，顯示在維護頁上。">
+                        <div className="w-full sm:w-52">
+                          {/* 用站上的 DateTimePicker，不要生原生 datetime-local ——
+                              原生的只有點右邊那顆小圖示才展開，跟其他頁面的操作方式不一致。
+                              它收的是 'YYYY-MM-DD HH:mm:ss'，資料庫存的是 ISO，兩邊要轉 */}
+                          <DateTimePicker
+                            value={isoToLocal(maint.until)}
+                            placeholder="選擇時間"
+                            onChange={(v) => {
+                              const next = { ...maint, until: localToIso(v) }
+                              setMaint(next)
+                              saveMaint({ scope: next.scope, message: next.message, until: next.until })
+                            }}
+                          />
+                        </div>
+                      </Row>
+                      <Row
+                        title="自己進去驗證的連結"
+                        desc="開一次就種 8 小時的通行 cookie，之後照常瀏覽。每次重新啟動維護都會換新金鑰，上次發出去的連結會失效。"
+                      >
+                        <code className="block break-all rounded-lg bg-neutral-50 px-2.5 py-1.5 font-mono text-xs text-neutral-700">
+                          {`${FRONTEND_URL}/?__mk=${maint.bypassKey}`}
+                        </code>
+                      </Row>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {section === 'category' && (
+                <>
+                  <SectionHead
+                    title="類別"
+                    desc="決定前台提供哪些玩法。開放是正常販售；維護會留著分類頁籤、點進去說明暫時維護中；關閉則是分類頁籤與商品全部從前台消失，直接開連結也只看到「商品關閉中」。三種狀態都不影響玩家已經抽到的獎品。"
+                  />
+                  <div className="divide-y divide-neutral-100">
+                    {CATEGORY_ITEMS.map(item => (
+                      <Row key={item.key} title={item.label} state={states?.[item.key] ?? 'on'}>
+                        <Segmented
+                          value={states?.[item.key] ?? 'on'}
+                          disabled={!ready || isSaving}
+                          options={[
+                            { v: 'on', label: '開放', tone: 'on' },
+                            { v: 'maintenance', label: '維護', tone: 'warn' },
+                            { v: 'off', label: '關閉', tone: 'off' },
+                          ]}
+                          onChange={(v) => setState(item.key, v as FlagState, item.label)}
+                        />
+                      </Row>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {section === 'commerce' && (
+                <>
+                  <SectionHead
+                    title="交易與金流"
+                    desc="玩家之間的交易入口，以及錢怎麼走。關掉之後前台不再顯示入口，進行中的交易不受影響。"
+                  />
+                  <div className="divide-y divide-neutral-100">
+                    {TRADE_ITEMS.map(item => {
+                      const on = Boolean(flags?.[item.key])
+                      return (
+                        <Row key={item.key} title={item.label} desc={item.desc} state={on ? 'on' : 'off'}>
+                          <Segmented
+                            value={on ? 'on' : 'off'}
+                            disabled={!ready || isSaving}
+                            options={[
+                              { v: 'on', label: '開放', tone: 'on' },
+                              { v: 'off', label: '關閉', tone: 'off' },
+                            ]}
+                            onChange={(v) => toggleFlag(item.key, v === 'on')}
+                          />
+                        </Row>
+                      )
+                    })}
+                    {/* 販售收款不是開關，是「錢經不經過平台」的二選一。
+                        原本叫「販售金流／開放·關閉」，讀者看不出關掉之後錢跑哪去 */}
+                    <Row
+                      title="販售收款"
+                      desc="平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。"
+                      state={flags?.sell_escrow ? 'on' : 'off'}
+                    >
+                      <Segmented
+                        value={flags?.sell_escrow ? 'on' : 'off'}
+                        disabled={!ready || isSaving}
+                        options={[
+                          { v: 'on', label: '平台代收', tone: 'on' },
+                          { v: 'off', label: '雙方自理', tone: 'off' },
+                        ]}
+                        onChange={(v) => toggleFlag('sell_escrow', v === 'on')}
+                      />
+                    </Row>
+                    <Row
+                      title="儲值"
+                      desc="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+                      state={flags?.recharge === false ? 'off' : 'on'}
+                    >
+                      <Segmented
+                        value={flags?.recharge === false ? 'off' : 'on'}
+                        disabled={!ready || isSaving}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'off', label: '關閉', tone: 'off' },
+                        ]}
+                        onChange={(v) => toggleFlag('recharge', v === 'on')}
+                      />
+                    </Row>
+                  </div>
+                </>
+              )}
+
+              {section === 'push' && (
+                <>
+                  <SectionHead
+                    title="內部通知"
+                    desc="各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感 —— 關掉只是不推播，排程照常執行、報告照常寫進後台。"
+                  />
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs font-bold text-neutral-400 tabular-nums">
+                      已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
+                    </span>
+                    <span className="text-neutral-200">|</span>
                     <button
-                      key={item.key}
                       type="button"
                       disabled={isPushLoading || isPushSaving}
-                      onClick={() => {
-                        const next = { ...pushFlags, [item.key]: !on }
-                        setPushFlags(next)
-                        savePush(next)
-                      }}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                        on
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-neutral-200 bg-white text-neutral-400 hover:border-neutral-300'
-                      }`}
+                      onClick={() => setAllPush(true)}
+                      className="text-xs font-bold text-primary transition-colors hover:underline disabled:opacity-50"
                     >
-                      {item.label}
+                      全部開啟
                     </button>
-                  )
-                })}
-              </div>
+                    <button
+                      type="button"
+                      disabled={isPushLoading || isPushSaving}
+                      onClick={() => setAllPush(false)}
+                      className="text-xs font-bold text-neutral-500 transition-colors hover:underline disabled:opacity-50"
+                    >
+                      全部關閉
+                    </button>
+                  </div>
+                  {/* 十四項用標籤而不是一列一個控制項：這裡每一項都是同一種東西、
+                      也不影響玩家，不值得各佔一整列。點一下就切換，實心是開、空心是關 */}
+                  <div className="flex flex-wrap gap-2">
+                    {LINE_PUSH_ITEMS.map((item) => {
+                      const on = pushFlags[item.key]
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          disabled={isPushLoading || isPushSaving}
+                          onClick={() => {
+                            const next = { ...pushFlags, [item.key]: !on }
+                            setPushFlags(next)
+                            savePush(next)
+                          }}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            on
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-neutral-200 bg-white text-neutral-400 hover:border-neutral-300'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
         </PageCard>
       </div>
 
@@ -701,9 +703,8 @@ const STATE_TONE: Record<FlagState, string> = {
 /**
  * 頂部狀態摘要。
  *
- * 進這一頁最想先知道的是「現在整體正不正常」，但那個答案原本散在三張卡裡，
- * 要整頁掃過才拼得出來。用一行講完，異常的項目標琥珀色，
- * 正常的時候它安靜到不佔注意力。
+ * 分區之後看不到全貌，這一行補回來：進這頁最想先知道的是「現在整體正不正常」。
+ * 異常的項目標琥珀色，正常的時候它安靜到不佔注意力。
  */
 function SummaryBar({ ready, scope, rechargeOn, counts }: {
   ready: boolean
@@ -739,49 +740,39 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
   )
 }
 
-/** 卡片標題。四張卡原本大小顏色各自為政，統一從這裡出 */
-function SectionTitle({ title, info }: { title: string; info?: React.ReactNode }) {
+/** 分區的標題與說明。說明直接寫在畫面上，不收進 hover —— 這一頁的重點就是看得懂 */
+function SectionHead({ title, desc }: { title: string; desc: string }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-neutral-900">
-      {title}
-      {info && <InfoDot>{info}</InfoDot>}
-    </h2>
-  )
-}
-
-/** 卡片內的分區小標。比卡片標題輕一級，讓一張卡放得下兩個相關的區塊 */
-function SubLabel({ children, info }: { children: React.ReactNode; info?: React.ReactNode }) {
-  return (
-    <div className="mb-2 mt-4 flex items-center gap-2 text-xs font-black text-neutral-500 first:mt-0">
-      {children}
-      {info && <InfoDot>{info}</InfoDot>}
+    <div className="mb-4">
+      <h2 className="text-base font-black text-neutral-900">{title}</h2>
+      <p className="mt-1 max-w-2xl text-xs font-bold leading-relaxed text-neutral-400">{desc}</p>
     </div>
   )
 }
 
 /**
- * 一列設定：狀態圓點 + 名稱 + 控制項。
+ * 一列設定：左邊名稱與說明，右邊控制項。
  *
- * 名稱固定寬度並跟控制項靠在一起成一個單元，單元之間才留白 ——
- * 原本名稱貼最左、控制項貼最右，寬螢幕上中間空一大片，眼睛要跳很遠。
- * 圓點是為了掃描：不讀字也知道哪一列不是開放狀態。
+ * 說明放得下一整句，所以不必再用 hover 圓點 —— 要滑過去才看得到的說明，
+ * 等於沒寫給不知道要滑的人看。
+ * state 給了就在名稱前面點一個狀態圓點，不讀字也掃得出哪一列不是開放。
  */
-function ControlRow({ label, state, info, children }: {
-  label: string
-  state: FlagState
-  info?: React.ReactNode
+function Row({ title, desc, state, children }: {
+  title: string
+  desc?: string
+  state?: FlagState
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-neutral-100 py-2">
-      <span className="flex w-[5.5rem] shrink-0 items-center gap-1.5">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />
-        <span className={`truncate text-[13px] font-bold ${state === 'on' ? 'text-neutral-900' : 'text-neutral-400'}`}>
-          {label}
-        </span>
-        {info && <InfoDot>{info}</InfoDot>}
-      </span>
-      {children}
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {state && <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />}
+          <span className="text-[13px] font-black text-neutral-900">{title}</span>
+        </div>
+        {desc && <p className="mt-0.5 max-w-xl text-xs font-bold leading-relaxed text-neutral-400">{desc}</p>}
+      </div>
+      <div className="shrink-0">{children}</div>
     </div>
   )
 }
@@ -811,7 +802,7 @@ function Segmented({ value, options, disabled, onChange, className = '' }: {
             type="button"
             disabled={disabled}
             onClick={() => onChange(o.v)}
-            className={`flex-1 px-2.5 py-1 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+            className={`flex-1 whitespace-nowrap px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
               active
                 ? o.tone === 'on'
                   ? 'bg-primary text-white'
