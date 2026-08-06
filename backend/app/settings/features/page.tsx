@@ -113,9 +113,12 @@ export default function FeatureFlagsPage() {
       ({
         // 群組依「玩家看到什麼」分，不是依實作分。
         // 原本金流拆成兩組（儲值 / 販售金流）各只有一項，畫面上就是兩排孤零零的卡片
-        payment: [
-          { key: 'recharge' as const,     label: '儲值充值', hint: '關閉會斷開綠界，已購代幣不受影響' },
-          { key: 'sell_escrow' as const,  label: '販售金流', hint: '平台代收買家貨款' },
+        // 儲值不在這裡 —— 它是「服務現在能不能用」而不是「平台有沒有這個功能」，
+        // 所以歸到維護模式那張卡
+        trade: [
+          { key: 'sell_escrow' as const, label: '販售金流', hint: '' },
+          { key: 'exchange' as const,    label: '交換',     hint: '' },
+          { key: 'market' as const,      label: '交易所',   hint: '' },
         ],
         play: [
           { key: 'ichiban' as const,  label: '一番賞',  hint: '' },
@@ -124,10 +127,6 @@ export default function FeatureFlagsPage() {
           { key: 'card' as const,     label: '抽卡',    hint: '' },
           { key: 'custom' as const,   label: '自製賞',  hint: '' },
           { key: 'sell' as const,     label: '販售',    hint: '玩家之間的二手販售' },
-        ],
-        exchangeMarket: [
-          { key: 'exchange' as const, label: '交換',   hint: '卡牌一對一交換' },
-          { key: 'market' as const,   label: '交易所', hint: '' },
         ],
       }) as const,
     []
@@ -311,6 +310,22 @@ function localToIso(local: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString()
 }
 
+/**
+ * 啟動維護時預設的恢復時間：兩小時後，往後抓到最近的整點或半點。
+ *
+ * 給的是「大概什麼時候好」而不是精確秒數 —— 寫 15:00 玩家會等 15:00 回來看，
+ * 寫 14:53 反而像是在承諾一個做不到的精度。抓整點/半點也讓維護視窗自然變寬一點，
+ * 收工比預告時間早永遠比晚好。
+ */
+function defaultUntil(): string {
+  const d = new Date()
+  d.setHours(d.getHours() + 2)
+  d.setSeconds(0, 0)
+  // 0~29 分 → 30 分；30~59 分 → 下一個整點
+  d.setMinutes(d.getMinutes() <= 30 ? 30 : 60)
+  return d.toISOString()
+}
+
 const MAINT_OPTIONS = [
   { v: 'off',      label: '正常營運',   hint: '兩邊都開放',                         adminOnly: false },
   { v: 'frontend', label: '只關前台',   hint: '玩家看維護頁，後台照常（最常用）',   adminOnly: false },
@@ -372,6 +387,33 @@ const MAINT_OPTIONS = [
           })}
         </div>
 
+        {/* 儲值獨立於維護範圍：金流那邊出狀況時要能單獨關掉儲值，
+            不必為此把整個前台停掉。它跟上面的範圍一樣是「現在能不能用」，
+            不是「平台有沒有這個功能」，所以放這張卡而不是功能開關那幾張 */}
+        <div className={`mt-2 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors ${
+          ready && flags && !flags.recharge ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-neutral-900">儲值</span>
+            <InfoDot>
+              關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
+              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
+            </InfoDot>
+          </div>
+          <div className="flex items-center gap-3">
+            {ready && flags && !flags.recharge && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-800">
+                已關閉
+              </span>
+            )}
+            <Switch
+              checked={ready && flags ? Boolean(flags.recharge) : false}
+              disabled={!ready || isSaving}
+              onCheckedChange={(checked) => toggleFlag('recharge', checked)}
+            />
+          </div>
+        </div>
+
         {maint && maint.scope !== 'off' && (
           <div className="mt-4 space-y-3 border-t border-neutral-100 pt-4">
             <div>
@@ -425,17 +467,6 @@ const MAINT_OPTIONS = [
 
       <PageCard>
         <FlagSection
-            title="金流" items={items.payment} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
-            info={<>
-              「儲值充值」關閉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
-              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
-              「販售金流」是玩家之間二手販售時由平台代收貨款。
-            </>}
-        />
-      </PageCard>
-
-      <PageCard>
-        <FlagSection
             title="類別" items={items.play} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
             info="關掉的類別不會出現在前台的分類頁籤，既有商品也連帶隱藏。已經抽到的獎品不受影響。"
         />
@@ -443,8 +474,8 @@ const MAINT_OPTIONS = [
 
       <PageCard>
         <FlagSection
-            title="交換 / 交易所" items={items.exchangeMarket} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
-            info="玩家之間的卡牌一對一交換，以及交易所的掛單買賣。"
+            title="玩家交易" items={items.trade} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
+            info="玩家之間的交易功能。「販售金流」是二手販售時由平台代收買家貨款，「交換」是卡牌一對一交換，「交易所」是掛單買賣。關掉之後前台不再顯示入口，進行中的交易不受影響。"
         />
       </PageCard>
 
@@ -494,7 +525,15 @@ const MAINT_OPTIONS = [
       <ConfirmDialog
         isOpen={pendingScope !== null}
         onClose={() => setPendingScope(null)}
-        onConfirm={() => { if (pendingScope) saveMaint({ scope: pendingScope, message: maint?.message ?? '', until: maint?.until ?? '' }); setPendingScope(null) }}
+        onConfirm={() => {
+          if (pendingScope) {
+            // 開維護時若還沒設過時間就自動帶一個，省得每次手動選；
+            // 解除時清掉，否則下次開維護會沿用上次那個早就過去的時間
+            const until = pendingScope === 'off' ? '' : (maint?.until || defaultUntil())
+            saveMaint({ scope: pendingScope, message: maint?.message ?? '', until })
+          }
+          setPendingScope(null)
+        }}
         title={pendingScope === 'off' ? '解除維護模式？' : '啟動維護模式？'}
         message={
           pendingScope === 'off'
