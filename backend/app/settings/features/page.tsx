@@ -586,8 +586,9 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
                         不是「開／關」。用開關的話關掉之後錢跑哪去就看不出來了 */}
                     <Row
-                      // 販售類別不開的時候這個設定其實沒作用，在標題後面直接說 ——
-                      // 不然改了半天不知道為什麼前台沒反應
+                      // 販售類別不開的時候這個設定其實沒作用：整列變淡並鎖住，
+                      // 標題也直接說原因 —— 不然改了半天不知道為什麼前台沒反應
+                      dimmed={states?.sell !== 'on'}
                       title={
                         states?.sell === 'maintenance' ? '販售收款（販售維護中）'
                           : states?.sell === 'off' ? '販售收款（販售關閉中）'
@@ -601,7 +602,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     >
                       <Segmented
                         value={flags?.sell_escrow ? 'on' : 'off'}
-                        disabled={!ready || isSaving}
+                        disabled={!ready || isSaving || states?.sell !== 'on'}
                         options={[
                           { v: 'on', label: '平台代收', tone: 'on' },
                           { v: 'off', label: '雙方自理', tone: 'off' },
@@ -777,14 +778,18 @@ function SectionHead({ title, info, right }: { title: string; info: React.ReactN
  * 等於沒寫給不知道要滑的人看。
  * state 給了就在名稱前面點一個狀態圓點，不讀字也掃得出哪一列不是開放。
  */
-function Row({ title, desc, state, children }: {
+function Row({ title, desc, state, dimmed, children }: {
   title: React.ReactNode
   desc?: React.ReactNode
   state?: FlagState
+  /** 這一列現在沒作用（上游關著）。整列變淡，控制項由呼叫端一併鎖住 */
+  dimmed?: boolean
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+    <div className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 ${
+      dimmed ? 'opacity-40' : ''
+    }`}>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           {state && <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />}
