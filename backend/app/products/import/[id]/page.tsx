@@ -108,12 +108,26 @@ export default function ImportJobDetailPage() {
       .then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
   }, [])
 
-  // 還在補齊就持續更新，讓人看得到資料一列一列長出來
+  /*
+   * 開著這一頁時由前端推進補齊：跑完一輪就再打一次，直到沒有待處理的列。
+   *
+   * cron 只是沒人看著時的後備 —— pg_cron 排的是打正式站的網址，
+   * 本機與 STG 沒有 pg_cron，只靠它的話工作永遠停在 0/33（實測就是這樣）。
+   * 兩邊同時跑不會重複處理，撈到的列會先被標成 enriching。
+   */
   useEffect(() => {
-    if (!rows.some(r => r.status === 'pending' || r.status === 'enriching')) return
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
-  }, [rows])
+    if (job?.status !== 'enriching') return
+    let stopped = false
+    const tick = async () => {
+      try {
+        await fetch(`/api/admin/import-jobs/${id}/run`, { method: 'POST', credentials: 'include' })
+      } catch { /* 單輪失敗不該中斷，下一輪再試 */ }
+      if (!stopped) await load()
+    }
+    tick()
+    const t = setInterval(tick, 3000)
+    return () => { stopped = true; clearInterval(t) }
+  }, [job?.status, id])
 
   const cols = useMemo(() => PRODUCT_COLS.filter(f => visible.has(f.key)), [visible])
   const selectable = rows.filter(r => r.status !== 'skipped')

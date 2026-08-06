@@ -75,11 +75,25 @@ export default function ImportJobsPage() {
 
   useEffect(() => { load() }, [])
 
-  // 補齊中的工作要看得到進度在動。沒有進行中的工作就不要一直打 API
+  /*
+   * 開著這一頁時順便推進補齊，不用進內頁也會跑。
+   * cron 只是沒人看著時的後備：pg_cron 排的是打正式站，
+   * 本機與 STG 沒有 pg_cron，只靠它工作永遠不會動。
+   */
   useEffect(() => {
-    if (!jobs.some(j => j.status === 'enriching' || j.status === 'parsing')) return
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+    const active = jobs.filter(j => j.status === 'enriching')
+    if (!active.length) return
+    let stopped = false
+    const tick = async () => {
+      // 一次只推一個工作，避免同時開好幾個把外部網站打爆
+      try {
+        await fetch(`/api/admin/import-jobs/${active[0].id}/run`, { method: 'POST', credentials: 'include' })
+      } catch { /* 單輪失敗不該中斷 */ }
+      if (!stopped) await load()
+    }
+    tick()
+    const t = setInterval(tick, 3000)
+    return () => { stopped = true; clearInterval(t) }
   }, [jobs])
 
   const upload = async (file: File) => {
