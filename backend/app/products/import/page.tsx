@@ -142,7 +142,17 @@ export default function ImportJobsPage() {
         </Link>
       ),
     },
-    { key: 'type', label: '類型', render: j => <>{j.product_type ? TYPE_LABEL[j.product_type] ?? j.product_type : '自動判斷'}</> },
+    {
+      key: 'type', label: '類別',
+      // 補齊前沒人知道是什麼類別（廠商的清單通常沒有類型欄），補完才由
+      // 商品頁判斷出來。全部同一類就顯示那一類，混著就是「綜合」
+      render: j => {
+        const types: string[] = j.resolved_types ?? []
+        if (!types.length) return <span className="text-neutral-400">判斷中</span>
+        if (types.length > 1) return <>綜合</>
+        return <>{TYPE_LABEL[types[0]] ?? types[0]}</>
+      },
+    },
     { key: 'rows', label: '筆數', className: 'tabular-nums', render: j => <>{j.total_rows}</> },
     {
       key: 'status', label: '狀態',

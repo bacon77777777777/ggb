@@ -518,6 +518,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
     </svg>
   )
+  // 促銷方案（標籤）
+  const IconTag = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+    </svg>
+  )
   // 商品補齊（魔法棒）
   const IconSparkles = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -656,6 +662,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/modules': 'settings_modules',
     '/settings/features': 'settings_features',
     '/settings/theme': 'settings_theme',
+    '/settings/promotions': 'settings_features',
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
@@ -766,6 +773,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '文章管理', path: '/news', icon: IconNews },
           { name: '分類清單', path: '/categories', icon: IconCategories },
           { name: '抽獎模組設定', path: '/settings/modules', icon: IconPuzzle },
+          { name: '促銷方案', path: '/settings/promotions', icon: IconTag },
           { name: '功能開關', path: '/settings/features', icon: IconSliders },
           { name: '主題色', path: '/settings/theme', icon: IconPalette },
           { name: '管理員清單', path: '/analytics', icon: IconBadge },
@@ -837,6 +845,24 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   }
 
   const flatMenuItems = useMemo(() => menuGroups.flatMap((g) => g.items), [menuGroups])
+
+  /*
+   * 目前落在哪個選單項。標題、側邊欄高亮、麵包屑三處共用同一個答案。
+   *
+   * 完全相符優先，沒有才取「最長的前綴」。取第一個前綴會出事：
+   * /products/import/5 會被排在更前面的 /products 攔下來，
+   * 於是內頁的標題與麵包屑雙雙變成「商品管理」（實際回報的災情）。
+   * 只要巢狀路徑跟別組的頂層路徑同前綴就會踩到，不是只有這一頁。
+   */
+  const activeMenuItem = useMemo(() => {
+    const exact = flatMenuItems.find((i) => i.path === pathname)
+    if (exact) return exact
+    let best: (typeof flatMenuItems)[number] | null = null
+    for (const i of flatMenuItems) {
+      if (pathname.startsWith(i.path + '/') && (!best || i.path.length > best.path.length)) best = i
+    }
+    return best
+  }, [flatMenuItems, pathname])
 
   // 讀取群組展開狀態（依帳號）
   useEffect(() => {
@@ -924,7 +950,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                     href={item.path}
                     title={item.name}
                     className={`flex items-center rounded-lg transition-all duration-200 ${
-                      pathname === item.path
+                      activeMenuItem?.path === item.path
                         ? 'bg-primary text-white font-semibold shadow-sm'
                         : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                     } justify-center p-2.5`}
@@ -963,7 +989,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               key={item.path}
                               href={item.path}
                               className={`flex items-center rounded-lg transition-all duration-200 ${
-                                pathname === item.path
+                                activeMenuItem?.path === item.path
                                   ? 'bg-primary text-white font-semibold shadow-sm'
                                   : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                               } gap-3 px-3 py-2.5`}
@@ -1000,12 +1026,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           <div className="px-6 h-full flex items-center w-full">
             <div className="flex items-center justify-between w-full">
               <div>
-                {/* 優先使用側邊欄菜單中的名稱，確保與側邊欄同步 */}
+                {/* 選單項精準命中時用選單的名稱，確保與側邊欄同步；
+                    內頁（/products/import/5 這種）沒有精準命中，
+                    就用它自己傳進來的 pageTitle —— 那是它才知道的東西（檔名、單號） */}
                 <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-                  {(
-                    flatMenuItems.find(item => item.path === pathname) ??
-                    flatMenuItems.find(item => pathname.startsWith(item.path + '/'))
-                  )?.name || pageTitle || '後台管理'}
+                  {(pathname === activeMenuItem?.path ? activeMenuItem.name : pageTitle) ||
+                    activeMenuItem?.name || '後台管理'}
                   {PAGE_INFO[pathname] && (
                     <span className="relative group inline-flex items-center">
                       <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
@@ -1023,11 +1049,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {/* 麵包屑導航 — 自動從 sidebar menuGroups 推算，永遠和左側欄對齊 */}
                 {(() => {
                   const crumbs: Breadcrumb[] = breadcrumbs ?? (() => {
-                    for (const group of menuGroups) {
-                      const item = group.items.find(i => i.path === pathname) ?? group.items.find(i => pathname.startsWith(i.path + '/'))
-                      if (item) return [{ label: group.title }, { label: item.name }]
+                    if (!activeMenuItem) return []
+                    const group = menuGroups.find(g => g.items.some(i => i.path === activeMenuItem.path))
+                    const trail: Breadcrumb[] = [{ label: group?.title ?? '' }, { label: activeMenuItem.name }]
+                    // 內頁再多掛一層自己。前一層點得回去，不用只靠瀏覽器上一頁
+                    if (pathname !== activeMenuItem.path && pageTitle) {
+                      trail[1] = { label: activeMenuItem.name, href: activeMenuItem.path }
+                      trail.push({ label: pageTitle })
                     }
-                    return []
+                    return trail
                   })()
                   if (!crumbs.length) return null
                   return (

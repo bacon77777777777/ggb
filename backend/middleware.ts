@@ -131,6 +131,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/settings/modules',    permission: 'settings_modules' },
   { prefix: '/settings/features',   permission: 'settings_features' },
   { prefix: '/products/import',     permission: 'products' },
+  { prefix: '/settings/promotions', permission: 'settings_features' },
   { prefix: '/settings/theme',      permission: 'settings_theme' },
   { prefix: '/settings/shipping',   permission: 'settings_shipping' },
   { prefix: '/settings',            permission: 'settings' },

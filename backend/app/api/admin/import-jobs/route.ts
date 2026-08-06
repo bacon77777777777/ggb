@@ -30,7 +30,35 @@ export async function GET() {
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  /*
+   * 每個工作實際判定出來的類別。
+   *
+   * 上傳時不問類別（廠商的清單通常沒有類型欄），是補齊時由商品頁判斷的，
+   * 所以要從已補齊的列回頭聚合。只看補齊過的列 —— 還沒跑的那些帶的是
+   * 解析階段的預設值，拿它們算會顯示成一個還沒發生的結論。
+   */
+  const jobs = data ?? []
+  const byJob = new Map<number, Set<string>>()
+  if (jobs.length) {
+    const { data: rows } = await getSupabaseAdmin()
+      .from('import_job_rows')
+      .select('job_id, product')
+      .in('job_id', jobs.map(j => j.id))
+      .in('status', ['done', 'skipped'])
+    for (const r of rows ?? []) {
+      const t = String((r.product as Record<string, unknown> | null)?.type ?? '')
+      if (!t) continue
+      const set = byJob.get(Number(r.job_id)) ?? new Set<string>()
+      set.add(t)
+      byJob.set(Number(r.job_id), set)
+    }
+  }
+
+  return NextResponse.json(jobs.map(j => ({
+    ...j,
+    resolved_types: [...(byJob.get(j.id) ?? [])],
+  })))
 }
 
 export async function DELETE(request: Request) {
