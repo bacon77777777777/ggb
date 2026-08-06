@@ -959,10 +959,7 @@ function NavbarInner() {
                         }
                         setIsMenuOpen(false);
                       }}
-                      className={cn(
-                        "w-full bg-primary text-white text-[14px] font-black py-2.5 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1.5",
-                        rechargeState === 'maintenance' && "opacity-60"
-                      )}
+                      className="w-full bg-primary text-white text-[14px] font-black py-2.5 rounded-xl shadow-md shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1.5"
                     >
                       立即儲值
                     </Link>

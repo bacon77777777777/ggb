@@ -6564,10 +6564,7 @@ function ProfileContent() {
                             toast.info('儲值維護中，敬請見諒');
                           }
                         }}
-                        className={cn(
-                          "h-8 px-4 bg-[#ffd900] rounded-full flex items-center justify-center text-[#282828] text-sm font-black shadow-lg shadow-yellow-500/20 active:scale-95 transition-transform",
-                          !isGuest && rechargeState === 'maintenance' && "opacity-60"
-                        )}
+                        className="h-8 px-4 bg-[#ffd900] rounded-full flex items-center justify-center text-[#282828] text-sm font-black shadow-lg shadow-yellow-500/20 active:scale-95 transition-transform"
                       >
                         儲值
                       </Link>

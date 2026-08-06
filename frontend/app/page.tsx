@@ -1792,8 +1792,8 @@ export default function Home() {
 /**
  * 右下角的懸浮入口。幾顆共用同一組樣式，疊起來像同一組東西。
  *
- * state 為 maintenance 時圖標照樣顯示（稍微淡化），但點下去不換頁、改跳提示。
- * 這是刻意的：藏起來玩家會以為功能被拿掉，留著才知道只是暫時停一下。
+ * state 為 maintenance 時圖標照樣顯示、外觀不變，但點下去不換頁、改跳提示。
+ * 不做淡化：看起來像壞掉的按鈕，玩家反而不會去按、也就看不到提示。
  */
 function FloatingEntry({ href, label, state = 'on', className = '', children }: {
   href: string;
@@ -1804,7 +1804,7 @@ function FloatingEntry({ href, label, state = 'on', className = '', children }: 
 }) {
   const { showToast } = useToast();
   const isMaintenance = state === 'maintenance';
-  const base = `flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${isMaintenance ? 'opacity-60' : ''} ${className}`;
+  const base = `flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${className}`;
 
   return (
     <Link
