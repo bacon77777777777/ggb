@@ -77,7 +77,7 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
-  { key: 'exchange', label: '交換',   desc: '玩家之間卡牌一對一交換。' },
+  { key: 'exchange', label: '卡牌交換', desc: '玩家之間卡牌一對一交換。' },
   { key: 'market',   label: '交易所', desc: '玩家掛單買賣。' },
 ]
 
@@ -760,7 +760,10 @@ function SectionHead({ title, info, right }: { title: string; info: React.ReactN
     <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
       <h2 className="flex items-center gap-2 text-xl font-medium text-neutral-900">
         {title}
-        <InfoDot>{info}</InfoDot>
+        {/* 往下推 1px：中文字在行框裡本來就偏下，幾何置中會看起來偏上 */}
+        <span className="inline-flex translate-y-px">
+          <InfoDot>{info}</InfoDot>
+        </span>
       </h2>
       {right}
     </div>
