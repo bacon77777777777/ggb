@@ -104,6 +104,26 @@ export default function BulkImportModal({
               </p>
             </button>
 
+            {/* 範本用 type=all：一份檔案裡把六個類別的範例都列出來，
+                廠商的清單本來就可能混著一番賞與扭蛋，給單一類別的範本會填不下去。
+                機台那一列由後端依身份決定給不給（平台自營才看得到） */}
+            <div className="rounded-xl bg-neutral-50 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-neutral-700">沒有標準格式的檔案？</p>
+                  <p className="mt-0.5 text-xs text-neutral-400">
+                    下載範本照著填，裡面每個類別都附了一列範例。
+                  </p>
+                </div>
+                <a
+                  href="/api/admin/products/import/template?type=all"
+                  className="shrink-0 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm transition-colors hover:bg-neutral-50"
+                >
+                  下載範本
+                </a>
+              </div>
+            </div>
+
             <p className="text-xs text-neutral-400">
               廠商給的原始清單請改用「商品補齊」，那裡會轉成標準格式並補齊圖片與款式。
             </p>
