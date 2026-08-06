@@ -9,7 +9,7 @@ import InfoDot from '@/components/ui/InfoDot'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -72,6 +72,7 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
   { key: 'gacha',    label: '轉蛋' },
   { key: 'card',     label: '抽卡' },
   { key: 'custom',   label: '自製賞' },
+  { key: 'slot',     label: '機台',   desc: '絕頂RUSH 這類的老虎機台。關閉後挑戰入口與機台頁都會消失。' },
   // 前面五個看名字就知道是什麼，販售不是 —— 它賣的是玩家的東西，不是平台的
   { key: 'sell',     label: '販售', desc: '像露天拍賣：玩家自己上架商品掛賣，收的是真錢，賣什麼也不限於站上抽到的東西。收款方式在「金流」那一區設定。' },
 ]
@@ -91,6 +92,7 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   gacha: true,
   card: true,
   custom: true,
+  slot: true,
   exchange: true,
   market: false,
   sell_escrow: false,

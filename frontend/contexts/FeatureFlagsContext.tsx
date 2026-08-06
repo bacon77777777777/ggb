@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow' | 'recharge';
+export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -33,6 +33,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   gacha: false,
   card: false,
   custom: false,
+  slot: false,
   exchange: false,
   market: false,
   sell_escrow: false,

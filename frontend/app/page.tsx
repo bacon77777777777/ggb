@@ -1771,10 +1771,13 @@ export default function Home() {
             <Repeat2 className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格 */}
-        <FloatingEntry href="/challenge" label="挑戰">
-          <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
-        </FloatingEntry>
+        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格。
+            關閉時整顆消失；維護中仍留著，讓玩家知道它還在（進去才說明） */}
+        {categoryState('slot', flagStates, false) !== 'off' && (
+          <FloatingEntry href="/challenge" label="挑戰">
+            <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
+          </FloatingEntry>
+        )}
       </div>
 
       <NoticeBar />
