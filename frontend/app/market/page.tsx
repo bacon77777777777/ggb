@@ -16,11 +16,12 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (flags.market && !flags.exchange) {
+    // 兩個功能不再互斥，所以只看自己那一個旗標
+    if (flags.market) {
       router.replace('/profile?tab=market');
       return;
     }
-    router.replace('/exchange');
+    router.replace(flags.exchange ? '/exchange' : '/');
   }, [flags.exchange, flags.market, isLoading, router]);
 
   return null;

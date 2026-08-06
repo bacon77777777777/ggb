@@ -20,7 +20,42 @@ function parseSession(token: string): SessionPayload | null {
 }
 
 // Pages that don't require authentication
-const PUBLIC_PATHS = ['/login', '/no-access']
+const PUBLIC_PATHS = ['/login', '/no-access', '/maintenance']
+
+/**
+ * 後台維護模式
+ *
+ * 每個請求都查資料庫會把維護狀態變成每一頁的額外延遲，所以快取 20 秒 ——
+ * 維護是低頻事件，開啟後最多 20 秒全站生效。
+ *
+ * 查不到就當作沒維護：資料庫掛掉時不該連帶把後台鎖住，
+ * 那正好是最需要進後台看狀況的時候。
+ *
+ * 超級管理員不受維護限制 —— 維護中還是要有人能進去修東西。
+ */
+let maintCache: { scope: string; at: number } = { scope: 'off', at: 0 }
+const MAINT_TTL_MS = 20_000
+
+async function getMaintenanceScope(): Promise<string> {
+  if (Date.now() - maintCache.at < MAINT_TTL_MS) return maintCache.scope
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return 'off'
+  try {
+    const res = await fetch(`${url}/rest/v1/public_maintenance?select=scope`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(1500),
+      cache: 'no-store',
+    })
+    const rows = await res.json()
+    const scope = Array.isArray(rows) ? (rows[0]?.scope ?? 'off') : 'off'
+    maintCache = { scope, at: Date.now() }
+    return scope
+  } catch {
+    maintCache = { scope: 'off', at: Date.now() }
+    return 'off'
+  }
+}
 
 /**
  * 廠商角色可以呼叫的後台 API —— 白名單，不在清單上一律 403。
@@ -128,6 +163,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/events',                 permission: 'events' },
   { prefix: '/cs-management',          permission: 'cs_management' },
   { prefix: '/ai-usage',               permission: 'tools' },
+  // 維護頁本身不需要權限 —— 它就是給被擋下來的人看的
   { prefix: '/analytics-overview',     permission: 'reports_overview' },
   { prefix: '/design-system',          permission: 'tools' },
   { prefix: '/frontend-design-system', permission: 'tools' },
@@ -135,7 +171,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/reports',                permission: 'reports_overview' },
 ]
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 靜態資源與 Next.js 內部路徑直接放行
@@ -187,9 +223,21 @@ export function middleware(request: NextRequest) {
     return res
   }
 
-  // superadmin bypasses all permission checks
+  // superadmin bypasses all permission checks —— 維護中也一樣，
+  // 否則啟動維護之後就沒人進得去修了
   if (session.role === 'super_admin' || session.role === 'superadmin') {
     return NextResponse.next()
+  }
+
+  // 後台維護：擋掉 superadmin 以外的所有人
+  const maintScope = await getMaintenanceScope()
+  if (maintScope === 'backend' || maintScope === 'all') {
+    if (pathname !== '/maintenance') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/maintenance'
+      url.search = ''
+      return NextResponse.rewrite(url)
+    }
   }
 
   // 廠商只有商品管理，連公平性驗證頁都不給 —— 那是平台對玩家的承諾，

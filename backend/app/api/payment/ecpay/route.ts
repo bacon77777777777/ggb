@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateCheckMacValue } from '@/lib/ecpay'
 import { paymentLimiter } from '@/lib/ratelimit'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,21 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const kind = String(body?.kind || 'topup')
+
+    // 儲值開關關掉時直接斷開綠界。
+    // 只在前台隱藏按鈕是不夠的 —— 這支是公開端點，直接打就繞過去了。
+    // 出貨付款（kind='delivery'）不受影響：那是玩家已經抽到東西要付運費，
+    // 把它一起關掉等於扣著人家的獎品。
+    if (kind === 'topup') {
+      const { data: flag } = await getSupabaseAdmin()
+        .from('feature_flags').select('enabled').eq('key', 'recharge').maybeSingle()
+      if (flag && flag.enabled === false) {
+        return NextResponse.json(
+          { error: '儲值功能維護中，稍後再試。已購買的代幣不受影響。' },
+          { status: 503 },
+        )
+      }
+    }
     const paymentMethod = String(body?.paymentMethod || '')
     const amountRaw = body?.amount
     const orderIdRaw = body?.orderId

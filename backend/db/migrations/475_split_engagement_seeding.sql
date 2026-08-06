@@ -36,6 +36,7 @@ DECLARE
   v_comments INT;
   v_likes    INT;
   v_existing INT;
+  v_article_at TIMESTAMPTZ;
   i INT;
 
   v_texts TEXT[] := ARRAY[
@@ -61,6 +62,9 @@ DECLARE
     '😂😂😂😂', '🫡', '❤️‍🔥', '😤'
   ];
 BEGIN
+  SELECT created_at INTO v_article_at FROM news WHERE id = p_news_id;
+  IF v_article_at IS NULL THEN RETURN; END IF;
+
   SELECT ARRAY(SELECT id FROM users WHERE is_bot = true ORDER BY RANDOM()) INTO v_bot_ids;
   v_pool := COALESCE(array_length(v_bot_ids, 1), 0);
   IF v_pool = 0 THEN RETURN; END IF;
@@ -112,7 +116,7 @@ BEGIN
              THEN v_emoji[1 + FLOOR(RANDOM() * array_length(v_emoji, 1))::INT]
              ELSE v_texts[1 + FLOOR(RANDOM() * array_length(v_texts, 1))::INT]
         END,
-        NOW() - (RANDOM() * INTERVAL '36 hours')
+        roll_comment_time(v_article_at)
       );
     END LOOP;
   END IF;

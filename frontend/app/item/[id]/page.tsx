@@ -35,6 +35,8 @@ import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useRequireLogin } from '@/hooks/useRequireLogin';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -362,9 +364,21 @@ export default function ProductDetailPage() {
   const { user, isAuthenticated, refreshProfile } = useAuth();
   const requireLogin = useRequireLogin();
   const { showToast } = useToast();
+  const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const [supabase] = useState(() => createClient());
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
+  /*
+   * 維護中與關閉都不讓人進商品頁，而且講同一句話。
+   *
+   * 兩者的差別在「類別還在不在」，那是首頁那一層的事：
+   * 維護中頁籤留著並說明暫時維護，關閉整個頁籤消失。
+   * 走到商品頁這一層，玩家要知道的只有「現在買不到」—— 再細分成
+   * 兩種說法只是多一種要理解的狀態。
+   */
+  const isCategoryClosedForPlay =
+    isCategoryHidden(product?.type, flagStates, isFlagsLoading) ||
+    isCategoryUnderMaintenance(product?.type, flagStates, isFlagsLoading);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
@@ -1245,6 +1259,36 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
+  /*
+   * 類別關閉時的畫面。
+   *
+   * 關類別只是讓分類頁籤消失，商品頁本身還在 —— 書籤、分享出去的網址、
+   * 搜尋引擎快照都還進得來。不擋的話玩家會看到一個看起來完全正常、
+   * 按下去卻抽不動的機台（DB 的 trigger 會擋，但那時已經走到掏錢那一步了）。
+   *
+   * 跟維護中分開講：關閉是平台不做這個類別了，講「已下架」讓玩家死心；
+   * 維護中是暫時停一下，那個不走這條路，繼續往下渲染整個商品頁。
+   */
+  if (isCategoryClosedForPlay) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6 text-center">
+        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">商品關閉中</h1>
+        <p className="max-w-xs text-neutral-500 dark:text-neutral-400 font-bold mb-6 leading-relaxed">
+          這個商品目前沒有開放。已經抽到的獎品都還在你的倉庫裡。
+        </p>
+        <div className="flex gap-3">
+          <Link href="/warehouse">
+            <Button size="lg" variant="secondary">看我的倉庫</Button>
+          </Link>
+          <Link href="/">
+            <Button size="lg">返回首頁</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
 
   const validPrizes = prizes.filter(p => 
     p.level !== 'Last One' && 

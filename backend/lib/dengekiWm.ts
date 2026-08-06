@@ -127,7 +127,14 @@ export async function detectWatermark(buf: Buffer): Promise<{ corner: WmCorner; 
     ]
     scores.sort((a, b) => b[1] - a[1])
     const [corner, score] = scores[0]
-    return { corner, score, found: score >= WM_THRESHOLD }
+    const runnerUp = scores[1]?.[1] ?? 0
+
+    // 光是「分數最高」不夠。四個角的分數很接近時，最高的那個多半是雜訊，
+    // 拿去蓋就會出現「logo 蓋在左下、原浮水印還留在右下」——
+    // 同一張圖上兩個浮水印。要求領先第二名至少 15% 才算數；
+    // 不夠明確就回 found=false，讓呼叫端改用已知來源的固定角。
+    const decisive = score >= runnerUp * 1.15
+    return { corner, score, found: score >= WM_THRESHOLD && decisive }
   } catch {
     return { corner: 'top-right', score: 0, found: false }
   }

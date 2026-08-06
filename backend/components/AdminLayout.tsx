@@ -816,6 +816,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
   // 對帳報表各頁面說明
   const PAGE_INFO: Record<string, string> = {
+    '/settings/features': '控制前台開放哪些玩法與金流，以及維護模式。開關即時生效，前台最多 30 秒內跟上。維護模式會把玩家帶到維護頁；關後台只有超級管理員能設定，否則設定的人會把自己鎖在外面。',
     '/recharges': '紀錄所有儲值交易（綠界 ECPay、手動轉帳、行銷贈點），包含支付方式金額、手續費與實拿明細。為 ECPay 對帳基礎數據，請勿將手動補幣寫入此表。',
     '/reports/logistics': '出貨訂單的物流費用統計，按物流商別與配送方式分類，可查看各期間費用趨勢。',
     '/reports/coupons': '折價券使用統計，包含各券別兌換張數與總折抵金額。',

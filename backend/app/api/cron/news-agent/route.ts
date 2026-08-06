@@ -11,6 +11,7 @@ import sharp from 'sharp'
 import { brandCoverImage } from '@/lib/newsBranding'
 import { detectWatermark, type WmCorner } from '@/lib/dengekiWm'
 import { createClaude } from '@/lib/aiUsage'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -245,6 +246,7 @@ async function injectBodyImages(
   coverUrl: string,
   pageUrl: string,
   forceBrand = false,
+  seen?: Set<string>,
 ): Promise<string> {
   if (!content || !articleHtml) return content
 
@@ -257,7 +259,7 @@ async function injectBodyImages(
   for (const u of candidates) {
     if (hosted.length >= 2) break
     // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
-    const r = await downloadSmartToR2(u, forceBrand, pageUrl)
+    const r = await downloadSmartToR2(u, forceBrand, pageUrl, seen)
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -294,7 +296,12 @@ function figureHtml(url: string): string {
  * forceBrand 供已知帶浮水印的來源使用：即使偵測未達門檻也照蓋，避免漏網。
  * 只抓一次圖，偵測為本地模板比對，不產生額外費用。
  */
-async function downloadSmartToR2(imgUrl: string, forceBrand = false, sourceUrl = ''): Promise<string | null> {
+async function downloadSmartToR2(
+  imgUrl: string,
+  forceBrand = false,
+  sourceUrl = '',
+  seen?: Set<string>,
+): Promise<string | null> {
   try {
     const res = await fetch(imgUrl, {
       headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
@@ -304,6 +311,17 @@ async function downloadSmartToR2(imgUrl: string, forceBrand = false, sourceUrl =
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.length < 3_000) return null
+
+    // 同一張圖只處理一次。
+    // 封面的 og:image 常常就是內文的第一張圖，只是網址不同（縮圖變體、帶 query）——
+    // 用網址比對抓不到，結果同一張圖被下載、去浮水印、上傳兩次，
+    // 而且兩次偵測到的角落可能不一樣，於是同一張圖出現兩個不同位置的 logo。
+    // 比對內容雜湊才擋得住。
+    if (seen) {
+      const h = crypto.createHash('sha1').update(buf).digest('hex')
+      if (seen.has(h)) return null
+      seen.add(h)
+    }
 
     // 四個角落都比對；已知帶浮水印的來源即使偵測未達門檻也照蓋（用偵測到分數最高的角）
     const wm = await detectWatermark(buf)
@@ -744,9 +762,10 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       // 玩具人圖片無浮水印，仍走偵測式轉存（偵測到才蓋 logo）
-      const imageUrl = (await downloadSmartToR2(ogImage)) ?? ogImage
+      const seenImages = new Set<string>()
+      const imageUrl = (await downloadSmartToR2(ogImage, false, realUrl, seenImages)) ?? ogImage
       // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
-      const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl)
+      const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${title} ${(draft.tags ?? []).join(',')}`) ?? src.category)
@@ -820,7 +839,9 @@ export async function POST(req: NextRequest) {
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
       // 已知帶浮水印的來源即使未達門檻也照蓋
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl))
+      // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
+      const seenImages = new Set<string>()
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages))
         ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
@@ -832,7 +853,7 @@ export async function POST(req: NextRequest) {
       // 功能沒做，其實是主力來源那條路徑根本沒接上。
       // articleHtml 抓不到就退回 RSS 的 content:encoded，跟 Google News 那條一致。
       const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked
+        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
       )
 
       const { error } = await supabase.from('news').insert({
@@ -913,7 +934,9 @@ export async function POST(req: NextRequest) {
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
       // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
       // 已知帶浮水印的來源即使未達門檻也照蓋
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl))
+      // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
+      const seenImages = new Set<string>()
+      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages))
         ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
@@ -926,7 +949,7 @@ export async function POST(req: NextRequest) {
       // 封面因為有 item.rssImage 兜底所以看不出來，內文圖卻是直接整段放棄 ——
       // 489 篇裡只有 1 篇有內文圖就是這樣來的。
       const contentWithImages = await injectBodyImages(
-        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked
+        draft.content, articleHtml || item.rssHtml, ogImage, realUrl, isWatermarked, seenImages
       )
 
       const id = Math.floor(10000000 + Math.random() * 90000000).toString()

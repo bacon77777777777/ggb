@@ -15,8 +15,9 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Store, Repeat2, Tag } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
@@ -37,36 +38,27 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
-  const { flags } = useFeatureFlags();
+  const { flags, states: flagStates } = useFeatureFlags();
   const { user } = useAuth();
   // Map<series, score> — populated from get_user_series_preferences RPC
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
   // Map<series, score> — global platform popularity (used as default for new users)
   const [globalSeriesPop, setGlobalSeriesPop] = useState<Map<string, number>>(new Map());
-  const enabledPrimaryFeatureCount =
-    (flags.sell ? 1 : 0) +
-    (flags.ichiban ? 1 : 0) +
-    (flags.blindbox ? 1 : 0) +
-    (flags.gacha ? 1 : 0) +
-    (flags.card ? 1 : 0) +
-    (flags.custom ? 1 : 0);
+  /*
+   * 有幾個分類頁籤存在。
+   *
+   * 這裡問的是「頁籤在不在」，不是「能不能抽」，所以用 state 而不是 flags ——
+   * 維護中的 flags 是 false，拿它來數會把維護中的頁籤當成不存在，
+   * 於是下面那段 effect 一路把使用者踢回「綜合」，點都點不進去。
+   */
+  const visibleCategories = (['ichiban', 'blindbox', 'gacha', 'card', 'custom'] as const)
+    .filter(t => categoryState(t, flagStates, false) !== 'off');
+  const enabledPrimaryFeatureCount = visibleCategories.length + (flags.sell ? 1 : 0);
   const hasAnyPrimaryFeature = enabledPrimaryFeatureCount > 0;
   const hidePrimaryTabs = enabledPrimaryFeatureCount < 2;
   const singlePrimaryTab: PrimaryTabId | null =
     enabledPrimaryFeatureCount === 1
-      ? flags.sell
-        ? 'sell'
-        : flags.ichiban
-          ? 'ichiban'
-          : flags.blindbox
-            ? 'blindbox'
-            : flags.gacha
-              ? 'gacha'
-              : flags.card
-                ? 'card'
-                : flags.custom
-                  ? 'custom'
-                  : null
+      ? (flags.sell ? 'sell' : ((visibleCategories[0] as PrimaryTabId) ?? null))
       : null;
 
   const fetchData = useCallback(async () => {
@@ -397,31 +389,24 @@ export default function Home() {
 
   const primaryTabs: { id: PrimaryTabId; label: string }[] = useMemo(() => {
     const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '綜合' }];
+    // 維護中的類別頁籤照常出現 —— 那是「暫時停一下」，藏起來玩家會以為我們不做了。
+    // 只有「關閉」才整個消失。維護中不在頁籤上加註記：那會把每個頁籤撐得一長一短，
+    // 而且點進去本來就會說明，講兩次沒有比較清楚
+    const CATEGORY_TABS: { id: PrimaryTabId; label: string; type: string }[] = [
+      { id: 'ichiban',  label: '一番賞', type: 'ichiban' },
+      { id: 'blindbox', label: '盒玩',   type: 'blindbox' },
+      { id: 'gacha',    label: '轉蛋',   type: 'gacha' },
+      { id: 'card',     label: '抽卡',   type: 'card' },
+      { id: 'custom',   label: '自製賞', type: 'custom' },
+    ];
     if (flags.sell) base.push({ id: 'sell', label: '販售' });
-    if (flags.ichiban) base.push({ id: 'ichiban', label: '一番賞' });
-    if (flags.blindbox) base.push({ id: 'blindbox', label: '盒玩' });
-    if (flags.gacha) base.push({ id: 'gacha', label: '轉蛋' });
-    if (flags.card) base.push({ id: 'card', label: '抽卡' });
-    if (flags.custom) base.push({ id: 'custom', label: '自製賞' });
+    for (const t of CATEGORY_TABS) {
+      if (categoryState(t.type, flagStates, false) === 'off') continue;
+      base.push({ id: t.id, label: t.label });
+    }
     const menuTabs = menus.map((m) => ({ id: `menu:${m.id}` as PrimaryTabId, label: m.name }));
     return [...base, ...menuTabs];
-  }, [flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell, menus]);
-
-  useEffect(() => {
-    const disabled =
-      (activePrimaryTab === 'sell' && !flags.sell) ||
-      (activePrimaryTab === 'ichiban' && !flags.ichiban) ||
-      (activePrimaryTab === 'blindbox' && !flags.blindbox) ||
-      (activePrimaryTab === 'gacha' && !flags.gacha) ||
-      (activePrimaryTab === 'card' && !flags.card) ||
-      (activePrimaryTab === 'custom' && !flags.custom);
-    if (!disabled) return;
-    if (singlePrimaryTab) {
-      setActivePrimaryTab(singlePrimaryTab);
-      return;
-    }
-    setActivePrimaryTab('all');
-  }, [activePrimaryTab, flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell, singlePrimaryTab]);
+  }, [flagStates, flags.sell, menus]);
 
   useEffect(() => {
     if (!singlePrimaryTab) return;
@@ -457,32 +442,33 @@ export default function Home() {
     (products: ProductRow[]) => {
       return products.filter((product) => {
         if (activePrimaryTab === 'all') {
-          const t = String(product.type || '').trim();
-          if (t === 'ichiban') return Boolean(flags.ichiban);
-          if (t === 'blindbox') return Boolean(flags.blindbox);
-          if (t === 'gacha') return Boolean(flags.gacha);
-          if (t === 'card') return Boolean(flags.card);
-          if (t === 'custom') return Boolean(flags.custom);
-          return true;
+          // 維護中與關閉的商品都不列出。差別在頁籤：維護中的頁籤還在，
+          // 點進去會說「此分類暫時維護中」；關閉的整個頁籤都不見
+          return categoryState(product.type, flagStates, false) === 'on';
         }
 
         if (activePrimaryTab.startsWith('menu:')) {
           const menuId = activePrimaryTab.slice('menu:'.length);
           const ids = menuProductIdsByMenuId[menuId];
           if (!ids) return false;
+          // 自訂選單也要看類別開關 —— 選單是後台手動挑的商品清單，
+          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來
+          if (categoryState(product.type, flagStates, false) !== 'on') return false;
           return ids.includes(Number(product.id));
         }
 
         if (activePrimaryTab === 'card') {
+          if (categoryState('card', flagStates, false) !== 'on') return false;
           const category = product.category || '';
           if (product.type === 'card') return true;
           return category.includes('卡') || category.toLowerCase().includes('card');
         }
 
+        if (categoryState(product.type, flagStates, false) !== 'on') return false;
         return product.type === activePrimaryTab;
       });
     },
-    [activePrimaryTab, flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, menuProductIdsByMenuId]
+    [activePrimaryTab, flagStates, menuProductIdsByMenuId]
   );
 
   // Series tabs: personal prefs → global popularity → product count
@@ -1387,7 +1373,9 @@ export default function Home() {
                 : filteredProducts.length > 0
                   ? '到底了'
                   : !isLoading && !loadError
-                    ? '此分類暫無商品'
+                    ? (categoryState(activePrimaryTab, flagStates, false) === 'maintenance'
+                        ? '此分類暫時維護中'
+                        : '此分類暫無商品')
                     : ''}
             </div>
           )}
@@ -1758,17 +1746,48 @@ export default function Home() {
         </Link>
       )}
 
-      {/* 排行榜浮動按鈕 — 右下角 */}
-      <Link
-        href="/ranking"
-        aria-label="排行榜"
-        className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 md:hidden overflow-visible"
-      >
-        <Image src="/images/topbar/2b.png" alt="排行榜" width={36} height={36} className="drop-shadow-lg" />
-      </Link>
+      {/*
+        右下角的懸浮入口。
+        販售、交易所、卡牌交換原本要搶底部導航中央那唯一一格，所以只能二選一。
+        改成跟排行榜同一排的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
+        只在手機顯示 —— 桌機那幾個入口在導覽列上。
+      */}
+      <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
+        {flags.market && (
+          <FloatingEntry href="/market" label="交易所">
+            <Store className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        {flags.sell && (
+          <FloatingEntry href="/sell" label="販售">
+            <Tag className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        {flags.exchange && (
+          <FloatingEntry href="/exchange" label="卡牌交換">
+            <Repeat2 className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        <FloatingEntry href="/ranking" label="排行榜">
+          <Image src="/images/topbar/2b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
+        </FloatingEntry>
+      </div>
 
       <NoticeBar />
       <PromoPopup placement="home" />
     </div>
+  );
+}
+
+/** 右下角的懸浮入口。樣式沿用原本排行榜那顆，讓幾顆疊起來像同一組東西 */
+function FloatingEntry({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white"
+    >
+      {children}
+    </Link>
   );
 }

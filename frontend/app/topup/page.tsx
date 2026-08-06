@@ -25,6 +25,7 @@ import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 
 const TOPUP_PLANS = [
   { id: 'p1', amount: 100, points: 100, bonus: 0, isHot: false },
@@ -45,6 +46,7 @@ const PAYMENT_METHODS = [
 
 export default function TopupPage() {
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
+  const { flags } = useFeatureFlags();
   // const userTokens = user?.tokens || 0;
   const { showToast } = useToast();
   const router = useRouter();
@@ -203,6 +205,10 @@ export default function TopupPage() {
     // Do not reset in finally block for success case to prevent double submission during redirect delay
   };
 
+  // 儲值維護：後端也會擋（見 /api/payment/ecpay），這裡是讓玩家在按下去之前就知道，
+  // 而不是填完資料才收到錯誤
+  const rechargeOff = flags.recharge === false;
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-20 transition-colors">
       <div className="max-w-7xl mx-auto px-0 md:px-6 lg:px-8 pt-0 md:pt-6">
@@ -213,8 +219,20 @@ export default function TopupPage() {
               
               {/* User Balance - Removed as requested */}
 
+              {rechargeOff && (
+                <div className="mx-4 md:mx-0 rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 px-4 py-3.5">
+                  <p className="text-[14px] font-black text-amber-900 dark:text-amber-200">儲值維護中</p>
+                  <p className="mt-1 text-[13px] leading-relaxed text-amber-800/90 dark:text-amber-200/80">
+                    我們正在調整金流設定，暫時無法儲值。已經買到的代幣不受影響，抽獎與出貨都照常。
+                  </p>
+                </div>
+              )}
+
               {/* Plans Grid */}
-              <section className="bg-white dark:bg-neutral-900 md:rounded-3xl p-4 md:p-6 border-y md:border border-neutral-100 dark:border-neutral-800 space-y-3 md:space-y-4">
+              <section className={cn(
+                "bg-white dark:bg-neutral-900 md:rounded-3xl p-4 md:p-6 border-y md:border border-neutral-100 dark:border-neutral-800 space-y-3 md:space-y-4",
+                rechargeOff && "opacity-50 pointer-events-none select-none"
+              )}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-[13px] md:text-sm font-black text-neutral-900 dark:text-white flex items-center gap-2">
                     <span className="w-1 h-4 bg-primary rounded-full"></span>
