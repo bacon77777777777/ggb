@@ -15,6 +15,7 @@ import PwaInputFocusFix from '@/components/PwaInputFocusFix';
 import PwaPullToRefresh from '@/components/PwaPullToRefresh';
 import AnalyticsTracker from '@/components/AnalyticsTracker';
 import { getSiteUrl } from '@/lib/site';
+import MaintenanceWatcher from '@/components/MaintenanceWatcher';
 
 const siteUrl = getSiteUrl();
 
@@ -115,6 +116,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col font-sans text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
         <AuthProvider>
+        {/* 維護開啟時把停在頁面上的使用者帶到維護頁 */}
+        <MaintenanceWatcher />
           <ThemeProvider>
             <AlertProvider>
               <ToastProvider>

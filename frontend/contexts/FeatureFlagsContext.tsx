@@ -3,11 +3,17 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow';
+export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow' | 'recharge';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
 const DEFAULT_FLAGS: FeatureFlags = {
+  // recharge 預設 true，其餘預設 false。
+  // 其他旗標是「開了才顯示」，關著最多少一個玩法；
+  // 儲值是「關了才擋」，預設 false 的話旗標還沒載入完玩家就會閃一下「維護中」，
+  // 而且真的斷線時整站都不能儲值。後端另有把關（/api/payment/ecpay），
+  // 這裡放寬不會造成漏洞。
+  recharge: true,
   sell: false,
   ichiban: false,
   blindbox: false,
@@ -21,6 +27,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
 
 const SAFE_FALLBACK_FLAGS: FeatureFlags = {
   ...DEFAULT_FLAGS,
+  recharge: true,
 };
 
 type FeatureFlagsState = {
