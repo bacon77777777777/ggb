@@ -1064,9 +1064,9 @@ export default function ProductDetailPage() {
         setSupplierName(null);
       }
 
-      // Fetch categories this product belongs to (menu_products → categories)
+      // Fetch categories this product belongs to (product_categories → categories)
       const { data: menuRows } = await supabase
-        .from('menu_products')
+        .from('product_categories')
         .select('categories(id, name)')
         .eq('product_id', productId)
       setProductCategories(

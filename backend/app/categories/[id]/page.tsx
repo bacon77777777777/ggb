@@ -42,9 +42,9 @@ export default function MenuProductsPage() {
         if (menu?.name) setMenuName(menu.name)
 
         const { data: links } = await supabase
-          .from('menu_products')
+          .from('product_categories')
           .select('product_id')
-          .eq('menu_id', menuId)
+          .eq('category_id', menuId)
           .order('sort_order', { ascending: false })
 
         const ids = (links || [])

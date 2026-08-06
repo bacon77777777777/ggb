@@ -424,9 +424,9 @@ export default function Home() {
     if (!menuId || menuProductIdsByMenuId[menuId]) return;
     const fetchProductIds = async () => {
       const { data, error } = await supabase
-        .from('menu_products')
+        .from('product_categories')
         .select('product_id')
-        .eq('menu_id', menuId)
+        .eq('category_id', menuId)
         .order('sort_order', { ascending: false });
       if (error) return;
       const rows = (data || []) as Array<{ product_id: number }>;
