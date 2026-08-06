@@ -73,12 +73,12 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
   { key: 'card',     label: '抽卡' },
   { key: 'custom',   label: '自製賞' },
   // 前面五個看名字就知道是什麼，販售不是 —— 它賣的是玩家的東西，不是平台的
-  { key: 'sell',     label: '販售', desc: '玩家把抽到的獎品二手賣給其他玩家。收款方式在「金流」那一區設定。' },
+  { key: 'sell',     label: '販售', desc: '像露天拍賣：玩家自己上架商品掛賣，收的是真錢，賣什麼也不限於站上抽到的東西。收款方式在「金流」那一區設定。' },
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
   { key: 'exchange', label: '卡牌交換', desc: '玩家之間卡牌一對一交換。' },
-  { key: 'market',   label: '交易所', desc: '玩家掛單買賣。' },
+  { key: 'market',   label: '交易所', desc: '倉庫裡還沒配送、而且是大賞的品項可以上架，賣掉換成 G 幣。' },
 ]
 
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
