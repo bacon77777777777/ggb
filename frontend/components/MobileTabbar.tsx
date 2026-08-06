@@ -4,13 +4,11 @@ import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { Box, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { hapticLight } from '@/lib/haptics';
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 
 export default function MobileTabbar() {
   return (
@@ -44,7 +42,6 @@ function MobileTabbarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab');
-  const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
 
   const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/challenge'];
   // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
@@ -59,20 +56,13 @@ function MobileTabbarInner() {
   }
 
   /*
-   * 底部導航中央那一格只有一個位子。
+   * 中央那格已經不放東西了。
    *
-   * 交換與交易所本來被迫二選一就是為了搶這格 —— 後台的開關甚至會在你開一個時
-   * 自動關掉另一個。現在兩個可以同時開，這裡就讓交易所優先佔住中央
-   *（它是逛的、進出頻率高），交換之後改成像排行榜那樣的懸浮入口。
-   *
-   * ⚠️ 懸浮入口還沒做：兩個都開時，交換目前只能從會員頁進去。
+   * 販售、交易所、卡牌交換以前要搶這唯一一格，所以只能二選一，
+   * 後台的開關甚至會在你開一個時自動關掉另一個。三個入口都搬到首頁右下角的
+   * 懸浮按鈕（跟排行榜同一排）之後，開幾個就疊幾顆，這格自然就空出來了。
    */
-  const centerTab = (() => {
-    if (isFlagsLoading) return null;
-    if (flags.market) return { name: '交易所', href: '/market', icon: Store, isCenter: true };
-    if (flags.exchange) return { name: '交換', href: '/exchange', icon: Box, isCenter: true };
-    return null;
-  })();
+  const centerTab: { name: string; href: string; isCenter: boolean } | null = null;
 
   const tabImgMap: Record<string, number> = {
     '/': 1,

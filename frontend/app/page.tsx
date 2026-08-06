@@ -15,7 +15,7 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Store, Repeat2, Tag } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
@@ -1746,17 +1746,48 @@ export default function Home() {
         </Link>
       )}
 
-      {/* 排行榜浮動按鈕 — 右下角 */}
-      <Link
-        href="/ranking"
-        aria-label="排行榜"
-        className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 md:hidden overflow-visible"
-      >
-        <Image src="/images/topbar/2b.png" alt="排行榜" width={36} height={36} className="drop-shadow-lg" />
-      </Link>
+      {/*
+        右下角的懸浮入口。
+        販售、交易所、卡牌交換原本要搶底部導航中央那唯一一格，所以只能二選一。
+        改成跟排行榜同一排的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
+        只在手機顯示 —— 桌機那幾個入口在導覽列上。
+      */}
+      <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
+        {flags.market && (
+          <FloatingEntry href="/market" label="交易所">
+            <Store className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        {flags.sell && (
+          <FloatingEntry href="/sell" label="販售">
+            <Tag className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        {flags.exchange && (
+          <FloatingEntry href="/exchange" label="卡牌交換">
+            <Repeat2 className="w-5 h-5 stroke-[2]" />
+          </FloatingEntry>
+        )}
+        <FloatingEntry href="/ranking" label="排行榜">
+          <Image src="/images/topbar/2b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
+        </FloatingEntry>
+      </div>
 
       <NoticeBar />
       <PromoPopup placement="home" />
     </div>
+  );
+}
+
+/** 右下角的懸浮入口。樣式沿用原本排行榜那顆，讓幾顆疊起來像同一組東西 */
+function FloatingEntry({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white"
+    >
+      {children}
+    </Link>
   );
 }
