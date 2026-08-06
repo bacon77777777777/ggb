@@ -43,7 +43,7 @@ function MobileTabbarInner() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab');
 
-  const mainTabPaths = ['/', '/news', '/exchange', '/market', '/profile', '/mission', '/challenge'];
+  const mainTabPaths = ['/', '/ranking', '/news', '/exchange', '/market', '/profile', '/mission', '/challenge'];
   // 文章內頁 /news/[id] 不在 mainTabPaths，但 MobileTabbar 仍要顯示（讓使用者可以切回情報）
   const isNewsDetail = pathname.startsWith('/news/') && pathname !== '/news';
   const isMainTabPath = mainTabPaths.includes(pathname);
@@ -60,21 +60,23 @@ function MobileTabbarInner() {
    *
    * 販售、交易所、卡牌交換以前要搶這唯一一格，所以只能二選一，
    * 後台的開關甚至會在你開一個時自動關掉另一個。三個入口都搬到首頁右下角的
-   * 懸浮按鈕（跟排行榜同一排）之後，開幾個就疊幾顆，這格自然就空出來了。
+   * 懸浮按鈕之後，開幾個就疊幾顆，這格自然就空出來了。
    */
   const centerTab: { name: string; href: string; isCenter: boolean } | null = null;
 
   const tabImgMap: Record<string, number> = {
     '/': 1,
+    '/ranking': 2,
     '/news': 3,
     '/mission': 4,
     '/profile': 5,
     '/challenge': 6,
   };
 
+  // 排行榜回到這一格（挑戰改成首頁右下角的懸浮入口，與販售／交易所同一排）
   const tabs: Array<{ name: string; href: string; isCenter?: boolean }> = [
     { name: '首頁', href: '/' },
-    { name: '挑戰', href: '/challenge' },
+    { name: '排行榜', href: '/ranking' },
     { name: '情報', href: '/news' },
     { name: '簽到', href: '/mission' },
     { name: '會員', href: '/profile' },

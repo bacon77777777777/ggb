@@ -1749,7 +1749,7 @@ export default function Home() {
       {/*
         右下角的懸浮入口。
         販售、交易所、卡牌交換原本要搶底部導航中央那唯一一格，所以只能二選一。
-        改成跟排行榜同一排的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
+        改成右下角的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
 
         只在手機顯示。桌機因此沒有交易所與卡牌交換的入口（導覽列上也沒有）——
         這是老闆確認過可以接受的：站是手機優先，桌機不做這三個功能的入口。
@@ -1771,8 +1771,9 @@ export default function Home() {
             <Repeat2 className="w-5 h-5 stroke-[2]" />
           </FloatingEntry>
         )}
-        <FloatingEntry href="/ranking" label="排行榜">
-          <Image src="/images/topbar/2b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
+        {/* 挑戰從底部導航搬上來，排行榜回到底部導航原本挑戰那一格 */}
+        <FloatingEntry href="/challenge" label="挑戰">
+          <Image src="/images/topbar/6b.png" alt="" width={36} height={36} className="drop-shadow-lg" />
         </FloatingEntry>
       </div>
 
@@ -1782,7 +1783,7 @@ export default function Home() {
   );
 }
 
-/** 右下角的懸浮入口。樣式沿用原本排行榜那顆，讓幾顆疊起來像同一組東西 */
+/** 右下角的懸浮入口。幾顆共用同一組樣式，疊起來像同一組東西 */
 function FloatingEntry({ href, label, className = '', children }: {
   href: string;
   label: string;
