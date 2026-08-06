@@ -88,9 +88,7 @@ export default async function MaintenancePage() {
       </div>
 
       <p className="max-w-xs text-xs leading-relaxed text-neutral-400">
-        {untilText
-          ? '維護時間如有變動會另行公告。恢復後這頁會自動回到你原本看的畫面。'
-          : '完成時間會另行公告。恢復後這頁會自動回到你原本看的畫面。'}
+        {untilText ? '維護時間如有變動會另行公告。' : '完成時間會另行公告。'}
       </p>
     </div>
   );
