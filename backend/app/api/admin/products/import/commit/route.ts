@@ -87,6 +87,11 @@ export async function POST(request: Request) {
         // 廠商帳號批量匯入時，supplier_id 一律蓋成自己的
         const clean = forceSupplierField(pick(item.product, ALLOWED_PRODUCT_KEYS), session)
 
+        // 殺率不接受廠商指定。解析端已經不回這個欄位給廠商了，
+        // 但這裡是最後一道 —— 直接改 request body 一樣送得進來。
+        // 拿掉之後走資料表預設值 1.0（等於不設限，最保守）
+        if (session.supplierScope !== undefined) delete clean.profit_rate
+
         // 系列留空時從商品名推斷，跟單筆新增的行為一致
         const series = clean.series || (await detectSeriesFromName(name, supabase)) || null
 

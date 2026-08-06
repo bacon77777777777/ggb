@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminScope } from '@/lib/requireAdmin'
 import {
   PRODUCT_IMPORT_FIELDS, PRIZE_IMPORT_FIELDS,
-  detectFieldMapping, detectPrizeGroups, coerce, normalizeType, normalizeLevel,
+  detectFieldMapping, detectPrizeGroups, detectVerticalPrizeColumns,
+  coerce, normalizeType, normalizeLevel,
   missingRequired, headerFingerprint, TICKETED_TYPES, PROBABILITY_TYPES,
   type ProductType, type PrizeGroup,
 } from '@/lib/productSchema'
@@ -146,8 +147,11 @@ const mode = (xs: string[]) => {
 
 export async function POST(request: Request) {
   try {
-    const session = await requireAdminSession()
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const scope = await requireAdminScope()
+    if (!scope) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 廠商不該知道殺率這個機制存在。它照樣會被算出來寫進資料表，
+    // 只是不出現在「已自動補齊」清單裡，回傳的商品資料也拿掉
+    const hideProfitRate = scope.supplierScope !== undefined
 
     const form = await request.formData()
     const file = form.get('file') as File | null
@@ -179,8 +183,24 @@ export async function POST(request: Request) {
     let prizeGroups: PrizeGroup[]
     let mappingSource: 'profile' | 'rules'
 
-    const ruleMapping = detectFieldMapping(headers)
     const rulePrizeGroups = detectPrizeGroups(headers)
+
+    /*
+     * 品項有兩種排法，先看橫向（A賞名稱｜A賞數量｜B賞名稱…），
+     * 找不到才試直式（一列一個品項）。直式在廠商的檔案裡一樣常見，
+     * 而原本完全不支援 —— 症狀是「品項一個都沒有」，
+     * 連帶總籤數算不出來、機率分配不了、圖片也對不到。
+     */
+    const verticalCols = rulePrizeGroups.length ? null : detectVerticalPrizeColumns(headers)
+
+    // 被品項認領的標題不能再被商品欄位搶走。
+    // 直式表的「圖片」是品項圖，原本會被商品主圖的 /^圖片$/ 認領走
+    const claimedByPrize = new Set<string>([
+      ...rulePrizeGroups.flatMap(g => [g.nameCol, g.quantityCol, g.imageCol, g.levelCol].filter(Boolean) as string[]),
+      ...(verticalCols ? Object.values(verticalCols) : []),
+    ])
+
+    const ruleMapping = detectFieldMapping(headers, PRODUCT_IMPORT_FIELDS, claimedByPrize)
 
     if (profile) {
       // 記憶優先，規則補洞。
@@ -227,9 +247,44 @@ export async function POST(request: Request) {
       return first.startsWith('#') || first.startsWith('範例）')
     }
 
+    /*
+     * 直式表要先分組：連續幾列屬於同一個商品。
+     * 判斷方式是看商品名稱那一欄 —— 有值就是新商品的第一列，
+     * 留白代表「延續上一個商品」（廠商很常只在第一列寫商品名）。
+     *
+     * 橫向表一列就是一個商品，所以每一列自成一組。
+     */
+    const nameCol = ruleMapping.name
+    const groupedRows: { index: number; head: Record<string, string>; members: Record<string, string>[] }[] = []
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i]
       if (isSampleRow(raw)) continue
+      const hasName = nameCol ? String(raw[nameCol] ?? '').trim() !== '' : true
+      if (verticalCols && !hasName && groupedRows.length) {
+        groupedRows[groupedRows.length - 1].members.push(raw)
+      } else {
+        groupedRows.push({ index: i, head: raw, members: [raw] })
+      }
+    }
+    // 商品名每一列都重複寫的情況：同名的併成一個商品
+    if (verticalCols && nameCol) {
+      const merged: typeof groupedRows = []
+      for (const g of groupedRows) {
+        const key = String(g.head[nameCol] ?? '').trim()
+        const prev = merged[merged.length - 1]
+        if (prev && String(prev.head[nameCol] ?? '').trim() === key && key !== '') {
+          prev.members.push(...g.members)
+        } else {
+          merged.push(g)
+        }
+      }
+      groupedRows.length = 0
+      groupedRows.push(...merged)
+    }
+
+    for (const group of groupedRows) {
+      const raw = group.head
+      const i = group.index
       const filled: ParsedRow['filled'] = []
       const warnings: string[] = []
 
@@ -268,6 +323,34 @@ export async function POST(request: Request) {
 
       // ── 品項 ──
       const prizes: Record<string, unknown>[] = []
+
+      if (verticalCols) {
+        // 直式：這個商品底下的每一列就是一個品項
+        const qtyDef = PRIZE_IMPORT_FIELDS.find(f => f.key === 'total')!
+        for (const m of group.members) {
+          const pname = String(m[verticalCols.name] ?? '').trim()
+          if (!pname) continue
+          const total = Number(coerce(qtyDef, m[verticalCols.total], type) ?? 0)
+          const img = resolveImage(verticalCols.image_url ? String(m[verticalCols.image_url] ?? '') : null)
+          if (img.missing) missingImages.push(img.missing)
+          const prob = verticalCols.probability
+            ? Number(coerce(PRIZE_IMPORT_FIELDS.find(f => f.key === 'probability')!, m[verticalCols.probability], type) ?? 0)
+            : 0
+          prizes.push({
+            level: normalizeLevel(verticalCols.level ? m[verticalCols.level] : '', type) || '未分類',
+            name: pname,
+            total,
+            remaining: total,
+            image_url: img.url,
+            probability: prob,
+            recycle_value: verticalCols.recycle_value
+              ? Number(coerce(PRIZE_IMPORT_FIELDS.find(f => f.key === 'recycle_value')!, m[verticalCols.recycle_value], type) ?? 0)
+              : 0,
+            sale_price: 0,
+          })
+        }
+      }
+
       for (const g of prizeGroups) {
         const name = g.nameCol ? String(raw[g.nameCol] ?? '').trim() : ''
         if (!name) continue
@@ -305,12 +388,13 @@ export async function POST(request: Request) {
       // 殺率：籤號制才有意義，沒填就 1.0（等於不設限，最保守）
       if (TICKETED_TYPES.includes(type) && product.profit_rate === undefined) {
         const hist = median(stats.bySupplierType.get(type)?.profit ?? [])
-        if (hist !== null) {
-          product.profit_rate = hist
-          filled.push({ key: 'profit_rate', label: '殺率', value: hist, source: '同廠商同類型既有商品' })
-        } else {
-          product.profit_rate = 1.0
-          filled.push({ key: 'profit_rate', label: '殺率', value: 1.0, source: '預設值' })
+        product.profit_rate = hist ?? 1.0
+        // 廠商不該知道有這個機制。值照樣算、照樣寫進資料表，只是不列在畫面上
+        if (!hideProfitRate) {
+          filled.push({
+            key: 'profit_rate', label: '殺率', value: product.profit_rate,
+            source: hist !== null ? '同廠商同類型既有商品' : '預設值',
+          })
         }
       }
 
@@ -379,6 +463,9 @@ export async function POST(request: Request) {
       if (!product.image_url && !missingImages.length) warnings.push('沒有商品主圖')
       if (!prizes.length) warnings.push('廠商沒給品項，會以「待上架」建立，補完品項再開賣')
 
+      // 介面沒顯示不代表沒送出去 —— 回應是整包 JSON，廠商打開 devtools 就看得到
+      if (hideProfitRate) delete product.profit_rate
+
       parsed.push({
         row: i + 2, // +2：試算表第 1 列是標題，人看到的列號從 2 開始
         product,
@@ -425,6 +512,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       fingerprint,
       mappingSource,
+      prizeLayout: verticalCols ? 'vertical' : (prizeGroups.length ? 'horizontal' : 'none'),
       mapping,
       prizeGroups,
       headers,

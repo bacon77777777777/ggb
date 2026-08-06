@@ -391,27 +391,113 @@ export function missingRequired(
 
 // ── 標題列自動對應 ────────────────────────────────────────────────────────────
 
+/** 全形轉半形、去空白、統一小寫。比對前先過這一關，不然「商品 名稱」對不上「商品名稱」 */
+function normHeader(h: string): string {
+  return h
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    // \u3000 是全形空白。直接把那個字元貼進正則會被 ESLint 的
+    // no-irregular-whitespace 擋下（那條規則害部署失敗過幾次），一律用逸出寫法
+    .replace(/[\s_\-\u3000]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+/** 這個別名是不是完全比對（^...$）。完全比對比子字串比對可信得多 */
+const isAnchored = (a: RegExp) => a.source.startsWith('^') && a.source.endsWith('$')
+
 /**
  * 把廠商檔案的標題列對到我們的欄位。
- * 一個欄位只會被認領一次，先命中的先贏 —— 否則「售價」和「進貨價」會搶同一格。
+ *
+ * ── 為什麼不是「先命中的先贏」──
+ * 原本的寫法是依欄位定義順序掃過去，每個欄位拿走第一個正則命中的標題。
+ * 問題是「命中」沒有分強弱，於是實際檔案裡常發生：
+ *
+ *   標題列：商品名稱 | 賞等 | 品項名稱 | 數量 | 圖片
+ *   商品主圖的別名有 /^圖片$/，於是它認領了「圖片」——
+ *   但那一欄是「品項」的圖，不是商品主圖。
+ *
+ * 而且欄位定義的順序變成隱性的優先權：name 排在 series 前面，
+ * 所以只要 name 的正則先掃到系列欄，series 就再也拿不到了。
+ *
+ * 改成計分後全域指派：所有（欄位 × 標題）組合各算一個分數，
+ * 由高到低配對，配過的兩邊都不再參與。這樣「完全等於欄位名」永遠贏過
+ * 「子字串剛好包含」，跟定義順序無關。
+ *
+ * exclude 用來排除已經被品項欄位認領的標題 —— 那些欄位不該再被商品欄位搶走。
  */
 export function detectFieldMapping(
   headers: string[],
   fields = PRODUCT_IMPORT_FIELDS,
+  exclude?: Set<string>,
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {}
-  const used = new Set<string>()
+  for (const f of fields) result[f.key] = null
+
+  const candidates: { fieldKey: string; header: string; score: number }[] = []
 
   for (const field of fields) {
-    const match = headers.find(h => {
+    const labelNorm = normHeader(field.label)
+    for (const h of headers) {
       const t = h.trim()
-      if (!t || used.has(h)) return false
-      return field.aliases.some(a => a.test(t))
-    })
-    result[field.key] = match ?? null
-    if (match) used.add(match)
+      if (!t || exclude?.has(h)) continue
+      const hn = normHeader(t)
+
+      let score = 0
+      if (hn === labelNorm) {
+        score = 1000                       // 標題就是我們的欄位名，不會有更好的了
+      } else {
+        const idx = field.aliases.findIndex(a => a.test(t))
+        if (idx < 0) continue
+        score = isAnchored(field.aliases[idx]) ? 700 : 400
+        score -= idx * 5                   // 別名的排列順序仍有一點參考價值
+        score -= Math.min(60, hn.length * 2) // 標題越長越可能是複合欄位（例：商品名稱備註）
+      }
+      candidates.push({ fieldKey: field.key, header: h, score })
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score)
+  const usedFields = new Set<string>()
+  const usedHeaders = new Set<string>()
+  for (const c of candidates) {
+    if (usedFields.has(c.fieldKey) || usedHeaders.has(c.header)) continue
+    result[c.fieldKey] = c.header
+    usedFields.add(c.fieldKey)
+    usedHeaders.add(c.header)
   }
   return result
+}
+
+/**
+ * 直式品項的欄位偵測。
+ *
+ * 橫向展開（A賞名稱 | A賞數量 | B賞名稱 …）只是廠商的其中一種寫法，
+ * 另一種同樣常見的是一列一個品項：
+ *
+ *   商品名稱      | 賞等 | 品項名稱 | 數量 | 圖片
+ *   海賊王一番賞  | A賞  | 魯夫     | 1    | a.jpg
+ *   （留白或重複）| B賞  | 索隆     | 2    | b.jpg
+ *
+ * 原本完全不支援這種格式，結果就是「品項一個都沒有」，
+ * 連帶總籤數算不出來、機率分配不了、圖片也對不到 ——
+ * 四個症狀其實是同一件事。
+ *
+ * 判定條件刻意嚴格：一定要同時有「品項名稱」與「數量」兩欄才算，
+ * 否則一張純商品清單會被誤判成直式品項表。
+ */
+export function detectVerticalPrizeColumns(headers: string[]): Record<string, string> | null {
+  /*
+   * 明顯是商品主圖的欄位不給品項搶。
+   * 品項圖的別名有 /圖片/，而「商品圖片」也含「圖片」——
+   * 不先擋掉的話直式表的商品主圖會被品項認領走，商品就沒有封面了。
+   */
+  const productImage = headers.filter(h => /商品圖|主圖|封面|cover|product.*image/i.test(h.trim()))
+  const map = detectFieldMapping(headers, PRIZE_IMPORT_FIELDS, new Set(productImage))
+  if (!map.name || !map.total) return null
+
+  const cols: Record<string, string> = {}
+  for (const [k, v] of Object.entries(map)) if (v) cols[k] = v
+  return cols
 }
 
 // ── 品項欄位偵測（橫向展開的廠商表格） ────────────────────────────────────────

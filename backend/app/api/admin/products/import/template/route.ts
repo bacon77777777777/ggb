@@ -75,8 +75,13 @@ export async function GET(request: Request) {
   // 混合範本不依類型裁剪欄位：廠商的一份 list 裡可能同時有一番賞與機台，
   // 裁掉任何一邊都會讓他填不下去。解析本來就是逐列看「商品類型」判斷的，
   // 用不到的欄位留白即可。
+  // 殺率不進廠商的範本。那欄的說明白紙黑字寫著大獎怎麼排籤
+  //（「大獎不會排進前 (1-殺率) 比例的籤」），等於把機制教給廠商。
+  // 平台自己的範本照留 —— 那是我們自己要填的
+  const isSupplier = scope.supplierScope !== undefined && !canUseSlot
   const productFields = (isMixed ? PRODUCT_IMPORT_FIELDS : fieldsForType(type))
     .filter(f => !f.key.startsWith('_'))
+    .filter(f => !(isSupplier && f.key === 'profit_rate'))
   const prizeFields = isMixed ? PRIZE_IMPORT_FIELDS : fieldsForType(type, PRIZE_IMPORT_FIELDS)
 
   const headers: string[] = []
