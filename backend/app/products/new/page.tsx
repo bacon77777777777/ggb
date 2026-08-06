@@ -45,7 +45,7 @@ export default function NewProductPage() {
   const { toast } = useToast()
   const router = useRouter()
   const { addLog } = useLog()
-  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null }>>([])
+  const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null; is_active?: boolean }>>([])
 
   useEffect(() => {
     fetch('/api/admin/suppliers').then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
@@ -713,9 +713,16 @@ export default function NewProductPage() {
                   onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
                 >
                   <option value="">— 請選擇廠商 —</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={String(s.id)}>{s.name}{s.tax_id ? `（${s.tax_id}）` : ''}</option>
-                  ))}
+                  {/* 停用的廠商不出現在選項裡 —— 停用就是不再接新案。
+                      但目前已經掛著的那一家要留著，否則下拉會變成空白，
+                      看起來像商品沒有廠商 */}
+                  {suppliers
+                    .filter((s) => s.is_active !== false || String(s.id) === formData.supplierId)
+                    .map((s) => (
+                      <option key={s.id} value={String(s.id)}>
+                        {s.name}{s.tax_id ? `（${s.tax_id}）` : ''}{s.is_active === false ? '（已停用）' : ''}
+                      </option>
+                    ))}
                 </SelectField>
                 {formData.supplierId && (() => {
                   const sup = suppliers.find(s => String(s.id) === formData.supplierId)

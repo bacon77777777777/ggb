@@ -52,6 +52,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '此廠商帳號尚未綁定廠商，請聯絡管理員' }, { status: 403 })
     }
 
+    // 廠商停用 = 不再合作，它的帳號也該進不來。
+    // 只擋登入不動任何歷史資料 —— 既有商品、訂單與結算都還在，
+    // 停用是「不再接新案」，不是把過去抹掉
+    if (roleName === 'supplier' && supplierId) {
+      const { data: sup } = await supabaseAdmin
+        .from('suppliers').select('is_active').eq('id', supplierId).maybeSingle()
+      if (sup && sup.is_active === false) {
+        return NextResponse.json({ error: '所屬廠商已停用，請聯絡平台管理員' }, { status: 403 })
+      }
+    }
+
     const token = signAdminSession({
       adminId: String(admin.id), exp, role: roleName, permissions: rolePerms,
       ...(supplierId ? { supplierId } : {}),

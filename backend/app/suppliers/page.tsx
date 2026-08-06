@@ -27,6 +27,8 @@ interface Supplier {
   sender_address: string | null
   notes: string | null
   is_active: boolean
+  /** 平台自營。這一筆不可刪除，列表上也不顯示刪除鈕 */
+  is_platform?: boolean
   created_at: string
   updated_at: string
 }
@@ -51,7 +53,17 @@ export default function SuppliersPage() {
       key: "c0",
       label: "廠商名稱",
       className: "font-medium text-neutral-900",
-      render: (s) => (<>{s.name}</>),
+      // 標記出平台自營那筆。列表上一堆名字時，看得出哪一個是自己家的
+      render: (s) => (
+        <span className="inline-flex items-center gap-2">
+          {s.name}
+          {s.is_platform && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-black text-primary">
+              平台自營
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       key: "c1",
@@ -107,12 +119,24 @@ export default function SuppliersPage() {
                             >
                               編輯
                             </button>
-                            <button
-                              onClick={() => setDeleteTarget(s)}
-                              className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                            >
-                              刪除
-                            </button>
+                            {/* 平台自營那筆不給停用也不給刪：自營商品都掛在它底下。
+                                按鈕直接不顯示，比讓人按下去再跳錯誤好 */}
+                            {!s.is_platform && (
+                              <>
+                                <button
+                                  onClick={() => setToggleTarget(s)}
+                                  className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
+                                >
+                                  {s.is_active ? '停用' : '啟用'}
+                                </button>
+                                <button
+                                  onClick={() => setDeleteTarget(s)}
+                                  className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
+                                >
+                                  刪除
+                                </button>
+                              </>
+                            )}
                           </div>
                         </>),
     },
@@ -126,6 +150,9 @@ export default function SuppliersPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
+  // 停用／啟用從編輯視窗搬到列表的操作欄：那是一個獨立的決定，
+  // 不該要人先進編輯、改勾選、再按儲存
+  const [toggleTarget, setToggleTarget] = useState<Supplier | null>(null)
 
   const fetchSuppliers = async () => {
     setLoading(true)
@@ -194,6 +221,25 @@ export default function SuppliersPage() {
       toast(e.message, 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleToggleActive = async () => {
+    if (!toggleTarget) return
+    const next = !toggleTarget.is_active
+    try {
+      const res = await fetch(`/api/admin/suppliers/${toggleTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: next }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || '操作失敗')
+      toast(next ? '已啟用' : '已停用')
+      fetchSuppliers()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '操作失敗', 'error')
+    } finally {
+      setToggleTarget(null)
     }
   }
 
@@ -351,16 +397,6 @@ export default function SuppliersPage() {
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} className="resize-none"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={form.is_active}
-              onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              className="w-4 h-4 rounded border-neutral-300 text-primary focus:ring-primary/30"
-            />
-            <label htmlFor="is_active" className="text-sm text-neutral-700">啟用</label>
-          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               onClick={() => setIsModalOpen(false)}
@@ -380,6 +416,20 @@ export default function SuppliersPage() {
       </Modal>
 
       {/* Delete Confirm */}
+      <ConfirmDialog
+        isOpen={!!toggleTarget}
+        onClose={() => setToggleTarget(null)}
+        onConfirm={handleToggleActive}
+        title={toggleTarget?.is_active ? '停用廠商' : '啟用廠商'}
+        message={
+          toggleTarget?.is_active
+            ? `停用「${toggleTarget?.name}」之後，新商品不能再指派給它，它的廠商帳號也登不進後台。既有商品、訂單與結算都不受影響。`
+            : `啟用「${toggleTarget?.name}」之後，它會重新出現在商品的廠商選項裡，廠商帳號也能再登入。`
+        }
+        confirmText={toggleTarget?.is_active ? '停用' : '啟用'}
+        type={toggleTarget?.is_active ? 'warning' : 'info'}
+      />
+
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="刪除廠商"
