@@ -2,6 +2,7 @@
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal, FileInput } from '@/components'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import BulkImportModal from '@/components/BulkImportModal'
 import Badge from '@/components/ui/Badge'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
@@ -32,6 +33,8 @@ export default function ProductsPage() {
   // 只用來決定介面上要不要顯示刪除／驗證按鈕。
   // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
+  // 批量上架彈窗。吃標準格式的檔案，廠商在彈窗裡選
+  const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
   const zipRef = useRef<HTMLInputElement>(null)
@@ -791,9 +794,15 @@ export default function ProductsPage() {
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <>
-                {/* 廠商只能看與編輯自己的商品 —— 新增與上傳圖片都是平台的事。
-                    「智能批量上架」那顆搬到獨立的「商品補齊」頁了：
-                    補齊要爬網站、跑好幾分鐘，綁在一個開著的 modal 上是行不通的 */}
+                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架與上傳圖片都是平台的事。
+                    這顆吃的是「已經是標準格式」的檔案。廠商給的原始清單要先走
+                    「商品補齊」那頁轉格式並補資料，補完下載的 CSV 再丟回這裡 */}
+                {!isSupplier && <button
+                  onClick={() => setIsBulkOpen(true)}
+                  className="h-9 whitespace-nowrap rounded-lg bg-violet-600 px-4 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+                >
+                  批量上架
+                </button>}
                 {!isSupplier && <button
                   onClick={() => zipRef.current?.click()}
                   disabled={zipUploading}
@@ -1469,6 +1478,12 @@ export default function ProductsPage() {
           </button>
         </div>
       </Modal>
+
+      <BulkImportModal
+        isOpen={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        onImported={() => fetchProducts()}
+      />
     </AdminLayout>
   )
 }

@@ -2,11 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AdminLayout, PageCard, DataTable, type Column } from '@/components'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+import EmptyState from '@/components/ui/EmptyState'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import SelectField from '@/components/ui/SelectField'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import InfoDot from '@/components/ui/InfoDot'
 import { useToast } from '@/contexts/ToastContext'
@@ -37,7 +38,6 @@ interface Job {
   suppliers?: { name: string } | null
 }
 
-interface Supplier { id: number; name: string }
 
 const TYPE_LABEL: Record<string, string> = {
   ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋',
@@ -58,9 +58,6 @@ export default function ImportJobsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [jobs, setJobs] = useState<Job[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [supplierId, setSupplierId] = useState('')
-  const [type, setType] = useState('')
   const [uploading, setUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null)
@@ -76,11 +73,7 @@ export default function ImportJobsPage() {
     }
   }
 
-  useEffect(() => {
-    load()
-    fetch('/api/admin/suppliers', { credentials: 'include' })
-      .then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
-  }, [])
+  useEffect(() => { load() }, [])
 
   // 補齊中的工作要看得到進度在動。沒有進行中的工作就不要一直打 API
   useEffect(() => {
@@ -90,13 +83,10 @@ export default function ImportJobsPage() {
   }, [jobs])
 
   const upload = async (file: File) => {
-    if (!supplierId) { toast('請先選擇廠商', 'error'); return }
     setUploading(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      fd.append('supplierId', supplierId)
-      if (type) fd.append('type', type)
 
       const res = await fetch('/api/admin/import-jobs/upload', {
         method: 'POST', body: fd, credentials: 'include',
@@ -138,8 +128,7 @@ export default function ImportJobsPage() {
         </Link>
       ),
     },
-    { key: 'supplier', label: '廠商', render: j => <>{j.suppliers?.name ?? '—'}</> },
-    { key: 'type', label: '類型', render: j => <>{j.product_type ? TYPE_LABEL[j.product_type] ?? j.product_type : '依內容判斷'}</> },
+    { key: 'type', label: '類型', render: j => <>{j.product_type ? TYPE_LABEL[j.product_type] ?? j.product_type : '自動判斷'}</> },
     { key: 'rows', label: '筆數', className: 'tabular-nums', render: j => <>{j.total_rows}</> },
     {
       key: 'status', label: '狀態',
@@ -204,71 +193,43 @@ export default function ImportJobsPage() {
 
   return (
     <AdminLayout pageTitle="商品補齊">
-      <div className="space-y-4">
-        <PageCard>
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-neutral-900">
-            上傳廠商清單
-            <InfoDot>
-              丟任何格式的廠商 list 進來，系統會對好欄位、查回商品資料與圖片、
-              把名稱翻成台灣用語，輸出成我們的標準格式。
-              補齊在背景跑，上傳完就可以離開這一頁，晚點回來看結果。
-            </InfoDot>
-          </h2>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-neutral-500">
-                廠商 <span className="text-red-500">*</span>
-              </label>
-              <SelectField value={supplierId} onChange={e => setSupplierId(e.target.value)}>
-                <option value="">請選擇廠商</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </SelectField>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-neutral-500">商品類型</label>
-              <SelectField value={type} onChange={e => setType(e.target.value)}>
-                <option value="">依檔案內容判斷</option>
-                <option value="gacha">整批都是轉蛋</option>
-                <option value="ichiban">整批都是一番賞</option>
-                <option value="blindbox">整批都是盒玩</option>
-                <option value="card">整批都是抽卡</option>
-                <option value="custom">整批都是自製賞</option>
-              </SelectField>
-            </div>
-            <div className="flex items-end">
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) upload(f) }}
-              />
-              <Button
-                className="w-full"
-                onClick={() => supplierId ? fileRef.current?.click() : toast('請先選擇廠商', 'error')}
-                isLoading={uploading}
-              >
-                選擇檔案並開始
-              </Button>
-            </div>
-          </div>
-
-          <p className="mt-2 text-xs text-neutral-400">
-            支援 .xlsx / .xls / .csv。廠商的進貨單通常沒有類型欄，一份檔案就是一種類型 ——
-            不指定的話會全部當成一番賞。
+      {/* 版面照廠商管理那頁：說明在左、主要動作在右，底下一張無內距的表格卡 */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-neutral-500">
+            丟任何格式的廠商清單進來，系統會對好欄位、查回商品資料與圖片、把名稱與款式翻成台灣用語。
+            補齊在背景跑，上傳完就可以離開這一頁。
           </p>
-        </PageCard>
-
-        <PageCard>
-          <h2 className="mb-3 text-sm font-black text-neutral-900">補齊工作</h2>
-          <DataTable
-            columns={columns}
-            data={jobs}
-            keyField="id"
-            isLoading={isLoading}
-            emptyMessage="還沒有任何工作，上傳一份廠商清單開始"
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) upload(f) }}
           />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" />
+            </svg>
+            {uploading ? '上傳中…' : '上傳廠商清單'}
+          </button>
+        </div>
+
+        <PageCard noPadding>
+          {isLoading ? (
+            <CardSkeleton rows={5} />
+          ) : jobs.length === 0 ? (
+            <EmptyState message="還沒有任何工作，點擊「上傳廠商清單」開始" />
+          ) : (
+            <div className="overflow-x-auto">
+              <DataTable data={jobs} columns={columns} keyField="id" />
+            </div>
+          )}
         </PageCard>
       </div>
 

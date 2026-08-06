@@ -8,6 +8,8 @@ import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import InfoDot from '@/components/ui/InfoDot'
 import { useToast } from '@/contexts/ToastContext'
+import Modal from '@/components/Modal'
+import SelectField from '@/components/ui/SelectField'
 import { PRODUCT_IMPORT_FIELDS, PRIZE_IMPORT_FIELDS } from '@/lib/productSchema'
 
 /**
@@ -83,6 +85,9 @@ export default function ImportJobDetailPage() {
   const [showCols, setShowCols] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmImport, setConfirmImport] = useState(false)
+  // 廠商在匯入這一步才問 —— 補齊跟哪一家供貨無關，但建立商品時是必填
+  const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
+  const [supplierId, setSupplierId] = useState('')
 
   const load = async () => {
     try {
@@ -97,6 +102,11 @@ export default function ImportJobDetailPage() {
   }
 
   useEffect(() => { if (id) load() }, [id])
+
+  useEffect(() => {
+    fetch('/api/admin/suppliers', { credentials: 'include' })
+      .then(r => r.json()).then(d => { if (Array.isArray(d)) setSuppliers(d) }).catch(() => {})
+  }, [])
 
   // 還在補齊就持續更新，讓人看得到資料一列一列長出來
   useEffect(() => {
@@ -128,7 +138,7 @@ export default function ImportJobDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ rowIds: [...selected] }),
+        body: JSON.stringify({ rowIds: [...selected], supplierId: supplierId || undefined }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || '操作失敗')
@@ -330,15 +340,30 @@ export default function ImportJobDetailPage() {
         </PageCard>
       </div>
 
-      <ConfirmDialog
-        isOpen={confirmImport}
-        onClose={() => setConfirmImport(false)}
-        onConfirm={() => act('commit')}
-        title={`匯入 ${selected.size} 個商品？`}
-        message="會依現在畫面上的資料建立商品與品項，狀態是待上架，不會直接開賣。匯入過的列會標成「已匯入」，不能重複匯入。"
-        confirmText="匯入"
-        type="warning"
-      />
+      <Modal isOpen={confirmImport} onClose={() => setConfirmImport(false)} title={`匯入 ${selected.size} 個商品`}>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-neutral-500">
+              廠商 <span className="text-red-500">*</span>
+            </label>
+            <SelectField value={supplierId} onChange={e => setSupplierId(e.target.value)}>
+              <option value="">請選擇廠商</option>
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </SelectField>
+            <p className="mt-1 text-xs text-neutral-400">
+              整批商品都會歸到這家廠商底下。補齊階段不需要指定，建立商品時才是必填。
+            </p>
+          </div>
+          <p className="text-sm text-neutral-500">
+            會依現在畫面上的資料建立商品與品項，狀態是待上架，不會直接開賣。
+            匯入過的列會標成「已匯入」，不能重複匯入。
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setConfirmImport(false)}>取消</Button>
+            <Button onClick={() => act('commit')} isLoading={busy} disabled={!supplierId}>匯入</Button>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   )
 }

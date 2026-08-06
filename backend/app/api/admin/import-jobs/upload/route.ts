@@ -30,10 +30,13 @@ export async function POST(request: Request) {
 
     if (!file) return NextResponse.json({ error: '沒有收到檔案' }, { status: 400 })
 
-    // 廠商是上傳時從「廠商管理」的清單裡選的。廠商帳號只能選自己
+    /*
+     * 廠商在這一步不用選。這頁的工作是「把廠商的清單轉成我們的格式並補齊資料」，
+     * 跟哪一家供貨無關 —— 廠商是真的要建立商品時才需要指定的東西，
+     * 所以問在「匯入商品」那一步。廠商帳號則一律綁自己。
+     */
     let supplierId = supplierIdRaw ? Number(supplierIdRaw) : null
     if (scope.supplierScope !== undefined) supplierId = scope.supplierScope
-    if (!supplierId) return NextResponse.json({ error: '請先選擇廠商' }, { status: 400 })
 
     const forcedType = typeRaw ? (String(typeRaw) as ProductType) : null
 

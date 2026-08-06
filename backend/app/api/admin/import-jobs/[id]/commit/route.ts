@@ -25,6 +25,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const rowIds: number[] = Array.isArray(body?.rowIds) ? body.rowIds.map(Number).filter(Boolean) : []
   if (!rowIds.length) return NextResponse.json({ error: '沒有選取任何商品' }, { status: 400 })
 
+  // 廠商在匯入這一步才指定：補齊跟哪一家供貨無關，但建立商品時 supplier_id 是必填
+  let supplierId = body?.supplierId ? Number(body.supplierId) : null
+  if (scope.supplierScope !== undefined) supplierId = scope.supplierScope
+  if (!supplierId) return NextResponse.json({ error: '請先選擇廠商' }, { status: 400 })
+
   const supabase = getSupabaseAdmin()
   const { data: job } = await supabase
     .from('import_jobs').select('supplier_id, filename').eq('id', id).maybeSingle()
@@ -48,7 +53,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       cookie: request.headers.get('cookie') ?? '',
     },
     body: JSON.stringify({
-      products: rows.map(r => ({ row: r.row_no, product: r.product, prizes: r.prizes })),
+      products: rows.map(r => ({
+        row: r.row_no,
+        product: { ...(r.product as Record<string, unknown>), supplier_id: supplierId },
+        prizes: r.prizes,
+      })),
     }),
   })
   const result = await res.json()

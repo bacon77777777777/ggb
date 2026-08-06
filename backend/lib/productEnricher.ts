@@ -103,6 +103,8 @@ export interface EnrichedProduct {
   variants: { name: string; level: string }[]
   /** 有幾款（頁面寫「全4種」時就是 4）。variants 抓不齊時仍然有參考價值 */
   variantCount: number | null
+  /** 從商品頁判斷出的類型。廠商的清單常常沒有類型欄，這是唯一問得到的地方 */
+  productType: 'ichiban' | 'gacha' | 'blindbox' | 'card' | null
   confidence: 'high' | 'low'
 }
 
@@ -125,12 +127,17 @@ const SYSTEM = `你是台灣潮玩電商的商品建檔助理。使用者會給�
 4. 只寫頁面文字裡真的有的資訊。**不要編造款式名稱**。
    讀不出款式就回空陣列，但如果頁面有寫「全4種」之類的字樣，
    variant_count 要填 4。
-5. 只回 JSON，不要任何說明文字。`
+5. product_type 依頁面內容判斷是哪一種：
+   ichiban（一番賞／一番くじ）、gacha（扭蛋／ガシャポン／ガチャ／カプセルトイ）、
+   blindbox（盒玩／食玩／ブラインドボックス）、card（卡牌／トレカ）。
+   判斷不出來就填 null。
+6. 只回 JSON，不要任何說明文字。`
 
 const SCHEMA = `{
   "name": "商品名稱（台灣譯名）或 null",
   "distributor": "代理商／製造商，例如 BANDAI、TAKARA TOMY A.R.T.S，或 null",
   "jp_price_yen": 日幣定價數字或 null,
+  "product_type": "ichiban / gacha / blindbox / card 其中之一，或 null",
   "variant_count": 款式總數數字或 null,
   "variants": [{ "name": "款式名稱（台灣譯名）", "level": "賞等或空字串" }],
   "confidence": "high 或 low"
@@ -194,6 +201,7 @@ export async function enrichProduct(
       jpPriceYen: Number.isFinite(Number(d.jp_price_yen)) ? Number(d.jp_price_yen) : null,
       variants,
       variantCount: Number.isFinite(Number(d.variant_count)) ? Number(d.variant_count) : null,
+      productType: ['ichiban', 'gacha', 'blindbox', 'card'].includes(d.product_type) ? d.product_type : null,
       confidence: d.confidence === 'high' ? 'high' : 'low',
     }
   } catch { return null }
@@ -234,6 +242,13 @@ export async function enrichRow(
     if (info.distributor && !next.distributor) {
       next.distributor = info.distributor
       filled.push({ key: 'distributor', label: '代理商', value: info.distributor, source: '商品頁' })
+    }
+    // 廠商的清單常常沒有類型欄，解析時只能先預設成一番賞。
+    // 商品頁看得出是扭蛋還是一番賞，這裡順手修正 —— 類型錯了賞等與籤號都會錯
+    if (info.productType && info.productType !== next.type) {
+      const label = { ichiban: '一番賞', gacha: '轉蛋', blindbox: '盒玩', card: '抽卡' }[info.productType]
+      filled.push({ key: 'type', label: '商品類型', value: label, source: '商品頁判斷' })
+      next.type = info.productType
     }
     if (info.jpPriceYen && !next.jp_price_yen) {
       next.jp_price_yen = info.jpPriceYen
