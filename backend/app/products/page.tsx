@@ -8,7 +8,6 @@ import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
-import SmartImportWizard from '@/components/SmartImportWizard'
 import { useAdmin } from '@/contexts/AdminContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -33,8 +32,6 @@ export default function ProductsPage() {
   // 只用來決定介面上要不要顯示刪除／驗證按鈕。
   // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
-
-  const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
   const zipRef = useRef<HTMLInputElement>(null)
@@ -794,14 +791,9 @@ export default function ProductsPage() {
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <>
-                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架、上傳圖片都是平台的事。
-                    批量上架本來就是平台人員拿廠商給的 list 來匯入，不是廠商自己來。 */}
-                {!isSupplier && <button
-                  onClick={() => setIsBulkOpen(true)}
-                  className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  智能批量上架
-                </button>}
+                {/* 廠商只能看與編輯自己的商品 —— 新增與上傳圖片都是平台的事。
+                    「智能批量上架」那顆搬到獨立的「商品補齊」頁了：
+                    補齊要爬網站、跑好幾分鐘，綁在一個開著的 modal 上是行不通的 */}
                 {!isSupplier && <button
                   onClick={() => zipRef.current?.click()}
                   disabled={zipUploading}
@@ -1427,12 +1419,6 @@ export default function ProductsPage() {
             )}
           </div>
         </PageCard>
-
-        <SmartImportWizard
-          isOpen={isBulkOpen}
-          onClose={() => setIsBulkOpen(false)}
-          onImported={() => { fetchProducts() }}
-        />
       </div>
 
       {/* 確認 Modal */}
