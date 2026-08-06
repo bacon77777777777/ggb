@@ -116,6 +116,36 @@ async function mirrorToR2(url: string): Promise<string | null> {
   } catch { return null }
 }
 
+/**
+ * 把廠商填的圖片欄位變成可用的網址。
+ *
+ * 廠商有兩種填法，兩種都要吃：
+ *   1. 檔名   abc123.png                → 對回圖庫裡已經上傳的那張
+ *   2. 網址   https://xxx/img/abc.png   → 抓下來、壓縮、存進自己的圖庫
+ *
+ * 第 2 種一定要轉存，不能直接用對方的網址：外部圖隨時失效或擋 referer，
+ * 前台就是破圖；而且轉存的那份已經壓過，載入快得多。
+ *
+ * 回 null 代表這個值用不了（檔名在圖庫裡找不到、或網址抓不下來），
+ * 呼叫端據此決定要不要改去搜圖。
+ */
+export async function resolveVendorImage(raw: string | null | undefined): Promise<string | null> {
+  const v = String(raw ?? '').trim()
+  if (!v) return null
+
+  if (/^https?:\/\//i.test(v)) return await mirrorToR2(v)
+  // 站內路徑原樣採用
+  if (v.startsWith('/')) return v
+
+  // 純檔名：廠商偶爾會連資料夾一起寫（images/foo.webp），只取檔名
+  const file = v.split(/[\\/]/).pop() ?? v
+  const url = `${R2_PUBLIC_URL}/products/${file}`
+  try {
+    const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+    return r.ok ? url : null
+  } catch { return null }
+}
+
 export interface FindImageInput {
   /** 呼叫端自訂的識別碼，回應會原樣帶回，用來對回哪個商品／品項 */
   key: string

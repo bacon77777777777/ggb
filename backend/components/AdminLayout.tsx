@@ -718,7 +718,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'lottery',
         title: '抽獎管理',
         items: [
-          { name: '商品補齊', path: '/products/import', icon: IconSparkles },
           { name: '商品管理', path: '/products', icon: IconProducts },
           { name: '消費紀錄', path: '/draws', icon: IconDraws },
           { name: '配送管理', path: '/orders', icon: IconOrders },
@@ -810,6 +809,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'blacktech',
         title: '其他黑科技',
         items: [
+          { name: '商品補齊', path: '/products/import', icon: IconSparkles },
           { name: '事件中心', path: '/agent-events', icon: IconEvents },
           { name: '競品情報', path: '/competitor-intel', icon: IconSearch },
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconSparkle },

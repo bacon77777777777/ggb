@@ -1,5 +1,5 @@
 import { createClaude } from '@/lib/aiUsage'
-import { findImage } from '@/lib/imageFinder'
+import { findImage, resolveVendorImage } from '@/lib/imageFinder'
 
 /**
  * 商品資料補齊
@@ -277,6 +277,20 @@ export async function enrichRow(
   }
 
   // ── 商品主圖 ──
+  // 廠商填的可能是檔名（對回圖庫）或網址（抓下來存進圖庫）。
+  // 兩種都先試，對不上才去搜圖 —— 廠商給的圖一定比搜到的準
+  if (next.image_url) {
+    const resolved = await resolveVendorImage(String(next.image_url))
+    if (resolved) {
+      if (resolved !== next.image_url) {
+        filled.push({ key: 'image_url', label: '商品主圖', value: resolved, source: '廠商提供' })
+        next.image_url = resolved
+      }
+    } else {
+      // 檔名在圖庫裡找不到、或網址抓不下來。留著會變成前台破圖，先清掉改去搜
+      next.image_url = null
+    }
+  }
   if (!next.image_url) {
     const img = await findImage({ key: 'p', query: String(next.name ?? rawName), barcode, reuse: true })
     if (img.url) {
@@ -290,7 +304,11 @@ export async function enrichRow(
   const productName = String(next.name ?? rawName)
   let prizeImgCount = 0
   for (let i = 0; i < nextPrizes.length; i++) {
-    if (nextPrizes[i].image_url) continue
+    if (nextPrizes[i].image_url) {
+      const resolved = await resolveVendorImage(String(nextPrizes[i].image_url))
+      nextPrizes[i].image_url = resolved
+      if (resolved) { prizeImgCount++; continue }
+    }
     const pname = String(nextPrizes[i].name ?? '').trim()
     if (!pname) continue
     const img = await findImage({ key: `z${i}`, query: `${productName} ${pname}` })

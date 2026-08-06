@@ -152,7 +152,8 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'image_url', label: '商品主圖', kind: 'text',
     aliases: [/商品圖片/i, /^圖片$/i, /^image/i, /^img/i, /照片/i, /封面/i, /主圖/i, /^cover$/i, /^photo$/i, /画像/i],
-    example: 'https://...', note: '網址或圖檔名。留空會自動補',
+    example: 'abc123.png',
+    note: '填圖檔名（用「上傳圖片」丟過的）或完整網址皆可 —— 網址會自動抓下來存進平台圖庫。留空會自動搜圖',
   },
   {
     key: 'box_image_url', label: '外盒圖', kind: 'text', onlyFor: ['blindbox'],
@@ -267,7 +268,7 @@ export const PRIZE_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'image_url', label: '品項圖', kind: 'text',
     aliases: [/圖片/i, /^圖$/i, /^img$/i, /^image$/i, /画像/i],
-    example: '', note: '留空會自動補',
+    example: 'abc123-a.png', note: '同商品主圖：檔名或網址皆可，留空會自動搜圖',
   },
   {
     key: 'probability', label: '中獎機率', kind: 'number', onlyFor: PROBABILITY_TYPES,

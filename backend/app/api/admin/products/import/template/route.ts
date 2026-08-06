@@ -16,13 +16,93 @@ const MIXED = 'all'
  * 值都盡量貼近真實：機率制（轉蛋／盒玩）沒有總籤數與殺率所以留白，
  * 機台不收單抽價格（改用下注檔次）所以填 0。
  */
-const TYPE_SAMPLES: { type: ProductType; label: string; price: string; total: string; profit: string; levels: [string, string]; qty: [string, string] }[] = [
-  { type: 'ichiban',  label: '一番賞', price: '150', total: '80',  profit: '0.7', levels: ['A賞', 'B賞'],                     qty: ['1', '10'] },
-  { type: 'blindbox', label: '盒玩',   price: '200', total: '',    profit: '',    levels: ['普通款', '隱藏款'],               qty: ['60', '6'] },
-  { type: 'gacha',    label: '轉蛋',   price: '150', total: '',    profit: '',    levels: ['Normal / Common', 'Secret'],      qty: ['50', '2'] },
-  { type: 'card',     label: '抽卡',   price: '100', total: '100', profit: '0.8', levels: ['SSR', 'R'],                       qty: ['1', '30'] },
-  { type: 'custom',   label: '自製賞', price: '250', total: '60',  profit: '0.7', levels: ['A賞', 'G賞'],                     qty: ['1', '20'] },
-  { type: 'slot',     label: '機台',   price: '0',   total: '',    profit: '',    levels: ['一等獎', '三等獎'],               qty: ['1', '50'] },
+interface TypeSample {
+  type: ProductType
+  label: string
+  name: string
+  series: string
+  distributor: string
+  barcode: string
+  price: string
+  total: string
+  cost: string
+  jpYen: string
+  image: string
+  levels: [string, string]
+  qty: [string, string]
+  prizeNames: [string, string]
+  prizeImages: [string, string]
+  prob: [string, string]
+}
+
+/**
+ * 各類型的範例列。混合範本會把這幾列全部放進去，
+ * 讓人一眼看出「同一個檔案可以混，每一列由『商品類型』決定」。
+ *
+ * 每一欄都填滿，不留空格 —— 範例留白的話，看的人分不出
+ * 「這欄不用填」還是「這欄我們忘了給例子」，只好一欄一欄來問。
+ */
+const TYPE_SAMPLES: TypeSample[] = [
+  {
+    type: 'ichiban', label: '一番賞',
+    name: '航海王 一番賞 頂上決戰', series: '航海王', distributor: 'BANDAI SPIRITS',
+    barcode: '4570117575129', price: '150', total: '80', cost: '9600', jpYen: '880',
+    image: 'onepiece-kuji-01.jpg',
+    levels: ['A賞', 'B賞'], qty: ['1', '10'],
+    prizeNames: ['魯夫 造型公仔', '索隆 壓克力立牌'],
+    prizeImages: ['onepiece-a.jpg', 'onepiece-b.jpg'],
+    prob: ['', ''],
+  },
+  {
+    type: 'blindbox', label: '盒玩',
+    name: '吉伊卡哇 睡覺系列盒玩', series: '吉伊卡哇', distributor: 'Re-MeNT',
+    barcode: '4521121207834', price: '200', total: '66', cost: '7200', jpYen: '660',
+    image: 'chiikawa-box-01.jpg',
+    levels: ['普通款', '隱藏款'], qty: ['60', '6'],
+    prizeNames: ['吉伊卡哇 睡姿款', '烏薩奇 隱藏款'],
+    prizeImages: ['chiikawa-normal.jpg', 'chiikawa-secret.jpg'],
+    prob: ['0.909091', '0.090909'],
+  },
+  {
+    type: 'gacha', label: '轉蛋',
+    name: '星之卡比 毛線角色公仔', series: '星之卡比', distributor: 'BANDAI',
+    barcode: '4549660488798', price: '150', total: '52', cost: '5200', jpYen: '400',
+    image: 'kirby-gacha-01.jpg',
+    levels: ['Normal / Common', 'Secret'], qty: ['50', '2'],
+    prizeNames: ['卡比 粉紅款', '瓦豆魯迪 隱藏款'],
+    prizeImages: ['kirby-normal.jpg', 'kirby-secret.jpg'],
+    prob: ['0.961538', '0.038462'],
+  },
+  {
+    type: 'card', label: '抽卡',
+    name: '寶可夢卡牌 樂園之守護者 補充包', series: '寶可夢', distributor: 'The Pokémon Company',
+    barcode: '4521329352916', price: '100', total: '100', cost: '6000', jpYen: '180',
+    image: 'pokemon-pack-01.jpg',
+    levels: ['SSR', 'R'], qty: ['1', '30'],
+    prizeNames: ['皮卡丘 SAR', '妙蛙種子 R'],
+    prizeImages: ['pokemon-sar.jpg', 'pokemon-r.jpg'],
+    prob: ['', ''],
+  },
+  {
+    type: 'custom', label: '自製賞',
+    name: '吉吉比自製賞 夏日祭典', series: '吉吉比', distributor: '吉吉比',
+    barcode: '', price: '250', total: '60', cost: '9000', jpYen: '',
+    image: 'ggb-custom-01.jpg',
+    levels: ['A賞', 'G賞'], qty: ['1', '20'],
+    prizeNames: ['大型玩偶', '壓克力吊飾'],
+    prizeImages: ['ggb-a.jpg', 'ggb-g.jpg'],
+    prob: ['', ''],
+  },
+  {
+    type: 'slot', label: '機台',
+    name: '吉吉比拉霸機 幸運七', series: '吉吉比', distributor: '吉吉比',
+    barcode: '', price: '0', total: '', cost: '', jpYen: '',
+    image: 'slot-lucky7.jpg',
+    levels: ['一等獎', '三等獎'], qty: ['1', '50'],
+    prizeNames: ['頭獎 限量公仔', '安慰獎 貼紙'],
+    prizeImages: ['slot-1st.jpg', 'slot-3rd.jpg'],
+    prob: ['', ''],
+  },
 ]
 
 export const runtime = 'nodejs'
@@ -87,18 +167,66 @@ export async function GET(request: Request) {
   const samples: string[] = []
   const notes: string[] = []
 
+  // 範例列每一欄都填滿，不留空格 —— 留白的話看的人分不出
+  // 「這欄不用填」還是「這欄我們忘了給例子」，只好一欄一欄來問
+  const sample = TYPE_SAMPLES.find(s => s.type === type) ?? TYPE_SAMPLES[0]
+
+  const productCell = (key: string): string => {
+    switch (key) {
+      case 'name':         return `範例）${sample.name}`
+      case 'type':         return sample.label
+      case 'price':        return sample.price
+      case 'total_count':  return sample.total
+      case 'cost':         return sample.cost
+      case 'jp_price_yen': return sample.jpYen
+      case 'image_url':    return sample.image
+      case 'series':       return sample.series
+      case 'distributor':  return sample.distributor
+      case 'barcode':      return sample.barcode
+      case 'category':     return '動漫'
+      case 'release_year': return '2026'
+      case 'release_month':return '08'
+      case 'rarity':       return '3'
+      case 'status':       return '待上架'
+      case 'is_hot':       return '否'
+      case 'started_at':   return '2026-08-15 12:00'
+      case 'is_preorder':  return '否'
+      case 'preorder_available_at': return ''
+      case 'machine_theme':        return sample.type === 'gacha' ? 'gacha_mode2' : ''
+      case 'lottery_total_draws':  return ''
+      case 'lottery_per_user_draws': return ''
+      case 'description':  return `${sample.series} 正版授權，${sample.label}商品`
+      case 'box_image_url':return sample.type === 'blindbox' ? 'box-' + sample.image : ''
+      default:             return ''
+    }
+  }
+
+  const prizeCell = (key: string, i: number): string => {
+    const idx = i - 1
+    switch (key) {
+      case 'level':         return sample.levels[idx] ?? ''
+      case 'name':          return sample.prizeNames[idx] ?? ''
+      case 'total':         return sample.qty[idx] ?? ''
+      case 'image_url':     return sample.prizeImages[idx] ?? ''
+      case 'probability':   return sample.prob[idx] ?? ''
+      case 'recycle_value': return sample.type === 'slot' ? (idx === 0 ? '100' : '10') : '0'
+      case 'sale_price':    return '0'
+      default:              return ''
+    }
+  }
+
   for (const f of productFields) {
     headers.push(f.label)
-    samples.push(f.key === 'name' ? `範例）${f.example ?? ''}` : (f.example ?? ''))
+    samples.push(productCell(f.key))
     notes.push(f.note ?? '')
   }
 
-  const levels = LEVEL_PRESETS[type]
   for (let i = 1; i <= PRIZE_SLOTS; i++) {
     for (const f of prizeFields) {
       headers.push(`獎項${i}${f.label === '品項名稱' ? '名稱' : f.label}`)
-      // 只有前兩組給範例，後面留空，不然範本看起來像已經填滿了
-      samples.push(i > 2 ? '' : (f.key === 'level' ? (levels[i - 1] ?? levels[0]) : (f.example ?? '')))
+      // 只有前兩組給範例。後面 18 組留白是刻意的 ——
+      // 全部填滿會讓人以為每個商品都要湊滿 20 個品項
+      samples.push(i > 2 ? '' : prizeCell(f.key, i))
       notes.push(i > 1 ? '' : (f.note ?? ''))
     }
   }
@@ -110,12 +238,28 @@ export async function GET(request: Request) {
       if (sp.type === 'slot' && !canUseSlot) continue
       const row = productFields.map(f => {
         switch (f.key) {
-          case 'name':        return `範例）${sp.label}商品`
-          case 'type':        return sp.label
-          case 'price':       return sp.price
-          case 'total_count': return sp.total
-          case 'profit_rate': return sp.profit
-          default:            return ''
+          case 'name':         return `範例）${sp.name}`
+          case 'type':         return sp.label
+          case 'price':        return sp.price
+          case 'total_count':  return sp.total
+          case 'cost':         return sp.cost
+          case 'jp_price_yen': return sp.jpYen
+          case 'image_url':    return sp.image
+          case 'series':       return sp.series
+          case 'distributor':  return sp.distributor
+          case 'barcode':      return sp.barcode
+          case 'category':     return '動漫'
+          case 'release_year': return '2026'
+          case 'release_month':return '08'
+          case 'rarity':       return '3'
+          case 'status':       return '待上架'
+          case 'is_hot':       return '否'
+          case 'started_at':   return '2026-08-15 12:00'
+          case 'is_preorder':  return '否'
+          case 'machine_theme':return sp.type === 'gacha' ? 'gacha_mode2' : ''
+          case 'description':  return `${sp.series} 正版授權，${sp.label}商品`
+          case 'box_image_url':return sp.type === 'blindbox' ? 'box-' + sp.image : ''
+          default:             return ''
         }
       })
       for (let i = 1; i <= PRIZE_SLOTS; i++) {
@@ -124,9 +268,12 @@ export async function GET(request: Request) {
           const idx = i - 1
           row.push(
             f.key === 'level' ? sp.levels[idx]
-            : f.key === 'name' ? `${sp.label}品項${i}`
+            : f.key === 'name' ? sp.prizeNames[idx]
             : f.key === 'total' ? sp.qty[idx]
-            : f.key === 'recycle_value' && sp.type === 'slot' ? '10'
+            : f.key === 'image_url' ? sp.prizeImages[idx]
+            : f.key === 'probability' ? sp.prob[idx]
+            : f.key === 'recycle_value' ? (sp.type === 'slot' ? (idx === 0 ? '100' : '10') : '0')
+            : f.key === 'sale_price' ? '0'
             : ''
           )
         }
