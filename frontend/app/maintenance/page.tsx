@@ -53,41 +53,54 @@ export default async function MaintenancePage() {
   const untilText = formatUntil(until);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 overflow-y-auto bg-white px-8 py-12 text-center dark:bg-neutral-950">
+    /*
+     * 間距的分組：原本每一塊之間都是同樣的 gap-6，於是四個元素讀起來像四件不相干的事。
+     * 改成三層 ——
+     *   1. logo：品牌，離下面遠一點（它不是訊息的一部分）
+     *   2. 柴犬 + 維護中 + 說明 + 恢復時間：同一件事，彼此貼緊
+     *   3. 補充說明：次要，沉到底部
+     */
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-y-auto bg-white px-6 py-10 text-center dark:bg-neutral-950">
       {/* logo 不可點：維護中沒有能去的地方，點了只會回到同一頁 */}
       <Image
         src="/images/20260629/logo.svg"
         alt="吉吉比"
-        width={148}
-        height={48}
-        priority
-        className="h-auto w-[148px] object-contain"
-      />
-
-      <Image
-        src="/loading/3.svg"
-        alt=""
         width={132}
-        height={132}
+        height={44}
         priority
-        className="opacity-90"
+        className="h-auto w-[132px] shrink-0 object-contain"
       />
 
-      <div className="max-w-sm space-y-3">
-        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50">
+      {/* 主訊息吃掉剩下的空間並置中，所以畫面高矮不同時 logo 與底部小字都待在原位 */}
+      <div className="flex flex-1 flex-col items-center justify-center py-8">
+        <Image
+          src="/loading/3.svg"
+          alt=""
+          width={124}
+          height={124}
+          priority
+          className="opacity-90"
+        />
+
+        {/* 柴犬與標題是同一個視覺單位，貼緊 */}
+        <h1 className="mt-4 text-2xl font-black text-neutral-900 dark:text-neutral-50">
           維護中
         </h1>
-        <p className="whitespace-pre-line text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+
+        <p className="mt-2.5 max-w-[19rem] text-pretty whitespace-pre-line text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">
           {message}
         </p>
+
+        {/* 恢復時間是玩家真正想知道的那一項，做成標籤跟說明分開，
+            不然它只是第三行看起來一樣的字 */}
         {untilText && (
-          <p className="text-sm font-bold text-primary">
+          <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
             預計 {untilText} 恢復
-          </p>
+          </div>
         )}
       </div>
 
-      <p className="max-w-xs text-xs leading-relaxed text-neutral-400">
+      <p className="max-w-xs shrink-0 text-xs leading-relaxed text-neutral-400">
         {untilText ? '維護時間如有變動會另行公告。' : '完成時間會另行公告。'}
       </p>
     </div>
