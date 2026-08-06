@@ -52,6 +52,7 @@ interface ParseResult {
     mappedFields: number; totalFields: number; autoFilled: number; noPrize: number
     missingImages: number; knownImages: number; needsTranslation: number
   }
+  prizeLayout?: 'vertical' | 'horizontal' | 'none'
   products: ParsedRow[]
 }
 
@@ -75,6 +76,7 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   const [parsing, setParsing] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [result, setResult] = useState<ParseResult | null>(null)
+  const [filling, setFilling] = useState<{ done: number; total: number; found: number } | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [committing, setCommitting] = useState(false)
@@ -123,6 +125,72 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
       toast(e instanceof Error ? e.message : '解析失敗', 'error')
     } finally {
       setParsing(false)
+    }
+  }
+
+  /*
+   * 補圖
+   *
+   * 廠商的 list 常常只有商品名沒有圖，或給了還沒上傳的檔名，
+   * 解析完就是一整排空的。這一步把缺的圖補起來：
+   * 站內同名商品直接沿用，沒有就去搜圖、下載、壓縮、存進自家 R2。
+   *
+   * 分批送而不是整包丟過去 —— 一份 50 個商品配 8 個品項就是 450 次搜尋，
+   * 塞在同一個請求裡一定逾時。每批 40 筆，同時把進度顯示出來，
+   * 不然使用者會以為當掉了。
+   */
+  const fillImages = async () => {
+    type Task = { key: string; query: string; barcode?: string | null; reuse?: boolean }
+    const tasks: Task[] = []
+    rows.forEach((r, ri) => {
+      const pname = String(r.product.name ?? '').trim()
+      if (!pname) return
+      if (!r.product.image_url) {
+        tasks.push({ key: `p:${ri}`, query: pname, barcode: r.product.barcode ?? null, reuse: true })
+      }
+      r.prizes.forEach((pz, pi) => {
+        if (pz.image_url) return
+        const zname = String(pz.name ?? '').trim()
+        if (!zname) return
+        // 品項圖要連商品名一起查：單獨的「魯夫 公仔」搜出來會是別檔商品的圖
+        tasks.push({ key: `z:${ri}:${pi}`, query: `${pname} ${zname}` })
+      })
+    })
+
+    if (!tasks.length) { toast('沒有缺圖的項目'); return }
+
+    setFilling({ done: 0, total: tasks.length, found: 0 })
+    const next = rows.map(r => ({ ...r, prizes: r.prizes.map(z => ({ ...z })) }))
+    let found = 0
+
+    try {
+      for (let i = 0; i < tasks.length; i += 40) {
+        const chunk = tasks.slice(i, i + 40)
+        const res = await fetch('/api/admin/products/import/fill-images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ items: chunk }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || '補圖失敗')
+
+        for (const r of (json.results ?? []) as { key: string; url: string | null }[]) {
+          if (!r.url) continue
+          found++
+          const [kind, a, b] = r.key.split(':')
+          if (kind === 'p') next[Number(a)].product.image_url = r.url
+          else next[Number(a)].prizes[Number(b)].image_url = r.url
+        }
+        setFilling({ done: Math.min(i + chunk.length, tasks.length), total: tasks.length, found })
+      }
+      setRows(next)
+      toast(`補到 ${found} 張圖，還有 ${tasks.length - found} 個項目沒找到`)
+    } catch (e: unknown) {
+      setRows(next)  // 已經補到的先留著，不要因為後面失敗就整批丟掉
+      toast(e instanceof Error ? e.message : '補圖失敗', 'error')
+    } finally {
+      setFilling(null)
     }
   }
 
@@ -340,6 +408,43 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
               </div>
             ))}
           </div>
+
+          {/* 缺圖的補圖入口。放在統計列正下方 —— 那是使用者看到「圖片是空的」
+              之後第一個會找的地方 */}
+          {(() => {
+            const missingProduct = rows.filter(r => !r.product.image_url && r.product.name).length
+            const missingPrize = rows.reduce(
+              (a, r) => a + r.prizes.filter(z => !z.image_url && z.name).length, 0)
+            const total = missingProduct + missingPrize
+            if (!total && !filling) return null
+            return (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2.5">
+                {filling ? (
+                  <>
+                    <p className="text-xs text-blue-900">
+                      補圖中 {filling.done} / {filling.total}，已找到 {filling.found} 張
+                    </p>
+                    <div className="h-1.5 w-28 shrink-0 overflow-hidden rounded-full bg-blue-100">
+                      <div
+                        className="h-full bg-blue-500 transition-all"
+                        style={{ width: `${Math.round((filling.done / filling.total) * 100)}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-blue-900">
+                      還有 {total} 個項目沒有圖（商品主圖 {missingProduct}、品項 {missingPrize}）。
+                      可以自動去找，找到的會壓縮後存進自己的圖庫。
+                    </p>
+                    <Button size="sm" variant="outline" onClick={fillImages}>
+                      自動補圖
+                    </Button>
+                  </>
+                )}
+              </div>
+            )
+          })()}
 
           {(result.stats.needsTranslation > 0 || result.stats.missingImages > 0) && (
             <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5">
