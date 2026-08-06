@@ -340,7 +340,11 @@ const MAINT_OPTIONS = [
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {/* 六欄格線：正常營運佔三欄（50%），其餘三個各佔一欄。
+            手機上先排成兩欄，否則四個擠一排每個都塞不下字。
+            按鈕內不放說明文字 —— 那會讓選中的那顆變高、四顆不齊，
+            而且說明已經收在標題旁的圓點裡 */}
+        <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-6">
           {MAINT_OPTIONS.map(o => {
             const active = (maint?.scope ?? 'off') === o.v
             const blocked = o.adminOnly && !isSuperAdmin
@@ -350,23 +354,19 @@ const MAINT_OPTIONS = [
                 type="button"
                 disabled={!maint || maintSaving || blocked}
                 onClick={() => requestScope(o.v)}
-                className={`rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                // 被鎖住的原因用原生提示，不佔版面高度
+                title={blocked ? '僅超級管理員可以關閉後台' : o.hint}
+                className={`flex min-h-[44px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  o.v === 'off' ? 'col-span-2 sm:col-span-3' : 'col-span-1'
+                } ${
                   active
                     ? o.v === 'off'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-amber-400 bg-amber-50'
-                    : 'border-neutral-200 bg-white hover:border-neutral-300'
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-amber-400 bg-amber-50 text-amber-900'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
                 }`}
               >
-                <div className="text-sm font-bold text-neutral-900">{o.label}</div>
-                {/* 說明只在「選中」或「被鎖住」時出現。
-                    四張卡各掛一行灰字，畫面看起來就是一片字海，
-                    而使用者其實只需要知道「我現在選的是什麼」跟「為什麼這個不能點」 */}
-                {(active || blocked) && (
-                  <div className={`mt-0.5 text-xs ${blocked ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                    {blocked ? '僅超級管理員可用' : o.hint}
-                  </div>
-                )}
+                {o.label}
               </button>
             )
           })}
