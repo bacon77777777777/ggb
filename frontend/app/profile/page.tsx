@@ -445,7 +445,9 @@ function ProfileContent() {
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
   const isDesktop = useMediaQuery('(min-width: 768px)');
-  const { flags } = useFeatureFlags();
+  const { flags, states: featureStates } = useFeatureFlags();
+  // 儲值維護中時，餘額卡的「儲值」不換頁、改跳提示
+  const rechargeState = featureStates.recharge;
 
   const [activeTab, setActiveTab] = useState<TabType>('warehouse');
   const [activeWarehouseTab, setActiveWarehouseTab] = useState<'all' | 'dismantled'>('all');
@@ -6553,9 +6555,19 @@ function ProfileContent() {
                         {isGuest ? '0' : (user.tokens?.toLocaleString() || '0')}
                       </div>
                       
+                      {/* 儲值維護中：按鈕留著但不換頁，改跳提示（同 Navbar 的「立即儲值」） */}
                       <Link
                         href={isGuest ? loginHref : '/topup'}
-                        className="h-8 px-4 bg-[#ffd900] rounded-full flex items-center justify-center text-[#282828] text-sm font-black shadow-lg shadow-yellow-500/20 active:scale-95 transition-transform"
+                        onClick={e => {
+                          if (!isGuest && rechargeState === 'maintenance') {
+                            e.preventDefault();
+                            toast.info('儲值維護中，敬請見諒');
+                          }
+                        }}
+                        className={cn(
+                          "h-8 px-4 bg-[#ffd900] rounded-full flex items-center justify-center text-[#282828] text-sm font-black shadow-lg shadow-yellow-500/20 active:scale-95 transition-transform",
+                          !isGuest && rechargeState === 'maintenance' && "opacity-60"
+                        )}
                       >
                         儲值
                       </Link>
