@@ -54,50 +54,11 @@ export function hexToTriplet(hex: string): string | null {
   return rgb ? rgb.join(' ') : null;
 }
 
-function rgbToHsl([r, g, b]: [number, number, number]): [number, number, number] {
-  const [R, G, B] = [r / 255, g / 255, b / 255];
-  const max = Math.max(R, G, B), min = Math.min(R, G, B);
-  const l = (max + min) / 2;
-  const d = max - min;
-  if (d === 0) return [0, 0, l * 100];
-  const s = d / (1 - Math.abs(2 * l - 1));
-  let h: number;
-  if (max === R) h = 60 * (((G - B) / d) % 6);
-  else if (max === G) h = 60 * ((B - R) / d + 2);
-  else h = 60 * ((R - G) / d + 4);
-  return [(h + 360) % 360, s * 100, l * 100];
-}
-
-function hslToRgb([h, s, l]: [number, number, number]): [number, number, number] {
-  const S = clamp(s, 0, 100) / 100, L = clamp(l, 0, 100) / 100;
-  const c = (1 - Math.abs(2 * L - 1)) * S;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = L - c / 2;
-  const seg = Math.floor(((h % 360) + 360) % 360 / 60);
-  const [r, g, b] = [
-    [c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x],
-  ][seg];
-  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
-}
-
-/**
- * 從主色推導出另外三階。
- *
- * 位移量是從現有的四個手調值反推出來的（見檔頭），所以換成別的主色時
- * 明暗關係跟現在一致，不會出現「深色階比主色還亮」這種事。
+/*
+ * 顏色的推導（主色 → dark / light / soft）刻意不放在這裡，而是在後台
+ * backend/lib/theme.ts。存進資料庫的是推導後的四個值，前台只負責讀出來用 ——
+ * 兩邊各放一套 HSL 數學遲早會走鐘，而且走鐘時前台顯示的顏色會跟後台預覽的不一樣。
  */
-export function derivePalette(baseHex: string): ThemePalette {
-  const rgb = hexToRgb(baseHex);
-  if (!rgb) return DEFAULT_PALETTE;
-  const [h, s, l] = rgbToHsl(rgb);
-  return {
-    primary: rgbToHex(rgb as [number, number, number]),
-    dark: rgbToHex(hslToRgb([h + 2, s - 10, l - 6])),
-    light: rgbToHex(hslToRgb([h + 4, s + 15, l + 8])),
-    // soft 是襯底用的，跟主色只保留色相關係，明度一律拉到接近白
-    soft: rgbToHex(hslToRgb([h + 9, 100, 97])),
-  };
-}
 
 /** 產生要塞進 <style> 的那段 CSS。回 null 代表沿用 globals.css 裡的預設值 */
 export function paletteToCss(p: Partial<ThemePalette> | null): string | null {

@@ -76,6 +76,7 @@ const PERMISSION_GROUPS = [
       { id: 'categories',        label: '分類清單' },
       { id: 'settings_modules',  label: '抽獎模組設定' },
       { id: 'settings_features', label: '功能開關' },
+      { id: 'settings_theme',    label: '主題色' },
       { id: 'admins',            label: '管理員清單' },
       { id: 'permissions',       label: '權限管理' },
       { id: 'logs',              label: '操作記錄' },
