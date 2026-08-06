@@ -387,33 +387,6 @@ const MAINT_OPTIONS = [
           })}
         </div>
 
-        {/* 儲值獨立於維護範圍：金流那邊出狀況時要能單獨關掉儲值，
-            不必為此把整個前台停掉。它跟上面的範圍一樣是「現在能不能用」，
-            不是「平台有沒有這個功能」，所以放這張卡而不是功能開關那幾張 */}
-        <div className={`mt-2 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors ${
-          ready && flags && !flags.recharge ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white'
-        }`}>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-neutral-900">儲值</span>
-            <InfoDot>
-              關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
-              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
-            </InfoDot>
-          </div>
-          <div className="flex items-center gap-3">
-            {ready && flags && !flags.recharge && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-800">
-                已關閉
-              </span>
-            )}
-            <Switch
-              checked={ready && flags ? Boolean(flags.recharge) : false}
-              disabled={!ready || isSaving}
-              onCheckedChange={(checked) => toggleFlag('recharge', checked)}
-            />
-          </div>
-        </div>
-
         {maint && maint.scope !== 'off' && (
           <div className="mt-4 space-y-3 border-t border-neutral-100 pt-4">
             <div>
@@ -455,6 +428,35 @@ const MAINT_OPTIONS = [
             </div>
           </div>
         )}
+
+        {/* 儲值放在最後、跟維護範圍用分隔線隔開。
+            它跟上面四顆按鈕無關 —— 貼在按鈕正下方會被讀成「維護範圍的第五個選項」。
+            金流那邊出狀況時要能單獨關掉儲值，不必為此把整個前台停掉 */}
+        <div className="mt-4 border-t border-neutral-100 pt-4">
+          <div className={`flex max-w-xs items-center justify-between gap-3 rounded-xl border px-4 py-2.5 transition-colors ${
+            ready && flags && !flags.recharge ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-neutral-900">儲值</span>
+              <InfoDot>
+                跟維護範圍無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
+                已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
+              </InfoDot>
+            </div>
+            <div className="flex items-center gap-2.5">
+              {ready && flags && !flags.recharge && (
+                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                  已關閉
+                </span>
+              )}
+              <Switch
+                checked={ready && flags ? Boolean(flags.recharge) : false}
+                disabled={!ready || isSaving}
+                onCheckedChange={(checked) => toggleFlag('recharge', checked)}
+              />
+            </div>
+          </div>
+        </div>
       </PageCard>
 
       {loadError && (
