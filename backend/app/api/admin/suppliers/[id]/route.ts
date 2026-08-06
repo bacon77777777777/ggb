@@ -14,6 +14,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: '廠商名稱不可為空' }, { status: 400 })
 
   const supabase = getSupabaseAdmin()
+
+  // 平台自營那筆不給停用，理由跟不給刪一樣：自營商品都掛在它底下，
+  // 停掉之後那些商品就再也指派不回去了
+  if (is_active === false) {
+    const { data: target } = await supabase
+      .from('suppliers').select('is_platform').eq('id', id).maybeSingle()
+    if (target?.is_platform) {
+      return NextResponse.json(
+        { error: '這是平台自營的廠商，不能停用。' },
+        { status: 400 },
+      )
+    }
+  }
   const { data, error } = await supabase
     .from('suppliers')
     .update({ name: name?.trim(), contact_name, contact_phone, contact_email, address, notes, is_active, tax_id: tax_id !== undefined ? (tax_id || null) : undefined, sender_name: sender_name !== undefined ? (sender_name || null) : undefined, sender_zip_code: sender_zip_code !== undefined ? (sender_zip_code || null) : undefined, sender_address: sender_address !== undefined ? (sender_address || null) : undefined, updated_at: new Date().toISOString() })
