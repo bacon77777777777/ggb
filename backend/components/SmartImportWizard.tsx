@@ -97,6 +97,9 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   // 整批的商品類型。廠商的進貨單常常沒有類型欄（一份檔案就是一種類型），
   // 不給選的話會全部當成一番賞 —— 扭蛋清單被當成一番賞，賞等與籤號全是錯的
   const [forcedType, setForcedType] = useState('')
+  // 補齊分兩個階段，畫面上要講清楚現在在做哪一個 ——
+  // 查品項慢得多，不說的話會被當成當掉了
+  const [phase, setPhase] = useState<'image' | 'prize' | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [committing, setCommitting] = useState(false)
@@ -289,24 +292,30 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
   }
 
   /**
-   * 一鍵補齊：先查品項，再補圖。
+   * 一鍵補齊：先補圖，再查品項。
    *
-   * 兩件事分兩顆按鈕是我原本的做法，但使用者按的是「補齊」，
-   * 心裡想的就是「把缺的都補完」—— 拆成兩顆等於要人自己記得按第二次。
-   * 而且順序有意義：品項補完才知道有哪些品項要補圖。
+   * 順序很重要。原本是先查品項 —— 那要對每個商品去爬三十幾個官網，
+   * 併發只能開 2（爬太快會被擋），33 筆就是好幾分鐘。
+   * 而補圖是幾秒鐘的事（實測 10 筆 4 秒）。
+   *
+   * 先跑慢的那個，畫面上好幾分鐘什麼都不會變，使用者只會覺得壞了 ——
+   * 實測時就是這樣，明明圖都找得到卻「一個都沒成功」。
+   * 先把快又穩的做完，讓人立刻看到東西進來，慢的在後面繼續補。
    */
   const autoComplete = async () => {
-    const needPrize = rows.filter(r => r.prizes.length === 0 && r.product.name).length
-    setFilling({ done: 0, total: Math.max(needPrize, 1), found: 0 })
+    setPhase('image')
     try {
-      const gotPrizes = needPrize ? await fillPrizes() : 0
       const gotImages = await fillImages()
-      toast(
-        needPrize
-          ? `補了 ${gotPrizes} 個商品的品項、${gotImages} 張圖`
-          : `補了 ${gotImages} 張圖`,
-      )
+
+      const needPrize = rows.filter(r => r.prizes.length === 0 && r.product.name).length
+      if (!needPrize) { toast(`補了 ${gotImages} 張圖`); return }
+
+      setPhase('prize')
+      setFilling({ done: 0, total: needPrize, found: 0 })
+      const gotPrizes = await fillPrizes()
+      toast(`補了 ${gotImages} 張圖、${gotPrizes} 個商品的品項`)
     } finally {
+      setPhase(null)
       setFilling(null)
     }
   }
@@ -634,15 +643,17 @@ export default function SmartImportWizard({ isOpen, onClose, onImported }: Props
             if (!total && !filling) return null
             return (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2.5">
-                {filling ? (
+                {filling || phase ? (
                   <>
                     <p className="text-xs text-blue-900">
-                      補齊中 {filling.done} / {filling.total}…
+                      {phase === 'prize' ? '查品項中' : '補圖中'}
+                      {filling ? ` ${filling.done} / ${filling.total}` : '…'}
+                      {phase === 'prize' && '（要去官網查，比較慢）'}
                     </p>
                     <div className="h-1.5 w-28 shrink-0 overflow-hidden rounded-full bg-blue-100">
                       <div
                         className="h-full bg-blue-500 transition-all"
-                        style={{ width: `${Math.round((filling.done / filling.total) * 100)}%` }}
+                        style={{ width: filling && filling.total ? `${Math.round((filling.done / filling.total) * 100)}%` : '10%' }}
                       />
                     </div>
                   </>
