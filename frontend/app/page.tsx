@@ -1750,7 +1750,10 @@ export default function Home() {
         右下角的懸浮入口。
         販售、交易所、卡牌交換原本要搶底部導航中央那唯一一格，所以只能二選一。
         改成跟排行榜同一排的懸浮按鈕之後，開幾個就疊幾顆，彼此不再互斥。
-        只在手機顯示 —— 桌機那幾個入口在導覽列上。
+
+        只在手機顯示。桌機因此沒有交易所與卡牌交換的入口（導覽列上也沒有）——
+        這是老闆確認過可以接受的：站是手機優先，桌機不做這三個功能的入口。
+        之後若要補，改這裡的 md:hidden 或在導覽列加連結都可以。
       */}
       <div className="fixed right-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 flex flex-col items-end gap-2 md:hidden">
         {flags.market && (
@@ -1780,12 +1783,18 @@ export default function Home() {
 }
 
 /** 右下角的懸浮入口。樣式沿用原本排行榜那顆，讓幾顆疊起來像同一組東西 */
-function FloatingEntry({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+function FloatingEntry({ href, label, className = '', children }: {
+  href: string;
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className="flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white"
+      title={label}
+      className={`flex flex-col items-center justify-center w-[42px] h-[42px] rounded-l-xl bg-black/60 dark:bg-white/10 backdrop-blur-sm shadow-xl active:scale-90 transition-transform origin-right border border-white/10 overflow-visible text-white ${className}`}
     >
       {children}
     </Link>
