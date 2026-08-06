@@ -16,16 +16,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    const { error: deleteError } = await supabaseAdmin.from('menu_products').delete().eq('menu_id', id)
+    const { error: deleteError } = await supabaseAdmin.from('product_categories').delete().eq('category_id', id)
     if (deleteError) throw deleteError
 
     if (productIds.length > 0) {
       const rows = productIds.map((productId: number, idx: number) => ({
-        menu_id: id,
+        category_id: id,
         product_id: productId,
         sort_order: productIds.length - idx,
       }))
-      const { error: insertError } = await supabaseAdmin.from('menu_products').insert(rows)
+      const { error: insertError } = await supabaseAdmin.from('product_categories').insert(rows)
       if (insertError) throw insertError
     }
 

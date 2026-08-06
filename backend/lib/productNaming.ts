@@ -125,6 +125,44 @@ export function normalizeToTaiwan(raw: string): string {
 }
 
 /** 一筆商品連同它的品項一起台灣化，回報改了幾處，好讓前端顯示「系統動過什麼」。 */
+/**
+ * 廠商進貨單的商品名雜訊。
+ *
+ * 真實檔案裡的商品名長這樣：
+ *   BAN/polar bear bank夜燈公仔 @30x5 040
+ *
+ * 「BAN/」是廠牌代碼、「@30x5 040」是裝箱資訊（一箱 30 個 ×5）。
+ * 這些對倉管有意義，對玩家沒有 —— 而且更糟的是，帶著它們去搜圖或查品項
+ * 一定搜不到，因為沒有任何官網會用這種寫法。
+ *
+ * 順便把廠牌代碼換算成代理商，那是免費得來的資訊。
+ */
+const BRAND_CODES: Record<string, string> = {
+  BAN: 'BANDAI', BANDAI: 'BANDAI',
+  SEGA: 'SEGA', TAITO: 'TAITO', FUR: 'FuRyu', FURYU: 'FuRyu',
+  KTN: 'KITAN CLUB', EPO: 'EPOCH', TAR: 'TARLIN', TARLIN: 'TARLIN',
+  RE: 'Re-MeNT', REM: 'Re-MeNT', KEN: 'Ken Elephant', QUA: 'Qualia',
+  TOMY: 'TAKARA TOMY', TT: 'TAKARA TOMY',
+}
+
+export function stripVendorNoise(raw: string): { name: string; distributor: string | null } {
+  let s = String(raw ?? '').trim()
+  let distributor: string | null = null
+
+  // 開頭的廠牌代碼：BAN/xxx、SEGA/xxx
+  const brand = s.match(/^([A-Za-z]{2,6})\s*[/／]\s*/)
+  if (brand) {
+    distributor = BRAND_CODES[brand[1].toUpperCase()] ?? null
+    s = s.slice(brand[0].length)
+  }
+
+  // 裝箱資訊：@30x5 040、@ 40 x 5、＠30X5。一律砍到行尾 ——
+  // 「@」之後在這種檔案裡從來不是商品名的一部分
+  s = s.replace(/\s*[@＠]\s*\d+.*$/i, '')
+
+  return { name: s.replace(/\s+/g, ' ').trim(), distributor }
+}
+
 export function normalizeProductNames(
   product: Record<string, unknown>,
   prizes: Record<string, unknown>[],

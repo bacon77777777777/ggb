@@ -518,6 +518,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
     </svg>
   )
+  // 商品補齊（魔法棒）
+  const IconSparkles = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  )
   // 功能開關（滑桿）
   const IconSliders = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,6 +656,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/modules': 'settings_modules',
     '/settings/features': 'settings_features',
     '/settings/theme': 'settings_theme',
+    '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
     '/analytics': 'admins',
@@ -802,6 +809,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'blacktech',
         title: '其他黑科技',
         items: [
+          { name: '商品補齊', path: '/products/import', icon: IconSparkles },
           { name: '事件中心', path: '/agent-events', icon: IconEvents },
           { name: '競品情報', path: '/competitor-intel', icon: IconSearch },
           { name: 'AI 文案草稿', path: '/content-drafts', icon: IconSparkle },

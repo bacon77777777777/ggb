@@ -2,13 +2,13 @@
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal, FileInput } from '@/components'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import BulkImportModal from '@/components/BulkImportModal'
 import Badge from '@/components/ui/Badge'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
 import { normalizePrizeLevels } from '@/utils/normalizePrizes'
-import SmartImportWizard from '@/components/SmartImportWizard'
 import { useAdmin } from '@/contexts/AdminContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -33,7 +33,7 @@ export default function ProductsPage() {
   // 只用來決定介面上要不要顯示刪除／驗證按鈕。
   // 資料範圍的過濾在 GET /api/admin/products 的伺服器端做，不在這裡。
   const isSupplier = adminUser?.role === 'supplier'
-
+  // 批量上架彈窗。吃標準格式的檔案，廠商在彈窗裡選
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [zipUploading, setZipUploading] = useState(false)
   const [zipResult, setZipResult] = useState<{ uploaded: number; failed: number } | null>(null)
@@ -794,13 +794,14 @@ export default function ProductsPage() {
             onAddClick={() => window.location.href = '/products/new'}
             children={
               <>
-                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架、上傳圖片都是平台的事。
-                    批量上架本來就是平台人員拿廠商給的 list 來匯入，不是廠商自己來。 */}
+                {/* 廠商只能看與編輯自己的商品 —— 新增、批量上架與上傳圖片都是平台的事。
+                    這顆吃的是「已經是標準格式」的檔案。廠商給的原始清單要先走
+                    「商品補齊」那頁轉格式並補資料，補完下載的 CSV 再丟回這裡 */}
                 {!isSupplier && <button
                   onClick={() => setIsBulkOpen(true)}
-                  className="h-9 px-4 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="h-9 whitespace-nowrap rounded-lg bg-violet-600 px-4 text-sm font-medium text-white transition-colors hover:bg-violet-700"
                 >
-                  智能批量上架
+                  批量上架
                 </button>}
                 {!isSupplier && <button
                   onClick={() => zipRef.current?.click()}
@@ -1427,12 +1428,6 @@ export default function ProductsPage() {
             )}
           </div>
         </PageCard>
-
-        <SmartImportWizard
-          isOpen={isBulkOpen}
-          onClose={() => setIsBulkOpen(false)}
-          onImported={() => { fetchProducts() }}
-        />
       </div>
 
       {/* 確認 Modal */}
@@ -1483,6 +1478,12 @@ export default function ProductsPage() {
           </button>
         </div>
       </Modal>
+
+      <BulkImportModal
+        isOpen={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        onImported={() => fetchProducts()}
+      />
     </AdminLayout>
   )
 }

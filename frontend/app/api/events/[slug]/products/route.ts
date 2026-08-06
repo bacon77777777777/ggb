@@ -15,9 +15,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   if (!event?.linked_category_id) return NextResponse.json([])
 
   const { data: rows } = await supabase
-    .from('menu_products')
+    .from('product_categories')
     .select('products(id, name, image_url, type, remaining, price, special_price, is_active)')
-    .eq('menu_id', event.linked_category_id)
+    .eq('category_id', event.linked_category_id)
     .order('sort_order', { ascending: false })
     .limit(12)
 

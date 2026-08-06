@@ -48,7 +48,7 @@ export default function CategoriesPage() {
       setCategories(data || [])
     } catch (error: any) {
       console.error('Error fetching categories:', error)
-      toast(`載入菜單失敗: ${error.message}`, 'error')
+      toast(`載入分類失敗: ${error.message}`, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -127,12 +127,12 @@ export default function CategoriesPage() {
 
   const handleDelete = async (category: Category) => {
     const { count, error } = await supabase
-      .from('menu_products')
+      .from('product_categories')
       .select('*', { count: 'exact', head: true })
-      .eq('menu_id', category.id)
+      .eq('category_id', category.id)
     const productCount = error ? 0 : (count || 0)
     if (productCount > 0) {
-      toast(`此菜單下仍有 ${productCount} 個商品，無法刪除。\n請先移除或轉移該菜單下的商品。`, 'error')
+      toast(`這個分類底下還有 ${productCount} 個商品，先把商品移出去或改掛到別的分類才能刪除。`, 'error')
       return
     }
 
@@ -191,7 +191,7 @@ export default function CategoriesPage() {
   const columns: Column<Category>[] = [
     {
       key: 'name',
-      label: '菜單名稱',
+      label: '分類名稱',
       sortable: true,
       className: 'align-middle',
       render: (category: Category) => <span className="font-medium text-neutral-900">{category.name}</span>
@@ -256,11 +256,11 @@ export default function CategoriesPage() {
 
   return (
     <AdminLayout
-      pageTitle="菜單管理"
+      pageTitle="分類清單"
     >
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-neutral-800">菜單列表</h2>
+          <h2 className="text-xl font-bold text-neutral-800">分類列表</h2>
           <button
             onClick={handleAdd}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
@@ -268,7 +268,7 @@ export default function CategoriesPage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            新增菜單
+            新增分類
           </button>
         </div>
 
@@ -280,26 +280,26 @@ export default function CategoriesPage() {
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={handleSort}
-            emptyMessage="沒有找到符合條件的菜單"
+            emptyMessage="沒有找到符合條件的分類"
           />
         </PageCard>
 
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={editingCategory ? '編輯菜單' : '新增菜單'}
+          title={editingCategory ? '編輯分類' : '新增分類'}
         >
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                菜單名稱
+                分類名稱
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="請輸入菜單名稱"
+                placeholder="請輸入分類名稱"
               />
             </div>
 
@@ -324,7 +324,7 @@ export default function CategoriesPage() {
                 className="w-4 h-4 text-primary border-neutral-300 rounded focus:ring-primary"
               />
               <label htmlFor="is_active" className="text-sm text-neutral-700">
-                啟用菜單
+                啟用分類
               </label>
             </div>
 

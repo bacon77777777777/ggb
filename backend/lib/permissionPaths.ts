@@ -24,6 +24,7 @@ export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/categories',         permission: 'categories' },
   { path: '/settings/modules',   permission: 'settings_modules' },
   { path: '/settings/features',  permission: 'settings_features' },
+  { path: '/products/import',    permission: 'products' },
   { path: '/settings/theme',     permission: 'settings_theme' },
   { path: '/analytics',          permission: 'admins' },
   { path: '/permissions',        permission: 'permissions' },

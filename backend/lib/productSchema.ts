@@ -113,7 +113,10 @@ export interface ImportFieldDef {
 export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'name', label: '商品名稱', kind: 'text', requiredFor: 'all',
-    aliases: [/^名稱$/i, /品名/i, /商品名/i, /產品名/i, /^name$/i, /title/i, /一番賞名/i, /商品タイトル/i],
+    // 「品名規格」排在「品名」前面是有原因的：實際的廠商進貨單裡，
+    // 「品名」那一欄放的是貨號（JXGB23342），真正的商品名在「品名規格」。
+    // 光靠順序不夠可靠，所以另外還有內容判斷（見 detectFieldMapping）
+    aliases: [/品名規格/i, /商品名/i, /產品名/i, /^品名$/i, /^名稱$/i, /^name$/i, /title/i, /一番賞名/i, /商品タイトル/i],
     example: '海賊王 一番賞 頂上決戰', note: '必填',
   },
   {
@@ -123,12 +126,12 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'price', label: '單抽價格', kind: 'int', requiredFor: ['ichiban', 'blindbox', 'gacha', 'card', 'custom'],
-    aliases: [/^價格$/i, /售價/i, /^price$/i, /金額/i, /單價/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i, /販売価格/i],
+    aliases: [/^價格$/i, /售價/i, /^price$/i, /金額/i, /單價/i, /每抽/i, /單抽/i, /定價/i, /抽獎費/i, /販売価格/i, /^售$/i],
     example: '150', note: '代幣。機台與抽籤販售填 0',
   },
   {
     key: 'total_count', label: '總籤數', kind: 'int', requiredFor: TICKETED_TYPES,
-    aliases: [/總籤/i, /總抽/i, /籤數/i, /抽數/i, /總數量/i, /^總數$/i, /total.*count/i, /^count$/i, /口数/i, /入数/i],
+    aliases: [/總籤/i, /總抽/i, /籤數/i, /抽數/i, /總數量/i, /^總數$/i, /備貨數量/i, /^數量$/i, /total.*count/i, /^count$/i, /口数/i, /入数/i],
     example: '80', note: '一番賞/抽卡/自製賞必填，會據此排定籤號',
   },
   {
@@ -149,7 +152,8 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'image_url', label: '商品主圖', kind: 'text',
     aliases: [/商品圖片/i, /^圖片$/i, /^image/i, /^img/i, /照片/i, /封面/i, /主圖/i, /^cover$/i, /^photo$/i, /画像/i],
-    example: 'https://...', note: '網址或圖檔名。留空會自動補',
+    example: 'abc123.png',
+    note: '填圖檔名（用「上傳圖片」丟過的）或完整網址皆可 —— 網址會自動抓下來存進平台圖庫。留空會自動搜圖',
   },
   {
     key: 'box_image_url', label: '外盒圖', kind: 'text', onlyFor: ['blindbox'],
@@ -173,7 +177,7 @@ export const PRODUCT_IMPORT_FIELDS: ImportFieldDef[] = [
   },
   {
     key: 'barcode', label: '產品條碼', kind: 'text',
-    aliases: [/條碼/i, /barcode/i, /^ean$/i, /^jan$/i, /^upc$/i, /商品條碼/i, /產品條碼/i],
+    aliases: [/條碼/i, /barcode/i, /^ean$/i, /^jan$/i, /^upc$/i, /商品條碼/i, /產品條碼/i, /國際條碼/i],
     example: '4570117575129', note: '選填',
   },
   {
@@ -264,7 +268,7 @@ export const PRIZE_IMPORT_FIELDS: ImportFieldDef[] = [
   {
     key: 'image_url', label: '品項圖', kind: 'text',
     aliases: [/圖片/i, /^圖$/i, /^img$/i, /^image$/i, /画像/i],
-    example: '', note: '留空會自動補',
+    example: 'abc123-a.png', note: '同商品主圖：檔名或網址皆可，留空會自動搜圖',
   },
   {
     key: 'probability', label: '中獎機率', kind: 'number', onlyFor: PROBABILITY_TYPES,
@@ -391,27 +395,176 @@ export function missingRequired(
 
 // ── 標題列自動對應 ────────────────────────────────────────────────────────────
 
+/** 全形轉半形、去空白、統一小寫。比對前先過這一關，不然「商品 名稱」對不上「商品名稱」 */
+function normHeader(h: string): string {
+  return h
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    // \u3000 是全形空白。直接把那個字元貼進正則會被 ESLint 的
+    // no-irregular-whitespace 擋下（那條規則害部署失敗過幾次），一律用逸出寫法
+    .replace(/[\s_\-\u3000]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+/** 這個別名是不是完全比對（^...$）。完全比對比子字串比對可信得多 */
+const isAnchored = (a: RegExp) => a.source.startsWith('^') && a.source.endsWith('$')
+
 /**
  * 把廠商檔案的標題列對到我們的欄位。
- * 一個欄位只會被認領一次，先命中的先贏 —— 否則「售價」和「進貨價」會搶同一格。
+ *
+ * ── 為什麼不是「先命中的先贏」──
+ * 原本的寫法是依欄位定義順序掃過去，每個欄位拿走第一個正則命中的標題。
+ * 問題是「命中」沒有分強弱，於是實際檔案裡常發生：
+ *
+ *   標題列：商品名稱 | 賞等 | 品項名稱 | 數量 | 圖片
+ *   商品主圖的別名有 /^圖片$/，於是它認領了「圖片」——
+ *   但那一欄是「品項」的圖，不是商品主圖。
+ *
+ * 而且欄位定義的順序變成隱性的優先權：name 排在 series 前面，
+ * 所以只要 name 的正則先掃到系列欄，series 就再也拿不到了。
+ *
+ * 改成計分後全域指派：所有（欄位 × 標題）組合各算一個分數，
+ * 由高到低配對，配過的兩邊都不再參與。這樣「完全等於欄位名」永遠贏過
+ * 「子字串剛好包含」，跟定義順序無關。
+ *
+ * exclude 用來排除已經被品項欄位認領的標題 —— 那些欄位不該再被商品欄位搶走。
  */
+/**
+ * 看資料內容給的加減分。
+ *
+ * 光看標題不夠。真實的廠商進貨單長這樣：
+ *
+ *   品名      | 國際條碼      | （無標題） | 箱數 | 備貨數量 | 品名規格
+ *   JXGB23342 | 4570118233424 | 150       | 2    | 300      | BAN/polar bear bank夜燈公仔
+ *
+ * 「品名」那一欄放的是貨號，真正的商品名在「品名規格」；單價那一欄根本沒有標題。
+ * 只比對標題的話，商品名一定抓到貨號 —— 而商品名錯了，後面去搜圖、查品項的
+ * 關鍵字全部是錯的，整批就廢了。
+ *
+ * 所以再看一眼欄位裡實際裝的東西：商品名該有中日文、價格該是數字、
+ * 條碼該是一長串數字。這比任何標題別名都可靠，也讓沒有標題的欄位仍然對得上。
+ */
+function contentScore(def: ImportFieldDef, values: string[]): number {
+  const vals = values.map(v => String(v ?? '').trim()).filter(Boolean)
+  if (vals.length < 2) return 0
+
+  const ratio = (f: (v: string) => boolean) => vals.filter(f).length / vals.length
+  const isNumeric = (v: string) => /^-?[\d,.]+$/.test(v)
+  const hasCjk = (v: string) => /[\u4e00-\u9fff\u3040-\u30ff]/.test(v)
+  // JXGB23342、A-1234 這種貨號：純大寫英數，沒有任何中日文
+  const looksLikeCode = (v: string) => /^[A-Z0-9][A-Z0-9\-_]{3,}$/.test(v) && !hasCjk(v)
+
+  switch (def.key) {
+    case 'name': {
+      let s = 0
+      if (ratio(hasCjk) >= 0.5) s += 200        // 有中日文，幾乎確定是品名
+      if (ratio(looksLikeCode) >= 0.7) s -= 400 // 整欄都是貨號，絕對不是品名
+      if (ratio(isNumeric) >= 0.7) s -= 400     // 整欄都是數字，也不是
+      return s
+    }
+    case 'barcode':
+      // 條碼是 8~14 碼純數字。用這個把它跟一般數字欄分開
+      return ratio(v => /^\d{8,14}$/.test(v)) >= 0.7 ? 200 : -100
+    case 'price':
+    case 'total_count':
+    case 'cost':
+    case 'jp_price_yen':
+      if (ratio(isNumeric) < 0.5) return -300   // 不是數字就不可能是這些欄位
+      return ratio(v => /^\d{8,14}$/.test(v)) >= 0.7 ? -150 : 100  // 但也別把條碼當價格
+    case 'image_url':
+      return ratio(v => /^https?:\/\//i.test(v) || /\.(jpe?g|png|webp|gif)$/i.test(v)) >= 0.5 ? 200 : -50
+    default:
+      return 0
+  }
+}
+
 export function detectFieldMapping(
   headers: string[],
   fields = PRODUCT_IMPORT_FIELDS,
+  exclude?: Set<string>,
+  /** 前幾列資料。有給就會一併看內容判斷，沒給就只比對標題 */
+  sample?: Record<string, string>[],
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {}
-  const used = new Set<string>()
+  for (const f of fields) result[f.key] = null
+
+  const candidates: { fieldKey: string; header: string; score: number }[] = []
 
   for (const field of fields) {
-    const match = headers.find(h => {
+    const labelNorm = normHeader(field.label)
+    for (const h of headers) {
       const t = h.trim()
-      if (!t || used.has(h)) return false
-      return field.aliases.some(a => a.test(t))
-    })
-    result[field.key] = match ?? null
-    if (match) used.add(match)
+      if (exclude?.has(h)) continue
+      const hn = normHeader(t)
+      // 沒有標題的欄位不能直接跳過 —— 那份廠商檔案的單價就是一欄無標題的數字。
+      // 只靠內容分數決定它是什麼，標題分數給 0。
+      // 「第3欄」是解析時給無標題欄位補的可定址名稱（見 readWorkbook），
+      // 對比對來說它跟沒有標題是同一件事
+      if (!t || /^第\d+欄$/.test(t)) {
+        if (!sample?.length) continue
+        const cs = contentScore(field, sample.map(r => r[h] ?? ''))
+        if (cs > 0) candidates.push({ fieldKey: field.key, header: h, score: cs - 500 })
+        continue
+      }
+
+      let score = 0
+      if (hn === labelNorm) {
+        score = 1000                       // 標題就是我們的欄位名，不會有更好的了
+      } else {
+        const idx = field.aliases.findIndex(a => a.test(t))
+        if (idx < 0) continue
+        score = isAnchored(field.aliases[idx]) ? 700 : 400
+        score -= idx * 5                   // 別名的排列順序仍有一點參考價值
+        score -= Math.min(60, hn.length * 2) // 標題越長越可能是複合欄位（例：商品名稱備註）
+      }
+      // 內容跟標題不合時，內容說了算 —— 「品名」欄裝的是貨號就是這種情形
+      if (sample?.length) score += contentScore(field, sample.map(r => r[h] ?? ''))
+      candidates.push({ fieldKey: field.key, header: h, score })
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score)
+  const usedFields = new Set<string>()
+  const usedHeaders = new Set<string>()
+  for (const c of candidates) {
+    if (usedFields.has(c.fieldKey) || usedHeaders.has(c.header)) continue
+    result[c.fieldKey] = c.header
+    usedFields.add(c.fieldKey)
+    usedHeaders.add(c.header)
   }
   return result
+}
+
+/**
+ * 直式品項的欄位偵測。
+ *
+ * 橫向展開（A賞名稱 | A賞數量 | B賞名稱 …）只是廠商的其中一種寫法，
+ * 另一種同樣常見的是一列一個品項：
+ *
+ *   商品名稱      | 賞等 | 品項名稱 | 數量 | 圖片
+ *   海賊王一番賞  | A賞  | 魯夫     | 1    | a.jpg
+ *   （留白或重複）| B賞  | 索隆     | 2    | b.jpg
+ *
+ * 原本完全不支援這種格式，結果就是「品項一個都沒有」，
+ * 連帶總籤數算不出來、機率分配不了、圖片也對不到 ——
+ * 四個症狀其實是同一件事。
+ *
+ * 判定條件刻意嚴格：一定要同時有「品項名稱」與「數量」兩欄才算，
+ * 否則一張純商品清單會被誤判成直式品項表。
+ */
+export function detectVerticalPrizeColumns(headers: string[]): Record<string, string> | null {
+  /*
+   * 明顯是商品主圖的欄位不給品項搶。
+   * 品項圖的別名有 /圖片/，而「商品圖片」也含「圖片」——
+   * 不先擋掉的話直式表的商品主圖會被品項認領走，商品就沒有封面了。
+   */
+  const productImage = headers.filter(h => /商品圖|主圖|封面|cover|product.*image/i.test(h.trim()))
+  const map = detectFieldMapping(headers, PRIZE_IMPORT_FIELDS, new Set(productImage))
+  if (!map.name || !map.total) return null
+
+  const cols: Record<string, string> = {}
+  for (const [k, v] of Object.entries(map)) if (v) cols[k] = v
+  return cols
 }
 
 // ── 品項欄位偵測（橫向展開的廠商表格） ────────────────────────────────────────

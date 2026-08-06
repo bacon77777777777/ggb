@@ -45,7 +45,7 @@ type Phase = 'idle' | 'discovering' | 'scraping' | 'ai-filling' | 'done'
 
 const CSV_HEADERS = [
   '商品名稱', '商品圖片', '價格', '商品類型', '預購商品', '預計出貨時間',
-  '顯示菜單', '狀態', '開賣時間', '稀有度', '上市時間', '代理商', '產品條碼', '熱賣',
+  '顯示分類', '狀態', '開賣時間', '稀有度', '上市時間', '代理商', '產品條碼', '熱賣',
   ...Array.from({ length: 20 }, (_, i) => [
     `獎項${i + 1}名稱`, `獎項${i + 1}等級`, `獎項${i + 1}數量`, `獎項${i + 1}圖片名稱`,
   ]).flat(),
@@ -72,7 +72,7 @@ const buildRow = (item: WorkItem): string[] => {
   row.push(typeToZh(r.typeGuess))
   row.push('否')         // 預購
   row.push('')           // 預計出貨
-  row.push('')           // 顯示菜單
+  row.push('')           // 顯示分類
   row.push('上架')        // 狀態
   row.push('')           // 開賣時間
   row.push(e?.rarity != null ? String(e.rarity) : '')  // 稀有度
