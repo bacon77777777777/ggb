@@ -56,6 +56,21 @@ const STATE_OPTIONS: { v: FlagState; label: string }[] = [
   { v: 'off',         label: '關閉' },
 ]
 
+const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
+  { key: 'ichiban',  label: '一番賞' },
+  { key: 'blindbox', label: '盒玩' },
+  { key: 'gacha',    label: '轉蛋' },
+  { key: 'card',     label: '抽卡' },
+  { key: 'custom',   label: '自製賞' },
+  { key: 'sell',     label: '販售' },
+]
+
+const TRADE_ITEMS: { key: FeatureKey; label: string }[] = [
+  { key: 'sell_escrow', label: '販售金流' },
+  { key: 'exchange',    label: '交換' },
+  { key: 'market',      label: '交易所' },
+]
+
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   // 儲值預設開啟。關掉會直接斷開綠界建單（見 /api/payment/ecpay），
   // 玩家在儲值頁看到「儲值維護中」。已購買的代幣、抽獎與出貨都不受影響
@@ -85,32 +100,100 @@ export default function FeatureFlagsPage() {
   // 改前台版面不必把後台鎖起來，而後台在改資料時前台反而更需要正常運作
   const [maint, setMaint] = useState<{ scope: string; message: string; until: string; bypassKey: string } | null>(null)
   const [maintSaving, setMaintSaving] = useState(false)
-  // 切換維護前先確認 —— 這個動作會把所有人擋在外面，不該一鍵就生效
-  const [pendingScope, setPendingScope] = useState<string | null>(null)
+  /**
+   * 需要先問過才做的操作。
+   *
+   * 一個 dialog 服務全部 —— 維護範圍、關閉類別、關閉儲值都會直接影響
+   * 線上的玩家，共通點是「按下去外面就變了」，不該一鍵生效。
+   * 反過來說，維護中的類別、玩家交易那幾個關掉影響有限，就不問，
+   * 免得確認框多到沒人看。
+   */
+  const [pendingAction, setPendingAction] = useState<{
+    title: string
+    message: string
+    confirmText: string
+    type: 'danger' | 'warning' | 'info'
+    run: () => void
+  } | null>(null)
   const { user: adminUser } = useAdmin()
   const isSuperAdmin = adminUser?.role === 'super_admin' || adminUser?.role === 'superadmin'
 
   const ready = Boolean(flags) && !isLoading
   const pushOnCount = LINE_PUSH_ITEMS.filter(i => pushFlags[i.key]).length
+  const categoryCounts = CATEGORY_ITEMS.reduce(
+    (acc, i) => {
+      const st = states?.[i.key] ?? 'on'
+      acc[st] += 1
+      return acc
+    },
+    { on: 0, maintenance: 0, off: 0 } as Record<FlagState, number>,
+  )
 
   const toggleFlag = (key: FeatureKey, checked: boolean) => {
     if (!flags) return
-    const next = { ...flags, [key]: checked }
-    setFlags(next)
-    save({ flags: next })
+    const apply = () => {
+      const next = { ...flags, [key]: checked }
+      setFlags(next)
+      save({ flags: next })
+    }
+    // 關掉儲值等於把金流斷開，跟關類別同一個量級，先問一次
+    if (key === 'recharge' && !checked) {
+      setPendingAction({
+        title: '關閉儲值？',
+        message: '玩家會無法儲值，綠界建單直接斷開，儲值頁顯示維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。',
+        confirmText: '關閉儲值',
+        type: 'danger',
+        run: apply,
+      })
+      return
+    }
+    apply()
   }
 
-  const setState = (key: FeatureKey, v: FlagState) => {
+  const setState = (key: FeatureKey, v: FlagState, label: string) => {
     if (!states || states[key] === v) return
-    const next = { ...states, [key]: v }
-    setStates(next)
-    save({ states: next })
+    const apply = () => {
+      const next = { ...states, [key]: v }
+      setStates(next)
+      save({ states: next })
+    }
+    // 關閉類別會讓前台整個分類消失（頁籤、商品、連結全部），
+    // 影響比維護大得多，先問一次。維護是可恢復的，不問
+    if (v === 'off') {
+      setPendingAction({
+        title: `關閉「${label}」？`,
+        message: `前台會看不到${label}的分類頁籤與所有商品，直接開連結也只會看到「商品關閉中」。玩家已經抽到的獎品不受影響。若只是想暫停一下，請改選「維護」—— 分類頁籤會留著並說明稍後開放。`,
+        confirmText: '關閉類別',
+        type: 'danger',
+        run: apply,
+      })
+      return
+    }
+    apply()
   }
 
   // 已經是這個狀態就不用問；點自己不該有反應
   const requestScope = (v: string) => {
     if ((maint?.scope ?? 'off') === v) return
-    setPendingScope(v)
+    setPendingAction({
+      title: v === 'off' ? '解除維護模式？' : '啟動維護模式？',
+      message:
+        v === 'off'
+          ? '解除後前台與後台立即恢復正常，最多 30 秒內全站生效。'
+          : v === 'frontend'
+            ? '所有玩家會被帶到維護頁，正在瀏覽的人最多 30 秒內也會被帶走。後台照常運作。'
+            : v === 'backend'
+              ? '超級管理員以外的管理員會被擋在後台外面。前台照常運作。'
+              : '前台玩家與後台一般管理員都會被擋下來。只有超級管理員進得去。',
+      confirmText: v === 'off' ? '解除維護' : '啟動維護',
+      type: v === 'off' ? 'info' : 'warning',
+      run: () => {
+        // 開維護時若還沒設過時間就自動帶一個；解除時清掉，
+        // 否則下次開維護會沿用上次那個早就過去的時間
+        const until = v === 'off' ? '' : (maint?.until || defaultUntil())
+        saveMaint({ scope: v, message: maint?.message ?? '', until })
+      },
+    })
   }
 
   const saveMaint = async (next: { scope: string; message: string; until: string }) => {
@@ -133,32 +216,11 @@ export default function FeatureFlagsPage() {
       setMaintSaving(false)
     }
   }
+  // 推播預設收合：十四個開關是全頁最少動的東西，卻最佔版面
+  const [pushOpen, setPushOpen] = useState(false)
   const [isPushLoading, setIsPushLoading] = useState(true)
   const [isPushSaving, setIsPushSaving] = useState(false)
 
-  const items = useMemo(
-    () =>
-      ({
-        // 群組依「玩家看到什麼」分，不是依實作分。
-        // 原本金流拆成兩組（儲值 / 販售金流）各只有一項，畫面上就是兩排孤零零的卡片
-        // 儲值不在這裡 —— 它是「服務現在能不能用」而不是「平台有沒有這個功能」，
-        // 所以歸到維護模式那張卡
-        trade: [
-          { key: 'sell_escrow' as const, label: '販售金流', hint: '' },
-          { key: 'exchange' as const,    label: '交換',     hint: '' },
-          { key: 'market' as const,      label: '交易所',   hint: '' },
-        ],
-        play: [
-          { key: 'ichiban' as const,  label: '一番賞',  hint: '' },
-          { key: 'blindbox' as const, label: '盒玩',    hint: '' },
-          { key: 'gacha' as const,    label: '轉蛋',    hint: '' },
-          { key: 'card' as const,     label: '抽卡',    hint: '' },
-          { key: 'custom' as const,   label: '自製賞',  hint: '' },
-          { key: 'sell' as const,     label: '販售',    hint: '玩家之間的二手販售' },
-        ],
-      }) as const,
-    []
-  )
 
   const load = async () => {
     setIsLoading(true)
@@ -208,6 +270,15 @@ export default function FeatureFlagsPage() {
    * 總開關一次要改十四項，逐項送出會變成十四個請求，
    * 而且每個都會 setState，互相覆蓋。API 本來就吃多筆，一次送完。
    */
+  const setAllPush = (value: boolean) => {
+    const next = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
+      acc[key] = value
+      return acc
+    }, {} as Record<LinePushKey, boolean>)
+    setPushFlags(next)
+    savePush(next)
+  }
+
   const savePush = async (next: Record<LinePushKey, boolean>) => {
     setIsPushSaving(true)
     try {
@@ -255,6 +326,7 @@ export default function FeatureFlagsPage() {
       if (!res.ok) throw new Error('save_failed')
       const json = (await res.json().catch(() => null)) as any
       applyServerFlags(json)
+      toast('已更新')
     } catch {
       toast('儲存失敗，已還原成目前的實際設定', 'error')
       load()
@@ -328,320 +400,402 @@ const MAINT_OPTIONS = [
       {/* 每個區塊各一張卡，外層用 space-y-4 隔開 —— 這是站上其他頁的既有慣例
           （見 slot/[id]）。卡片直接相鄰會黏成一片，看不出分組 */}
       <div className="space-y-4">
-      {/* 維護模式獨立一張卡：它是「營運狀態」不是「功能開關」 */}
-      <PageCard>
-        <SectionTitle
-          title="維護模式"
-          info={<>
-            前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
-            後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
-          </>}
-          right={maint && maint.scope !== 'off' ? (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">維護中</span>
-          ) : null}
+        <SummaryBar
+          ready={ready && Boolean(maint)}
+          scope={maint?.scope ?? 'off'}
+          rechargeOn={Boolean(flags?.recharge)}
+          counts={categoryCounts}
         />
 
-        {/* 六欄格線：正常營運佔三欄（50%），其餘三個各佔一欄。
-            手機上先排成兩欄，否則四個擠一排每個都塞不下字。
-            按鈕內不放說明文字 —— 那會讓選中的那顆變高、四顆不齊，
-            而且說明已經收在標題旁的圓點裡 */}
-        <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-6">
-          {MAINT_OPTIONS.map(o => {
-            const active = (maint?.scope ?? 'off') === o.v
-            const blocked = o.adminOnly && !isSuperAdmin
-            return (
-              <button
-                key={o.v}
-                type="button"
-                disabled={!maint || maintSaving || blocked}
-                onClick={() => requestScope(o.v)}
-                // 被鎖住的原因用原生提示，不佔版面高度
-                title={blocked ? '僅超級管理員可以關閉後台' : o.hint}
-                className={`flex min-h-[44px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  o.v === 'off' ? 'col-span-2 sm:col-span-3' : 'col-span-1'
-                } ${
-                  active
-                    ? o.v === 'off'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-amber-400 bg-amber-50 text-amber-900'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-                }`}
-              >
-                {o.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {maint && maint.scope !== 'off' && (
-          <div className="mt-4 space-y-3 border-t border-neutral-100 pt-4">
-            <div>
-              <label className="mb-1 block text-xs font-black text-neutral-500">玩家看到的訊息</label>
-              <Textarea
-                rows={2}
-                value={maint.message}
-                onChange={e => setMaint({ ...maint, message: e.target.value })}
-                onBlur={() => saveMaint({ scope: maint.scope, message: maint.message, until: maint.until })}
-                placeholder="系統維護中，我們正在做一些調整，很快就回來。"
-              />
+        {loadError && (
+          <PageCard>
+            <div className="text-sm font-bold text-neutral-700">
+              讀取功能開關失敗，請重新整理（若仍失敗可能是登入狀態過期）
             </div>
-            <div className="max-w-xs">
-              {/* 用站上的 DateTimePicker，不要生原生 datetime-local ——
-                  原生的只有點右邊那顆小圖示才展開，跟其他頁面的操作方式不一致。
-                  它收的是 'YYYY-MM-DD HH:mm:ss'，資料庫存的是 ISO，兩邊要轉 */}
-              <label className="mb-1 block text-xs font-black text-neutral-500">預計恢復時間（選填）</label>
-              <DateTimePicker
-                value={isoToLocal(maint.until)}
-                placeholder="選擇預計恢復時間"
-                onChange={(v) => {
-                  const next = { ...maint, until: localToIso(v) }
-                  setMaint(next)
-                  saveMaint({ scope: next.scope, message: next.message, until: next.until })
-                }}
-              />
-            </div>
-            <div className="rounded-xl bg-neutral-50 px-3 py-2.5">
-              <div className="flex items-center gap-2 text-xs font-black text-neutral-500">
-                維護期間自己進去驗證的連結
-                <InfoDot>
-                  開一次就種 8 小時的通行 cookie，之後照常瀏覽。
-                  每次重新啟動維護都會換一把新金鑰，上次發出去的連結會失效。
-                </InfoDot>
-              </div>
-              <code className="mt-1 block break-all font-mono text-xs text-neutral-700">
-                {`${FRONTEND_URL}/?__mk=${maint.bypassKey}`}
-              </code>
-            </div>
-          </div>
+          </PageCard>
         )}
 
-        {/* 儲值放在最後、跟維護範圍用分隔線隔開。
-            它跟上面四顆按鈕無關 —— 貼在按鈕正下方會被讀成「維護範圍的第五個選項」。
-            金流那邊出狀況時要能單獨關掉儲值，不必為此把整個前台停掉 */}
-        <div className="mt-4 flex max-w-sm items-center justify-between gap-3 border-t border-neutral-100 pt-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold text-neutral-900">儲值</span>
-            <InfoDot>
-              跟維護範圍無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
-              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
-            </InfoDot>
-          </div>
-          <div className="flex items-center gap-2.5">
-            {ready && flags && !flags.recharge && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                已關閉
-              </span>
-            )}
-            <Switch
-              checked={ready && flags ? Boolean(flags.recharge) : false}
-              disabled={!ready || isSaving}
-              onCheckedChange={(checked) => toggleFlag('recharge', checked)}
-            />
-          </div>
-        </div>
-      </PageCard>
-
-      {loadError && (
+        {/* 卡片依「這個設定會不會恢復」分：
+            營運狀態是臨時的、隨時會改回來；前台功能是長期的，決定平台提供什麼 */}
         <PageCard>
-          <div className="text-sm font-bold text-neutral-700">
-            讀取功能開關失敗，請重新整理（若仍失敗可能是登入狀態過期）
-          </div>
-        </PageCard>
-      )}
-
-      <PageCard>
-        <SectionTitle
-          title="類別"
-          info={<>
-            <b>開放</b>：正常販售。<br />
-            <b>維護</b>：前台照常看得到，但抽不了，商品頁會說明稍後開放 —— 用在臨時停一下。<br />
-            <b>關閉</b>：整個類別從前台消失，直接開連結也只會看到「已下架」—— 用在不做這個類別了。<br />
-            三種狀態都不影響玩家已經抽到的獎品。
-          </>}
-        />
-        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
-          {items.play.map(item => (
-            <StateRow
-              key={item.key}
-              label={item.label}
-              value={states?.[item.key] ?? 'on'}
-              disabled={!ready || isSaving}
-              onChange={(v) => setState(item.key, v)}
-            />
-          ))}
-        </div>
-
-        <div className="mt-5 border-t border-neutral-100 pt-4">
           <SectionTitle
-            title="玩家交易"
+            title="營運狀態"
+            info={<>
+              臨時性的開關，處理完就會改回來。
+              前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
+              後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
+            </>}
+          />
+
+          <SubLabel>站台</SubLabel>
+          {/* 正常營運佔一半寬：那是預設狀態，也是最常按回來的那顆 */}
+          <div className="flex flex-col gap-1.5 sm:flex-row">
+            {MAINT_OPTIONS.map(o => {
+              const active = (maint?.scope ?? 'off') === o.v
+              const blocked = o.adminOnly && !isSuperAdmin
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  disabled={!maint || maintSaving || blocked}
+                  onClick={() => requestScope(o.v)}
+                  // 被鎖住的原因用原生提示，不佔版面高度
+                  title={blocked ? '僅超級管理員可以關閉後台' : o.hint}
+                  className={`flex min-h-[42px] items-center justify-center rounded-xl border px-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    o.v === 'off' ? 'sm:flex-[3]' : 'sm:flex-1'
+                  } ${
+                    active
+                      ? o.v === 'off'
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-amber-400 bg-amber-50 text-amber-900'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {maint && maint.scope !== 'off' && (
+            <div className="mt-4 space-y-3 rounded-xl bg-neutral-50 px-4 py-3.5">
+              <div>
+                <label className="mb-1 block text-xs font-black text-neutral-500">玩家看到的訊息</label>
+                <Textarea
+                  rows={2}
+                  value={maint.message}
+                  onChange={e => setMaint({ ...maint, message: e.target.value })}
+                  onBlur={() => saveMaint({ scope: maint.scope, message: maint.message, until: maint.until })}
+                  placeholder="系統維護中，我們正在做一些調整，很快就回來。"
+                />
+              </div>
+              <div className="max-w-xs">
+                {/* 用站上的 DateTimePicker，不要生原生 datetime-local ——
+                    原生的只有點右邊那顆小圖示才展開，跟其他頁面的操作方式不一致。
+                    它收的是 'YYYY-MM-DD HH:mm:ss'，資料庫存的是 ISO，兩邊要轉 */}
+                <label className="mb-1 block text-xs font-black text-neutral-500">預計恢復時間</label>
+                <DateTimePicker
+                  value={isoToLocal(maint.until)}
+                  placeholder="選擇預計恢復時間"
+                  onChange={(v) => {
+                    const next = { ...maint, until: localToIso(v) }
+                    setMaint(next)
+                    saveMaint({ scope: next.scope, message: next.message, until: next.until })
+                  }}
+                />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 text-xs font-black text-neutral-500">
+                  維護期間自己進去驗證的連結
+                  <InfoDot>
+                    開一次就種 8 小時的通行 cookie，之後照常瀏覽。
+                    每次重新啟動維護都會換一把新金鑰，上次發出去的連結會失效。
+                  </InfoDot>
+                </div>
+                <code className="mt-1 block break-all font-mono text-xs text-neutral-700">
+                  {`${FRONTEND_URL}/?__mk=${maint.bypassKey}`}
+                </code>
+              </div>
+            </div>
+          )}
+
+          <SubLabel
+            info="跟站台維護無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
+          >
+            儲值
+          </SubLabel>
+          <Segmented
+            className="max-w-[13rem]"
+            value={flags?.recharge === false ? 'off' : 'on'}
+            disabled={!ready || isSaving}
+            options={[
+              { v: 'on', label: '開放', tone: 'on' },
+              { v: 'off', label: '關閉', tone: 'off' },
+            ]}
+            onChange={(v) => toggleFlag('recharge', v === 'on')}
+          />
+        </PageCard>
+
+        <PageCard>
+          <SectionTitle
+            title="前台功能"
+            info="長期設定，決定平台提供什麼。跟維護模式不同，這裡改了就是常態，不會自己恢復。"
+          />
+
+          <SubLabel
+            info={<>
+              <b>開放</b>：正常販售。<br />
+              <b>維護</b>：分類頁籤留著，點進去說明暫時維護中，商品買不到。用在臨時停一下。<br />
+              <b>關閉</b>：分類頁籤與商品全部從前台消失。用在不做這個類別了。<br />
+              兩種都不影響玩家已經抽到的獎品。
+            </>}
+          >
+            類別
+          </SubLabel>
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2 2xl:grid-cols-3">
+            {CATEGORY_ITEMS.map(item => (
+              <ControlRow key={item.key} label={item.label} state={states?.[item.key] ?? 'on'}>
+                <Segmented
+                  value={states?.[item.key] ?? 'on'}
+                  disabled={!ready || isSaving}
+                  options={[
+                    { v: 'on', label: '開放', tone: 'on' },
+                    { v: 'maintenance', label: '維護', tone: 'warn' },
+                    { v: 'off', label: '關閉', tone: 'off' },
+                  ]}
+                  onChange={(v) => setState(item.key, v as FlagState, item.label)}
+                />
+              </ControlRow>
+            ))}
+          </div>
+
+          <SubLabel
             info={<>
               「販售金流」是二手販售時由平台代收買家貨款；「交換」是卡牌一對一交換；
               「交易所」是掛單買賣。交換與交易所共用前台同一個入口，只能擇一 ——
               開了其中一個，另一個會自動關掉。關掉之後前台不再顯示入口，進行中的交易不受影響。
             </>}
-          />
-          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
-            {items.trade.map(item => (
-              <SwitchRow
-                key={item.key}
-                label={item.label}
-                checked={ready && flags ? Boolean(flags[item.key]) : false}
-                disabled={!ready || isSaving}
-                onChange={(v) => toggleFlag(item.key, v)}
-              />
-            ))}
+          >
+            玩家交易
+          </SubLabel>
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2 2xl:grid-cols-3">
+            {TRADE_ITEMS.map(item => {
+              const on = Boolean(flags?.[item.key])
+              return (
+                <ControlRow key={item.key} label={item.label} state={on ? 'on' : 'off'}>
+                  <Segmented
+                    value={on ? 'on' : 'off'}
+                    disabled={!ready || isSaving}
+                    options={[
+                      { v: 'on', label: '開放', tone: 'on' },
+                      { v: 'off', label: '關閉', tone: 'off' },
+                    ]}
+                    onChange={(v) => toggleFlag(item.key, v === 'on')}
+                  />
+                </ControlRow>
+              )
+            })}
           </div>
-        </div>
-      </PageCard>
+        </PageCard>
 
-      <PageCard>
-        <SectionTitle
-          title="GB哥推播"
-          info="各個 AI 單位要不要把報告推到 LINE。關掉只是不推播，排程照常執行、報告照常寫進後台。"
-          right={
-            <div className="flex items-center gap-2.5">
-              {/* 顯示幾項開著，不然總開關在「開了 13 項」時看起來跟「全開」一樣 */}
-              <span className="text-xs font-bold text-neutral-400 tabular-nums">
-                已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
-              </span>
-              <Switch
-                checked={pushOnCount > 0}
-                disabled={isPushLoading || isPushSaving}
-                onCheckedChange={(checked) => {
-                  const next = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
-                    acc[key] = checked
-                    return acc
-                  }, {} as Record<LinePushKey, boolean>)
-                  setPushFlags(next)
-                  savePush(next)
-                }}
-              />
+        {/* 推播預設收合：十四個開關鋪滿半頁，卻是全頁最少動的東西 */}
+        <PageCard>
+          <button
+            type="button"
+            onClick={() => setPushOpen(v => !v)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
+              內部通知
+              <InfoDot>
+                各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感。
+                關掉只是不推播，排程照常執行、報告照常寫進後台。
+              </InfoDot>
+            </h2>
+            <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-neutral-400">
+              <span className="tabular-nums">已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}</span>
+              <span className={`transition-transform ${pushOpen ? 'rotate-180' : ''}`}>▾</span>
+            </span>
+          </button>
+
+          {pushOpen && (
+            <div className="mt-3">
+              <div className="mb-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={isPushLoading || isPushSaving}
+                  onClick={() => setAllPush(true)}
+                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  全部開啟
+                </button>
+                <button
+                  type="button"
+                  disabled={isPushLoading || isPushSaving}
+                  onClick={() => setAllPush(false)}
+                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  全部關閉
+                </button>
+              </div>
+              {/* 十四項用標籤而不是開關：開關一項就佔一整列，十四列鋪下來就是那片灰。
+                  標籤點一下就切換，實心是開、空心是關，一排放得下四到五個 */}
+              <div className="flex flex-wrap gap-2">
+                {LINE_PUSH_ITEMS.map((item) => {
+                  const on = pushFlags[item.key]
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      disabled={isPushLoading || isPushSaving}
+                      onClick={() => {
+                        const next = { ...pushFlags, [item.key]: !on }
+                        setPushFlags(next)
+                        savePush(next)
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        on
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-neutral-200 bg-white text-neutral-400 hover:border-neutral-300'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          }
-        />
-        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {LINE_PUSH_ITEMS.map((item) => (
-            <SwitchRow
-              key={item.key}
-              label={item.label}
-              checked={pushFlags[item.key]}
-              disabled={isPushLoading || isPushSaving}
-              onChange={(checked) => {
-                const next = { ...pushFlags, [item.key]: checked }
-                setPushFlags(next)
-                savePush(next)
-              }}
-            />
-          ))}
-        </div>
-      </PageCard>
+          )}
+        </PageCard>
       </div>
 
       <ConfirmDialog
-        isOpen={pendingScope !== null}
-        onClose={() => setPendingScope(null)}
+        isOpen={pendingAction !== null}
+        onClose={() => setPendingAction(null)}
         onConfirm={() => {
-          if (pendingScope) {
-            // 開維護時若還沒設過時間就自動帶一個，省得每次手動選；
-            // 解除時清掉，否則下次開維護會沿用上次那個早就過去的時間
-            const until = pendingScope === 'off' ? '' : (maint?.until || defaultUntil())
-            saveMaint({ scope: pendingScope, message: maint?.message ?? '', until })
-          }
-          setPendingScope(null)
+          pendingAction?.run()
+          setPendingAction(null)
         }}
-        title={pendingScope === 'off' ? '解除維護模式？' : '啟動維護模式？'}
-        message={
-          pendingScope === 'off'
-            ? '解除後前台與後台立即恢復正常，最多 30 秒內全站生效。'
-            : pendingScope === 'frontend'
-              ? '所有玩家會被帶到維護頁，正在瀏覽的人最多 30 秒內也會被帶走。後台照常運作。'
-              : pendingScope === 'backend'
-                ? '超級管理員以外的管理員會被擋在後台外面。前台照常運作。'
-                : '前台玩家與後台一般管理員都會被擋下來。只有超級管理員進得去。'
-        }
-        confirmText={pendingScope === 'off' ? '解除維護' : '啟動維護'}
-        type={pendingScope === 'off' ? 'info' : 'warning'}
+        title={pendingAction?.title ?? ''}
+        message={pendingAction?.message ?? ''}
+        confirmText={pendingAction?.confirmText ?? '確定'}
+        type={pendingAction?.type ?? 'info'}
       />
     </AdminLayout>
   )
 }
 
-/** 區塊標題。四個區塊原本大小顏色各自為政，統一從這裡出 */
-function SectionTitle({ title, info, right }: {
-  title: string
-  info?: React.ReactNode
-  right?: React.ReactNode
+const STATE_TONE: Record<FlagState, string> = {
+  on: 'bg-green-500',
+  maintenance: 'bg-amber-400',
+  off: 'bg-neutral-300',
+}
+
+/**
+ * 頂部狀態摘要。
+ *
+ * 進這一頁最想先知道的是「現在整體正不正常」，但那個答案原本散在三張卡裡，
+ * 要整頁掃過才拼得出來。用一行講完，異常的項目標琥珀色，
+ * 正常的時候它安靜到不佔注意力。
+ */
+function SummaryBar({ ready, scope, rechargeOn, counts }: {
+  ready: boolean
+  scope: string
+  rechargeOn: boolean
+  counts: Record<FlagState, number>
 }) {
+  if (!ready) return null
+
+  const scopeText =
+    scope === 'off' ? '營運正常'
+      : scope === 'frontend' ? '前台維護中'
+        : scope === 'backend' ? '後台維護中'
+          : '全站維護中'
+
+  const parts: { text: string; warn: boolean }[] = [
+    { text: scopeText, warn: scope !== 'off' },
+    { text: rechargeOn ? '儲值開放' : '儲值已關閉', warn: !rechargeOn },
+  ]
+  if (counts.maintenance > 0) parts.push({ text: `${counts.maintenance} 個類別維護中`, warn: true })
+  if (counts.off > 0) parts.push({ text: `${counts.off} 個類別已關閉`, warn: true })
+  if (counts.maintenance === 0 && counts.off === 0) parts.push({ text: '類別全部開放', warn: false })
+
   return (
-    <div className="mb-2 flex min-h-[28px] items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
-        {title}
-        {info && <InfoDot>{info}</InfoDot>}
-      </h2>
-      {right}
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[13px] font-bold">
+      {parts.map((p, i) => (
+        <span key={p.text} className="flex items-center gap-2">
+          {i > 0 && <span className="text-neutral-300">·</span>}
+          <span className={p.warn ? 'text-amber-600' : 'text-neutral-500'}>{p.text}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** 卡片標題。四張卡原本大小顏色各自為政，統一從這裡出 */
+function SectionTitle({ title, info }: { title: string; info?: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-neutral-900">
+      {title}
+      {info && <InfoDot>{info}</InfoDot>}
+    </h2>
+  )
+}
+
+/** 卡片內的分區小標。比卡片標題輕一級，讓一張卡放得下兩個相關的區塊 */
+function SubLabel({ children, info }: { children: React.ReactNode; info?: React.ReactNode }) {
+  return (
+    <div className="mb-2 mt-4 flex items-center gap-2 text-xs font-black text-neutral-500 first:mt-0">
+      {children}
+      {info && <InfoDot>{info}</InfoDot>}
     </div>
   )
 }
 
 /**
- * 一列開關。
+ * 一列設定：狀態圓點 + 名稱 + 控制項。
  *
- * 刻意不給每一列外框 —— 卡片裡再套一堆小方框就是容器包容器，
- * 而且方框把每列撐得很寬，一排放不下幾個。改用細線分隔加 hover 底色，
- * 同樣看得出是一列一列的，但一排塞得下三到四個。
+ * 名稱固定寬度並跟控制項靠在一起成一個單元，單元之間才留白 ——
+ * 原本名稱貼最左、控制項貼最右，寬螢幕上中間空一大片，眼睛要跳很遠。
+ * 圓點是為了掃描：不讀字也知道哪一列不是開放狀態。
  */
-function SwitchRow({ label, checked, disabled, onChange }: {
+function ControlRow({ label, state, children }: {
   label: string
-  checked: boolean
-  disabled: boolean
-  onChange: (checked: boolean) => void
+  state: FlagState
+  children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-neutral-100 py-2">
-      <span className={`min-w-0 truncate text-[13px] font-bold ${checked ? 'text-neutral-900' : 'text-neutral-400'}`}>
-        {label}
+    <div className="flex items-center gap-3 border-b border-neutral-100 py-2">
+      <span className="flex w-[5.5rem] shrink-0 items-center gap-2">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />
+        <span className={`truncate text-[13px] font-bold ${state === 'on' ? 'text-neutral-900' : 'text-neutral-400'}`}>
+          {label}
+        </span>
       </span>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
+      {children}
     </div>
   )
 }
 
-/** 一列三態選擇。用分段按鈕而不是兩顆開關，因為三個狀態是互斥的 */
-function StateRow({ label, value, disabled, onChange }: {
-  label: string
-  value: FlagState
+/**
+ * 分段按鈕。
+ *
+ * 全頁的「會影響玩家的設定」統一用它，不用開關 —— 開關只表達得了開/關，
+ * 類別是三態；而且一頁上開關、三段按鈕混用，讀者要分辨兩套語言。
+ * 只有內部通知那十四項還是點擊式標籤：那是量大又不影響玩家的東西，
+ * 控制項的份量該跟設定的份量相稱。
+ */
+function Segmented({ value, options, disabled, onChange, className = '' }: {
+  value: string
+  options: { v: string; label: string; tone: 'on' | 'warn' | 'off' }[]
   disabled: boolean
-  onChange: (v: FlagState) => void
+  onChange: (v: string) => void
+  className?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-neutral-100 py-2">
-      <span className={`min-w-0 truncate text-[13px] font-bold ${value === 'on' ? 'text-neutral-900' : 'text-neutral-400'}`}>
-        {label}
-      </span>
-      <div className="flex shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200">
-        {STATE_OPTIONS.map(o => {
-          const active = value === o.v
-          return (
-            <button
-              key={o.v}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(o.v)}
-              className={`px-2.5 py-1 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                active
-                  ? o.v === 'on'
-                    ? 'bg-primary text-white'
-                    : o.v === 'maintenance'
-                      ? 'bg-amber-400 text-amber-950'
-                      : 'bg-neutral-600 text-white'
-                  : 'bg-white text-neutral-500 hover:bg-neutral-50'
-              }`}
-            >
-              {o.label}
-            </button>
-          )
-        })}
-      </div>
+    <div className={`flex shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 ${className}`}>
+      {options.map(o => {
+        const active = value === o.v
+        return (
+          <button
+            key={o.v}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(o.v)}
+            className={`flex-1 px-2.5 py-1 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+              active
+                ? o.tone === 'on'
+                  ? 'bg-primary text-white'
+                  : o.tone === 'warn'
+                    ? 'bg-amber-400 text-amber-950'
+                    : 'bg-neutral-600 text-white'
+                : 'bg-white text-neutral-500 hover:bg-neutral-50'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

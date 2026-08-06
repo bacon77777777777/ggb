@@ -43,6 +43,8 @@ const SAFE_FALLBACK_FLAGS: FeatureFlags = {
   recharge: true,
 };
 
+const CACHE_KEY = 'gachago:feature_flags';
+
 const statesFromFlags = (f: FeatureFlags): FeatureStates =>
   Object.fromEntries(
     (Object.keys(f) as FeatureKey[]).map(k => [k, f[k] ? 'on' : 'off']),
@@ -73,21 +75,31 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
     const run = async () => {
       if (!hasLoadedOnce) setIsLoading(true);
       try {
-        if (typeof window !== 'undefined') {
+        /*
+         * 快取只在第一次執行時讀。
+         *
+         * 這個 effect 每 2 秒、每次視窗聚焦、每次資料庫變動都會再跑一次；
+         * 每次都先套快取的話，畫面就會固定「快取值 → 查詢結果」閃一下，
+         * 一分鐘閃三十次。快取的用途只有首次繪製，不是每次輪詢。
+         */
+        if (!hasLoadedOnce && typeof window !== 'undefined') {
           try {
-            const raw = window.localStorage.getItem('gachago:feature_flags');
-            if (raw) {
-              const parsed = JSON.parse(raw) as Partial<Record<FeatureKey, unknown>>;
-              const cached: FeatureFlags = { ...DEFAULT_FLAGS };
-              for (const k of Object.keys(cached) as FeatureKey[]) {
-                if (k in parsed) cached[k] = Boolean((parsed as any)[k]);
+            const raw = window.localStorage.getItem(CACHE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed) {
+              const cachedFlags: FeatureFlags = { ...DEFAULT_FLAGS };
+              const cachedStates: FeatureStates = statesFromFlags(DEFAULT_FLAGS);
+              // 舊格式是一層布林；新格式是 { flags, states }
+              const flagSrc = parsed.flags ?? parsed;
+              const stateSrc = parsed.states ?? null;
+              for (const k of Object.keys(cachedFlags) as FeatureKey[]) {
+                if (k in flagSrc) cachedFlags[k] = Boolean(flagSrc[k]);
+                cachedStates[k] = stateSrc?.[k] ?? (cachedFlags[k] ? 'on' : 'off');
               }
-              if (cached.exchange && cached.market) cached.market = false;
+              if (cachedFlags.exchange && cachedFlags.market) cachedFlags.market = false;
               if (!cancelled) {
-                setFlags(cached);
-                // 快取只存布林（舊格式），先用它推一個近似值，
-                // 等一下的查詢回來就會蓋成真正的三態
-                setStates(statesFromFlags(cached));
+                setFlags(cachedFlags);
+                setStates(cachedStates);
               }
             }
           } catch {}
@@ -111,7 +123,9 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
           setFlags(next);
           setStates(nextStates);
           try {
-            window.localStorage.setItem('gachago:feature_flags', JSON.stringify(next));
+            // states 也要存，不然下次開站快取只還原得了布林，
+            // 維護中的類別會先當成關閉、頁籤閃一下才回來
+            window.localStorage.setItem(CACHE_KEY, JSON.stringify({ flags: next, states: nextStates }));
           } catch {}
         }
       } catch {
