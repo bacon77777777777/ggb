@@ -2,10 +2,11 @@
 
 import { AdminLayout, PageCard, Switch } from '@/components'
 import { useEffect, useMemo, useState } from 'react'
-import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import InfoDot from '@/components/ui/InfoDot'
+import DateTimePicker from '@/components/DateTimePicker'
 
 type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
 
@@ -292,6 +293,24 @@ export default function FeatureFlagsPage() {
   }
 
 
+/**
+ * DateTimePicker 用的是台灣時間的 'YYYY-MM-DD HH:mm:ss'，
+ * 資料庫存的是 ISO（UTC）。兩邊格式不同，進出各轉一次。
+ */
+function isoToLocal(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:00`
+}
+
+function localToIso(local: string): string {
+  if (!local) return ''
+  const d = new Date(local.replace(' ', 'T'))
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString()
+}
+
 const MAINT_OPTIONS = [
   { v: 'off',      label: '正常營運',   hint: '兩邊都開放',                         adminOnly: false },
   { v: 'frontend', label: '只關前台',   hint: '玩家看維護頁，後台照常（最常用）',   adminOnly: false },
@@ -301,16 +320,19 @@ const MAINT_OPTIONS = [
 
   return (
     <AdminLayout pageTitle="功能開關">
-      {/* 維護模式獨立一張卡：它是「營運狀態」不是「功能開關」，
-          而且原本擠在同一張卡裡會變成容器包容器 */}
+      {/* 每個區塊各一張卡，外層用 space-y-4 隔開 —— 這是站上其他頁的既有慣例
+          （見 slot/[id]）。卡片直接相鄰會黏成一片，看不出分組 */}
+      <div className="space-y-4">
+      {/* 維護模式獨立一張卡：它是「營運狀態」不是「功能開關」 */}
       <PageCard>
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-black text-neutral-900">維護模式</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">
-              前台維護時玩家會被帶到維護頁；停在頁面上的人最多 30 秒內也會被帶走。
-            </p>
-          </div>
+          <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
+            維護模式
+            <InfoDot>
+              前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
+              後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
+            </InfoDot>
+          </h2>
           {maint && maint.scope !== 'off' && (
             <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
               維護中
@@ -337,9 +359,14 @@ const MAINT_OPTIONS = [
                 }`}
               >
                 <div className="text-sm font-bold text-neutral-900">{o.label}</div>
-                <div className="mt-0.5 text-xs text-neutral-500">
-                  {blocked ? '僅超級管理員可用' : o.hint}
-                </div>
+                {/* 說明只在「選中」或「被鎖住」時出現。
+                    四張卡各掛一行灰字，畫面看起來就是一片字海，
+                    而使用者其實只需要知道「我現在選的是什麼」跟「為什麼這個不能點」 */}
+                {(active || blocked) && (
+                  <div className={`mt-0.5 text-xs ${blocked ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                    {blocked ? '僅超級管理員可用' : o.hint}
+                  </div>
+                )}
               </button>
             )
           })}
@@ -358,42 +385,76 @@ const MAINT_OPTIONS = [
               />
             </div>
             <div className="max-w-xs">
+              {/* 用站上的 DateTimePicker，不要生原生 datetime-local ——
+                  原生的只有點右邊那顆小圖示才展開，跟其他頁面的操作方式不一致。
+                  它收的是 'YYYY-MM-DD HH:mm:ss'，資料庫存的是 ISO，兩邊要轉 */}
               <label className="mb-1 block text-xs font-black text-neutral-500">預計恢復時間（選填）</label>
-              <Input
-                type="datetime-local"
-                value={maint.until ? maint.until.slice(0, 16) : ''}
-                onChange={e => setMaint({ ...maint, until: e.target.value ? new Date(e.target.value).toISOString() : '' })}
-                onBlur={() => saveMaint({ scope: maint.scope, message: maint.message, until: maint.until })}
+              <DateTimePicker
+                value={isoToLocal(maint.until)}
+                placeholder="選擇預計恢復時間"
+                onChange={(v) => {
+                  const next = { ...maint, until: localToIso(v) }
+                  setMaint(next)
+                  saveMaint({ scope: next.scope, message: next.message, until: next.until })
+                }}
               />
             </div>
             <div className="rounded-xl bg-neutral-50 px-3 py-2.5">
-              <div className="text-xs font-black text-neutral-500">維護期間自己要進去驗證的連結</div>
+              <div className="flex items-center gap-2 text-xs font-black text-neutral-500">
+                維護期間自己進去驗證的連結
+                <InfoDot>
+                  開一次就種 8 小時的通行 cookie，之後照常瀏覽。
+                  每次重新啟動維護都會換一把新金鑰，上次發出去的連結會失效。
+                </InfoDot>
+              </div>
               <code className="mt-1 block break-all font-mono text-xs text-neutral-700">
                 {`https://www.ggb.com.tw/?__mk=${maint.bypassKey}`}
               </code>
-              <div className="mt-1 text-[11px] text-neutral-400">
-                開一次就種 8 小時的通行 cookie。每次重新啟動維護都會換一把新的，舊連結失效。
-              </div>
             </div>
           </div>
         )}
       </PageCard>
 
-      <PageCard>
-        {loadError && (
-          <div className="mb-3 rounded-xl border border-neutral-200 bg-white p-4 text-sm font-bold text-neutral-700">
+      {loadError && (
+        <PageCard>
+          <div className="text-sm font-bold text-neutral-700">
             讀取功能開關失敗，請重新整理（若仍失敗可能是登入狀態過期）
           </div>
-        )}
+        </PageCard>
+      )}
 
-        <div className="space-y-6">
-          <FlagSection title="金流"        items={items.payment}        flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag} />
-          <FlagSection title="玩法"        items={items.play}           flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag} />
-          <FlagSection title="交換 / 交易所" items={items.exchangeMarket} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag} />
+      <PageCard>
+        <FlagSection
+            title="金流" items={items.payment} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
+            info={<>
+              「儲值充值」關閉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
+              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
+              「販售金流」是玩家之間二手販售時由平台代收貨款。
+            </>}
+        />
+      </PageCard>
 
+      <PageCard>
+        <FlagSection
+            title="玩法" items={items.play} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
+            info="關掉的玩法不會出現在前台的分類頁籤，既有商品也連帶隱藏。已經抽到的獎品不受影響。"
+        />
+      </PageCard>
+
+      <PageCard>
+        <FlagSection
+            title="交換 / 交易所" items={items.exchangeMarket} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
+            info="玩家之間的卡牌一對一交換，以及交易所的掛單買賣。"
+        />
+      </PageCard>
+
+      <PageCard>
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-xs font-black text-neutral-500">GB哥推播</h2>
+              <h2 className="flex items-center gap-2 text-xs font-black text-neutral-500">
+                GB哥推播
+                <InfoDot>各個 AI 單位要不要把報告推到 LINE。關掉只是不推播，排程照常執行、報告照常寫進後台。</InfoDot>
+              </h2>
               <label className="flex items-center gap-2">
                 <span className="text-xs font-bold text-neutral-400">總開關</span>
                 <Switch
@@ -427,8 +488,8 @@ const MAINT_OPTIONS = [
               ))}
             </div>
           </div>
-        </div>
       </PageCard>
+      </div>
 
       <ConfirmDialog
         isOpen={pendingScope !== null}
@@ -452,8 +513,9 @@ const MAINT_OPTIONS = [
 }
 
 /** 一組功能開關。四個群組原本各自複製一份一模一樣的卡片標記，抽出來才統一得了樣式 */
-function FlagSection({ title, items, flags, ready, saving, onToggle }: {
+function FlagSection({ title, items, flags, ready, saving, onToggle, info }: {
   title: string
+  info?: React.ReactNode
   items: readonly { key: FeatureKey; label: string; hint?: string }[]
   flags: Record<FeatureKey, boolean> | null
   ready: boolean
@@ -462,7 +524,10 @@ function FlagSection({ title, items, flags, ready, saving, onToggle }: {
 }) {
   return (
     <div>
-      <h2 className="mb-2 text-xs font-black text-neutral-500">{title}</h2>
+      <h2 className="mb-2 flex items-center gap-2 text-xs font-black text-neutral-500">
+        {title}
+        {info && <InfoDot>{info}</InfoDot>}
+      </h2>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
         {items.map(item => {
           const on = ready && flags ? Boolean(flags[item.key]) : false
@@ -475,10 +540,7 @@ function FlagSection({ title, items, flags, ready, saving, onToggle }: {
                   : 'border-neutral-200 bg-white'
               }`}
             >
-              <div className="min-w-0">
-                <div className="text-[13px] font-bold text-neutral-900 truncate">{item.label}</div>
-                {item.hint && <div className="text-[11px] text-neutral-500 truncate">{item.hint}</div>}
-              </div>
+              <div className="min-w-0 text-[13px] font-bold text-neutral-900 truncate">{item.label}</div>
               <Switch
                 checked={on}
                 disabled={!ready || saving}
