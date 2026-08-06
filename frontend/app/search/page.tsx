@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import ProductCard from '@/components/ProductCard';
 import type { Database } from '@/types/database.types';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { filterEnabledCategories } from '@/lib/categoryFlags';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,7 +21,7 @@ export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [supabase] = useState(() => createClient());
-  const { flags } = useFeatureFlags();
+  const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
 
   const searchStateKey = 'gachago:search_state';
   const searchRestoreKey = 'gachago:search_restore';
@@ -325,9 +326,10 @@ export default function SearchPage() {
         })
       : allProducts;
 
-    // 全部 tab 搜尋時不過濾 flag，確保熱門關鍵字能找到結果
+    // 全部 tab 也要濾掉關著的類別。原本這裡刻意不濾，理由是「確保熱門關鍵字能找到結果」，
+    // 但搜得到卻買不了比搜不到更糟 —— 玩家點進去只會撞到「暫停開放」
     const filteredByFlags = activePrimaryTab === 'all'
-      ? base
+      ? filterEnabledCategories(base, flags, isFlagsLoading)
       : base.filter((p) => {
           const t = (p as any)?.type as string | null;
           if (!t) return true;

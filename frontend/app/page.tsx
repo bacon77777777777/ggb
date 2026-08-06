@@ -17,6 +17,7 @@ import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { isCategoryClosed } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
@@ -470,6 +471,9 @@ export default function Home() {
           const menuId = activePrimaryTab.slice('menu:'.length);
           const ids = menuProductIdsByMenuId[menuId];
           if (!ids) return false;
+          // 自訂選單也要看類別開關 —— 選單是後台手動挑的商品清單，
+          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來
+          if (isCategoryClosed(product.type, flags, false)) return false;
           return ids.includes(Number(product.id));
         }
 
@@ -482,7 +486,7 @@ export default function Home() {
         return product.type === activePrimaryTab;
       });
     },
-    [activePrimaryTab, flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, menuProductIdsByMenuId]
+    [activePrimaryTab, flags, menuProductIdsByMenuId]
   );
 
   // Series tabs: personal prefs → global popularity → product count

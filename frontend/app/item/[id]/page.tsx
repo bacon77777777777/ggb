@@ -35,6 +35,8 @@ import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useRequireLogin } from '@/hooks/useRequireLogin';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { isCategoryClosed, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -362,6 +364,7 @@ export default function ProductDetailPage() {
   const { user, isAuthenticated, refreshProfile } = useAuth();
   const requireLogin = useRequireLogin();
   const { showToast } = useToast();
+  const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
   const [supabase] = useState(() => createClient());
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
@@ -1242,6 +1245,39 @@ export default function ProductDetailPage() {
         <Link href="/">
           <Button size="lg">返回首頁</Button>
         </Link>
+      </div>
+    );
+  }
+
+  /*
+   * 類別被關掉時的畫面。
+   *
+   * 關類別只是讓分類頁籤消失，商品頁本身還在 —— 書籤、分享出去的網址、
+   * 搜尋引擎快照都還進得來。不擋的話玩家會看到一個看起來完全正常、
+   * 按下去卻抽不動的機台（DB 的 trigger 會擋，但那時已經走到掏錢那一步了）。
+   *
+   * 跟「找不到商品」分開講：那是真的沒這個東西，這是東西還在、只是暫時不賣，
+   * 講清楚玩家才知道值不值得再回來看。
+   */
+  if (isCategoryClosed(product.type, flags, isFlagsLoading)) {
+    const label = CATEGORY_LABELS[categoryFlagKey(product.type)!];
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6 text-center">
+        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">
+          {label}暫停開放
+        </h1>
+        <p className="max-w-xs text-neutral-500 dark:text-neutral-400 font-bold mb-6 leading-relaxed">
+          這個類別目前休息中，重新開放後就能繼續抽。
+          已經抽到的獎品都還在你的倉庫裡。
+        </p>
+        <div className="flex gap-3">
+          <Link href="/warehouse">
+            <Button size="lg" variant="secondary">看我的倉庫</Button>
+          </Link>
+          <Link href="/">
+            <Button size="lg">返回首頁</Button>
+          </Link>
+        </div>
       </div>
     );
   }
