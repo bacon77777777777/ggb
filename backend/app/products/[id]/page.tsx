@@ -181,15 +181,6 @@ export default function EditProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [productCode, setProductCode] = useState<string>('')
-  /**
-   * 這一檔是否已經封存排籤。
-   *
-   * 品項的鎖定要看「封存了沒」而不是「是不是可驗證的類型」：
-   * 承諾值一旦公布，品項就不能再動（DB 的 guard_sealed_product 也會擋）；
-   * 但還沒封存的一番賞／抽卡／自製賞跟一般商品沒兩樣，本來就該能編輯。
-   * 先前寫成看類型，導致「建立時沒帶品項的一番賞，之後永遠加不了品項」。
-   */
-  const [isSealed, setIsSealed] = useState(false)
   const [deletedPrizeIds, setDeletedPrizeIds] = useState<string[]>([])
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string; tax_id: string | null; is_active?: boolean }>>([])
   const [allCategories, setAllCategories] = useState<Array<{ id: string; name: string }>>([])
@@ -305,7 +296,6 @@ export default function EditProductPage() {
 
         if (product) {
           setProductCode(product.product_code)
-          setIsSealed(!!(product as any).sealed_at)
 
           // 設置日期
           const now = new Date()
@@ -602,9 +592,8 @@ export default function EditProductPage() {
     { value: '四等獎', label: '四等獎' },
     { value: '五等獎', label: '五等獎' },
   ]
-  // 已封存排籤：數量+剩餘鎖定，不可新增/刪除品項。
-  // 判斷依據是「封存了沒」而不是類型 —— 未封存的一番賞跟一般商品一樣可編輯。
-  const isVerifiable = isSealed
+  // 一番賞/抽卡/自製賞：可驗證，數量+剩餘鎖定，不可新增/刪除品項
+  const isVerifiable = ['ichiban', 'card', 'custom'].includes(formData.type)
   // 抽籤販售給走封存排籤的三種：它們共用同一套引擎，邏輯完全相同
   const canLottery = ['ichiban', 'card', 'custom'].includes(formData.type)
   const isLottery  = canLottery && formData.saleMode === 'lottery'
