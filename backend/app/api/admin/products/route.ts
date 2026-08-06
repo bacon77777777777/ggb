@@ -59,6 +59,18 @@ export async function POST(request: Request) {
     const product = body?.product ? forceSupplierField(body.product, scope) : null
     if (!product?.name) return NextResponse.json({ error: '缺少商品資料' }, { status: 400 })
 
+    // 品項驗證必須在建立商品「之前」。
+    // 原本寫在 products 插入之後，一旦品項不合格就 return 400，商品那列卻已經寫進去了 ——
+    // 留下一筆 0 品項的孤兒商品，而使用者看到的只是一個錯誤訊息，不會知道東西已經建了。
+    const prizesIn = Array.isArray(body?.prizes) ? body.prizes : []
+    const invalidPrize = prizesIn.find((p: any) => !p.total || p.total < 1)
+    if (invalidPrize) {
+      return NextResponse.json(
+        { error: `品項「${invalidPrize.name || '未命名'}」總數量必須至少 1` },
+        { status: 400 },
+      )
+    }
+
     const supabaseAdmin = getSupabaseAdmin()
 
     const seed = product.seed || generateSeedHex()
@@ -102,12 +114,8 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from('products').update({ product_code: newProductCode }).eq('id', newProductId)
 
-    const prizes = Array.isArray(body?.prizes) ? body.prizes : []
+    const prizes = prizesIn   // 已於建立商品前驗證過
     if (prizes.length > 0) {
-      const invalidPrize = prizes.find((p: any) => !p.total || p.total < 1)
-      if (invalidPrize) {
-        return NextResponse.json({ error: `品項「${invalidPrize.name || '未命名'}」總數量必須至少 1` }, { status: 400 })
-      }
       const { error: prizesError } = await supabaseAdmin
         .from('product_prizes')
         .insert(prizes.map((p) => ({ ...p, product_id: newProductId })))

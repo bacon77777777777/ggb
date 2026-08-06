@@ -265,6 +265,14 @@ export default function NewProductPage() {
       toast('機台品項必須填寫品項價值（大於 0）', 'warning')
       return
     }
+    // 數量沒填的品項在這裡就擋下並指名是哪一個。
+    // 原本要送到伺服器才被拒，畫面停在原地看起來像「按了沒反應」
+    const blankTotal = prizes.findIndex(p => !p.total || p.total < 1)
+    if (blankTotal >= 0) {
+      const p = prizes[blankTotal]
+      toast(`品項 ${blankTotal + 1}「${p.name || '未命名'}」的數量必須至少 1`, 'warning')
+      return
+    }
     setIsSubmitting(true)
     
     try {
