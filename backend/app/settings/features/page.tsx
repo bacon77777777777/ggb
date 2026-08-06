@@ -65,13 +65,14 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'push',        label: 'GB哥通知' },
 ]
 
-const CATEGORY_ITEMS: { key: FeatureKey; label: string }[] = [
+const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
   { key: 'ichiban',  label: '一番賞' },
   { key: 'blindbox', label: '盒玩' },
   { key: 'gacha',    label: '轉蛋' },
   { key: 'card',     label: '抽卡' },
   { key: 'custom',   label: '自製賞' },
-  { key: 'sell',     label: '販售' },
+  // 前面五個看名字就知道是什麼，販售不是 —— 它賣的是玩家的東西，不是平台的
+  { key: 'sell',     label: '販售', desc: '玩家把抽到的獎品二手賣給其他玩家。收款方式在「金流」那一區設定。' },
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
@@ -543,7 +544,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                   />
                   <div className="divide-y divide-neutral-100">
                     {CATEGORY_ITEMS.map(item => (
-                      <Row key={item.key} title={item.label} state={states?.[item.key] ?? 'on'}>
+                      <Row key={item.key} title={item.label} desc={item.desc} state={states?.[item.key] ?? 'on'}>
                         <Segmented
                           value={states?.[item.key] ?? 'on'}
                           disabled={!ready || isSaving}
@@ -591,7 +592,10 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                           : states?.sell === 'off' ? '販售收款（販售關閉中）'
                             : '販售收款'
                       }
-                      desc="平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。"
+                      desc={<>
+                        平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。<br />
+                        雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。
+                      </>}
                       state={flags?.sell_escrow ? 'on' : 'off'}
                     >
                       <Segmented
@@ -764,8 +768,8 @@ function SectionHead({ title, desc, right }: { title: string; desc: string; righ
  * state 給了就在名稱前面點一個狀態圓點，不讀字也掃得出哪一列不是開放。
  */
 function Row({ title, desc, state, children }: {
-  title: string
-  desc?: string
+  title: React.ReactNode
+  desc?: React.ReactNode
   state?: FlagState
   children: React.ReactNode
 }) {
