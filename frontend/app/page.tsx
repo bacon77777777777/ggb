@@ -408,17 +408,6 @@ export default function Home() {
     return [...base, ...menuTabs];
   }, [flagStates, flags.sell, menus]);
 
-  // 停在一個已經不存在的頁籤上要退回綜合。判斷用 'off' —— 維護中的頁籤還在，
-  // 踢掉的話玩家就看不到「此分類暫時維護中」那句說明了
-  useEffect(() => {
-    const gone =
-      (activePrimaryTab === 'sell' && !flags.sell) ||
-      (activePrimaryTab !== 'sell' && !activePrimaryTab.startsWith('menu:') && activePrimaryTab !== 'all'
-        && categoryState(activePrimaryTab, flagStates, false) === 'off');
-    if (!gone) return;
-    setActivePrimaryTab(singlePrimaryTab ?? 'all');
-  }, [activePrimaryTab, flagStates, flags.sell, singlePrimaryTab]);
-
   useEffect(() => {
     if (!singlePrimaryTab) return;
     if (activePrimaryTab !== singlePrimaryTab) setActivePrimaryTab(singlePrimaryTab);
