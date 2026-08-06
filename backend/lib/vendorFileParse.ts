@@ -73,7 +73,7 @@ function readWorkbook(buf: Buffer, filename: string): { headers: string[]; rows:
     // BOM 要拿掉，不然第一個欄位名會變成 U+FEFF + 商品名稱，對不上任何別名。
     // 這裡刻意用逸出字元寫：直接貼 BOM 字元會被 ESLint 的
     // no-irregular-whitespace 擋下（那條規則害部署失敗過兩次）
-    const text = buf.toString('utf8').replace(/^﻿/, '')
+    const text = buf.toString('utf8').replace(/^\uFEFF/, '')
     const p = Papa.parse<string[]>(text, { header: false, skipEmptyLines: true })
     const aoa = (p.data ?? []).filter(r => Array.isArray(r))
     if (aoa.length < 2) return { headers: [], rows: [] }
