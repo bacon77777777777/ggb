@@ -4,7 +4,6 @@ import { AdminLayout, PageCard, SearchToolbar } from '@/components'
 import DataTable, { type Column } from '@/components/DataTable'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
@@ -153,7 +152,6 @@ export default function ImportJobDetailPage() {
 
   // 已匯入的不能再匯一次，全選時要跳過
   const isSelectable = (r: Row) => r.status !== 'skipped'
-  const selectableCount = filtered.filter(isSelectable).length
 
   const columns: Column<Row>[] = useMemo(() => [
     {
@@ -274,32 +272,19 @@ export default function ImportJobDetailPage() {
 
   return (
     <AdminLayout pageTitle={job?.filename ?? '補齊結果'}>
-      <div className="space-y-4">
+      <div className="space-y-6">
         <PageCard>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/products/import"
-                className="rounded border border-neutral-200 px-3 py-1.5 text-xs transition-colors hover:bg-neutral-50"
-              >
-                ← 回工作列表
-              </Link>
-              {job?.status === 'enriching' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-blue-600 tabular-nums">
-                    補齊中 {job.done_rows} / {job.total_rows}
-                  </span>
-                  <div className="h-1.5 w-32 overflow-hidden rounded-full bg-neutral-100">
-                    <div className="h-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )}
+          {job?.status === 'enriching' && (
+            <div className="mb-4 flex items-center gap-3">
+              <span className="text-xs font-bold text-blue-600 tabular-nums">
+                補齊中 {job.done_rows} / {job.total_rows}
+              </span>
+              <div className="h-1.5 w-40 overflow-hidden rounded-full bg-neutral-100">
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+              </div>
             </div>
-            <span className="text-xs text-neutral-500">已選 {selected.size} / {selectableCount}</span>
-          </div>
-        </PageCard>
+          )}
 
-        <PageCard noPadding>
           <SearchToolbar
             searchPlaceholder="搜尋商品名稱、條碼、品項..."
             searchValue={search}
@@ -316,20 +301,15 @@ export default function ImportJobDetailPage() {
               { key: 'rowStatus', label: '狀態', visible: visibleColumns.rowStatus },
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
+            showExportCSV={true}
+            onExportCSV={() => { window.location.href = `/api/admin/import-jobs/${id}/csv` }}
             selectedCount={selected.size}
             onClearSelection={() => setSelected(new Set())}
             batchActions={[
               { label: '重新補齊', variant: 'secondary', onClick: () => act('requeue') },
               { label: '匯入商品', variant: 'primary', onClick: () => setConfirmImport(true) },
             ]}
-          >
-            <a
-              href={`/api/admin/import-jobs/${id}/csv`}
-              className="h-9 whitespace-nowrap rounded-lg border border-neutral-200 px-4 text-sm font-medium leading-9 text-neutral-700 transition-colors hover:bg-neutral-50"
-            >
-              下載 CSV
-            </a>
-          </SearchToolbar>
+          />
 
           <DataTable<Row>
             data={filtered}
