@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import InfoDot from '@/components/ui/InfoDot'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 
@@ -456,7 +457,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                 <>
                   <SectionHead
                     title="站台維護"
-                    desc="臨時性的開關，處理完就改回來。前台與後台分開設定 —— 維護的原因通常只影響一邊：改前台版面不必把後台鎖起來，而後台在改資料時前台反而更需要正常運作。"
+                    info="臨時性的開關，處理完就改回來。前台與後台分開設定 —— 維護的原因通常只影響一邊：改前台版面不必把後台鎖起來，而後台在改資料時前台反而更需要正常運作。"
                   />
 
                   <div className="divide-y divide-neutral-100">
@@ -540,7 +541,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                 <>
                   <SectionHead
                     title="類別"
-                    desc="決定前台提供哪些玩法與入口。開放是正常販售；維護會留著分類頁籤、點進去說明暫時維護中；關閉則是分類頁籤與商品全部從前台消失，直接開連結也只看到「商品關閉中」。三種狀態都不影響玩家已經抽到的獎品。"
+                    info="決定前台提供哪些玩法與入口。開放是正常販售；維護會留著分類頁籤、點進去說明暫時維護中；關閉則是分類頁籤與商品全部從前台消失，直接開連結也只看到「商品關閉中」。三種狀態都不影響玩家已經抽到的獎品。"
                   />
                   <div className="divide-y divide-neutral-100">
                     {CATEGORY_ITEMS.map(item => (
@@ -579,7 +580,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                 <>
                   <SectionHead
                     title="金流"
-                    desc="錢怎麼走。已經完成的交易與已購買的代幣都不受這裡影響。"
+                    info="錢怎麼走。已經完成的交易與已購買的代幣都不受這裡影響。"
                   />
                   <div className="divide-y divide-neutral-100">
                     {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
@@ -633,7 +634,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                 <>
                   <SectionHead
                     title="GB哥通知"
-                    desc="各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感 —— 關掉只是不推播，排程照常執行、報告照常寫進後台。"
+                    info="各個 AI 單位要不要把報告推到 LINE。只影響自己人，玩家完全無感 —— 關掉只是不推播，排程照常執行、報告照常寫進後台。"
                     // 計數與批次操作靠右對齊，跟下面那一排開關同一條線
                     right={
                       <div className="flex items-center gap-3 text-sm">
@@ -748,14 +749,20 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
 }
 
 /** 分區的標題與說明。說明直接寫在畫面上，不收進 hover —— 這一頁的重點就是看得懂 */
-function SectionHead({ title, desc, right }: { title: string; desc: string; right?: React.ReactNode }) {
+/**
+ * 分區的標題。
+ *
+ * 說明收進標題旁的圓點，不鋪在畫面上 —— 分區層級的說明是「這一區在講什麼」，
+ * 每次進來都讀一次沒有意義，但每一列自己的說明是操作前要看的，那個留在畫面上。
+ */
+function SectionHead({ title, info, right }: { title: string; info: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="mb-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-medium text-neutral-900">{title}</h2>
-        {right}
-      </div>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-400">{desc}</p>
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+      <h2 className="flex items-center gap-2 text-xl font-medium text-neutral-900">
+        {title}
+        <InfoDot>{info}</InfoDot>
+      </h2>
+      {right}
     </div>
   )
 }
