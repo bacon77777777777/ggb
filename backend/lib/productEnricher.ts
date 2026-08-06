@@ -299,19 +299,52 @@ export async function enrichRow(
     // 廠商沒給品項時才用查到的款式。廠商給了就以廠商的為準 ——
     // 那是他實際會出貨的內容，比網路上查到的可信
     if (!nextPrizes.length && info.variants.length) {
-      nextPrizes = info.variants.map(v => ({
-        level: v.level || '未分類',
-        name: v.name,
-        total: 1,
-        remaining: 1,
-        image_url: null,
-        probability: 0,
-        recycle_value: 0,
-        sale_price: 0,
-      }))
+      /*
+       * 數量怎麼分。
+       *
+       * 廠商的進貨單只給一個總數（例如「備貨數量 300」），不會逐款列數量。
+       * 查回來的款式各給 1 的話，總籤數會變成 3，跟實際進的 300 個對不起來 ——
+       * 前台會顯示「剩 3 個」然後三抽就完抽。
+       *
+       * 所以有總數就平分，除不盡的餘數往前面幾款加一（300÷3=100、
+       * 301÷3=101/100/100），總和必定等於總數。沒給總數才退回一款一個。
+       */
+      const n = info.variants.length
+      const total = Number(next.total_count) || 0
+      const base = total > 0 ? Math.floor(total / n) : 1
+      const remainder = total > 0 ? total % n : 0
+
+      nextPrizes = info.variants.map((v, i) => {
+        const qty = Math.max(1, base + (i < remainder ? 1 : 0))
+        return {
+          level: v.level || '未分類',
+          name: v.name,
+          total: qty,
+          remaining: qty,
+          image_url: null,
+          probability: 0,
+          recycle_value: 0,
+          sale_price: 0,
+        }
+      })
+
+      // 總籤數以實際分配的總和為準。沒給總數時它就是款式數
+      const sum = nextPrizes.reduce((a, p) => a + Number(p.total), 0)
+      if (sum !== Number(next.total_count)) {
+        next.total_count = sum
+        next.remaining = sum
+      }
+
+      // 機率制（轉蛋／盒玩）沒有籤號，機率要照數量比例重算
+      if (['gacha', 'blindbox'].includes(String(next.type)) && sum > 0) {
+        for (const p of nextPrizes) {
+          p.probability = Number((Number(p.total) / sum).toFixed(6))
+        }
+      }
+
       filled.push({
         key: 'prizes', label: '款式',
-        value: `${nextPrizes.length} 款`,
+        value: total > 0 ? `${n} 款，每款約 ${base} 個` : `${n} 款`,
         source: `商品頁 + 台灣譯名（${info.confidence === 'high' ? '可信' : '僅供參考'}）`,
       })
     }

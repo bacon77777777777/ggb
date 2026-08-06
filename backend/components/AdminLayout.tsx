@@ -846,6 +846,24 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
 
   const flatMenuItems = useMemo(() => menuGroups.flatMap((g) => g.items), [menuGroups])
 
+  /*
+   * 目前落在哪個選單項。標題、側邊欄高亮、麵包屑三處共用同一個答案。
+   *
+   * 完全相符優先，沒有才取「最長的前綴」。取第一個前綴會出事：
+   * /products/import/5 會被排在更前面的 /products 攔下來，
+   * 於是內頁的標題與麵包屑雙雙變成「商品管理」（實際回報的災情）。
+   * 只要巢狀路徑跟別組的頂層路徑同前綴就會踩到，不是只有這一頁。
+   */
+  const activeMenuItem = useMemo(() => {
+    const exact = flatMenuItems.find((i) => i.path === pathname)
+    if (exact) return exact
+    let best: (typeof flatMenuItems)[number] | null = null
+    for (const i of flatMenuItems) {
+      if (pathname.startsWith(i.path + '/') && (!best || i.path.length > best.path.length)) best = i
+    }
+    return best
+  }, [flatMenuItems, pathname])
+
   // 讀取群組展開狀態（依帳號）
   useEffect(() => {
     if (!user?.username) return
@@ -932,7 +950,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                     href={item.path}
                     title={item.name}
                     className={`flex items-center rounded-lg transition-all duration-200 ${
-                      pathname === item.path
+                      activeMenuItem?.path === item.path
                         ? 'bg-primary text-white font-semibold shadow-sm'
                         : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                     } justify-center p-2.5`}
@@ -971,7 +989,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                               key={item.path}
                               href={item.path}
                               className={`flex items-center rounded-lg transition-all duration-200 ${
-                                pathname === item.path
+                                activeMenuItem?.path === item.path
                                   ? 'bg-primary text-white font-semibold shadow-sm'
                                   : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                               } gap-3 px-3 py-2.5`}
@@ -1008,12 +1026,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           <div className="px-6 h-full flex items-center w-full">
             <div className="flex items-center justify-between w-full">
               <div>
-                {/* 優先使用側邊欄菜單中的名稱，確保與側邊欄同步 */}
+                {/* 選單項精準命中時用選單的名稱，確保與側邊欄同步；
+                    內頁（/products/import/5 這種）沒有精準命中，
+                    就用它自己傳進來的 pageTitle —— 那是它才知道的東西（檔名、單號） */}
                 <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-                  {(
-                    flatMenuItems.find(item => item.path === pathname) ??
-                    flatMenuItems.find(item => pathname.startsWith(item.path + '/'))
-                  )?.name || pageTitle || '後台管理'}
+                  {(pathname === activeMenuItem?.path ? activeMenuItem.name : pageTitle) ||
+                    activeMenuItem?.name || '後台管理'}
                   {PAGE_INFO[pathname] && (
                     <span className="relative group inline-flex items-center">
                       <span className="w-4 h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center cursor-help select-none leading-none">
@@ -1031,28 +1049,15 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                 {/* 麵包屑導航 — 自動從 sidebar menuGroups 推算，永遠和左側欄對齊 */}
                 {(() => {
                   const crumbs: Breadcrumb[] = breadcrumbs ?? (() => {
-                    /*
-                     * 先全域找完全相符，找不到才退回前綴比對。
-                     *
-                     * 原本是逐群組「先完全相符、再前綴」，於是 /products/import
-                     * 在前面的「抽獎管理」群組就被 /products 的前綴攔下來，
-                     * 麵包屑顯示成「抽獎管理 › 商品管理」，但它其實在「其他黑科技」底下。
-                     * 巢狀路徑只要跟別組的頂層路徑同前綴就會踩到。
-                     */
-                    for (const group of menuGroups) {
-                      const exact = group.items.find(i => i.path === pathname)
-                      if (exact) return [{ label: group.title }, { label: exact.name }]
+                    if (!activeMenuItem) return []
+                    const group = menuGroups.find(g => g.items.some(i => i.path === activeMenuItem.path))
+                    const trail: Breadcrumb[] = [{ label: group?.title ?? '' }, { label: activeMenuItem.name }]
+                    // 內頁再多掛一層自己。前一層點得回去，不用只靠瀏覽器上一頁
+                    if (pathname !== activeMenuItem.path && pageTitle) {
+                      trail[1] = { label: activeMenuItem.name, href: activeMenuItem.path }
+                      trail.push({ label: pageTitle })
                     }
-                    // 前綴比對時取最長的那個，/products/import/5 才不會又被 /products 搶走
-                    let best: { group: string; item: string; len: number } | null = null
-                    for (const group of menuGroups) {
-                      for (const i of group.items) {
-                        if (pathname.startsWith(i.path + '/') && (!best || i.path.length > best.len)) {
-                          best = { group: group.title, item: i.name, len: i.path.length }
-                        }
-                      }
-                    }
-                    return best ? [{ label: best.group }, { label: best.item }] : []
+                    return trail
                   })()
                   if (!crumbs.length) return null
                   return (

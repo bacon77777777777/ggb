@@ -1,15 +1,17 @@
 'use client'
 
-import { AdminLayout, PageCard } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar } from '@/components'
+import DataTable, { type Column } from '@/components/DataTable'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import Button from '@/components/ui/Button'
-import ConfirmDialog from '@/components/ConfirmDialog'
-import InfoDot from '@/components/ui/InfoDot'
-import { useToast } from '@/contexts/ToastContext'
+import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import Modal from '@/components/Modal'
 import SelectField from '@/components/ui/SelectField'
+import { useToast } from '@/contexts/ToastContext'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { PRODUCT_IMPORT_FIELDS, PRIZE_IMPORT_FIELDS } from '@/lib/productSchema'
 
 /**
@@ -19,8 +21,9 @@ import { PRODUCT_IMPORT_FIELDS, PRIZE_IMPORT_FIELDS } from '@/lib/productSchema'
  * 這樣「畫面上看到的」跟「下載下來的」是同一份東西，不會有落差。
  *
  * 但 26 個商品欄位全部同時攤開沒人看得完，所以預設只顯示最關鍵的幾個，
- * 其餘用欄位開關自己打開。品項則是展開該列時在下方攤出來 ——
- * 每個商品品項數不一樣，硬塞成固定欄位只會出現一堆空格。
+ * 其餘用工具列的欄位開關自己打開（開關狀態存在 useTablePrefs，下次進來還在）。
+ * 品項則是展開該列時在下方攤出來 —— 每個商品品項數不一樣，
+ * 硬塞成固定欄位只會出現一堆空格。
  */
 
 interface Row {
@@ -45,21 +48,30 @@ interface Job {
 
 // 殺率不顯示。那個機制的名字本身就不該出現在上架流程裡
 const PRODUCT_COLS = PRODUCT_IMPORT_FIELDS.filter(f => !f.key.startsWith('_') && f.key !== 'profit_rate')
+const PRIZE_COLS = PRIZE_IMPORT_FIELDS.filter(f => f.key !== 'image_url')
 
-/** 預設顯示的欄位。其餘要看的時候自己打開 */
-const DEFAULT_VISIBLE = new Set(['name', 'type', 'price', 'total_count', 'barcode', 'distributor'])
+/** 預設打開的欄位。其餘要看的時候自己從工具列開 */
+const DEFAULT_VISIBLE = ['name', 'type', 'price', 'total_count', 'barcode', 'distributor']
+
+const DEFAULT_COLUMNS: Record<string, boolean> = {
+  row_no: true,
+  image: true,
+  ...Object.fromEntries(PRODUCT_COLS.map(f => [f.key, DEFAULT_VISIBLE.includes(f.key)])),
+  prizes: true,
+  rowStatus: true,
+}
 
 const TYPE_LABEL: Record<string, string> = {
   ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋',
   card: '抽卡', custom: '自製賞', slot: '機台',
 }
 
-const ROW_STATUS: Record<Row['status'], { text: string; tone: string }> = {
-  pending:   { text: '待補齊', tone: 'bg-neutral-100 text-neutral-500' },
-  enriching: { text: '補齊中', tone: 'bg-blue-100 text-blue-700' },
-  done:      { text: '已補齊', tone: 'bg-green-100 text-green-700' },
-  failed:    { text: '失敗',   tone: 'bg-red-100 text-red-700' },
-  skipped:   { text: '已匯入', tone: 'bg-neutral-800 text-white' },
+const ROW_STATUS: Record<Row['status'], { text: string; variant: BadgeVariant }> = {
+  pending:   { text: '待補齊', variant: 'default' },
+  enriching: { text: '補齊中', variant: 'info' },
+  done:      { text: '已補齊', variant: 'success' },
+  failed:    { text: '失敗',   variant: 'danger' },
+  skipped:   { text: '已匯入', variant: 'primary' },
 }
 
 function cellText(key: string, v: unknown): string {
@@ -72,22 +84,23 @@ function cellText(key: string, v: unknown): string {
 
 export default function ImportJobDetailPage() {
   const { toast } = useToast()
-  const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params?.id
 
   const [job, setJob] = useState<Job | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [visible, setVisible] = useState<Set<string>>(new Set(DEFAULT_VISIBLE))
-  const [showCols, setShowCols] = useState(false)
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Set<number | string>>(new Set())
+  const [expanded, setExpanded] = useState<Set<number | string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [confirmImport, setConfirmImport] = useState(false)
   // 廠商在匯入這一步才問 —— 補齊跟哪一家供貨無關，但建立商品時是必填
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([])
   const [supplierId, setSupplierId] = useState('')
+
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } =
+    useTablePrefs('import-job-rows', 'compact', DEFAULT_COLUMNS)
 
   const load = async () => {
     try {
@@ -129,22 +142,110 @@ export default function ImportJobDetailPage() {
     return () => { stopped = true; clearInterval(t) }
   }, [job?.status, id])
 
-  const cols = useMemo(() => PRODUCT_COLS.filter(f => visible.has(f.key)), [visible])
-  const selectable = rows.filter(r => r.status !== 'skipped')
-  const allSelected = selectable.length > 0 && selectable.every(r => selected.has(r.id))
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(r =>
+      Object.values(r.product).some(v => String(v ?? '').toLowerCase().includes(q)) ||
+      r.prizes.some(z => String(z.name ?? '').toLowerCase().includes(q))
+    )
+  }, [rows, search])
 
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(selectable.map(r => r.id)))
-  }
-  const toggleOne = (rid: number) => {
-    setSelected(prev => {
-      const n = new Set(prev)
-      if (n.has(rid)) n.delete(rid); else n.add(rid)
-      return n
-    })
-  }
+  // 已匯入的不能再匯一次，全選時要跳過
+  const isSelectable = (r: Row) => r.status !== 'skipped'
+  const selectableCount = filtered.filter(isSelectable).length
+
+  const columns: Column<Row>[] = useMemo(() => [
+    {
+      key: 'row_no', label: '列', className: 'w-12',
+      render: (r) => <span className="text-xs tabular-nums text-neutral-400">{r.row_no}</span>,
+    },
+    {
+      key: 'image', label: '圖', className: 'w-16',
+      render: (r) => r.product.image_url ? (
+        <Image src={String(r.product.image_url)} alt="" width={40} height={40} unoptimized
+          className="h-10 w-10 rounded object-cover" />
+      ) : (
+        <div className="grid h-10 w-10 place-items-center rounded bg-neutral-100 text-[10px] text-neutral-400">無</div>
+      ),
+    },
+    ...PRODUCT_COLS.map<Column<Row>>(f => ({
+      key: f.key,
+      label: f.label,
+      render: (r) => {
+        const text = cellText(f.key, r.product[f.key])
+        return text
+          ? <span className="block max-w-[22rem] truncate" title={text}>{text}</span>
+          : <span className="text-neutral-300">—</span>
+      },
+    })),
+    {
+      // 整列點下去就會展開（DataTable 的行為），這裡只當指示燈。
+      // 再掛一顆自己 toggle 的按鈕會連動兩次，按了等於沒反應
+      key: 'prizes', label: '品項',
+      render: (r) => r.prizes.length ? (
+        <span className="text-xs font-bold text-primary">
+          {r.prizes.length} 個 {expanded.has(r.id) ? '▴' : '▾'}
+        </span>
+      ) : <span className="text-xs text-neutral-300">—</span>,
+    },
+    {
+      key: 'rowStatus', label: '狀態',
+      render: (r) => (
+        <>
+          <Badge variant={ROW_STATUS[r.status].variant}>{ROW_STATUS[r.status].text}</Badge>
+          {r.error && (
+            <div className="mt-0.5 max-w-[16rem] truncate text-[11px] text-red-500" title={r.error}>{r.error}</div>
+          )}
+        </>
+      ),
+    },
+  ], [expanded])
+
+  /** 展開該列時攤出品項。每個商品品項數不一樣，塞成固定欄位只會出現一堆空格 */
+  const renderPrizes = (r: Row) => (
+    <div>
+      {r.prizes.length === 0 ? (
+        <p className="text-xs text-neutral-400">這一列還沒有品項</p>
+      ) : (
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-left text-neutral-400">
+            <th className="w-12 py-1">圖</th>
+            {PRIZE_COLS.map(f => <th key={f.key} className="py-1 pr-4">{f.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {r.prizes.map((z, i) => (
+            <tr key={i} className="border-t border-neutral-100">
+              <td className="py-1.5">
+                {z.image_url ? (
+                  <Image src={String(z.image_url)} alt="" width={32} height={32} unoptimized
+                    className="h-8 w-8 rounded object-cover" />
+                ) : (
+                  <div className="grid h-8 w-8 place-items-center rounded bg-neutral-200 text-[9px] text-neutral-400">無</div>
+                )}
+              </td>
+              {PRIZE_COLS.map(f => (
+                <td key={f.key} className="py-1.5 pr-4 text-neutral-700">
+                  {String(z[f.key] ?? '') || <span className="text-neutral-300">—</span>}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      )}
+      {r.filled.length > 0 && (
+        <p className="mt-2 text-[11px] text-neutral-400">
+          系統補了：{r.filled.map(f => `${f.label}（${f.source}）`).join('、')}
+        </p>
+      )}
+    </div>
+  )
 
   const act = async (path: 'requeue' | 'commit') => {
+    if (busy) return
     if (!selected.size) { toast('沒有選取任何商品', 'error'); return }
     setBusy(true)
     try {
@@ -177,13 +278,13 @@ export default function ImportJobDetailPage() {
         <PageCard>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.push('/products/import')}
+              <Link
+                href="/products/import"
                 className="rounded border border-neutral-200 px-3 py-1.5 text-xs transition-colors hover:bg-neutral-50"
               >
                 ← 回工作列表
-              </button>
-              {job && job.status === 'enriching' && (
+              </Link>
+              {job?.status === 'enriching' && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-blue-600 tabular-nums">
                     補齊中 {job.done_rows} / {job.total_rows}
@@ -194,163 +295,59 @@ export default function ImportJobDetailPage() {
                 </div>
               )}
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-neutral-500">已選 {selected.size} / {selectable.length}</span>
-              <Button size="sm" variant="secondary" onClick={() => setShowCols(v => !v)}>欄位</Button>
-              <Button size="sm" variant="secondary" onClick={() => act('requeue')} disabled={busy || !selected.size}>
-                重新補齊
-              </Button>
-              <a
-                href={`/api/admin/import-jobs/${id}/csv`}
-                className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-50"
-              >
-                下載 CSV
-              </a>
-              <Button size="sm" onClick={() => setConfirmImport(true)} disabled={busy || !selected.size}>
-                匯入商品
-              </Button>
-            </div>
+            <span className="text-xs text-neutral-500">已選 {selected.size} / {selectableCount}</span>
           </div>
-
-          {showCols && (
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-100 pt-3">
-              {PRODUCT_COLS.map(f => {
-                const on = visible.has(f.key)
-                return (
-                  <button
-                    key={f.key}
-                    onClick={() => setVisible(prev => {
-                      const n = new Set(prev)
-                      if (n.has(f.key)) n.delete(f.key); else n.add(f.key)
-                      return n
-                    })}
-                    className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
-                      on ? 'border-primary bg-primary text-white' : 'border-neutral-200 bg-white text-neutral-400'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </PageCard>
 
         <PageCard noPadding>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max text-sm">
-              <thead className="border-b border-neutral-100 bg-neutral-50">
-                <tr className="text-left text-xs text-neutral-500">
-                  <th className="w-10 px-3 py-2.5">
-                    <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
-                  </th>
-                  <th className="w-12 px-2 py-2.5">列</th>
-                  <th className="w-16 px-2 py-2.5">圖</th>
-                  {cols.map(f => <th key={f.key} className="whitespace-nowrap px-3 py-2.5">{f.label}</th>)}
-                  <th className="whitespace-nowrap px-3 py-2.5">品項</th>
-                  <th className="whitespace-nowrap px-3 py-2.5">狀態</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {isLoading && (
-                  <tr><td colSpan={cols.length + 5} className="px-3 py-10 text-center text-sm text-neutral-400">讀取中…</td></tr>
-                )}
-                {!isLoading && rows.length === 0 && (
-                  <tr><td colSpan={cols.length + 5} className="px-3 py-10 text-center text-sm text-neutral-400">沒有資料</td></tr>
-                )}
-                {rows.map(r => {
-                  const st = ROW_STATUS[r.status]
-                  const img = r.product.image_url ? String(r.product.image_url) : null
-                  const open = expanded.has(r.id)
-                  return (
-                    <>
-                      <tr key={r.id} className="hover:bg-neutral-50/60">
-                        <td className="px-3 py-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4"
-                            checked={selected.has(r.id)}
-                            disabled={r.status === 'skipped'}
-                            onChange={() => toggleOne(r.id)}
-                          />
-                        </td>
-                        <td className="px-2 py-2 text-xs tabular-nums text-neutral-400">{r.row_no}</td>
-                        <td className="px-2 py-2">
-                          {img ? (
-                            <Image src={img} alt="" width={40} height={40} unoptimized
-                              className="h-10 w-10 rounded object-cover" />
-                          ) : (
-                            <div className="grid h-10 w-10 place-items-center rounded bg-neutral-100 text-[10px] text-neutral-400">無</div>
-                          )}
-                        </td>
-                        {cols.map(f => (
-                          <td key={f.key} className="max-w-[22rem] truncate px-3 py-2" title={cellText(f.key, r.product[f.key])}>
-                            {cellText(f.key, r.product[f.key]) || <span className="text-neutral-300">—</span>}
-                          </td>
-                        ))}
-                        <td className="px-3 py-2">
-                          {r.prizes.length ? (
-                            <button onClick={() => setExpanded(p => {
-                              const n = new Set(p); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n
-                            })} className="text-xs font-bold text-primary hover:underline">
-                              {r.prizes.length} 個 {open ? '▴' : '▾'}
-                            </button>
-                          ) : <span className="text-xs text-neutral-300">—</span>}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${st.tone}`}>{st.text}</span>
-                          {r.error && <div className="mt-0.5 max-w-[16rem] truncate text-[11px] text-red-500" title={r.error}>{r.error}</div>}
-                        </td>
-                      </tr>
-                      {open && (
-                        <tr key={`${r.id}-prizes`} className="bg-neutral-50/60">
-                          <td colSpan={cols.length + 5} className="px-6 py-3">
-                            {/* 品項每個商品數量不一樣，硬塞成固定欄位只會出現一堆空格，
-                                所以展開時另外攤一張小表 */}
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="text-left text-neutral-400">
-                                  <th className="w-12 py-1">圖</th>
-                                  {PRIZE_IMPORT_FIELDS.filter(f => f.key !== 'image_url').map(f => (
-                                    <th key={f.key} className="py-1 pr-4">{f.label}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {r.prizes.map((z, i) => (
-                                  <tr key={i} className="border-t border-neutral-100">
-                                    <td className="py-1.5">
-                                      {z.image_url ? (
-                                        <Image src={String(z.image_url)} alt="" width={32} height={32} unoptimized
-                                          className="h-8 w-8 rounded object-cover" />
-                                      ) : (
-                                        <div className="grid h-8 w-8 place-items-center rounded bg-neutral-200 text-[9px] text-neutral-400">無</div>
-                                      )}
-                                    </td>
-                                    {PRIZE_IMPORT_FIELDS.filter(f => f.key !== 'image_url').map(f => (
-                                      <td key={f.key} className="py-1.5 pr-4 text-neutral-700">
-                                        {String(z[f.key] ?? '') || <span className="text-neutral-300">—</span>}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            {r.filled.length > 0 && (
-                              <p className="mt-2 text-[11px] text-neutral-400">
-                                系統補了：{r.filled.map(f => `${f.label}（${f.source}）`).join('、')}
-                              </p>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <SearchToolbar
+            searchPlaceholder="搜尋商品名稱、條碼、品項..."
+            searchValue={search}
+            onSearchChange={setSearch}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showColumnToggle={true}
+            columns={[
+              { key: 'row_no', label: '列', visible: visibleColumns.row_no },
+              { key: 'image', label: '圖', visible: visibleColumns.image },
+              ...PRODUCT_COLS.map(f => ({ key: f.key, label: f.label, visible: visibleColumns[f.key] })),
+              { key: 'prizes', label: '品項', visible: visibleColumns.prizes },
+              { key: 'rowStatus', label: '狀態', visible: visibleColumns.rowStatus },
+            ]}
+            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
+            selectedCount={selected.size}
+            onClearSelection={() => setSelected(new Set())}
+            batchActions={[
+              { label: '重新補齊', variant: 'secondary', onClick: () => act('requeue') },
+              { label: '匯入商品', variant: 'primary', onClick: () => setConfirmImport(true) },
+            ]}
+          >
+            <a
+              href={`/api/admin/import-jobs/${id}/csv`}
+              className="h-9 whitespace-nowrap rounded-lg border border-neutral-200 px-4 text-sm font-medium leading-9 text-neutral-700 transition-colors hover:bg-neutral-50"
+            >
+              下載 CSV
+            </a>
+          </SearchToolbar>
+
+          <DataTable<Row>
+            data={filtered}
+            columns={columns}
+            keyField="id"
+            isLoading={isLoading}
+            emptyMessage={search ? '沒有符合的商品' : '沒有資料'}
+            density={tableDensity}
+            visibleColumns={visibleColumns}
+            selectable
+            selectedIds={selected}
+            onSelectChange={setSelected}
+            isSelectable={isSelectable}
+            expandable
+            expandedIds={expanded}
+            onExpandChange={setExpanded}
+            renderExpanded={renderPrizes}
+          />
         </PageCard>
       </div>
 
