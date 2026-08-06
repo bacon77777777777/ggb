@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { X, Trophy } from 'lucide-react';
 import { scheduleState, inheritSchedule, untilText, filterBannersBySchedule } from '@/lib/schedule';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { categoryState } from '@/lib/categoryFlags';
 
 interface BetTier { label: string; coins: number }
 
@@ -472,7 +474,22 @@ export default function ChallengePage() {
   const { navigate } = useRouteTransition();
   const supabase = createClient();
 
+  // 機台類別的開關（migration 496）。關閉就導回首頁 —— 入口雖然已經藏起來，
+  // 但藏起來的入口擋不住直接打網址或舊書籤
+  const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
+  const slotState = categoryState('slot', flagStates, isFlagsLoading);
+  useEffect(() => {
+    if (slotState === 'off') router.replace('/');
+  }, [slotState, router]);
+
   const [machines, setMachines] = useState<SlotMachine[]>([]);
+  // 維護中點機台的提示，3 秒後自動收
+  const [maintenanceNotice, setMaintenanceNotice] = useState(false);
+  useEffect(() => {
+    if (!maintenanceNotice) return;
+    const t = setTimeout(() => setMaintenanceNotice(false), 3000);
+    return () => clearTimeout(t);
+  }, [maintenanceNotice]);
   // 閒置被踢出提示（?idle_kick=1）
   const [kickNotice, setKickNotice] = useState(false);
   useEffect(() => {
@@ -621,7 +638,8 @@ export default function ChallengePage() {
   }, [machines]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-24">
+    // pb 從 24 收到 8：底部導航已不在這一頁，原本那段是留給它的高度
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-8">
       {/* 閒置踢出提示（畫面正中間，5 秒後淡出） */}
       <AnimatePresence>
         {kickNotice && (
@@ -632,6 +650,16 @@ export default function ChallengePage() {
             className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black shadow-xl whitespace-nowrap"
           >
             過久沒有動作，已讓位給其他用戶
+          </motion.div>
+        )}
+        {maintenanceNotice && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
+            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+            exit={{ opacity: 0, x: '-50%', y: '-50%', transition: { duration: 0.6 } }}
+            className="fixed top-1/2 left-1/2 z-50 px-5 py-2.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-base font-black shadow-xl whitespace-nowrap"
+          >
+            機台維護中，稍後再來
           </motion.div>
         )}
       </AnimatePresence>
@@ -760,6 +788,11 @@ export default function ChallengePage() {
                   number={themeIndexMap.get(machine.id) ?? 1}
                   currentUserId={currentUserId}
                   onEnter={() => {
+                    // 維護中：機台照常列出（讓玩家知道它還在），但進不去
+                    if (slotState === 'maintenance') {
+                      setMaintenanceNotice(true);
+                      return;
+                    }
                     const now = Date.now();
                     const expiresAt = machine.occupancy_expires_at
                       ? new Date(machine.occupancy_expires_at).getTime() : 0;

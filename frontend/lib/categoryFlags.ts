@@ -3,12 +3,13 @@ import type { FeatureKey, FeatureStates, FlagState } from '@/contexts/FeatureFla
 /**
  * 商品類別 ←→ 功能開關
  *
- * products.type 跟 feature_flags.key 是同名的（gacha / ichiban / blindbox / card / custom），
+ * products.type 跟 feature_flags.key 是同名的（gacha / ichiban / blindbox / card / custom / slot），
  * 所以這裡只需要一份白名單，不需要對照表。
  *
- * 機台（slot）沒有對應的開關，永遠開著 —— 它不在下面這個集合裡。
+ * 機台（slot）原本刻意不受開關管轄，migration 496 起也納入 —— 其他五個都能
+ * 開放／維護／關閉，只有機台不行的話，後台看起來像漏了一個。
  */
-const CATEGORY_KEYS = ['ichiban', 'blindbox', 'gacha', 'card', 'custom'] as const;
+const CATEGORY_KEYS = ['ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot'] as const;
 
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
@@ -18,9 +19,10 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   gacha: '轉蛋',
   card: '抽卡',
   custom: '自製賞',
+  slot: '機台',
 };
 
-/** 這個商品類別對應到哪個開關；沒有對應（例如機台）就回 null */
+/** 這個商品類別對應到哪個開關；沒有對應就回 null */
 export function categoryFlagKey(type?: string | null): CategoryKey | null {
   return CATEGORY_KEYS.includes(type as CategoryKey) ? (type as CategoryKey) : null;
 }
@@ -28,7 +30,7 @@ export function categoryFlagKey(type?: string | null): CategoryKey | null {
 /**
  * 這個商品的類別現在是什麼狀態。
  *
- * 沒有對應開關的（機台）一律回 'on'。
+ * 沒有對應開關的一律回 'on'。
  * 旗標還在載入時也回 'on' —— 寧可讓玩家多看半秒商品頁，
  * 也不要在頁面剛開的瞬間閃一下「維護中」再跳回正常。
  */

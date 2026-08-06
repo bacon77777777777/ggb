@@ -379,16 +379,14 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                       >
                         {loading ? '...' : displayName}
                       </p>
-                      {/* 轉蛋次數 / 被膜拜次數 */}
+                      {/* 轉蛋次數 / 被膜拜次數：併成一行並縮小，
+                          原本各佔一行、字級與暱稱太接近，四行擠在一起 */}
                       {!loading && (
-                        <>
-                          <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
-                            累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
-                          </p>
-                          <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
-                            被膜拜 {(profile?.worship_count ?? 0).toLocaleString()} 次
-                          </p>
-                        </>
+                        <p className="text-[#888] whitespace-nowrap" style={{ fontSize: 28, fontWeight: 400 }}>
+                          累計轉蛋 {(profile?.total_draws ?? 0).toLocaleString()} 次
+                          <span className="text-[#ccc]" style={{ margin: '0 12px' }}>·</span>
+                          被膜拜 {(profile?.worship_count ?? 0).toLocaleString()} 次
+                        </p>
                       )}
                     </div>
                   </div>
@@ -399,6 +397,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                     className="relative flex items-center justify-center shrink-0 px-[48px]"
                     style={{
                       height: 108,
+                      marginTop: -10,   // 與左側暱稱那組視覺對齊
                       background: 'rgba(255,228,228,0.4)',
                       border: '2px solid rgba(255,255,255,0.4)',
                       borderRadius: 100,

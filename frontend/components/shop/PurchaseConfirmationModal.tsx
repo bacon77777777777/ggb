@@ -109,13 +109,14 @@ export function PurchaseConfirmationModal({
   const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
   const isSoldOut = product.status === 'ended' || maxByRemaining === 0;
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
-  // 數量改成步進之後，夾制要通用：庫存變動或重開彈窗時把超出上限的值拉回來。
-  // 原本只處理「十連抽但庫存不足 10」這一種情況，改成步進就不夠用了
+  const canTenPull = !isSoldOut && maxQuantity >= 10;
+  // 庫存不足 10 卻停在十連抽時，拉回單抽；另外仍夾制上下限（庫存變動、重開彈窗）
   useEffect(() => {
     if (!isOpen || isProcessing) return;
+    if (!canTenPull && quantity === 10) { setQuantity(1); return; }
     if (quantity > maxQuantity) setQuantity(maxQuantity);
     if (quantity < 1) setQuantity(1);
-  }, [isOpen, isProcessing, maxQuantity, quantity]);
+  }, [isOpen, isProcessing, canTenPull, maxQuantity, quantity]);
 
   // Freeze displayed quantity during processing so prices stay consistent with button selection
   const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
@@ -313,45 +314,36 @@ export function PurchaseConfirmationModal({
                           Use effective quantity to keep visual state stable during processing,
                           avoiding flicker from auto-fallback or external updates.
                         */}
-                        {/*
-                          原本是「單抽 / 十連抽」兩顆按鈕，中間的數量選不了。
-                          改成 +/- 步進：下限固定 1，上限鎖在 maxQuantity
-                          （庫存與每人上限取小者），到邊界按鈕就 disabled。
-                          跟抽籤販售的彈窗用同一套操作方式，玩家不用學兩種。
-                        */}
-                        <StepBtn
-                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
+                        {/* 一般販售維持「單抽 / 十連抽」兩顆按鈕。
+                            抽籤販售有自己的 LotteryDrawModal，那邊才是步進式選張數 */}
+                        <button
+                          type="button"
+                          onClick={() => setQuantity(1)}
+                          disabled={isSoldOut || isProcessing}
+                          className={cn(
+                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
+                            effectiveQuantity === 1
+                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                            (isSoldOut || isProcessing) && "opacity-50 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900"
+                          )}
                         >
-                          −
-                        </StepBtn>
-                        <span className={cn(
-                          "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
-                          isDesktop ? "w-12 text-lg" : "w-10 text-base"
-                        )}>
-                          {effectiveQuantity}
-                        </span>
-                        <StepBtn
-                          onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
+                          單抽
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { if (canTenPull) setQuantity(10); }}
+                          disabled={isSoldOut || !canTenPull || isProcessing}
+                          className={cn(
+                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
+                            effectiveQuantity === 10
+                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                            (isSoldOut || !canTenPull || isProcessing) && "opacity-40 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900 active:scale-100"
+                          )}
                         >
-                          ＋
-                        </StepBtn>
-                        {maxQuantity > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setQuantity(maxQuantity)}
-                            disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
-                            className={cn(
-                              "ml-1 rounded-xl border border-neutral-200 dark:border-neutral-700 font-bold",
-                              "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                              "disabled:opacity-40 disabled:hover:bg-transparent transition-colors",
-                              isDesktop ? "h-11 px-4 text-sm" : "h-9 px-3 text-xs"
-                            )}
-                          >
-                            最多 {maxQuantity}
-                          </button>
-                        )}
+                          十連抽
+                        </button>
                       </div>
                     </div>
 
@@ -578,20 +570,3 @@ export function PurchaseConfirmationModal({
   );
 }
 
-/** 數量步進鈕。樣式與抽籤販售的彈窗一致，兩邊操作手感相同。 */
-function StepBtn({ children, onClick, disabled, large }: {
-  children: React.ReactNode; onClick: () => void; disabled: boolean; large?: boolean;
-}) {
-  return (
-    <button
-      type="button" onClick={onClick} disabled={disabled}
-      className={cn(
-        "rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200",
-        "font-black disabled:opacity-40 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors",
-        large ? "w-11 h-11 text-lg" : "w-9 h-9"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
