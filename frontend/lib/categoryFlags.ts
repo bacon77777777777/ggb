@@ -1,4 +1,4 @@
-import type { FeatureKey, FeatureFlags } from '@/contexts/FeatureFlagsContext';
+import type { FeatureKey, FeatureStates, FlagState } from '@/contexts/FeatureFlagsContext';
 
 /**
  * 商品類別 ←→ 功能開關
@@ -26,27 +26,49 @@ export function categoryFlagKey(type?: string | null): CategoryKey | null {
 }
 
 /**
- * 這個商品的類別現在關著嗎
+ * 這個商品的類別現在是什麼狀態。
  *
- * 旗標還在載入時一律回 false —— 寧可讓玩家多看半秒商品頁，
- * 也不要在頁面剛開的瞬間閃一下「已關閉」再跳回正常。
+ * 沒有對應開關的（機台）一律回 'on'。
+ * 旗標還在載入時也回 'on' —— 寧可讓玩家多看半秒商品頁，
+ * 也不要在頁面剛開的瞬間閃一下「維護中」再跳回正常。
  */
-export function isCategoryClosed(
+export function categoryState(
   type: string | null | undefined,
-  flags: FeatureFlags,
+  states: FeatureStates,
   isLoading: boolean,
-): boolean {
-  if (isLoading) return false;
+): FlagState {
+  if (isLoading) return 'on';
   const key = categoryFlagKey(type);
-  return key ? !flags[key as FeatureKey] : false;
+  return key ? (states[key as FeatureKey] ?? 'on') : 'on';
 }
 
-/** 濾掉類別關著的商品。旗標載入中一律回原本的清單，避免畫面先閃一次空的 */
+/** 關閉：從前台完全消失。維護中不算 —— 那個要照常列出、只是抽不了 */
+export function isCategoryHidden(
+  type: string | null | undefined,
+  states: FeatureStates,
+  isLoading: boolean,
+): boolean {
+  return categoryState(type, states, isLoading) === 'off';
+}
+
+/** 維護中：照常顯示，但抽不了 */
+export function isCategoryUnderMaintenance(
+  type: string | null | undefined,
+  states: FeatureStates,
+  isLoading: boolean,
+): boolean {
+  return categoryState(type, states, isLoading) === 'maintenance';
+}
+
+/**
+ * 濾掉「關閉」的商品。維護中的會留著 —— 玩家該看得到它還在、只是暫時停一下。
+ * 旗標載入中一律回原本的清單，避免畫面先閃一次空的。
+ */
 export function filterEnabledCategories<T extends { type?: string | null }>(
   items: T[],
-  flags: FeatureFlags,
+  states: FeatureStates,
   isLoading: boolean,
 ): T[] {
   if (isLoading) return items;
-  return items.filter(item => !isCategoryClosed(item.type, flags, false));
+  return items.filter(item => !isCategoryHidden(item.type, states, false));
 }

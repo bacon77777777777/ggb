@@ -17,7 +17,7 @@ import ProductBadge, { ProductType } from '@/components/ui/ProductBadge';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { isCategoryClosed } from '@/lib/categoryFlags';
+import { isCategoryHidden, categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
@@ -38,7 +38,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
-  const { flags } = useFeatureFlags();
+  const { flags, states: flagStates } = useFeatureFlags();
   const { user } = useAuth();
   // Map<series, score> — populated from get_user_series_preferences RPC
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
@@ -398,15 +398,24 @@ export default function Home() {
 
   const primaryTabs: { id: PrimaryTabId; label: string }[] = useMemo(() => {
     const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '綜合' }];
+    // 維護中的類別頁籤照常出現（後面加註記）—— 那是「暫時停一下」，
+    // 藏起來玩家會以為我們不做了。只有「關閉」才整個消失
+    const CATEGORY_TABS: { id: PrimaryTabId; label: string; type: string }[] = [
+      { id: 'ichiban',  label: '一番賞', type: 'ichiban' },
+      { id: 'blindbox', label: '盒玩',   type: 'blindbox' },
+      { id: 'gacha',    label: '轉蛋',   type: 'gacha' },
+      { id: 'card',     label: '抽卡',   type: 'card' },
+      { id: 'custom',   label: '自製賞', type: 'custom' },
+    ];
     if (flags.sell) base.push({ id: 'sell', label: '販售' });
-    if (flags.ichiban) base.push({ id: 'ichiban', label: '一番賞' });
-    if (flags.blindbox) base.push({ id: 'blindbox', label: '盒玩' });
-    if (flags.gacha) base.push({ id: 'gacha', label: '轉蛋' });
-    if (flags.card) base.push({ id: 'card', label: '抽卡' });
-    if (flags.custom) base.push({ id: 'custom', label: '自製賞' });
+    for (const t of CATEGORY_TABS) {
+      const st = categoryState(t.type, flagStates, false);
+      if (st === 'off') continue;
+      base.push({ id: t.id, label: st === 'maintenance' ? `${t.label}（維護中）` : t.label });
+    }
     const menuTabs = menus.map((m) => ({ id: `menu:${m.id}` as PrimaryTabId, label: m.name }));
     return [...base, ...menuTabs];
-  }, [flags.blindbox, flags.card, flags.custom, flags.gacha, flags.ichiban, flags.sell, menus]);
+  }, [flagStates, flags.sell, menus]);
 
   useEffect(() => {
     const disabled =
@@ -458,13 +467,9 @@ export default function Home() {
     (products: ProductRow[]) => {
       return products.filter((product) => {
         if (activePrimaryTab === 'all') {
-          const t = String(product.type || '').trim();
-          if (t === 'ichiban') return Boolean(flags.ichiban);
-          if (t === 'blindbox') return Boolean(flags.blindbox);
-          if (t === 'gacha') return Boolean(flags.gacha);
-          if (t === 'card') return Boolean(flags.card);
-          if (t === 'custom') return Boolean(flags.custom);
-          return true;
+          // 用 state 而不是 flags —— flags 在維護中是 false，
+          // 拿它來濾會把維護中的類別跟關閉的一起藏掉
+          return !isCategoryHidden(product.type, flagStates, false);
         }
 
         if (activePrimaryTab.startsWith('menu:')) {
@@ -472,8 +477,9 @@ export default function Home() {
           const ids = menuProductIdsByMenuId[menuId];
           if (!ids) return false;
           // 自訂選單也要看類別開關 —— 選單是後台手動挑的商品清單，
-          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來
-          if (isCategoryClosed(product.type, flags, false)) return false;
+          // 沒濾的話關掉「轉蛋」之後轉蛋商品還是會從這裡漏出來。
+          // 維護中的留著，玩家該看得到它只是暫時停一下
+          if (isCategoryHidden(product.type, flagStates, false)) return false;
           return ids.includes(Number(product.id));
         }
 
@@ -486,7 +492,7 @@ export default function Home() {
         return product.type === activePrimaryTab;
       });
     },
-    [activePrimaryTab, flags, menuProductIdsByMenuId]
+    [activePrimaryTab, flagStates, menuProductIdsByMenuId]
   );
 
   // Series tabs: personal prefs → global popularity → product count

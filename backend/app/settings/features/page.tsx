@@ -7,6 +7,7 @@ import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import InfoDot from '@/components/ui/InfoDot'
 import DateTimePicker from '@/components/DateTimePicker'
+import { useToast } from '@/contexts/ToastContext'
 
 type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
 
@@ -38,6 +39,23 @@ const DEFAULT_PUSH_FLAGS = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
   return acc
 }, {} as Record<LinePushKey, boolean>)
 
+/**
+ * 類別的三態（migration 483）。
+ *
+ * 「關閉」跟「維護中」是兩件事：關閉是平台不做這個類別了，該完全消失；
+ * 維護中是暫時停一下，該讓玩家看得到、知道會回來。用一個布林表達不出來。
+ *
+ * 只有 CATEGORY_KEYS 那六個吃三態 —— 玩家交易與 GB哥推播沒有「維護中」
+ * 這個中間狀態可講，維持開/關就好。
+ */
+type FlagState = 'on' | 'maintenance' | 'off'
+
+const STATE_OPTIONS: { v: FlagState; label: string }[] = [
+  { v: 'on',          label: '開放' },
+  { v: 'maintenance', label: '維護' },
+  { v: 'off',         label: '關閉' },
+]
+
 const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   // 儲值預設開啟。關掉會直接斷開綠界建單（見 /api/payment/ecpay），
   // 玩家在儲值頁看到「儲值維護中」。已購買的代幣、抽獎與出貨都不受影響
@@ -54,7 +72,9 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
 }
 
 export default function FeatureFlagsPage() {
+  const { toast } = useToast()
   const [flags, setFlags] = useState<Record<FeatureKey, boolean> | null>(null)
+  const [states, setStates] = useState<Record<FeatureKey, FlagState> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -71,12 +91,20 @@ export default function FeatureFlagsPage() {
   const isSuperAdmin = adminUser?.role === 'super_admin' || adminUser?.role === 'superadmin'
 
   const ready = Boolean(flags) && !isLoading
+  const pushOnCount = LINE_PUSH_ITEMS.filter(i => pushFlags[i.key]).length
 
   const toggleFlag = (key: FeatureKey, checked: boolean) => {
     if (!flags) return
     const next = { ...flags, [key]: checked }
     setFlags(next)
-    save(next)
+    save({ flags: next })
+  }
+
+  const setState = (key: FeatureKey, v: FlagState) => {
+    if (!states || states[key] === v) return
+    const next = { ...states, [key]: v }
+    setStates(next)
+    save({ states: next })
   }
 
   // 已經是這個狀態就不用問；點自己不該有反應
@@ -145,17 +173,11 @@ export default function FeatureFlagsPage() {
         return
       }
       if (!res.ok) throw new Error('load_failed')
-      const json = (await res.json().catch(() => null)) as any
-      const next = { ...DEFAULT_FLAGS }
-      const incoming = json?.flags || {}
-      for (const k of Object.keys(next) as FeatureKey[]) {
-        if (k in incoming) next[k] = Boolean(incoming[k])
-      }
-      if (next.exchange && next.market) next.market = false
-      setFlags(next)
+      applyServerFlags(await res.json().catch(() => null))
     } catch {
       setLoadError(true)
       setFlags(null)
+      setStates(null)
     } finally {
       setIsLoading(false)
     }
@@ -180,36 +202,10 @@ export default function FeatureFlagsPage() {
     }
   }
 
-  const saveAllPushFlags = async (value: boolean) => {
-    setIsPushSaving(true)
-    const allFlags = Object.fromEntries(
-      LINE_PUSH_ITEMS.map(item => [item.key, value])
-    ) as Record<LinePushKey, boolean>
-    setPushFlags(prev => ({ ...prev, ...allFlags }))
-    try {
-      const res = await fetch('/api/admin/line-push-flags', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ flags: allFlags }),
-      })
-      if (res.ok) {
-        const json = (await res.json().catch(() => null)) as any
-        const incoming = json?.flags || {}
-        const normalized = { ...DEFAULT_PUSH_FLAGS }
-        for (const k of Object.keys(normalized) as LinePushKey[]) {
-          if (k in incoming) normalized[k] = Boolean(incoming[k])
-        }
-        setPushFlags(normalized)
-      }
-    } finally {
-      setIsPushSaving(false)
-    }
-  }
 
   /**
    * 批次儲存推播開關。
-   * 總開關一次要改十四項，逐項呼叫 savePushFlag 會送出十四個請求，
+   * 總開關一次要改十四項，逐項送出會變成十四個請求，
    * 而且每個都會 setState，互相覆蓋。API 本來就吃多筆，一次送完。
    */
   const savePush = async (next: Record<LinePushKey, boolean>) => {
@@ -226,32 +222,6 @@ export default function FeatureFlagsPage() {
     }
   }
 
-  const savePushFlag = async (key: LinePushKey, value: boolean) => {
-    setIsPushSaving(true)
-    const next = { ...pushFlags, [key]: value }
-    setPushFlags(next)
-    try {
-      const res = await fetch('/api/admin/line-push-flags', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ flags: { [key]: value } }),
-      })
-      if (res.ok) {
-        const json = (await res.json().catch(() => null)) as any
-        const incoming = json?.flags || {}
-        const normalized = { ...DEFAULT_PUSH_FLAGS }
-        for (const k of Object.keys(normalized) as LinePushKey[]) {
-          if (k in incoming) normalized[k] = Boolean(incoming[k])
-        }
-        setPushFlags(normalized)
-      }
-    } catch {
-      void 0
-    } finally {
-      setIsPushSaving(false)
-    }
-  }
 
   useEffect(() => {
     const init = async () => {
@@ -266,29 +236,45 @@ export default function FeatureFlagsPage() {
     init()
   }, [])
 
-  const save = async (next: Record<FeatureKey, boolean>) => {
+  /**
+   * 存開關。伺服器回什麼就照什麼顯示 —— 交換與交易所是互斥的，
+   * 開了一個另一個會被伺服器關掉，只信任本地的樂觀值會跟真實狀態對不上。
+   *
+   * 失敗時重新載入而不是留著使用者剛才那一下：原本的寫法是失敗也把
+   * 樂觀值寫回去，畫面看起來成功、資料庫其實沒變，那比報錯更糟。
+   */
+  const save = async (payload: { flags?: Record<FeatureKey, boolean>; states?: Record<FeatureKey, FlagState> }) => {
     setIsSaving(true)
     try {
       const res = await fetch('/api/admin/feature-flags', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ flags: next }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('save_failed')
       const json = (await res.json().catch(() => null)) as any
-      const incoming = json?.flags || next
-      const normalized = { ...DEFAULT_FLAGS }
-      for (const k of Object.keys(normalized) as FeatureKey[]) {
-        if (k in incoming) normalized[k] = Boolean(incoming[k])
-      }
-      if (normalized.exchange && normalized.market) normalized.market = false
-      setFlags(normalized)
+      applyServerFlags(json)
     } catch {
-      setFlags(next)
+      toast('儲存失敗，已還原成目前的實際設定', 'error')
+      load()
     } finally {
       setIsSaving(false)
     }
+  }
+
+  /** 把 API 回來的 flags/states 寫進畫面。GET 與 PUT 的回應格式一樣，共用 */
+  const applyServerFlags = (json: any) => {
+    const incomingFlags = json?.flags || {}
+    const incomingStates = json?.states || {}
+    const nextFlags = { ...DEFAULT_FLAGS }
+    const nextStates = {} as Record<FeatureKey, FlagState>
+    for (const k of Object.keys(nextFlags) as FeatureKey[]) {
+      if (k in incomingFlags) nextFlags[k] = Boolean(incomingFlags[k])
+      nextStates[k] = (incomingStates[k] as FlagState) || (nextFlags[k] ? 'on' : 'off')
+    }
+    setFlags(nextFlags)
+    setStates(nextStates)
   }
 
 
@@ -326,6 +312,10 @@ function defaultUntil(): string {
   return d.toISOString()
 }
 
+// 繞過連結要指到這個環境自己的前台。寫死 www.ggb.com.tw 的話，
+// 在 STG 複製出來的連結會把人帶去正式站，測不到剛才關的那個維護
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw'
+
 const MAINT_OPTIONS = [
   { v: 'off',      label: '正常營運',   hint: '兩邊都開放',                         adminOnly: false },
   { v: 'frontend', label: '只關前台',   hint: '玩家看維護頁，後台照常（最常用）',   adminOnly: false },
@@ -340,20 +330,16 @@ const MAINT_OPTIONS = [
       <div className="space-y-4">
       {/* 維護模式獨立一張卡：它是「營運狀態」不是「功能開關」 */}
       <PageCard>
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
-            維護模式
-            <InfoDot>
-              前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
-              後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
-            </InfoDot>
-          </h2>
-          {maint && maint.scope !== 'off' && (
-            <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
-              維護中
-            </span>
-          )}
-        </div>
+        <SectionTitle
+          title="維護模式"
+          info={<>
+            前台維護時玩家會被帶到維護頁，停在頁面上的人最多 30 秒內也會被帶走。
+            後台維護只擋一般管理員，超級管理員照常進得去 —— 否則啟動之後就沒人能解除。
+          </>}
+          right={maint && maint.scope !== 'off' ? (
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">維護中</span>
+          ) : null}
+        />
 
         {/* 六欄格線：正常營運佔三欄（50%），其餘三個各佔一欄。
             手機上先排成兩欄，否則四個擠一排每個都塞不下字。
@@ -423,7 +409,7 @@ const MAINT_OPTIONS = [
                 </InfoDot>
               </div>
               <code className="mt-1 block break-all font-mono text-xs text-neutral-700">
-                {`https://www.ggb.com.tw/?__mk=${maint.bypassKey}`}
+                {`${FRONTEND_URL}/?__mk=${maint.bypassKey}`}
               </code>
             </div>
           </div>
@@ -432,29 +418,25 @@ const MAINT_OPTIONS = [
         {/* 儲值放在最後、跟維護範圍用分隔線隔開。
             它跟上面四顆按鈕無關 —— 貼在按鈕正下方會被讀成「維護範圍的第五個選項」。
             金流那邊出狀況時要能單獨關掉儲值，不必為此把整個前台停掉 */}
-        <div className="mt-4 border-t border-neutral-100 pt-4">
-          <div className={`flex max-w-xs items-center justify-between gap-3 rounded-xl border px-4 py-2.5 transition-colors ${
-            ready && flags && !flags.recharge ? 'border-amber-300 bg-amber-50' : 'border-neutral-200 bg-white'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-neutral-900">儲值</span>
-              <InfoDot>
-                跟維護範圍無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
-                已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
-              </InfoDot>
-            </div>
-            <div className="flex items-center gap-2.5">
-              {ready && flags && !flags.recharge && (
-                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
-                  已關閉
-                </span>
-              )}
-              <Switch
-                checked={ready && flags ? Boolean(flags.recharge) : false}
-                disabled={!ready || isSaving}
-                onCheckedChange={(checked) => toggleFlag('recharge', checked)}
-              />
-            </div>
+        <div className="mt-4 flex max-w-sm items-center justify-between gap-3 border-t border-neutral-100 pt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-bold text-neutral-900">儲值</span>
+            <InfoDot>
+              跟維護範圍無關，可以單獨關。關掉會直接斷開綠界建單，玩家在儲值頁看到維護提示。
+              已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。
+            </InfoDot>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {ready && flags && !flags.recharge && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                已關閉
+              </span>
+            )}
+            <Switch
+              checked={ready && flags ? Boolean(flags.recharge) : false}
+              disabled={!ready || isSaving}
+              onCheckedChange={(checked) => toggleFlag('recharge', checked)}
+            />
           </div>
         </div>
       </PageCard>
@@ -468,59 +450,90 @@ const MAINT_OPTIONS = [
       )}
 
       <PageCard>
-        <FlagSection
-            title="類別" items={items.play} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
-            info="關掉的類別不會出現在前台的分類頁籤，既有商品也連帶隱藏。已經抽到的獎品不受影響。"
+        <SectionTitle
+          title="類別"
+          info={<>
+            <b>開放</b>：正常販售。<br />
+            <b>維護</b>：前台照常看得到，但抽不了，商品頁會說明稍後開放 —— 用在臨時停一下。<br />
+            <b>關閉</b>：整個類別從前台消失，直接開連結也只會看到「已下架」—— 用在不做這個類別了。<br />
+            三種狀態都不影響玩家已經抽到的獎品。
+          </>}
         />
-      </PageCard>
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
+          {items.play.map(item => (
+            <StateRow
+              key={item.key}
+              label={item.label}
+              value={states?.[item.key] ?? 'on'}
+              disabled={!ready || isSaving}
+              onChange={(v) => setState(item.key, v)}
+            />
+          ))}
+        </div>
 
-      <PageCard>
-        <FlagSection
-            title="玩家交易" items={items.trade} flags={flags} ready={ready} saving={isSaving} onToggle={toggleFlag}
-            info="玩家之間的交易功能。「販售金流」是二手販售時由平台代收買家貨款，「交換」是卡牌一對一交換，「交易所」是掛單買賣。關掉之後前台不再顯示入口，進行中的交易不受影響。"
-        />
-      </PageCard>
-
-      <PageCard>
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-xs font-black text-neutral-500">
-                GB哥推播
-                <InfoDot>各個 AI 單位要不要把報告推到 LINE。關掉只是不推播，排程照常執行、報告照常寫進後台。</InfoDot>
-              </h2>
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-bold text-neutral-400">總開關</span>
-                <Switch
-                  checked={Object.values(pushFlags).some(Boolean)}
-                  disabled={isPushLoading || isPushSaving}
-                  onCheckedChange={(checked) => {
-                    const next = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
-                      acc[key] = checked
-                      return acc
-                    }, {} as Record<LinePushKey, boolean>)
-                    setPushFlags(next)
-                    savePush(next)
-                  }}
-                />
-              </label>
-            </div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {LINE_PUSH_ITEMS.map((item) => (
-                <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
-                  <div className="min-w-0 text-[13px] font-bold text-neutral-900 truncate">{item.label}</div>
-                  <Switch
-                    checked={pushFlags[item.key]}
-                    disabled={isPushLoading || isPushSaving}
-                    onCheckedChange={(checked) => {
-                      const next = { ...pushFlags, [item.key]: checked }
-                      setPushFlags(next)
-                      savePush(next)
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+        <div className="mt-5 border-t border-neutral-100 pt-4">
+          <SectionTitle
+            title="玩家交易"
+            info={<>
+              「販售金流」是二手販售時由平台代收買家貨款；「交換」是卡牌一對一交換；
+              「交易所」是掛單買賣。交換與交易所共用前台同一個入口，只能擇一 ——
+              開了其中一個，另一個會自動關掉。關掉之後前台不再顯示入口，進行中的交易不受影響。
+            </>}
+          />
+          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3">
+            {items.trade.map(item => (
+              <SwitchRow
+                key={item.key}
+                label={item.label}
+                checked={ready && flags ? Boolean(flags[item.key]) : false}
+                disabled={!ready || isSaving}
+                onChange={(v) => toggleFlag(item.key, v)}
+              />
+            ))}
           </div>
+        </div>
+      </PageCard>
+
+      <PageCard>
+        <SectionTitle
+          title="GB哥推播"
+          info="各個 AI 單位要不要把報告推到 LINE。關掉只是不推播，排程照常執行、報告照常寫進後台。"
+          right={
+            <div className="flex items-center gap-2.5">
+              {/* 顯示幾項開著，不然總開關在「開了 13 項」時看起來跟「全開」一樣 */}
+              <span className="text-xs font-bold text-neutral-400 tabular-nums">
+                已開 {pushOnCount} / {LINE_PUSH_ITEMS.length}
+              </span>
+              <Switch
+                checked={pushOnCount > 0}
+                disabled={isPushLoading || isPushSaving}
+                onCheckedChange={(checked) => {
+                  const next = LINE_PUSH_ITEMS.reduce((acc, { key }) => {
+                    acc[key] = checked
+                    return acc
+                  }, {} as Record<LinePushKey, boolean>)
+                  setPushFlags(next)
+                  savePush(next)
+                }}
+              />
+            </div>
+          }
+        />
+        <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {LINE_PUSH_ITEMS.map((item) => (
+            <SwitchRow
+              key={item.key}
+              label={item.label}
+              checked={pushFlags[item.key]}
+              disabled={isPushLoading || isPushSaving}
+              onChange={(checked) => {
+                const next = { ...pushFlags, [item.key]: checked }
+                setPushFlags(next)
+                savePush(next)
+              }}
+            />
+          ))}
+        </div>
       </PageCard>
       </div>
 
@@ -553,41 +566,79 @@ const MAINT_OPTIONS = [
   )
 }
 
-/** 一組功能開關。四個群組原本各自複製一份一模一樣的卡片標記，抽出來才統一得了樣式 */
-function FlagSection({ title, items, flags, ready, saving, onToggle, info }: {
+/** 區塊標題。四個區塊原本大小顏色各自為政，統一從這裡出 */
+function SectionTitle({ title, info, right }: {
   title: string
   info?: React.ReactNode
-  items: readonly { key: FeatureKey; label: string; hint?: string }[]
-  flags: Record<FeatureKey, boolean> | null
-  ready: boolean
-  saving: boolean
-  onToggle: (key: FeatureKey, checked: boolean) => void
+  right?: React.ReactNode
 }) {
   return (
-    <div>
-      <h2 className="mb-2 flex items-center gap-2 text-xs font-black text-neutral-500">
+    <div className="mb-2 flex min-h-[28px] items-center justify-between gap-3">
+      <h2 className="flex items-center gap-2 text-sm font-black text-neutral-900">
         {title}
         {info && <InfoDot>{info}</InfoDot>}
       </h2>
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-        {items.map(item => {
-          const on = ready && flags ? Boolean(flags[item.key]) : false
+      {right}
+    </div>
+  )
+}
+
+/**
+ * 一列開關。
+ *
+ * 刻意不給每一列外框 —— 卡片裡再套一堆小方框就是容器包容器，
+ * 而且方框把每列撐得很寬，一排放不下幾個。改用細線分隔加 hover 底色，
+ * 同樣看得出是一列一列的，但一排塞得下三到四個。
+ */
+function SwitchRow({ label, checked, disabled, onChange }: {
+  label: string
+  checked: boolean
+  disabled: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-neutral-100 py-2">
+      <span className={`min-w-0 truncate text-[13px] font-bold ${checked ? 'text-neutral-900' : 'text-neutral-400'}`}>
+        {label}
+      </span>
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    </div>
+  )
+}
+
+/** 一列三態選擇。用分段按鈕而不是兩顆開關，因為三個狀態是互斥的 */
+function StateRow({ label, value, disabled, onChange }: {
+  label: string
+  value: FlagState
+  disabled: boolean
+  onChange: (v: FlagState) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-neutral-100 py-2">
+      <span className={`min-w-0 truncate text-[13px] font-bold ${value === 'on' ? 'text-neutral-900' : 'text-neutral-400'}`}>
+        {label}
+      </span>
+      <div className="flex shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200">
+        {STATE_OPTIONS.map(o => {
+          const active = value === o.v
           return (
-            <div
-              key={item.key}
-              className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
-                ready && !on && item.key === 'recharge'
-                  ? 'border-amber-300 bg-amber-50'
-                  : 'border-neutral-200 bg-white'
+            <button
+              key={o.v}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(o.v)}
+              className={`px-2.5 py-1 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                active
+                  ? o.v === 'on'
+                    ? 'bg-primary text-white'
+                    : o.v === 'maintenance'
+                      ? 'bg-amber-400 text-amber-950'
+                      : 'bg-neutral-600 text-white'
+                  : 'bg-white text-neutral-500 hover:bg-neutral-50'
               }`}
             >
-              <div className="min-w-0 text-[13px] font-bold text-neutral-900 truncate">{item.label}</div>
-              <Switch
-                checked={on}
-                disabled={!ready || saving}
-                onCheckedChange={(checked) => onToggle(item.key, checked)}
-              />
-            </div>
+              {o.label}
+            </button>
           )
         })}
       </div>

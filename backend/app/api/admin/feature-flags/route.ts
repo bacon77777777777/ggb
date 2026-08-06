@@ -13,6 +13,20 @@ type FeatureKey = (typeof FEATURE_KEYS)[number]
 
 const normalizeBool = (v: unknown) => v === true || v === 'true' || v === 1 || v === '1'
 
+/**
+ * 類別的三態（migration 483）。
+ *
+ * enabled 這個布林分不出「暫時停一下」跟「不做了」，但對玩家差很多：
+ * 維護中該讓他看得到、知道會回來；關閉該完全消失，不要留一個點不動的入口。
+ *
+ * DB 端有 trigger 讓 enabled 永遠等於 (state = 'on')，所以這裡回傳的 flags
+ * 仍然是既有讀取端要的那個布林，states 只是多給前台一個判斷依據。
+ */
+const VALID_STATES = ['on', 'maintenance', 'off'] as const
+type FlagState = (typeof VALID_STATES)[number]
+const normalizeState = (v: unknown, fallback: FlagState): FlagState =>
+  VALID_STATES.includes(v as FlagState) ? (v as FlagState) : fallback
+
 const runSqlMigrations = async (connectionString: string, files: string[]) => {
   const { Client } = require('pg') as any
   const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } })
@@ -63,7 +77,7 @@ export async function GET() {
   const supabaseAdmin = getSupabaseAdmin()
   const { data, error } = await supabaseAdmin
     .from('feature_flags')
-    .select('key, enabled, updated_at')
+    .select('key, enabled, state, updated_at')
     .in('key', FEATURE_KEYS as unknown as string[])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -72,16 +86,21 @@ export async function GET() {
     acc[k] = true
     return acc
   }, {} as Record<FeatureKey, boolean>)
+  const states: Record<FeatureKey, FlagState> = FEATURE_KEYS.reduce((acc, k) => {
+    acc[k] = 'on'
+    return acc
+  }, {} as Record<FeatureKey, FlagState>)
 
   for (const row of Array.isArray(data) ? data : []) {
     const key = String((row as any)?.key || '') as FeatureKey
     if (!FEATURE_KEYS.includes(key)) continue
     flags[key] = Boolean((row as any)?.enabled)
+    states[key] = normalizeState((row as any)?.state, flags[key] ? 'on' : 'off')
   }
 
   if (flags.exchange && flags.market) flags.market = false
 
-  return NextResponse.json({ flags }, { status: 200 })
+  return NextResponse.json({ flags, states }, { status: 200 })
 }
 
 export async function PUT(req: Request) {
@@ -91,15 +110,16 @@ export async function PUT(req: Request) {
   const supabaseAdmin = getSupabaseAdmin()
   const body = (await req.json().catch(() => null)) as any
   const inputFlags = (body?.flags || {}) as Record<string, unknown>
+  const inputStates = (body?.states || {}) as Record<string, unknown>
 
-  const nextFlags: Record<FeatureKey, boolean> = FEATURE_KEYS.reduce((acc, k) => {
-    acc[k] = true
+  const nextStates: Record<FeatureKey, FlagState> = FEATURE_KEYS.reduce((acc, k) => {
+    acc[k] = 'on'
     return acc
-  }, {} as Record<FeatureKey, boolean>)
+  }, {} as Record<FeatureKey, FlagState>)
 
   const { data: existing, error: existingError } = await supabaseAdmin
     .from('feature_flags')
-    .select('key, enabled')
+    .select('key, enabled, state')
     .in('key', FEATURE_KEYS as unknown as string[])
 
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
@@ -107,23 +127,36 @@ export async function PUT(req: Request) {
   for (const row of Array.isArray(existing) ? existing : []) {
     const key = String((row as any)?.key || '') as FeatureKey
     if (!FEATURE_KEYS.includes(key)) continue
-    nextFlags[key] = Boolean((row as any)?.enabled)
+    nextStates[key] = normalizeState((row as any)?.state, (row as any)?.enabled ? 'on' : 'off')
   }
 
+  // flags（布林）與 states（三態）都收。舊呼叫端只送 flags，
+  // 這時 false 不該把「維護中」降級成「關閉」—— 維持原本的狀態就好
   for (const k of FEATURE_KEYS) {
-    if (!(k in inputFlags)) continue
-    nextFlags[k] = normalizeBool(inputFlags[k])
+    if (k in inputStates) {
+      nextStates[k] = normalizeState(inputStates[k], nextStates[k])
+    } else if (k in inputFlags) {
+      const on = normalizeBool(inputFlags[k])
+      nextStates[k] = on ? 'on' : (nextStates[k] === 'maintenance' ? 'maintenance' : 'off')
+    }
   }
 
-  const wantsMarket = 'market' in inputFlags && normalizeBool(inputFlags.market)
-  const wantsExchange = 'exchange' in inputFlags && normalizeBool(inputFlags.exchange)
-  if (wantsMarket) nextFlags.exchange = false
-  if (wantsExchange) nextFlags.market = false
-  if (nextFlags.exchange && nextFlags.market) nextFlags.market = false
+  // 交換與交易所只能擇一（前台是同一個入口，兩個都開會互相蓋掉）
+  const turnedOn = (k: FeatureKey) =>
+    (k in inputStates && nextStates[k] === 'on') || (k in inputFlags && normalizeBool(inputFlags[k]))
+  if (turnedOn('market')) nextStates.exchange = 'off'
+  if (turnedOn('exchange')) nextStates.market = 'off'
+  if (nextStates.exchange === 'on' && nextStates.market === 'on') nextStates.market = 'off'
+
+  const nextFlags: Record<FeatureKey, boolean> = FEATURE_KEYS.reduce((acc, k) => {
+    acc[k] = nextStates[k] === 'on'
+    return acc
+  }, {} as Record<FeatureKey, boolean>)
 
   const upserts = FEATURE_KEYS.map((k) => ({
     key: k,
     enabled: nextFlags[k],
+    state: nextStates[k],
     updated_at: new Date().toISOString(),
   }))
 
@@ -134,9 +167,9 @@ export async function PUT(req: Request) {
     adminId: session.adminId,
     action: '修改功能開關',
     targetType: 'feature_flags',
-    detail: { updated: inputFlags },
+    detail: { updated: { ...inputFlags, ...inputStates } },
     ip: getClientIp(req),
   })
 
-  return NextResponse.json({ flags: nextFlags }, { status: 200 })
+  return NextResponse.json({ flags: nextFlags, states: nextStates }, { status: 200 })
 }

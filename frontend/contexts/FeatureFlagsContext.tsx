@@ -7,6 +7,19 @@ export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'c
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
+/**
+ * 類別的三態（migration 483）。
+ *
+ * flags 那個布林分不出「暫時停一下」跟「不做了」，但對玩家差很多：
+ * 維護中東西還在、晚點回來就有，該讓他看得到；
+ * 關閉是平台不提供了，該完全消失，不要留一個點不動的入口吊人胃口。
+ *
+ * DB 端 enabled 永遠等於 (state = 'on')，所以維護中與關閉一樣抽不了 ——
+ * states 只影響前台怎麼呈現。
+ */
+export type FlagState = 'on' | 'maintenance' | 'off';
+export type FeatureStates = Record<FeatureKey, FlagState>;
+
 const DEFAULT_FLAGS: FeatureFlags = {
   // recharge 預設 true，其餘預設 false。
   // 其他旗標是「開了才顯示」，關著最多少一個玩法；
@@ -30,18 +43,26 @@ const SAFE_FALLBACK_FLAGS: FeatureFlags = {
   recharge: true,
 };
 
+const statesFromFlags = (f: FeatureFlags): FeatureStates =>
+  Object.fromEntries(
+    (Object.keys(f) as FeatureKey[]).map(k => [k, f[k] ? 'on' : 'off']),
+  ) as FeatureStates;
+
 type FeatureFlagsState = {
   flags: FeatureFlags;
+  states: FeatureStates;
   isLoading: boolean;
 };
 
 const FeatureFlagsContext = createContext<FeatureFlagsState>({
   flags: SAFE_FALLBACK_FLAGS,
+  states: statesFromFlags(SAFE_FALLBACK_FLAGS),
   isLoading: true,
 });
 
 export function FeatureFlagsProvider({ children }: { children: React.ReactNode }) {
   const [flags, setFlags] = useState<FeatureFlags>(DEFAULT_FLAGS);
+  const [states, setStates] = useState<FeatureStates>(() => statesFromFlags(DEFAULT_FLAGS));
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -62,22 +83,33 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
                 if (k in parsed) cached[k] = Boolean((parsed as any)[k]);
               }
               if (cached.exchange && cached.market) cached.market = false;
-              if (!cancelled) setFlags(cached);
+              if (!cancelled) {
+                setFlags(cached);
+                // 快取只存布林（舊格式），先用它推一個近似值，
+                // 等一下的查詢回來就會蓋成真正的三態
+                setStates(statesFromFlags(cached));
+              }
             }
           } catch {}
         }
 
-        const { data, error } = await supabase.from('feature_flags').select('key, enabled');
+        const { data, error } = await supabase.from('feature_flags').select('key, enabled, state');
         if (error) throw error;
         const next: FeatureFlags = { ...DEFAULT_FLAGS };
+        const nextStates: FeatureStates = statesFromFlags(DEFAULT_FLAGS);
         for (const row of Array.isArray(data) ? data : []) {
           const key = String((row as any)?.key || '') as FeatureKey;
           if (!(key in next)) continue;
           next[key] = Boolean((row as any)?.enabled);
+          const st = String((row as any)?.state || '');
+          nextStates[key] = st === 'maintenance' || st === 'off' || st === 'on'
+            ? (st as FlagState)
+            : (next[key] ? 'on' : 'off');
         }
         if (next.exchange && next.market) next.market = false;
         if (!cancelled) {
           setFlags(next);
+          setStates(nextStates);
           try {
             window.localStorage.setItem('gachago:feature_flags', JSON.stringify(next));
           } catch {}
@@ -129,7 +161,7 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  const value = useMemo(() => ({ flags, isLoading }), [flags, isLoading]);
+  const value = useMemo(() => ({ flags, states, isLoading }), [flags, states, isLoading]);
   return <FeatureFlagsContext.Provider value={value}>{children}</FeatureFlagsContext.Provider>;
 }
 

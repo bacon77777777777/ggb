@@ -36,7 +36,7 @@ import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
-import { isCategoryClosed, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
+import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -358,16 +358,34 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
 
 PackSelectionCarousel.displayName = 'PackSelectionCarousel';
 
+/**
+ * 類別維護中的橫幅。
+ *
+ * 維護中的商品頁照常渲染 —— 玩家看得到獎品、看得到還剩幾隻，才判斷得出
+ * 值不值得等它回來。但機台看起來完全正常卻按不動會像故障，
+ * 所以在最上面明講一句。真正擋抽獎的是 handleDrawClick 與 DB 的 trigger。
+ */
+function CategoryMaintenanceBar({ type }: { type?: string | null }) {
+  const label = CATEGORY_LABELS[categoryFlagKey(type) ?? 'gacha'];
+  return (
+    <div className="sticky top-14 z-30 flex items-center justify-center gap-2 bg-amber-400 px-4 py-2 text-center text-[13px] font-black text-amber-950">
+      {label}維護中，暫時抽不了，稍後就會開放
+    </div>
+  );
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, refreshProfile } = useAuth();
   const requireLogin = useRequireLogin();
   const { showToast } = useToast();
-  const { flags, isLoading: isFlagsLoading } = useFeatureFlags();
+  const { states: flagStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const [supabase] = useState(() => createClient());
 
   const [product, setProduct] = useState<Database['public']['Tables']['products']['Row'] | null>(null);
+  // 維護中：整頁照常渲染，只是抽不了
+  const isUnderMaintenance = isCategoryUnderMaintenance(product?.type, flagStates, isFlagsLoading);
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
@@ -691,6 +709,12 @@ export default function ProductDetailPage() {
   const isLotterySale = (product as any)?.sale_mode === 'lottery';
 
   const handleDrawClick = () => {
+    // 維護中先擋在這裡。DB 的 trigger 也會擋，但那時玩家已經按下去、
+    // 心裡以為抽到了，跳出來的會是一個看起來像故障的錯誤
+    if (isUnderMaintenance) {
+      showToast(`${CATEGORY_LABELS[categoryFlagKey(product?.type) ?? 'gacha']}維護中，暫時抽不了`, 'error');
+      return;
+    }
     if (isLotterySale) {
       if (!user) { router.push('/login'); return; }
       setIsLotteryModalOpen(true);
@@ -1250,25 +1274,21 @@ export default function ProductDetailPage() {
   }
 
   /*
-   * 類別被關掉時的畫面。
+   * 類別關閉時的畫面。
    *
    * 關類別只是讓分類頁籤消失，商品頁本身還在 —— 書籤、分享出去的網址、
    * 搜尋引擎快照都還進得來。不擋的話玩家會看到一個看起來完全正常、
    * 按下去卻抽不動的機台（DB 的 trigger 會擋，但那時已經走到掏錢那一步了）。
    *
-   * 跟「找不到商品」分開講：那是真的沒這個東西，這是東西還在、只是暫時不賣，
-   * 講清楚玩家才知道值不值得再回來看。
+   * 跟維護中分開講：關閉是平台不做這個類別了，講「已下架」讓玩家死心；
+   * 維護中是暫時停一下，那個不走這條路，繼續往下渲染整個商品頁。
    */
-  if (isCategoryClosed(product.type, flags, isFlagsLoading)) {
-    const label = CATEGORY_LABELS[categoryFlagKey(product.type)!];
+  if (isCategoryHidden(product.type, flagStates, isFlagsLoading)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6 text-center">
-        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">
-          {label}暫停開放
-        </h1>
+        <h1 className="text-2xl font-black text-neutral-900 dark:text-neutral-50 mb-2">商品已下架</h1>
         <p className="max-w-xs text-neutral-500 dark:text-neutral-400 font-bold mb-6 leading-relaxed">
-          這個類別目前休息中，重新開放後就能繼續抽。
-          已經抽到的獎品都還在你的倉庫裡。
+          這個商品已經沒有開放了。已經抽到的獎品都還在你的倉庫裡。
         </p>
         <div className="flex gap-3">
           <Link href="/warehouse">
@@ -1281,6 +1301,7 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
 
   const validPrizes = prizes.filter(p => 
     p.level !== 'Last One' && 
@@ -1313,6 +1334,7 @@ export default function ProductDetailPage() {
       <>
         {!isMachineReady && <ProductLoadingScreen />}
         <div style={!isMachineReady ? { visibility: 'hidden', position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' } : undefined}>
+          {isUnderMaintenance && <CategoryMaintenanceBar type={product.type} />}
           <GachaProductDetail product={product} prizes={prizes} machineTheme={gachaMachineTheme} onMachineReady={() => setIsMachineReady(true)} />
         </div>
       </>
@@ -1857,6 +1879,7 @@ export default function ProductDetailPage() {
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12"
       style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
     >
+      {isUnderMaintenance && <CategoryMaintenanceBar type={product.type} />}
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
           <div className="lg:col-span-4 lg:sticky lg:top-20">
