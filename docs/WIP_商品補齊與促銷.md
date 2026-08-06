@@ -108,3 +108,76 @@
   但實際功能有沒有照這個定義跑，沒有人驗過。
 - **公司統編**：登記完成後要補進「關於我們」與「退換貨資訊」。
 - **法律條款**：目前是自己寫的，上線前應該給律師看過。
+
+---
+
+## 附錄：品牌與來源實測清單
+
+> 兩次實測合併：第一次掃 51 個來源（2026-08-05），第二次針對官方站直查（2026-08-06）。
+> **站況會腐化** —— 舊程式裡的 23 個來源當時已經爛掉 15 個，
+> 所以這份清單是「當時的快照」，不是永久有效的保證。接來源前一律重測一次。
+
+### 轉蛋（扭蛋）
+
+| 品牌 | 網站 | 狀態 |
+|------|------|------|
+| **BANDAI ガシャポン** | `gashapon.jp` | ✅ **已接**。支援條碼直查 `detail.php?jan_code=<13碼>000`，回官方品名、定價、種類數、主圖、每一款的名字與原廠照片 |
+| Gashapon US | `us.gashapon.jp` | ✅ 通（73 個商品連結），英文站，未接 |
+| 奇譚俱樂部 Kitan Club | `kitan.jp` | ✅ 通（8 個），未接 |
+| EPOCH | `epoch.jp` | ✅ 通（11 個），未接 |
+| Ken Elephant | `kenelephant.co.jp` | ⚠️ 站活著但抓不到商品 |
+| **T-ARTS（TAKARA TOMY A.R.T.S）** | `takaratomy-arts.co.jp` | ⚠️ 站活著（200）但搜尋參數不是 `?s=`，`/specials/gacha/` 是 404。**老闆點名過，要另外找路徑** |
+| TARLIN | `tarlin-web.com` | ❌ 網域連不上 |
+| Qualia | `qualia-jp.net` | ❌ 網域連不上 |
+| Bushiroad | — | ⚠️ 站活著但抓不到 |
+
+### 一番賞
+
+| 品牌 | 網站 | 狀態 |
+|------|------|------|
+| **BANDAI SPIRITS 一番賞** | `1kuji.com` | ✅ 通（29 個商品連結），**未接，優先度最高** |
+| BANDAI SPIRITS 一番賞 | `ichibankuji.com` | ✅ 連得上（200，43KB），未驗過查詢路徑 |
+| FuRyu 大家的抽獎 | `charahiroba.com` | ✅ 通（6 個），未接 |
+| 三麗鷗抽獎 | `sanrio.co.jp` | ✅ 通（8 個），未接 |
+| Ensky | `ensky.co.jp` | ✅ 通，未接 |
+| Movic | `movic.jp` | ✅ 通，未接 |
+| SEGA | `segaplaza.jp` | ⚠️ 200 但抓不到（版面改過） |
+| TAITO | `taito.co.jp` | ⚠️ 同上 |
+| SQUARE ENIX | `square-enix.com` | ⚠️ 同上 |
+| 하이쿠지 | `hikokuji.com` / `h-kuji.com` / `kujibikido.com` | ⚠️ 同上 |
+| Good Smile くじ | `kuji.goodsmile.com` | ❌ 403 擋爬蟲 |
+
+### 盒玩 / 食玩
+
+| 品牌 | 網站 | 狀態 |
+|------|------|------|
+| MegaHouse | `megahobby.jp` | ✅ 通（114 個商品連結，這類最多），未接 |
+| **BANDAI 食玩** | `bandai.co.jp/candy` | ✅ 連得上（200，125KB），未驗過查詢路徑 |
+| Good Smile Company | `goodsmile.com` | ✅ 通（舊測 404，新網址已改） |
+| Ensky 食玩 | `ensky.co.jp` | ✅ 通 |
+| SMISKI | `smiski.com` | ✅ 通 |
+| Re-MeNT | `re-ment.co.jp` | ⚠️ 抓不到商品 |
+| 壽屋 Kotobukiya | `kotobukiya.co.jp` | ❌ 403 |
+| POP MART | `popmart.com/tw` | ❌ 404 |
+
+### 跨品牌通路（官方站查無時的後路）
+
+| 通路 | 覆蓋 | 狀態 |
+|------|------|------|
+| **駿河屋** | 支援 JAN 搜尋 | ✅ **已接**。目前的後路主力，條碼搜尋 → 商品頁 |
+| Yahoo Shopping JP | 263 個連結，跨全品牌 | ✅ 通，未接。覆蓋率最廣 |
+| 楽天市場 | 90 個 | ✅ 通，未接 |
+| DuckDuckGo | 兜底 | ✅ **已接**，但**會限流，回 0 筆是常態** |
+| AmiAmi | 覆蓋率最廣的單一站 | ❌ 403，最可惜 |
+
+### 不碰的
+
+`130point.com`、`cardrush-sports.jp` —— Cloudflare Turnstile 保護，
+CLAUDE.md 明訂不繞過站方的存取控制，一律放棄。
+
+### 這份清單的結論
+
+**逐站寫 HTML 解析是死路**：51 個來源只有 15 個能用，而且會持續腐化。
+但**「官方站直查」是例外** —— `gashapon.jp` 的 `jan_code` 是穩定的查詢介面，
+不是靠猜版面，這種才值得接。找下一個來源時要找的是同一種東西：
+**用條碼或商品名查得到、且回結構化欄位的入口**，不是「首頁抓得到幾個連結」。
