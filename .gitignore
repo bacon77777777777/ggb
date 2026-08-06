@@ -40,3 +40,8 @@ backend/public/images/item/
 
 # 驗證用的 production build 輸出（見 next.config 的 distDir）
 .next-verify/
+
+# Playwright 產出
+backend/test-results/
+# 老闆給的廠商實際清單，不進版控
+frontend/public/test/
