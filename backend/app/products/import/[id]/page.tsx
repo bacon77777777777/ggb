@@ -126,19 +126,28 @@ export default function ImportJobDetailPage() {
    * cron 只是沒人看著時的後備 —— pg_cron 排的是打正式站的網址，
    * 本機與 STG 沒有 pg_cron，只靠它的話工作永遠停在 0/33（實測就是這樣）。
    * 兩邊同時跑不會重複處理，撈到的列會先被標成 enriching。
+   *
+   * **一輪跑完才發下一輪**。原本用 setInterval(3 秒)，它不管前一輪有沒有
+   * 回來就照發，而一輪要十幾秒 —— 於是同時有十幾個請求在飛，每個各領走
+   * 6 列標成 enriching，畫面整片都是「補齊中」，中斷的那些還會變成孤兒。
    */
   useEffect(() => {
     if (job?.status !== 'enriching') return
     let stopped = false
-    const tick = async () => {
+    let timer: ReturnType<typeof setTimeout>
+
+    const loop = async () => {
       try {
         await fetch(`/api/admin/import-jobs/${id}/run`, { method: 'POST', credentials: 'include' })
       } catch { /* 單輪失敗不該中斷，下一輪再試 */ }
-      if (!stopped) await load()
+      if (stopped) return
+      await load()
+      if (stopped) return
+      // 一輪之間留 1 秒，讓資料庫的進度觸發器跟上，也避免空轉時打太兇
+      timer = setTimeout(loop, 1000)
     }
-    tick()
-    const t = setInterval(tick, 3000)
-    return () => { stopped = true; clearInterval(t) }
+    loop()
+    return () => { stopped = true; clearTimeout(timer) }
   }, [job?.status, id])
 
   const filtered = useMemo(() => {

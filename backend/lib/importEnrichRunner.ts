@@ -11,6 +11,11 @@ import { enrichRow } from '@/lib/productEnricher'
  * 兩邊同時跑也不會重複處理：撈到之後先把那幾列標成 enriching，
  * 另一邊的查詢只吃 pending，自然就錯開了。
  *
+ * 但「標成 enriching」等於發出一張租約，而租約要會過期 ——
+ * 中途換頁、請求被中斷、function 逾時，那一列就停在 enriching 沒人再碰，
+ * 永遠補不完（實測一份 292 筆的檔案卡了 15 列）。所以超過 LEASE_MINUTES
+ * 還沒有動靜的 enriching 列視同無主，重新收回來跑。
+ *
  * 為什麼不能只靠 cron：pg_cron 排的是打正式站的網址，本機與 STG
  * 根本不會有人來處理，工作就永遠停在 0/33。頁面自己推進的話，
  * 三個環境行為一致。
@@ -18,21 +23,32 @@ import { enrichRow } from '@/lib/productEnricher'
 
 /** 一輪處理幾筆。抓 6 是讓最壞情況也能在 60 秒的 function 上限內收工 */
 const BATCH = 6
-const CONCURRENCY = 2
+/*
+ * 同時跑幾列。3 是抓過的：最慢的一列約 8 秒，6 ÷ 3 × 8 ≈ 16 秒，
+ * 離 function 的 60 秒上限還有很大餘裕，再往上就有逾時風險。
+ */
+const CONCURRENCY = 3
 /** 同一列最多重跑幾次。一直失敗多半是查不到，再跑也一樣，別無限燒錢 */
 const MAX_ATTEMPTS = 2
+/** 標成 enriching 之後多久沒動靜就視同無主，收回重跑 */
+const LEASE_MINUTES = 5
 
 export async function runEnrichBatch(jobId?: number | string): Promise<{
   processed: number; done: number; failed: number
 }> {
   const supabase = getSupabaseAdmin()
 
+  const staleBefore = new Date(Date.now() - LEASE_MINUTES * 60_000).toISOString()
+
   let q = supabase
     .from('import_job_rows')
     .select('id, job_id, product, prizes, attempts, filled, import_jobs!inner(status)')
-    .eq('status', 'pending')
+    // 還沒跑的，或是租約過期的無主列
+    .or(`status.eq.pending,and(status.eq.enriching,updated_at.lt.${staleBefore})`)
     .eq('import_jobs.status', 'enriching')
     .lt('attempts', MAX_ATTEMPTS)
+    // 人工按「重新補齊」的列 priority=1，插到前面；其餘照原順序
+    .order('priority', { ascending: false })
     .order('id', { ascending: true })
     .limit(BATCH)
   if (jobId) q = q.eq('job_id', jobId)

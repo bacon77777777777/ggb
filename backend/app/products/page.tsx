@@ -4,7 +4,6 @@ import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTa
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import BulkImportModal from '@/components/BulkImportModal'
 import Badge from '@/components/ui/Badge'
-import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
 import { type Product } from '@/types/product'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -20,7 +19,6 @@ import { useToast } from '@/contexts/ToastContext'
 export default function ProductsPage() {
   const { toast } = useToast()
   const router = useRouter()
-  const { addLog } = useLog()
   const { highlightedProductId, setHighlightedProductId } = useProduct()
   const highlightedRowRef = useRef<HTMLTableRowElement>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -450,7 +448,6 @@ export default function ProductsPage() {
             }
           }))
 
-          addLog('批量上架', '商品管理', `批量上架 ${selectedProducts.size} 個商品`, 'success')
           setConfirmModal(prev => ({ ...prev, isOpen: false }))
           setSuccessModal({
             isOpen: true,
@@ -494,7 +491,6 @@ export default function ProductsPage() {
           setProductVisibility(newVisibility)
           setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'pending' } : p))
 
-          addLog('批量下架', '商品管理', `批量下架 ${selectedProducts.size} 個商品`, 'success')
           setConfirmModal(prev => ({ ...prev, isOpen: false }))
           setSuccessModal({
             isOpen: true,
@@ -531,7 +527,6 @@ export default function ProductsPage() {
           delete newVisibility[product.id]
           setProductVisibility(newVisibility)
           
-          addLog('刪除商品', '商品管理', `刪除商品「${product.name}」`, 'success')
           setConfirmModal(prev => ({ ...prev, isOpen: false }))
           setSuccessModal({
             isOpen: true,
@@ -1240,14 +1235,11 @@ export default function ProductsPage() {
                                     startedAt: updated?.started_at ?? p.startedAt,
                                   }
                                 }))
-                                
-                                // 記錄操作
-                                addLog(
-                                  newVisibility ? '上架商品' : '下架商品',
-                                  '商品管理',
-                                  `${newVisibility ? '上架' : '下架'}商品「${product.name}」`,
-                                  'success'
-                                )
+
+                                /* 這裡不再自己記一筆。/api/admin/products/batch 已經在
+                                   伺服器端記了「上架商品／下架商品」並帶商品名 ——
+                                   兩邊都記的話同一個動作會出現兩列，而且前端那筆的 IP
+                                   是瀏覽器自報的內網位址，查不出真正的來源 */
                               } catch (error) {
                                 console.error('更新狀態失敗:', error)
                                 toast('更新狀態失敗', 'error')

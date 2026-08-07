@@ -28,7 +28,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const { error } = await supabase.from('import_job_rows')
-    .update({ status: 'pending', attempts: 0, error: null, updated_at: new Date().toISOString() })
+    // priority=1 讓它們插到佇列前面。不插隊的話，一份 292 筆的檔案
+    // 人選的那幾筆前面還排著兩百多筆，按下去看起來就像沒反應
+    .update({ status: 'pending', attempts: 0, priority: 1, error: null, updated_at: new Date().toISOString() })
     .eq('job_id', id).in('id', rowIds)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
