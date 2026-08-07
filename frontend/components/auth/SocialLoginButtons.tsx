@@ -18,9 +18,25 @@ import Image from 'next/image';
 const LINE_CHANNEL_ID = process.env.NEXT_PUBLIC_LINE_LOGIN_CHANNEL_ID;
 
 function startLineLogin() {
-  // state 擋 CSRF：回程頁會比對，不一樣就拒收
+  // state 擋 CSRF：回程頁會比對，不一樣就拒收。
+  // 存 localStorage 而不是 sessionStorage —— sessionStorage 是「每個分頁一份」，
+  // 而 LINE app 授權完把人送回來時常常是開新分頁，state 就找不到了
   const state = crypto.randomUUID();
-  sessionStorage.setItem('line_login_state', state);
+  localStorage.setItem('line_login_state', state);
+
+  /*
+   * 加到主畫面的 PWA（偽 app）要整段留在原地，不跳 LINE app。
+   *
+   * 實測的災情：從偽 app 按登入 → 跳 LINE app 授權 → LINE app 把人
+   * 送回網站時 iOS 只會用 Safari 開，回不到偽 app —— 而兩邊的儲存空間
+   * 是隔離的，state 對不上，就算對上了登入態也建在 Safari 而不是偽 app。
+   * disable_auto_login=true 讓 LINE 的授權頁直接用網頁登入
+   *（有 SSO 就一鍵、沒有就輸帳密），全程不離開偽 app 的視窗。
+   * 一般瀏覽器維持跳 app 的一鍵授權，體驗不變。
+   */
+  const standalone =
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (navigator as { standalone?: boolean }).standalone === true;
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -30,6 +46,7 @@ function startLineLogin() {
     // openid 才拿得到 id_token；profile 讓 id_token 帶暱稱與頭像
     scope: 'profile openid',
   });
+  if (standalone) params.set('disable_auto_login', 'true');
   window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
 }
 

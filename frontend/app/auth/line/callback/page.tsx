@@ -31,8 +31,9 @@ function LineCallbackInner() {
     const run = async () => {
       const code = searchParams.get('code')
       const state = searchParams.get('state')
-      const savedState = sessionStorage.getItem('line_login_state')
-      sessionStorage.removeItem('line_login_state')
+      // localStorage 跟出發時對稱（見 SocialLoginButtons 的註解），用完即丟
+      const savedState = localStorage.getItem('line_login_state')
+      localStorage.removeItem('line_login_state')
 
       // 玩家在 LINE 那頁按了取消
       if (searchParams.get('error')) { router.replace('/login'); return }

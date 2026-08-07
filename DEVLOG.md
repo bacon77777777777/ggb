@@ -4,6 +4,41 @@
 
 ---
 
+## v2026.08.07e｜2026-08-07｜LINE 登入在偽 app 裡跳去 Safari 的修正
+
+老闆實測抓到的：從「加入主畫面」的偽 app（PWA）按 LINE 登入 → 跳 LINE app
+授權 → LINE app 把人送回網站時 iOS 只會用 **Safari** 開，回不到偽 app。
+偽 app 和 Safari 的儲存空間是隔離的，出發前存的 state 對不上 →
+顯示「登入逾時或連結失效」。更深的問題是就算放行，登入態也會建在
+Safari 而不是玩家真正在用的偽 app。
+
+修法兩刀：
+
+1. **偽 app 裡不跳 LINE app，整段留在原地。** 偵測 standalone 模式就在
+   授權網址加 `disable_auto_login=true`（LINE 官方參數），授權頁改用
+   網頁登入（有 SSO 一鍵、沒有就輸帳密），全程不離開偽 app 的視窗。
+   一般瀏覽器維持跳 app 的一鍵授權，體驗不變。
+2. **state 從 sessionStorage 改 localStorage。** sessionStorage 是
+   「每個分頁一份」，LINE 送人回來常常開新分頁，state 就找不到了。
+
+### 順帶盤點老闆點名的另外兩個跳轉
+
+「儲值或物流選門市，可能需要跳轉的都會有這類問題」—— 逐一查過：
+
+- **儲值（綠界）**：安全。同視窗 form POST 過去，整條導頁鏈留在偽 app 裡；
+  而且入帳靠的是 server-to-server 的 callback（webhook_events 冪等），
+  就算瀏覽器端斷在半路，錢也不會少。唯一控制不了的是銀行 app 的 3DS
+  驗證跳出去再回來可能落在 Safari —— 但那只影響「付款完成頁」開在哪，
+  不影響入帳，玩家回偽 app 餘額就在。
+- **物流選門市**：已經有人做過 PWA 防護了，而且做了三層 ——
+  postMessage（桌機彈窗）、localStorage fallback、以及**後端輪詢**
+  （`/api/logistics/cvs-pending`，註解明寫 for iOS PWA where
+  postMessage/localStorage don't cross contexts）。不用動。
+
+所以這一類問題全站只有 LINE 登入這一個洞，已補。
+
+---
+
 ## v2026.08.07d｜2026-08-07｜LINE 登入（玩家端）
 
 Google 登入卡在要有公司統編才能開 Workspace，LINE 不用 —— 用 GB哥
