@@ -200,11 +200,21 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-hero.bare .h-bgimg{position:relative;inset:auto;height:auto;
       opacity:1;filter:none;display:block;}
     /* CTA 疊在圖片下緣。位置用百分比，換圖或換螢幕寬度都不用重調 */
-    .lpv-hero.bare .lpv-cta-btn{position:absolute;left:50%;transform:translateX(-50%);
-      bottom:6%;margin:0;z-index:3;}
-    /* 按下的縮放要連同置中位移一起寫，否則 :active 會把 translateX 蓋掉、按鈕跳去右邊 */
-    .lpv-hero.bare .lpv-cta-btn:active{transform:translateX(-50%) scale(.97);}
+    .lpv-hero.bare .lpv-cta-btn{position:absolute;left:50%;bottom:6%;margin:0;z-index:3;
+      padding:12px 28px;white-space:nowrap;
+      /* 呼吸放大。位移寫進 keyframes 而不是留在 transform：
+         同一個屬性只能有一份值，分開寫會互相蓋掉、按鈕跑去右邊 */
+      animation:lpvCtaPulse 1.6s ease-in-out infinite;}
+    @keyframes lpvCtaPulse{
+      0%,100%{transform:translateX(-50%) scale(1);}
+      50%    {transform:translateX(-50%) scale(1.06);}
+    }
+    .lpv-hero.bare .lpv-cta-btn:active{animation:none;transform:translateX(-50%) scale(.97);}
     .lpv-hero.bare .lpv-scroll{display:none;}
+    /* 純圖首屏沒有下方留白（一般 hero 靠 padding-bottom 撐開），下一個區塊會貼著圖的下緣。
+       用 margin 而不是給下一區塊 padding-top：各區塊都寫了 inline 的 paddingTop:0，
+       行內樣式會蓋掉樣式表的規則 */
+    .lpv-hero.bare{margin-bottom:52px;}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
@@ -391,8 +401,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-tbl thead th.hi{color:${vars.accent};}
 
     /* ── GALLERY ── */
-    .lpv-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
-    @media(min-width:600px){.lpv-gallery{grid-template-columns:repeat(3,1fr);}}
+    /* 一律三欄。兩欄時第三張會自己落到下一行、右邊空一格，看起來像漏了東西 */
+    .lpv-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
     /* 高度自適應：原本寫死 aspect-ratio 9/11，正方形素材會被裁掉上下。
        改成讓圖片自己的比例決定高度，換素材就不用回頭調 CSS。
        影片沒有 intrinsic size 可依靠，仍給一個比例避免載入前塌成 0 高。 */
