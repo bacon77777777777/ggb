@@ -164,18 +164,10 @@ function LineCallbackInner() {
             {isBind ? 'LINE 授權完成' : '登入完成'}
           </h1>
 
-          <p className="mt-2.5 max-w-[19rem] text-pretty text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">
-            請關閉這個視窗，回到 GGB 繼續
-          </p>
-
           <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-            {isBind ? '切回去就完成綁定' : '切回去就是登入狀態了'}
+            回到 GGB 繼續
           </div>
         </div>
-
-        <p className="max-w-xs shrink-0 text-xs leading-relaxed text-neutral-400">
-          {isBind ? '不用再按一次綁定，這個分頁可以直接關掉。' : '不用再按一次登入，這個分頁可以直接關掉。'}
-        </p>
       </div>
     )
   }
