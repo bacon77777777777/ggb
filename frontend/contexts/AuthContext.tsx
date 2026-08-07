@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { isSyntheticEmail } from '@/lib/syntheticEmail';
 import { useRouter } from 'next/navigation';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -14,10 +15,9 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
  * 變成那串亂碼（實機回報過）。metadata 的 name 是註冊當下就有的
  *（LINE 登入存的是 LINE 顯示名），優先用它；再來才是真信箱的前綴。
  */
-const SYNTHETIC_EMAIL_SUFFIX = '@line-login.ggb.internal';
 function tempNameFrom(metadataName: string | undefined, email: string): string {
   if (metadataName) return metadataName;
-  if (email && !email.endsWith(SYNTHETIC_EMAIL_SUFFIX)) return email.split('@')[0];
+  if (email && !isSyntheticEmail(email)) return email.split('@')[0];
   return 'GGB 玩家';
 }
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {

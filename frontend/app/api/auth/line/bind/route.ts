@@ -5,7 +5,7 @@ import {
   exchangeAndVerify,
   isAllowedRedirect,
   serviceClient,
-  SYNTHETIC_EMAIL_SUFFIX,
+  isSyntheticEmail,
 } from '@/lib/lineAuth'
 
 /**
@@ -35,7 +35,7 @@ export async function GET() {
   const { data } = await admin
     .from('users').select('line_user_id, email').eq('id', user.id).maybeSingle()
 
-  const synthetic = String(data?.email ?? '').endsWith(SYNTHETIC_EMAIL_SUFFIX)
+  const synthetic = isSyntheticEmail(data?.email)
   return NextResponse.json({
     bound: Boolean(data?.line_user_id),
     // 純 LINE 帳號（合成信箱）不能解綁：解了就再也登不進來
@@ -72,7 +72,7 @@ export async function DELETE() {
   const { data } = await admin
     .from('users').select('line_user_id, email').eq('id', user.id).maybeSingle()
   if (!data?.line_user_id) return NextResponse.json({ error: '尚未綁定 LINE' }, { status: 400 })
-  if (String(data.email ?? '').endsWith(SYNTHETIC_EMAIL_SUFFIX)) {
+  if (isSyntheticEmail(data.email)) {
     return NextResponse.json({ error: '這個帳號只能用 LINE 登入，無法解除綁定' }, { status: 400 })
   }
 

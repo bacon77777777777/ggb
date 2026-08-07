@@ -52,6 +52,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { LineBindRow } from '@/components/auth/LineBindRow';
 import { EmailBindRow } from '@/components/auth/EmailBindRow';
 import { InviteCodeRow } from '@/components/auth/InviteCodeRow';
+import { isSyntheticEmail } from '@/lib/syntheticEmail';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -6048,7 +6049,7 @@ function ProfileContent() {
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
-                    {user?.email && !user.email.endsWith('@line-login.ggb.internal') && (
+                    {user?.email && !isSyntheticEmail(user.email) && (
                       <div 
                         className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                         onClick={() => {
@@ -6219,7 +6220,7 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
-                  {user?.email && !user.email.endsWith('@line-login.ggb.internal') && (
+                  {user?.email && !isSyntheticEmail(user.email) && (
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => router.push('/update-password')}
