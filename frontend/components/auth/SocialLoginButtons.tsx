@@ -50,6 +50,9 @@ export function SocialLoginButtons() {
   const stateRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef(0);
+  // window.open 的回傳值。授權跳去 LINE app 之後這個覆蓋視窗會停在
+  // 空白頁，登入完成時主動把它關掉，玩家就不用自己按叉叉
+  const popupRef = useRef<Window | null>(null);
 
   const stopPolling = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -83,9 +86,15 @@ export function SocialLoginButtons() {
       if (!json.found) return;
 
       stopPolling();
+      // 先收掉殘留的授權視窗（iOS 上它會停在空白頁）。close 不一定被
+      // 系統允許，失敗就算了，玩家還是可以自己關
+      try { popupRef.current?.close(); } catch { /* 由系統決定 */ }
+      popupRef.current = null;
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({ token_hash: json.tokenHash, type: 'email' });
-      if (!error) router.replace('/');
+      // 登入完成直接帶去會員中心 —— 玩家切回來就該看到「已登入的自己」，
+      // 首頁看不出登入前後的差別
+      if (!error) router.replace('/profile');
     } catch { /* 授權期間網路切換是常態，下一輪再問 */ }
   };
 
@@ -110,7 +119,7 @@ export function SocialLoginButtons() {
     setWaiting(true);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => void claimTicket(), POLL_INTERVAL_MS);
-    window.open(authorizeUrl(state), '_blank');
+    popupRef.current = window.open(authorizeUrl(state), '_blank');
   };
 
   if (!LINE_CHANNEL_ID) return null;

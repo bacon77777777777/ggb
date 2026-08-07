@@ -6793,12 +6793,12 @@ function ProfileContent() {
                           <User className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
                         </div>
                       ) : (
-                        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800">
+                        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800">
                           <Image 
                             src={user.avatar_url || 'https://github.com/shadcn.png'} 
                             alt={user.name || 'User'} 
                             fill 
-                            className="rounded-[8px] object-cover" 
+                            className="rounded-full object-cover" 
                             unoptimized
                           />
                         </div>
