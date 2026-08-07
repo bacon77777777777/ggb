@@ -53,6 +53,7 @@ import { LineBindRow } from '@/components/auth/LineBindRow';
 import { EmailBindRow } from '@/components/auth/EmailBindRow';
 import { InviteCodeRow } from '@/components/auth/InviteCodeRow';
 import { isSyntheticEmail } from '@/lib/syntheticEmail';
+import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -440,6 +441,8 @@ function ProfileContent() {
   const { user, logout, refreshProfile, isLoading: isAuthLoading } = useAuth();
   const { showAlert } = useAlert();
   const { showToast } = useToast();
+  // 設定頁「登入密碼」三態用；跟 LINE／邀請碼列共用同一趟請求與快取
+  const { data: acctStatus } = useSettingsStatus();
   const toast = {
     success: (message: React.ReactNode) => showToast(message, 'success'),
     error: (message: React.ReactNode) => showToast(message, 'error'),
@@ -6060,9 +6063,15 @@ function ProfileContent() {
                           router.push(`/forgot-password?from=${encodeURIComponent('/profile?tab=settings')}${emailParam}`);
                         }}
                       >
-                        <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
+                        <label className="text-[15px] text-neutral-800 dark:text-neutral-200">登入密碼</label>
                         <div className="flex items-center gap-2">
-                          <span className="text-[14px] text-neutral-400">修改</span>
+                          {acctStatus?.password === undefined ? (
+                            <span className="h-3.5 w-10 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                          ) : acctStatus.password.set ? (
+                            <span className="text-[14px] text-neutral-400">修改</span>
+                          ) : (
+                            <span className="text-[14px] text-accent-red">立即設定</span>
+                          )}
                           <ChevronRight className="w-4 h-4 text-neutral-300" />
                         </div>
                       </div>
@@ -6228,9 +6237,15 @@ function ProfileContent() {
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => router.push('/update-password')}
                     >
-                      <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
+                      <label className="text-[15px] text-neutral-800 dark:text-neutral-200">登入密碼</label>
                       <div className="flex items-center gap-2">
-                        <span className="text-[14px] text-neutral-400">修改</span>
+                        {acctStatus?.password === undefined ? (
+                            <span className="h-3.5 w-10 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                          ) : acctStatus.password.set ? (
+                            <span className="text-[14px] text-neutral-400">修改</span>
+                          ) : (
+                            <span className="text-[14px] text-accent-red">立即設定</span>
+                          )}
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
