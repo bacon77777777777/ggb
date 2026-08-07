@@ -236,10 +236,16 @@ export default function SearchPage() {
     // Or strictly follow the 'focus' param. 
     // Given the prompt "跳轉到 ... 並focus在搜尋框", let's ensure it focuses.
     if (!query) {
-       // Small delay to ensure the element is ready and transition is done
-       setTimeout(() => {
-         inputRef.current?.focus();
-       }, 100);
+      /*
+       * 立刻接手 focus，不能等。導覽列的搜尋圖標在點擊當下已經用
+       * 假輸入框把 iOS 鍵盤叫起來了（lib/keyboardRelay），這裡越快把
+       * focus 接過來，鍵盤越不會在交接空檔掉下去。連續補兩次是保險 ——
+       * 元件掛載與轉場的時序在不同機器上不一樣。
+       */
+      inputRef.current?.focus();
+      const t1 = setTimeout(() => inputRef.current?.focus(), 60);
+      const t2 = setTimeout(() => inputRef.current?.focus(), 200);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, []);
 
