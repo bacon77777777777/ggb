@@ -4,6 +4,43 @@
 
 ---
 
+## v2026.08.07d｜2026-08-07｜LINE 登入（玩家端）
+
+Google 登入卡在要有公司統編才能開 Workspace，LINE 不用 —— 用 GB哥
+既有的 LINE Developers 帳號開一個 **LINE Login channel** 就能辦
+（跟 Messaging API 是兩個不同的 channel，ID 與 secret 不通用）。
+
+Supabase Auth 沒有 LINE provider，流程是自己搭的橋：
+
+    登入頁按鈕 → LINE 授權頁（state 擋 CSRF）
+      → /auth/line/callback 收 code
+      → /api/auth/line：code 換 token → LINE 官方 verify 端點驗 id_token
+        （檢查 aud 是我們的 Channel ID，擋別人拿自己的 app 簽的 token 冒充）
+      → 查 users.line_user_id：有 → 既有帳號｜無 → 建新帳號
+      → generateLink(magiclink) 換 hashed_token → 前端 verifyOtp
+
+換出來的 session 跟 Email 登入**完全一樣**，RLS、middleware、AuthContext
+一行都不用改。新帳號走 auth.admin.createUser，DB 的 handle_new_user
+trigger 自動建 public.users —— 暱稱取 LINE 名字、撞名加後綴、發邀請碼，
+跟 Email 註冊同一條路；頭像直接用 LINE 大頭貼。
+
+LINE 拿不到 email（要另外過審），新帳號用合成信箱
+（line_<id>@line-login.ggb.internal），generateLink 只產 token 不寄信。
+
+- migration 498：users.line_user_id + 唯一索引（擋同一個 LINE 綁兩個玩家），
+  STG／PROD 已執行
+- Vercel 環境變數（Channel ID／secret）三個環境都已設定
+- **Google 按鈕先藏起來** —— 原本掛在登入頁但按了沒反應，比沒有更糟；
+  統編下來接好 OAuth 再打開
+- channel 目前是 Developing 狀態，只有管理員自己的 LINE 能登入，
+  正好拿來測；開放給玩家前要去 console 按 Publish
+
+第二期（未做）：「綁定既有帳號」。先用 Email 註冊過的玩家改用 LINE 登入
+會開出新帳號 —— 要在個人頁給綁定入口，走 Email 驗證確認本人再合併，
+不做自動合併（錯併等於把別人的 G 幣送出去）。
+
+---
+
 ## v2026.08.07c｜2026-08-07｜操作紀錄看得到詳情了；商品補齊佇列的三個 bug
 
 ### 操作紀錄：有紀錄卻看不出做了什麼
