@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 /**
  * LINE 登入的後端橋
@@ -38,9 +39,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'LINE 登入尚未設定' }, { status: 500 })
     }
 
-    const { code, redirectUri } = await request.json()
+    /*
+     * 兩種模式：
+     *   direct —— 呼叫端跟出發時是同一個瀏覽器情境（state 對得上），
+     *             tokenHash 直接回給它，當場 verifyOtp
+     *   ticket —— 呼叫端是「別的情境」：偽 app 跳 LINE app 授權後，
+     *             回程被 iOS 丟進 Safari，登入態不能建在這裡。
+     *             改把票存進 line_login_tickets，讓偽 app 輪詢取走，
+     *             在自己的情境裡完成登入（同門市選擇的 cvs-pending 模式）
+     */
+    const { code, redirectUri, mode, state } = await request.json()
     if (!code || !redirectUri) {
       return NextResponse.json({ error: '缺少授權碼' }, { status: 400 })
+    }
+    if (mode === 'ticket' && (typeof state !== 'string' || state.length < 16)) {
+      return NextResponse.json({ error: '缺少驗證碼' }, { status: 400 })
     }
 
     // redirect_uri 必須跟授權當下用的一模一樣，LINE 會比對；
@@ -134,6 +147,17 @@ export async function POST(request: Request) {
     const tokenHash = link?.properties?.hashed_token
     if (linkErr || !tokenHash) {
       return NextResponse.json({ error: '登入失敗，請重試一次' }, { status: 500 })
+    }
+
+    if (mode === 'ticket') {
+      // 順手清過期票，表才不會無限長大（低頻操作，多一刀 DELETE 無感）
+      await admin.from('line_login_tickets')
+        .delete().lt('created_at', new Date(Date.now() - 10 * 60_000).toISOString())
+      const stateHash = crypto.createHash('sha256').update(String(state)).digest('hex')
+      const { error: tErr } = await admin.from('line_login_tickets')
+        .upsert({ state_hash: stateHash, token_hash: tokenHash, created_at: new Date().toISOString() })
+      if (tErr) return NextResponse.json({ error: '登入失敗，請重試一次' }, { status: 500 })
+      return NextResponse.json({ stored: true })
     }
 
     return NextResponse.json({ tokenHash })

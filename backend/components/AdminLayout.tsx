@@ -734,14 +734,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         ],
       },
       {
-        id: 'challenge',
-        title: '機台管理',
-        items: [
-          { name: '主題管理', path: '/slot', icon: IconBolt },
-          { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
-        ],
-      },
-      {
         id: 'members',
         title: '會員管理',
         items: [
@@ -788,6 +780,14 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '客服工單', path: '/cs-management/tickets', icon: IconChat },
           { name: '操作手冊', path: '/cs-management/sop', icon: IconBook },
+        ],
+      },
+      {
+        id: 'challenge',
+        title: '機台管理',
+        items: [
+          { name: '主題管理', path: '/slot', icon: IconBolt },
+          { name: '機台報表', path: '/slot/reports', icon: IconLineChart },
         ],
       },
       {

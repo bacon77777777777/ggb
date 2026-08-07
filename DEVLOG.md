@@ -4,6 +4,39 @@
 
 ---
 
+## v2026.08.07f｜2026-08-07｜LINE 登入方案 B：偽 app 也能一鍵授權，零輸入
+
+v2026.08.07e 的修法（偽 app 裡改網頁登入）要玩家第一次輸入 LINE 的
+email 密碼，而且沒設過 email 的 LINE 帳號會登不進去。老闆問「就不能跳
+LINE app 再自動跳回偽 app 嗎」—— 自動跳回做不到（iOS 只讓上架 App Store
+的原生 App 註冊接網址，偽 app 沒有資格，任何 app 開網址只會丟給 Safari），
+但登入本身可以全自動，唯一省不掉的是玩家自己切回 app 那一下。
+
+照門市選擇（cvs-pending）已實測可行的後端輪詢模式：
+
+    偽 app 按登入 → 主視窗留在原地開始輪詢，授權開在覆蓋視窗
+      → 照常跳 LINE app 一鍵允許（不用打密碼）
+      → 回程無論落在 Safari 還是覆蓋視窗，callback 都把「登入票」
+        存進 line_login_tickets（migration 499，兩環境已執行）
+      → 偽 app 每 2 秒取一次票，切回來的瞬間（visibilitychange）再搶問一次
+      → 票到 → verifyOtp → 在偽 app 自己的情境裡完成登入
+
+Safari 那頁照老闆要求做了偵測與引導：callback 落地時本地找不到出發前
+存的 state，就代表是跨情境（從偽 app 出發），顯示「登入完成 ✅ 請關閉
+這個視窗回到 GGB」；本地有 state 但對不上維持拒收（CSRF 防護不變）。
+
+安全設計：
+- 票表只存 state 的 SHA-256 —— 票本身等於一次性登入權，表被讀走
+  也換不到票
+- 取票是 DELETE…RETURNING 原子取出，一次性；5 分鐘過期；state 是
+  UUID 不可猜，端點沒有可枚舉的東西
+- 一般瀏覽器維持原本的同情境流程，行為不變
+
+實測（本機 + STG 票表）：無票 → found:false、存票後取 → found:true、
+再取 → false（一次性）、過期票 → false。完整跳 app 流程要在真機上驗。
+
+---
+
 ## v2026.08.07e｜2026-08-07｜LINE 登入在偽 app 裡跳去 Safari 的修正
 
 老闆實測抓到的：從「加入主畫面」的偽 app（PWA）按 LINE 登入 → 跳 LINE app
