@@ -6404,7 +6404,9 @@ function ProfileContent() {
                 <div className="flex-1 flex items-center gap-[2.1%] min-w-0">
                   {/* Avatar */}
                   <div className="relative shrink-0 w-[16%] aspect-square">
-                    <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/20">
+                    {/* relative 不能少：next/image 的 fill 錨的是最近的 positioned 祖先，
+                        少了它圖片會錨到外層方形容器、逃出這層圓形遮罩的裁切 —— 頭貼就變方的 */}
+                    <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white/20">
                       {isGuest ? (
                         <div className="w-full h-full bg-neutral-200 flex items-center justify-center">
                           <User className="w-1/2 h-1/2 text-neutral-400" />
@@ -6796,7 +6798,7 @@ function ProfileContent() {
                           <User className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
                         </div>
                       ) : (
-                        <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800">
+                        <div className="relative w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border-2 border-neutral-50 dark:border-neutral-800 shadow-soft p-0.5 bg-white dark:bg-neutral-800">
                           <Image 
                             src={user.avatar_url || 'https://github.com/shadcn.png'} 
                             alt={user.name || 'User'} 
