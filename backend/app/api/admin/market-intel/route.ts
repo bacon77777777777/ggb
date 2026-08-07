@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,5 +46,13 @@ export async function POST(req: NextRequest) {
   })
 
   const data = await res.json()
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '觸發競品情報分析',
+    targetType: 'market_intel',
+    detail: {},
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json({ ok: res.ok, ...data })
 }

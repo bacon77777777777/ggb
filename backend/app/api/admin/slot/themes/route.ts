@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { CANONICAL_SPIN_RETURNS } from '@/lib/slotDefaults'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   const admin = await requireAdminSession()
@@ -119,6 +120,15 @@ export async function POST(request: NextRequest) {
       await supabase.from('slot_pool_items').insert(poolItems)
     }
   }
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '新增機台主題',
+    targetType: 'slot_theme',
+    targetId: String(theme?.id ?? ''),
+    detail: { name: theme?.name, machines: machines?.length ?? 0 },
+    ip: getClientIp(request),
+  })
 
   return NextResponse.json({ theme, machines })
 }

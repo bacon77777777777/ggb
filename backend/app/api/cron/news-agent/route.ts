@@ -217,16 +217,24 @@ function extractBodyImages(html: string, limit: number): string[] {
 }
 
 // 將可能的相對路徑解析成絕對 URL；data: URI 或解析失敗回傳空字串
-// 圖片帶站方浮水印的來源，以及該站浮水印慣用的角落。
-//
-// detectWatermark 沒過門檻時會回「分數最高的角」—— 那是雜訊挑出來的，
-// 拿去蓋等於隨機選一角。實測電擊的圖：浮水印在右下，卻被蓋在左下，
-// 結果 GGB logo 和電ホビ 的浮水印同時出現在同一張圖上。
-// 這種來源本來就知道浮水印在哪，偵測失敗時就用已知值，不要用雜訊。
-const WATERMARK_FALLBACK_CORNER: Record<string, 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = {
-  'dengeki.com': 'bottom-right',
-}
-const WATERMARKED_SOURCES = Object.keys(WATERMARK_FALLBACK_CORNER)
+/*
+ * 會在圖片上壓站方浮水印的來源。
+ *
+ * 「要不要蓋 GGB logo」由這份名單決定，不由偵測分數決定 ——
+ * 2026-08-07 實測（見 lib/dengekiWm.ts 的註解）：帶浮水印的圖分數
+ * 0.183~0.248，乾淨的 BANDAI 商品照卻可以到 0.253，兩群完全重疊。
+ * 靠分數判斷的結果是「四張漏兩張，四張乾淨圖誤蓋一張」——
+ * 玩家會看到官方商品照上莫名其妙多一個 GGB logo。
+ *
+ * 網域是 100% 準確的訊號，偵測只用來挑角落（實測 3/4 正確）。
+ * 角落不寫死：同一個電ホビ，實測四張分別在 右下／右上／左上／右上，
+ * 寫死 bottom-right 只會有 1/4 正確。
+ */
+const WATERMARKED_SOURCES = ['dengeki.com']
+
+/** 這張圖是不是來自會壓浮水印的站 */
+const isWatermarkedSource = (...urls: string[]) =>
+  urls.some(u => WATERMARKED_SOURCES.some(d => u?.includes(d)))
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
@@ -289,12 +297,14 @@ function figureHtml(url: string): string {
 }
 
 /**
- * 轉存到 R2，並在偵測到浮水印時蓋上 GGB logo
+ * 轉存到 R2，來源會壓浮水印時蓋上 GGB logo
  *
- * 封面圖與內文圖共用同一條路徑：四個角落都做模板比對，偵測到浮水印才蓋 GGB logo，
- * 乾淨的圖原樣轉存，不會為了保險而亂蓋。
- * forceBrand 供已知帶浮水印的來源使用：即使偵測未達門檻也照蓋，避免漏網。
- * 只抓一次圖，偵測為本地模板比對，不產生額外費用。
+ * 封面圖與內文圖共用同一條路徑。**是否要蓋由來源網域決定**
+ *（WATERMARKED_SOURCES），四角模板比對只用來決定蓋在哪一角 ——
+ * 那個分數分不出乾淨圖與浮水印圖，不能拿來當「有沒有浮水印」的判準。
+ * 乾淨來源一律原樣轉存，不會為了保險而亂蓋。
+ * forceBrand 讓呼叫端強制蓋（例如已知這批圖來自浮水印站但網址被轉導過）。
+ * 只抓一次圖，比對為本地運算，不產生額外費用。
  */
 async function downloadSmartToR2(
   imgUrl: string,
@@ -323,18 +333,27 @@ async function downloadSmartToR2(
       seen.add(h)
     }
 
-    // 四個角落都比對；已知帶浮水印的來源即使偵測未達門檻也照蓋（用偵測到分數最高的角）
-    const wm = await detectWatermark(buf)
-    // 偵測沒過門檻時，wm.corner 只是雜訊裡分數最高的角，不能拿來蓋。
-    // 已知來源用查表的固定角，查不到才退回偵測值
-    const fallbackKey = Object.keys(WATERMARK_FALLBACK_CORNER)
-      .find(d => sourceUrl.includes(d) || imgUrl.includes(d))
-    const corner = wm.found
-      ? wm.corner
-      : (fallbackKey ? WATERMARK_FALLBACK_CORNER[fallbackKey] : wm.corner)
+    /*
+     * 蓋不蓋，看來源；蓋哪一角，才看偵測。
+     *
+     * 原本是「偵測過門檻就蓋」，但那個分數分不出乾淨圖與浮水印圖，
+     * 於是乾淨的商品照被蓋上 GGB logo，真的有浮水印的反而漏掉。
+     */
+    const fromWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
+    if (!fromWatermarked && !forceBrand) {
+      const webp = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
+      const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
+      return await r2Upload(key, webp, 'image/webp')
+    }
 
-    if (wm.found || forceBrand) {
-      const branded = await brandCoverImage(buf, corner)
+    const wm = await detectWatermark(buf)
+    const corner = wm.corner
+    // 分數前兩名的角落都糊掉。挑角的正確率只有 82%，但實測 22 張裡
+    // 真正的浮水印 100% 落在前兩名之內 —— 糊掉就不會漏，logo 只蓋第一名
+    const blurCorners = wm.ranked.slice(0, 2).map(([c]) => c)
+
+    {
+      const branded = await brandCoverImage(buf, corner, blurCorners)
       if (branded) {
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
         return await r2Upload(key, branded, 'image/jpeg')

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(request: NextRequest) {
   const session = await requireAdminSession()
@@ -47,6 +48,14 @@ export async function PATCH(request: NextRequest) {
 
   const { error } = await supabase.from('cs_tickets').update(update).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '處理客服工單',
+    targetType: 'cs_ticket',
+    detail: { body },
+    ip: getClientIp(request),
+  })
 
   return NextResponse.json({ ok: true })
 }

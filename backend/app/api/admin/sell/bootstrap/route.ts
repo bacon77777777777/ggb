@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import fs from 'fs'
 import path from 'path'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 const toSafeConnMeta = (raw: string) => {
   try {
@@ -46,6 +47,12 @@ export async function POST() {
     } finally {
       await client.end()
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '產生販售示範資料',
+      targetType: 'sell_listing',
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

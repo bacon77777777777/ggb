@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -65,6 +66,16 @@ export async function POST(request: Request) {
         throw error
       }
     }
+
+    // 權限異動是最該留痕的一種：改完之後別人能做什麼就變了
+    await logAdminAction({
+      adminId: session.adminId,
+      action: body.id ? '修改角色權限' : '新增角色',
+      targetType: 'role',
+      targetId: String(body.id ?? body.name ?? ''),
+      detail: { name: body.name, display_name: body.display_name, permissions: body.permissions },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ ok: true })
   } catch (error: any) {

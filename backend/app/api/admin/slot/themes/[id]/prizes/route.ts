@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(
   _req: NextRequest,
@@ -49,5 +50,14 @@ export async function POST(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '主題新增獎品',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: { prize_id: data?.id ?? null, name: data?.name },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ prize: data })
 }

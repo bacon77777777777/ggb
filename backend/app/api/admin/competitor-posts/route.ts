@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
@@ -34,6 +35,15 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '新增競品貼文',
+    targetType: 'competitor_post',
+    targetId: String(data?.id ?? ''),
+    detail: {},
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json(data, { status: 201 })
 }
 
@@ -48,5 +58,13 @@ export async function DELETE(req: NextRequest) {
   const supabase = getSupabaseAdmin()
   const { error } = await supabase.from('competitor_posts').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '刪除競品貼文',
+    targetType: 'competitor_post',
+    detail: {},
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json({ success: true })
 }

@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 /** 關聯活動時連結一律由系統產生，避免後台手打錯字或活動改 slug 後變死連結 */
 async function resolveBannerLink(eventId: string | null | undefined, fallback: string | null | undefined) {
@@ -42,6 +43,15 @@ export async function PUT(
 
     if (error) throw error
 
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '編輯輪播圖',
+      targetType: 'banners',
+      targetId: String(id),
+      detail: { name: data?.name, is_active: data?.is_active },
+      ip: getClientIp(request),
+    })
+
     return NextResponse.json(data)
   } catch (error: any) {
     console.error('Error updating banner:', error)
@@ -67,6 +77,14 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '刪除輪播圖',
+      targetType: 'banners',
+      targetId: String(id),
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

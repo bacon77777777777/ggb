@@ -32,6 +32,6 @@ export async function POST(req: NextRequest) {
       hero_mode: ['dark','light','follow'].includes(body.hero_mode) ? body.hero_mode : 'dark',
     }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  await logAdminAction({ adminId: admin.adminId, action: 'create_event', detail: { slug: body.slug, title: body.title }, ip: req.headers.get('x-forwarded-for') ?? '' })
+  await logAdminAction({ adminId: admin.adminId, action: '新增活動頁', targetType: 'event', detail: { slug: body.slug, title: body.title }, ip: req.headers.get('x-forwarded-for') ?? '' })
   return NextResponse.json(data)
 }

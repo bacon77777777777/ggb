@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 type SeedBody = {
   offers?: number
@@ -284,6 +285,14 @@ export async function POST(req: Request) {
         seededOrderId = order?.id ? String(order.id) : null
       }
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '產生交換示範資料',
+      targetType: 'exchange_offer',
+      detail: { offers: offersRows.length, order: seededOrderId },
+      ip: getClientIp(req),
+    })
 
     return NextResponse.json({
       success: true,

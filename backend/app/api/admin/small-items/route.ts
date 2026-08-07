@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -37,6 +38,15 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin()
     const { data, error } = await supabaseAdmin.from('small_items').insert(payload).select('*').single()
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '新增小物',
+      targetType: 'small_item',
+      targetId: String(data?.id ?? ''),
+      detail: { name: data?.name },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ item: data })
   } catch (e: any) {

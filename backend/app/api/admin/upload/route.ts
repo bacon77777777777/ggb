@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { r2Upload } from '@/lib/r2'
 import { compressToWebP } from '@/lib/imageCompress'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,13 @@ export async function POST(request: Request) {
     if (String(form.get('raw') || '') === '1') {
       const key = `${bucket}/${filePath}`
       const publicUrl = await r2Upload(key, buf, file.type || 'image/png')
-      return NextResponse.json({ publicUrl })
+      await logAdminAction({
+      adminId: session.adminId,
+      action: '上傳檔案',
+      detail: { url: publicUrl },
+      ip: getClientIp(request),
+    })
+    return NextResponse.json({ publicUrl })
     }
 
     const compressed = await compressToWebP(buf, bucket)
@@ -34,6 +41,12 @@ export async function POST(request: Request) {
     const key = `${bucket}/${noExt}.webp`
     const publicUrl = await r2Upload(key, compressed, 'image/webp')
 
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '上傳檔案',
+      detail: { url: publicUrl },
+      ip: getClientIp(request),
+    })
     return NextResponse.json({ publicUrl })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '上傳失敗' }, { status: 500 })

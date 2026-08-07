@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -45,6 +46,15 @@ export async function POST(request: Request) {
       const msg = [error.message, (error as any).details, (error as any).hint].filter(Boolean).join(' | ')
       return NextResponse.json({ error: msg || '建立失敗' }, { status: 500 })
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '新增標籤',
+      targetType: 'tag',
+      targetId: String(data?.id ?? ''),
+      detail: { name },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ tag: data })
   } catch (e: any) {

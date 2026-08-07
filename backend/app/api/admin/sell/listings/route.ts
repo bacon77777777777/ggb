@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET() {
   try {
@@ -55,6 +56,16 @@ export async function PATCH(req: Request) {
 
     const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.from('sell_listings').update({ status }).eq('id', id)
+    if (!error) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: '修改販售商品狀態',
+        targetType: 'sell_listing',
+        targetId: String(id),
+        detail: { status },
+        ip: getClientIp(req),
+      })
+    }
     if (error) throw error
 
     return NextResponse.json({ success: true })
@@ -77,6 +88,15 @@ export async function DELETE(req: Request) {
 
     const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.from('sell_listings').delete().eq('id', id)
+    if (!error) {
+      await logAdminAction({
+        adminId: session.adminId,
+        action: '刪除販售商品',
+        targetType: 'sell_listing',
+        targetId: String(id),
+        ip: getClientIp(req),
+      })
+    }
     if (error) throw error
 
     return NextResponse.json({ success: true })

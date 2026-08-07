@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 // 增加一台機器到主題
 export async function POST(
@@ -100,6 +101,15 @@ export async function POST(
     .update({ machine_count: nextNumber, updated_at: new Date().toISOString() })
     .eq('id', id)
 
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '主題新增機台',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: { machine_id: machine?.id ?? null, name: machine?.name },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ machine })
 }
 
@@ -131,6 +141,15 @@ export async function DELETE(
   await supabase.from('slot_themes')
     .update({ machine_count: count ?? 0, updated_at: new Date().toISOString() })
     .eq('id', id)
+
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '主題移除機台',
+    targetType: 'slot_theme',
+    targetId: String(id),
+    detail: {},
+    ip: getClientIp(request),
+  })
 
   return NextResponse.json({ success: true })
 }

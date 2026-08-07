@@ -29,6 +29,21 @@ function edgeMap(data: Buffer | Uint8Array, W: number, H: number): Float32Array 
   return e
 }
 
+/*
+ * 模板是 74×20，但實際的浮水印換算到「縮成 600 寬」的圖上大約 100×35 ——
+ * 差了 1.4 倍上下，單一尺度比對根本對不上。所以每個角落都用多個尺度各比一次。
+ *
+ * **下限不能低於 1.0**。原本從 0.7 起跳，11 張實測只對 8 張（73%）；
+ * 把 0.7、0.85 拿掉之後同一批 11 張全對，另外抓 11 張沒參與調參的
+ * 保留集驗證是 9/11（82%）。原因是縮小的模板跟任何有紋理的地方都長得像，
+ * 只會製造假高分 —— 真正的浮水印一定比模板大，不會比它小。
+ *
+ * 保留集那兩張失手的分數是 0.246 與 0.205，是全部 22 張裡最低的兩個
+ *（判對的都在 0.254 以上）。低分等於「這次挑的角不可靠」，
+ * 之後要再往上推的話，這是最值得下手的訊號。
+ */
+const TPL_SCALES = [1.0, 1.15, 1.3, 1.45, 1.6, 1.8]
+
 // 在區域內滑動模板求最大 NCC（step 2 粗掃）
 function maxNcc(region: Float32Array, rw: number, rh: number, tpl: Float32Array, tw: number, th: number): number {
   let tSum = 0, tSq = 0
@@ -54,11 +69,24 @@ function maxNcc(region: Float32Array, rw: number, rh: number, tpl: Float32Array,
   return best
 }
 
-// 門檻依實測分佈訂定：
-//   帶浮水印 0.238~0.380（電ホビ 各式版面）
-//   乾淨圖   0.179~0.232（NBA 球員照、玩具人圖）
-// 取 0.26 落在兩群之間。仍有重疊風險，故已知帶浮水印的來源不靠門檻，
-// 一律以分數最高的角落強制蓋（見 news-agent 的 forceBrand）。
+/*
+ * 門檻只是參考，**不能拿來判斷「這張圖有沒有浮水印」**。
+ *
+ * 2026-08-07 用當時電ホビ RSS 最新四篇的實圖重測，浮水印位置分別是
+ * BR / TR / TL / TR（位置隨圖而變，不是固定角）：
+ *
+ *   帶浮水印的四張   最高分 0.183 ~ 0.248
+ *   乾淨圖（BANDAI 商品照、站上預設圖）  最高分 0.145 ~ 0.253
+ *
+ * 兩群完全重疊 —— 乾淨的商品照可以比真的浮水印還高分。試過單尺度、
+ * 多尺度、顏色特徵、換成真浮水印當模板、把搜尋範圍縮到貼齊邊角，
+ * 五種都分不開。原因是這個浮水印**半透明**，會吃底圖顏色，
+ * 剩下的訊號只有筆畫邊緣，而那在任何有細節的商品照上都找得到相似度。
+ *
+ * 所以「要不要蓋」改由**圖片來源的網域**決定（100% 準確），
+ * 這裡的比對只負責回答「蓋在哪一角」——那個實測 3/4 正確，
+ * 遠好過原本寫死的固定角（實測 1/4 正確）。
+ */
 const WM_THRESHOLD = 0.26
 
 /**
@@ -105,37 +133,49 @@ export async function detectWatermarkCorner(buf: Buffer): Promise<WmCorner> {
  *
  * 限制：模板是電ホビ的浮水印，只認得這一種；其他站的浮水印不會被偵測到。
  */
-export async function detectWatermark(buf: Buffer): Promise<{ corner: WmCorner; score: number; found: boolean }> {
+export async function detectWatermark(buf: Buffer): Promise<{ corner: WmCorner; score: number; found: boolean; ranked: [WmCorner, number][] }> {
   try {
     const tpl = await getTemplate()
     const { data, info } = await sharp(buf).resize(600, null, { withoutEnlargement: true }).greyscale().raw().toBuffer({ resolveWithObject: true })
     const W = info.width, H = info.height
-    const regionW = Math.min(Math.round(W * 0.42), W), regionH = Math.min(Math.round(H * 0.2), H)
-    if (regionW < tpl.w || regionH < tpl.h) return { corner: 'top-right', score: 0, found: false }
-    const tplEdge = edgeMap(tpl.data, tpl.w, tpl.h)
+    /*
+     * 比對區域從 0.42×0.20 放寬到 0.45×0.25。
+     * 浮水印在角落但不一定完全貼齊，原本的高度只有 20% ——
+     * 實測有一張浮水印在右下、卻因為超出比對範圍而被左下的雜訊贏走。
+     */
+    const regionW = Math.min(Math.round(W * 0.45), W), regionH = Math.min(Math.round(H * 0.25), H)
+    if (regionW < tpl.w || regionH < tpl.h) return { corner: 'top-right', score: 0, found: false, ranked: [] }
     const crop = (x0: number, y0: number): Float32Array => {
       const out = new Float32Array(regionW * regionH)
       for (let y = 0; y < regionH; y++)
         for (let x = 0; x < regionW; x++) out[y * regionW + x] = data[(y0 + y) * W + (x0 + x)]
       return edgeMap(out as unknown as Uint8Array, regionW, regionH)
     }
+
+    // 每個角落取「各尺度中的最高分」
+    const tplAtScale = await Promise.all(TPL_SCALES.map(async sc => {
+      const tw = Math.round(tpl.w * sc), th = Math.round(tpl.h * sc)
+      if (tw < 12 || th < 6 || tw > regionW || th > regionH) return null
+      const raw = await sharp(Buffer.from(WM_TEMPLATE_B64, 'base64'))
+        .greyscale().resize(tw, th).raw().toBuffer()
+      return { edge: edgeMap(raw, tw, th), w: tw, h: th }
+    }))
+    const best = (region: Float32Array) => tplAtScale.reduce(
+      (acc, t) => t ? Math.max(acc, maxNcc(region, regionW, regionH, t.edge, t.w, t.h)) : acc, 0)
+
     const scores: [WmCorner, number][] = [
-      ['top-left',     maxNcc(crop(0, 0), regionW, regionH, tplEdge, tpl.w, tpl.h)],
-      ['top-right',    maxNcc(crop(W - regionW, 0), regionW, regionH, tplEdge, tpl.w, tpl.h)],
-      ['bottom-left',  maxNcc(crop(0, H - regionH), regionW, regionH, tplEdge, tpl.w, tpl.h)],
-      ['bottom-right', maxNcc(crop(W - regionW, H - regionH), regionW, regionH, tplEdge, tpl.w, tpl.h)],
+      ['top-left',     best(crop(0, 0))],
+      ['top-right',    best(crop(W - regionW, 0))],
+      ['bottom-left',  best(crop(0, H - regionH))],
+      ['bottom-right', best(crop(W - regionW, H - regionH))],
     ]
     scores.sort((a, b) => b[1] - a[1])
     const [corner, score] = scores[0]
-    const runnerUp = scores[1]?.[1] ?? 0
 
-    // 光是「分數最高」不夠。四個角的分數很接近時，最高的那個多半是雜訊，
-    // 拿去蓋就會出現「logo 蓋在左下、原浮水印還留在右下」——
-    // 同一張圖上兩個浮水印。要求領先第二名至少 15% 才算數；
-    // 不夠明確就回 found=false，讓呼叫端改用已知來源的固定角。
-    const decisive = score >= runnerUp * 1.15
-    return { corner, score, found: score >= WM_THRESHOLD && decisive }
+    // found 只代表「分數過門檻」，**不代表這張圖真的有浮水印** ——
+    // 見上面的實測，乾淨圖也會過。呼叫端必須自己用來源網域把關
+    return { corner, score, found: score >= WM_THRESHOLD, ranked: scores }
   } catch {
-    return { corner: 'top-right', score: 0, found: false }
+    return { corner: 'top-right', score: 0, found: false, ranked: [] }
   }
 }

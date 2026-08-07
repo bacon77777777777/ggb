@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(req: NextRequest) {
   const session = await requireAdminSession()
@@ -60,5 +61,14 @@ export async function POST(req: NextRequest) {
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '建立退款申請',
+    targetType: 'refund_request',
+    targetId: String(data?.id ?? ''),
+    detail: { user_id: userId, amount_twd: amountTwd, tokens_to_deduct: tokensToClaim ?? 0, reason },
+    ip: getClientIp(req),
+  })
   return NextResponse.json(data, { status: 201 })
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(
   _req: NextRequest,
@@ -58,11 +59,20 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '修改機台',
+    targetType: 'slot_machine',
+    targetId: String(id),
+    detail: { name: data?.name },
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ machine: data })
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdminSession()
@@ -73,5 +83,14 @@ export async function DELETE(
   const { error } = await supabase.from('slot_machines').delete().eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: admin.adminId,
+    action: '刪除機台',
+    targetType: 'slot_machine',
+    targetId: String(id),
+    detail: {},
+    ip: getClientIp(request),
+  })
+
   return NextResponse.json({ success: true })
 }

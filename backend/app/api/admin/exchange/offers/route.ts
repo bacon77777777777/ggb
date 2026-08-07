@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 const VALID_STATUSES = new Set(['active', 'paused', 'deleted'])
 
@@ -61,6 +62,15 @@ export async function PATCH(req: Request) {
     const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.from('exchange_offers').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '處理交換委託',
+      targetType: 'exchange_offer',
+      targetId: String(id),
+      detail: { status },
+      ip: getClientIp(req),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

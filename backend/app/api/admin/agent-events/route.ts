@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,5 +51,13 @@ export async function PATCH(req: NextRequest) {
     .in('id', body.ids)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '處理事件中心事件',
+    targetType: 'agent_event',
+    detail: { body },
+    ip: getClientIp(req),
+  })
+
   return NextResponse.json({ ok: true })
 }

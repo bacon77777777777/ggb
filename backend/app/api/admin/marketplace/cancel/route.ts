@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +19,14 @@ export async function POST(request: Request) {
       p_user_id: sellerId,
     })
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '下架市集商品',
+      targetType: 'marketplace_listing',
+      detail: { body },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json(data)
   } catch (e: any) {

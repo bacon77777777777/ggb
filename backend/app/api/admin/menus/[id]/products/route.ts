@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,6 +29,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       const { error: insertError } = await supabaseAdmin.from('product_categories').insert(rows)
       if (insertError) throw insertError
     }
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '設定分類商品',
+      targetType: 'category',
+      targetId: String(id),
+      detail: { count: productIds?.length ?? 0 },
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

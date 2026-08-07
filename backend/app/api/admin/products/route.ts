@@ -114,14 +114,30 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from('products').update({ product_code: newProductCode }).eq('id', newProductId)
 
+    /*
+     * 品項與標籤寫失敗就把商品收回去。
+     *
+     * 不合格的資料已經在建立商品之前擋掉了，但那只堵住「我們自己看得出來」的錯；
+     * 約束違反、欄位型別不合、連線斷掉這些是到 DB 才知道的。
+     * 這時商品那列已經寫進去，直接 return 500 就留下一筆 0 品項的孤兒商品 ——
+     * 而且它可能是上架狀態，玩家會看到一個沒有任何獎品的轉蛋（8/6 實際發生過三次）。
+     *
+     * Supabase 的 REST 介面沒有跨表交易，所以用「失敗就刪掉剛建的那列」補。
+     * 這一步是剛剛才建出來的商品，還沒有任何抽獎或訂單，刪掉是安全的。
+     */
+    const rollback = async (message: string) => {
+      await supabaseAdmin.from('product_prizes').delete().eq('product_id', newProductId)
+      await supabaseAdmin.from('product_tag_links').delete().eq('product_id', newProductId)
+      await supabaseAdmin.from('products').delete().eq('id', newProductId)
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+
     const prizes = prizesIn   // 已於建立商品前驗證過
     if (prizes.length > 0) {
       const { error: prizesError } = await supabaseAdmin
         .from('product_prizes')
         .insert(prizes.map((p) => ({ ...p, product_id: newProductId })))
-      if (prizesError) {
-        return NextResponse.json({ error: prizesError.message }, { status: 500 })
-      }
+      if (prizesError) return rollback(prizesError.message)
     }
 
     const tagIds = Array.isArray(body?.tagIds) ? body.tagIds : []
@@ -129,9 +145,7 @@ export async function POST(request: Request) {
       const { error: tagError } = await supabaseAdmin
         .from('product_tag_links')
         .insert(tagIds.map((tagId) => ({ product_id: newProductId, tag_id: tagId })))
-      if (tagError) {
-        return NextResponse.json({ error: tagError.message }, { status: 500 })
-      }
+      if (tagError) return rollback(tagError.message)
     }
 
     const { data: finalProduct } = await supabaseAdmin.from('products').select('*').eq('id', newProductId).single()

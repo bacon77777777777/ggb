@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function GET(
   _request: Request,
@@ -44,6 +45,15 @@ export async function PUT(
     const { data, error } = await supabaseAdmin.from('small_items').update(patch).eq('id', id).select('*').single()
     if (error) throw error
 
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '修改小物',
+      targetType: 'small_item',
+      targetId: String(id),
+      detail: { name: data?.name },
+      ip: getClientIp(request),
+    })
+
     return NextResponse.json({ item: data })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '更新失敗' }, { status: 500 })
@@ -51,7 +61,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -62,6 +72,15 @@ export async function DELETE(
     const supabaseAdmin = getSupabaseAdmin()
     const { error } = await supabaseAdmin.from('small_items').delete().eq('id', id)
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: '刪除小物',
+      targetType: 'small_item',
+      targetId: String(id),
+      detail: {},
+      ip: getClientIp(request),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {

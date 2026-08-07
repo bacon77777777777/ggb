@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
@@ -35,6 +36,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 停用與一般編輯分開記。停用會讓整家廠商的商品下架，事後查帳要看得出來是誰按的
+  await logAdminAction({
+    adminId: session.adminId,
+    action: is_active === false ? '停用廠商' : is_active === true ? '啟用廠商' : '修改廠商',
+    targetType: 'supplier',
+    targetId: String(id),
+    detail: { name: data?.name },
+    ip: getClientIp(request),
+  })
   return NextResponse.json(data)
 }
 
@@ -53,7 +64,7 @@ const BLOCKERS: { table: string; label: string }[] = [
   { table: 'slot_themes',          label: '機台主題' },
 ]
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -90,5 +101,14 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   const { error } = await supabase.from('suppliers').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logAdminAction({
+    adminId: session.adminId,
+    action: '刪除廠商',
+    targetType: 'supplier',
+    targetId: String(id),
+    detail: { name: target.name },
+    ip: getClientIp(request),
+  })
   return NextResponse.json({ ok: true })
 }

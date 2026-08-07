@@ -1,16 +1,25 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
-// Initialize Supabase client
+/*
+ * 造訪紀錄。
+ *
+ * 原本用 anon key 連 Supabase，但 visit_logs 有開 RLS 而且只有 read policy，
+ * 所以每一筆寫入都被擋掉（42501），前台每開一頁後台就吐一次 500 ——
+ * 兩個環境的資料都停在 2026-08-05，儀表板的造訪數等於空的。
+ *
+ * 後台一律走 service role（CLAUDE.md 明訂），繞過 RLS 就不必為了寫入
+ * 另外開一條 insert policy 給 anon —— 那反而讓任何人都能灌假造訪紀錄。
+ */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl || '', supabaseKey || '')
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function GET(request: Request) {
   try {
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ error: 'Supabase env 未設定' }, { status: 500 })
     }
+    const supabase = getSupabaseAdmin()
     const { searchParams } = new URL(request.url)
     const startParam = searchParams.get('start')
     const endParam = searchParams.get('end')
@@ -141,6 +150,7 @@ export async function POST(request: Request) {
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ error: 'Supabase env 未設定' }, { status: 500 })
     }
+    const supabase = getSupabaseAdmin()
     const body = await request.json()
     const { page_path, user_id, user_agent, metadata } = body
     
