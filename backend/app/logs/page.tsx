@@ -56,6 +56,65 @@ function getEventDetail(event: UserEventEntry): string {
   return '-'
 }
 
+/*
+ * action_logs 有兩組平行欄位，來自兩條不同的記錄路徑：
+ *   target / details （text）    ← 前端的 addLog() 寫的，本來就是給人看的字串
+ *   target_type / target_id / detail（jsonb）← 後端 logAdminAction() 寫的
+ *
+ * 這一頁原本只讀前者，所以所有從 API route 記下來的操作（廠商、權限、
+ * 手動儲值、機台…）目標與詳情通通空白 —— 有紀錄卻看不出做了什麼。
+ * 下面兩張表把後者翻成人話，缺字串欄位時就用它補上。
+ */
+const TARGET_LABEL: Record<string, string> = {
+  product: '商品', products: '商品', supplier: '廠商', user: '會員', role: '角色',
+  banners: '輪播圖', categories: '分類', category: '分類', news: '文章', order: '訂單',
+  coupons: '折價券', promotions: '促銷方案', feature_flags: '功能開關',
+  module_settings: '抽獎模組', platform_settings: '平台設定', site_promos: '推廣素材',
+  slot_machine: '機台', slot_theme: '機台主題', slot_prize: '機台獎品',
+  small_item: '小物', tag: '標籤', import_jobs: '匯入工作', announcements: '公告',
+  refund_request: '退款申請', settlement_snapshot: '月結快照', content_draft: 'AI 文案',
+  agent_event: '事件中心', cs_ticket: '客服工單', competitor_post: '競品貼文',
+  market_intel: '競品情報', event: '活動頁', event_section: '活動區塊',
+  sell_listing: '販售商品', sell_order: '販售訂單', marketplace_listing: '市集商品',
+  exchange_offer: '交換委託', exchange_order: '交換訂單', admins: '管理員',
+  dev_logs: '開發日誌', meeting_logs: '會議記錄', storage: '儲存空間',
+  leaderboard_bots: '排行榜機器人', theme: '主題色',
+}
+
+const DETAIL_KEY: Record<string, string> = {
+  name: '名稱', title: '標題', status: '狀態', ids: '項目', count: '筆數',
+  queued: '排入', product_code: '商品編號', email: '電子郵件',
+  tokens_after: '調整後代幣', trade_no: '交易編號', amount_twd: '金額',
+  reason: '原因', permissions: '權限', display_name: '角色名稱',
+  is_active: '啟用', uploaded: '上傳張數', failed: '失敗',
+  category_ids: '分類', prize_id: '獎品', machine_id: '機台',
+  inserted: '新增筆數', item_id: '品項', prize_name: '品項名稱',
+  jp_price_yen: '日幣定價', supplier_id: '廠商',
+}
+
+/** 把 jsonb 的 detail 攤成一行人看得懂的字 */
+function formatDetail(detail: unknown): string {
+  if (!detail || typeof detail !== 'object') return ''
+  const parts: string[] = []
+  for (const [k, v] of Object.entries(detail as Record<string, unknown>)) {
+    if (v === null || v === undefined || v === '') continue
+    let text: string
+    if (Array.isArray(v)) {
+      // 一長串 id 沒有閱讀價值，只講幾筆
+      text = v.length > 3 ? `${v.length} 筆` : v.map(x => String(x)).join('、')
+    } else if (typeof v === 'object') {
+      text = JSON.stringify(v)
+    } else if (typeof v === 'boolean') {
+      text = v ? '是' : '否'
+    } else {
+      text = String(v)
+    }
+    if (text.length > 60) text = text.slice(0, 60) + '…'
+    parts.push(`${DETAIL_KEY[k] ?? k}：${text}`)
+  }
+  return parts.join('｜')
+}
+
 export default function LogsPage() {
   const logsColumns1: Column<any>[] = [
     {
@@ -266,8 +325,10 @@ export default function LogsPage() {
           user: log.username,
           role: log.role || 'Unknown',
           action: log.action,
-          target: log.target || '',
-          details: log.details || '',
+          // 字串欄位優先（前端 addLog 寫的，本來就是給人看的）；
+          // 沒有就把後端寫的 target_type / detail 翻成人話
+          target: log.target || TARGET_LABEL[log.target_type] || log.target_type || '',
+          details: log.details || formatDetail(log.detail),
           ip: log.ip || '',
           status: (log.status as 'success' | 'failed') || 'success'
         })))
