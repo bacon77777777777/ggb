@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { isSyntheticEmail } from '@/lib/syntheticEmail'
 
 /**
  * LINE 登入／綁定共用的伺服器端邏輯
@@ -69,10 +70,8 @@ export async function exchangeAndVerify(code: string, redirectUri: string): Prom
   return { sub: p.sub, name: p.name ?? null, picture: p.picture ?? null }
 }
 
-/** LINE 快速建立的帳號用的合成信箱。綁定的衝突判斷靠它認「空殼帳號」 */
-export const SYNTHETIC_EMAIL_SUFFIX = '@line-login.ggb.internal'
-export const syntheticEmail = (lineUserId: string) =>
-  `line_${lineUserId.toLowerCase()}${SYNTHETIC_EMAIL_SUFFIX}`
+// 合成信箱的定義集中在 lib/syntheticEmail（client 與 server 共用），這裡轉出口
+export { SYNTHETIC_EMAIL_SUFFIX, syntheticEmail, isSyntheticEmail } from '@/lib/syntheticEmail'
 
 /**
  * 把某個 LINE 綁到某個玩家帳號上。
@@ -99,7 +98,7 @@ export async function bindLineToUser(
     .from('users').select('id, email, tokens').eq('line_user_id', line.sub).maybeSingle()
 
   if (other && other.id !== userId) {
-    if (!String(other.email ?? '').endsWith(SYNTHETIC_EMAIL_SUFFIX)) {
+    if (!isSyntheticEmail(other.email)) {
       return { ok: false, error: '這個 LINE 已綁定其他帳號，若有疑問請聯絡客服' }
     }
     // 空殼檢查：只要有任何一種紀錄就不是空殼

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSessionClient } from '@/lib/supabase/server'
-import { serviceClient, SYNTHETIC_EMAIL_SUFFIX } from '@/lib/lineAuth'
+import { serviceClient, isSyntheticEmail } from '@/lib/lineAuth'
 
 /**
  * 設定頁「帳號與安全」區塊需要的狀態，一次回齊
@@ -25,7 +25,7 @@ export async function GET() {
   ])
   if (!me) return NextResponse.json({ error: '找不到帳號資料' }, { status: 404 })
 
-  const synthetic = String(me.email ?? '').endsWith(SYNTHETIC_EMAIL_SUFFIX)
+  const synthetic = isSyntheticEmail(me.email)
   const ageDays = (Date.now() - new Date(me.created_at).getTime()) / 86_400_000
 
   return NextResponse.json({
