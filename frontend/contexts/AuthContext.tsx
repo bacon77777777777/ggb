@@ -5,6 +5,21 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
+
+/**
+ * 完整資料還沒回來前，暫用資料的名字要從哪裡來。
+ *
+ * 不能拿信箱前綴 —— LINE 帳號的信箱是系統造的內部代號
+ *（line_xxx@line-login.ggb.internal），玩家會看到自己的暱稱閃一下
+ * 變成那串亂碼（實機回報過）。metadata 的 name 是註冊當下就有的
+ *（LINE 登入存的是 LINE 顯示名），優先用它；再來才是真信箱的前綴。
+ */
+const SYNTHETIC_EMAIL_SUFFIX = '@line-login.ggb.internal';
+function tempNameFrom(metadataName: string | undefined, email: string): string {
+  if (metadataName) return metadataName;
+  if (email && !email.endsWith(SYNTHETIC_EMAIL_SUFFIX)) return email.split('@')[0];
+  return 'GGB 玩家';
+}
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
@@ -89,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (retryData) {
                 return {
                   id: retryData.id,
-                  name: retryData.name || email.split('@')[0],
+                  name: retryData.name || tempNameFrom(undefined, email),
                   full_name: retryData.name,
                   avatar_url: retryData.avatar_url || '/images/avatar/01.png',
                   points: retryData.points || 0,
@@ -131,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         return {
           id: data.id,
-          name: data.name || email.split('@')[0], // Fallback to email prefix
+          name: data.name || tempNameFrom(undefined, email),
           full_name: data.name,
           avatar_url: data.avatar_url || '/images/avatar/01.png',
           points: data.points || 0,
@@ -189,16 +204,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSupabaseUser(session.user);
 
           const email = session.user.email || '';
-          setUser({
+          const tempName = tempNameFrom(session.user.user_metadata?.name, email);
+          // 已經有同一個人的完整資料就別蓋回暫用資料 —— 蓋了畫面會閃一下
+          setUser(prev => (prev && prev.id === session.user.id) ? prev : ({
             id: session.user.id,
             email,
-            name: email ? email.split('@')[0] : 'User',
+            name: tempName,
             full_name: null,
             avatar_url: '/images/avatar/01.png',
             points: 0,
             tokens: 0,
             tickets: 0,
-          });
+          }));
 
           withTimeout(fetchProfile(session.user.id, email), TIMEOUT_MS, 'Auth fetchProfile timeout')
             .then((profile) => {
@@ -232,16 +249,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         setSupabaseUser(session.user);
         const email = session.user.email || '';
-        setUser({
+        const tempName = tempNameFrom(session.user.user_metadata?.name, email);
+        // token 每小時更新一次也會走到這裡 —— 蓋回暫用資料等於全站定時閃一下
+        setUser(prev => (prev && prev.id === session.user.id) ? prev : ({
           id: session.user.id,
           email,
-          name: email ? email.split('@')[0] : 'User',
+          name: tempName,
           full_name: null,
           avatar_url: '/images/avatar/01.png',
           points: 0,
           tokens: 0,
           tickets: 0,
-        });
+        }));
 
         withTimeout(fetchProfile(session.user.id, email), TIMEOUT_MS, 'Auth fetchProfile timeout')
           .then((profile) => {
