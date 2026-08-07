@@ -211,10 +211,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     }
     .lpv-hero.bare .lpv-cta-btn:active{animation:none;transform:translateX(-50%) scale(.97);}
     .lpv-hero.bare .lpv-scroll{display:none;}
-    /* 純圖首屏沒有下方留白（一般 hero 靠 padding-bottom 撐開），下一個區塊會貼著圖的下緣。
-       用 margin 而不是給下一區塊 padding-top：各區塊都寫了 inline 的 paddingTop:0，
-       行內樣式會蓋掉樣式表的規則 */
-    .lpv-hero.bare{margin-bottom:52px;}
+    /* 首屏與下一個區塊之間不留空隙：圖本身下緣已經有留白，再加間距會斷開 */
+    .lpv-hero.bare{margin-bottom:0;}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
