@@ -18,6 +18,10 @@ import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen'
  *    丟進 Safari）—— 這裡的 localStorage 是空的。登入態不能建在這裡，
  *    改請後端把票存進資料庫（偽 app 正在輪詢），然後顯示引導畫面
  *    請玩家切回偽 app。iOS 不允許網頁拉起偽 app，切回去只能靠人。
+ *
+ * 登入與「綁定 LINE」共用這一頁。綁定的 state 帶 bind. 前綴
+ *（跨情境時 Safari 端只有 state 可看，意圖必須寫在裡面）；
+ * 同情境則看出發前存的 line_login_intent。
  */
 
 type Phase = 'working' | 'return-to-app' | 'error'
@@ -27,6 +31,7 @@ function LineCallbackInner() {
   const searchParams = useSearchParams()
   const [phase, setPhase] = useState<Phase>('working')
   const [error, setError] = useState('')
+  const [isBind, setIsBind] = useState(false)
   // React StrictMode 會把 effect 跑兩次，而授權碼只能用一次 ——
   // 第二次會被 LINE 拒絕，看起來像登入失敗。用 ref 擋重入
   const started = useRef(false)
@@ -58,22 +63,47 @@ function LineCallbackInner() {
       }
 
       const crossContext = !savedState
+      const savedIntent = localStorage.getItem('line_login_intent')
+      localStorage.removeItem('line_login_intent')
+      // 跨情境時本地什麼都沒有，意圖只能寫在 state 裡帶過來
+      const bind = crossContext ? state.startsWith('bind.') : savedIntent === 'bind'
+      if (bind) setIsBind(true)
 
       try {
+        if (bind && !crossContext) {
+          // 同情境綁定：session 就在 cookie 裡，直接綁到目前登入的帳號
+          const res = await fetch('/api/auth/line/bind', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code,
+              redirectUri: `${window.location.origin}/auth/line/callback`,
+            }),
+          })
+          const json = await res.json()
+          if (!res.ok || !json.bound) {
+            setError(json.error || '綁定失敗，請重試一次')
+            setPhase('error')
+            return
+          }
+          router.replace('/profile?line=bound')
+          return
+        }
+
         const res = await fetch('/api/auth/line', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             code,
             redirectUri: `${window.location.origin}/auth/line/callback`,
-            ...(crossContext ? { mode: 'ticket', state } : {}),
+            ...(crossContext ? { mode: 'ticket', state, ...(bind ? { intent: 'bind' } : {}) } : {}),
           }),
         })
         const json = await res.json()
 
         if (crossContext) {
           if (!res.ok || !json.stored) {
-            setError(json.error || '登入失敗，請重試一次')
+            setError(json.error || (bind ? '綁定失敗，請重試一次' : '登入失敗，請重試一次'))
             setPhase('error')
             return
           }
@@ -95,9 +125,11 @@ function LineCallbackInner() {
         })
         if (otpErr) { setError('登入失敗，請重試一次'); setPhase('error'); return }
 
-        router.replace('/')
+        // 登入完成帶去會員中心 —— 玩家該看到「已登入的自己」，
+        // 首頁看不出登入前後的差別
+        router.replace('/profile')
       } catch {
-        setError('登入失敗，請重試一次')
+        setError(bind ? '綁定失敗，請重試一次' : '登入失敗，請重試一次')
         setPhase('error')
       }
     }
@@ -129,7 +161,7 @@ function LineCallbackInner() {
           </div>
 
           <h1 className="mt-4 text-2xl font-black text-neutral-900 dark:text-neutral-50">
-            登入完成
+            {isBind ? 'LINE 授權完成' : '登入完成'}
           </h1>
 
           <p className="mt-2.5 max-w-[19rem] text-pretty text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -137,12 +169,12 @@ function LineCallbackInner() {
           </p>
 
           <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
-            切回去就是登入狀態了
+            {isBind ? '切回去就完成綁定' : '切回去就是登入狀態了'}
           </div>
         </div>
 
         <p className="max-w-xs shrink-0 text-xs leading-relaxed text-neutral-400">
-          不用再按一次登入，這個分頁可以直接關掉。
+          {isBind ? '不用再按一次綁定，這個分頁可以直接關掉。' : '不用再按一次登入，這個分頁可以直接關掉。'}
         </p>
       </div>
     )
@@ -153,10 +185,10 @@ function LineCallbackInner() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-neutral-700 dark:text-neutral-200">{error}</p>
         <Link
-          href="/login"
+          href={isBind ? '/profile' : '/login'}
           className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90"
         >
-          回登入頁
+          {isBind ? '回會員中心' : '回登入頁'}
         </Link>
       </div>
     )

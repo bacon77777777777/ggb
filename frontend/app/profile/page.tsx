@@ -49,6 +49,7 @@ import Image from 'next/image';
 import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { LineBindRow } from '@/components/auth/LineBindRow';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -6067,6 +6068,7 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
+                  <LineBindRow />
                 </div>
 
                 {/* Address Section */}
@@ -6239,6 +6241,7 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
+                  <LineBindRow />
                 </div>
 
                 {/* Address Section */}
