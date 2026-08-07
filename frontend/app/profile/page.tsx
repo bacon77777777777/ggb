@@ -50,6 +50,8 @@ import { useAlert } from '@/components/ui/AlertDialog';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { LineBindRow } from '@/components/auth/LineBindRow';
+import { EmailBindRow } from '@/components/auth/EmailBindRow';
+import { InviteCodeRow } from '@/components/auth/InviteCodeRow';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
 import ProfileDataTable from '@/components/profile/desktop/ProfileDataTable';
@@ -6046,15 +6048,7 @@ function ProfileContent() {
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
-                    <div className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer">
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">電子郵件</label>
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-[14px]", user?.email ? "text-neutral-900 dark:text-white" : "text-accent-red")}>
-                        {user?.email || '立即設定'}
-                      </span>
-                      {/* <ChevronRight className="w-4 h-4 text-neutral-300" /> */}
-                    </div>
-                  </div>
+                    <EmailBindRow email={user?.email} />
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => {
@@ -6069,6 +6063,7 @@ function ProfileContent() {
                     </div>
                   </div>
                   <LineBindRow />
+                  <InviteCodeRow />
                 </div>
 
                 {/* Address Section */}
@@ -6222,15 +6217,7 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer">
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">電子郵件</label>
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-[14px]", user?.email ? "text-neutral-900 dark:text-white" : "text-accent-red")}>
-                        {user?.email || '立即設定'}
-                      </span>
-                      {/* <ChevronRight className="w-4 h-4 text-neutral-300" /> */}
-                    </div>
-                  </div>
+                  <EmailBindRow email={user?.email} />
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => router.push('/update-password')}
@@ -6242,6 +6229,7 @@ function ProfileContent() {
                     </div>
                   </div>
                   <LineBindRow />
+                  <InviteCodeRow />
                 </div>
 
                 {/* Address Section */}

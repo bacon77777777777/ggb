@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/Toast';
 
 /**
  * 社群登入
@@ -21,9 +21,8 @@ import { createClient } from '@/lib/supabase/client';
  * 情境裡完成登入。玩家唯一要做的是切回來。
  * 門市選擇（cvs-pending）已用同一招，實測可行。
  *
- * Google 暫時不顯示：開 Google OAuth 需要 Google Workspace，而那需要
- * 公司統編 —— 登記還沒下來。之前這顆按鈕掛在畫面上但按了沒反應，
- * 比沒有更糟。統編下來接好後再打開。
+ * Google：按鈕先上（老闆要看介面感覺），點了顯示「即將開放」——
+ * 串接卡在公司統編（開 Google Workspace 要統編），下來就接。
  */
 
 const LINE_CHANNEL_ID = process.env.NEXT_PUBLIC_LINE_LOGIN_CHANNEL_ID;
@@ -46,6 +45,7 @@ function authorizeUrl(state: string) {
 
 export function SocialLoginButtons() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [waiting, setWaiting] = useState(false);
   const stateRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,9 +92,22 @@ export function SocialLoginButtons() {
       popupRef.current = null;
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({ token_hash: json.tokenHash, type: 'email' });
-      // 登入完成直接帶去會員中心 —— 玩家切回來就該看到「已登入的自己」，
-      // 首頁看不出登入前後的差別
-      if (!error) router.replace('/profile');
+      if (!error) {
+        // 從邀請連結（?invite=）進來的，登入完自動幫他填。
+        // 失敗不擋流程 —— 老帳號或已填過會被後端規則擋，屬正常
+        const pending = sessionStorage.getItem('pending_invite');
+        if (pending) {
+          sessionStorage.removeItem('pending_invite');
+          void fetch('/api/user/claim-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: pending }),
+          }).catch(() => {});
+        }
+        // 登入完成直接帶去會員中心 —— 玩家切回來就該看到「已登入的自己」，
+        // 首頁看不出登入前後的差別
+        router.replace('/profile');
+      }
     } catch { /* 授權期間網路切換是常態，下一輪再問 */ }
   };
 
@@ -141,17 +154,26 @@ export function SocialLoginButtons() {
 
   return (
     <div className="flex flex-col gap-2.5 w-full">
-      <Button
+      <button
         type="button"
-        variant="outline"
-        className="w-full relative h-10 border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-medium text-sm rounded-lg"
         onClick={startLineLogin}
+        className="relative h-12 w-full rounded-xl bg-[#06C755] text-[15px] font-bold text-white transition-colors hover:bg-[#05b34c] active:scale-[0.99]"
       >
-        <div className="absolute left-4 w-5 h-5 flex items-center justify-center">
-          <Image src="/images/line.png" alt="LINE" width={20} height={20} unoptimized />
-        </div>
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded bg-white/0">
+          <Image src="/images/line.png" alt="" width={22} height={22} unoptimized />
+        </span>
         使用 LINE 帳號登入
-      </Button>
+      </button>
+      <button
+        type="button"
+        onClick={() => showToast('Google 登入即將開放', 'info')}
+        className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+      >
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
+          <Image src="/images/google.png" alt="" width={20} height={20} unoptimized />
+        </span>
+        使用 Google 帳號登入
+      </button>
     </div>
   );
 }
