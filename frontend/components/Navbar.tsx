@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
+import { startKeyboardRelay } from '@/lib/keyboardRelay';
 
 export default function Navbar() {
   return (
@@ -855,6 +856,7 @@ function NavbarInner() {
             {isAuthenticated && isHomePage && (
               <Link
                 href="/search?focus=1"
+                onClick={startKeyboardRelay}
                 className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                 aria-label="搜尋"
               >
@@ -992,6 +994,7 @@ function NavbarInner() {
                   {/* 未登入搜尋圖標（手機，登入按鈕左邊） */}
                   <Link
                     href="/search?focus=1"
+                    onClick={startKeyboardRelay}
                     className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
                     aria-label="搜尋"
                   >

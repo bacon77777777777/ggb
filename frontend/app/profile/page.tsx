@@ -5994,10 +5994,6 @@ function ProfileContent() {
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
-                  </div>
-
-                  {/* Info Group 2 */}
-                  <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => setShowEditGender(true)}
@@ -6031,8 +6027,12 @@ function ProfileContent() {
                     </div>
                   </div>
 
-                  {/* Info Group 3 */}
+                  {/* 帳號與安全：綁定類在前（信箱、LINE），再手機；
+                      密碼只給有真信箱的帳號 —— 純 LINE 帳號沒有密碼這回事，
+                      點進去只會看到一頁掛著合成信箱的表單（實機回報過） */}
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
+                    <EmailBindRow email={user?.email} />
+                    <LineBindRow />
                     <div 
                       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                       onClick={() => {
@@ -6048,23 +6048,27 @@ function ProfileContent() {
                         <ChevronRight className="w-4 h-4 text-neutral-300" />
                       </div>
                     </div>
-                    <EmailBindRow email={user?.email} />
-                  <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
-                    onClick={() => {
-                      const emailParam = user?.email ? `&email=${encodeURIComponent(user.email)}` : '';
-                      router.push(`/forgot-password?from=${encodeURIComponent('/profile?tab=settings')}${emailParam}`);
-                    }}
-                  >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] text-neutral-400">修改</span>
-                      <ChevronRight className="w-4 h-4 text-neutral-300" />
-                    </div>
+                    {user?.email && !user.email.endsWith('@line-login.ggb.internal') && (
+                      <div 
+                        className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                        onClick={() => {
+                          const emailParam = `&email=${encodeURIComponent(user.email)}`;
+                          router.push(`/forgot-password?from=${encodeURIComponent('/profile?tab=settings')}${emailParam}`);
+                        }}
+                      >
+                        <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] text-neutral-400">修改</span>
+                          <ChevronRight className="w-4 h-4 text-neutral-300" />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <LineBindRow />
-                  <InviteCodeRow />
-                </div>
+
+                  {/* 邀請碼（選填，跟帳號安全分開） */}
+                  <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden">
+                    <InviteCodeRow />
+                  </div>
 
                 {/* Address Section */}
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden mt-3">
@@ -6159,10 +6163,6 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
-                </div>
-
-                {/* Info Group 2 */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => {
@@ -6200,8 +6200,10 @@ function ProfileContent() {
                   </div>
                 </div>
 
-                {/* Info Group 3 */}
+                {/* 帳號與安全：同手機版的順序與規則 */}
                 <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
+                  <EmailBindRow email={user?.email} />
+                  <LineBindRow />
                   <div 
                     className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
                     onClick={() => {
@@ -6217,18 +6219,22 @@ function ProfileContent() {
                       <ChevronRight className="w-4 h-4 text-neutral-300" />
                     </div>
                   </div>
-                  <EmailBindRow email={user?.email} />
-                  <div 
-                    className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
-                    onClick={() => router.push('/update-password')}
-                  >
-                    <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] text-neutral-400">修改</span>
-                      <ChevronRight className="w-4 h-4 text-neutral-300" />
+                  {user?.email && !user.email.endsWith('@line-login.ggb.internal') && (
+                    <div 
+                      className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
+                      onClick={() => router.push('/update-password')}
+                    >
+                      <label className="text-[15px] text-neutral-800 dark:text-neutral-200">修改密碼</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] text-neutral-400">修改</span>
+                        <ChevronRight className="w-4 h-4 text-neutral-300" />
+                      </div>
                     </div>
-                  </div>
-                  <LineBindRow />
+                  )}
+                </div>
+
+                {/* 邀請碼（選填，跟帳號安全分開） */}
+                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden">
                   <InviteCodeRow />
                 </div>
 
@@ -6982,7 +6988,7 @@ function ProfileContent() {
       <Modal compact
         isOpen={showEditNickname}
         onClose={() => setShowEditNickname(false)}
-        title="編輯名稱"
+        title="編輯暱稱"
 
       >
         <div className="mb-2">
@@ -6996,7 +7002,7 @@ function ProfileContent() {
             autoFocus
           />
         </div>
-        <p className="text-xs text-neutral-400 mb-6">名稱長度限制 2-20 個字元</p>
+        <p className="text-xs text-neutral-400 mb-6">暱稱長度限制 2-20 個字元</p>
 
         <button
           onClick={() => handleUpdateProfile('nickname', settingsForm.nickname)}

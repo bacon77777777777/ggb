@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 
 /**
  * 會員中心「LINE 帳號」那一列 —— 綁定既有帳號的入口
@@ -17,7 +18,7 @@ import { useToast } from '@/components/ui/Toast';
  *   只存「這個 LINE 是誰」的票，實際綁定發生在這裡帶著 session 取票的
  *   那一刻（跟 LINE 登入同一套取票機制）
  *
- * 樣式照設定區其他列（p-4、左 label 右狀態）。
+ * 狀態來自 useSettingsStatus（含 localStorage 快取），第二次進頁零等待。
  */
 
 const LINE_CHANNEL_ID = process.env.NEXT_PUBLIC_LINE_LOGIN_CHANNEL_ID;
@@ -35,39 +36,23 @@ function authorizeUrl(state: string) {
   return `https://access.line.me/oauth2/v2.1/authorize?${params}`;
 }
 
-type Status = { bound: boolean; canUnbind: boolean; synthetic: boolean } | null;
-
 export function LineBindRow() {
   const { showToast } = useToast();
-  const [status, setStatus] = useState<Status>(null);
+  const { data, refresh } = useSettingsStatus();
+  const status = data?.line ?? null;
   const [waiting, setWaiting] = useState(false);
   const stateRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef(0);
   const popupRef = useRef<Window | null>(null);
 
-  const refresh = async () => {
-    try {
-      const res = await fetch('/api/auth/line/bind');
-      if (res.ok) setStatus(await res.json());
-    } catch { /* 讀不到就先不顯示狀態 */ }
-  };
-
-  useEffect(() => {
-    refresh();
-    // 同情境綁定完成會帶 ?line=bound 回來，補一聲成功
-    if (new URLSearchParams(window.location.search).get('line') === 'bound') {
-      showToast('LINE 綁定成功', 'success');
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const stopPolling = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     stateRef.current = null;
     setWaiting(false);
   };
+
+  useEffect(() => stopPolling, []);
 
   const claimTicket = async () => {
     const state = stateRef.current;
@@ -88,7 +73,7 @@ export function LineBindRow() {
 
       if (json.bound) {
         showToast('LINE 綁定成功', 'success');
-        refresh();
+        void refresh();
       } else {
         showToast(json.error || '綁定失敗，請重試一次', 'error');
       }
@@ -134,7 +119,7 @@ export function LineBindRow() {
       const json = await res.json();
       if (!res.ok) { showToast(json.error || '解除失敗，請重試一次', 'error'); return; }
       showToast('已解除 LINE 綁定', 'success');
-      refresh();
+      void refresh();
     } catch {
       showToast('解除失敗，請重試一次', 'error');
     }
@@ -150,7 +135,8 @@ export function LineBindRow() {
       <label className="text-[15px] text-neutral-800 dark:text-neutral-200">LINE 帳號</label>
       <div className="flex items-center gap-2">
         {status === null ? (
-          <span className="text-[14px] text-neutral-300">…</span>
+          // 沒有快取的第一次載入：骨架，不要「…」
+          <span className="h-3.5 w-14 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
         ) : waiting ? (
           <span className="flex items-center gap-1.5 text-[14px] text-neutral-500">
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-[#06C755]" />
@@ -165,7 +151,7 @@ export function LineBindRow() {
           </span>
         ) : status.bound ? (
           <>
-            <span className="text-[14px] text-[#06C755] font-bold">已綁定</span>
+            <span className="text-[14px] font-medium text-neutral-900 dark:text-white">已綁定</span>
             {status.canUnbind && (
               <button
                 type="button"
@@ -178,7 +164,7 @@ export function LineBindRow() {
           </>
         ) : (
           <>
-            <span className="text-[14px] text-accent-red">尚未綁定</span>
+            <span className="text-[14px] text-accent-red">立即綁定</span>
             <ChevronRight className="w-4 h-4 text-neutral-300" />
           </>
         )}

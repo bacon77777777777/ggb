@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -12,13 +12,14 @@ import { translateAuthError } from '@/lib/authErrors';
  *
  * 三態：
  *   一般帳號     顯示信箱（過長截斷）
- *   純 LINE 帳號  顯示「前往綁定」—— 合成信箱是內部代號，不給玩家看。
+ *   純 LINE 帳號  顯示「立即綁定」—— 合成信箱是內部代號，不給玩家看。
  *                點開走 Supabase 的 email change 流程：填信箱 → 收 6 位驗證碼
  *                → 綁定完成。綁完帳號就有第二把鑰匙（信箱驗證碼登入），
  *                LINE 那列的「解除」也會自動解鎖
  *   綁定完成     顯示新信箱
  *
  * modal 裡預留了「用 Google 綁定」按鈕（尚未串接，先看介面感覺）。
+ * 彈窗樣式照站上標準（編輯暱稱那套：框線輸入框 + 44px 主按鈕）。
  */
 
 const SYNTHETIC_SUFFIX = '@line-login.ggb.internal';
@@ -86,83 +87,83 @@ export function EmailBindRow({ email }: { email: string | null | undefined }) {
             <span className="min-w-0 truncate text-[14px] text-neutral-900 dark:text-white">{display}</span>
           ) : (
             <>
-              <span className="text-[14px] text-accent-red">前往綁定</span>
+              <span className="text-[14px] text-accent-red">立即綁定</span>
               <ChevronRight className="w-4 h-4 shrink-0 text-neutral-300" />
             </>
           )}
         </div>
       </div>
 
-      <Modal isOpen={open} onClose={close} title="綁定電子郵件">
+      <Modal compact isOpen={open} onClose={close} title="綁定電子郵件">
         {step === 'input' ? (
-          <div className="space-y-4">
-            <p className="text-sm leading-relaxed text-neutral-500">
-              綁定後可以用信箱收驗證碼登入，換手機或 LINE 出狀況時帳號都找得回來。
-            </p>
-            <input
-              type="email"
-              inputMode="email"
-              placeholder="請輸入電子信箱"
-              className="h-12 w-full border-b border-neutral-200 bg-transparent text-base focus:border-primary focus:outline-none dark:border-neutral-700 dark:text-white"
-              value={newEmail}
-              onChange={e => setNewEmail(e.target.value)}
-            />
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <button
-              type="button"
-              onClick={sendCode}
-              disabled={busy}
-              className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
-            >
-              {busy ? '寄送中…' : '寄送驗證碼'}
-            </button>
-
-            <div className="relative py-1">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-neutral-100 dark:border-neutral-800" /></div>
-              <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-neutral-400 dark:bg-neutral-900">或</span></div>
+          <>
+            <div className="mb-2">
+              <input
+                type="email"
+                inputMode="email"
+                placeholder="請輸入電子信箱"
+                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-[15px] font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                autoFocus
+              />
             </div>
+            <p className="text-xs text-neutral-400 mb-6">
+              {error
+                ? <span className="text-red-500">{error}</span>
+                : '綁定後可用信箱收驗證碼登入，換手機或 LINE 出狀況時帳號都找得回來。'}
+            </p>
+            <button
+              onClick={sendCode}
+              disabled={busy || !newEmail.trim()}
+              className="w-full bg-primary text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : '寄送驗證碼'}
+            </button>
 
             {/* Google 綁定：介面先到位，串接等統編下來 */}
             <button
-              type="button"
               onClick={() => showToast('Google 綁定即將開放', 'info')}
-              className="h-11 w-full rounded-xl border border-neutral-200 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200"
+              className="mt-2.5 w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
             >
               使用 Google 帳號綁定
             </button>
-          </div>
+          </>
         ) : (
-          <div className="space-y-4">
-            <p className="text-center text-sm text-neutral-500">
+          <>
+            <p className="text-center text-sm text-neutral-500 mb-4">
               驗證碼已寄至<br />
               <span className="font-medium text-neutral-900 dark:text-neutral-200">{newEmail}</span>
             </p>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              className="h-14 w-full border-b-2 border-neutral-200 bg-transparent text-center text-3xl font-bold tracking-[0.5em] focus:border-primary focus:outline-none dark:text-white"
-              value={code}
-              onChange={e => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-            />
-            {error && <p className="text-center text-sm text-red-500">{error}</p>}
+            <div className="mb-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-3 py-2.5 text-center text-2xl font-bold tracking-[0.4em] text-neutral-900 dark:text-white placeholder:text-neutral-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/[^0-9]/g, ''))}
+                autoFocus
+              />
+            </div>
+            <p className="text-xs text-neutral-400 mb-6 text-center">
+              {error ? <span className="text-red-500">{error}</span> : '沒收到的話，檢查一下垃圾信件匣'}
+            </p>
             <button
-              type="button"
               onClick={verify}
-              disabled={busy}
-              className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+              disabled={busy || code.length < 6}
+              className="w-full bg-primary text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-primary/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {busy ? '確認中…' : '完成綁定'}
+              {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : '完成綁定'}
             </button>
             <button
-              type="button"
               onClick={() => { setStep('input'); setCode(''); setError(null); }}
-              className="w-full text-center text-xs text-neutral-400 underline"
+              className="mt-2.5 w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
             >
               重填信箱
             </button>
-          </div>
+          </>
         )}
       </Modal>
     </>
