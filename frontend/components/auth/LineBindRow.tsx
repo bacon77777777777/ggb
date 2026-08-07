@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 
@@ -41,6 +42,8 @@ export function LineBindRow() {
   const { data, refresh } = useSettingsStatus();
   const status = data?.line ?? null;
   const [waiting, setWaiting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [unbinding, setUnbinding] = useState(false);
   const stateRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const deadlineRef = useRef(0);
@@ -114,23 +117,33 @@ export function LineBindRow() {
   };
 
   const unbind = async () => {
+    setUnbinding(true);
     try {
       const res = await fetch('/api/auth/line/bind', { method: 'DELETE' });
       const json = await res.json();
       if (!res.ok) { showToast(json.error || '解除失敗，請重試一次', 'error'); return; }
       showToast('已解除 LINE 綁定', 'success');
       void refresh();
+      setConfirmOpen(false);
     } catch {
       showToast('解除失敗，請重試一次', 'error');
+    } finally {
+      setUnbinding(false);
     }
   };
 
   if (!LINE_CHANNEL_ID) return null;
 
   return (
+    <>
     <div
       className="flex items-center justify-between p-4 active:bg-neutral-50 dark:active:bg-neutral-800/50 cursor-pointer"
-      onClick={() => { if (!waiting && status && !status.bound) startBind(); }}
+      onClick={() => {
+        if (waiting || !status) return;
+        if (!status.bound) { startBind(); return; }
+        // 已綁定：可解除的才進確認彈窗；純 LINE 帳號（唯一的鑰匙）點了沒反應
+        if (status.canUnbind) setConfirmOpen(true);
+      }}
     >
       <label className="text-[15px] text-neutral-800 dark:text-neutral-200">LINE 帳號</label>
       <div className="flex items-center gap-2">
@@ -151,16 +164,8 @@ export function LineBindRow() {
           </span>
         ) : status.bound ? (
           <>
-            <span className="text-[14px] font-medium text-neutral-900 dark:text-white">已綁定</span>
-            {status.canUnbind && (
-              <button
-                type="button"
-                className="text-[12px] text-neutral-400 underline"
-                onClick={e => { e.stopPropagation(); void unbind(); }}
-              >
-                解除
-              </button>
-            )}
+            <span className="text-[14px] font-medium text-[#06C755]">已綁定</span>
+            {status.canUnbind && <ChevronRight className="w-4 h-4 text-neutral-300" />}
           </>
         ) : (
           <>
@@ -170,5 +175,26 @@ export function LineBindRow() {
         )}
       </div>
     </div>
+
+    <Modal compact isOpen={confirmOpen} onClose={() => { if (!unbinding) setConfirmOpen(false); }} title="解除 LINE 綁定">
+      <p className="mb-6 text-sm leading-relaxed text-neutral-500">
+        解除後將無法再用 LINE 登入這個帳號，之後仍可隨時重新綁定。確定要解除嗎？
+      </p>
+      <button
+        onClick={() => void unbind()}
+        disabled={unbinding}
+        className="w-full bg-red-500 text-white h-[44px] rounded-lg font-bold text-[15px] shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {unbinding ? <Loader2 className="w-5 h-5 animate-spin" /> : '解除綁定'}
+      </button>
+      <button
+        onClick={() => setConfirmOpen(false)}
+        disabled={unbinding}
+        className="mt-2.5 w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 h-[44px] rounded-lg font-bold text-[15px] active:scale-[0.98] transition-all"
+      >
+        取消
+      </button>
+    </Modal>
+    </>
   );
 }

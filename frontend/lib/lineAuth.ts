@@ -115,14 +115,14 @@ export async function bindLineToUser(
     await admin.from('users').update({ line_user_id: null }).eq('id', other.id)
   }
 
-  // 頭像只在原本沒有時補上，不要蓋掉玩家自己上傳的
-  const { data: cur } = await admin.from('users').select('avatar_url').eq('id', userId).maybeSingle()
+  /*
+   * 綁定**不碰頭像**。層級規則（老闆定的）：只有「用 LINE 開的帳號」
+   * 建立當下才拿 LINE 頭貼；既有帳號事後綁 LINE 是加一把鑰匙，
+   * 不是換身份 —— 就算原本掛的是預設頭像也不動。
+   */
   const { error } = await admin
     .from('users')
-    .update({
-      line_user_id: line.sub,
-      ...(cur?.avatar_url ? {} : { avatar_url: line.picture }),
-    })
+    .update({ line_user_id: line.sub })
     .eq('id', userId)
   if (error) return { ok: false, error: '綁定失敗，請重試一次' }
   return { ok: true }
