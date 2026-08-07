@@ -59,6 +59,20 @@ interface Section {
 const str = (v: unknown): string => (v as string) ?? ''
 const bool = (v: unknown): boolean => !!(v)
 
+/**
+ * 內文的重點標記：`**這幾個字**` 會上主題色並加粗。
+ *
+ * 長段落全是同一種灰字時，玩家會整段跳過。與其把整段改亮（那等於沒有重點），
+ * 不如讓後台在文案裡自己標 —— 標哪裡是文案的事，不該寫死在元件裡。
+ */
+function emphasize(text: string): React.ReactNode {
+  if (!text.includes('**')) return text
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    // split 後奇數索引就是被 ** 包起來的內容
+    i % 2 === 1 ? <b key={i} className="lpv-em">{part}</b> : part,
+  )
+}
+
 function hexRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]
@@ -211,10 +225,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     }
     .lpv-hero.bare .lpv-cta-btn:active{animation:none;transform:translateX(-50%) scale(.97);}
     .lpv-hero.bare .lpv-scroll{display:none;}
-    /* 純圖首屏沒有下方留白（一般 hero 靠 padding-bottom 撐開），下一個區塊會貼著圖的下緣。
-       用 margin 而不是給下一區塊 padding-top：各區塊都寫了 inline 的 paddingTop:0，
-       行內樣式會蓋掉樣式表的規則 */
-    .lpv-hero.bare{margin-bottom:52px;}
+    /* 首屏與下一個區塊之間不留空隙：圖本身下緣已經有留白，再加間距會斷開 */
+    .lpv-hero.bare{margin-bottom:0;}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
@@ -279,6 +291,10 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-pp{background:${sectionTitleGrad};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
     .lpv-gold{background:${GOLD};-webkit-background-clip:text;background-clip:text;color:transparent;${gradTextShadow}}
     .lpv-body{font-size:15px;color:${textBody};line-height:1.9;white-space:pre-wrap;}
+    /* 內文重點（星號標記）。用 accentLight 而非原始 accent：
+       深色底上原始色偏濁，淺一階才讀得出來。
+       註：這段字串是 template literal，註解裡不能出現反引號或 ** 以外的跳脫字元 */
+    .lpv-em{color:${accentLight};font-weight:900;}
 
     /* ── STEPS ── */
     .lpv-flow{display:flex;flex-direction:column;gap:0;max-width:560px;margin:0 auto;}
@@ -569,7 +585,7 @@ function TextSection({ c }: { c: Record<string, unknown> }) {
     <section className="lpv-sec">
       <H2 c={c} />
       {bool(c.subtitle) && <p className="lpv-h2s">{c.subtitle as string}</p>}
-      {bool(c.body) && <p className="lpv-body">{c.body as string}</p>}
+      {bool(c.body) && <p className="lpv-body">{emphasize(c.body as string)}</p>}
     </section>
   )
 }
@@ -587,7 +603,7 @@ function StepsSection({ c }: { c: Record<string, unknown> }) {
               <div className="lpv-flowno">{i + 1}</div>
               <div style={{ minWidth: 0 }}>
                 <div className="lpv-ft">{s.title}</div>
-                {s.description && <div className="lpv-fd">{s.description}</div>}
+                {s.description && <div className="lpv-fd">{emphasize(s.description)}</div>}
               </div>
             </div>
             {i < steps.length - 1 && <div className="lpv-flowarr">▼</div>}
@@ -691,7 +707,7 @@ function FukuroSection({ c }: { c: Record<string, unknown> }) {
           </div>
         )}
       </div>
-      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{emphasize(c.callout as string)}</div>}
     </section>
   )
 }
@@ -714,7 +730,7 @@ function RelSection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
-      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{emphasize(c.callout as string)}</div>}
     </section>
   )
 }
@@ -734,7 +750,7 @@ function RuleSection({ c }: { c: Record<string, unknown> }) {
           </div>
         ))}
       </div>
-      {bool(c.callout) && <div className="lpv-callout">{c.callout as string}</div>}
+      {bool(c.callout) && <div className="lpv-callout">{emphasize(c.callout as string)}</div>}
     </section>
   )
 }
