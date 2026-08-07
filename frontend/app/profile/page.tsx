@@ -5931,7 +5931,10 @@ function ProfileContent() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              {/* overscroll-y-none：內容塞得下時 iOS 仍會給橡皮筋彈跳，
+                  滾動條就無中生有地現形（實機回報）。關掉過捲，
+                  內容真的超出時照常捲動，只是不再彈跳 */}
+              <div className="flex-1 overflow-y-auto overscroll-y-none">
                 <div className="space-y-3 p-3">
                   {/* Info Group 1 */}
                   <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm overflow-hidden divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -7236,7 +7239,7 @@ function ProfileContent() {
             </div>
 
             {/* Address List */}
-            <div className="flex-1 overflow-y-auto pt-3">
+            <div className="flex-1 overflow-y-auto overscroll-y-none pt-3">
               
               {/* Only show Home Address */}
                 {(settingsForm.recipientName && settingsForm.recipientPhone && settingsForm.recipientAddress) ? (
