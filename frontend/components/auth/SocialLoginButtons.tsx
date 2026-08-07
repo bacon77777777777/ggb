@@ -157,9 +157,9 @@ export function SocialLoginButtons() {
       <button
         type="button"
         onClick={startLineLogin}
-        className="relative h-12 w-full rounded-xl bg-[#06C755] text-[15px] font-bold text-white transition-colors hover:bg-[#05b34c] active:scale-[0.99]"
+        className="relative h-12 w-full rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
       >
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded bg-white/0">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center">
           <Image src="/images/line.png" alt="" width={22} height={22} unoptimized />
         </span>
         使用 LINE 帳號登入

@@ -207,7 +207,7 @@ function AuthContent() {
       </form>
 
       <p className="mt-3 text-center text-xs text-neutral-400">
-        沒有帳號會自動建立，第一次來也是這樣登入
+        首次登入即註冊
       </p>
 
       <div className="mt-8 text-center">
