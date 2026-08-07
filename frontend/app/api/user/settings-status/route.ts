@@ -19,9 +19,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: '請先登入' }, { status: 401 })
 
   const admin = serviceClient()
-  const [{ data: me }, { data: referral }] = await Promise.all([
+  const [{ data: me }, { data: referral }, { data: hasPassword }] = await Promise.all([
     admin.from('users').select('line_user_id, email, created_at').eq('id', user.id).maybeSingle(),
     admin.from('referrals').select('id').eq('referee_id', user.id).maybeSingle(),
+    admin.rpc('user_has_password', { p_user_id: user.id }),
   ])
   if (!me) return NextResponse.json({ error: '找不到帳號資料' }, { status: 404 })
 
@@ -38,5 +39,6 @@ export async function GET() {
       claimed: Boolean(referral),
       eligible: ageDays <= CLAIM_WINDOW_DAYS,
     },
+    password: { set: Boolean(hasPassword) },
   })
 }

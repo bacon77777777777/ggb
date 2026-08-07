@@ -16,6 +16,8 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface SettingsStatus {
   line: { bound: boolean; canUnbind: boolean; synthetic: boolean };
   invite: { claimed: boolean; eligible: boolean };
+  /** 舊快取可能沒有這個欄位，讀的人要容忍 undefined */
+  password?: { set: boolean };
 }
 
 const cacheKey = (uid: string) => `ggb:acct-status:${uid}`;
