@@ -163,7 +163,7 @@ export default function MissionPage() {
       } else if (mission.condition_type === 'invite_friend') {
         // 邀請好友：複製個人邀請連結
         const inviteCode = user?.invite_code;
-        const inviteLink = `${window.location.origin}/login?view=register${inviteCode ? `&invite=${inviteCode}` : ''}`;
+        const inviteLink = `${window.location.origin}/login${inviteCode ? `?invite=${inviteCode}` : ''}`;
         try {
           await navigator.clipboard.writeText(inviteLink);
           showToast('邀請連結已複製！快去分享給朋友', 'success');

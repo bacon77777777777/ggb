@@ -10,9 +10,8 @@ function RegisterRedirect() {
 
   useEffect(() => {
     const invite = searchParams.get('invite');
-    const target = invite
-      ? `/login?view=register&invite=${invite}`
-      : '/login?view=register';
+    // 登入與註冊已合併成一頁，view=register 不再存在；邀請碼照帶
+    const target = invite ? `/login?invite=${invite}` : '/login';
     router.replace(target);
   }, [router, searchParams]);
 
