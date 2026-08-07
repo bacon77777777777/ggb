@@ -191,6 +191,30 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-hero .h-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;clip-path:inset(0);}
     .lpv-hero .h-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;clip-path:inset(0);
       opacity:.5;filter:brightness(.42) saturate(1.15);}
+
+    /* ── 純圖首屏（hero.bare）──
+       文案已經畫在圖裡，只留背景圖與 CTA。
+       高度由圖片比例決定而不是 100svh：海報型的圖用 cover 撐滿視窗，
+       在桌機（橫向）會把上下裁掉，切到的正好是標題。 */
+    .lpv-hero.bare{min-height:0;padding:0;display:block;}
+    .lpv-hero.bare .h-bgimg{position:relative;inset:auto;height:auto;
+      opacity:1;filter:none;display:block;}
+    /* CTA 疊在圖片下緣。位置用百分比，換圖或換螢幕寬度都不用重調 */
+    .lpv-hero.bare .lpv-cta-btn{position:absolute;left:50%;bottom:6%;margin:0;z-index:3;
+      padding:12px 28px;white-space:nowrap;
+      /* 呼吸放大。位移寫進 keyframes 而不是留在 transform：
+         同一個屬性只能有一份值，分開寫會互相蓋掉、按鈕跑去右邊 */
+      animation:lpvCtaPulse 1.6s ease-in-out infinite;}
+    @keyframes lpvCtaPulse{
+      0%,100%{transform:translateX(-50%) scale(1);}
+      50%    {transform:translateX(-50%) scale(1.06);}
+    }
+    .lpv-hero.bare .lpv-cta-btn:active{animation:none;transform:translateX(-50%) scale(.97);}
+    .lpv-hero.bare .lpv-scroll{display:none;}
+    /* 純圖首屏沒有下方留白（一般 hero 靠 padding-bottom 撐開），下一個區塊會貼著圖的下緣。
+       用 margin 而不是給下一區塊 padding-top：各區塊都寫了 inline 的 paddingTop:0，
+       行內樣式會蓋掉樣式表的規則 */
+    .lpv-hero.bare{margin-bottom:52px;}
     /* 散景裝飾層：置於暗罩之上、文字之下（文字為 z-index:1），靠模糊與透明度退到背景 */
     .lpv-hero .h-scatter{position:absolute;inset:0;z-index:2;pointer-events:none;}
     .lpv-hero .h-ended{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
@@ -377,8 +401,8 @@ function css(vars: { bg: string; accent: string; theme?: 'dark' | 'light'; hero?
     .lpv-tbl thead th.hi{color:${vars.accent};}
 
     /* ── GALLERY ── */
-    .lpv-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
-    @media(min-width:600px){.lpv-gallery{grid-template-columns:repeat(3,1fr);}}
+    /* 一律三欄。兩欄時第三張會自己落到下一行、右邊空一格，看起來像漏了東西 */
+    .lpv-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
     /* 高度自適應：原本寫死 aspect-ratio 9/11，正方形素材會被裁掉上下。
        改成讓圖片自己的比例決定高度，換素材就不用回頭調 CSS。
        影片沒有 intrinsic size 可依靠，仍給一個比例避免載入前塌成 0 高。 */
@@ -481,8 +505,13 @@ function HeroSection({ c, ended }: { c: Record<string, unknown>; ended?: boolean
   }, [])
   const subRaw = str(c.subtitle)
   const [subHi, subRest] = subRaw.includes('\n') ? subRaw.split('\n') : [null, subRaw]
+  /**
+   * 純圖模式：文案已經畫在圖裡，只留背景圖與 CTA。
+   * 不壓暗、不蓋遮罩，高度由圖片比例決定（不裁切）—— 海報型的圖一裁就切到字。
+   */
+  const bare = bool(c.bare)
   return (
-    <section className="lpv-hero">
+    <section className={`lpv-hero${bare ? ' bare' : ''}`}>
       {ended && (
         <div className="h-ended" aria-label="活動已結束">
           <span>活動已結束</span>
@@ -495,7 +524,7 @@ function HeroSection({ c, ended }: { c: Record<string, unknown>; ended?: boolean
       {!bool(c.bg_video_url) && bool(c.bg_image_url) && (
         <img src={c.bg_image_url as string} alt="" className="h-bgimg" />
       )}
-      <div className="h-bg" /><div className="h-beam" /><div className="h-veil" />
+      {!bare && <><div className="h-bg" /><div className="h-beam" /><div className="h-veil" /></>}
       {scatter.length > 0 && (
         <div className="h-scatter" aria-hidden="true">
           {scatter.map((s, i) => (
@@ -509,22 +538,22 @@ function HeroSection({ c, ended }: { c: Record<string, unknown>; ended?: boolean
           ))}
         </div>
       )}
-      {bool(c.eyebrow) && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
-      {bool(c.title) && <h1 className="lpv-title">{c.title as string}</h1>}
-      {gems.length > 0 && (
+      {!bare && bool(c.eyebrow) && <div className="lpv-eyebrow">{c.eyebrow as string}</div>}
+      {!bare && bool(c.title) && <h1 className="lpv-title">{c.title as string}</h1>}
+      {!bare && gems.length > 0 && (
         <div className="lpv-gems">
           {gems.map((g, i) => <i key={i} style={{ background: g.color, color: g.color }} />)}
         </div>
       )}
-      {bool(subRaw) && (
+      {!bare && bool(subRaw) && (
         <p className="lpv-sub">
           {subHi && <b className="lpv-sub-b">{subHi}</b>}
           {subHi && subRest && <br />}
           {subRest}
         </p>
       )}
-      {bool(c.highlight_text) && <div className="lpv-arasa">{c.highlight_text as string}</div>}
-      {bool(c.badge_text) && <div className="lpv-badge">● {c.badge_text as string}</div>}
+      {!bare && bool(c.highlight_text) && <div className="lpv-arasa">{c.highlight_text as string}</div>}
+      {!bare && bool(c.badge_text) && <div className="lpv-badge">● {c.badge_text as string}</div>}
       {bool(c.cta_url) && (
         <Link href={c.cta_url as string} className="lpv-cta-btn">
           ▶ {(c.cta_text as string) || '立即參加'}
