@@ -348,9 +348,12 @@ async function downloadSmartToR2(
 
     const wm = await detectWatermark(buf)
     const corner = wm.corner
+    // 分數前兩名的角落都糊掉。挑角的正確率只有 82%，但實測 22 張裡
+    // 真正的浮水印 100% 落在前兩名之內 —— 糊掉就不會漏，logo 只蓋第一名
+    const blurCorners = wm.ranked.slice(0, 2).map(([c]) => c)
 
     {
-      const branded = await brandCoverImage(buf, corner)
+      const branded = await brandCoverImage(buf, corner, blurCorners)
       if (branded) {
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
         return await r2Upload(key, branded, 'image/jpeg')
