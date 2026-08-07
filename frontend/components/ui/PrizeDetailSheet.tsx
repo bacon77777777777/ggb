@@ -12,14 +12,17 @@ export interface PrizeInfo {
   level?: string | null;
   total?: number;
   remaining?: number;
-  probability?: number | null;
   recycle_value?: number | null;
 }
 
 interface Props {
   prize: PrizeInfo | null;
   onClose: () => void;
-  /** 一番賞／抽卡／自製賞這類「開賣前排定籤號」的玩法，傳 true 就不顯示機率 */
+  /**
+   * 一番賞／抽卡／自製賞這類「開賣前排定籤號」的玩法傳 true。
+   * 只有這幾種會顯示「剩餘」—— 它們的商品頁配率表本來就公開張數，這裡是同一份資訊。
+   * 轉蛋／盒玩不顯示：那些數字站上任何地方都沒公開，只在這個彈窗漏出來。
+   */
   sealed?: boolean;
 }
 
@@ -51,7 +54,9 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Pro
       value: <span className={`font-black ${getLevelStyle(prize.level)}`}>{prize.level}</span>,
     });
   }
-  if (prize?.remaining !== undefined && prize?.total !== undefined) {
+  // 剩餘只給封存制的玩法看：它們的商品頁配率表本來就公開張數，這裡是同一份資訊。
+  // 轉蛋／盒玩的收藏列表只列品名與圖，張數站上沒有任何地方公開
+  if (sealed && prize?.remaining !== undefined && prize?.total !== undefined) {
     rows.push({
       label: '剩餘',
       value: (
@@ -74,21 +79,9 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Pro
       ),
     });
   }
-  // 機率只給轉蛋、盒玩這類「每抽當下獨立隨機」的玩法看 —— 那裡的 probability
-  // 就是真的機率。一番賞／抽卡／自製賞的獎項在開賣前就排定封存，決定結果的是
-  // 籤號不是機率，顯示 product_prizes.probability 等於給玩家一個跟實際無關的數字。
-  // 那三種要看的是 /fairness/[id] 的對照表。
-  if (
-    !sealed &&
-    prize?.probability !== undefined && prize.probability !== null && prize.probability > 0
-  ) {
-    // DB 兩種存法並存：<=1 視為小數（0.25），>1 視為已是百分比數值（25）
-    const pct = prize.probability <= 1 ? prize.probability * 100 : prize.probability;
-    rows.push({
-      label: '機率',
-      value: <span className="font-black text-neutral-800 dark:text-neutral-200">{pct.toFixed(2)}%</span>,
-    });
-  }
+  // 機率一律不顯示。
+  // 封存制的玩法本來就不是靠機率決定（決定結果的是開賣前排好的籤號），
+  // 轉蛋／盒玩則是平台不對外公開單品機率 —— 兩邊都沒有該露出的理由。
 
   return createPortal(
     <AnimatePresence>
@@ -115,7 +108,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Pro
           >
             {/* header */}
             <div className="sticky top-0 bg-white dark:bg-neutral-900 flex items-center justify-between px-5 pt-4 pb-2 z-10">
-              <span className="font-black text-sm text-neutral-900 dark:text-neutral-100 tracking-wide">商品詳細</span>
+              <span className="font-black text-sm text-neutral-900 dark:text-neutral-100 tracking-wide">品項詳情</span>
               <button
                 type="button"
                 onClick={onClose}

@@ -246,7 +246,6 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           level: previewPrize.level,
           total: previewPrize.total,
           remaining: previewPrize.remaining,
-          probability: previewPrize.probability,
         } : null}
         onClose={() => setPreviewPrize(null)}
       />
