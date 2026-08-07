@@ -877,14 +877,14 @@ function NavbarInner() {
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
                   <div className={cn(
-                    "w-8 h-8 rounded-xl border-2 border-neutral-100 p-0.5 transition-all overflow-hidden relative",
+                    "w-8 h-8 rounded-full border-2 border-neutral-100 p-0.5 transition-all overflow-hidden relative",
                     isMenuOpen ? "border-primary/20" : "hover:border-primary/20"
                   )}>
                     <Image
                       src={user.avatar_url || 'https://github.com/shadcn.png'}
                       alt={user.name}
                       fill
-                      className="rounded-[10px] object-cover"
+                      className="rounded-full object-cover"
                       unoptimized
                     />
                   </div>

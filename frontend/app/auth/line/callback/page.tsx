@@ -105,18 +105,45 @@ function LineCallbackInner() {
   }, [router, searchParams])
 
   if (phase === 'return-to-app') {
+    /*
+     * 版型照維護頁（app/maintenance/page.tsx）：整頁覆蓋蓋掉 Navbar 與
+     * 底部導航（這一頁待在 Safari，站上的導航點了也只是把人留在錯的地方）、
+     * logo 在頂、主訊息吃掉中間置中、次要說明沉底。
+     */
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-white px-8 text-center">
-        <Image src="/images/logo.png" alt="GGB" width={72} height={72} className="rounded-2xl" unoptimized />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-black text-neutral-900">登入完成 ✅</h1>
-          <p className="text-sm leading-relaxed text-neutral-500">
-            請關閉這個視窗，回到 <span className="font-bold text-neutral-800">GGB</span> 繼續
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-y-auto bg-white px-6 py-10 text-center dark:bg-neutral-950">
+        <Image
+          src="/images/20260629/logo.svg"
+          alt="吉吉比"
+          width={132}
+          height={44}
+          priority
+          className="h-auto w-[132px] shrink-0 object-contain"
+        />
+
+        <div className="flex flex-1 flex-col items-center justify-center py-8">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+            <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-primary" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <h1 className="mt-4 text-2xl font-black text-neutral-900 dark:text-neutral-50">
+            登入完成
+          </h1>
+
+          <p className="mt-2.5 max-w-[19rem] text-pretty text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+            請關閉這個視窗，回到 GGB 繼續
           </p>
+
+          <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
+            切回去就是登入狀態了
+          </div>
         </div>
-        <div className="mt-2 rounded-xl bg-neutral-50 px-5 py-3 text-xs leading-relaxed text-neutral-400">
-          切回去就是登入狀態了，不用再按一次登入
-        </div>
+
+        <p className="max-w-xs shrink-0 text-xs leading-relaxed text-neutral-400">
+          不用再按一次登入，這個分頁可以直接關掉。
+        </p>
       </div>
     )
   }
