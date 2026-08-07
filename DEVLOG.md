@@ -4,6 +4,38 @@
 
 ---
 
+## v2026.08.07o｜2026-08-07｜公平性驗證頁純圖首屏；修設定圖標跳去手機驗證
+
+### 🔴 按設定圖標會直接跳到手機驗證
+手機驗證是蓋在設定頁上的**全屏層**（`fixed inset-0 z-[90]`）。上次開著驗證畫面、
+沒關就切走分頁時，`isPhoneBindModalOpen` 會留在 `true`；下次按設定圖標切回設定頁，
+那一層就原封不動再蓋上來 —— 看起來像設定圖標跳去了手機驗證。
+
+修法：`handleTabChange` 切分頁時一併關掉該彈窗。
+
+### 首屏純圖模式（`hero.bare`）
+文案已經畫在圖裡時，首屏只要圖與 CTA：
+
+- 不渲染 eyebrow／title／gems／subtitle／highlight／badge
+- 不蓋 `h-bg`／`h-beam`／`h-veil` 三層，背景圖也不再壓暗（原本 `opacity:.5` + `brightness(.42)`）
+- **高度由圖片比例決定而非 `100svh`** —— 海報型的圖用 `cover` 撐滿視窗，
+  桌機（橫向）會把上下裁掉，切到的正好是標題
+- 補 `margin-bottom:52px`：純圖首屏沒有一般 hero 的 `padding-bottom`，
+  下一個區塊會貼著圖的下緣。用 margin 而非給下一區塊 `padding-top` ——
+  **各區塊都寫了 inline 的 `paddingTop:0`，行內樣式會蓋掉樣式表**
+- CTA 絕對定位於圖片下緣 6%，`padding` 收成 `12px 28px` + `white-space:nowrap`
+  （原本 16/40 會斷成兩行），並加呼吸放大動畫
+
+> ⚠️ **動畫與置中位移必須寫在同一個 `transform`**：同一個屬性只能有一份值，
+> 把 `translateX(-50%)` 留在規則、`scale()` 放進 keyframes，兩者會互相蓋掉，按鈕直接跑去右邊。
+> 位移要一起寫進 keyframes，`:active` 也要 `animation:none` 才不會打架。
+
+### 其他
+- 圖庫改一律三欄（原本手機兩欄）：三張圖時第三張會落到下一行、右邊空一格
+- 公平性驗證頁 hero 內容改為 `bare` + 新圖 `/images/fairness/hero.png`，CTA 文案「立即開抽」（STG／PROD 已同步）
+
+---
+
 ## v2026.08.07n｜2026-08-07｜登入密碼三態；LINE 綁定列交互；驗證信文案
 
 ### 「登入密碼」三態列
