@@ -973,6 +973,9 @@ function ProfileContent() {
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setIsMobileDetailOpen(true);
+    // 手機驗證是蓋在設定頁上的全屏層。沒在這裡關掉的話，上次開著就離開設定頁，
+    // 下次按設定圖標會直接彈回驗證畫面 —— 看起來像設定圖標跳去了手機驗證
+    setIsPhoneBindModalOpen(false);
     router.push(`/profile?tab=${tab}`, { scroll: false });
     trackEvent('tab_switch', { path: '/profile', meta: { to_tab: tab } });
 
