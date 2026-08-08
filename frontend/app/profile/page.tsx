@@ -31,8 +31,7 @@ import {
   Store,
   History,
   MessageCircle,
-  Star
-} from 'lucide-react';
+  Star, Share2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
@@ -53,7 +52,6 @@ import { LineBindRow } from '@/components/auth/LineBindRow';
 import { EmailBindRow } from '@/components/auth/EmailBindRow';
 import { InviteCodeRow } from '@/components/auth/InviteCodeRow';
 import { isSyntheticEmail } from '@/lib/syntheticEmail';
-import { buildInviteMessage } from '@/lib/inviteMessage';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
@@ -6863,9 +6861,11 @@ function ProfileContent() {
                           <div
                             className="flex items-center gap-1.5 cursor-pointer group/invite"
                             onClick={() => {
+                              // 這顆只複製碼本身 —— 旁邊顯示的就是碼，
+                              // 複製整段訊息違反預期。要分享的走「邀請好友」頁
                               if (user.invite_code) {
-                                navigator.clipboard.writeText(buildInviteMessage(user.invite_code, window.location.origin));
-                                toast.success('邀請訊息已複製，快分享給朋友');
+                                navigator.clipboard.writeText(user.invite_code);
+                                toast.success('邀請碼已複製');
                               }
                             }}
                           >
@@ -6875,6 +6875,14 @@ function ProfileContent() {
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => router.push('/invite')}
+                            className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary transition-colors active:bg-primary/20"
+                          >
+                            <Share2 className="h-3 w-3" />
+                            邀請好友
+                          </button>
                         </div>
                       )}
                     </div>
