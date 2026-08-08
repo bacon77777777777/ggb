@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
+import { Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
@@ -27,6 +28,15 @@ import { buildInviteMessage } from '@/lib/inviteMessage';
  */
 const QR_CENTER_Y = 0.787;
 const QR_SIZE = 0.375; // 相對圖寬（= 300px / 800px）
+
+/**
+ * QR 下方紅旗緞帶：x 234~572、y 1113~1173 → 中心 (50%, 95.25%)。
+ * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載的合成圖畫同一行字但
+ * 不含複製圖標（老闆指定）。字級 34px（相對 800 寬）＝手機 4.25vw
+ * （滿版時視窗寬＝圖寬）＝桌機 19px（max-w-md 448px）。
+ */
+const RIBBON_CENTER_Y = 0.9525;
+const CODE_FONT_PX = 34; // 相對 800 寬的 canvas 字級
 
 export default function InvitePage() {
   const router = useRouter();
@@ -73,6 +83,16 @@ export default function InvitePage() {
     }
   };
 
+  const copyCode = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast('邀請碼已複製', 'success');
+    } catch {
+      showToast('複製失敗，請重試一次', 'error');
+    }
+  };
+
   /** 下載 hero 圖（含 QR）：跟畫面同一組座標常數，畫一份存下來 */
   const downloadHero = async () => {
     if (!qr) return;
@@ -90,6 +110,15 @@ export default function InvitePage() {
 
       const size = W * QR_SIZE;
       ctx.drawImage(qrImg, (W - size) / 2, H * QR_CENTER_Y - size / 2, size, size);
+
+      // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）
+      if (code) {
+        ctx.font = `bold ${CODE_FONT_PX}px system-ui, -apple-system, sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`邀請碼 ${code}`, W / 2, H * RIBBON_CENTER_Y + 2);
+      }
 
       canvas.toBlob(blob => {
         if (!blob) { showToast('下載失敗，請重試一次', 'error'); return; }
@@ -132,6 +161,21 @@ export default function InvitePage() {
             <div className="aspect-square w-full animate-pulse rounded-lg bg-neutral-100" />
           )}
         </div>
+        {/* 紅旗上的邀請碼＋複製圖標（圖標只在畫面上，下載版不畫）。
+            字級跟下載 canvas 同一個 34/800 比例：手機滿版用 vw，桌機固定 px */}
+        {code && (
+          <button
+            type="button"
+            onClick={() => void copyCode()}
+            className="absolute inset-x-0 flex -translate-y-1/2 items-center justify-center gap-[1.25vw] md:gap-1.5"
+            style={{ top: `${RIBBON_CENTER_Y * 100}%` }}
+          >
+            <span className="text-[4.25vw] font-bold text-white md:text-[19px]">
+              邀請碼 <span className="tracking-[0.06em]">{code}</span>
+            </span>
+            <Copy className="h-[3.6vw] w-[3.6vw] text-white/90 md:h-4 md:w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
