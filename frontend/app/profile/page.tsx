@@ -464,7 +464,13 @@ function ProfileContent() {
 
   const [activeMarketTab, setActiveMarketTab] = useState<'listing' | 'sold_records'>('listing');
   // 倉庫／配送的內容清單左右滑 = 切該區的頁籤（老闆指定：有頁籤就要能滑）
-  const swipeWarehouseTabs = useSwipeTabs(['all', 'dismantled'] as const, activeWarehouseTab, setActiveWarehouseTab);
+  // 滑的是「類別頁籤」（全部／一番賞／盒玩…），不是 倉庫↔分解紀錄 ——
+  // 原本綁後者，在倉庫裡一滑就整個跳去分解紀錄，玩家以為換頁了
+  const swipeWarehouseTabs = useSwipeTabs(
+    warehouseTabs.map(t => t.id),
+    activeWarehouseCategory,
+    setActiveWarehouseCategory,
+  );
   const [activeMarketCategory, setActiveMarketCategory] = useState<ProductCategoryId>('all');
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   

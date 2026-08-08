@@ -56,10 +56,12 @@ function AuthContent() {
   const [countdown, setCountdown] = useState(0)
 
   // 邀請連結（?invite=XXX）進來的：門口沒有邀請碼欄了，
-  // 先暫存，登入完成自動幫他填（Email 與 LINE 兩條路都會領）
+  // 先暫存，登入完成自動幫他填（Email 與 LINE 兩條路都會領）。
+  // 必須用 localStorage：LINE app 送人回來常開新分頁，
+  // sessionStorage 每個分頁一份，邀請碼會在回程時直接消失（同 line_login_state 的教訓）
   useEffect(() => {
     const invite = searchParams.get('invite')
-    if (invite) sessionStorage.setItem('pending_invite', invite.toUpperCase())
+    if (invite) localStorage.setItem('pending_invite', invite.toUpperCase())
   }, [searchParams])
 
   useEffect(() => {
@@ -73,9 +75,9 @@ function AuthContent() {
   // 帶去個人設定的邀請碼彈窗，碼已填好，按送出就完成（老闆指定動線）
   useEffect(() => {
     if (!user) return
-    const pending = sessionStorage.getItem('pending_invite')
+    const pending = localStorage.getItem('pending_invite')
     if (pending) {
-      sessionStorage.removeItem('pending_invite')
+      localStorage.removeItem('pending_invite')
       router.replace(`/profile?tab=settings&invite=${encodeURIComponent(pending)}`)
       return
     }
@@ -96,9 +98,9 @@ function AuthContent() {
 
   /** 領走門口暫存的邀請碼。失敗不擋流程 —— 老帳號或已填過會被後端規則擋，屬正常 */
   const claimPendingInvite = () => {
-    const pending = sessionStorage.getItem('pending_invite')
+    const pending = localStorage.getItem('pending_invite')
     if (!pending) return
-    sessionStorage.removeItem('pending_invite')
+    localStorage.removeItem('pending_invite')
     void fetch('/api/user/claim-invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
