@@ -11,8 +11,6 @@ import { serviceClient, isSyntheticEmail } from '@/lib/lineAuth'
  * 第二次進頁面完全零等待。
  */
 
-const CLAIM_WINDOW_DAYS = 7
-
 export async function GET() {
   const supabase = await createSessionClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,14 +18,13 @@ export async function GET() {
 
   const admin = serviceClient()
   const [{ data: me }, { data: referral }, { data: hasPassword }] = await Promise.all([
-    admin.from('users').select('line_user_id, email, created_at').eq('id', user.id).maybeSingle(),
+    admin.from('users').select('line_user_id, email').eq('id', user.id).maybeSingle(),
     admin.from('referrals').select('id').eq('referee_id', user.id).maybeSingle(),
     admin.rpc('user_has_password', { p_user_id: user.id }),
   ])
   if (!me) return NextResponse.json({ error: '找不到帳號資料' }, { status: 404 })
 
   const synthetic = isSyntheticEmail(me.email)
-  const ageDays = (Date.now() - new Date(me.created_at).getTime()) / 86_400_000
 
   return NextResponse.json({
     line: {
@@ -37,7 +34,8 @@ export async function GET() {
     },
     invite: {
       claimed: Boolean(referral),
-      eligible: ageDays <= CLAIM_WINDOW_DAYS,
+      // 填碼不限時間（原 7 天窗口老闆拆掉了）。欄位留著給舊快取
+      eligible: true,
     },
     password: { set: Boolean(hasPassword) },
   })

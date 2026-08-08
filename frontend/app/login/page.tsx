@@ -68,9 +68,18 @@ function AuthContent() {
     return () => clearTimeout(timer)
   }, [countdown])
 
-  // 已登入就不該停在這一頁
+  // 已登入就不該停在這一頁。手上還握著暫存邀請碼的（＝老用戶點了
+  // 朋友的邀請連結；剛在本頁登入完的不會 —— claimPendingInvite 領走了）
+  // 帶去個人設定的邀請碼彈窗，碼已填好，按送出就完成（老闆指定動線）
   useEffect(() => {
-    if (user) router.replace(nextParam)
+    if (!user) return
+    const pending = sessionStorage.getItem('pending_invite')
+    if (pending) {
+      sessionStorage.removeItem('pending_invite')
+      router.replace(`/profile?tab=settings&invite=${encodeURIComponent(pending)}`)
+      return
+    }
+    router.replace(nextParam)
   }, [user, router, nextParam])
 
   const handleError = (err: unknown) => {

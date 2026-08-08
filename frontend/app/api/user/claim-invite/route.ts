@@ -14,12 +14,11 @@ import { serviceClient } from '@/lib/lineAuth'
  * 防呆規則：
  * - 一個帳號只能填一次（referrals.referee_id 唯一索引兜底）
  * - 不能填自己的
- * - 註冊後 7 天內才能填 —— 防止老帳號被收編進互填集團刷任務獎勵；
- *   新玩家真的想填不會拖過 7 天
  * - 邀請人不能是機器人帳號
+ * - 不限時間（原本有註冊後 7 天的窗口，老闆 2026-08-08 拆掉：
+ *   老用戶點朋友的邀請連結也要能填。互填集團的防線改由
+ *   「獎勵後置到首儲」的誘因方案承擔）
  */
-
-const CLAIM_WINDOW_DAYS = 7
 
 async function getContext() {
   const supabase = await createSessionClient()
@@ -28,30 +27,29 @@ async function getContext() {
 
   const admin = serviceClient()
   const { data: me } = await admin
-    .from('users').select('id, created_at, invite_code').eq('id', user.id).maybeSingle()
+    .from('users').select('id, invite_code').eq('id', user.id).maybeSingle()
   if (!me) return null
 
   const { data: referral } = await admin
     .from('referrals').select('id').eq('referee_id', user.id).maybeSingle()
 
-  const ageDays = (Date.now() - new Date(me.created_at).getTime()) / 86_400_000
-  return { admin, me, claimed: Boolean(referral), eligible: ageDays <= CLAIM_WINDOW_DAYS }
+  return { admin, me, claimed: Boolean(referral) }
 }
 
 export async function GET() {
   const ctx = await getContext()
   if (!ctx) return NextResponse.json({ error: '請先登入' }, { status: 401 })
-  return NextResponse.json({ claimed: ctx.claimed, eligible: ctx.eligible })
+  // eligible 恆為 true，留著是為了不炸還在跑舊版快取的 client
+  return NextResponse.json({ claimed: ctx.claimed, eligible: true })
 }
 
 export async function POST(request: Request) {
   try {
     const ctx = await getContext()
     if (!ctx) return NextResponse.json({ error: '請先登入' }, { status: 401 })
-    const { admin, me, claimed, eligible } = ctx
+    const { admin, me, claimed } = ctx
 
     if (claimed) return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
-    if (!eligible) return NextResponse.json({ error: `註冊超過 ${CLAIM_WINDOW_DAYS} 天，無法填寫邀請碼` }, { status: 409 })
 
     const { code } = await request.json()
     const normalized = String(code ?? '').trim().toUpperCase()

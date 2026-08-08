@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -11,13 +12,16 @@ import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
  *
  * 邀請碼從註冊頁移到這裡：門口少一個欄位，而且 LINE／Google 進站的玩家
  *（不經過註冊頁）也有機會被推薦。規則在 /api/user/claim-invite：
- * 一次為限、不能填自己的、註冊後 7 天內有效。
+ * 一次為限、不能填自己的、不限時間。
  *
- * 超過 7 天又沒填過的帳號整列隱藏 —— 留一顆按了只會報錯的入口沒有意義。
+ * 已登入的用戶點朋友的邀請連結（/login?invite=CODE）會被帶到
+ * /profile?tab=settings&invite=CODE —— 這裡看到 invite 參數就自動
+ * 開彈窗、碼已填好，玩家按送出就完成（老闆指定的動線）。
  * 狀態來自 useSettingsStatus（含快取），跟 LINE 列同一趟請求、同時出現。
  */
 export function InviteCodeRow() {
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
   const { data, refresh } = useSettingsStatus();
   const invite = data?.invite ?? null;
   const [open, setOpen] = useState(false);
@@ -26,6 +30,23 @@ export function InviteCodeRow() {
   const [error, setError] = useState<string | null>(null);
   // 送出成功後快取還沒更新前的立即顯示
   const [justClaimed, setJustClaimed] = useState(false);
+
+  const claimed = justClaimed || Boolean(invite?.claimed);
+
+  // 邀請連結帶進來的：自動開彈窗＋預填碼（只開一次，開完清掉網址參數，
+  // 免得重整又彈）。已填過的不開 —— 彈了也只會報錯
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current) return;
+    const fromLink = searchParams.get('invite');
+    if (!fromLink || !invite || claimed) return;
+    autoOpened.current = true;
+    setCodeInput(fromLink.toUpperCase());
+    setOpen(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url.toString());
+  }, [searchParams, invite, claimed]);
 
   const submit = async () => {
     setError(null);
@@ -49,10 +70,6 @@ export function InviteCodeRow() {
       setBusy(false);
     }
   };
-
-  const claimed = justClaimed || Boolean(invite?.claimed);
-  // 已知不符資格又沒填過 → 整列收掉
-  if (invite && !claimed && !invite.eligible) return null;
 
   return (
     <>

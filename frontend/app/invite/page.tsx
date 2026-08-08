@@ -152,8 +152,13 @@ export default function InvitePage() {
     if (!blob) { try { blob = await composeHero(); } catch { blob = null; } }
     if (!blob) { showToast('圖片還在準備中，請再試一次', 'error'); return; }
 
+    // 分享面板只給手機 —— 桌機 Chrome 其實也支援分享檔案，但老闆指定
+    // 電腦端按下載就要直接下載，不要多一層系統面板
+    const ua = navigator.userAgent;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua) ||
+      (ua.includes('Mac') && navigator.maxTouchPoints > 1); // iPadOS 會偽裝成 Mac
     const file = new File([blob], 'ggb-invite.png', { type: 'image/png' });
-    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    if (isMobile && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); } catch { /* 玩家取消分享 */ }
       return;
     }
@@ -222,7 +227,7 @@ export default function InvitePage() {
         <div className="px-5 pb-16 pt-16">
           <h2
             className="text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
-            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: '1.2px #e8b84a' }}
           >
             邀請好友有什麼好處？
           </h2>
@@ -235,7 +240,7 @@ export default function InvitePage() {
               <Gift className="mx-auto h-6 w-6" style={{ color: GOLD_LIGHT }} />
               <p className="mt-3 text-[15px] font-black text-white">解鎖成就領積分</p>
               <p
-                className="mt-1.5 text-[clamp(24px,7vw,34px)] font-black leading-tight"
+                className="mt-1.5 whitespace-nowrap text-[clamp(20px,5.5vw,30px)] font-black leading-tight"
                 style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
               >
                 30~500<span className="text-[13px]">積分</span>
@@ -251,7 +256,7 @@ export default function InvitePage() {
               <Medal className="mx-auto h-6 w-6" style={{ color: GOLD_LIGHT }} />
               <p className="mt-3 text-[15px] font-black text-white">點亮專屬徽章</p>
               <p
-                className="mt-1.5 text-[clamp(24px,7vw,34px)] font-black leading-tight"
+                className="mt-1.5 whitespace-nowrap text-[clamp(20px,5.5vw,30px)] font-black leading-tight"
                 style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
               >
                 4<span className="text-[13px]">枚</span>
@@ -264,7 +269,7 @@ export default function InvitePage() {
 
           <h2
             className="mt-14 text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
-            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: '1.2px #e8b84a' }}
           >
             怎樣算邀請成功？
           </h2>
@@ -293,7 +298,7 @@ export default function InvitePage() {
           </div>
 
           <p className="mt-6 text-center text-[11px] font-semibold leading-relaxed text-white/30">
-            好友也可以在註冊後 7 天內，到會員中心自己填入你的邀請碼
+            好友也可以隨時到會員中心，自己填入你的邀請碼
           </p>
         </div>
       </div>
