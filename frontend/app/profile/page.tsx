@@ -3,35 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Box, 
-  Truck, 
-  Trophy, 
-  Settings, 
-  LogOut, 
-  ChevronRight, 
-  ChevronLeft,
-  CheckCircle2, 
-  AlertCircle,
-  HelpCircle,
-  Info,
-  FileText,
-  Shield,
-  RefreshCcw,
-  RefreshCw,
-  Wallet,
-  Heart,
-  User,
-  ChevronDown,
-  X,
-  Loader2, // used in button inline states
-  CreditCard,
-  Copy,
-  Ticket,
-  Store,
-  History,
-  MessageCircle,
-  Star, Share2 } from 'lucide-react';
+import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
@@ -6875,14 +6847,6 @@ function ProfileContent() {
                             </span>
                             <Copy className="w-3.5 h-3.5 text-neutral-300 group-hover/invite:text-primary transition-colors" />
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => router.push('/invite')}
-                            className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-black text-primary transition-colors active:bg-primary/20"
-                          >
-                            <Share2 className="h-3 w-3" />
-                            邀請好友
-                          </button>
                         </div>
                       )}
                     </div>
@@ -6967,6 +6931,22 @@ function ProfileContent() {
                     <ChevronRight className={cn("ml-auto w-4 h-4 transition-transform hidden sm:block", activeTab === item.id ? "text-white/50" : "text-neutral-200 group-hover:text-neutral-400")} />
                   </button>
                 ))}
+                {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isGuest) {
+                      router.push(loginHref);
+                      return;
+                    }
+                    router.push('/invite');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                >
+                  <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
+                  <span className="truncate">邀請好友</span>
+                  <ChevronRight className="ml-auto w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
+                </button>
               </div>
             </div>
 
