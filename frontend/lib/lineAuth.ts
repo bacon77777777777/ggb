@@ -125,5 +125,11 @@ export async function bindLineToUser(
     .update({ line_user_id: line.sub })
     .eq('id', userId)
   if (error) return { ok: false, error: '綁定失敗，請重試一次' }
+
+  // 綁定禮／邀請計入（migration 505）：一顆 LINE 一生一次，帳本兜底。
+  // 失敗不擋綁定結果
+  await admin.rpc('apply_line_perks', { p_user_id: userId, p_line_sub: line.sub })
+    .then(undefined, () => {})
+
   return { ok: true }
 }

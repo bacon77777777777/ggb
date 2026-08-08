@@ -15,9 +15,11 @@ import { serviceClient } from '@/lib/lineAuth'
  * - 一個帳號只能填一次（referrals.referee_id 唯一索引兜底）
  * - 不能填自己的
  * - 邀請人不能是機器人帳號
- * - 不限時間（原本有註冊後 7 天的窗口，老闆 2026-08-08 拆掉：
- *   老用戶點朋友的邀請連結也要能填。互填集團的防線改由
- *   「獎勵後置到首儲」的誘因方案承擔）
+ * - 不限時間（原 7 天窗口老闆 2026-08-08 拆掉）
+ *
+ * 計獎時點（邀請體系 2.0，migration 505）：填碼只建 referrals 列，
+ * **綁定 LINE 那一刻才生效**（apply_line_perks 統一發放）。
+ * 這裡若發現已經綁了 LINE（先綁後填的順序），當場補跑生效。
  */
 
 async function getContext() {
@@ -27,7 +29,7 @@ async function getContext() {
 
   const admin = serviceClient()
   const { data: me } = await admin
-    .from('users').select('id, invite_code').eq('id', user.id).maybeSingle()
+    .from('users').select('id, invite_code, line_user_id').eq('id', user.id).maybeSingle()
   if (!me) return null
 
   const { data: referral } = await admin
@@ -72,8 +74,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
     }
 
-    // 計入邀請人的任務進度。既有 RPC 冪等（is_mission_credited 旗標），失敗不擋流程
-    await admin.rpc('complete_registration_referral', { p_user_id: me.id }).then(undefined, () => {})
+    // 已綁 LINE 的（先綁後填）：當場生效計入邀請人。
+    // 還沒綁的：referrals 先掛著，等他綁 LINE 那一刻由 apply_line_perks 生效
+    if (me.line_user_id) {
+      await admin.rpc('apply_line_perks', { p_user_id: me.id, p_line_sub: me.line_user_id })
+        .then(undefined, () => {})
+    }
 
     return NextResponse.json({ claimed: true })
   } catch {
