@@ -275,7 +275,7 @@ export default function InvitePage() {
             className="whitespace-nowrap text-center text-[clamp(19px,5.4vw,27px)] font-black leading-tight tracking-wide text-neutral-900"
             style={{ WebkitTextStroke: '0.9px #171717' }}
           >
-            每邀 5 位好友，免費抽一次！
+            每邀 5 位好友，免費拿 100 積分！
           </h2>
           <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: '#c77f00' }}>
             好友綁定 LINE 帳號即可成功！
