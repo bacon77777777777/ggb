@@ -270,7 +270,11 @@ export default function InvitePage() {
           活動頁設計語言的淺色版，主題色亮黃金。只推一件事：每 5 位免費抽 */}
       <div className="w-full bg-white md:mx-auto md:max-w-md">
         <div className="px-5 pb-16 pt-10">
-          <h2 className="whitespace-nowrap text-center text-[clamp(19px,5.4vw,27px)] font-black leading-tight tracking-wide text-neutral-900">
+          {/* 描邊加粗 —— 中文字在 900 之上沒有更粗的字重，用 stroke 增肥 */}
+          <h2
+            className="whitespace-nowrap text-center text-[clamp(19px,5.4vw,27px)] font-black leading-tight tracking-wide text-neutral-900"
+            style={{ WebkitTextStroke: '0.9px #171717' }}
+          >
             每邀 5 位好友，免費抽一次！
           </h2>
           <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: '#c77f00' }}>
@@ -315,13 +319,15 @@ export default function InvitePage() {
                 : ' '}
             </p>
 
-            {/* 活動頁同款黃金按鈕（lpv-cta-btn 配方）；未達標時降不透明度 */}
+            {/* 活動頁同款黃金按鈕（lpv-cta-btn 配方）；未達標時全淡灰 */}
             <button
               type="button"
               onClick={() => void claim()}
               disabled={claiming || claimable <= 0}
-              className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:opacity-45 disabled:active:scale-100"
-              style={{ background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,210,74,0.45)' }}
+              className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:active:scale-100"
+              style={claimable > 0
+                ? { background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,210,74,0.45)' }
+                : { background: '#ededed', color: '#b0b0b0' }}
             >
               {claiming
                 ? <Loader2 className="h-5 w-5 animate-spin" />
