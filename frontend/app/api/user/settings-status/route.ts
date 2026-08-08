@@ -18,19 +18,24 @@ export async function GET() {
 
   const admin = serviceClient()
   const [{ data: me }, { data: referral }, { data: hasPassword }] = await Promise.all([
-    admin.from('users').select('line_user_id, email').eq('id', user.id).maybeSingle(),
+    admin.from('users').select('line_user_id, email, created_at').eq('id', user.id).maybeSingle(),
     admin.from('referrals').select('id').eq('referee_id', user.id).maybeSingle(),
     admin.rpc('user_has_password', { p_user_id: user.id }),
   ])
   if (!me) return NextResponse.json({ error: '找不到帳號資料' }, { status: 404 })
 
   const synthetic = isSyntheticEmail(me.email)
+  // 綁定禮資格（migration 505 的新戶分界）：新戶＋還沒綁 → 設定頁
+  // LINE 列顯示「綁定領300」。極端例外（拿別人用過的 LINE 來綁領不到）
+  // 由帳本擋，這裡只管顯示
+  const LAUNCH = '2026-08-08T00:00:00+08:00'
 
   return NextResponse.json({
     line: {
       bound: Boolean(me.line_user_id),
       canUnbind: Boolean(me.line_user_id) && !synthetic,
       synthetic,
+      bonusOnBind: !me.line_user_id && new Date(me.created_at) >= new Date(LAUNCH),
     },
     invite: {
       claimed: Boolean(referral),

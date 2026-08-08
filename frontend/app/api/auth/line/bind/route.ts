@@ -65,18 +65,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const user = await requireUser()
-  if (!user) return NextResponse.json({ error: '請先登入' }, { status: 401 })
-
-  const admin = serviceClient()
-  const { data } = await admin
-    .from('users').select('line_user_id, email').eq('id', user.id).maybeSingle()
-  if (!data?.line_user_id) return NextResponse.json({ error: '尚未綁定 LINE' }, { status: 400 })
-  if (isSyntheticEmail(data.email)) {
-    return NextResponse.json({ error: '這個帳號只能用 LINE 登入，無法解除綁定' }, { status: 400 })
-  }
-
-  const { error } = await admin.from('users').update({ line_user_id: null }).eq('id', user.id)
-  if (error) return NextResponse.json({ error: '解除失敗，請重試一次' }, { status: 500 })
-  return NextResponse.json({ unbound: true })
+  // 不開放解除綁定（老闆 2026-08-08 定）：邀請計獎與綁定禮都以
+  // LINE 身份為錨，開放解除只會生出客服題。特殊狀況人工處理。
+  return NextResponse.json({ error: '目前不開放解除 LINE 綁定，如有需要請聯絡客服' }, { status: 403 })
 }
