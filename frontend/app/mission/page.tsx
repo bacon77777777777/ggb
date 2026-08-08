@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { MissionSkeleton } from '@/components/Skeletons';
 import { useRouter } from 'next/navigation';
+import { buildInviteMessage } from '@/lib/inviteMessage';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 export default function MissionPage() {
   const { user, refreshProfile, isLoading: authLoading } = useAuth();
@@ -15,6 +17,7 @@ export default function MissionPage() {
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'achievement'>('daily');
+  const swipeTabs = useSwipeTabs(['daily', 'weekly', 'achievement'] as const, activeTab, setActiveTab);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [consecutiveDays, setConsecutiveDays] = useState(0);
@@ -163,10 +166,10 @@ export default function MissionPage() {
       } else if (mission.condition_type === 'invite_friend') {
         // 邀請好友：複製個人邀請連結
         const inviteCode = user?.invite_code;
-        const inviteLink = `${window.location.origin}/login${inviteCode ? `?invite=${inviteCode}` : ''}`;
         try {
-          await navigator.clipboard.writeText(inviteLink);
-          showToast('邀請連結已複製！快去分享給朋友', 'success');
+          if (!inviteCode) throw new Error('no code');
+          await navigator.clipboard.writeText(buildInviteMessage(inviteCode, window.location.origin));
+          showToast('邀請訊息已複製！快去分享給朋友', 'success');
         } catch {
           showToast(`你的邀請碼：${inviteCode ?? '請先登入'}`, 'info');
         }
@@ -219,7 +222,7 @@ export default function MissionPage() {
 
   return (
     <div className="bg-neutral-50 overflow-x-hidden flex justify-center"
-      style={{ minHeight: '100dvh' }}>
+      style={{ minHeight: '100dvh' }} {...swipeTabs}>
       <div
         className="overflow-hidden"
         style={{

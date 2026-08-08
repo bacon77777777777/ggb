@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import { getReadIds, isUnread, markRead, markAllRead } from '@/lib/announcementRead';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 interface Announcement {
   id: string;
@@ -55,7 +56,6 @@ export default function AnnouncementsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const tabKeys = CATEGORIES.map(c => c.key);
-  const swipeX = useRef<number | null>(null);
 
   useEffect(() => {
     fetch('/api/announcements')
@@ -82,16 +82,8 @@ export default function AnnouncementsPage() {
     return () => window.removeEventListener('ggb:markAllAnnouncementsRead', handleMarkAll);
   }, [handleMarkAll]);
 
-  const onTouchStart = (e: React.TouchEvent) => { swipeX.current = e.touches[0].clientX; };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (swipeX.current === null) return;
-    const dist = swipeX.current - e.changedTouches[0].clientX;
-    swipeX.current = null;
-    if (Math.abs(dist) < 50) return;
-    const cur = tabKeys.indexOf(activeTab);
-    if (dist > 0 && cur < tabKeys.length - 1) setActiveTab(tabKeys[cur + 1]);
-    if (dist < 0 && cur > 0) setActiveTab(tabKeys[cur - 1]);
-  };
+  // 換成全站共用的手勢（含邊緣讓位、水平捲動區讓位、斜滑防誤觸）
+  const swipeTabs = useSwipeTabs(tabKeys, activeTab, setActiveTab);
 
   const filtered = activeTab === 'all' ? items : items.filter(i => i.category === activeTab);
 
@@ -113,7 +105,7 @@ export default function AnnouncementsPage() {
 
       {/* 列表 */}
       {isLoading ? <div className="max-w-2xl mx-auto"><LoadingSkeleton /></div> : (
-        <div className="max-w-2xl mx-auto px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="max-w-2xl mx-auto px-4 min-h-[60vh]" {...swipeTabs}>
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
               此分類目前沒有公告

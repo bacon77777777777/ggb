@@ -53,6 +53,7 @@ import { LineBindRow } from '@/components/auth/LineBindRow';
 import { EmailBindRow } from '@/components/auth/EmailBindRow';
 import { InviteCodeRow } from '@/components/auth/InviteCodeRow';
 import { isSyntheticEmail } from '@/lib/syntheticEmail';
+import { buildInviteMessage } from '@/lib/inviteMessage';
 import { useSettingsStatus } from '@/components/auth/useSettingsStatus';
 import ProfileSectionHeader from '@/components/profile/desktop/ProfileSectionHeader';
 import ProfileToolbar from '@/components/profile/desktop/ProfileToolbar';
@@ -492,6 +493,8 @@ function ProfileContent() {
   ] as const;
 
   const [activeMarketTab, setActiveMarketTab] = useState<'listing' | 'sold_records'>('listing');
+  // 倉庫／配送的內容清單左右滑 = 切該區的頁籤（老闆指定：有頁籤就要能滑）
+  const swipeWarehouseTabs = useSwipeTabs(['all', 'dismantled'] as const, activeWarehouseTab, setActiveWarehouseTab);
   const [activeMarketCategory, setActiveMarketCategory] = useState<ProductCategoryId>('all');
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   
@@ -507,6 +510,11 @@ function ProfileContent() {
   const [activeFollowsTab, setActiveFollowsTab] = useState<'all' | 'selling' | 'soldout'>('all');
   // const [activeDrawTab, setActiveDrawTab] = useState<'all'>('all'); // unused
   const [activeDeliveryTab, setActiveDeliveryTab] = useState<'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled'>('all');
+  const swipeDeliveryTabs = useSwipeTabs(
+    ['all', 'submitted', 'shipping', 'completed', 'cancelled'] as const,
+    activeDeliveryTab,
+    setActiveDeliveryTab,
+  );
   const [desktopDeliverySearch, setDesktopDeliverySearch] = useState('');
   const [desktopDeliveryPage, setDesktopDeliveryPage] = useState(1);
   const [desktopDeliveryPageSize, setDesktopDeliveryPageSize] = useState(10);
@@ -2415,6 +2423,7 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
+                {...swipeWarehouseTabs}
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
@@ -4349,6 +4358,7 @@ function ProfileContent() {
               {/* Mobile List Style (Unified 3-Layer Structure) */}
               <div
                 ref={mobileDeliveryScrollRef}
+                {...swipeDeliveryTabs}
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
@@ -6309,7 +6319,7 @@ function ProfileContent() {
                               inputMode="numeric"
                               placeholder={PHONE_PLACEHOLDER}
                               pattern="^09\d{8}$"
-                              className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
+                              className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:outline-none focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
                               value={phoneNumberInput}
                               onChange={(e) => setPhoneNumberInput(e.target.value)}
                               onBlur={(e) => setPhoneNumberInput(normalizePhone(e.target.value))}
@@ -6854,8 +6864,8 @@ function ProfileContent() {
                             className="flex items-center gap-1.5 cursor-pointer group/invite"
                             onClick={() => {
                               if (user.invite_code) {
-                                navigator.clipboard.writeText(user.invite_code);
-                                toast.success('邀請碼已複製');
+                                navigator.clipboard.writeText(buildInviteMessage(user.invite_code, window.location.origin));
+                                toast.success('邀請訊息已複製，快分享給朋友');
                               }
                             }}
                           >
@@ -7583,6 +7593,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from  "react-datepicker";
 import { zhTW } from 'date-fns/locale/zh-TW';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 registerLocale('zh-TW', zhTW);
 

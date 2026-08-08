@@ -24,6 +24,7 @@ import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
@@ -677,7 +678,11 @@ export default function Home() {
     sessionStorage.setItem(homeRestoreKey, '1');
   }, [activePrimaryTab, activeSecondaryTab, sortMode, priceMin, priceMax]);
 
-  const handlePrimaryTabChange = (newTabId: PrimaryTabId) => {
+  // 內容區左右滑 = 切主分類。沿用點擊同一條路（含方向動畫與次分類重設）
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  const swipePrimaryTabs = useSwipeTabs(primaryTabs.map(t => t.id), activePrimaryTab, handlePrimaryTabChange);
+
+  function handlePrimaryTabChange(newTabId: PrimaryTabId) {
     if (newTabId === activePrimaryTab) return;
     const oldIndex = primaryTabs.findIndex((t) => t.id === activePrimaryTab);
     const newIndex = primaryTabs.findIndex((t) => t.id === newTabId);
@@ -686,7 +691,7 @@ export default function Home() {
     setActivePrimaryTab(newTabId);
     setActiveSecondaryTab('all');
     requestAnimationFrame(() => setIsCategoryChanging(false));
-  };
+  }
 
   const swipeConfidenceThreshold = 10000;
   const swipePower = (offset: number, velocity: number) => {
@@ -1614,7 +1619,7 @@ export default function Home() {
               </aside>
             )}
 
-            <main className="flex-1">
+            <main className="flex-1" {...swipePrimaryTabs}>
               <div className="mb-3 rounded-[8px] overflow-hidden">
                 <WinningMarquee />
               </div>
