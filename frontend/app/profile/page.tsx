@@ -6746,7 +6746,7 @@ function ProfileContent() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     {item.badge && (
-                      <span className="rounded-full bg-accent-red px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                      <span className="rounded-full bg-accent-red px-2 py-[4px] text-[11px] font-bold leading-none text-white">
                         {item.badge}
                       </span>
                     )}
@@ -6973,7 +6973,7 @@ function ProfileContent() {
                 >
                   <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
                   <span className="truncate">邀請好友</span>
-                  <span className="ml-auto rounded-full bg-accent-red px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                  <span className="ml-auto rounded-full bg-accent-red px-2 py-[4px] text-[11px] font-bold leading-none text-white">
                     無限拿積分
                   </span>
                   <ChevronRight className="w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
