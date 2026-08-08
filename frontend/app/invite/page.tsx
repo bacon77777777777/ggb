@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { Copy, Loader2 } from 'lucide-react';
+import { ChevronLeft, Copy, Loader2, Share2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
 import { createClient } from '@/lib/supabase/client';
+import { MissionService, type UserMission } from '@/services/mission';
 
 /**
  * 邀請好友頁 —— 滿版主視覺＋循環獎進度區
@@ -36,7 +37,7 @@ const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
  * QR 下方紅旗緞帶：x 212~595、y 1070~1139 → 中心 (50%, 92.04%)。
  * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載版只有字不含圖標（老闆指定）。
  */
-const RIBBON_CENTER_Y = 0.9204;
+const RIBBON_CENTER_Y = 0.929; // 老闆指定 92.9
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
@@ -56,6 +57,8 @@ export default function InvitePage() {
   const [qr, setQr] = useState<string | null>(null);
   const [status, setStatus] = useState<ReferralStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [missions, setMissions] = useState<UserMission[]>([]);
+  const [claimingMission, setClaimingMission] = useState<string | null>(null);
 
   const code = user?.invite_code ?? null;
   const link = code && typeof window !== 'undefined'
@@ -73,21 +76,38 @@ export default function InvitePage() {
     } catch { /* 進度區顯示骨架就好 */ }
   }, []);
 
-  useEffect(() => {
-    if (user) void fetchStatus();
-  }, [user, fetchStatus]);
+  // 成就區：任務中心同一套資料（get_user_missions），只取邀請四階
+  const fetchMissions = useCallback(async () => {
+    try {
+      const all = await MissionService.getUserMissions();
+      setMissions(
+        all
+          .filter(m => m.condition_type === 'invite_friend' && m.type === 'achievement')
+          .sort((a, b) => a.target_value - b.target_value),
+      );
+    } catch { /* 成就區維持骨架 */ }
+  }, []);
 
   useEffect(() => {
-    const onShare = () => { void copyMessage(); };
-    const onDownload = () => { void downloadHero(); };
-    window.addEventListener('ggb:invite-share', onShare);
-    window.addEventListener('ggb:invite-download', onDownload);
-    return () => {
-      window.removeEventListener('ggb:invite-share', onShare);
-      window.removeEventListener('ggb:invite-download', onDownload);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, qr]);
+    if (user) { void fetchStatus(); void fetchMissions(); }
+  }, [user, fetchStatus, fetchMissions]);
+
+  const claimMission = async (m: UserMission) => {
+    setClaimingMission(m.id);
+    try {
+      const res = await MissionService.claimReward(m.id, m.period_key || 'ALL');
+      if (res?.success === false) {
+        showToast(res?.message === 'Already claimed' ? '已經領取過了' : '領取失敗，請重試一次', 'error');
+      } else {
+        showToast(`已領取 ${m.reward_coins} 積分`, 'success');
+      }
+      void fetchMissions();
+    } catch {
+      showToast('領取失敗，請重試一次', 'error');
+    } finally {
+      setClaimingMission(null);
+    }
+  };
 
   useEffect(() => {
     if (!link) return;
@@ -224,8 +244,43 @@ export default function InvitePage() {
   // 有可領的獎勵時進度條打滿 —— 0/5 配上亮著的領取鈕會看不懂
   const filled = status ? (claimable > 0 ? step : status.cycleProgress) : 0;
 
+  /** 底欄「立即領取」：不做禁用態（老闆指定），沒得領就跳提示 */
+  const claimNow = () => {
+    if (!status) return;
+    if (claimable <= 0) {
+      showToast(`累積滿 ${step} 位好友才能領取，再邀 ${step - (status.cycleProgress || 0)} 位`, 'info');
+      return;
+    }
+    void claim();
+  };
+
+  const goBack = () => {
+    // 直接貼連結進來的沒有上一頁可回，退回會員中心
+    if (window.history.length > 1) router.back();
+    else router.push('/profile');
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-24">
+      {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
+          返回＋分享（分享＝複製邀請訊息） */}
+      <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
+        <button
+          type="button"
+          onClick={goBack}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => void copyMessage()}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
           桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
       <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-t-3xl">
@@ -266,79 +321,161 @@ export default function InvitePage() {
         )}
       </div>
 
-      {/* 循環獎專區 —— 白底（老闆指定，hero 底緣就是漸白）、
-          活動頁設計語言的淺色版，主題色亮黃金。只推一件事：每 5 位免費抽 */}
+      {/* ── 進度卡（老闆設計稿：黃粉漸層底、左句右 n/5、亮綠分段條）──
+          底圖與進度條都是設計稿附的素材（card_progress / bar_track /
+          bar_fill），背景 100% 100% 拉伸；領取鈕只在有得領時出現
+         （設計稿畫的是 2/5 未達標狀態，沒有畫按鈕）*/}
       <div className="w-full bg-white md:mx-auto md:max-w-md">
-        <div className="px-5 pb-16 pt-10">
-          {/* 描邊加粗 —— 中文字在 900 之上沒有更粗的字重，用 stroke 增肥 */}
-          <h2
-            className="whitespace-nowrap text-center text-[clamp(19px,5.4vw,27px)] font-black leading-tight tracking-wide text-neutral-900"
-            style={{ WebkitTextStroke: '0.9px #171717' }}
-          >
-            每邀 5 位好友，免費拿 100 積分！
-          </h2>
-          <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: '#c77f00' }}>
-            好友綁定 LINE 帳號即可成功！
-          </p>
+        {/* 底圖 750 寬、卡面佔 3.1%~96.8% —— 側邊留白是圖自帶的，
+            所以容器滿版寬（老闆指定），內距用百分比對齊卡面 */}
+        <div
+          className="mt-3 w-full px-[7.5%] pb-6 pt-4"
+          style={{ backgroundImage: 'url(/images/invite/card_progress.png)', backgroundSize: '100% 100%' }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[14px] font-bold text-neutral-900">被邀請的好友綁定 LINE 帳號即可 +1</p>
+            {status ? (
+              <p className="shrink-0 font-black leading-none">
+                <span className="text-[24px]" style={{ color: '#ff2b2b' }}>{filled}</span>
+                <span className="text-[16px] text-neutral-900">/{step}</span>
+              </p>
+            ) : (
+              <span className="h-5 w-10 shrink-0 animate-pulse rounded bg-white/60" />
+            )}
+          </div>
 
-          {/* 進度卡 —— 淺色暖底 */}
-          <div
-            className="mt-8 rounded-2xl border p-5"
-            style={{ borderColor: '#f3dfae', background: '#fffbea' }}
-          >
-            <div className="flex items-baseline justify-between">
-              <span className="text-[13px] font-bold text-neutral-500">邀請進度</span>
-              {status ? (
-                <span className="text-[13px] font-black text-neutral-800">
-                  累計 <span style={{ color: '#c77f00' }}>{status.qualified}</span> 位
-                </span>
-              ) : (
-                <span className="h-3.5 w-16 animate-pulse rounded bg-neutral-200" />
-              )}
-            </div>
-
-            {/* 五格進度條：一格一位好友 */}
-            <div className="mt-3 flex gap-1.5">
-              {Array.from({ length: step }, (_, i) => (
+          {/* 分段進度條：素材軌道＋亮綠填充，填充用寬度裁切露出 */}
+          <div className="relative mt-2.5 h-[15px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/invite/bar_track.png" alt="" className="absolute inset-0 h-full w-full" />
+            {filled > 0 && (
+              <div className="absolute inset-0 overflow-hidden" style={{ width: `${(filled / step) * 100}%` }}>
                 <div
-                  key={i}
-                  className="h-3 flex-1 rounded-full transition-colors"
+                  className="h-full"
                   style={{
-                    background: i < filled
-                      ? 'linear-gradient(180deg,#ffe27a,#ffc93c 55%,#e8a820)'
-                      : '#efe7d2',
+                    backgroundImage: 'url(/images/invite/bar_fill.png)',
+                    backgroundSize: `${(step / filled) * 100}% 100%`,
+                    backgroundPosition: 'left center',
+                    backgroundRepeat: 'no-repeat',
                   }}
                 />
-              ))}
-            </div>
-            <p className="mt-2 text-right text-[11px] font-bold text-neutral-400">
-              {status
-                ? claimable > 0
-                  ? '達標了，快領取'
-                  : `再邀 ${step - (status.cycleProgress || 0)} 位可領 ${status.pointsPerStep} 積分`
-                : ' '}
-            </p>
-
-            {/* 活動頁同款黃金按鈕（lpv-cta-btn 配方）；未達標時全淡灰 */}
-            <button
-              type="button"
-              onClick={() => void claim()}
-              disabled={claiming || claimable <= 0}
-              className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:active:scale-100"
-              style={claimable > 0
-                ? { background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,210,74,0.45)' }
-                : { background: '#ededed', color: '#b0b0b0' }}
-            >
-              {claiming
-                ? <Loader2 className="h-5 w-5 animate-spin" />
-                : claimable > 0 ? `領取 ${claimable} 積分` : '累積滿 5 位可領取'}
-            </button>
+              </div>
+            )}
           </div>
+
+        </div>
+
+        {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
+            底圖只有卡片上緣（含 REWARD 底紋），下面接白底自然延伸 */}
+        <div className="mb-14 mt-2 w-full bg-white">
+          {/* 「成就」標題已畫在底圖上（新版 bg.png），內容從標題下方開始
+              —— pt 用寬度百分比對齊圖上標題的下緣（62/750） */}
+          <div
+            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-[10%]"
+            style={{ backgroundImage: 'url(/images/invite/card_reward.png)', backgroundSize: '100% auto' }}
+          >
+            <div>
+              {missions.length === 0 && (
+                <div className="space-y-4 px-1 py-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-12 animate-pulse rounded-xl bg-neutral-100" />
+                  ))}
+                </div>
+              )}
+              {missions.map(m => {
+                const icon = ACH_ICONS[m.target_value] ?? ACH_ICONS[1];
+                const chip = ACH_CHIPS[m.title];
+                const cur = Math.min(m.progress ?? 0, m.target_value);
+                const done = (m.progress ?? 0) >= m.target_value;
+                return (
+                  <div key={m.id} className="flex items-center gap-3 border-b border-neutral-100 px-1 py-4 last:border-b-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={icon} alt="" className="h-11 w-11 shrink-0 object-contain" />
+                    <div className="min-w-0 flex-1">
+                      <p className="leading-tight">
+                        <span className="text-[16px] font-black text-neutral-900">{m.title}</span>{' '}
+                        <span className="text-[13px] font-bold" style={{ color: '#ff5b00' }}>+{m.reward_coins}積分</span>
+                      </p>
+                      <p className="mt-0.5 text-[13px] leading-tight text-neutral-400">{m.description}</p>
+                      {chip && (
+                        <span
+                          className="mt-1.5 inline-block rounded-md px-2 py-0.5 text-[11px] font-bold"
+                          style={chip.style}
+                        >
+                          {chip.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="shrink-0 text-[13px] font-bold">
+                      <span style={{ color: '#ff5b00' }}>{cur}</span>
+                      <span className="text-neutral-400">/{m.target_value}</span>
+                    </p>
+                    {m.is_claimed ? (
+                      <span className="shrink-0 rounded-full border-[1.5px] border-neutral-200 px-3 py-1.5 text-[13px] font-bold text-neutral-300">
+                        已領取
+                      </span>
+                    ) : done ? (
+                      <button
+                        type="button"
+                        disabled={claimingMission === m.id}
+                        onClick={() => void claimMission(m)}
+                        className="shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold text-white transition-transform active:scale-[0.96]"
+                        style={{ background: '#ff5b00' }}
+                      >
+                        {claimingMission === m.id ? '…' : '領取'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void copyMessage()}
+                        className="shrink-0 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13px] font-bold transition-transform active:scale-[0.96]"
+                        style={{ borderColor: '#ff5b00', color: '#ff5b00' }}
+                      >
+                        去完成
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 底部操作欄 —— 一番賞內頁同款：毛玻璃白底固定底欄，兩顆按鈕。
+          立即領取不做禁用態（老闆指定），沒得領按了跳提示 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div className="mx-auto flex h-16 max-w-md items-center gap-2.5 px-4">
+          <button
+            type="button"
+            onClick={() => void downloadHero()}
+            className="h-[44px] flex-1 rounded-xl bg-neutral-100 text-[15px] font-black text-neutral-700 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+          >
+            下載邀請圖
+          </button>
+          <button
+            type="button"
+            onClick={claimNow}
+            className="flex h-[44px] flex-1 items-center justify-center rounded-xl bg-primary text-[15px] font-black text-white transition-all active:scale-[0.98]"
+          >
+            {claiming ? <Loader2 className="h-5 w-5 animate-spin" /> : '立即領取'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-/** 活動頁（LpRenderer）lpv-cta-btn 同款金黃漸層（領取按鈕用） */
-const GOLD_GRAD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)';
+/** 成就圖標（從老闆設計稿裁下）：以目標人數對應 */
+const ACH_ICONS: Record<number, string> = {
+  1: '/images/invite/ach1.png',
+  5: '/images/invite/ach2.png',
+  20: '/images/invite/ach3.png',
+  100: '/images/invite/ach4.png',
+};
+
+/** 設計稿上的稱號小標（傳教士＝人氣王、信徒滿天下＝推廣大使） */
+const ACH_CHIPS: Record<string, { label: string; style: React.CSSProperties }> = {
+  傳教士: { label: '人氣王', style: { background: '#e5f1fe', color: '#307cf4' } },
+  信徒滿天下: { label: '推廣大使', style: { background: '#07ba86', color: '#ffffff' } },
+};
