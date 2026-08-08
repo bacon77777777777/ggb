@@ -4,6 +4,24 @@
 
 ---
 
+## v2026.08.08e｜2026-08-08｜熱修：PROD 儲值完成被轉去 localhost
+
+老闆真機實測回報：偽 app 儲值走完綠界 3D 驗證後，瀏覽器被導到
+localhost 死頁（錢有入帳）。根因：Vercel 後台 **Production 漏設
+`NEXT_PUBLIC_FRONTEND_URL`**（Preview 21 天前就設了，所以 STG 沒事）——
+付款完成頁 `/api/payment/ecpay/return` 把玩家轉回前台時吃到
+`http://localhost:3000` fallback。入帳不受影響：入帳走 ReturnURL
+的 server-to-server callback，網址用 host header 組的。
+
+處置：補上 Production 變數 → 重佈署生效 → 對正式站打探針驗證
+Location 已是 www.ggb.com.tw。順手確認 news 表無 localhost 圖片殘留
+（news-agent 的圖片 fallback 也吃這顆變數）。return route 補上
+變數依賴的註解。
+
+教訓：環境變數要 Preview／Production 成對檢查，設了一邊不算設好。
+
+---
+
 ## v2026.08.08d｜2026-08-08｜邀請體系 2.0：LINE 綁定計獎、300 綁定禮、每 5 位循環獎
 
 ### 規則（老闆拍板，migration 505/506，STG+PROD 已跑）
