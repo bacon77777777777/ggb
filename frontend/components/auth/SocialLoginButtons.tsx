@@ -95,9 +95,9 @@ export function SocialLoginButtons() {
       if (!error) {
         // 從邀請連結（?invite=）進來的，登入完自動幫他填。
         // 失敗不擋流程 —— 老帳號或已填過會被後端規則擋，屬正常
-        const pending = sessionStorage.getItem('pending_invite');
+        const pending = localStorage.getItem('pending_invite');
         if (pending) {
-          sessionStorage.removeItem('pending_invite');
+          localStorage.removeItem('pending_invite');
           void fetch('/api/user/claim-invite', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
