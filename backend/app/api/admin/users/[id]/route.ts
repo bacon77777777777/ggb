@@ -106,7 +106,25 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ user, orders, draws, recharges })
+    // 邀請人：誰邀他來的（referrals 一人一列，referee 唯一）
+    let referrer: { id: string; name: string; invite_code: string | null } | null = null
+    {
+      const { data: ref } = await supabaseAdmin
+        .from('referrals')
+        .select('referrer_id, qualified_at')
+        .eq('referee_id', id)
+        .maybeSingle()
+      if (ref?.referrer_id) {
+        const { data: r } = await supabaseAdmin
+          .from('users')
+          .select('id, name, invite_code')
+          .eq('id', ref.referrer_id)
+          .maybeSingle()
+        if (r) referrer = { id: r.id, name: r.name, invite_code: r.invite_code }
+      }
+    }
+
+    return NextResponse.json({ user, orders, draws, recharges, referrer })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })
   }

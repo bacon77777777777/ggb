@@ -35,6 +35,12 @@ interface User {
   isSuspicious?: boolean
   suspiciousReason?: string | null
   frozenReason?: string | null
+  gender?: string | null
+  birthday?: string | null
+  lineBound?: boolean
+  points?: number
+  totalReferrals?: number
+  referrer?: { id: string; name: string; inviteCode: string | null } | null
 }
 
 interface OrderItem {
@@ -294,7 +300,7 @@ export default function UserDetailPage() {
           setLoading(false)
           return
         }
-        const payload = (await res.json()) as { user: any; orders: any[]; draws: any[]; recharges: any[] }
+        const payload = (await res.json()) as { user: any; orders: any[]; draws: any[]; recharges: any[]; referrer?: { id: string; name: string; invite_code: string | null } | null }
         const userData = payload.user
         const ordersData = payload.orders
         const drawsData = payload.draws
@@ -320,6 +326,14 @@ export default function UserDetailPage() {
           isSuspicious:   userData.is_suspicious ?? false,
           suspiciousReason: userData.suspicious_reason ?? null,
           frozenReason:   userData.frozen_reason ?? null,
+          gender:         userData.gender ?? null,
+          birthday:       userData.birthday ?? null,
+          lineBound:      Boolean(userData.line_user_id),
+          points:         typeof userData.points === 'number' ? userData.points : 0,
+          totalReferrals: typeof userData.total_referrals === 'number' ? userData.total_referrals : 0,
+          referrer:       payload.referrer
+            ? { id: payload.referrer.id, name: payload.referrer.name, inviteCode: payload.referrer.invite_code }
+            : null,
         }
         setUser(mappedUser)
         setUserStatus(mappedUser.status)
@@ -858,10 +872,53 @@ export default function UserDetailPage() {
                   </div>
                   
                   <div>
+                    <p className="text-sm text-neutral-500 mb-1">性別</p>
+                    <p className="font-medium text-neutral-900">
+                      {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : user.gender === 'other' ? '其他' : '-'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-neutral-500 mb-1">生日</p>
+                    <p className="font-medium text-neutral-900">{user.birthday || '-'}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-neutral-500 mb-1">LINE 綁定</p>
+                    <p className={`font-medium ${user.lineBound ? 'text-[#06C755]' : 'text-neutral-400'}`}>
+                      {user.lineBound ? '已綁定' : '未綁定'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-neutral-500 mb-1">積分餘額(P)</p>
+                    <p className="font-medium text-neutral-900 font-mono">{(user.points ?? 0).toLocaleString()}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-neutral-500 mb-1">邀請人</p>
+                    {user.referrer ? (
+                      <Link
+                        href={`/users/${user.referrer.id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {user.referrer.name}（{user.referrer.inviteCode || '-'}）
+                      </Link>
+                    ) : (
+                      <p className="font-medium text-neutral-900">-</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-neutral-500 mb-1">成功邀請數</p>
+                    <p className="font-medium text-neutral-900 font-mono">{(user.totalReferrals ?? 0).toLocaleString()}</p>
+                  </div>
+
+                  <div>
                     <p className="text-sm text-neutral-500 mb-1">註冊時間</p>
                     <p className="font-medium text-neutral-900">{user.registerDate}</p>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-neutral-500 mb-1">最後登入</p>
                     <p className="font-medium text-neutral-900">{user.lastLoginDate}</p>
@@ -954,7 +1011,7 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <h2 className="text-lg font-bold text-neutral-900 mb-6">統計數據</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-5 bg-gradient-to-br from-primary to-blue-100/50 rounded-lg border border-blue-200/50 hover:shadow-md transition-shadow">
+                <div className="text-center p-5 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg border border-blue-200/50 hover:shadow-md transition-shadow">
                   <p className="text-sm text-neutral-600 mb-2 font-medium">代幣餘額<span className="text-neutral-500">(G)</span></p>
                   <p className="text-2xl font-bold text-neutral-900 font-mono">{user.tokens.toLocaleString()}</p>
                 </div>
