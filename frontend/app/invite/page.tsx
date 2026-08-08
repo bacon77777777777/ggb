@@ -37,7 +37,7 @@ const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
  * QR 下方紅旗緞帶：x 212~595、y 1070~1139 → 中心 (50%, 92.04%)。
  * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載版只有字不含圖標（老闆指定）。
  */
-const RIBBON_CENTER_Y = 0.9204;
+const RIBBON_CENTER_Y = 0.924; // 老闆微調：文字與複製圖標往下一點
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
@@ -356,13 +356,13 @@ export default function InvitePage() {
         {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
             底圖只有卡片上緣（含 REWARD 底紋），下面接白底自然延伸 */}
         <div className="mb-14 mt-2 w-full bg-white">
+          {/* 「成就」標題已畫在底圖上（新版 bg.png），內容從標題下方開始
+              —— pt 用寬度百分比對齊圖上標題的下緣（62/750） */}
           <div
-            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-6"
+            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-[10%]"
             style={{ backgroundImage: 'url(/images/invite/card_reward.png)', backgroundSize: '100% auto' }}
           >
-            <h2 className="px-1 text-[22px] font-black leading-none text-neutral-900">成就</h2>
-
-            <div className="mt-3">
+            <div>
               {missions.length === 0 && (
                 <div className="space-y-4 px-1 py-3">
                   {[1, 2, 3, 4].map(i => (
