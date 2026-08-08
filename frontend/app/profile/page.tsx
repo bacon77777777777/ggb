@@ -6700,6 +6700,14 @@ function ProfileContent() {
                   color: 'text-pink-500',
                   onClick: () => handleTabChange('coupons'),
                 },
+                {
+                  // 邀請好友是獨立頁面不是 tab（老闆指定放優惠券下方）
+                  id: 'invite',
+                  label: '邀請好友',
+                  icon: UserPlus,
+                  color: 'text-violet-500',
+                  onClick: () => router.push('/invite'),
+                },
               ].map((item) => (
                 <button
                   key={item.id}
