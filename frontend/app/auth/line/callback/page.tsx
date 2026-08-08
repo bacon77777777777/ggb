@@ -164,7 +164,7 @@ function LineCallbackInner() {
           </div>
 
           <h1 className="mt-4 text-2xl font-black text-neutral-900 dark:text-neutral-50">
-            {isBind ? 'LINE 授權完成' : '登入完成'}
+            {isBind ? 'LINE 綁定成功' : '登入完成'}
           </h1>
 
           <div className="mt-5 rounded-full bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
