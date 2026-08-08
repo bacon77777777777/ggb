@@ -225,7 +225,7 @@ export default function InvitePage() {
   const filled = status ? (claimable > 0 ? step : status.cycleProgress) : 0;
 
   return (
-    <div className="min-h-screen" style={{ background: '#401a03' }}>
+    <div className="min-h-screen bg-white">
       {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
           桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
       <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-t-3xl">
@@ -266,35 +266,35 @@ export default function InvitePage() {
         )}
       </div>
 
-      {/* 循環獎專區 —— 活動頁設計語言，背景 #401a03 銜接 hero 底緣
-         （實測 #3f1a03，肉眼同色）。只推一件事：每 5 位免費抽 */}
-      <div className="w-full md:mx-auto md:max-w-md md:rounded-b-3xl" style={{ background: '#401a03' }}>
-        <div className="px-5 pb-16 pt-12">
+      {/* 循環獎專區 —— 白底（老闆指定，hero 底緣就是漸白）、
+          活動頁設計語言的淺色版，主題色亮黃金。只推一件事：每 5 位免費抽 */}
+      <div className="w-full bg-white md:mx-auto md:max-w-md">
+        <div className="px-5 pb-16 pt-10">
           <h2
             className="text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
-            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: '1.2px #e8b84a' }}
+            style={{ background: AMBER_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: '1.2px #d99a00' }}
           >
             每邀 5 位好友
             <br />
             免費抽一次
           </h2>
-          <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: ACCENT }}>
+          <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: '#c77f00' }}>
             好友用 LINE 加入就算成功，每滿 5 位領 100 積分，次數無上限
           </p>
 
-          {/* 進度卡 */}
+          {/* 進度卡 —— 淺色暖底 */}
           <div
             className="mt-8 rounded-2xl border p-5"
-            style={{ borderColor: LP_BORDER, background: LP_CARD }}
+            style={{ borderColor: '#f3dfae', background: '#fffbea' }}
           >
             <div className="flex items-baseline justify-between">
-              <span className="text-[13px] font-bold text-white/60">邀請進度</span>
+              <span className="text-[13px] font-bold text-neutral-500">邀請進度</span>
               {status ? (
-                <span className="text-[13px] font-black text-white">
-                  累計 <span style={{ color: ACCENT }}>{status.qualified}</span> 位
+                <span className="text-[13px] font-black text-neutral-800">
+                  累計 <span style={{ color: '#c77f00' }}>{status.qualified}</span> 位
                 </span>
               ) : (
-                <span className="h-3.5 w-16 animate-pulse rounded bg-white/10" />
+                <span className="h-3.5 w-16 animate-pulse rounded bg-neutral-200" />
               )}
             </div>
 
@@ -306,13 +306,13 @@ export default function InvitePage() {
                   className="h-3 flex-1 rounded-full transition-colors"
                   style={{
                     background: i < filled
-                      ? 'linear-gradient(180deg,#fff3b0,#ffd24a 55%,#e8a820)'
-                      : 'rgba(0,0,0,0.35)',
+                      ? 'linear-gradient(180deg,#ffe27a,#ffc93c 55%,#e8a820)'
+                      : '#efe7d2',
                   }}
                 />
               ))}
             </div>
-            <p className="mt-2 text-right text-[11px] font-bold text-white/40">
+            <p className="mt-2 text-right text-[11px] font-bold text-neutral-400">
               {status
                 ? claimable > 0
                   ? '達標了，快領取'
@@ -326,8 +326,8 @@ export default function InvitePage() {
               disabled={claiming || claimable <= 0}
               className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:active:scale-100"
               style={claimable > 0
-                ? { background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,210,74,0.35)' }
-                : { background: 'rgba(0,0,0,0.35)', color: 'rgba(255,255,255,0.35)' }}
+                ? { background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,201,60,0.45)' }
+                : { background: '#f0ece0', color: '#b6ad98' }}
             >
               {claiming
                 ? <Loader2 className="h-5 w-5 animate-spin" />
@@ -335,10 +335,10 @@ export default function InvitePage() {
             </button>
           </div>
 
-          <p className="mt-6 text-center text-[12px] font-bold leading-relaxed text-white/55">
+          <p className="mt-6 text-center text-[12px] font-bold leading-relaxed text-neutral-500">
             新朋友用你的碼加入並綁定 LINE，馬上送他 300 積分
           </p>
-          <p className="mt-1.5 text-center text-[11px] font-semibold leading-relaxed text-white/30">
+          <p className="mt-1.5 text-center text-[11px] font-semibold leading-relaxed text-neutral-400">
             好友也可以之後在會員中心填寫邀請碼
           </p>
         </div>
@@ -347,8 +347,9 @@ export default function InvitePage() {
   );
 }
 
-/** 活動頁（LpRenderer）同款金黃漸層；卡片配色按其公式以 #401a03 為底、亮黃為主題色推導 */
+/**
+ * 活動頁（LpRenderer）同款金黃漸層（按鈕用）；
+ * 標題在白底上要更深的琥珀漸層才撐得住對比（淺金會糊掉）
+ */
 const GOLD_GRAD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)';
-const ACCENT = '#ffe14d';
-const LP_BORDER = 'rgb(112,62,37)';
-const LP_CARD = 'linear-gradient(180deg,rgb(82,43,14),rgb(72,34,8))';
+const AMBER_GRAD = 'linear-gradient(180deg,#ffc93c,#f0a500 55%,#c77f00)';
