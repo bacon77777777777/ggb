@@ -7,16 +7,11 @@
  *
  * 作法：不裁切，保留原圖。
  *
- * 角落由 dengekiWm 的四角模板比對決定，但那個比對實測只有 82% 準
- *（22 張電ホビ 實圖，見 dengekiWm.ts 的註解）。挑錯角的後果最糟：
- * GGB logo 蓋在空白處，站方的浮水印照樣露在另一角。
- *
- * 所以分兩層處理 ——
- *   **分數前兩名的角落都先模糊掉**：實測 22 張裡，真正的浮水印
- *     100% 落在前兩名之內（兩張挑錯的，正確答案都排第 2）。
- *     模糊過的浮水印已經認不出來，漏網的風險就沒了。
- *   **只有第一名壓 GGB logo**：兩顆 logo 太醜，而且模糊本身就夠了。
- *     第一名那格的模糊會被白墊完全蓋住，畫面上只看得到一處模糊。
+ * 角落由 dengekiWm 的四角模板比對決定（900px 高解析版，30 張實測 97%）。
+ * 曾經有「分數前兩名的角落先模糊再蓋」的雙保險，老闆看了嫌模糊一塊醜，
+ * 已拿掉 —— 改走「把挑角準確率拉高」路線。殘餘風險：極少數挑錯角時
+ * logo 會蓋在空白處、原浮水印露出（實測 30 張出現 1 張，且那張連
+ * 人工標記都判不一致）。
  *
  * 全程本地運算（sharp），不呼叫付費服務。
  */
@@ -49,44 +44,10 @@ function wmPlatePath(w: number, h: number, corner: WmCorner): string {
   }
 }
 
-/**
- * 把某個角落糊掉。
- *
- * 裁下那一塊、重壓模糊、再用同一個圓角形狀貼回去 —— 圓角是為了讓它看起來
- * 像刻意的設計，而不是一塊壞掉的方形。模糊半徑跟區塊大小成比例，
- * 小圖才不會糊過頭、大圖才不會糊不掉。
- */
-async function blurCorner(
-  base: sharp.Sharp, W: number, H: number, corner: WmCorner, w: number, h: number,
-): Promise<{ input: Buffer; top: number; left: number } | null> {
-  try {
-    const left = corner.endsWith('left') ? 0 : W - w
-    const top = corner.startsWith('top') ? 0 : H - h
-    const patch = await base.clone()
-      .extract({ left, top, width: w, height: h })
-      .blur(Math.max(6, Math.round(Math.min(w, h) / 5)))
-      .png().toBuffer()
-    const mask = Buffer.from(
-      `<svg width="${w}" height="${h}"><path d="${wmPlatePath(w, h, corner)}" fill="white"/></svg>`
-    )
-    const rounded = await sharp(patch)
-      .composite([{ input: mask, blend: 'dest-in' }])
-      .png().toBuffer()
-    return { input: rounded, top, left }
-  } catch { return null }
-}
-
-/**
- * 蓋掉站方浮水印。
- *
- * corner        壓 GGB logo 的那一角（比對分數第一名）
- * blurCorners   要一起糊掉的角落（通常是前兩名）。挑錯角時的保險，
- *               實測正確答案 100% 落在前兩名內
- */
+/** 蓋掉站方浮水印：在指定角落壓白色圓角墊 + GGB logo，保留原圖 */
 export async function brandCoverImage(
   buf: Buffer,
   corner: WmCorner,
-  blurCorners: WmCorner[] = [],
 ): Promise<Buffer | null> {
   try {
     const logo = await getLogoBuffer()
@@ -102,19 +63,12 @@ export async function brandCoverImage(
     const left = corner.endsWith('left') ? 0 : W - plateW
     const top = corner.startsWith('top') ? 0 : H - plateH
 
-    const base = sharp(buf)
-    // 模糊要先貼、logo 後貼，第一名那格的模糊才會被白墊蓋掉
-    const blurs = (await Promise.all(
-      [...new Set([corner, ...blurCorners])].map(c => blurCorner(base, W, H, c, plateW, plateH)),
-    )).filter((x): x is { input: Buffer; top: number; left: number } => x !== null)
-
     const plate = Buffer.from(
       `<svg width="${plateW}" height="${plateH}"><path d="${wmPlatePath(plateW, plateH, corner)}" fill="white" fill-opacity="0.97"/></svg>`
     )
     const logoResized = await sharp(logo).resize(logoW, logoH).png().toBuffer()
     return await sharp(buf)
       .composite([
-        ...blurs,
         { input: plate, top, left },
         { input: logoResized, top: top + pad, left: left + pad },
       ])

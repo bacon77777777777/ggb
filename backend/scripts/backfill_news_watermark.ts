@@ -82,8 +82,7 @@ async function main() {
       log(`  ${wm.corner} ${wm.score.toFixed(3)}${forced && !wm.found ? ' (強制)' : ''}  id=${r.id}`)
       if (dryRun) continue
 
-      // 跟 news-agent 同一套：前兩名的角落都糊掉，只有第一名壓 logo
-      const branded = await brandCoverImage(buf, wm.corner, wm.ranked.slice(0, 2).map(([c]) => c))
+      const branded = await brandCoverImage(buf, wm.corner)
       if (!branded) { failed++; continue }
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
       const url = await r2Upload(key, branded, 'image/jpeg')

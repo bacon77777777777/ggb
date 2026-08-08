@@ -69,6 +69,16 @@ function maxNcc(region: Float32Array, rw: number, rh: number, tpl: Float32Array,
   return best
 }
 
+/** 分析用的縮圖寬度。600 → 900 是 2026-08-08 用 30 張標準答案實測的結果：
+ * 600px 時 28/30（93%），900px 時 29/30（97%）—— 半透明浮水印的細邊緣
+ * 在 600px 會被壓糊。再往上（1200px）NCC 成本平方成長，不划算。
+ * 剩下那一張錯的（BL/BR 之爭）連兩輪人工標記都判不一致，屬本質模糊。
+ * 也試過「低信心退回最常見角」：反而從 97% 掉到 90% —— 難例的真相
+ * 多是右下，退回左上是反著猜，棄用。 */
+const ANALYSIS_WIDTH = 900
+/** 模板基準是「600 寬圖上的 74×20」，分析解析度放大時模板要等比跟上 */
+const TPL_RES_SCALE = ANALYSIS_WIDTH / 600
+
 /*
  * 門檻只是參考，**不能拿來判斷「這張圖有沒有浮水印」**。
  *
@@ -154,7 +164,7 @@ export async function detectWatermark(buf: Buffer): Promise<{ corner: WmCorner; 
 
     // 每個角落取「各尺度中的最高分」
     const tplAtScale = await Promise.all(TPL_SCALES.map(async sc => {
-      const tw = Math.round(tpl.w * sc), th = Math.round(tpl.h * sc)
+      const tw = Math.round(tpl.w * sc * TPL_RES_SCALE), th = Math.round(tpl.h * sc * TPL_RES_SCALE)
       if (tw < 12 || th < 6 || tw > regionW || th > regionH) return null
       const raw = await sharp(Buffer.from(WM_TEMPLATE_B64, 'base64'))
         .greyscale().resize(tw, th).raw().toBuffer()
