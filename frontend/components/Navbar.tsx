@@ -314,7 +314,6 @@ function NavbarInner() {
     if (pathname === '/topup') return '儲值代幣';
     if (pathname === '/challenge') return '挑戰';
     if (pathname === '/faq') return '常見問題';
-    if (pathname === '/invite') return '邀請好友';
     if (pathname === '/about') return '關於我們';
     if (pathname === '/terms') return '會員條款';
     if (pathname === '/privacy') return '隱私權政策';
@@ -527,6 +526,8 @@ function NavbarInner() {
   if (pathname.startsWith('/events/')) return null;
   // 機台內頁改用頁內浮動導航（返回 + 音效），隱藏全域 Navbar
   if (/^\/challenge\/[^/]+$/.test(pathname)) return null;
+  // 邀請頁用文章內頁式浮動導航（返回＋分享蓋在 hero 上），隱藏全域 Navbar
+  if (pathname === '/invite') return null;
 
   const handleBack = () => {
     // 1. Handle special paths
@@ -710,24 +711,6 @@ function NavbarInner() {
         center={null}
         right={
           <>
-            {pathname === '/invite' && (
-              <div className="flex items-center gap-4 mr-1 md:hidden">
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('ggb:invite-share'))}
-                  className="text-[15px] font-bold text-neutral-900 dark:text-white active:opacity-60"
-                >
-                  分享
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('ggb:invite-download'))}
-                  className="text-[15px] font-bold text-neutral-900 dark:text-white active:opacity-60"
-                >
-                  下載
-                </button>
-              </div>
-            )}
             {pathname === '/topup' && user && (
               <div className="flex items-center gap-1 mr-1">
                 <div className="w-5 h-5 relative">

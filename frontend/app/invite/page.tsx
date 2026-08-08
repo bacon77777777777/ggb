@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { Copy, Loader2 } from 'lucide-react';
+import { ChevronLeft, Copy, Loader2, Share2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
@@ -37,7 +37,7 @@ const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
  * QR 下方紅旗緞帶：x 212~595、y 1070~1139 → 中心 (50%, 92.04%)。
  * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載版只有字不含圖標（老闆指定）。
  */
-const RIBBON_CENTER_Y = 0.924; // 老闆微調：文字與複製圖標往下一點
+const RIBBON_CENTER_Y = 0.929; // 老闆指定 92.9
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
@@ -108,18 +108,6 @@ export default function InvitePage() {
       setClaimingMission(null);
     }
   };
-
-  useEffect(() => {
-    const onShare = () => { void copyMessage(); };
-    const onDownload = () => { void downloadHero(); };
-    window.addEventListener('ggb:invite-share', onShare);
-    window.addEventListener('ggb:invite-download', onDownload);
-    return () => {
-      window.removeEventListener('ggb:invite-share', onShare);
-      window.removeEventListener('ggb:invite-download', onDownload);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, qr]);
 
   useEffect(() => {
     if (!link) return;
@@ -256,8 +244,43 @@ export default function InvitePage() {
   // 有可領的獎勵時進度條打滿 —— 0/5 配上亮著的領取鈕會看不懂
   const filled = status ? (claimable > 0 ? step : status.cycleProgress) : 0;
 
+  /** 底欄「立即領取」：不做禁用態（老闆指定），沒得領就跳提示 */
+  const claimNow = () => {
+    if (!status) return;
+    if (claimable <= 0) {
+      showToast(`累積滿 ${step} 位好友才能領取，再邀 ${step - (status.cycleProgress || 0)} 位`, 'info');
+      return;
+    }
+    void claim();
+  };
+
+  const goBack = () => {
+    // 直接貼連結進來的沒有上一頁可回，退回會員中心
+    if (window.history.length > 1) router.back();
+    else router.push('/profile');
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-24">
+      {/* 頂部操作列 —— 文章內頁同款：浮動圓鈕蓋在 hero 上（老闆指定），
+          返回＋分享（分享＝複製邀請訊息） */}
+      <div className="fixed left-0 right-0 top-0 z-20 flex items-center justify-between pt-[env(safe-area-inset-top)] pointer-events-none">
+        <button
+          type="button"
+          onClick={goBack}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <ChevronLeft className="h-5 w-5 stroke-[2.5]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => void copyMessage()}
+          className="pointer-events-auto m-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
           桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
       <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-t-3xl">
@@ -340,17 +363,6 @@ export default function InvitePage() {
             )}
           </div>
 
-          {claimable > 0 && (
-            <button
-              type="button"
-              onClick={() => void claim()}
-              disabled={claiming}
-              className="mt-3.5 flex h-11 w-full items-center justify-center rounded-full text-[15px] font-black transition-transform active:scale-[0.97]"
-              style={{ background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 6px 20px rgba(255,210,74,0.45)' }}
-            >
-              {claiming ? <Loader2 className="h-5 w-5 animate-spin" /> : `領取 ${claimable} 積分`}
-            </button>
-          )}
         </div>
 
         {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
@@ -429,12 +441,30 @@ export default function InvitePage() {
           </div>
         </div>
       </div>
+
+      {/* 底部操作欄 —— 一番賞內頁同款：毛玻璃白底固定底欄，兩顆按鈕。
+          立即領取不做禁用態（老闆指定），沒得領按了跳提示 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div className="mx-auto flex h-16 max-w-md items-center gap-2.5 px-4">
+          <button
+            type="button"
+            onClick={() => void downloadHero()}
+            className="h-[44px] flex-1 rounded-xl bg-neutral-100 text-[15px] font-black text-neutral-700 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200"
+          >
+            下載邀請圖
+          </button>
+          <button
+            type="button"
+            onClick={claimNow}
+            className="flex h-[44px] flex-1 items-center justify-center rounded-xl bg-primary text-[15px] font-black text-white transition-all active:scale-[0.98]"
+          >
+            {claiming ? <Loader2 className="h-5 w-5 animate-spin" /> : '立即領取'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
-
-/** 活動頁（LpRenderer）lpv-cta-btn 同款金黃漸層（循環獎領取鈕） */
-const GOLD_GRAD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)';
 
 /** 成就圖標（從老闆設計稿裁下）：以目標人數對應 */
 const ACH_ICONS: Record<number, string> = {
