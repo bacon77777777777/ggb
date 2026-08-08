@@ -239,6 +239,55 @@ const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
 
+/**
+ * 蓋 logo 前的視覺複核（老闆的規則：不確定就不發，發出去的一律蓋對）
+ *
+ * 本地模板比對挑角是 97%（30 張實測），剩下的 3% 是「自信地挑錯」——
+ * 分數看不出來。所以讓 Claude 視覺獨立看一次四個角：兩邊一致才蓋，
+ * 不一致就回 null，呼叫端把整篇文章跳過。兩個獨立方法同時錯在
+ * 同一個角的機率遠低於各自的錯誤率，一致 ≈ 百分之百安全。
+ * 成本：每張浮水印圖一次 Haiku 視覺呼叫，零頭。
+ */
+async function verifyCornerWithVision(buf: Buffer): Promise<WmCorner | null> {
+  try {
+    const meta = await sharp(buf).metadata()
+    const W = meta.width ?? 0, H = meta.height ?? 0
+    if (!W || !H) return null
+    const cw = Math.round(W * 0.3), ch = Math.round(H * 0.18)
+    const spots: [WmCorner, number, number][] = [
+      ['top-left', 0, 0], ['top-right', W - cw, 0],
+      ['bottom-left', 0, H - ch], ['bottom-right', W - cw, H - ch],
+    ]
+    const crops: { c: WmCorner; b64: string }[] = []
+    for (const [c, l, t] of spots) {
+      const b = await sharp(buf).extract({ left: l, top: t, width: cw, height: ch })
+        .resize(500, null).png().toBuffer()
+      crops.push({ c, b64: b.toString('base64') })
+    }
+    // 走 createClaude 才會被記進 AI 用量統計
+    const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
+    const res = await claude.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 30,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: '這是同一張圖的四個角落，依序是 TL、TR、BL、BR。其中一個角落印有半透明的「DENGEKI HOBBY WEB 電ホビ」浮水印（對比可能很低）。浮水印在哪個角落？只回 TL / TR / BL / BR / NONE 其中一個字。' },
+          ...crops.flatMap((cr, i) => [
+            { type: 'text' as const, text: `第${i + 1}張（${cr.c === 'top-left' ? 'TL' : cr.c === 'top-right' ? 'TR' : cr.c === 'bottom-left' ? 'BL' : 'BR'}）：` },
+            { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: cr.b64 } },
+          ]),
+        ],
+      }],
+    })
+    const ans = (res.content[0] as { text?: string }).text?.trim().toUpperCase().match(/TL|TR|BL|BR/)?.[0]
+    const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
+    return ans ? map[ans] : null
+  } catch {
+    return null  // 複核失敗視同不確定 —— 寧可不發
+  }
+}
+
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
 /**
  * 內文配圖：把來源文章的 2 張圖插進生成內容的段落之間
@@ -347,13 +396,13 @@ async function downloadSmartToR2(
     }
 
     const wm = await detectWatermark(buf)
+    // 雙重驗證：兩個獨立方法一致才蓋，不一致 = 不確定 → 整篇不發（老闆規則）
+    const visionCorner = await verifyCornerWithVision(buf)
+    if (!visionCorner || visionCorner !== wm.corner) return null
     const corner = wm.corner
-    // 分數前兩名的角落都糊掉。挑角的正確率只有 82%，但實測 22 張裡
-    // 真正的浮水印 100% 落在前兩名之內 —— 糊掉就不會漏，logo 只蓋第一名
-    const blurCorners = wm.ranked.slice(0, 2).map(([c]) => c)
 
     {
-      const branded = await brandCoverImage(buf, corner, blurCorners)
+      const branded = await brandCoverImage(buf, corner)
       if (branded) {
         const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
         return await r2Upload(key, branded, 'image/jpeg')
@@ -741,7 +790,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -782,7 +831,13 @@ export async function POST(req: NextRequest) {
 
       // 玩具人圖片無浮水印，仍走偵測式轉存（偵測到才蓋 logo）
       const seenImages = new Set<string>()
-      const imageUrl = (await downloadSmartToR2(ogImage, false, realUrl, seenImages)) ?? ogImage
+      const hostedCover = await downloadSmartToR2(ogImage, false, realUrl, seenImages)
+      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發。
+      // 原本會退回原網址 hotlink，等於把帶浮水印的圖原樣端出去
+      if (!hostedCover && WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))) {
+        results.skipped++; results.skipReasons.wmUnsafe++; continue
+      }
+      const imageUrl = hostedCover ?? ogImage
       // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
       const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
       const finalCategory = (draft.category && draft.category !== 'toy')
@@ -860,8 +915,13 @@ export async function POST(req: NextRequest) {
       // 已知帶浮水印的來源即使未達門檻也照蓋
       // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
       const seenImages = new Set<string>()
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages))
-        ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
+      const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
+      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發（老闆規則：
+      // 只發百分之百確定蓋對 logo 的）
+      if (!hostedCover && isWatermarked) {
+        results.skipped++; results.skipReasons.wmUnsafe++; continue
+      }
+      const imageUrl = hostedCover ?? ogImage
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
@@ -955,8 +1015,13 @@ export async function POST(req: NextRequest) {
       // 已知帶浮水印的來源即使未達門檻也照蓋
       // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
       const seenImages = new Set<string>()
-      const imageUrl = (await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages))
-        ?? (isWatermarked ? DEFAULT_NEWS_IMAGE : ogImage)
+      const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
+      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發（老闆規則：
+      // 只發百分之百確定蓋對 logo 的）
+      if (!hostedCover && isWatermarked) {
+        results.skipped++; results.skipReasons.wmUnsafe++; continue
+      }
+      const imageUrl = hostedCover ?? ogImage
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')

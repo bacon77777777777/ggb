@@ -11,6 +11,7 @@ import { trackEvent } from '@/lib/trackEvent';
 import CategoryBadge from '@/components/news/CategoryBadge';
 import { timeAgo } from '@/lib/timeAgo';
 import { useRequireLogin } from '@/hooks/useRequireLogin';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 interface NewsItem {
   id: string;
@@ -214,18 +215,8 @@ export default function NewsPage() {
   };
 
   const tabKeys  = CATEGORIES.map(c => c.key);
-  const swipeX   = useRef<number | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => { swipeX.current = e.touches[0].clientX; };
-  const onTouchEnd   = (e: React.TouchEvent) => {
-    if (swipeX.current === null) return;
-    const dist = swipeX.current - e.changedTouches[0].clientX;
-    swipeX.current = null;
-    if (Math.abs(dist) < 50) return;
-    const cur = tabKeys.indexOf(activeTab);
-    if (dist > 0 && cur < tabKeys.length - 1) setActiveTab(tabKeys[cur + 1]);
-    if (dist < 0 && cur > 0) setActiveTab(tabKeys[cur - 1]);
-  };
+  // 換成全站共用的手勢（含邊緣讓位、水平捲動區讓位、斜滑防誤觸）
+  const swipeTabs = useSwipeTabs(tabKeys, activeTab, handleTabChange);
 
   // 依分類向 DB 取資料，不可先抓最新 N 篇再於前端過濾：
   // 冷門分類（卡牌/盒玩）的文章多半較舊，會整批落在 N 篇之外，
@@ -289,7 +280,7 @@ export default function NewsPage() {
         {isLoading ? <LoadingSkeleton /> : (
           <div>
             {carousel.length > 0 && <Carousel items={carousel} />}
-            <div className="px-4 min-h-[60vh]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <div className="px-4 min-h-[60vh]" {...swipeTabs}>
               {filtered.length === 0 ? (
                 <div className="py-16 text-center text-neutral-400 dark:text-neutral-500 text-sm font-bold">
                   此分類目前沒有文章

@@ -3,36 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Box, 
-  Truck, 
-  Trophy, 
-  Settings, 
-  LogOut, 
-  ChevronRight, 
-  ChevronLeft,
-  CheckCircle2, 
-  AlertCircle,
-  HelpCircle,
-  Info,
-  FileText,
-  Shield,
-  RefreshCcw,
-  RefreshCw,
-  Wallet,
-  Heart,
-  User,
-  ChevronDown,
-  X,
-  Loader2, // used in button inline states
-  CreditCard,
-  Copy,
-  Ticket,
-  Store,
-  History,
-  MessageCircle,
-  Star
-} from 'lucide-react';
+import { Box, Truck, Trophy, Settings, LogOut, ChevronRight, ChevronLeft, CheckCircle2, AlertCircle, HelpCircle, Info, FileText, Shield, RefreshCcw, RefreshCw, Wallet, Heart, User, ChevronDown, X, Loader2, CreditCard, Copy, Ticket, Store, History, MessageCircle, Star, UserPlus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
@@ -492,6 +463,8 @@ function ProfileContent() {
   ] as const;
 
   const [activeMarketTab, setActiveMarketTab] = useState<'listing' | 'sold_records'>('listing');
+  // 倉庫／配送的內容清單左右滑 = 切該區的頁籤（老闆指定：有頁籤就要能滑）
+  const swipeWarehouseTabs = useSwipeTabs(['all', 'dismantled'] as const, activeWarehouseTab, setActiveWarehouseTab);
   const [activeMarketCategory, setActiveMarketCategory] = useState<ProductCategoryId>('all');
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   
@@ -507,6 +480,11 @@ function ProfileContent() {
   const [activeFollowsTab, setActiveFollowsTab] = useState<'all' | 'selling' | 'soldout'>('all');
   // const [activeDrawTab, setActiveDrawTab] = useState<'all'>('all'); // unused
   const [activeDeliveryTab, setActiveDeliveryTab] = useState<'all' | 'submitted' | 'shipping' | 'completed' | 'cancelled'>('all');
+  const swipeDeliveryTabs = useSwipeTabs(
+    ['all', 'submitted', 'shipping', 'completed', 'cancelled'] as const,
+    activeDeliveryTab,
+    setActiveDeliveryTab,
+  );
   const [desktopDeliverySearch, setDesktopDeliverySearch] = useState('');
   const [desktopDeliveryPage, setDesktopDeliveryPage] = useState(1);
   const [desktopDeliveryPageSize, setDesktopDeliveryPageSize] = useState(10);
@@ -2415,6 +2393,7 @@ function ProfileContent() {
               {/* Content List */}
               <div
                 ref={mobileWarehouseScrollRef}
+                {...swipeWarehouseTabs}
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
@@ -4349,6 +4328,7 @@ function ProfileContent() {
               {/* Mobile List Style (Unified 3-Layer Structure) */}
               <div
                 ref={mobileDeliveryScrollRef}
+                {...swipeDeliveryTabs}
                 className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-0 pb-24 bg-neutral-50 dark:bg-neutral-950"
                 onScroll={(e) => {
                   const el = e.currentTarget;
@@ -6309,7 +6289,7 @@ function ProfileContent() {
                               inputMode="numeric"
                               placeholder={PHONE_PLACEHOLDER}
                               pattern="^09\d{8}$"
-                              className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
+                              className="border-0 border-b border-neutral-200 dark:border-neutral-700 rounded-none bg-transparent focus:outline-none focus:ring-0 focus:border-primary focus:bg-transparent h-12 text-base placeholder:text-neutral-400 w-full font-black text-neutral-900 dark:text-white"
                               value={phoneNumberInput}
                               onChange={(e) => setPhoneNumberInput(e.target.value)}
                               onBlur={(e) => setPhoneNumberInput(normalizePhone(e.target.value))}
@@ -6720,6 +6700,14 @@ function ProfileContent() {
                   color: 'text-pink-500',
                   onClick: () => handleTabChange('coupons'),
                 },
+                {
+                  // 邀請好友是獨立頁面不是 tab（老闆指定放優惠券下方）
+                  id: 'invite',
+                  label: '邀請好友',
+                  icon: UserPlus,
+                  color: 'text-violet-500',
+                  onClick: () => router.push('/invite'),
+                },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -6853,6 +6841,8 @@ function ProfileContent() {
                           <div
                             className="flex items-center gap-1.5 cursor-pointer group/invite"
                             onClick={() => {
+                              // 這顆只複製碼本身 —— 旁邊顯示的就是碼，
+                              // 複製整段訊息違反預期。要分享的走「邀請好友」頁
                               if (user.invite_code) {
                                 navigator.clipboard.writeText(user.invite_code);
                                 toast.success('邀請碼已複製');
@@ -6949,6 +6939,22 @@ function ProfileContent() {
                     <ChevronRight className={cn("ml-auto w-4 h-4 transition-transform hidden sm:block", activeTab === item.id ? "text-white/50" : "text-neutral-200 group-hover:text-neutral-400")} />
                   </button>
                 ))}
+                {/* 邀請好友：獨立頁面不是 tab，樣式跟上面同一家（老闆指定放優惠券下方） */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isGuest) {
+                      router.push(loginHref);
+                      return;
+                    }
+                    router.push('/invite');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                >
+                  <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
+                  <span className="truncate">邀請好友</span>
+                  <ChevronRight className="ml-auto w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
+                </button>
               </div>
             </div>
 
@@ -7583,6 +7589,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from  "react-datepicker";
 import { zhTW } from 'date-fns/locale/zh-TW';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 registerLocale('zh-TW', zhTW);
 

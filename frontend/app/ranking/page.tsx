@@ -20,6 +20,7 @@ import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { useSwipeTabs } from '@/lib/useSwipeTabs';
 
 interface RankingRpcItem {
   user_id: string;
@@ -41,7 +42,8 @@ export default function RankingPage() {
   }, []);
   const [scale, setScale] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily')
+  const swipeTabs = useSwipeTabs(['daily', 'weekly'] as const, activeTab, setActiveTab);
   const [activeCategory, setActiveCategory] = useState<'reward' | 'draws'>('reward');
   const [rankingData, setRankingData] = useState<RankingItemData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -282,7 +284,7 @@ export default function RankingPage() {
         <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
       </Link>
     </div>
-    <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center">
+    <div className="bg-[#232429] min-h-screen w-full overflow-x-hidden flex justify-center" {...swipeTabs}>
       <div 
         className="overflow-hidden"
         style={{
