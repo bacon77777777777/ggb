@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     const result = await bindLineToUser(serviceClient(), user.id, line)
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 409 })
-    return NextResponse.json({ bound: true })
+    return NextResponse.json({ bound: true, bonus: result.bonus ?? 0 })
   } catch {
     return NextResponse.json({ error: '綁定失敗，請重試一次' }, { status: 500 })
   }

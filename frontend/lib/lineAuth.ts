@@ -87,7 +87,7 @@ export async function bindLineToUser(
   admin: SupabaseClient,
   userId: string,
   line: LineProfile,
-): Promise<{ ok: true; already?: boolean } | { ok: false; error: string }> {
+): Promise<{ ok: true; already?: boolean; bonus?: number } | { ok: false; error: string }> {
   const { data: me } = await admin
     .from('users').select('id, line_user_id').eq('id', userId).maybeSingle()
   if (!me) return { ok: false, error: '找不到你的帳號資料' }
@@ -125,5 +125,14 @@ export async function bindLineToUser(
     .update({ line_user_id: line.sub })
     .eq('id', userId)
   if (error) return { ok: false, error: '綁定失敗，請重試一次' }
-  return { ok: true }
+
+  // 綁定禮／邀請計入（migration 505/506）：一顆 LINE 一生一次，帳本兜底。
+  // 失敗不擋綁定結果；bonus 帶回去給前端 toast 用
+  let bonus = 0
+  try {
+    const { data } = await admin.rpc('apply_line_perks', { p_user_id: userId, p_line_sub: line.sub })
+    bonus = Number((data as { bonus?: number } | null)?.bonus ?? 0)
+  } catch { /* 回條信會補上，前端少個 toast 而已 */ }
+
+  return { ok: true, bonus }
 }

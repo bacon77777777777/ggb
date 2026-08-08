@@ -14,12 +14,13 @@ import { serviceClient } from '@/lib/lineAuth'
  * 防呆規則：
  * - 一個帳號只能填一次（referrals.referee_id 唯一索引兜底）
  * - 不能填自己的
- * - 註冊後 7 天內才能填 —— 防止老帳號被收編進互填集團刷任務獎勵；
- *   新玩家真的想填不會拖過 7 天
  * - 邀請人不能是機器人帳號
+ * - 不限時間（原 7 天窗口老闆 2026-08-08 拆掉）
+ *
+ * 計獎時點（邀請體系 2.0，migration 505）：填碼只建 referrals 列，
+ * **綁定 LINE 那一刻才生效**（apply_line_perks 統一發放）。
+ * 這裡若發現已經綁了 LINE（先綁後填的順序），當場補跑生效。
  */
-
-const CLAIM_WINDOW_DAYS = 7
 
 async function getContext() {
   const supabase = await createSessionClient()
@@ -28,30 +29,29 @@ async function getContext() {
 
   const admin = serviceClient()
   const { data: me } = await admin
-    .from('users').select('id, created_at, invite_code').eq('id', user.id).maybeSingle()
+    .from('users').select('id, invite_code, line_user_id').eq('id', user.id).maybeSingle()
   if (!me) return null
 
   const { data: referral } = await admin
     .from('referrals').select('id').eq('referee_id', user.id).maybeSingle()
 
-  const ageDays = (Date.now() - new Date(me.created_at).getTime()) / 86_400_000
-  return { admin, me, claimed: Boolean(referral), eligible: ageDays <= CLAIM_WINDOW_DAYS }
+  return { admin, me, claimed: Boolean(referral) }
 }
 
 export async function GET() {
   const ctx = await getContext()
   if (!ctx) return NextResponse.json({ error: '請先登入' }, { status: 401 })
-  return NextResponse.json({ claimed: ctx.claimed, eligible: ctx.eligible })
+  // eligible 恆為 true，留著是為了不炸還在跑舊版快取的 client
+  return NextResponse.json({ claimed: ctx.claimed, eligible: true })
 }
 
 export async function POST(request: Request) {
   try {
     const ctx = await getContext()
     if (!ctx) return NextResponse.json({ error: '請先登入' }, { status: 401 })
-    const { admin, me, claimed, eligible } = ctx
+    const { admin, me, claimed } = ctx
 
     if (claimed) return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
-    if (!eligible) return NextResponse.json({ error: `註冊超過 ${CLAIM_WINDOW_DAYS} 天，無法填寫邀請碼` }, { status: 409 })
 
     const { code } = await request.json()
     const normalized = String(code ?? '').trim().toUpperCase()
@@ -74,8 +74,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
     }
 
-    // 計入邀請人的任務進度。既有 RPC 冪等（is_mission_credited 旗標），失敗不擋流程
-    await admin.rpc('complete_registration_referral', { p_user_id: me.id }).then(undefined, () => {})
+    // 已綁 LINE 的（先綁後填）：當場生效計入邀請人。
+    // 還沒綁的：referrals 先掛著，等他綁 LINE 那一刻由 apply_line_perks 生效
+    if (me.line_user_id) {
+      await admin.rpc('apply_line_perks', { p_user_id: me.id, p_line_sub: me.line_user_id })
+        .then(undefined, () => {})
+    }
 
     return NextResponse.json({ claimed: true })
   } catch {

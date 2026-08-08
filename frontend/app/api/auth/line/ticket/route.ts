@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         picture: data.line_picture,
       })
       if (!result.ok) return NextResponse.json({ found: true, error: result.error })
-      return NextResponse.json({ found: true, bound: true })
+      return NextResponse.json({ found: true, bound: true, bonus: result.bonus ?? 0 })
     }
 
     if (!data.token_hash) return NextResponse.json({ found: false })

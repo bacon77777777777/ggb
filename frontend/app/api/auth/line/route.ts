@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     let email = existing?.email as string | null | undefined
+    let userId = existing?.id as string | null | undefined
 
     if (!existing) {
       // auth.users 一寫入，DB 的 handle_new_user trigger 就會自動建
@@ -103,14 +104,23 @@ export async function POST(request: Request) {
           .from('users').select('id, email').eq('line_user_id', line.sub).maybeSingle()
         if (!retry) return NextResponse.json({ error: '建立帳號失敗，請重試一次' }, { status: 500 })
         email = retry.email
+        userId = retry.id
       } else {
         await admin.from('users')
           .update({ line_user_id: line.sub, avatar_url: line.picture })
           .eq('id', created.user.id)
+        userId = created.user.id
       }
     }
 
     if (!email) return NextResponse.json({ error: '帳號資料異常，請聯絡客服' }, { status: 500 })
+
+    // 綁定禮／邀請計入（migration 505）：冪等，帳本唯一索引擋重複。
+    // 失敗不擋登入 —— 積分晚點補得回來，登入卡住是事故
+    if (userId) {
+      await admin.rpc('apply_line_perks', { p_user_id: userId, p_line_sub: line.sub })
+        .then(undefined, () => {})
+    }
 
     // ── 換出 Supabase 的一次性 token ──
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
