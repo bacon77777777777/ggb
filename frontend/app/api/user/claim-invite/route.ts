@@ -16,11 +16,14 @@ import { serviceClient } from '@/lib/lineAuth'
  * - 不能填自己的
  * - 邀請人不能是機器人帳號
  * - 不限時間（原 7 天窗口老闆 2026-08-08 拆掉）
+ * - 同 IP 每日填碼上限（防洗第二道保險；主鎖是 LINE 帳本）
  *
  * 計獎時點（邀請體系 2.0，migration 505）：填碼只建 referrals 列，
  * **綁定 LINE 那一刻才生效**（apply_line_perks 統一發放）。
  * 這裡若發現已經綁了 LINE（先綁後填的順序），當場補跑生效。
  */
+
+const IP_DAILY_LIMIT = 5
 
 async function getContext() {
   const supabase = await createSessionClient()
@@ -66,10 +69,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '找不到這個邀請碼' }, { status: 404 })
     }
 
+    // 同 IP 每日填碼上限：機房批量開號的便宜保險
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
+    if (ip) {
+      const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0)
+      const { count } = await admin
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('claim_ip', ip)
+        .gte('created_at', dayStart.toISOString())
+      if ((count ?? 0) >= IP_DAILY_LIMIT) {
+        return NextResponse.json({ error: '今天填寫次數太多了，請明天再試' }, { status: 429 })
+      }
+    }
+
     // referee_id 唯一索引擋重複：同時送兩次只會成功一筆
     const { error: insErr } = await admin
       .from('referrals')
-      .insert({ referrer_id: referrer.id, referee_id: me.id })
+      .insert({ referrer_id: referrer.id, referee_id: me.id, claim_ip: ip })
     if (insErr) {
       return NextResponse.json({ error: '已經填過邀請碼了' }, { status: 409 })
     }

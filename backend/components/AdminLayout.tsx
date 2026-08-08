@@ -738,6 +738,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         title: '會員管理',
         items: [
           { name: '會員管理', path: '/users', icon: IconUsers },
+          { name: '邀請報表', path: '/referrals', icon: IconReports },
           { name: '待複核儲值', path: '/recharge-review', icon: IconRecharges },
         ],
       },

@@ -14,7 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 
 export interface SettingsStatus {
-  line: { bound: boolean; canUnbind: boolean; synthetic: boolean };
+  /** bonusOnBind：新戶且未綁 LINE（綁定可領 300 積分）。舊快取可能沒有 */
+  line: { bound: boolean; canUnbind: boolean; synthetic: boolean; bonusOnBind?: boolean };
   invite: { claimed: boolean; eligible: boolean };
   /** 舊快取可能沒有這個欄位，讀的人要容忍 undefined */
   password?: { set: boolean };

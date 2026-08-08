@@ -172,7 +172,10 @@ export function LineBindRow() {
           </>
         ) : (
           <>
-            <span className="text-[14px] text-accent-red">立即綁定</span>
+            {/* 新戶未領綁定禮 → 把 300 亮出來（老闆指定文案），其他人維持中性 */}
+            <span className="text-[14px] text-accent-red">
+              {status.bonusOnBind ? '綁定領300' : '立即綁定'}
+            </span>
             <ChevronRight className="w-4 h-4 text-neutral-300" />
           </>
         )}
