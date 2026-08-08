@@ -36,7 +36,7 @@ const QR_SIZE = 0.375; // 相對圖寬（= 300px / 800px）
  * 字級 28px（相對 800 寬）剛好裝下＝手機 3.5vw（滿版時視窗寬＝圖寬）
  * ＝桌機 16px（max-w-md 448px）。碼用會員卡同款黃 #ffe600。
  */
-const RIBBON_CENTER_Y = 0.9565;
+const RIBBON_CENTER_Y = 0.9605;
 const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
 const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
