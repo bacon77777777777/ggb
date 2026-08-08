@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
@@ -95,53 +95,76 @@ export default function InvitePage() {
     }
   };
 
-  /** 下載 hero 圖（含 QR）：跟畫面同一組座標常數，畫一份存下來 */
-  const downloadHero = async () => {
-    if (!qr) return;
+  /** 把畫面那張合成圖（hero＋QR＋邀請碼字）畫進 canvas，輸出 PNG blob */
+  const composeHero = async (): Promise<Blob | null> => {
+    if (!qr) return null;
     const load = (src: string) => new Promise<HTMLImageElement>((ok, err) => {
       const im = new window.Image();
       im.onload = () => ok(im); im.onerror = err; im.src = src;
     });
-    try {
-      const [hero, qrImg] = await Promise.all([load('/images/invite/invite.jpg'), load(qr)]);
-      const W = 800, H = 1200;
-      const canvas = document.createElement('canvas');
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(hero, 0, 0, W, H);
+    const [hero, qrImg] = await Promise.all([load('/images/invite/invite.jpg'), load(qr)]);
+    const W = 800, H = 1200;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(hero, 0, 0, W, H);
 
-      const size = W * QR_SIZE;
-      ctx.drawImage(qrImg, (W - size) / 2, H * QR_CENTER_Y - size / 2, size, size);
+    const size = W * QR_SIZE;
+    ctx.drawImage(qrImg, (W - size) / 2, H * QR_CENTER_Y - size / 2, size, size);
 
-      // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）；
-      // 「邀請碼」白、碼黃，跟畫面同款雙色
-      if (code) {
-        ctx.font = `bold ${CODE_FONT_PX}px system-ui, -apple-system, sans-serif`;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        const label = '邀請碼 ';
-        const wLabel = ctx.measureText(label).width;
-        const startX = (W - wLabel - ctx.measureText(code).width) / 2;
-        const textY = H * RIBBON_CENTER_Y + 2;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(label, startX, textY);
-        ctx.fillStyle = CODE_YELLOW;
-        ctx.fillText(code, startX + wLabel, textY);
-      }
-
-      canvas.toBlob(blob => {
-        if (!blob) { showToast('下載失敗，請重試一次', 'error'); return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'ggb-invite.png';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast('已下載邀請圖', 'success');
-      }, 'image/png');
-    } catch {
-      showToast('下載失敗，請重試一次', 'error');
+    // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）；
+    // 「邀請碼」白、碼黃，跟畫面同款雙色
+    if (code) {
+      ctx.font = `bold ${CODE_FONT_PX}px system-ui, -apple-system, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const label = '邀請碼 ';
+      const wLabel = ctx.measureText(label).width;
+      const startX = (W - wLabel - ctx.measureText(code).width) / 2;
+      const textY = H * RIBBON_CENTER_Y + 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, startX, textY);
+      ctx.fillStyle = CODE_YELLOW;
+      ctx.fillText(code, startX + wLabel, textY);
     }
+
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  };
+
+  // 合成圖先畫好放著 —— iPhone 的分享面板要在點擊的當下叫出來，
+  // 點了才開始畫會錯過手勢窗口，面板就開不出來
+  const heroBlob = useRef<Blob | null>(null);
+  useEffect(() => {
+    if (!qr) return;
+    heroBlob.current = null;
+    composeHero().then(b => { heroBlob.current = b; }).catch(() => { /* 點下載時再重試 */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qr, code]);
+
+  /**
+   * 下載：手機走系統分享面板直出（面板上就有「儲存影像」，也能直接
+   * 丟 LINE / AirDrop）；不支援分享檔案的環境（桌機）退回傳統下載。
+   * 老闆抓的：a.download 在 iPhone 會先開一頁檔案預覽，要再按分享
+   * 圖標才存得了，多繞兩步。
+   */
+  const downloadHero = async () => {
+    let blob = heroBlob.current;
+    if (!blob) { try { blob = await composeHero(); } catch { blob = null; } }
+    if (!blob) { showToast('圖片還在準備中，請再試一次', 'error'); return; }
+
+    const file = new File([blob], 'ggb-invite.png', { type: 'image/png' });
+    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch { /* 玩家取消分享 */ }
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ggb-invite.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast('已下載邀請圖', 'success');
   };
 
   return (
