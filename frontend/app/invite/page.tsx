@@ -32,11 +32,13 @@ const QR_SIZE = 0.375; // 相對圖寬（= 300px / 800px）
 /**
  * QR 下方紅旗緞帶：x 234~572、y 1113~1173 → 中心 (50%, 95.25%)。
  * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載的合成圖畫同一行字但
- * 不含複製圖標（老闆指定）。字級 34px（相對 800 寬）＝手機 4.25vw
- * （滿版時視窗寬＝圖寬）＝桌機 19px（max-w-md 448px）。
+ * 不含複製圖標（老闆指定）。碼是 8 位，旗內側約 280px 寬，
+ * 字級 28px（相對 800 寬）剛好裝下＝手機 3.5vw（滿版時視窗寬＝圖寬）
+ * ＝桌機 16px（max-w-md 448px）。碼用會員卡同款黃 #ffe600。
  */
 const RIBBON_CENTER_Y = 0.9525;
-const CODE_FONT_PX = 34; // 相對 800 寬的 canvas 字級
+const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
+const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
 export default function InvitePage() {
   const router = useRouter();
@@ -111,13 +113,20 @@ export default function InvitePage() {
       const size = W * QR_SIZE;
       ctx.drawImage(qrImg, (W - size) / 2, H * QR_CENTER_Y - size / 2, size, size);
 
-      // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）
+      // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）；
+      // 「邀請碼」白、碼黃，跟畫面同款雙色
       if (code) {
         ctx.font = `bold ${CODE_FONT_PX}px system-ui, -apple-system, sans-serif`;
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`邀請碼 ${code}`, W / 2, H * RIBBON_CENTER_Y + 2);
+        const label = '邀請碼 ';
+        const wLabel = ctx.measureText(label).width;
+        const startX = (W - wLabel - ctx.measureText(code).width) / 2;
+        const textY = H * RIBBON_CENTER_Y + 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, startX, textY);
+        ctx.fillStyle = CODE_YELLOW;
+        ctx.fillText(code, startX + wLabel, textY);
       }
 
       canvas.toBlob(blob => {
@@ -167,13 +176,13 @@ export default function InvitePage() {
           <button
             type="button"
             onClick={() => void copyCode()}
-            className="absolute inset-x-0 flex -translate-y-1/2 items-center justify-center gap-[1.25vw] md:gap-1.5"
+            className="absolute inset-x-0 flex -translate-y-1/2 items-center justify-center gap-[1vw] md:gap-1"
             style={{ top: `${RIBBON_CENTER_Y * 100}%` }}
           >
-            <span className="text-[4.25vw] font-bold text-white md:text-[19px]">
-              邀請碼 <span className="tracking-[0.06em]">{code}</span>
+            <span className="text-[3.5vw] font-bold text-white md:text-[16px]">
+              邀請碼 <span style={{ color: CODE_YELLOW }}>{code}</span>
             </span>
-            <Copy className="h-[3.6vw] w-[3.6vw] text-white/90 md:h-4 md:w-4" />
+            <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>
         )}
       </div>
