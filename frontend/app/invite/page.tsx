@@ -382,58 +382,61 @@ export default function InvitePage() {
                   ))}
                 </div>
               )}
+              {/* 列樣式照簽到頁「成就」原樣搬（老闆指定一模一樣）。
+                  簽到頁是 750 設計稿縮放渲染，這裡是 375 基準的一般版面，
+                  所以所有尺寸取設計稿的一半（143→72、80→40、28→14…）。
+                  勳章直接用簽到頁同一批 /images/mask/ 高解析圖 —— 原本的
+                  ach1~4 是從設計稿裁的 88×80 小圖，3x 螢幕會放大到糊 */}
               {missions.map(m => {
-                const icon = ACH_ICONS[m.target_value] ?? ACH_ICONS[1];
-                const chip = ACH_CHIPS[m.title];
+                const icon = ACH_BADGES[m.target_value] ?? ACH_BADGES[1];
+                const title = ACH_TITLES[m.target_value];
                 const cur = Math.min(m.progress ?? 0, m.target_value);
                 const done = (m.progress ?? 0) >= m.target_value;
                 return (
-                  <div key={m.id} className="flex items-center gap-3 border-b border-neutral-100 px-1 py-4 last:border-b-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={icon} alt="" className="h-11 w-11 shrink-0 object-contain" />
-                    <div className="min-w-0 flex-1">
-                      <p className="leading-tight">
-                        <span className="text-[16px] font-black text-neutral-900">{m.title}</span>{' '}
-                        <span className="text-[13px] font-bold" style={{ color: '#ff5b00' }}>+{m.reward_coins}積分</span>
-                      </p>
-                      <p className="mt-0.5 text-[13px] leading-tight text-neutral-400">{m.description}</p>
-                      {chip && (
-                        <span
-                          className="mt-1.5 inline-block rounded-md px-2 py-0.5 text-[11px] font-bold"
-                          style={chip.style}
-                        >
-                          {chip.label}
+                  <div key={m.id} className="relative flex min-h-[72px] w-full items-center justify-between border-b border-[#eee] py-2 last:border-b-0">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={icon} alt="" className="h-9 w-auto max-w-10 object-contain" />
+                      </div>
+                      <div className="flex min-w-0 flex-col items-start gap-1">
+                        <div className="flex w-full items-end gap-1.5">
+                          <p className="text-[14px] font-medium text-neutral-900">{m.title}</p>
+                          <p className="text-[12px] font-normal text-accent-orange">+{m.reward_coins}積分</p>
+                        </div>
+                        <p className="whitespace-nowrap text-[12px] font-normal text-neutral-500">{m.description}</p>
+                        {title && (
+                          <span className={`inline-flex items-center rounded-full bg-gradient-to-r px-[5px] py-[1px] text-[10px] font-semibold text-white ${TITLE_STYLES[title.color] ?? TITLE_STYLES.gold}`}>
+                            {title.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2.5">
+                      {!m.is_claimed && (
+                        <span className="shrink-0 whitespace-nowrap text-[12px] font-medium text-neutral-400">
+                          <span className="text-accent-orange">{cur}</span>/{m.target_value}
                         </span>
                       )}
+                      {m.is_claimed ? (
+                        <div className="w-[56px] text-center text-[12px] text-neutral-400">已領取</div>
+                      ) : done ? (
+                        <div
+                          onClick={() => { if (claimingMission !== m.id) void claimMission(m); }}
+                          className="flex h-6 w-[56px] cursor-pointer items-center justify-center rounded-[100px] bg-gradient-to-r from-[#ffa048] to-[#fd4703] transition-transform active:scale-95"
+                        >
+                          <p className="text-center text-[13px] font-medium text-white">{claimingMission === m.id ? '…' : '領取'}</p>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => void copyMessage()}
+                          className="relative flex h-6 w-[56px] cursor-pointer items-center justify-center rounded-[100px] transition-transform active:scale-95"
+                        >
+                          <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[100px] border border-solid border-[#ff5e00]" />
+                          <p className="text-center text-[13px] font-medium text-accent-orange">去完成</p>
+                        </div>
+                      )}
                     </div>
-                    <p className="shrink-0 text-[13px] font-bold">
-                      <span style={{ color: '#ff5b00' }}>{cur}</span>
-                      <span className="text-neutral-400">/{m.target_value}</span>
-                    </p>
-                    {m.is_claimed ? (
-                      <span className="shrink-0 rounded-full border-[1.5px] border-neutral-200 px-3 py-1.5 text-[13px] font-bold text-neutral-300">
-                        已領取
-                      </span>
-                    ) : done ? (
-                      <button
-                        type="button"
-                        disabled={claimingMission === m.id}
-                        onClick={() => void claimMission(m)}
-                        className="shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-bold text-white transition-transform active:scale-[0.96]"
-                        style={{ background: '#ff5b00' }}
-                      >
-                        {claimingMission === m.id ? '…' : '領取'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => void copyMessage()}
-                        className="shrink-0 rounded-full border-[1.5px] px-3.5 py-1.5 text-[13px] font-bold transition-transform active:scale-[0.96]"
-                        style={{ borderColor: '#ff5b00', color: '#ff5b00' }}
-                      >
-                        去完成
-                      </button>
-                    )}
                   </div>
                 );
               })}
@@ -466,16 +469,24 @@ export default function InvitePage() {
   );
 }
 
-/** 成就圖標（從老闆設計稿裁下）：以目標人數對應 */
-const ACH_ICONS: Record<number, string> = {
-  1: '/images/invite/ach1.png',
-  5: '/images/invite/ach2.png',
-  20: '/images/invite/ach3.png',
-  100: '/images/invite/ach4.png',
+/** 勳章：與簽到頁成就同一批高解析圖（invite_friend:N），以目標人數對應 */
+const ACH_BADGES: Record<number, string> = {
+  1: '/images/mask/初級召集人.png',
+  5: '/images/mask/揪團王.png',
+  20: '/images/mask/傳教士.png',
+  100: '/images/mask/信徒滿天下.png',
 };
 
-/** 設計稿上的稱號小標（傳教士＝人氣王、信徒滿天下＝推廣大使） */
-const ACH_CHIPS: Record<string, { label: string; style: React.CSSProperties }> = {
-  傳教士: { label: '人氣王', style: { background: '#e5f1fe', color: '#307cf4' } },
-  信徒滿天下: { label: '推廣大使', style: { background: '#07ba86', color: '#ffffff' } },
+/** 稱號小標：與簽到頁 ACHIEVEMENT_TITLE / TITLE_STYLES 同款漸層膠囊 */
+const ACH_TITLES: Record<number, { name: string; color: string }> = {
+  20: { name: '人氣王', color: 'blue' },
+  100: { name: '推廣大使', color: 'green' },
+};
+
+const TITLE_STYLES: Record<string, string> = {
+  gold:   'from-yellow-400 to-amber-500',
+  purple: 'from-purple-500 to-violet-600',
+  red:    'from-rose-500 to-pink-600',
+  blue:   'from-blue-500 to-cyan-500',
+  green:  'from-accent-emerald to-teal-500',
 };
