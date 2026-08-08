@@ -10,7 +10,12 @@ export type TaskCondition =
   | 'win_sr' 
   | 'play_unique_machine'
   | 'bind_phone'
-  | 'sell_item';
+  | 'sell_item'
+  | 'invite_friend'
+  | 'share_invite'
+  | 'topup_streak'
+  | 'recharge_amount'
+  | 'complete_all_daily';
 
 export interface Task {
   id: string;
