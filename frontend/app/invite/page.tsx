@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { Copy } from 'lucide-react';
+import { Copy, Gift, Medal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
@@ -185,6 +185,44 @@ export default function InvitePage() {
             <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>
         )}
+      </div>
+
+      {/* 頁面下方說明（老闆指定）。只寫現在真的有的東西：
+          成就積分（tasks invite_friend 四階）＋同名徽章。
+          被邀請的好友目前沒有獎勵，所以隻字不提 —— 寫了就是不實廣告 */}
+      <div className="mx-auto max-w-md px-6 pb-14 pt-8">
+        <h2 className="text-[17px] font-bold text-neutral-900 dark:text-neutral-100">
+          邀請好友有什麼好處？
+        </h2>
+        <div className="mt-4 space-y-3">
+          <div className="flex gap-3 rounded-xl bg-neutral-50 p-4 dark:bg-neutral-900">
+            <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-[15px] font-bold text-neutral-800 dark:text-neutral-200">解鎖成就、領積分</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
+                成功邀請 1、5、20、100 位好友，各解鎖一個成就，到任務中心就能領積分。
+                積分在部分商品抽獎時可以折抵。
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 rounded-xl bg-neutral-50 p-4 dark:bg-neutral-900">
+            <Medal className="mt-0.5 h-5 w-5 shrink-0 text-accent-yellow" />
+            <div>
+              <p className="text-[15px] font-bold text-neutral-800 dark:text-neutral-200">點亮專屬徽章</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
+                從「初級召集人」一路收集到「信徒滿天下」，徽章會展示在你的玩家小卡上。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <h3 className="mt-8 text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
+          怎樣算邀請成功？
+        </h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
+          好友掃上面的 QR code 或點你分享的連結完成登入，就會自動算在你名下；
+          好友也可以在註冊後 7 天內，到會員中心自己填入你的邀請碼。
+        </p>
       </div>
     </div>
   );
