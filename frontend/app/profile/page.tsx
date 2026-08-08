@@ -6718,9 +6718,10 @@ function ProfileContent() {
                   label: '邀請好友',
                   icon: UserPlus,
                   color: 'text-violet-500',
+                  badge: '無限拿積分',
                   onClick: () => router.push('/invite'),
                 },
-              ].map((item) => (
+              ].map((item: { id: string; label: string; icon: typeof UserPlus; color: string; badge?: string; onClick: () => void }) => (
                 <button
                   key={item.id}
                   onClick={() => {
@@ -6743,7 +6744,14 @@ function ProfileContent() {
                     </div>
                     <span className="text-[14px] font-black text-neutral-700 dark:text-neutral-200">{item.label}</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-1 transition-all" />
+                  <div className="flex items-center gap-1.5">
+                    {item.badge && (
+                      <span className="rounded-full bg-accent-red px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                        {item.badge}
+                      </span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-neutral-300 group-hover:text-neutral-500 group-hover:translate-x-1 transition-all" />
+                  </div>
                 </button>
               ))}
             </div>
@@ -6965,7 +6973,10 @@ function ProfileContent() {
                 >
                   <UserPlus className="w-5 h-5 stroke-[2.5] text-violet-500 group-hover:text-primary transition-colors" />
                   <span className="truncate">邀請好友</span>
-                  <ChevronRight className="ml-auto w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
+                  <span className="ml-auto rounded-full bg-accent-red px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                    無限拿積分
+                  </span>
+                  <ChevronRight className="w-4 h-4 hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
                 </button>
               </div>
             </div>
