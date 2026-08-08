@@ -5,6 +5,12 @@ import { verifyCheckMacValue } from '@/lib/ecpay'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
+  /*
+   * NEXT_PUBLIC_FRONTEND_URL 是玩家付款完被轉回前台的目的地 ——
+   * Vercel 環境變數漏設這顆時，玩家會被丟到 localhost 死頁
+   * （錢照樣入帳：入帳走 ReturnURL 那條 server-to-server 路）。
+   * 2026-08-08 PROD 就是這樣炸的：Preview 有設、Production 漏了。
+   */
   let FrontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'
 
   try {
