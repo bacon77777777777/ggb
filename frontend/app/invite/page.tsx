@@ -270,16 +270,11 @@ export default function InvitePage() {
           活動頁設計語言的淺色版，主題色亮黃金。只推一件事：每 5 位免費抽 */}
       <div className="w-full bg-white md:mx-auto md:max-w-md">
         <div className="px-5 pb-16 pt-10">
-          <h2
-            className="text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
-            style={{ background: AMBER_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: '1.2px #d99a00' }}
-          >
-            每邀 5 位好友
-            <br />
-            免費抽一次
+          <h2 className="whitespace-nowrap text-center text-[clamp(19px,5.4vw,27px)] font-black leading-tight tracking-wide text-neutral-900">
+            每邀 5 位好友，免費抽一次！
           </h2>
           <p className="mt-3 text-center text-[13px] font-bold leading-relaxed" style={{ color: '#c77f00' }}>
-            好友用 LINE 加入就算成功，每滿 5 位領 100 積分，次數無上限
+            好友綁定 LINE 帳號即可成功！
           </p>
 
           {/* 進度卡 —— 淺色暖底 */}
@@ -320,36 +315,24 @@ export default function InvitePage() {
                 : ' '}
             </p>
 
+            {/* 活動頁同款黃金按鈕（lpv-cta-btn 配方）；未達標時降不透明度 */}
             <button
               type="button"
               onClick={() => void claim()}
               disabled={claiming || claimable <= 0}
-              className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:active:scale-100"
-              style={claimable > 0
-                ? { background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,201,60,0.45)' }
-                : { background: '#f0ece0', color: '#b6ad98' }}
+              className="mt-4 flex h-12 w-full items-center justify-center rounded-full text-[16px] font-black transition-transform active:scale-[0.97] disabled:opacity-45 disabled:active:scale-100"
+              style={{ background: GOLD_GRAD, color: '#3a2c08', boxShadow: '0 8px 26px rgba(255,210,74,0.45)' }}
             >
               {claiming
                 ? <Loader2 className="h-5 w-5 animate-spin" />
                 : claimable > 0 ? `領取 ${claimable} 積分` : '累積滿 5 位可領取'}
             </button>
           </div>
-
-          <p className="mt-6 text-center text-[12px] font-bold leading-relaxed text-neutral-500">
-            新朋友用你的碼加入並綁定 LINE，馬上送他 300 積分
-          </p>
-          <p className="mt-1.5 text-center text-[11px] font-semibold leading-relaxed text-neutral-400">
-            好友也可以之後在會員中心填寫邀請碼
-          </p>
         </div>
       </div>
     </div>
   );
 }
 
-/**
- * 活動頁（LpRenderer）同款金黃漸層（按鈕用）；
- * 標題在白底上要更深的琥珀漸層才撐得住對比（淺金會糊掉）
- */
+/** 活動頁（LpRenderer）lpv-cta-btn 同款金黃漸層（領取按鈕用） */
 const GOLD_GRAD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)';
-const AMBER_GRAD = 'linear-gradient(180deg,#ffc93c,#f0a500 55%,#c77f00)';
