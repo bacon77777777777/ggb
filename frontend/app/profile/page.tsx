@@ -970,6 +970,18 @@ function ProfileContent() {
     }
   };
 
+  // LINE 綁定完成轉址回來（/auth/line/callback）：toast＋清參數。
+  // bonus 是 LINE 綁定禮（migration 505/506），有才顯示金額
+  useEffect(() => {
+    if (!searchParams || searchParams.get('line') !== 'bound') return;
+    const bonus = Number(searchParams.get('bonus') || 0);
+    toast.success(bonus > 0 ? `LINE 綁定成功，已入帳 ${bonus} 積分` : 'LINE 綁定成功');
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('line');
+    newUrl.searchParams.delete('bonus');
+    window.history.replaceState({}, '', newUrl.toString());
+  }, [searchParams]);
+
   // Sync with URL on load
   useEffect(() => {
     const tab = searchParams.get('tab');

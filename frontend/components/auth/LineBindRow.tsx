@@ -75,7 +75,10 @@ export function LineBindRow() {
       popupRef.current = null;
 
       if (json.bound) {
-        showToast('LINE 綁定成功', 'success');
+        showToast(
+          (json.bonus ?? 0) > 0 ? `LINE 綁定成功，已入帳 ${json.bonus} 積分` : 'LINE 綁定成功',
+          'success',
+        );
         void refresh();
       } else {
         showToast(json.error || '綁定失敗，請重試一次', 'error');

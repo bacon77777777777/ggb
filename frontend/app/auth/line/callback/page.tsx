@@ -86,7 +86,10 @@ function LineCallbackInner() {
             setPhase('error')
             return
           }
-          router.replace('/profile?line=bound')
+          // bonus 帶去會員中心 toast（LINE 綁定禮 300 積分）
+          router.replace(
+            (json.bonus ?? 0) > 0 ? `/profile?line=bound&bonus=${json.bonus}` : '/profile?line=bound',
+          )
           return
         }
 
