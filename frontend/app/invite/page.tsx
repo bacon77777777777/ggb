@@ -303,8 +303,10 @@ export default function InvitePage() {
           bar_fill），背景 100% 100% 拉伸；領取鈕只在有得領時出現
          （設計稿畫的是 2/5 未達標狀態，沒有畫按鈕）*/}
       <div className="w-full bg-white md:mx-auto md:max-w-md">
+        {/* 底圖 750 寬、卡面佔 3.1%~96.8% —— 側邊留白是圖自帶的，
+            所以容器滿版寬（老闆指定），內距用百分比對齊卡面 */}
         <div
-          className="mx-4 mt-4 px-5 pb-5 pt-4"
+          className="mt-3 w-full px-[7.5%] pb-6 pt-4"
           style={{ backgroundImage: 'url(/images/invite/card_progress.png)', backgroundSize: '100% 100%' }}
         >
           <div className="flex items-center justify-between gap-2">
@@ -353,9 +355,9 @@ export default function InvitePage() {
 
         {/* ── 成就卡（老闆設計稿：REWARD 底紋綠粉框、四階成就列）──
             底圖只有卡片上緣（含 REWARD 底紋），下面接白底自然延伸 */}
-        <div className="mx-4 mb-14 mt-4 rounded-[24px] bg-white">
+        <div className="mb-14 mt-2 w-full bg-white">
           <div
-            className="rounded-t-[24px] bg-top bg-no-repeat px-4 pb-2 pt-5"
+            className="bg-top bg-no-repeat px-[6.5%] pb-2 pt-6"
             style={{ backgroundImage: 'url(/images/invite/card_reward.png)', backgroundSize: '100% auto' }}
           >
             <h2 className="px-1 text-[22px] font-black leading-none text-neutral-900">成就</h2>
