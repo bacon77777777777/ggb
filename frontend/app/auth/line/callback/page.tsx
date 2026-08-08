@@ -128,6 +128,21 @@ function LineCallbackInner() {
         })
         if (otpErr) { setError('登入失敗，請重試一次'); setPhase('error'); return }
 
+        // 邀請連結進來的（/login?invite= 存的暫存碼）：登入完成順手領。
+        // Email OTP 與偽 app 取票路徑都會領，唯獨這條整頁跳轉路先前漏了
+        // —— 好友點連結用 LINE 登入是最大宗，漏這條等於邀請全不算數
+        const pending = sessionStorage.getItem('pending_invite')
+        if (pending) {
+          sessionStorage.removeItem('pending_invite')
+          try {
+            await fetch('/api/user/claim-invite', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: pending }),
+            })
+          } catch { /* 失敗不擋登入；好友之後可在會員中心手動填 */ }
+        }
+
         // 登入完成帶去會員中心 —— 玩家該看到「已登入的自己」，
         // 首頁看不出登入前後的差別
         router.replace('/profile')
