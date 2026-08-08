@@ -210,43 +210,99 @@ export default function InvitePage() {
         )}
       </div>
 
-      {/* 頁面下方說明（老闆指定）。只寫現在真的有的東西：
-          成就積分（tasks invite_friend 四階）＋同名徽章。
-          被邀請的好友目前沒有獎勵，所以隻字不提 —— 寫了就是不實廣告 */}
-      <div className="mx-auto max-w-md px-6 pb-14 pt-8">
-        <h2 className="text-[17px] font-bold text-neutral-900 dark:text-neutral-100">
-          邀請好友有什麼好處？
-        </h2>
-        <div className="mt-4 space-y-3">
-          <div className="flex gap-3 rounded-xl bg-neutral-50 p-4 dark:bg-neutral-900">
-            <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-            <div>
-              <p className="text-[15px] font-bold text-neutral-800 dark:text-neutral-200">解鎖成就、領積分</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
-                成功邀請 1、5、20、100 位好友，各解鎖一個成就，到任務中心就能領積分。
-                積分在部分商品抽獎時可以折抵。
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3 rounded-xl bg-neutral-50 p-4 dark:bg-neutral-900">
-            <Medal className="mt-0.5 h-5 w-5 shrink-0 text-accent-yellow" />
-            <div>
-              <p className="text-[15px] font-bold text-neutral-800 dark:text-neutral-200">點亮專屬徽章</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-neutral-500">
-                從「初級召集人」一路收集到「信徒滿天下」，徽章會展示在你的玩家小卡上。
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* 頁面下方說明 —— 活動頁（LP）的設計語言：深色底、金字漸層
+          標題、卡片、編號步驟流。頂部從 hero 圖底緣的金色（實測
+          rgb(238,173,74)）漸層接進深紅，手機上跟圖無縫相連。
+          內容只寫現在真的有的東西：成就積分四階＋同名徽章；
+          被邀請的好友目前沒有獎勵，隻字不提 —— 寫了就是不實廣告 */}
+      <div
+        className="w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-3xl"
+        style={{ background: `linear-gradient(180deg, rgb(238,173,74), #331021 130px, #2b0c1b)` }}
+      >
+        <div className="px-5 pb-16 pt-16">
+          <h2
+            className="text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
+            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+          >
+            邀請好友有什麼好處？
+          </h2>
 
-        <h3 className="mt-8 text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
-          怎樣算邀請成功？
-        </h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-neutral-500">
-          好友掃上面的 QR code 或點你分享的連結完成登入，就會自動算在你名下；
-          好友也可以在註冊後 7 天內，到會員中心自己填入你的邀請碼。
-        </p>
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            <div
+              className="rounded-2xl border p-5 text-center"
+              style={{ borderColor: LP_BORDER, background: LP_CARD }}
+            >
+              <Gift className="mx-auto h-6 w-6" style={{ color: GOLD_LIGHT }} />
+              <p className="mt-3 text-[15px] font-black text-white">解鎖成就領積分</p>
+              <p
+                className="mt-1.5 text-[clamp(24px,7vw,34px)] font-black leading-tight"
+                style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+              >
+                30~500<span className="text-[13px]">積分</span>
+              </p>
+              <p className="mt-2 text-[11px] font-semibold leading-relaxed text-white/45">
+                邀滿 1、5、20、100 位各解鎖一次，任務中心領取，部分商品抽獎可折抵
+              </p>
+            </div>
+            <div
+              className="rounded-2xl border p-5 text-center"
+              style={{ borderColor: LP_BORDER, background: LP_CARD }}
+            >
+              <Medal className="mx-auto h-6 w-6" style={{ color: GOLD_LIGHT }} />
+              <p className="mt-3 text-[15px] font-black text-white">點亮專屬徽章</p>
+              <p
+                className="mt-1.5 text-[clamp(24px,7vw,34px)] font-black leading-tight"
+                style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+              >
+                4<span className="text-[13px]">枚</span>
+              </p>
+              <p className="mt-2 text-[11px] font-semibold leading-relaxed text-white/45">
+                從「初級召集人」收集到「信徒滿天下」，展示在你的玩家小卡上
+              </p>
+            </div>
+          </div>
+
+          <h2
+            className="mt-14 text-center text-[clamp(24px,6.5vw,32px)] font-black leading-tight tracking-wide"
+            style={{ background: GOLD_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
+          >
+            怎樣算邀請成功？
+          </h2>
+          <div className="mt-8 flex flex-col">
+            {[
+              { t: '把邀請圖或訊息傳給好友', d: '按右上角「分享」複製訊息，或「下載」存圖直接傳' },
+              { t: '好友掃 QR 或點連結，完成首次登入', d: '你的邀請碼會自動帶上，好友不用手動輸入' },
+              { t: '自動算進你名下', d: '成就進度 +1，到任務中心看進度、領積分' },
+            ].map((step, i) => (
+              <div key={i}>
+                {i > 0 && <div className="py-1 text-center text-[14px]" style={{ color: 'rgba(255,210,74,0.35)' }}>▼</div>}
+                <div
+                  className="flex items-center gap-3.5 rounded-xl border px-4 py-3.5"
+                  style={{ borderColor: LP_BORDER, background: LP_CARD }}
+                >
+                  <span className="w-7 flex-none text-center text-[22px] font-black" style={{ color: GOLD_LIGHT }}>
+                    {i + 1}
+                  </span>
+                  <div>
+                    <p className="text-[15px] font-black text-white">{step.t}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold leading-relaxed text-white/40">{step.d}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-6 text-center text-[11px] font-semibold leading-relaxed text-white/30">
+            好友也可以在註冊後 7 天內，到會員中心自己填入你的邀請碼
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
+/** 活動頁（LpRenderer）同款金字漸層與深紅卡片配色，取自其 GOLD 常數與配色公式 */
+const GOLD_GRAD = 'linear-gradient(180deg,#fffbe6,#ffd24a 46%,#a9760c 62%,#ffcf5a)';
+const GOLD_LIGHT = 'rgb(255,224,107)';
+const LP_BORDER = 'rgb(94,45,58)';
+const LP_CARD = 'linear-gradient(180deg,rgb(56,18,36),rgb(49,13,29))';
