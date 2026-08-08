@@ -69,34 +69,35 @@ export default function InvitePage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="flex flex-col items-center px-6 pb-12 pt-4">
-        {/* 直式邀請主視覺（800×1200），QR 疊在圖的中下區域。
-            位置用百分比錨定，圖換了或縮放都跟著走 */}
-        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl shadow-xl shadow-primary/20">
-          <Image
-            src="/images/invite/invite.jpg"
-            alt="邀請好友"
-            width={800}
-            height={1200}
-            priority
-            className="h-auto w-full"
-          />
-          <div className="absolute left-1/2 top-[54%] w-[52%] -translate-x-1/2 rounded-2xl bg-white p-[6%] shadow-lg">
-            {qr ? (
-              // QR 是本地生成的 data URI，用原生 img 就好
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={qr} alt="邀請 QR code" className="aspect-square w-full" />
-            ) : (
-              <div className="aspect-square w-full animate-pulse rounded-xl bg-neutral-100" />
-            )}
-          </div>
+      {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
+          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
+      <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-3xl">
+        <Image
+          src="/images/invite/invite.jpg"
+          alt="邀請好友"
+          width={800}
+          height={1200}
+          priority
+          className="h-auto w-full"
+        />
+        {/* QR 疊在圖的中下區域，百分比錨定，縮放跟著走 */}
+        <div className="absolute left-1/2 top-[54%] w-[52%] -translate-x-1/2 rounded-2xl bg-white p-[6%] shadow-lg">
+          {qr ? (
+            // QR 是本地生成的 data URI，用原生 img 就好
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qr} alt="邀請 QR code" className="aspect-square w-full" />
+          ) : (
+            <div className="aspect-square w-full animate-pulse rounded-xl bg-neutral-100" />
+          )}
         </div>
+      </div>
 
+      <div className="flex flex-col items-center px-6 pb-12 pt-5">
         {/* 邀請碼 */}
         <button
           type="button"
           onClick={() => void copy('code')}
-          className="mt-5 flex items-center gap-2 rounded-full bg-primary/10 px-5 py-2.5 transition-colors active:bg-primary/20"
+          className="flex items-center gap-2 rounded-full bg-primary/10 px-5 py-2.5 transition-colors active:bg-primary/20"
         >
           <span className="text-[13px] text-neutral-500">邀請碼</span>
           <span className="font-mono text-lg font-black tracking-[0.2em] text-primary">{code ?? '——'}</span>
