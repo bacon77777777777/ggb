@@ -8,7 +8,6 @@ import { Copy, Share2, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
-import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 /**
  * 邀請好友頁 —— 分享場景的專門頁面
@@ -70,50 +69,41 @@ export default function InvitePage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <SimplePageHeader title="邀請好友" onBack={() => router.back()} darkBg="page" />
-
-      <div className="flex flex-col items-center px-6 pb-12 pt-[76px]">
-        {/* 直式邀請卡 */}
-        <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-gradient-to-b from-primary to-primary/80 p-6 text-center shadow-xl shadow-primary/20">
+      <div className="flex flex-col items-center px-6 pb-12 pt-4">
+        {/* 直式邀請主視覺（800×1200），QR 疊在圖的中下區域。
+            位置用百分比錨定，圖換了或縮放都跟著走 */}
+        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl shadow-xl shadow-primary/20">
           <Image
-            src="/images/20260629/logo.svg"
-            alt="吉吉比"
-            width={110}
-            height={37}
+            src="/images/invite/invite.jpg"
+            alt="邀請好友"
+            width={800}
+            height={1200}
             priority
-            className="mx-auto h-auto w-[110px] brightness-0 invert"
+            className="h-auto w-full"
           />
-          <h1 className="mt-4 text-xl font-black text-white">邀請好友，一起開箱抽好運</h1>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-white/80">
-            朋友掃描 QR code 或輸入你的邀請碼
-            <br />
-            完成註冊就算你邀請成功
-          </p>
-
-          {/* QR 白卡 */}
-          <div className="mx-auto mt-5 w-[220px] rounded-2xl bg-white p-4 shadow-lg">
+          <div className="absolute left-1/2 top-[54%] w-[52%] -translate-x-1/2 rounded-2xl bg-white p-[6%] shadow-lg">
             {qr ? (
               // QR 是本地生成的 data URI，用原生 img 就好
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={qr} alt="邀請 QR code" className="h-[188px] w-[188px]" />
+              <img src={qr} alt="邀請 QR code" className="aspect-square w-full" />
             ) : (
-              <div className="h-[188px] w-[188px] animate-pulse rounded-xl bg-neutral-100" />
+              <div className="aspect-square w-full animate-pulse rounded-xl bg-neutral-100" />
             )}
           </div>
-
-          {/* 邀請碼 */}
-          <button
-            type="button"
-            onClick={() => void copy('code')}
-            className="mx-auto mt-5 flex items-center gap-2 rounded-full bg-white/15 px-5 py-2.5 backdrop-blur-sm transition-colors active:bg-white/25"
-          >
-            <span className="text-[13px] text-white/70">邀請碼</span>
-            <span className="font-mono text-lg font-black tracking-[0.2em] text-white">{code ?? '——'}</span>
-            {copied === 'code'
-              ? <Check className="h-4 w-4 text-white" />
-              : <Copy className="h-4 w-4 text-white/70" />}
-          </button>
         </div>
+
+        {/* 邀請碼 */}
+        <button
+          type="button"
+          onClick={() => void copy('code')}
+          className="mt-5 flex items-center gap-2 rounded-full bg-primary/10 px-5 py-2.5 transition-colors active:bg-primary/20"
+        >
+          <span className="text-[13px] text-neutral-500">邀請碼</span>
+          <span className="font-mono text-lg font-black tracking-[0.2em] text-primary">{code ?? '——'}</span>
+          {copied === 'code'
+            ? <Check className="h-4 w-4 text-primary" />
+            : <Copy className="h-4 w-4 text-neutral-400" />}
+        </button>
 
         {/* 動作區 */}
         <div className="mt-6 w-full max-w-sm space-y-2.5">
