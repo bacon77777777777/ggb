@@ -37,6 +37,18 @@ export default function InvitePage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
+    const onShare = () => { void copy('msg'); };
+    const onDownload = () => { void downloadHero(); };
+    window.addEventListener('ggb:invite-share', onShare);
+    window.addEventListener('ggb:invite-download', onDownload);
+    return () => {
+      window.removeEventListener('ggb:invite-share', onShare);
+      window.removeEventListener('ggb:invite-download', onDownload);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, qr]);
+
+  useEffect(() => {
     if (!link) return;
     QRCode.toDataURL(link, { width: 512, margin: 1, color: { dark: '#1a1a1a', light: '#ffffff' } })
       .then(setQr)
@@ -53,6 +65,53 @@ export default function InvitePage() {
       showToast(kind === 'code' ? '邀請碼已複製' : '邀請訊息已複製，快分享給朋友', 'success');
     } catch {
       showToast('複製失敗，請長按選取', 'error');
+    }
+  };
+
+  /**
+   * 下載 hero 圖（含 QR）：把畫面上那張合成圖用 canvas 原樣畫一份存下來。
+   * 座標跟 CSS 同一套百分比（QR 卡 52% 寬、top 54%、內距 6%），
+   * 改版位只要兩邊同步改同兩個數字。
+   */
+  const downloadHero = async () => {
+    if (!qr) return;
+    const load = (src: string) => new Promise<HTMLImageElement>((ok, err) => {
+      const im = new window.Image();
+      im.onload = () => ok(im); im.onerror = err; im.src = src;
+    });
+    try {
+      const [hero, qrImg] = await Promise.all([load('/images/invite/invite.jpg'), load(qr)]);
+      const W = 800, H = 1200;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(hero, 0, 0, W, H);
+
+      const cardW = W * 0.52, pad = W * 0.06, r = 20;
+      const cx = (W - cardW) / 2, cy = H * 0.54;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(cx + r, cy);
+      ctx.arcTo(cx + cardW, cy, cx + cardW, cy + cardW, r);
+      ctx.arcTo(cx + cardW, cy + cardW, cx, cy + cardW, r);
+      ctx.arcTo(cx, cy + cardW, cx, cy, r);
+      ctx.arcTo(cx, cy, cx + cardW, cy, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.drawImage(qrImg, cx + pad, cy + pad, cardW - pad * 2, cardW - pad * 2);
+
+      canvas.toBlob(blob => {
+        if (!blob) { showToast('下載失敗，請重試一次', 'error'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ggb-invite.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('已下載邀請圖', 'success');
+      }, 'image/png');
+    } catch {
+      showToast('下載失敗，請重試一次', 'error');
     }
   };
 
