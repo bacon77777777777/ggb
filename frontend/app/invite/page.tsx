@@ -4,29 +4,47 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { Copy, Share2, Check } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { buildInviteMessage } from '@/lib/inviteMessage';
-import SimplePageHeader from '@/components/ui/SimplePageHeader';
 
 /**
- * 邀請好友頁 —— 分享場景的專門頁面
+ * 邀請好友頁 —— 一張滿版主視覺，動作都在頂部導航
  *
- * 老闆定的分工：會員頁那顆小 Copy 圖標只複製「碼本身」（旁邊顯示的
- * 就是碼，複製整段訊息違反預期）；要分享的人來這一頁 ——
- * 直式卡片、中間 QR code 給面對面掃，下方按鈕複製整段邀請訊息
- * 或叫出系統分享面板貼給 LINE 群。
+ * 老闆定的形態：頁面本體只有 hero 圖（圖上已印好白框，QR 直接
+ * 對位疊進去，不另畫白卡 —— 疊白卡會變雙重白邊）；「分享 =
+ * 複製邀請訊息」「下載 = 存含 QR 的合成圖」兩顆文字鈕在 Navbar
+ * 右側，透過 CustomEvent 丟回來這裡執行。
  *
  * QR 內容是 /login?invite=CODE：掃了進登入頁，登入完邀請碼自動填。
  */
+
+/**
+ * 白框在 invite.jpg 上的實測位置（程式逐像素掃出來的，非目測）：
+ * x 219~581、y 777~1112（原圖 800×1200）→ 中心 (50%, 78.7%)。
+ * QR 取框內短邊的九成，四周留白就是掃碼的靜區。
+ * 換圖要重掃這三個數字；CSS 與下載 canvas 共用，只改這裡。
+ */
+const QR_CENTER_Y = 0.787;
+const QR_SIZE = 0.375; // 相對圖寬（= 300px / 800px）
+
+/**
+ * QR 下方紅旗緞帶：x 234~572、y 1113~1173 → 中心 (50%, 95.25%)。
+ * 旗上疊「邀請碼 XXXXXX＋複製圖標」；下載的合成圖畫同一行字但
+ * 不含複製圖標（老闆指定）。碼是 8 位，旗內側約 280px 寬，
+ * 字級 28px（相對 800 寬）剛好裝下＝手機 3.5vw（滿版時視窗寬＝圖寬）
+ * ＝桌機 16px（max-w-md 448px）。碼用會員卡同款黃 #ffe600。
+ */
+const RIBBON_CENTER_Y = 0.9605;
+const CODE_FONT_PX = 28; // 相對 800 寬的 canvas 字級
+const CODE_YELLOW = '#ffe600'; // 會員卡推薦碼同款黃
 
 export default function InvitePage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { showToast } = useToast();
   const [qr, setQr] = useState<string | null>(null);
-  const [copied, setCopied] = useState<'code' | 'msg' | null>(null);
 
   const code = user?.invite_code ?? null;
   const link = code && typeof window !== 'undefined'
@@ -38,106 +56,135 @@ export default function InvitePage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
+    const onShare = () => { void copyMessage(); };
+    const onDownload = () => { void downloadHero(); };
+    window.addEventListener('ggb:invite-share', onShare);
+    window.addEventListener('ggb:invite-download', onDownload);
+    return () => {
+      window.removeEventListener('ggb:invite-share', onShare);
+      window.removeEventListener('ggb:invite-download', onDownload);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, qr]);
+
+  useEffect(() => {
     if (!link) return;
-    QRCode.toDataURL(link, { width: 512, margin: 1, color: { dark: '#1a1a1a', light: '#ffffff' } })
+    // margin: 0 —— 靜區由圖上的白框提供，QR 自帶白邊會跟框疊出雙重白
+    QRCode.toDataURL(link, { width: 512, margin: 0, color: { dark: '#1a1a1a', light: '#ffffff' } })
       .then(setQr)
       .catch(() => setQr(null));
   }, [link]);
 
-  const copy = async (kind: 'code' | 'msg') => {
+  const copyMessage = async () => {
     if (!code) return;
-    const text = kind === 'code' ? code : buildInviteMessage(code, window.location.origin);
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1600);
-      showToast(kind === 'code' ? '邀請碼已複製' : '邀請訊息已複製，快分享給朋友', 'success');
+      await navigator.clipboard.writeText(buildInviteMessage(code, window.location.origin));
+      showToast('邀請訊息已複製，快分享給朋友', 'success');
     } catch {
-      showToast('複製失敗，請長按選取', 'error');
+      showToast('複製失敗，請重試一次', 'error');
     }
   };
 
-  const share = async () => {
+  const copyCode = async () => {
     if (!code) return;
-    const text = buildInviteMessage(code, window.location.origin);
-    // 手機上叫系統分享面板（可直接丟 LINE）；不支援的環境退回複製
-    if (navigator.share) {
-      try { await navigator.share({ text }); } catch { /* 玩家取消分享 */ }
-    } else {
-      void copy('msg');
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast('邀請碼已複製', 'success');
+    } catch {
+      showToast('複製失敗，請重試一次', 'error');
+    }
+  };
+
+  /** 下載 hero 圖（含 QR）：跟畫面同一組座標常數，畫一份存下來 */
+  const downloadHero = async () => {
+    if (!qr) return;
+    const load = (src: string) => new Promise<HTMLImageElement>((ok, err) => {
+      const im = new window.Image();
+      im.onload = () => ok(im); im.onerror = err; im.src = src;
+    });
+    try {
+      const [hero, qrImg] = await Promise.all([load('/images/invite/invite.jpg'), load(qr)]);
+      const W = 800, H = 1200;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(hero, 0, 0, W, H);
+
+      const size = W * QR_SIZE;
+      ctx.drawImage(qrImg, (W - size) / 2, H * QR_CENTER_Y - size / 2, size, size);
+
+      // 紅旗上的邀請碼 —— 下載版只有字，不畫複製圖標（老闆指定）；
+      // 「邀請碼」白、碼黃，跟畫面同款雙色
+      if (code) {
+        ctx.font = `bold ${CODE_FONT_PX}px system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const label = '邀請碼 ';
+        const wLabel = ctx.measureText(label).width;
+        const startX = (W - wLabel - ctx.measureText(code).width) / 2;
+        const textY = H * RIBBON_CENTER_Y + 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, startX, textY);
+        ctx.fillStyle = CODE_YELLOW;
+        ctx.fillText(code, startX + wLabel, textY);
+      }
+
+      canvas.toBlob(blob => {
+        if (!blob) { showToast('下載失敗，請重試一次', 'error'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ggb-invite.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('已下載邀請圖', 'success');
+      }, 'image/png');
+    } catch {
+      showToast('下載失敗，請重試一次', 'error');
     }
   };
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <SimplePageHeader title="邀請好友" onBack={() => router.back()} darkBg="page" />
-
-      <div className="flex flex-col items-center px-6 pb-12 pt-[76px]">
-        {/* 直式邀請卡 */}
-        <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-gradient-to-b from-primary to-primary/80 p-6 text-center shadow-xl shadow-primary/20">
-          <Image
-            src="/images/20260629/logo.svg"
-            alt="吉吉比"
-            width={110}
-            height={37}
-            priority
-            className="mx-auto h-auto w-[110px] brightness-0 invert"
-          />
-          <h1 className="mt-4 text-xl font-black text-white">邀請好友，一起開箱抽好運</h1>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-white/80">
-            朋友掃描 QR code 或輸入你的邀請碼
-            <br />
-            完成註冊就算你邀請成功
-          </p>
-
-          {/* QR 白卡 */}
-          <div className="mx-auto mt-5 w-[220px] rounded-2xl bg-white p-4 shadow-lg">
-            {qr ? (
-              // QR 是本地生成的 data URI，用原生 img 就好
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={qr} alt="邀請 QR code" className="h-[188px] w-[188px]" />
-            ) : (
-              <div className="h-[188px] w-[188px] animate-pulse rounded-xl bg-neutral-100" />
-            )}
-          </div>
-
-          {/* 邀請碼 */}
-          <button
-            type="button"
-            onClick={() => void copy('code')}
-            className="mx-auto mt-5 flex items-center gap-2 rounded-full bg-white/15 px-5 py-2.5 backdrop-blur-sm transition-colors active:bg-white/25"
-          >
-            <span className="text-[13px] text-white/70">邀請碼</span>
-            <span className="font-mono text-lg font-black tracking-[0.2em] text-white">{code ?? '——'}</span>
-            {copied === 'code'
-              ? <Check className="h-4 w-4 text-white" />
-              : <Copy className="h-4 w-4 text-white/70" />}
-          </button>
+      {/* 主視覺滿版：手機上左右貼齊瀏覽器邊（老闆指定）；
+          桌機給寬度上限與圓角，不然 800px 的圖會被拉到糊 */}
+      <div className="relative w-full md:mx-auto md:mt-4 md:max-w-md md:overflow-hidden md:rounded-3xl">
+        <Image
+          src="/images/invite/invite.jpg"
+          alt="邀請好友"
+          width={800}
+          height={1200}
+          priority
+          className="h-auto w-full"
+        />
+        {/* QR 對位到圖上印好的白框中心（座標見檔頭常數） */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{ top: `${QR_CENTER_Y * 100}%`, width: `${QR_SIZE * 100}%` }}
+        >
+          {qr ? (
+            // QR 是本地生成的 data URI，用原生 img 就好
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qr} alt="邀請 QR code" className="aspect-square w-full" />
+          ) : (
+            <div className="aspect-square w-full animate-pulse rounded-lg bg-neutral-100" />
+          )}
         </div>
-
-        {/* 動作區 */}
-        <div className="mt-6 w-full max-w-sm space-y-2.5">
+        {/* 紅旗上的邀請碼＋複製圖標（圖標只在畫面上，下載版不畫）。
+            字級跟下載 canvas 同一個 34/800 比例：手機滿版用 vw，桌機固定 px */}
+        {code && (
           <button
             type="button"
-            onClick={share}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+            onClick={() => void copyCode()}
+            className="absolute inset-x-0 flex -translate-y-1/2 items-center justify-center gap-[1vw] md:gap-1"
+            style={{ top: `${RIBBON_CENTER_Y * 100}%` }}
           >
-            <Share2 className="h-[18px] w-[18px]" />
-            分享給朋友
+            <span className="text-[3.5vw] font-bold text-white md:text-[16px]">
+              邀請碼 <span style={{ color: CODE_YELLOW }}>{code}</span>
+            </span>
+            <Copy className="h-[3vw] w-[3vw] text-white/90 md:h-3.5 md:w-3.5" />
           </button>
-          <button
-            type="button"
-            onClick={() => void copy('msg')}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
-          >
-            {copied === 'msg' ? <Check className="h-[18px] w-[18px]" /> : <Copy className="h-[18px] w-[18px]" />}
-            複製邀請訊息
-          </button>
-        </div>
-
-        <p className="mt-5 max-w-sm text-center text-xs leading-relaxed text-neutral-400">
-          朋友透過你的連結或邀請碼完成註冊後，你可以在任務中心查看邀請進度。
-        </p>
+        )}
       </div>
     </div>
   );
