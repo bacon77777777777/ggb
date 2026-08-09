@@ -32,7 +32,6 @@ interface TypeSample {
   qty: [string, string]
   prizeNames: [string, string]
   prizeImages: [string, string]
-  prob: [string, string]
 }
 
 /**
@@ -51,27 +50,24 @@ const TYPE_SAMPLES: TypeSample[] = [
     levels: ['A賞', 'B賞'], qty: ['1', '10'],
     prizeNames: ['魯夫 造型公仔', '索隆 壓克力立牌'],
     prizeImages: ['onepiece-a.jpg', 'onepiece-b.jpg'],
-    prob: ['', ''],
   },
   {
     type: 'blindbox', label: '盒玩',
     name: '吉伊卡哇 睡覺系列盒玩', series: '吉伊卡哇', distributor: 'Re-MeNT',
     barcode: '4521121207834', price: '200', total: '66', cost: '7200', jpYen: '660',
     image: 'chiikawa-box-01.jpg',
-    levels: ['普通款', '隱藏款'], qty: ['60', '6'],
+    levels: ['一般版', '隱藏款'], qty: ['60', '6'],
     prizeNames: ['吉伊卡哇 睡姿款', '烏薩奇 隱藏款'],
     prizeImages: ['chiikawa-normal.jpg', 'chiikawa-secret.jpg'],
-    prob: ['0.909091', '0.090909'],
   },
   {
     type: 'gacha', label: '轉蛋',
     name: '星之卡比 毛線角色公仔', series: '星之卡比', distributor: 'BANDAI',
     barcode: '4549660488798', price: '150', total: '52', cost: '5200', jpYen: '400',
     image: 'kirby-gacha-01.jpg',
-    levels: ['Normal / Common', 'Secret'], qty: ['50', '2'],
+    levels: ['一般版', '隱藏版'], qty: ['50', '2'],
     prizeNames: ['卡比 粉紅款', '瓦豆魯迪 隱藏款'],
     prizeImages: ['kirby-normal.jpg', 'kirby-secret.jpg'],
-    prob: ['0.961538', '0.038462'],
   },
   {
     type: 'card', label: '抽卡',
@@ -81,7 +77,6 @@ const TYPE_SAMPLES: TypeSample[] = [
     levels: ['SSR', 'R'], qty: ['1', '30'],
     prizeNames: ['皮卡丘 SAR', '妙蛙種子 R'],
     prizeImages: ['pokemon-sar.jpg', 'pokemon-r.jpg'],
-    prob: ['', ''],
   },
   {
     type: 'custom', label: '自製賞',
@@ -91,7 +86,6 @@ const TYPE_SAMPLES: TypeSample[] = [
     levels: ['A賞', 'G賞'], qty: ['1', '20'],
     prizeNames: ['大型玩偶', '壓克力吊飾'],
     prizeImages: ['ggb-a.jpg', 'ggb-g.jpg'],
-    prob: ['', ''],
   },
   {
     type: 'slot', label: '機台',
@@ -101,7 +95,6 @@ const TYPE_SAMPLES: TypeSample[] = [
     levels: ['一等獎', '三等獎'], qty: ['1', '50'],
     prizeNames: ['頭獎 限量公仔', '安慰獎 貼紙'],
     prizeImages: ['slot-1st.jpg', 'slot-3rd.jpg'],
-    prob: ['', ''],
   },
 ]
 
@@ -208,7 +201,6 @@ export async function GET(request: Request) {
       case 'name':          return sample.prizeNames[idx] ?? ''
       case 'total':         return sample.qty[idx] ?? ''
       case 'image_url':     return sample.prizeImages[idx] ?? ''
-      case 'probability':   return sample.prob[idx] ?? ''
       case 'recycle_value': return sample.type === 'slot' ? (idx === 0 ? '100' : '10') : '0'
       case 'sale_price':    return '0'
       default:              return ''
@@ -271,7 +263,6 @@ export async function GET(request: Request) {
             : f.key === 'name' ? sp.prizeNames[idx]
             : f.key === 'total' ? sp.qty[idx]
             : f.key === 'image_url' ? sp.prizeImages[idx]
-            : f.key === 'probability' ? sp.prob[idx]
             : f.key === 'recycle_value' ? (sp.type === 'slot' ? (idx === 0 ? '100' : '10') : '0')
             : f.key === 'sale_price' ? '0'
             : ''

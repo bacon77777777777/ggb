@@ -119,21 +119,16 @@ export async function POST(request: Request) {
         await supabase.from('products').update({ product_code: String(10000000 + id) }).eq('id', id)
 
         if (prizes.length) {
-          // 轉蛋/盒玩機率正規化為「總和 100 的百分比」。
-          // 廠商表格常給小數（0.2）或沒填 —— play_gacha 的輪盤雖已改單位無關
-          // （migration 515），DB 存一致單位後台顯示的 % 才不會亂。
-          // 沒填機率就按數量比例補。
-          const isProbType = ['gacha', 'blindbox'].includes(String(item.product?.type))
-          const probSum = prizes.reduce((s, p) => s + (Number(p.probability) || 0), 0)
-          const totalSum = prizes.reduce((s, p) => s + (Number(p.total) || 0), 0)
-          const normalized = isProbType
-            ? prizes.map(p => ({
-                ...p,
-                probability: probSum > 0
-                  ? (Number(p.probability) || 0) * 100 / probSum
-                  : totalSum > 0 ? (Number(p.total) || 0) * 100 / totalSum : 0,
-              }))
-            : prizes
+          // 機率不開放手動設定（老闆定案）：檔案給什麼都忽略，
+          // 一律依數量佔比計算（40/200 = 20%），跟單筆編輯器同一條規則。
+          // 最後賞不佔機率（觸發式，不進輪盤）。
+          const isLastOne = (p: Record<string, unknown>) =>
+            p.is_last_one === true || ['Last One', 'LAST ONE', 'last one', '最後賞'].includes(String(p.level))
+          const totalSum = prizes.reduce((s, p) => s + (isLastOne(p) ? 0 : (Number(p.total) || 0)), 0)
+          const normalized = prizes.map(p => ({
+            ...p,
+            probability: isLastOne(p) || totalSum <= 0 ? 0 : (Number(p.total) || 0) * 100 / totalSum,
+          }))
           const { error: prizeErr } = await supabase.from('product_prizes').insert(
             normalized.map(p => ({ ...pick(p, ALLOWED_PRIZE_KEYS), product_id: id }))
           )
