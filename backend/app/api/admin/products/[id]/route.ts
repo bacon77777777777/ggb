@@ -98,7 +98,19 @@ export async function PUT(
       }
     }
 
+    // 封存排籤的商品（一番賞公平性承諾）賞項結構不可再動，但商品本身的
+    // 資料（名稱、分類、上下架…）要照常可存。編輯頁存檔是把沒動過的品項
+    // 也整包 upsert，upsert 的 INSERT 階段會撞上 DB 的 guard_sealed_product
+    // trigger —— 改分類清單都存不了。封存商品改走「逐筆只更新安全欄位」，
+    // 真的動到賞項結構（增刪、改總數/等級）才明確擋下。
+    const { data: seal } = await supabaseAdmin
+      .from('product_ticket_seals').select('product_id').eq('product_id', productId).maybeSingle()
+    const isSealed = !!seal
+
     if (deletedPrizeIds.length > 0) {
+      if (isSealed) {
+        return NextResponse.json({ error: '此商品已封存排籤，不可刪除賞項（要重排請先刪除整個商品）' }, { status: 400 })
+      }
       const { error: deleteError } = await supabaseAdmin.from('product_prizes').delete().in('id', deletedPrizeIds)
       if (deleteError) throw deleteError
     }
@@ -108,13 +120,41 @@ export async function PUT(
       const existing = normalized.filter((p: any) => p.id != null)
       const fresh = normalized.filter((p: any) => p.id == null)
 
-      if (existing.length > 0) {
-        const { error: upsertError } = await supabaseAdmin.from('product_prizes').upsert(existing)
-        if (upsertError) throw upsertError
-      }
-      if (fresh.length > 0) {
-        const { error: insertError } = await supabaseAdmin.from('product_prizes').insert(fresh)
-        if (insertError) throw insertError
+      if (isSealed) {
+        if (fresh.length > 0) {
+          return NextResponse.json({ error: '此商品已封存排籤，不可新增賞項（要重排請先刪除整個商品）' }, { status: 400 })
+        }
+        const { data: currentRows } = await supabaseAdmin
+          .from('product_prizes').select('id, total, level').eq('product_id', productId)
+        const currentById = new Map((currentRows ?? []).map(r => [Number(r.id), r]))
+
+        for (const p of existing) {
+          const cur = currentById.get(Number(p.id))
+          if (!cur) continue
+          if (Number(p.total) !== Number(cur.total) || String(p.level ?? '') !== String(cur.level ?? '')) {
+            return NextResponse.json({ error: '此商品已封存排籤，賞項的總數量與等級不可再異動' }, { status: 400 })
+          }
+          // 只更新不影響排籤承諾的欄位；total/level/remaining/probability 一律不碰
+          // （remaining 由抽獎扣、probability 封存後不參與出獎）
+          const { error: safeError } = await supabaseAdmin.from('product_prizes').update({
+            name: p.name,
+            image_url: p.image_url,
+            recycle_value: p.recycle_value,
+            decompose_type: p.decompose_type,
+            sale_price: p.sale_price,
+            decompose_value: p.decompose_value,
+          }).eq('id', p.id)
+          if (safeError) throw safeError
+        }
+      } else {
+        if (existing.length > 0) {
+          const { error: upsertError } = await supabaseAdmin.from('product_prizes').upsert(existing)
+          if (upsertError) throw upsertError
+        }
+        if (fresh.length > 0) {
+          const { error: insertError } = await supabaseAdmin.from('product_prizes').insert(fresh)
+          if (insertError) throw insertError
+        }
       }
     }
 

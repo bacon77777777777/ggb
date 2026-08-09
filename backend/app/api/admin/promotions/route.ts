@@ -27,16 +27,18 @@ export async function GET() {
     .order('id', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 用掉幾次、折了多少。做促銷的人第一個想知道的就是這個
+  // 用掉幾次、送出幾抽。做促銷的人第一個想知道的就是這個
+  // （517 起促銷是「多送抽」：bonus_count=送出抽數、discount=贈品零售價值）
   const { data: stats } = await supabase
     .from('promotion_redemptions')
-    .select('promotion_id, discount')
-  const agg = new Map<number, { uses: number; discount: number }>()
+    .select('promotion_id, discount, bonus_count')
+  const agg = new Map<number, { uses: number; discount: number; bonus: number }>()
   for (const r of stats ?? []) {
     const k = Number(r.promotion_id)
-    const e = agg.get(k) ?? { uses: 0, discount: 0 }
+    const e = agg.get(k) ?? { uses: 0, discount: 0, bonus: 0 }
     e.uses += 1
     e.discount += Number(r.discount) || 0
+    e.bonus += Number((r as { bonus_count?: number }).bonus_count) || 0
     agg.set(k, e)
   }
 
@@ -44,6 +46,7 @@ export async function GET() {
     ...p,
     uses: agg.get(p.id)?.uses ?? 0,
     total_discount: agg.get(p.id)?.discount ?? 0,
+    total_bonus: agg.get(p.id)?.bonus ?? 0,
   })))
 }
 

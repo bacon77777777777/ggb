@@ -11,7 +11,7 @@ import { Database } from '@/types/database.types';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
-import { fetchProductPromotion, promoDiscount, type ProductPromotion } from '@/lib/promotions';
+import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -143,7 +143,14 @@ export function PurchaseConfirmationModal({
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
   // 步進範圍（老闆指定）：最少 1；轉蛋／盒玩最多 20，其餘 10。再受庫存夾制
   const maxCap = product.type === 'gacha' || product.type === 'blindbox' ? 20 : 10;
-  const maxSelectable = Math.min(maxCap, maxQuantity);
+  // 促銷商品：付費抽數＋加贈抽數都要吃庫存（買5送1＝庫存扣6），
+  // 上限退到「選了之後連贈品都裝得下」的最大值，避免玩家選 6 抽反而比 5 抽虧
+  let maxSelectable = Math.min(maxCap, maxQuantity);
+  if (promo && promo.type === 'bundle' && promo.free > 0) {
+    while (maxSelectable > 1 && maxSelectable + promoBonusDraws(promo, maxSelectable) > maxQuantity) {
+      maxSelectable--;
+    }
+  }
   const canTenPull = !isSoldOut && maxSelectable >= 10;
   // 庫存變動、重開彈窗時把超出範圍的值拉回來
   useEffect(() => {
@@ -161,16 +168,19 @@ export function PurchaseConfirmationModal({
   // Calculations
   const totalPrice = product.price * effectiveQuantity;
 
-  // 促銷折抵。公式與 DB 的 promo_discount_for 一致（每湊滿 buy+free 抽折 free 抽）。
-  // 積分支付不吃促銷（play_gacha 的積分路徑收全額），顯示也要一致
-  const promoDiscountAmount = usePoints ? 0 : promoDiscount(promo, effectiveQuantity, product.price);
+  // 促銷加贈抽數（migration 517：買5送1＝付5抽錢、多送1抽、庫存扣6）。
+  // 公式與 DB 的 promo_bonus_for 一致；庫存不夠送就少送，跟 DB 的夾制同步。
+  // 積分支付不吃促銷（play_gacha 的積分路徑不送），顯示也要一致
+  const promoBonusCount = usePoints
+    ? 0
+    : Math.max(0, Math.min(promoBonusDraws(promo, effectiveQuantity), maxByRemaining - effectiveQuantity));
 
   // Calculate discount
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
   let discountAmount = 0;
 
-  // 優惠券與促銷不疊加（DB 規則：有促銷折抵時優惠券不生效），且僅限代幣支付
-  if (!usePoints && promoDiscountAmount === 0 && selectedCoupon && selectedCoupon.coupon) {
+  // 優惠券與促銷不疊加（DB 規則：有促銷加贈時優惠券不生效），且僅限代幣支付
+  if (!usePoints && promoBonusCount === 0 && selectedCoupon && selectedCoupon.coupon) {
     if (selectedCoupon.coupon.min_spend <= totalPrice) {
         if (selectedCoupon.coupon.discount_type === 'fixed') {
             discountAmount = selectedCoupon.coupon.discount_value;
@@ -180,7 +190,8 @@ export function PurchaseConfirmationModal({
     }
   }
 
-  const finalPrice = Math.max(0, totalPrice - promoDiscountAmount - discountAmount);
+  // 促銷不折價（收全額，多送的是抽數），只有優惠券會減金額
+  const finalPrice = Math.max(0, totalPrice - discountAmount);
   const pointsCost = totalPrice * 4;
   
   // Calculate remaining balance after purchase for immediate feedback
@@ -354,9 +365,9 @@ export function PurchaseConfirmationModal({
                         <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
                         {isPromoProduct && promo && (
                           <span className="min-w-0 truncate text-[11px] md:text-[12px] font-bold text-accent-red">
-                            {promoDiscountAmount > 0
-                              ? `已折 ${promoDiscountAmount.toLocaleString()} G`
-                              : `滿 ${promo.buy} 抽折 ${(promo.free * product.price).toLocaleString()} G`}
+                            {promoBonusCount > 0
+                              ? `加贈 ${promoBonusCount} 抽，共獲得 ${(effectiveQuantity + promoBonusCount).toLocaleString()} 顆`
+                              : `滿 ${promo.buy} 抽送 ${promo.free} 抽`}
                           </span>
                         )}
                       </div>
@@ -420,7 +431,7 @@ export function PurchaseConfirmationModal({
                     {/* Coupon Selector。促銷商品整列隱藏（不與促銷併用，老闆指定）；
                         非促銷商品維持原樣，積分支付時鎖住 */}
                     {!isPromoProduct && (
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoDiscountAmount > 0) && "opacity-50 pointer-events-none")}>
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoBonusCount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Ticket className="w-4 h-4 text-accent-yellow" />
                           優惠券
@@ -429,7 +440,7 @@ export function PurchaseConfirmationModal({
                          onClick={() => setView('coupons')}
                          className="flex items-center gap-1 text-[13px] md:text-[15px] font-bold text-neutral-400 hover:text-neutral-600 transition-colors group"
                        >
-                          {promoDiscountAmount > 0 ? (
+                          {promoBonusCount > 0 ? (
                             "不與促銷併用"
                           ) : selectedCoupon ? (
                             <span className="text-accent-red">
@@ -466,10 +477,10 @@ export function PurchaseConfirmationModal({
                         </div>
                       )}
 
-                      {promoDiscountAmount > 0 && !usePoints && (
+                      {promoBonusCount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
                             <span>活動促銷{promo ? `（${promo.badgeText || promo.name}）` : ''}</span>
-                            <GAmount value={promoDiscountAmount} negative />
+                            <span>加贈 {promoBonusCount} 抽</span>
                         </div>
                       )}
                       {discountAmount > 0 && !usePoints && (

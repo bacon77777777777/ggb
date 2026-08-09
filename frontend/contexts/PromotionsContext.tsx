@@ -12,9 +12,9 @@ import { createClient } from '@/lib/supabase/client';
  * 檔期與優先權都在資料庫算好了），而不是每張卡各查一次 ——
  * 首頁一次渲染幾十張卡，逐張查等於幾十個請求。
  *
- * 折扣的計算前後端各有一份（這裡與 DB 的 promo_discount_for），
- * 但兩份的用途不同：這裡只是「先告訴玩家會折多少」，
- * 真正扣款是 DB 說了算。前端算錯頂多顯示不準，不會少收錢。
+ * 加贈的計算前後端各有一份（這裡與 DB 的 promo_bonus_for），
+ * 但兩份的用途不同：這裡只是「先告訴玩家會送幾抽」，
+ * 真正送幾抽是 DB 說了算。前端算錯頂多顯示不準，不會多送或少送。
  */
 
 export interface ProductPromotion {
@@ -87,18 +87,17 @@ export function useProductPromotion(productId: number | string | null | undefine
 }
 
 /**
- * 抽 n 次會折幾抽。跟 DB 的 promo_discount_for 同一條算法：
- * 每滿 (buy + free) 抽就送 free 抽。
+ * 買 n 抽會送幾抽。跟 DB 的 promo_bonus_for 同一條算法（migration 517）：
+ * 每滿 buy 抽送 free 抽（買5送1：付 5 抽的錢、拿 6 顆）。
  */
 export function freeDrawsFor(promo: ProductPromotion | null, count: number): number {
   if (!promo || count < 1) return 0;
-  return Math.floor(count / (promo.buy + promo.free)) * promo.free;
+  return Math.floor(count / promo.buy) * promo.free;
 }
 
-/** 還差幾抽才湊得滿下一組。回 0 代表已經湊滿或沒有促銷 */
+/** 還差幾抽才湊得滿下一組贈抽。回 0 代表已經湊滿或沒有促銷 */
 export function drawsUntilNextFree(promo: ProductPromotion | null, count: number): number {
   if (!promo) return 0;
-  const unit = promo.buy + promo.free;
-  const remainder = count % unit;
-  return remainder === 0 ? 0 : unit - remainder;
+  const remainder = count % promo.buy;
+  return remainder === 0 ? 0 : promo.buy - remainder;
 }

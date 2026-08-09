@@ -17,7 +17,7 @@ import { formatDateTime } from '@/utils/dateFormat'
  * 促銷方案
  *
  * 目前只有「買 N 送 M」。在轉蛋平台上「買」就是「抽」，所以買五送一的意思是
- * 抽 6 次只收 5 次的錢 —— 玩家照抽照扣庫存，只是金額少收一抽。
+ * 付 5 抽的錢、平台多送 1 抽 —— 玩家拿 6 顆、庫存扣 6，收入不打折（migration 517）。
  *
  * 適用範圍掛在分類上時，之後往那個分類丟商品會自動繼承，不必逐一設定。
  */
@@ -34,6 +34,7 @@ interface Promo {
   priority: number
   uses: number
   total_discount: number
+  total_bonus: number
   promotion_targets?: { product_id: number | null; category_id: string | null }[]
 }
 
@@ -151,7 +152,7 @@ export default function PromotionsPage() {
       render: p => (
         <div>
           <div>{p.uses} 次</div>
-          <div className="text-neutral-400">折抵 {p.total_discount.toLocaleString()} 代幣</div>
+          <div className="text-neutral-400">送出 {(p.total_bonus ?? 0).toLocaleString()} 抽（值 {p.total_discount.toLocaleString()} 代幣）</div>
         </div>
       ),
     },
@@ -182,8 +183,8 @@ export default function PromotionsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-neutral-500">
-            買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是抽 6 次只收 5 次的錢，
-            玩家照抽照扣庫存，只是金額少收一抽。
+            買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是付 5 抽的錢多送 1 抽，
+            玩家拿 6 顆、庫存扣 6，收入不打折。
           </p>
           <button onClick={() => setOpen(true)}
             className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-white transition-colors hover:bg-primary/90">
@@ -219,7 +220,7 @@ export default function PromotionsPage() {
             </div>
           </div>
           <p className="-mt-2 text-xs text-neutral-400">
-            玩家要抽滿 {Number(form.buy) + Number(form.free)} 次才折 {form.free} 抽。抽不滿不折，前台會提示還差幾抽。
+            玩家買滿 {Number(form.buy) || 0} 抽就多送 {Number(form.free) || 0} 抽（庫存多扣 {Number(form.free) || 0}）。買不滿不送，前台會提示還差幾抽。
           </p>
 
           <div>
