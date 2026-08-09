@@ -11,6 +11,7 @@ import { Database } from '@/types/database.types';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
+import { fetchProductPromotion, promoDiscount, type ProductPromotion } from '@/lib/promotions';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -52,18 +53,40 @@ export function PurchaseConfirmationModal({
   const [lockedQuantity, setLockedQuantity] = useState<number | null>(null);
   // Ref-based lock: updated synchronously before any state change, avoids batching race condition
   const processingQuantityRef = useRef<number>(1);
+  // 促銷方案（migration 494 接進 play_gacha/play_ichiban 的那套）。
+  // 這裡拿來顯示折抵與快捷湊套數，實際扣款以 DB 為準
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    void fetchProductPromotion(createClient(), product.id).then(p => { if (alive) setPromo(p); });
+    return () => { alive = false; };
+  }, [isOpen, product.id]);
+
+  /**
+   * 重置只在「開啟的那一刻」跑，單獨一個 effect、只相依 isOpen。
+   *
+   * 原本跟 ESC／優惠券混在同一個 effect，deps 帶著 onClose ——
+   * 父層每次 re-render 都是新的 inline 箭頭函數，effect 就重跑、
+   * setQuantity(1) 再執行一次：玩家點了十連抽，一秒後父層任何
+   * 狀態更新（餘額刷新、商品 realtime）都會把數量打回單抽。
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+    setView('confirm');
+    setQuantity(1);
+    setLockedQuantity(null);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
-      setView('confirm');
-      setQuantity(1);
-      setLockedQuantity(null);
       document.body.style.overflow = 'hidden';
       const handleEsc = (e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
       };
       window.addEventListener('keydown', handleEsc);
-      
+
       // Fetch coupons
       if (user) {
         const fetchCoupons = async () => {
@@ -123,13 +146,17 @@ export function PurchaseConfirmationModal({
 
   // Calculations
   const totalPrice = product.price * effectiveQuantity;
-  
+
+  // 促銷折抵。公式與 DB 的 promo_discount_for 一致（每湊滿 buy+free 抽折 free 抽）。
+  // 積分支付不吃促銷（play_gacha 的積分路徑收全額），顯示也要一致
+  const promoDiscountAmount = usePoints ? 0 : promoDiscount(promo, effectiveQuantity, product.price);
+
   // Calculate discount
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
   let discountAmount = 0;
-  
-  // Calculate discount (only applies when NOT using points)
-  if (!usePoints && selectedCoupon && selectedCoupon.coupon) {
+
+  // 優惠券與促銷不疊加（DB 規則：有促銷折抵時優惠券不生效），且僅限代幣支付
+  if (!usePoints && promoDiscountAmount === 0 && selectedCoupon && selectedCoupon.coupon) {
     if (selectedCoupon.coupon.min_spend <= totalPrice) {
         if (selectedCoupon.coupon.discount_type === 'fixed') {
             discountAmount = selectedCoupon.coupon.discount_value;
@@ -138,8 +165,8 @@ export function PurchaseConfirmationModal({
         }
     }
   }
-  
-  const finalPrice = Math.max(0, totalPrice - discountAmount);
+
+  const finalPrice = Math.max(0, totalPrice - promoDiscountAmount - discountAmount);
   const pointsCost = totalPrice * 4;
   
   // Calculate remaining balance after purchase for immediate feedback
@@ -306,44 +333,53 @@ export function PurchaseConfirmationModal({
                   </div>
 
                   <div className={cn("space-y-2", isDesktop ? "px-6 pb-6 space-y-4" : "px-3")}>
-                    {/* Quantity Selector */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "p-6" : "p-3")}>
-                      <span className={cn("font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
-                      <div className="flex items-center gap-2">
-                        {/*
-                          Use effective quantity to keep visual state stable during processing,
-                          avoiding flicker from auto-fallback or external updates.
-                        */}
-                        {/* 一般販售維持「單抽 / 十連抽」兩顆按鈕。
-                            抽籤販售有自己的 LotteryDrawModal，那邊才是步進式選張數 */}
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(1)}
-                          disabled={isSoldOut || isProcessing}
-                          className={cn(
-                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
-                            effectiveQuantity === 1
-                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                            (isSoldOut || isProcessing) && "opacity-50 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900"
-                          )}
-                        >
-                          單抽
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { if (canTenPull) setQuantity(10); }}
-                          disabled={isSoldOut || !canTenPull || isProcessing}
-                          className={cn(
-                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
-                            effectiveQuantity === 10
-                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                            (isSoldOut || !canTenPull || isProcessing) && "opacity-40 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900 active:scale-100"
-                          )}
-                        >
-                          十連抽
-                        </button>
+                    {/* Quantity Selector：+/- 步進（任意數量）＋ 快捷鈕（老闆指定兩者都要）。
+                        快捷鈕：十連恆在；有 bundle 促銷時多一顆「湊滿送」
+                        （例：買5送1 → 「6抽 送1」），玩家不用自己算要抽幾次才吃到折扣 */}
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl space-y-2.5", isDesktop ? "p-6" : "p-3")}>
+                      <div className="flex items-center justify-between">
+                        <span className={cn("font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
+                        <div className="flex items-center gap-2">
+                          <StepBtn
+                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                            disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
+                          >
+                            −
+                          </StepBtn>
+                          <span className={cn(
+                            "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
+                            isDesktop ? "w-12 text-lg" : "w-9 text-base"
+                          )}>
+                            {effectiveQuantity}
+                          </span>
+                          <StepBtn
+                            onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
+                            disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
+                          >
+                            ＋
+                          </StepBtn>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-end gap-2">
+                        {promo && promo.type === 'bundle' && promo.free > 0 && maxQuantity >= promo.buy + promo.free && (
+                          <QuickBtn
+                            active={effectiveQuantity === promo.buy + promo.free}
+                            onClick={() => setQuantity(promo.buy + promo.free)}
+                            disabled={isSoldOut || isProcessing}
+                            accent
+                          >
+                            {promo.buy + promo.free}抽 送{promo.free}
+                          </QuickBtn>
+                        )}
+                        {canTenPull && (
+                          <QuickBtn
+                            active={effectiveQuantity === 10}
+                            onClick={() => setQuantity(10)}
+                            disabled={isSoldOut || isProcessing}
+                          >
+                            十連抽
+                          </QuickBtn>
+                        )}
                       </div>
                     </div>
 
@@ -369,8 +405,22 @@ export function PurchaseConfirmationModal({
                        </label>
                     </div>
 
+    {/* 促銷折抵列：吃到折扣才出現。優惠券與促銷不疊加（DB 規則），
+                        有促銷折抵時優惠券列淡化鎖住 */}
+                    {promoDiscountAmount > 0 && promo && (
+                      <div className={cn("bg-accent-red/5 dark:bg-accent-red/10 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
+                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-accent-red">
+                          <Ticket className="w-4 h-4" />
+                          {promo.name || promo.badgeText}
+                        </div>
+                        <span className="text-[13px] md:text-[15px] font-black text-accent-red">
+                          -<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span>
+                        </span>
+                      </div>
+                    )}
+
                     {/* Coupon Selector */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", usePoints && "opacity-50 pointer-events-none")}>
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoDiscountAmount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Ticket className="w-4 h-4 text-accent-yellow" />
                           優惠券
@@ -423,6 +473,12 @@ export function PurchaseConfirmationModal({
                         </div>
                       )}
 
+                      {promoDiscountAmount > 0 && !usePoints && (
+                        <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
+                            <span>活動促銷</span>
+                            <span>-<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span> 元</span>
+                        </div>
+                      )}
                       {discountAmount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
                             <span>折扣金額</span>
@@ -570,3 +626,44 @@ export function PurchaseConfirmationModal({
   );
 }
 
+
+/** 數量步進鈕。樣式與抽籤販售的 LotteryDrawModal 一致，兩邊操作手感相同 */
+function StepBtn({ children, onClick, disabled }: {
+  children: React.ReactNode; onClick: () => void; disabled: boolean;
+}) {
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className={cn(
+        "w-9 h-9 md:w-11 md:h-11 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
+        "text-neutral-700 dark:text-neutral-200 font-black md:text-lg",
+        "disabled:opacity-40 hover:bg-neutral-300/70 dark:hover:bg-neutral-600 transition-colors"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 快捷數量鈕（十連抽、促銷湊套）。accent 給促銷用，紅字提醒有折扣 */
+function QuickBtn({ children, onClick, disabled, active, accent }: {
+  children: React.ReactNode; onClick: () => void; disabled: boolean;
+  active: boolean; accent?: boolean;
+}) {
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className={cn(
+        "h-8 md:h-9 px-3 md:px-4 rounded-full border text-[13px] md:text-sm font-black transition-all active:scale-95",
+        active
+          ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+          : accent
+            ? "bg-white dark:bg-neutral-900 border-accent-red/40 text-accent-red hover:bg-accent-red/5"
+            : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+        disabled && "opacity-40 cursor-not-allowed"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
