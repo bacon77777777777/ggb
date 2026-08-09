@@ -132,14 +132,15 @@ export function PurchaseConfirmationModal({
   const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
   const isSoldOut = product.status === 'ended' || maxByRemaining === 0;
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
-  // 步進範圍 0～10（老闆指定），再受庫存夾制；0 時確認鈕鎖住
-  const maxSelectable = Math.min(10, maxQuantity);
+  // 步進範圍（老闆指定）：最少 1；轉蛋／盒玩最多 20，其餘 10。再受庫存夾制
+  const maxCap = product.type === 'gacha' || product.type === 'blindbox' ? 20 : 10;
+  const maxSelectable = Math.min(maxCap, maxQuantity);
   const canTenPull = !isSoldOut && maxSelectable >= 10;
   // 庫存變動、重開彈窗時把超出範圍的值拉回來
   useEffect(() => {
     if (!isOpen || isProcessing) return;
     if (quantity > maxSelectable) setQuantity(maxSelectable);
-    if (quantity < 0) setQuantity(0);
+    if (quantity < 1) setQuantity(1);
   }, [isOpen, isProcessing, maxSelectable, quantity]);
 
   // Freeze displayed quantity during processing so prices stay consistent with button selection
@@ -190,7 +191,7 @@ export function PurchaseConfirmationModal({
       return;
     }
 
-    // 數量 0 沒有東西可買（步進下限是 0，確認鈕也已鎖，這裡是最後一道）
+    // 售罄或數量異常（下限 1，理論上到不了 0，留一道保險）
     if (isSoldOut || quantity < 1) {
       return;
     }
@@ -355,8 +356,8 @@ export function PurchaseConfirmationModal({
                           </QuickBtn>
                         )}
                         <StepBtn
-                          onStep={() => setQuantity(q => Math.max(0, q - 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 0}
+                          onStep={() => setQuantity(q => Math.max(1, q - 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
                         >
                           −
                         </StepBtn>
