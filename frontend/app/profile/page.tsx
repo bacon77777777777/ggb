@@ -1543,8 +1543,8 @@ function ProfileContent() {
           const name = item.product_prizes?.name || item.prize_name || '未知';
 
           const itemPointsUsed = item.points_used || 0;
-          // 實收金額（促銷/優惠券折抵後）；舊資料沒有 tokens_spent 才 fallback 單價。
-          // 買五送一顯示 600 而不是 750 就靠這個
+          // 實收金額（優惠券折抵後）；舊資料沒有 tokens_spent 才 fallback 單價。
+          // 買五送一（517 起是多送 1 抽）：5 筆收單價＋贈品那筆 0 元，就靠這個
           const itemCost = item.tokens_spent ?? (item.products?.price || 0);
           if (lastGroup && lastGroup._rawDate === currentTimestamp && lastGroup.product === item.products?.name) {
             lastGroup.tickets.push(item.ticket_number?.toString());
