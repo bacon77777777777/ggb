@@ -687,7 +687,8 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
     <button
       type="button" onClick={onClick} disabled={disabled}
       className={cn(
-        "h-7 md:h-9 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
+        // 高度對齊 StepBtn（h-8 / md:h-10），排成一行才不會高低差
+        "h-8 md:h-10 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
         active
           ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
           : accent
