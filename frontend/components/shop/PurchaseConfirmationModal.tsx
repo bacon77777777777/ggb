@@ -11,6 +11,7 @@ import { Database } from '@/types/database.types';
 import { cn } from '@/lib/utils';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
+import { fetchProductPromotion, promoDiscount, type ProductPromotion } from '@/lib/promotions';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -52,18 +53,40 @@ export function PurchaseConfirmationModal({
   const [lockedQuantity, setLockedQuantity] = useState<number | null>(null);
   // Ref-based lock: updated synchronously before any state change, avoids batching race condition
   const processingQuantityRef = useRef<number>(1);
+  // 促銷方案（migration 494 接進 play_gacha/play_ichiban 的那套）。
+  // 這裡拿來顯示折抵與快捷湊套數，實際扣款以 DB 為準
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    void fetchProductPromotion(createClient(), product.id).then(p => { if (alive) setPromo(p); });
+    return () => { alive = false; };
+  }, [isOpen, product.id]);
+
+  /**
+   * 重置只在「開啟的那一刻」跑，單獨一個 effect、只相依 isOpen。
+   *
+   * 原本跟 ESC／優惠券混在同一個 effect，deps 帶著 onClose ——
+   * 父層每次 re-render 都是新的 inline 箭頭函數，effect 就重跑、
+   * setQuantity(1) 再執行一次：玩家點了十連抽，一秒後父層任何
+   * 狀態更新（餘額刷新、商品 realtime）都會把數量打回單抽。
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+    setView('confirm');
+    setQuantity(1);
+    setLockedQuantity(null);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
-      setView('confirm');
-      setQuantity(1);
-      setLockedQuantity(null);
       document.body.style.overflow = 'hidden';
       const handleEsc = (e: KeyboardEvent) => {
         if (e.key === 'Escape') onClose();
       };
       window.addEventListener('keydown', handleEsc);
-      
+
       // Fetch coupons
       if (user) {
         const fetchCoupons = async () => {
@@ -109,27 +132,33 @@ export function PurchaseConfirmationModal({
   const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
   const isSoldOut = product.status === 'ended' || maxByRemaining === 0;
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
-  const canTenPull = !isSoldOut && maxQuantity >= 10;
-  // 庫存不足 10 卻停在十連抽時，拉回單抽；另外仍夾制上下限（庫存變動、重開彈窗）
+  // 步進範圍（老闆指定）：最少 1；轉蛋／盒玩最多 20，其餘 10。再受庫存夾制
+  const maxCap = product.type === 'gacha' || product.type === 'blindbox' ? 20 : 10;
+  const maxSelectable = Math.min(maxCap, maxQuantity);
+  const canTenPull = !isSoldOut && maxSelectable >= 10;
+  // 庫存變動、重開彈窗時把超出範圍的值拉回來
   useEffect(() => {
     if (!isOpen || isProcessing) return;
-    if (!canTenPull && quantity === 10) { setQuantity(1); return; }
-    if (quantity > maxQuantity) setQuantity(maxQuantity);
+    if (quantity > maxSelectable) setQuantity(maxSelectable);
     if (quantity < 1) setQuantity(1);
-  }, [isOpen, isProcessing, canTenPull, maxQuantity, quantity]);
+  }, [isOpen, isProcessing, maxSelectable, quantity]);
 
   // Freeze displayed quantity during processing so prices stay consistent with button selection
   const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
 
   // Calculations
   const totalPrice = product.price * effectiveQuantity;
-  
+
+  // 促銷折抵。公式與 DB 的 promo_discount_for 一致（每湊滿 buy+free 抽折 free 抽）。
+  // 積分支付不吃促銷（play_gacha 的積分路徑收全額），顯示也要一致
+  const promoDiscountAmount = usePoints ? 0 : promoDiscount(promo, effectiveQuantity, product.price);
+
   // Calculate discount
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
   let discountAmount = 0;
-  
-  // Calculate discount (only applies when NOT using points)
-  if (!usePoints && selectedCoupon && selectedCoupon.coupon) {
+
+  // 優惠券與促銷不疊加（DB 規則：有促銷折抵時優惠券不生效），且僅限代幣支付
+  if (!usePoints && promoDiscountAmount === 0 && selectedCoupon && selectedCoupon.coupon) {
     if (selectedCoupon.coupon.min_spend <= totalPrice) {
         if (selectedCoupon.coupon.discount_type === 'fixed') {
             discountAmount = selectedCoupon.coupon.discount_value;
@@ -138,8 +167,8 @@ export function PurchaseConfirmationModal({
         }
     }
   }
-  
-  const finalPrice = Math.max(0, totalPrice - discountAmount);
+
+  const finalPrice = Math.max(0, totalPrice - promoDiscountAmount - discountAmount);
   const pointsCost = totalPrice * 4;
   
   // Calculate remaining balance after purchase for immediate feedback
@@ -162,7 +191,8 @@ export function PurchaseConfirmationModal({
       return;
     }
 
-    if (isSoldOut) {
+    // 售罄或數量異常（下限 1，理論上到不了 0，留一道保險）
+    if (isSoldOut || quantity < 1) {
       return;
     }
 
@@ -306,44 +336,52 @@ export function PurchaseConfirmationModal({
                   </div>
 
                   <div className={cn("space-y-2", isDesktop ? "px-6 pb-6 space-y-4" : "px-3")}>
-                    {/* Quantity Selector */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "p-6" : "p-3")}>
-                      <span className={cn("font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
-                      <div className="flex items-center gap-2">
-                        {/*
-                          Use effective quantity to keep visual state stable during processing,
-                          avoiding flicker from auto-fallback or external updates.
-                        */}
-                        {/* 一般販售維持「單抽 / 十連抽」兩顆按鈕。
-                            抽籤販售有自己的 LotteryDrawModal，那邊才是步進式選張數 */}
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(1)}
-                          disabled={isSoldOut || isProcessing}
-                          className={cn(
-                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
-                            effectiveQuantity === 1
-                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                            (isSoldOut || isProcessing) && "opacity-50 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900"
-                          )}
+                    {/* Quantity Selector：+/- 步進（任意數量）＋ 快捷鈕（老闆指定兩者都要）。
+                        快捷鈕：十連恆在；有 bundle 促銷時多一顆「湊滿送」
+                        （例：買5送1 → 「6抽 送1」），玩家不用自己算要抽幾次才吃到折扣 */}
+                    {/* 單行排版：標題｜快捷鈕｜步進。
+                        手機寬度吃緊，全部元件收窄（StepBtn 32px、chip 28px 高）；
+                        快捷鈕貼在步進左邊，語意上是「數量的預設值」而不是另一區 */}
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between gap-2", isDesktop ? "p-6" : "p-3")}>
+                      <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        {promo && promo.type === 'bundle' && promo.free > 0 && maxSelectable >= promo.buy + promo.free && (
+                          <QuickBtn
+                            active={effectiveQuantity === promo.buy + promo.free}
+                            onClick={() => setQuantity(promo.buy + promo.free)}
+                            disabled={isSoldOut || isProcessing}
+                            accent
+                          >
+                            {promo.buy + promo.free}抽送{promo.free}
+                          </QuickBtn>
+                        )}
+                        <StepBtn
+                          onStep={() => setQuantity(q => Math.max(1, q - 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
                         >
-                          單抽
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { if (canTenPull) setQuantity(10); }}
-                          disabled={isSoldOut || !canTenPull || isProcessing}
-                          className={cn(
-                            "h-9 md:h-11 px-4 md:px-5 rounded-xl border font-black transition-all active:scale-95",
-                            effectiveQuantity === 10
-                              ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
-                              : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                            (isSoldOut || !canTenPull || isProcessing) && "opacity-40 cursor-not-allowed hover:bg-white dark:hover:bg-neutral-900 active:scale-100"
-                          )}
+                          −
+                        </StepBtn>
+                        <span className={cn(
+                          "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
+                          isDesktop ? "w-10 text-lg" : "w-7 text-base"
+                        )}>
+                          {effectiveQuantity}
+                        </span>
+                        <StepBtn
+                          onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
                         >
-                          十連抽
-                        </button>
+                          ＋
+                        </StepBtn>
+                        {canTenPull && (
+                          <QuickBtn
+                            active={effectiveQuantity === 10}
+                            onClick={() => setQuantity(10)}
+                            disabled={isSoldOut || isProcessing}
+                          >
+                            十連抽
+                          </QuickBtn>
+                        )}
                       </div>
                     </div>
 
@@ -369,8 +407,22 @@ export function PurchaseConfirmationModal({
                        </label>
                     </div>
 
+    {/* 促銷折抵列：吃到折扣才出現。優惠券與促銷不疊加（DB 規則），
+                        有促銷折抵時優惠券列淡化鎖住 */}
+                    {promoDiscountAmount > 0 && promo && (
+                      <div className={cn("bg-accent-red/5 dark:bg-accent-red/10 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
+                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-accent-red">
+                          <Ticket className="w-4 h-4" />
+                          {promo.name || promo.badgeText}
+                        </div>
+                        <span className="text-[13px] md:text-[15px] font-black text-accent-red">
+                          -<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span>
+                        </span>
+                      </div>
+                    )}
+
                     {/* Coupon Selector */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", usePoints && "opacity-50 pointer-events-none")}>
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoDiscountAmount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Ticket className="w-4 h-4 text-accent-yellow" />
                           優惠券
@@ -423,6 +475,12 @@ export function PurchaseConfirmationModal({
                         </div>
                       )}
 
+                      {promoDiscountAmount > 0 && !usePoints && (
+                        <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
+                            <span>活動促銷</span>
+                            <span>-<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span> 元</span>
+                        </div>
+                      )}
                       {discountAmount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
                             <span>折扣金額</span>
@@ -543,7 +601,7 @@ export function PurchaseConfirmationModal({
               )}>
                 <Button
                   onClick={handleConfirm}
-                  disabled={isProcessing || isSoldOut}
+                  disabled={isProcessing || isSoldOut || effectiveQuantity < 1}
                   className={cn(
                     "w-full rounded-xl font-black shadow-xl transition-all",
                     isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base",
@@ -570,3 +628,77 @@ export function PurchaseConfirmationModal({
   );
 }
 
+
+/**
+ * 數量步進鈕：點一下 +1／-1，按住 400ms 後每 90ms 連發（快速加減）。
+ *
+ * 用 pointerdown 觸發而不是 onClick —— 兩個都掛會在放開時多跳一步。
+ * 放開的監聽掛在 window：手指按住時滑出按鈕範圍再放開，按鈕自己收不到
+ * pointerup，不掛 window 連發就停不下來。到達邊界後 setQuantity 的夾制
+ * 讓連發自然無效，不用特別停表。
+ */
+function StepBtn({ children, onStep, disabled }: {
+  children: React.ReactNode; onStep: () => void; disabled: boolean;
+}) {
+  const holdRef = useRef<{ t?: ReturnType<typeof setTimeout>; iv?: ReturnType<typeof setInterval> }>({});
+
+  const stop = React.useCallback(() => {
+    if (holdRef.current.t) clearTimeout(holdRef.current.t);
+    if (holdRef.current.iv) clearInterval(holdRef.current.iv);
+    holdRef.current = {};
+    window.removeEventListener('pointerup', stop);
+    window.removeEventListener('pointercancel', stop);
+  }, []);
+
+  const start = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (disabled) return;
+    onStep();
+    holdRef.current.t = setTimeout(() => {
+      holdRef.current.iv = setInterval(onStep, 90);
+    }, 400);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  };
+
+  useEffect(() => stop, [stop]);
+
+  return (
+    <button
+      type="button" disabled={disabled}
+      onPointerDown={start}
+      onContextMenu={e => e.preventDefault()}
+      className={cn(
+        "w-8 h-8 md:w-10 md:h-10 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
+        "text-neutral-700 dark:text-neutral-200 font-black md:text-lg select-none touch-none",
+        "disabled:opacity-40 hover:bg-neutral-300/70 dark:hover:bg-neutral-600 transition-colors"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 快捷數量鈕（十連抽、促銷湊套）。accent 給促銷用，紅字提醒有折扣 */
+function QuickBtn({ children, onClick, disabled, active, accent }: {
+  children: React.ReactNode; onClick: () => void; disabled: boolean;
+  active: boolean; accent?: boolean;
+}) {
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className={cn(
+        // 高度對齊 StepBtn（h-8 / md:h-10），排成一行才不會高低差
+        "h-8 md:h-10 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
+        active
+          ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
+          : accent
+            ? "bg-white dark:bg-neutral-900 border-accent-red/40 text-accent-red hover:bg-accent-red/5"
+            : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+        disabled && "opacity-40 cursor-not-allowed"
+      )}
+    >
+      {children}
+    </button>
+  );
+}

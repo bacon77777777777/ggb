@@ -10,6 +10,7 @@ import { Database } from '@/types/database.types';
 import ProductCard from '@/components/ProductCard';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type Prize = Database['public']['Tables']['product_prizes']['Row'];
@@ -30,6 +31,14 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   const [previewPrize, setPreviewPrize] = useState<Prize | null>(null);
   const [brokenPrizeIds, setBrokenPrizeIds] = useState<Set<number>>(new Set());
   const markBroken = (id: number) => setBrokenPrizeIds(prev => new Set(prev).add(id));
+  // 進行中的促銷：商品資訊要列出來，玩家才知道這一檔有活動
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void fetchProductPromotion(supabase, productId).then(p => { if (alive) setPromo(p); });
+    return () => { alive = false; };
+  }, [productId, supabase]);
 
   // 取得用戶已抽到的 prize_id 集合
   useEffect(() => {
@@ -171,6 +180,17 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           </h3>
         </div>
         <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          {/* 促銷列：有進行中的方案才出現，紅色標出（例：開學買五送一） */}
+          {promo && (
+            <div className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-6">
+              <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
+                促銷
+              </span>
+              <span className="inline-flex items-center rounded-full bg-accent-red/10 px-2.5 py-0.5 text-[13px] font-black text-accent-red">
+                {promo.name || promo.badgeText}
+              </span>
+            </div>
+          )}
           {infoRows.map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center py-2 sm:py-3 px-3 sm:px-6">
               <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">
