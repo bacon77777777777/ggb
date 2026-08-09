@@ -1340,9 +1340,10 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         <div className="flex items-center gap-4 h-16 px-4">
           <div className="flex flex-col shrink-0 pl-1 justify-center h-full">
             <span className="text-[13px] text-neutral-400 font-black uppercase tracking-widest leading-none mb-0.5">已選 <span className="font-amount">{selectedTickets.length.toLocaleString()}</span> 張</span>
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-center gap-1">
+              <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
               <span className="text-xl font-black text-accent-red font-amount leading-none">{(selectedTickets.length * product.price).toLocaleString()}</span>
-              <span className="text-[13px] font-bold text-neutral-900 leading-none font-amount">元</span>
             </div>
           </div>
 

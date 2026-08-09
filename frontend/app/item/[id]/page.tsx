@@ -37,6 +37,7 @@ import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColum
 import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
+import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -382,6 +383,14 @@ export default function ProductDetailPage() {
   const [prizes, setPrizes] = useState<Database['public']['Tables']['product_prizes']['Row'][]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [productCategories, setProductCategories] = useState<Array<{ id: string; name: string }>>([]);
+  // 進行中的促銷：商品資訊第一列（紅色膠囊），全類別跟轉蛋頁同一套樣式
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+  useEffect(() => {
+    if (!product?.id) return;
+    let alive = true;
+    void fetchProductPromotion(createClient(), product.id).then(p => { if (alive) setPromo(p); });
+    return () => { alive = false; };
+  }, [product?.id]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
   const [moduleSettings, setModuleSettings] = useState<Record<string, MachineTheme>>({});
@@ -1574,6 +1583,15 @@ export default function ProductDetailPage() {
                 <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">商品資訊</h3>
               </div>
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {/* 促銷列：有進行中的方案才出現，放第一列、紅色膠囊（全類別跟轉蛋頁同一套） */}
+                {promo && (
+                  <div className="flex justify-between items-center text-sm py-2 sm:py-3 px-3 sm:px-6">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">促銷</span>
+                    <span className="inline-flex items-center rounded-full bg-accent-red/10 px-2.5 py-0.5 text-[13px] font-black text-accent-red">
+                      {promo.name || promo.badgeText}
+                    </span>
+                  </div>
+                )}
                 {[
                   { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '抽卡', custom: '自製賞' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
@@ -2123,6 +2141,15 @@ export default function ProductDetailPage() {
                 <h3 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">商品資訊</h3>
               </div>
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                {/* 促銷列：有進行中的方案才出現，放第一列、紅色膠囊（全類別跟轉蛋頁同一套） */}
+                {promo && (
+                  <div className="flex justify-between items-center text-sm py-2 sm:py-3 px-3 sm:px-6">
+                    <span className="text-neutral-500 dark:text-neutral-400 font-black uppercase tracking-widest text-[13px]">促銷</span>
+                    <span className="inline-flex items-center rounded-full bg-accent-red/10 px-2.5 py-0.5 text-[13px] font-black text-accent-red">
+                      {promo.name || promo.badgeText}
+                    </span>
+                  </div>
+                )}
                 {[
                   { label: '類別', value: ({ ichiban: '一番賞', blindbox: '盒玩', gacha: '轉蛋', card: '抽卡', custom: '自製賞' } as Record<string, string>)[product.type] || product.type },
                   { label: '廠商', value: supplierName || '-' },
