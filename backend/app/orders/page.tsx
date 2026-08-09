@@ -107,11 +107,22 @@ export default function OrdersPage() {
           shippedAt: order.shipped_at ? formatDateTime(order.shipped_at) : null,
           days: order.submitted_at ? calculateDaysSinceSubmission(order.submitted_at) : 0,
           status: order.status,
-          items: (order.items || []).map((item: any) => ({
-            product: item.products?.name || 'Unknown Product',
-            prize: item.product_prizes ? `${item.product_prizes.level}賞 ${item.product_prizes.name}` : 'Unknown Prize',
-            imageUrl: item.product_prizes?.image_url || item.products?.image_url || 'https://placehold.co/100'
-          }))
+          items: (order.items || []).map((item: any) => {
+            const rawLevel = (item.product_prizes?.level || '').trim()
+            const prizeName = item.product_prizes?.name || '未知品項'
+            // 等級統一「一般版」（migration 514）；防舊髒資料：空值、舊預設名、
+            // 或等級被填成品項名稱的，一律顯示一般版
+            const level = (!rawLevel || rawLevel === prizeName || ['普通', '普通款', 'Normal / Common'].includes(rawLevel))
+              ? '一般版' : rawLevel
+            return {
+              product: item.products?.name || '未知商品',
+              productType: item.products?.type || '',
+              level,
+              prizeName,
+              prize: `${level} ${prizeName}`.trim(),
+              imageUrl: item.product_prizes?.image_url || item.products?.image_url || 'https://placehold.co/100'
+            }
+          })
         }))
         setLocalShipments(mappedShipments)
       }
@@ -1631,48 +1642,53 @@ export default function OrdersPage() {
                         <tr className="bg-neutral-50">
                           <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} className="py-4 px-4">
                             <div className="pl-8">
+                              {/* 逐件明細：#序號｜品項圖（點開大圖）｜賞等｜品項名稱｜商品名稱｜類別。
+                                  出貨人員要的是「拿哪一件」，品項擺前面、商品當輔助資訊 */}
                               <div className="space-y-2">
-                                {(() => {
-                                  // 計算所有賞項中最長的文本，用於統一寬度
-                                  const maxPrizeLength = Math.max(...shipment.items.map(item => item.prize.length), 0)
-                                  // 根據字符長度估算寬度（每個中文字符約 14px，加上 padding 20px），最小 140px
-                                  const prizeWidth = Math.max(140, maxPrizeLength * 14 + 20)
-                                  
+                                {shipment.items.map((item, idx) => {
+                                  const typeLabel = ({
+                                    gacha: '轉蛋', blindbox: '盒玩', ichiban: '一番賞',
+                                    card: '抽卡', custom: '自製賞', slot: '挑戰機台',
+                                  } as Record<string, string>)[item.productType || ''] || null
                                   return (
-                                    <div className="space-y-2">
-                                      {shipment.items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 text-sm flex-nowrap">
-                                          <span className="text-neutral-500 font-mono text-xs whitespace-nowrap min-w-[80px] flex-shrink-0">
-                                            #{String(idx + 1).padStart(2, '0')}
-                                          </span>
-                                          <span className="text-neutral-500 whitespace-nowrap w-[240px] flex-shrink-0 overflow-hidden text-ellipsis">
-                                            {item.product}
-                                          </span>
-                                          <span 
-                                            className="px-2 py-1 text-sm rounded-full bg-purple-100 text-purple-700 whitespace-nowrap inline-flex items-center justify-center flex-shrink-0"
-                                            style={{ width: `${prizeWidth}px`, minWidth: `${prizeWidth}px` }}
-                                          >
-                                            {item.prize}
-                                          </span>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setImageModal({
-                                                isOpen: true,
-                                                imageUrl: item.imageUrl,
-                                                productName: item.product,
-                                                prizeName: item.prize
-                                              })
-                                            }}
-                                            className="text-primary hover:text-primary text-sm whitespace-nowrap w-20 text-left flex-shrink-0"
-                                          >
-                                            查看商品
-                                          </button>
-                                        </div>
-                                      ))}
+                                    <div key={idx} className="flex items-center gap-3 text-sm flex-nowrap">
+                                      <span className="text-neutral-500 font-mono text-xs whitespace-nowrap w-8 flex-shrink-0">
+                                        #{String(idx + 1).padStart(2, '0')}
+                                      </span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setImageModal({
+                                            isOpen: true,
+                                            imageUrl: item.imageUrl,
+                                            productName: item.product,
+                                            prizeName: item.prize
+                                          })
+                                        }}
+                                        className="w-10 h-10 rounded-lg overflow-hidden border border-neutral-200 bg-white flex-shrink-0 hover:ring-2 hover:ring-primary/40 transition-shadow"
+                                        title="點擊看大圖"
+                                      >
+                                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                      </button>
+                                      {!!item.level && (
+                                        <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 whitespace-nowrap flex-shrink-0">
+                                          {item.level}
+                                        </span>
+                                      )}
+                                      <span className="font-medium text-neutral-900 whitespace-nowrap flex-shrink-0 max-w-[220px] overflow-hidden text-ellipsis">
+                                        {item.prizeName || item.prize}
+                                      </span>
+                                      <span className="text-neutral-500 whitespace-nowrap overflow-hidden text-ellipsis min-w-0">
+                                        {item.product}
+                                      </span>
+                                      {typeLabel && (
+                                        <span className="px-2 py-0.5 text-xs rounded bg-neutral-100 text-neutral-500 whitespace-nowrap flex-shrink-0">
+                                          {typeLabel}
+                                        </span>
+                                      )}
                                     </div>
                                   )
-                                })()}
+                                })}
                               </div>
                             </div>
                         </td>
