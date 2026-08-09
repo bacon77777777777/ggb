@@ -132,14 +132,15 @@ export function PurchaseConfirmationModal({
   const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
   const isSoldOut = product.status === 'ended' || maxByRemaining === 0;
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
-  const canTenPull = !isSoldOut && maxQuantity >= 10;
-  // 庫存不足 10 卻停在十連抽時，拉回單抽；另外仍夾制上下限（庫存變動、重開彈窗）
+  // 步進範圍 0～10（老闆指定），再受庫存夾制；0 時確認鈕鎖住
+  const maxSelectable = Math.min(10, maxQuantity);
+  const canTenPull = !isSoldOut && maxSelectable >= 10;
+  // 庫存變動、重開彈窗時把超出範圍的值拉回來
   useEffect(() => {
     if (!isOpen || isProcessing) return;
-    if (!canTenPull && quantity === 10) { setQuantity(1); return; }
-    if (quantity > maxQuantity) setQuantity(maxQuantity);
-    if (quantity < 1) setQuantity(1);
-  }, [isOpen, isProcessing, canTenPull, maxQuantity, quantity]);
+    if (quantity > maxSelectable) setQuantity(maxSelectable);
+    if (quantity < 0) setQuantity(0);
+  }, [isOpen, isProcessing, maxSelectable, quantity]);
 
   // Freeze displayed quantity during processing so prices stay consistent with button selection
   const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
@@ -189,7 +190,8 @@ export function PurchaseConfirmationModal({
       return;
     }
 
-    if (isSoldOut) {
+    // 數量 0 沒有東西可買（步進下限是 0，確認鈕也已鎖，這裡是最後一道）
+    if (isSoldOut || quantity < 1) {
       return;
     }
 
@@ -342,7 +344,7 @@ export function PurchaseConfirmationModal({
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between gap-2", isDesktop ? "p-6" : "p-3")}>
                       <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        {promo && promo.type === 'bundle' && promo.free > 0 && maxQuantity >= promo.buy + promo.free && (
+                        {promo && promo.type === 'bundle' && promo.free > 0 && maxSelectable >= promo.buy + promo.free && (
                           <QuickBtn
                             active={effectiveQuantity === promo.buy + promo.free}
                             onClick={() => setQuantity(promo.buy + promo.free)}
@@ -352,18 +354,9 @@ export function PurchaseConfirmationModal({
                             {promo.buy + promo.free}抽送{promo.free}
                           </QuickBtn>
                         )}
-                        {canTenPull && (
-                          <QuickBtn
-                            active={effectiveQuantity === 10}
-                            onClick={() => setQuantity(10)}
-                            disabled={isSoldOut || isProcessing}
-                          >
-                            十連
-                          </QuickBtn>
-                        )}
                         <StepBtn
-                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
+                          onStep={() => setQuantity(q => Math.max(0, q - 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 0}
                         >
                           −
                         </StepBtn>
@@ -374,11 +367,20 @@ export function PurchaseConfirmationModal({
                           {effectiveQuantity}
                         </span>
                         <StepBtn
-                          onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
+                          onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
                         >
                           ＋
                         </StepBtn>
+                        {canTenPull && (
+                          <QuickBtn
+                            active={effectiveQuantity === 10}
+                            onClick={() => setQuantity(10)}
+                            disabled={isSoldOut || isProcessing}
+                          >
+                            十連
+                          </QuickBtn>
+                        )}
                       </div>
                     </div>
 
@@ -598,7 +600,7 @@ export function PurchaseConfirmationModal({
               )}>
                 <Button
                   onClick={handleConfirm}
-                  disabled={isProcessing || isSoldOut}
+                  disabled={isProcessing || isSoldOut || effectiveQuantity < 1}
                   className={cn(
                     "w-full rounded-xl font-black shadow-xl transition-all",
                     isDesktop ? "h-[52px] text-lg" : "h-[44px] text-base",
@@ -626,16 +628,48 @@ export function PurchaseConfirmationModal({
 }
 
 
-/** 數量步進鈕。樣式與抽籤販售的 LotteryDrawModal 一致，兩邊操作手感相同 */
-function StepBtn({ children, onClick, disabled }: {
-  children: React.ReactNode; onClick: () => void; disabled: boolean;
+/**
+ * 數量步進鈕：點一下 +1／-1，按住 400ms 後每 90ms 連發（快速加減）。
+ *
+ * 用 pointerdown 觸發而不是 onClick —— 兩個都掛會在放開時多跳一步。
+ * 放開的監聽掛在 window：手指按住時滑出按鈕範圍再放開，按鈕自己收不到
+ * pointerup，不掛 window 連發就停不下來。到達邊界後 setQuantity 的夾制
+ * 讓連發自然無效，不用特別停表。
+ */
+function StepBtn({ children, onStep, disabled }: {
+  children: React.ReactNode; onStep: () => void; disabled: boolean;
 }) {
+  const holdRef = useRef<{ t?: ReturnType<typeof setTimeout>; iv?: ReturnType<typeof setInterval> }>({});
+
+  const stop = React.useCallback(() => {
+    if (holdRef.current.t) clearTimeout(holdRef.current.t);
+    if (holdRef.current.iv) clearInterval(holdRef.current.iv);
+    holdRef.current = {};
+    window.removeEventListener('pointerup', stop);
+    window.removeEventListener('pointercancel', stop);
+  }, []);
+
+  const start = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (disabled) return;
+    onStep();
+    holdRef.current.t = setTimeout(() => {
+      holdRef.current.iv = setInterval(onStep, 90);
+    }, 400);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  };
+
+  useEffect(() => stop, [stop]);
+
   return (
     <button
-      type="button" onClick={onClick} disabled={disabled}
+      type="button" disabled={disabled}
+      onPointerDown={start}
+      onContextMenu={e => e.preventDefault()}
       className={cn(
         "w-8 h-8 md:w-10 md:h-10 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
-        "text-neutral-700 dark:text-neutral-200 font-black md:text-lg",
+        "text-neutral-700 dark:text-neutral-200 font-black md:text-lg select-none touch-none",
         "disabled:opacity-40 hover:bg-neutral-300/70 dark:hover:bg-neutral-600 transition-colors"
       )}
     >
