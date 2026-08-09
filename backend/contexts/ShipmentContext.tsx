@@ -6,6 +6,12 @@ export interface ShipmentItem {
   product: string
   prize: string
   imageUrl: string
+  /** 商品類別（gacha/blindbox/ichiban/card/custom），展開明細顯示類別標籤用 */
+  productType?: string
+  /** 賞等（可能已含「賞」字，如 E賞；轉蛋盒玩為 普通） */
+  level?: string
+  /** 品項名稱（不含賞等） */
+  prizeName?: string
 }
 
 export interface Shipment {

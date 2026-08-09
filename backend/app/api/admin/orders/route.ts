@@ -20,7 +20,7 @@ export async function GET() {
           items:draw_records(
             *,
             product_prizes(name, level, image_url),
-            products(name, image_url)
+            products(name, image_url, type)
           ),
           user:users(email, name)
         `
