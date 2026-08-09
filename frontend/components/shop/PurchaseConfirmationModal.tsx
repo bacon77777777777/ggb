@@ -60,7 +60,16 @@ export function PurchaseConfirmationModal({
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    void fetchProductPromotion(createClient(), product.id).then(p => { if (alive) setPromo(p); });
+    void fetchProductPromotion(createClient(), product.id).then(p => {
+      if (!alive) return;
+      setPromo(p);
+      // 促銷商品（老闆指定）：預設數量＝湊滿門檻（買5送1 → 5），
+      // 且只能 G 幣支付（積分與優惠券整列隱藏），這裡先把積分關掉保險
+      if (p && p.type === 'bundle' && p.free > 0) {
+        setUsePoints(false);
+        setQuantity(q => (q === 1 ? Math.max(1, Math.min(p.buy, 20)) : q));
+      }
+    });
     return () => { alive = false; };
   }, [isOpen, product.id]);
 
@@ -142,6 +151,9 @@ export function PurchaseConfirmationModal({
     if (quantity > maxSelectable) setQuantity(maxSelectable);
     if (quantity < 1) setQuantity(1);
   }, [isOpen, isProcessing, maxSelectable, quantity]);
+
+  // 促銷商品模式：藏十連抽／優惠券／積分（促銷只能 G 幣消費，老闆指定）
+  const isPromoProduct = !!(promo && promo.type === 'bundle' && promo.free > 0);
 
   // Freeze displayed quantity during processing so prices stay consistent with button selection
   const effectiveQuantity = isProcessing ? processingQuantityRef.current : quantity;
@@ -336,83 +348,56 @@ export function PurchaseConfirmationModal({
                   </div>
 
                   <div className={cn("space-y-2", isDesktop ? "px-6 pb-6 space-y-4" : "px-3")}>
-                    {/* Quantity Selector（老闆核可的版型）：
-                        操作列＝標題｜膠囊步進（⊖ n ⊕ 合成一個零件）｜十連抽。
-                        促銷不做按鈕 —— 改為下方的動態提示列：未湊滿時整列可點、
-                        一鍵補到門檻；已湊滿顯示已折金額。按鈕講不清規則，一句話可以 */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl", isDesktop ? "p-6" : "p-3")}>
-                      <div className="flex items-center justify-between gap-2">
+                    {/* Quantity Selector：標題（＋促銷紅字提示）｜膠囊步進｜十連抽。
+                        促銷商品（老闆指定）：十連抽隱藏、預設數量＝湊滿門檻、
+                        提示為純文字不做交互 —— 上一版可點的提示列會和步進互相干擾
+                        （按 + 後提示變成「補到下一套」，誤觸直接跳 12） */}
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between gap-2", isDesktop ? "p-6" : "p-3")}>
+                      <div className="flex min-w-0 items-center gap-2">
                         <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
-                            <StepBtn
-                              onStep={() => setQuantity(q => Math.max(1, q - 1))}
-                              disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
-                            >
-                              −
-                            </StepBtn>
-                            <span className={cn(
-                              "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
-                              isDesktop ? "w-10 text-lg" : "w-8 text-base"
-                            )}>
-                              {effectiveQuantity}
-                            </span>
-                            <StepBtn
-                              onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
-                              disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
-                            >
-                              ＋
-                            </StepBtn>
-                          </div>
-                          {canTenPull && (
-                            <QuickBtn
-                              active={effectiveQuantity === 10}
-                              onClick={() => setQuantity(10)}
-                              disabled={isSoldOut || isProcessing}
-                            >
-                              十連抽
-                            </QuickBtn>
-                          )}
-                        </div>
+                        {isPromoProduct && promo && (
+                          <span className="min-w-0 truncate text-[11px] md:text-[12px] font-bold text-accent-red">
+                            {promoDiscountAmount > 0
+                              ? `已折 ${promoDiscountAmount.toLocaleString()} G`
+                              : `滿 ${promo.buy} 抽折 ${(promo.free * product.price).toLocaleString()} G`}
+                          </span>
+                        )}
                       </div>
-
-                      {/* 促銷提示列（bundle 且代幣支付才有意義） */}
-                      {promo && promo.type === 'bundle' && promo.free > 0 && !usePoints && (() => {
-                        const unit = promo.buy + promo.free;
-                        const sets = Math.floor(effectiveQuantity / unit);
-                        const nextQty = (sets + 1) * unit;
-                        const reachable = nextQty <= maxSelectable;
-                        const perSet = promo.free * product.price;
-                        if (promoDiscountAmount === 0 && !reachable) return null;
-                        return (
-                          <button
-                            type="button"
-                            disabled={!reachable || isSoldOut || isProcessing}
-                            onClick={() => { if (reachable) setQuantity(nextQty); }}
-                            className={cn(
-                              "mt-2.5 flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] md:text-[13px] font-bold transition-colors",
-                              promoDiscountAmount > 0
-                                ? "bg-accent-emerald/10 text-accent-emerald"
-                                : "bg-accent-red/5 text-accent-red active:bg-accent-red/10"
-                            )}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex h-9 md:h-11 items-center overflow-hidden rounded-full border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+                          <StepBtn
+                            onStep={() => setQuantity(q => Math.max(1, q - 1))}
+                            disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
                           >
-                            <span className="flex items-center gap-1.5 min-w-0">
-                              {promoDiscountAmount > 0 ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="truncate">已享 {promo.name}，折 {promoDiscountAmount.toLocaleString()} G</span>
-                                </>
-                              ) : (
-                                <span className="truncate">再 +{nextQty - effectiveQuantity} 抽湊滿 {nextQty} 抽，現折 {perSet.toLocaleString()} G</span>
-                              )}
-                            </span>
-                            {reachable && promoDiscountAmount === 0 && <ChevronRight className="w-4 h-4 shrink-0" />}
-                          </button>
-                        );
-                      })()}
+                            −
+                          </StepBtn>
+                          <span className={cn(
+                            "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
+                            isDesktop ? "w-10 text-lg" : "w-8 text-base"
+                          )}>
+                            {effectiveQuantity}
+                          </span>
+                          <StepBtn
+                            onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
+                            disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
+                          >
+                            ＋
+                          </StepBtn>
+                        </div>
+                        {canTenPull && !isPromoProduct && (
+                          <QuickBtn
+                            active={effectiveQuantity === 10}
+                            onClick={() => setQuantity(10)}
+                            disabled={isSoldOut || isProcessing}
+                          >
+                            十連抽
+                          </QuickBtn>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Points Toggle */}
+                    {/* Points Toggle。促銷商品整列隱藏（促銷只能 G 幣消費，老闆指定） */}
+                    {!isPromoProduct && (
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Coins className="w-4 h-4 text-yellow-500" />
@@ -433,9 +418,11 @@ export function PurchaseConfirmationModal({
                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-blue-600"></div>
                        </label>
                     </div>
+                    )}
 
-                    {/* Coupon Selector。促銷與優惠券不疊加（DB 規則）：
-                        有促銷折抵時鎖住並講明原因，不是無聲變灰 */}
+                    {/* Coupon Selector。促銷商品整列隱藏（不與促銷併用，老闆指定）；
+                        非促銷商品維持原樣，積分支付時鎖住 */}
+                    {!isPromoProduct && (
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoDiscountAmount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Ticket className="w-4 h-4 text-accent-yellow" />
@@ -457,6 +444,7 @@ export function PurchaseConfirmationModal({
                           <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                        </button>
                     </div>
+                    )}
 
                     {/* Subtotal Block */}
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl space-y-2 mb-3", isDesktop ? "p-6 space-y-4" : "p-3")}>
@@ -472,22 +460,12 @@ export function PurchaseConfirmationModal({
                       {usePoints ? (
                         <div className={cn("flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500", isDesktop ? "text-[15px]" : "text-[13px]")}>
                           <span>積分餘額</span>
-                          <div className="flex flex-col items-end">
-                            <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
-                            {!isInsufficient && pointsCost > 0 && (
-                              <span className="text-xs text-accent-emerald">購買後剩餘: {(userPoints - pointsCost).toLocaleString()}</span>
-                            )}
-                          </div>
+                          <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
                         </div>
                       ) : (
                         <div className={cn("flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500", isDesktop ? "text-[15px]" : "text-[13px]")}>
                           <span>G 幣餘額</span>
-                          <div className="flex flex-col items-end">
-                            <GAmount value={userTokens} />
-                            {!isInsufficient && finalPrice > 0 && (
-                              <span className="text-xs text-accent-emerald">購買後剩餘: {(userTokens - finalPrice).toLocaleString()}</span>
-                            )}
-                          </div>
+                          <GAmount value={userTokens} />
                         </div>
                       )}
 
@@ -685,7 +663,7 @@ function StepBtn({ children, onStep, disabled }: {
       onPointerDown={start}
       onContextMenu={e => e.preventDefault()}
       className={cn(
-        "w-8 h-8 md:w-10 md:h-10 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
+        "w-9 h-full md:w-11 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
         "text-neutral-700 dark:text-neutral-200 font-black md:text-lg select-none touch-none",
         "disabled:opacity-40 hover:bg-neutral-300/70 dark:hover:bg-neutral-600 transition-colors"
       )}
@@ -704,8 +682,8 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
     <button
       type="button" onClick={onClick} disabled={disabled}
       className={cn(
-        // 高度對齊 StepBtn（h-8 / md:h-10），排成一行才不會高低差
-        "h-8 md:h-10 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
+        // 高度對齊左側步進膠囊（h-9 / md:h-11），排成一行才不會高低差
+        "h-9 md:h-11 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
         active
           ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
           : accent

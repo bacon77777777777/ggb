@@ -40,8 +40,9 @@ export async function fetchProductPromotion(
 }
 
 /**
- * 促銷折抵金額。**必須跟 DB 的 promo_discount_for 同一條公式**：
- * 每湊滿 (buy+free) 抽折 free 抽的錢（抽 6 付 5；抽 10 付 9）。
+ * 促銷折抵金額。**必須跟 DB 的 promo_discount_for 同一條公式**（migration 511）：
+ * 每滿 buy 抽折 free 抽的錢 —— 買5送1＝選 5 抽、付 4 抽的錢（老闆定義）。
+ * 5 抽折 1 抽；10 抽折 2 抽；4 抽以下無折扣。
  * 這裡只做顯示，實際扣款以 DB 為準 —— 公式對不上玩家會覺得被多收。
  */
 export function promoDiscount(
@@ -51,6 +52,6 @@ export function promoDiscount(
 ): number {
   if (!promo || promo.type !== 'bundle' || promo.free <= 0) return 0;
   if (count < 1 || unitPrice <= 0) return 0;
-  const sets = Math.floor(count / (promo.buy + promo.free));
+  const sets = Math.floor(count / promo.buy);
   return sets * promo.free * unitPrice;
 }
