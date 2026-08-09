@@ -378,7 +378,7 @@ export function PurchaseConfirmationModal({
                             onClick={() => setQuantity(10)}
                             disabled={isSoldOut || isProcessing}
                           >
-                            十連
+                            十連抽
                           </QuickBtn>
                         )}
                       </div>
