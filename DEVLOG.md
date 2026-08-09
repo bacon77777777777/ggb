@@ -4,6 +4,19 @@
 
 ---
 
+## v2026.08.09b｜2026-08-09｜iPhone 商品名稱多出刪節號
+
+Safari 的 `-webkit-line-clamp` 遇到「**有定位的 inline 元素**」（類別 badge 的
+`relative -top-[0.1rem]`）會誤判內容超出行數，名稱明明放得下也硬加刪節號 ——
+桌機 Chrome 正常、iPhone 全系瀏覽器都是 WebKit 所以全中。
+DB 名稱已驗證無隱藏字元，非資料問題。
+
+對齊改用 `vertical-align`（`align-[-0.125em]`），視覺相同、不觸發誤判。
+
+> 通則：**line-clamp 範圍內不要放有定位（relative/absolute）的元素**，對齊用 vertical-align。
+
+---
+
 ## v2026.08.09a｜2026-08-09｜🔴 十連抽跳回單抽；促銷接上前台顯示；購買數量改步進＋快捷
 
 ### 🔴 十連抽一秒後跳回單抽（所有付費類別都中）
