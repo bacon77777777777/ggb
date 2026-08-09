@@ -148,10 +148,14 @@ export default function ProductCard(props: ProductCardProps) {
         <div className="flex flex-col flex-1 p-2 md:pt-2 md:-mt-0.5">
           <div className="mb-1 h-[2.75rem]">
             <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] group-hover:text-primary transition-colors break-all">
+              {/* 對齊改用 vertical-align 而不是 relative 位移：
+                  Safari 的 -webkit-line-clamp 遇到「有定位的 inline 元素」會誤判內容
+                  超出行數，名稱明明放得下也硬加刪節號（桌機 Chrome 正常、iPhone 全中）。
+                  視覺效果相同，-0.125em ≈ 原本的 -0.1rem */}
               {type && (
                 <ProductBadge
                   type={type}
-                  className="inline-flex align-middle mr-1 relative -top-[0.1rem]"
+                  className="inline-flex align-[-0.125em] mr-1"
                 />
               )}
               <span className="inline">
