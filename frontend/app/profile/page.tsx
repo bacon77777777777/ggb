@@ -1275,8 +1275,8 @@ function ProfileContent() {
               ? (item.product_prizes?.sale_price ?? 0) : 0;
             const expiresAt = (item as any).expires_at ?? null;
 
-            const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
-            const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
+            const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';
+            const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             recycleValue = 10;
@@ -1323,8 +1323,8 @@ function ProfileContent() {
 
           const items = (data as unknown as DbDrawRecord[]).map((item) => {
             const productType = item.products?.type || 'unknown';
-            const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
-            const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
+            const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';
+            const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
             const name = item.product_prizes?.name || item.prize_name || '未知獎品';
 
             return {
@@ -1369,7 +1369,7 @@ function ProfileContent() {
         const activeListings = (listingsData as unknown as DbListing[]).map((item) => {
           const listingProductType = item.draw_records?.products?.type || 'unknown';
           const listingRawGrade = item.draw_records?.product_prizes?.level || '?';
-          const listingGrade = (['gacha', 'blindbox', 'slot'].includes(listingProductType)) ? '普通' : listingRawGrade;
+          const listingGrade = listingRawGrade === '?' ? '一般版' : listingRawGrade;
           return {
             id: item.id.toString(),
             draw_record_id: item.draw_records?.id,
@@ -1416,7 +1416,7 @@ function ProfileContent() {
             const isSeller = tx.seller_id === user.id;
             const txProductType = tx.draw_records?.products?.type || 'unknown';
             const txRawGrade = tx.draw_records?.product_prizes?.level || '?';
-            const txGrade = (['gacha', 'blindbox', 'slot'].includes(txProductType)) ? '普通' : txRawGrade;
+            const txGrade = txRawGrade === '?' ? '一般版' : txRawGrade;
             return {
                 id: tx.id.toString(),
                 price: tx.price,
@@ -1488,7 +1488,7 @@ function ProfileContent() {
              items: (order.draw_records || []).map((dh) => {
                const productType = (dh as any).products?.type || 'unknown';
                const rawGrade = dh.product_prizes?.level || '?';
-               const grade = (['gacha', 'blindbox', 'slot'].includes(productType)) ? '普通' : rawGrade;
+               const grade = rawGrade; // 等級 DB 已統一（migration 514），一般版/特別設定照實顯示
                return {
                  grade,
                  name: dh.product_prizes?.name || '未知',
@@ -1538,8 +1538,8 @@ function ProfileContent() {
           const currentTimestamp = item.created_at;
           const lastGroup = groupedHistory.length > 0 ? groupedHistory[groupedHistory.length - 1] : null;
           const itemProductType = item.products?.type || 'unknown';
-          const rawGrade = item.product_prizes?.level || item.prize_level || '普通';
-          const grade = (['gacha', 'blindbox'].includes(itemProductType)) ? '普通' : rawGrade;
+          const rawGrade = item.product_prizes?.level || item.prize_level || '一般版';
+          const grade = rawGrade; // 等級 DB 已統一（migration 514）
           const name = item.product_prizes?.name || item.prize_name || '未知';
 
           const itemPointsUsed = item.points_used || 0;
@@ -4528,7 +4528,7 @@ function ProfileContent() {
                                                 {grouped[productName].map((item, idx) => (
                                                   <div key={idx} className="flex items-center gap-2.5 bg-white dark:bg-neutral-900 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm">
                                                     <span className="px-1.5 py-0.5 bg-accent-red/10 text-accent-red text-[11px] font-black rounded border border-accent-red/10 uppercase shrink-0">
-                                                      {item.grade === '普通' ? '普通' : `${item.grade}賞`}
+                                                      {item.grade === '一般版' || item.grade.includes('賞') ? item.grade : `${item.grade}賞`}
                                                     </span>
                                                     <span className="text-[13px] font-black text-neutral-700 dark:text-neutral-300 truncate">
                                                       {item.name}

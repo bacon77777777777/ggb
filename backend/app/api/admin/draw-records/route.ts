@@ -19,6 +19,7 @@ export async function GET() {
           *,
           user:users (id, name, email),
           product:products (name, image_url, price, type),
+          prize:product_prizes (name, level),
           slot_log:slot_spin_logs (bet, kind, machine:slot_machines (machine_number, theme:slot_themes (name)))
         `
       )

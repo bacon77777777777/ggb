@@ -110,8 +110,9 @@ export default function NewProductPage() {
     { value: '最後賞', label: '最後賞' },
   ]
 
+  // 預設等級統一存中文「一般版」（migration 514 已把舊值正規化），前後台顯示同名
   const gachaLevels = [
-    { value: 'Normal / Common', label: '一般版 Normal / Common' },
+    { value: '一般版', label: '一般版 Normal / Common' },
     { value: 'Rare', label: '稀有版 Rare' },
     { value: 'Secret', label: '隱藏版 Secret' },
     { value: 'Color Variant', label: '異色版 Color Variant' },
@@ -120,7 +121,7 @@ export default function NewProductPage() {
     { value: 'Option Parts', label: '配件版 Option Parts' },
   ]
   const blindboxLevels = [
-    { value: '普通款', label: '普通款 Normal' },
+    { value: '一般版', label: '一般版 Normal' },
     { value: '稀有款', label: '稀有款 Rare' },
     { value: '隱藏款', label: '隱藏款 Secret / Chase' },
     { value: '異色款', label: '異色款 Color Variant' },
@@ -194,7 +195,8 @@ export default function NewProductPage() {
     const newPrize = {
       id: `p${Date.now()}`,
       name: '',
-      level: '',
+      // 轉蛋/盒玩預設一般版（老闆定案：沒特別設定就是一般版，不留空）
+      level: ['gacha', 'blindbox'].includes(formData.type) ? '一般版' : '',
       image: '',
       imageFile: null as File | null,
       imagePreview: '/images/item.png',
@@ -383,7 +385,9 @@ export default function NewProductPage() {
 
         return {
           name: prize.name,
-          level: isSlot ? (slotLevelById.get(prize.id) ?? '三等獎') : prize.level,
+          // 轉蛋/盒玩沒選等級（舊表單留空）一律落一般版，不再寫空字串進 DB
+          level: isSlot ? (slotLevelById.get(prize.id) ?? '三等獎')
+            : (prize.level || (['gacha', 'blindbox'].includes(formData.type) ? '一般版' : prize.level)),
           image_url: prizeImageUrl,
           total: prize.total,
           remaining: prize.remaining,

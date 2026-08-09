@@ -20,6 +20,8 @@ interface DrawRecord {
   tokens_spent?: number | null
   user?: { name: string; email: string; id: string }
   product?: { name: string; image_url: string; price?: number; type?: string }
+  /** 品項（轉蛋紀錄的 prize_name/prize_level 快照為空，靠這個 join 補） */
+  prize?: { name: string; level: string } | null
   slot_log?: {
     bet: number
     kind: string
@@ -322,18 +324,21 @@ export default function DrawsPage() {
         </thead>
         <tbody>
           {tx.records.map(r => {
-            const hasGrade = ['ichiban', 'card', 'custom'].includes(r.product?.type || '')
             const cost = recordCost(r)
             const info = statusInfo(r.status)
+            // 快照欄位（prize_level/prize_name）轉蛋紀錄是空的，fallback 到品項 join；
+            // 等級統一「一般版」（migration 514），空值/舊髒值一律顯示一般版
+            const prizeName = r.prize_name || r.prize?.name || '—'
+            const rawLevel = (r.prize_level || r.prize?.level || '').trim()
+            const level = (!rawLevel || rawLevel === prizeName || ['普通', '普通款', 'Normal / Common'].includes(rawLevel))
+              ? '一般版' : rawLevel
             return (
               <tr key={r.id} className="border-t border-neutral-200/70">
                 <td className="py-1.5 pr-4 font-mono text-neutral-600">{r.ticket_number}</td>
                 <td className="py-1.5 pr-4">
                   <div className="flex items-center gap-1.5">
-                    {hasGrade && r.prize_level && (
-                      <Badge variant="warning" size="sm">{r.prize_level}</Badge>
-                    )}
-                    <span className="text-neutral-700">{r.prize_name || '—'}</span>
+                    <Badge variant="warning" size="sm">{level}</Badge>
+                    <span className="text-neutral-700">{prizeName}</span>
                   </div>
                 </td>
                 <td className="py-1.5 pr-4 text-right tabular-nums text-neutral-600">
@@ -360,8 +365,8 @@ export default function DrawsPage() {
       r.user?.name || '',
       r.user?.email || '',
       slotMachineLabel(r) || r.product?.name || '',
-      r.prize_level || '',
-      r.prize_name || '',
+      r.prize_level || r.prize?.level || '一般版',
+      r.prize_name || r.prize?.name || '',
       String(r.ticket_number ?? ''),
       String(r.points_used ? `${r.points_used * 4}積分` : recordCost(r)),
       statusInfo(r.status).label,

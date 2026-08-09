@@ -142,8 +142,9 @@ export default function EditProductPage() {
     { value: 'J賞', label: 'J賞' },
     { value: '最後賞', label: '最後賞' },
   ]
+  // 預設等級統一存中文「一般版」（migration 514 已把舊值正規化），前後台顯示同名
   const gachaLevels = [
-    { value: 'Normal / Common', label: '一般版 Normal / Common' },
+    { value: '一般版', label: '一般版 Normal / Common' },
     { value: 'Rare', label: '稀有版 Rare' },
     { value: 'Secret', label: '隱藏版 Secret' },
     { value: 'Color Variant', label: '異色版 Color Variant' },
@@ -152,7 +153,7 @@ export default function EditProductPage() {
     { value: 'Option Parts', label: '配件版 Option Parts' },
   ]
   const blindboxLevels = [
-    { value: '普通款', label: '普通款 Normal' },
+    { value: '一般版', label: '一般版 Normal' },
     { value: '稀有款', label: '稀有款 Rare' },
     { value: '隱藏款', label: '隱藏款 Secret / Chase' },
     { value: '異色款', label: '異色款 Color Variant' },
@@ -498,7 +499,8 @@ export default function EditProductPage() {
 
         const payload: any = {
           name: prize.name,
-          level: prize.level,
+          // 轉蛋/盒玩等級空值一律落一般版，不再寫空字串進 DB
+          level: prize.level || (isGachaType ? defaultLevel : prize.level),
           image_url: prizeImageUrl,
           total: prize.total,
           remaining: prize.remaining,
@@ -610,9 +612,9 @@ export default function EditProductPage() {
   const probabilityBase = isLottery && Number(formData.lotteryTotalDraws) > 0
     ? Number(formData.lotteryTotalDraws)
     : calculatedTotalCount
-  // 轉蛋/盒玩：機率制，等級固定「普通」，數量可疊加
+  // 轉蛋/盒玩：機率制，等級預設鎖「一般版」，數量可疊加
   const isGachaType = ['gacha', 'blindbox'].includes(formData.type)
-  const defaultLevel = formData.type === 'gacha' ? 'Normal / Common' : '普通款'
+  const defaultLevel = '一般版'
 
   return (
     <AdminLayout
@@ -1031,7 +1033,7 @@ export default function EditProductPage() {
                         <label className="block text-xs font-medium text-neutral-500 mb-1">等級</label>
                         {isGachaType ? (
                           <div className="w-full px-2.5 py-1.5 text-sm bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-400">
-                            普通
+                            一般版
                           </div>
                         ) : (
                           <SelectField

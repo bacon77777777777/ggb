@@ -107,15 +107,22 @@ export default function OrdersPage() {
           shippedAt: order.shipped_at ? formatDateTime(order.shipped_at) : null,
           days: order.submitted_at ? calculateDaysSinceSubmission(order.submitted_at) : 0,
           status: order.status,
-          items: (order.items || []).map((item: any) => ({
-            product: item.products?.name || '未知商品',
-            productType: item.products?.type || '',
-            // 等級字串本身可能已含「賞」（E賞），不再硬接後綴
-            level: item.product_prizes?.level || '',
-            prizeName: item.product_prizes?.name || '未知品項',
-            prize: item.product_prizes ? `${item.product_prizes.level} ${item.product_prizes.name}`.trim() : '未知品項',
-            imageUrl: item.product_prizes?.image_url || item.products?.image_url || 'https://placehold.co/100'
-          }))
+          items: (order.items || []).map((item: any) => {
+            const rawLevel = (item.product_prizes?.level || '').trim()
+            const prizeName = item.product_prizes?.name || '未知品項'
+            // 等級統一「一般版」（migration 514）；防舊髒資料：空值、舊預設名、
+            // 或等級被填成品項名稱的，一律顯示一般版
+            const level = (!rawLevel || rawLevel === prizeName || ['普通', '普通款', 'Normal / Common'].includes(rawLevel))
+              ? '一般版' : rawLevel
+            return {
+              product: item.products?.name || '未知商品',
+              productType: item.products?.type || '',
+              level,
+              prizeName,
+              prize: `${level} ${prizeName}`.trim(),
+              imageUrl: item.product_prizes?.image_url || item.products?.image_url || 'https://placehold.co/100'
+            }
+          })
         }))
         setLocalShipments(mappedShipments)
       }
@@ -1643,8 +1650,6 @@ export default function OrdersPage() {
                                     gacha: '轉蛋', blindbox: '盒玩', ichiban: '一番賞',
                                     card: '抽卡', custom: '自製賞', slot: '挑戰機台',
                                   } as Record<string, string>)[item.productType || ''] || null
-                                  // 轉蛋/盒玩的等級是「普通」，對出貨沒資訊量，不顯示
-                                  const showLevel = !!item.level && item.level !== '普通'
                                   return (
                                     <div key={idx} className="flex items-center gap-3 text-sm flex-nowrap">
                                       <span className="text-neutral-500 font-mono text-xs whitespace-nowrap w-8 flex-shrink-0">
@@ -1665,7 +1670,7 @@ export default function OrdersPage() {
                                       >
                                         <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                                       </button>
-                                      {showLevel && (
+                                      {!!item.level && (
                                         <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 whitespace-nowrap flex-shrink-0">
                                           {item.level}
                                         </span>

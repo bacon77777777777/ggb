@@ -343,7 +343,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
         if (level.includes('傳說')) return 800
         if (level.includes('超稀有')) return 750
         if (level.includes('稀有')) return 700
-        if (level.includes('普通')) return 650
+        if (level.includes('普通') || level.includes('一般')) return 650
         if (level.includes('小賞')) return 100
         return 500
       }
