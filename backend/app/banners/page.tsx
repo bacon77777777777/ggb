@@ -5,6 +5,7 @@ import PopupPanel from './PopupPanel'
 import Button from '@/components/ui/Button'
 import ScheduleFields from '@/components/ScheduleFields'
 import { Switch } from '@/components/ui'
+import SelectField from '@/components/ui/SelectField'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -30,6 +31,12 @@ interface Banner {
   start_at: string | null
   end_at: string | null
   event_id: string | null
+}
+
+interface PromoOption {
+  id: number
+  name: string
+  is_active: boolean
 }
 
 export default function BannersPage() {
@@ -58,6 +65,9 @@ export default function BannersPage() {
     imagePreview: ''
   })
 
+  // 促銷方案清單：連結欄可一鍵指向 /promo/<id> 促銷分類清單頁
+  const [promotions, setPromotions] = useState<PromoOption[]>([])
+
   const fetchData = async () => {
     try {
       setIsLoading(true)
@@ -65,13 +75,13 @@ export default function BannersPage() {
         .from('banners')
         .select('*')
         .order('sort_order', { ascending: true })
-      
+
       if (error) throw error
       setBanners(data || [])
     } catch (error) {
       console.error('Error fetching banners:', error)
       // For development without actual table, we might want to show empty or mock
-      // toast('載入輪播圖失敗', 'error') 
+      // toast('載入輪播圖失敗', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -79,6 +89,10 @@ export default function BannersPage() {
 
   useEffect(() => {
     fetchData()
+    fetch('/api/admin/promotions', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : []))
+      .then((list: PromoOption[]) => setPromotions((list || []).filter(p => p.is_active)))
+      .catch(() => setPromotions([]))
   }, [])
 
   const handleEdit = (banner: Banner) => {
@@ -422,6 +436,25 @@ export default function BannersPage() {
               </div>
             </div>
             
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">連結促銷分類頁 (選填)</label>
+              <SelectField
+                value={promotions.some(p => formData.link_url === `/promo/${p.id}`)
+                  ? formData.link_url
+                  : ''}
+                onChange={e => {
+                  if (e.target.value) setFormData({ ...formData, link_url: e.target.value })
+                }}
+                disabled={!!formData.event_id}
+              >
+                <option value="">不連結促銷（自訂網址）</option>
+                {promotions.map(p => (
+                  <option key={p.id} value={`/promo/${p.id}`}>{p.name}</option>
+                ))}
+              </SelectField>
+              <p className="mt-1 text-xs text-neutral-400">選擇後點擊輪播圖會進入該促銷的商品清單頁</p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">連結網址 (選填)</label>
               <input

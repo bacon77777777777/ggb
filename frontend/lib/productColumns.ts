@@ -24,6 +24,6 @@
  * 型別檔不等於資料表，要對 information_schema 驗。
  */
 
-export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, is_preorder, preorder_available_at, distributor, series, supplier_id, created_at'
+export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, created_at'
 
 export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, created_at'
