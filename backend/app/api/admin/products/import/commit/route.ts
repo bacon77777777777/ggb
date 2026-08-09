@@ -119,8 +119,23 @@ export async function POST(request: Request) {
         await supabase.from('products').update({ product_code: String(10000000 + id) }).eq('id', id)
 
         if (prizes.length) {
+          // 轉蛋/盒玩機率正規化為「總和 100 的百分比」。
+          // 廠商表格常給小數（0.2）或沒填 —— play_gacha 的輪盤雖已改單位無關
+          // （migration 515），DB 存一致單位後台顯示的 % 才不會亂。
+          // 沒填機率就按數量比例補。
+          const isProbType = ['gacha', 'blindbox'].includes(String(item.product?.type))
+          const probSum = prizes.reduce((s, p) => s + (Number(p.probability) || 0), 0)
+          const totalSum = prizes.reduce((s, p) => s + (Number(p.total) || 0), 0)
+          const normalized = isProbType
+            ? prizes.map(p => ({
+                ...p,
+                probability: probSum > 0
+                  ? (Number(p.probability) || 0) * 100 / probSum
+                  : totalSum > 0 ? (Number(p.total) || 0) * 100 / totalSum : 0,
+              }))
+            : prizes
           const { error: prizeErr } = await supabase.from('product_prizes').insert(
-            prizes.map(p => ({ ...pick(p, ALLOWED_PRIZE_KEYS), product_id: id }))
+            normalized.map(p => ({ ...pick(p, ALLOWED_PRIZE_KEYS), product_id: id }))
           )
           if (prizeErr) {
             // 品項寫失敗跟「廠商本來就沒給品項」是兩回事：
