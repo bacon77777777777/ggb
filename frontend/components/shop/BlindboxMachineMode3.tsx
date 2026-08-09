@@ -237,11 +237,23 @@ export function BlindboxMachineMode3({
           b.avY = 0;
           // 落地後往中間滾一小段。多抽時箱子會散在取物口兩側，
           // 集中起來才好點；用 angleZ 跟著位移轉，看起來是滾不是滑。
+          // 往中間的路被別的箱子擋住就不滾：硬滾的位移每幀都被碰撞
+          // 分離推回原位，位移歸零但 angleZ 持續累積 —— 10 抽時就是
+          // 「只有搶到正中央那一箱不轉、其他九箱原地瘋狂旋轉」的來源。
           const dxToCenter = CENTER_X - b.x;
           if (Math.abs(dxToCenter) > 1.5) {
-            const roll = Math.sign(dxToCenter) * Math.min(Math.abs(dxToCenter) * 3.2, 90) * dt;
-            b.x      += roll;
-            b.angleZ += (roll / BOX_R) * (180 / Math.PI) * 0.45;
+            const dir = Math.sign(dxToCenter);
+            const blocked = cur.some(o =>
+              o !== b && o.depth === b.depth &&
+              Math.sign(o.x - b.x) === dir &&
+              Math.abs(o.x - b.x) < BOX_R * 2 + 2 &&
+              Math.abs(o.y - b.y) < BOX_R * 1.5
+            );
+            if (!blocked) {
+              const roll = dir * Math.min(Math.abs(dxToCenter) * 3.2, 90) * dt;
+              b.x      += roll;
+              b.angleZ += (roll / BOX_R) * (180 / Math.PI) * 0.45;
+            }
           }
         }
 

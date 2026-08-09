@@ -4,6 +4,57 @@
 
 ---
 
+## v2026.08.09c｜2026-08-09｜買5付4、實收金額入帳、拆解對帳修正、促銷分類頁
+
+### 買五送一改「買5付4」語意（migration 511，STG／PROD 已執行）
+494 的公式是湊滿 buy+free=6 抽才折 —— 老闆定義是**選 5 抽、付 4 抽的錢**。
+`promo_discount_for` 改為 `floor(count / buy) × free × 單價`（5抽折150、10抽折300、
+4抽以下 0），前端 `lib/promotions.ts` 同步同一條公式。
+
+### 促銷商品購買彈窗專屬模式
+- 開窗預設數量＝湊滿門檻（5）、隱藏十連抽／優惠券／積分支付（促銷只能 G 幣）
+- 促銷提示改「購買數量」右側純文字小紅字（未湊滿：滿 5 抽折 150；已折：已折 150）
+- **修掉 5 抽按 + 跳 12 的 bug**：舊提示列可點、目標是「補到下一套」（(sets+1)×6=12），
+  和步進互相打架；提示不做交互後 bug 類別整個消失
+- 十連抽與步進膠囊同高（h-9 / md:h-11）；移除「購買後剩餘」綠字
+- 移除全站 4 處假的「優惠前」刪除線價（單價 ×1.2 虛構原價，涉不實標價風險）
+
+### 抽獎逐筆記錄實收金額（migration 512，STG／PROD 已執行）
+買五送一實收 600，但前台抽獎紀錄、後台消費紀錄、token_ledger 都用
+「單價×筆數」回推成 750 —— 對帳多算支出、畫面跟扣款對不上。
+- `draw_records.tokens_spent`：play_gacha／play_ichiban 逐筆寫實收
+  （分配＝逐筆收滿單價、錢收完為止：買5送1 = 4筆150 + 1筆0）
+- 順手修掉現行 play_gacha **漏寫 points_used**（積分抽獎在帳本隱形）
+- token_ledger 抽獎消耗改讀 tokens_spent（舊資料 fallback 單價）
+- 舊促銷交易用 promotion_redemptions 回填（同交易 now() 相同，created_at 精準比對）
+- **後台消費紀錄改交易合併**：同購買一列（共 N 抽／實收／「已折」標籤），
+  展開看逐筆籤號／品項／實收（送的那抽標「促銷贈送」）；
+  `in_warehouse` 等原始狀態碼改中文（倉庫中／待出貨／已出貨／已拆解／已兌換）
+- 前台抽獎紀錄金額改加總 tokens_spent
+
+### 拆解退還對帳修正（migration 513，STG／PROD 已執行）
+token_ledger 把已拆解品項的抽獎支出踢掉、退還卻記整顆單價 ——
+現實淨支出 190，帳本寫淨賺 200。玩家餘額一直是對的，錯的只有帳本 view。
+- `draw_records.refund_amount`：dismantle_prizes 拆解當下記實際退還
+- 歷史資料從 admin_recycle_pool.recycle_value 回填
+- 帳本改為：抽獎支出照記（含已拆解）、退還記實際數
+- **驗證：PROD 全部真實用戶 ledger 加總 = users.tokens，一毛不差**
+
+### 促銷分類清單頁 + 輪播圖連結
+- 前台新增 `/promo/<id>`：列出該促銷涵蓋的全部商品（ProductCard 網格，
+  資料走 public_product_promotions view，檔期結束自動顯示已結束）
+- 後台輪播圖編輯器新增「連結促銷分類頁」下拉，選了自動填 `/promo/<id>`
+
+### 其他
+- **盒玩 10 抽落地後原地瘋狂旋轉**：落地集中滾動被鄰箱擋住時，位移每幀被
+  碰撞分離推回、angleZ 卻持續累積 —— 只有搶到正中央那箱不轉。
+  改為路被擋住就停滾（Mode2/Mode3，Mode4 共用）
+- 前台商品資訊「條碼」永遠顯示「-」：`products.barcode` 不在
+  PRODUCT_PUBLIC_COLUMNS 查詢清單內，補上即修復
+- 實付金額標題字重與活動促銷列一致（font-bold）
+
+---
+
 ## v2026.08.09b｜2026-08-09｜iPhone 商品名稱多出刪節號
 
 Safari 的 `-webkit-line-clamp` 遇到「**有定位的 inline 元素**」（類別 badge 的
