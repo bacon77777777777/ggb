@@ -485,7 +485,8 @@ export function PurchaseConfirmationModal({
                       <div className="h-px bg-neutral-200 dark:bg-neutral-700 border-dashed w-full my-1" />
                       
                       <div className="flex justify-between items-end text-base font-black text-accent-red">
-                          <span className={cn(isDesktop ? "text-[15px]" : "text-[13px]")}>實付金額</span>
+                          {/* 標題字重跟上面「活動促銷」列一致（font-bold），金額維持大字 */}
+                          <span className={cn("font-bold", isDesktop ? "text-[15px]" : "text-[13px]")}>實付金額</span>
                           {usePoints ? (
                             <span className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")}><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
                           ) : (
