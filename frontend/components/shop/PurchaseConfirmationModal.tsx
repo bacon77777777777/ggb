@@ -336,60 +336,87 @@ export function PurchaseConfirmationModal({
                   </div>
 
                   <div className={cn("space-y-2", isDesktop ? "px-6 pb-6 space-y-4" : "px-3")}>
-                    {/* Quantity Selector：+/- 步進（任意數量）＋ 快捷鈕（老闆指定兩者都要）。
-                        快捷鈕：十連恆在；有 bundle 促銷時多一顆「湊滿送」
-                        （例：買5送1 → 「6抽 送1」），玩家不用自己算要抽幾次才吃到折扣 */}
-                    {/* 單行排版：標題｜快捷鈕｜步進。
-                        手機寬度吃緊，全部元件收窄（StepBtn 32px、chip 28px 高）；
-                        快捷鈕貼在步進左邊，語意上是「數量的預設值」而不是另一區 */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between gap-2", isDesktop ? "p-6" : "p-3")}>
-                      <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
-                      <div className="flex items-center gap-1.5 md:gap-2">
-                        {promo && promo.type === 'bundle' && promo.free > 0 && maxSelectable >= promo.buy + promo.free && (
-                          <QuickBtn
-                            active={effectiveQuantity === promo.buy + promo.free}
-                            onClick={() => setQuantity(promo.buy + promo.free)}
-                            disabled={isSoldOut || isProcessing}
-                            accent
-                          >
-                            {promo.buy + promo.free}抽送{promo.free}
-                          </QuickBtn>
-                        )}
-                        <StepBtn
-                          onStep={() => setQuantity(q => Math.max(1, q - 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
-                        >
-                          −
-                        </StepBtn>
-                        <span className={cn(
-                          "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
-                          isDesktop ? "w-10 text-lg" : "w-7 text-base"
-                        )}>
-                          {effectiveQuantity}
-                        </span>
-                        <StepBtn
-                          onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
-                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
-                        >
-                          ＋
-                        </StepBtn>
-                        {canTenPull && (
-                          <QuickBtn
-                            active={effectiveQuantity === 10}
-                            onClick={() => setQuantity(10)}
-                            disabled={isSoldOut || isProcessing}
-                          >
-                            十連抽
-                          </QuickBtn>
-                        )}
+                    {/* Quantity Selector（老闆核可的版型）：
+                        操作列＝標題｜膠囊步進（⊖ n ⊕ 合成一個零件）｜十連抽。
+                        促銷不做按鈕 —— 改為下方的動態提示列：未湊滿時整列可點、
+                        一鍵補到門檻；已湊滿顯示已折金額。按鈕講不清規則，一句話可以 */}
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl", isDesktop ? "p-6" : "p-3")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
+                            <StepBtn
+                              onStep={() => setQuantity(q => Math.max(1, q - 1))}
+                              disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
+                            >
+                              −
+                            </StepBtn>
+                            <span className={cn(
+                              "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
+                              isDesktop ? "w-10 text-lg" : "w-8 text-base"
+                            )}>
+                              {effectiveQuantity}
+                            </span>
+                            <StepBtn
+                              onStep={() => setQuantity(q => Math.min(maxSelectable, q + 1))}
+                              disabled={isSoldOut || isProcessing || effectiveQuantity >= maxSelectable}
+                            >
+                              ＋
+                            </StepBtn>
+                          </div>
+                          {canTenPull && (
+                            <QuickBtn
+                              active={effectiveQuantity === 10}
+                              onClick={() => setQuantity(10)}
+                              disabled={isSoldOut || isProcessing}
+                            >
+                              十連抽
+                            </QuickBtn>
+                          )}
+                        </div>
                       </div>
+
+                      {/* 促銷提示列（bundle 且代幣支付才有意義） */}
+                      {promo && promo.type === 'bundle' && promo.free > 0 && !usePoints && (() => {
+                        const unit = promo.buy + promo.free;
+                        const sets = Math.floor(effectiveQuantity / unit);
+                        const nextQty = (sets + 1) * unit;
+                        const reachable = nextQty <= maxSelectable;
+                        const perSet = promo.free * product.price;
+                        if (promoDiscountAmount === 0 && !reachable) return null;
+                        return (
+                          <button
+                            type="button"
+                            disabled={!reachable || isSoldOut || isProcessing}
+                            onClick={() => { if (reachable) setQuantity(nextQty); }}
+                            className={cn(
+                              "mt-2.5 flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] md:text-[13px] font-bold transition-colors",
+                              promoDiscountAmount > 0
+                                ? "bg-accent-emerald/10 text-accent-emerald"
+                                : "bg-accent-red/5 text-accent-red active:bg-accent-red/10"
+                            )}
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              {promoDiscountAmount > 0 ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">已享 {promo.name}，折 {promoDiscountAmount.toLocaleString()} G</span>
+                                </>
+                              ) : (
+                                <span className="truncate">再 +{nextQty - effectiveQuantity} 抽湊滿 {nextQty} 抽，現折 {perSet.toLocaleString()} G</span>
+                              )}
+                            </span>
+                            {reachable && promoDiscountAmount === 0 && <ChevronRight className="w-4 h-4 shrink-0" />}
+                          </button>
+                        );
+                      })()}
                     </div>
 
                     {/* Points Toggle */}
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Coins className="w-4 h-4 text-yellow-500" />
-                          使用積分支付 (4積分 = 1代幣)
+                          使用積分支付（4 積分 = 1 G）
                        </div>
                        <label className="relative inline-flex items-center cursor-pointer">
                          <input 
@@ -407,31 +434,20 @@ export function PurchaseConfirmationModal({
                        </label>
                     </div>
 
-    {/* 促銷折抵列：吃到折扣才出現。優惠券與促銷不疊加（DB 規則），
-                        有促銷折抵時優惠券列淡化鎖住 */}
-                    {promoDiscountAmount > 0 && promo && (
-                      <div className={cn("bg-accent-red/5 dark:bg-accent-red/10 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
-                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-accent-red">
-                          <Ticket className="w-4 h-4" />
-                          {promo.name || promo.badgeText}
-                        </div>
-                        <span className="text-[13px] md:text-[15px] font-black text-accent-red">
-                          -<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span>
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Coupon Selector */}
+                    {/* Coupon Selector。促銷與優惠券不疊加（DB 規則）：
+                        有促銷折抵時鎖住並講明原因，不是無聲變灰 */}
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoDiscountAmount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
                           <Ticket className="w-4 h-4 text-accent-yellow" />
                           優惠券
                        </div>
-                       <button 
+                       <button
                          onClick={() => setView('coupons')}
                          className="flex items-center gap-1 text-[13px] md:text-[15px] font-bold text-neutral-400 hover:text-neutral-600 transition-colors group"
                        >
-                          {selectedCoupon ? (
+                          {promoDiscountAmount > 0 ? (
+                            "不與促銷併用"
+                          ) : selectedCoupon ? (
                             <span className="text-accent-red">
                               {selectedCoupon.coupon?.discount_type === 'fixed' ? `-$${discountAmount}` : `-${selectedCoupon.coupon?.discount_value}%`}
                             </span>
@@ -449,7 +465,7 @@ export function PurchaseConfirmationModal({
                           {usePoints ? (
                             <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
                           ) : (
-                            <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{totalPrice.toLocaleString()}</span> 元</span>
+                            <GAmount value={totalPrice} className="text-neutral-900 dark:text-neutral-100" />
                           )}
                       </div>
                       
@@ -465,9 +481,9 @@ export function PurchaseConfirmationModal({
                         </div>
                       ) : (
                         <div className={cn("flex justify-between items-center font-bold text-neutral-400 dark:text-neutral-500", isDesktop ? "text-[15px]" : "text-[13px]")}>
-                          <span>代幣餘額</span>
+                          <span>G 幣餘額</span>
                           <div className="flex flex-col items-end">
-                            <span><span className="font-amount">{userTokens.toLocaleString()}</span> 代幣</span>
+                            <GAmount value={userTokens} />
                             {!isInsufficient && finalPrice > 0 && (
                               <span className="text-xs text-accent-emerald">購買後剩餘: {(userTokens - finalPrice).toLocaleString()}</span>
                             )}
@@ -477,14 +493,14 @@ export function PurchaseConfirmationModal({
 
                       {promoDiscountAmount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
-                            <span>活動促銷</span>
-                            <span>-<span className="font-amount">{promoDiscountAmount.toLocaleString()}</span> 元</span>
+                            <span>活動促銷{promo ? `（${promo.badgeText || promo.name}）` : ''}</span>
+                            <GAmount value={promoDiscountAmount} negative />
                         </div>
                       )}
                       {discountAmount > 0 && !usePoints && (
                         <div className={cn("flex justify-between items-center font-bold text-accent-red", isDesktop ? "text-[15px]" : "text-[13px]")}>
                             <span>折扣金額</span>
-                            <span>-<span className="font-amount">{discountAmount.toLocaleString()}</span> 元</span>
+                            <GAmount value={discountAmount} negative />
                         </div>
                       )}
                       
@@ -495,7 +511,7 @@ export function PurchaseConfirmationModal({
                           {usePoints ? (
                             <span className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")}><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
                           ) : (
-                            <span className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")}><span className="font-amount">{finalPrice.toLocaleString()}</span> 代幣</span>
+                            <GAmount value={finalPrice} iconSize={isDesktop ? 24 : 18} className={cn("leading-none", isDesktop ? "text-3xl" : "text-xl")} />
                           )}
                       </div>
                     </div>
@@ -617,7 +633,7 @@ export function PurchaseConfirmationModal({
                       ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />處理中...</span>
                       : usePoints
                         ? `確認支付 ${pointsCost.toLocaleString()} 積分`
-                        : `確認支付 ${finalPrice.toLocaleString()} 代幣`}
+                        : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} /></span>}
                 </Button>
               </div>
             )}
@@ -700,5 +716,19 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
     >
       {children}
     </button>
+  );
+}
+
+/** G 幣金額：金幣圖標＋數字。全彈窗的 G 金額都走這裡，單位不再寫「元」「代幣」 */
+function GAmount({ value, negative, iconSize = 14, className }: {
+  value: number; negative?: boolean; iconSize?: number; className?: string;
+}) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 align-middle", className)}>
+      {negative && <span>-</span>}
+      <Image src="/images/gcoin.png" alt="G" width={iconSize} height={iconSize}
+        className="inline-block shrink-0" style={{ width: iconSize, height: iconSize }} />
+      <span className="font-amount">{value.toLocaleString()}</span>
+    </span>
   );
 }
