@@ -336,31 +336,12 @@ export function PurchaseConfirmationModal({
                     {/* Quantity Selector：+/- 步進（任意數量）＋ 快捷鈕（老闆指定兩者都要）。
                         快捷鈕：十連恆在；有 bundle 促銷時多一顆「湊滿送」
                         （例：買5送1 → 「6抽 送1」），玩家不用自己算要抽幾次才吃到折扣 */}
-                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl space-y-2.5", isDesktop ? "p-6" : "p-3")}>
-                      <div className="flex items-center justify-between">
-                        <span className={cn("font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
-                        <div className="flex items-center gap-2">
-                          <StepBtn
-                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                            disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
-                          >
-                            −
-                          </StepBtn>
-                          <span className={cn(
-                            "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
-                            isDesktop ? "w-12 text-lg" : "w-9 text-base"
-                          )}>
-                            {effectiveQuantity}
-                          </span>
-                          <StepBtn
-                            onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
-                            disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
-                          >
-                            ＋
-                          </StepBtn>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
+                    {/* 單行排版：標題｜快捷鈕｜步進。
+                        手機寬度吃緊，全部元件收窄（StepBtn 32px、chip 28px 高）；
+                        快捷鈕貼在步進左邊，語意上是「數量的預設值」而不是另一區 */}
+                    <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between gap-2", isDesktop ? "p-6" : "p-3")}>
+                      <span className={cn("shrink-0 font-bold text-neutral-700 dark:text-neutral-300", isDesktop ? "text-[15px]" : "text-[13px]")}>購買數量</span>
+                      <div className="flex items-center gap-1.5 md:gap-2">
                         {promo && promo.type === 'bundle' && promo.free > 0 && maxQuantity >= promo.buy + promo.free && (
                           <QuickBtn
                             active={effectiveQuantity === promo.buy + promo.free}
@@ -368,7 +349,7 @@ export function PurchaseConfirmationModal({
                             disabled={isSoldOut || isProcessing}
                             accent
                           >
-                            {promo.buy + promo.free}抽 送{promo.free}
+                            {promo.buy + promo.free}抽送{promo.free}
                           </QuickBtn>
                         )}
                         {canTenPull && (
@@ -377,9 +358,27 @@ export function PurchaseConfirmationModal({
                             onClick={() => setQuantity(10)}
                             disabled={isSoldOut || isProcessing}
                           >
-                            十連抽
+                            十連
                           </QuickBtn>
                         )}
+                        <StepBtn
+                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity <= 1}
+                        >
+                          −
+                        </StepBtn>
+                        <span className={cn(
+                          "text-center font-black tabular-nums text-neutral-900 dark:text-neutral-50",
+                          isDesktop ? "w-10 text-lg" : "w-7 text-base"
+                        )}>
+                          {effectiveQuantity}
+                        </span>
+                        <StepBtn
+                          onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
+                          disabled={isSoldOut || isProcessing || effectiveQuantity >= maxQuantity}
+                        >
+                          ＋
+                        </StepBtn>
                       </div>
                     </div>
 
@@ -635,7 +634,7 @@ function StepBtn({ children, onClick, disabled }: {
     <button
       type="button" onClick={onClick} disabled={disabled}
       className={cn(
-        "w-9 h-9 md:w-11 md:h-11 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
+        "w-8 h-8 md:w-10 md:h-10 rounded-full bg-neutral-200/70 dark:bg-neutral-700",
         "text-neutral-700 dark:text-neutral-200 font-black md:text-lg",
         "disabled:opacity-40 hover:bg-neutral-300/70 dark:hover:bg-neutral-600 transition-colors"
       )}
@@ -654,7 +653,7 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
     <button
       type="button" onClick={onClick} disabled={disabled}
       className={cn(
-        "h-8 md:h-9 px-3 md:px-4 rounded-full border text-[13px] md:text-sm font-black transition-all active:scale-95",
+        "h-7 md:h-9 px-2.5 md:px-4 rounded-full border text-[12px] md:text-sm font-black transition-all active:scale-95 whitespace-nowrap",
         active
           ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white"
           : accent
