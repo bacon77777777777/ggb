@@ -322,6 +322,8 @@ interface GroupedDrawHistoryItem {
     created_at: string;
     status: string;
     points_used?: number | null;
+    /** 這一抽實際收的 G（促銷/優惠券折抵後；migration 512）。舊資料 null → fallback 單價 */
+    tokens_spent?: number | null;
     txid_hash?: string | null;
     prize_level?: string | null;
     prize_name?: string | null;
@@ -1519,6 +1521,7 @@ function ProfileContent() {
             prize_name,
             txid_hash,
             points_used,
+            tokens_spent,
             product_prizes ( level, name ),
             products ( name, price, status, remaining, type )
           `)
@@ -1540,9 +1543,12 @@ function ProfileContent() {
           const name = item.product_prizes?.name || item.prize_name || '未知';
 
           const itemPointsUsed = item.points_used || 0;
+          // 實收金額（促銷/優惠券折抵後）；舊資料沒有 tokens_spent 才 fallback 單價。
+          // 買五送一顯示 600 而不是 750 就靠這個
+          const itemCost = item.tokens_spent ?? (item.products?.price || 0);
           if (lastGroup && lastGroup._rawDate === currentTimestamp && lastGroup.product === item.products?.name) {
             lastGroup.tickets.push(item.ticket_number?.toString());
-            lastGroup.cost += (item.products?.price || 0);
+            lastGroup.cost += itemCost;
             lastGroup.pointsUsed += itemPointsUsed;
             lastGroup.items.push({ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined });
           } else {
@@ -1557,7 +1563,7 @@ function ProfileContent() {
               productType: item.products?.type,
               date: new Date(item.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
               tickets: [item.ticket_number?.toString()],
-              cost: item.products?.price || 0,
+              cost: itemCost,
               pointsUsed: itemPointsUsed,
               items: [{ grade, name, ticket_number: item.ticket_number?.toString(), txid_hash: item.txid_hash || undefined }]
             });

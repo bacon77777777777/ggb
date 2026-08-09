@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, DataTable, FilterTags, DateRangePicker, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
@@ -15,6 +15,9 @@ interface DrawRecord {
   created_at: string
   ticket_number: number
   status: string
+  points_used?: number
+  /** 這一抽實際收的 G（促銷/優惠券折抵後；migration 512）。舊資料 null → fallback 單價 */
+  tokens_spent?: number | null
   user?: { name: string; email: string; id: string }
   product?: { name: string; image_url: string; price?: number; type?: string }
   slot_log?: {
@@ -23,6 +26,33 @@ interface DrawRecord {
     machine?: { machine_number: number | null; theme?: { name: string } | null } | null
   }[]
 }
+
+/** 一次交易（同用戶＋同商品＋同秒寫入的多筆抽獎合併） */
+interface DrawTx {
+  key: string
+  id: number
+  created_at: string
+  user?: DrawRecord['user']
+  product?: DrawRecord['product']
+  records: DrawRecord[]
+  count: number
+  cost: number
+  pointsUsed: number
+  promoDiscount: number
+  statuses: string[]
+}
+
+// 原始狀態碼不給管理員看（跟前台不給玩家看技術術語同一個道理）
+const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  in_warehouse:     { label: '倉庫中',   className: 'bg-neutral-100 text-neutral-600' },
+  pending_delivery: { label: '待出貨',   className: 'bg-blue-50 text-blue-700' },
+  shipped:          { label: '已出貨',   className: 'bg-green-50 text-green-700' },
+  dismantled:       { label: '已拆解',   className: 'bg-amber-50 text-amber-700' },
+  exchanged:        { label: '已兌換',   className: 'bg-purple-50 text-purple-700' },
+  success:          { label: '成功',     className: 'bg-green-50 text-green-700' },
+  failed:           { label: '失敗',     className: 'bg-red-50 text-red-600' },
+}
+const statusInfo = (s: string) => STATUS_LABELS[s] ?? { label: s, className: 'bg-neutral-100 text-neutral-600' }
 
 // 老虎機 spin 流水（migration 390 之後才有；舊紀錄無法回溯）
 const slotLogOf = (r: DrawRecord) => r.slot_log?.[0] ?? null
@@ -33,6 +63,10 @@ const slotMachineLabel = (r: DrawRecord) => {
   return log.machine?.machine_number ? `${theme} ${log.machine.machine_number}號機` : theme
 }
 
+/** 這一抽實收：老虎機看 bet；一般抽獎看 tokens_spent（舊資料 fallback 單價） */
+const recordCost = (r: DrawRecord) =>
+  slotLogOf(r)?.bet ?? r.tokens_spent ?? r.product?.price ?? 0
+
 export default function DrawsPage() {
   const [records, setRecords] = useState<DrawRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -41,8 +75,9 @@ export default function DrawsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [expandedIds, setExpandedIds] = useState<Set<number | string>>(new Set())
   const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('draws', 'compact', {
-    created_at: true, user: true, product: true, prize_level: true, ticket_number: true, status: true
+    created_at: true, user: true, product: true, count: true, cost: true, status: true
   })
 
   // 篩選與欄位顯示狀態
@@ -76,7 +111,7 @@ export default function DrawsPage() {
     let result = records
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(r => 
+      result = result.filter(r =>
         r.user?.name?.toLowerCase().includes(q) ||
         r.user?.email?.toLowerCase().includes(q) ||
         r.product?.name?.toLowerCase().includes(q) ||
@@ -84,7 +119,7 @@ export default function DrawsPage() {
         String(r.ticket_number).includes(q)
       )
     }
-    
+
     // 狀態過濾
     if (selectedStatus !== 'all') {
       result = result.filter(r => r.status === selectedStatus)
@@ -109,8 +144,40 @@ export default function DrawsPage() {
     return result
   }, [records, searchQuery, selectedStatus, selectedPrizeLevel, filterStartDate, filterEndDate])
 
-  const sortedRecords = useMemo(() => {
-    return [...filteredRecords].sort((a, b) => {
+  // 合併成交易：同用戶＋同商品＋同一時間戳（同交易 now() 相同）視為一次購買。
+  // 消費金額用每筆實收加總 —— 買五送一 4筆150＋1筆0 = 600，跟前台用戶看到的一致
+  const transactions = useMemo<DrawTx[]>(() => {
+    const map = new Map<string, DrawTx>()
+    for (const r of filteredRecords) {
+      const key = `${r.user_id}|${r.product_id}|${r.created_at}|${slotLogOf(r) ? r.id : 'tx'}`
+      let tx = map.get(key)
+      if (!tx) {
+        tx = {
+          key, id: r.id, created_at: r.created_at,
+          user: r.user, product: r.product,
+          records: [], count: 0, cost: 0, pointsUsed: 0, promoDiscount: 0, statuses: [],
+        }
+        map.set(key, tx)
+      }
+      tx.records.push(r)
+      tx.count += 1
+      tx.cost += recordCost(r)
+      tx.pointsUsed += r.points_used || 0
+      tx.id = Math.min(tx.id, r.id)
+      if (!tx.statuses.includes(r.status)) tx.statuses.push(r.status)
+    }
+    for (const tx of map.values()) {
+      tx.records.sort((a, b) => a.id - b.id)
+      // 有促銷/優惠券折抵時（實收 < 單價×筆數）標出折了多少
+      const nominal = (tx.product?.price ?? 0) * tx.count
+      const isSlot = tx.records.some(r => slotLogOf(r))
+      if (!isSlot && tx.pointsUsed === 0 && nominal > tx.cost) tx.promoDiscount = nominal - tx.cost
+    }
+    return [...map.values()]
+  }, [filteredRecords])
+
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
       let aValue: any
       let bValue: any
 
@@ -127,9 +194,13 @@ export default function DrawsPage() {
           aValue = a.product?.name || ''
           bValue = b.product?.name || ''
           break
-        case 'prize_level':
-          aValue = a.prize_level
-          bValue = b.prize_level
+        case 'cost':
+          aValue = a.cost
+          bValue = b.cost
+          break
+        case 'count':
+          aValue = a.count
+          bValue = b.count
           break
         default:
           aValue = a.id
@@ -141,7 +212,7 @@ export default function DrawsPage() {
       }
       return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
     })
-  }, [filteredRecords, sortField, sortDirection])
+  }, [transactions, sortField, sortDirection])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -166,26 +237,26 @@ export default function DrawsPage() {
     }
   };
 
-  const columns: Column<DrawRecord>[] = [
+  const columns: Column<DrawTx>[] = [
     {
       key: 'id',
       label: '編號',
-      render: (record) => <span className="text-xs font-mono font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{formatDrawId(record.id, record.created_at)}</span>
+      render: (tx) => <span className="text-xs font-mono font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded">{formatDrawId(tx.id, tx.created_at)}</span>
     },
     {
       key: 'created_at',
       label: '時間',
       sortable: true,
-      render: (record) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(record.created_at)}</span>
+      render: (tx) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(tx.created_at)}</span>
     },
     {
       key: 'user',
       label: '用戶',
       sortable: true,
-      render: (record) => (
+      render: (tx) => (
         <div>
-          <div className="font-medium text-neutral-900">{record.user?.name || '未知用戶'}</div>
-          <div className="text-xs text-neutral-500">{record.user?.email}</div>
+          <div className="font-medium text-neutral-900">{tx.user?.name || '未知用戶'}</div>
+          <div className="text-xs text-neutral-500">{tx.user?.email}</div>
         </div>
       )
     },
@@ -193,64 +264,98 @@ export default function DrawsPage() {
       key: 'product',
       label: '商品',
       sortable: true,
-      render: (record) => (
+      render: (tx) => (
         <div className="flex items-center gap-2">
-          {record.product?.image_url && (
-            <img src={record.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+          {tx.product?.image_url && (
+            <img src={tx.product.image_url} alt="" className="w-8 h-8 rounded object-cover" />
           )}
-          <span className="truncate max-w-[200px]" title={record.product?.name}>{slotMachineLabel(record) || record.product?.name || '未知商品'}</span>
+          <span className="truncate max-w-[200px]" title={tx.product?.name}>{slotMachineLabel(tx.records[0]) || tx.product?.name || '未知商品'}</span>
         </div>
       )
     },
     {
-      key: 'prize_level',
-      label: '品項',
+      key: 'count',
+      label: '抽數',
       sortable: true,
-      render: (record) => {
-        const hasGrade = ['ichiban', 'card', 'custom'].includes(record.product?.type || '')
-        return (
-          <div className="flex items-center gap-1.5">
-            {hasGrade && record.prize_level && (
-              <Badge variant="warning" size="sm">{record.prize_level}</Badge>
-            )}
-            <span className="text-sm text-neutral-700">{record.prize_name || '—'}</span>
-          </div>
-        )
-      }
+      render: (tx) => <span className="tabular-nums text-neutral-700">共 {tx.count} 抽</span>
     },
     {
-      key: 'ticket_number',
-      label: '籤號',
-      className: 'font-mono'
-    },
-    {
-      key: 'price',
-      label: '消費(G)',
-      render: (record) => (
-        <span className="tabular-nums text-neutral-600">
-          {slotLogOf(record)
-            ? slotLogOf(record)!.bet.toLocaleString()
-            : record.product?.price != null ? record.product.price.toLocaleString() : '—'}
-        </span>
+      key: 'cost',
+      label: '消費',
+      sortable: true,
+      render: (tx) => (
+        <div className="flex items-center gap-1.5">
+          <span className="tabular-nums font-medium text-neutral-800">
+            {tx.pointsUsed > 0 ? `${(tx.pointsUsed * 4).toLocaleString()} 積分` : `${tx.cost.toLocaleString()} G`}
+          </span>
+          {tx.promoDiscount > 0 && (
+            <Badge variant="danger" size="sm">已折 {tx.promoDiscount.toLocaleString()}</Badge>
+          )}
+        </div>
       )
     },
     {
       key: 'status',
       label: '狀態',
-      render: (record) => (
-        <span className={`px-2 py-1 rounded text-xs ${
-          record.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'
-        }`}>
-          {record.status === 'success' ? '成功' : record.status}
-        </span>
+      render: (tx) => (
+        <div className="flex flex-wrap gap-1">
+          {tx.statuses.map(s => {
+            const info = statusInfo(s)
+            return <span key={s} className={`px-2 py-1 rounded text-xs ${info.className}`}>{info.label}</span>
+          })}
+        </div>
       )
     }
   ]
 
+  // 展開明細：逐筆籤號／品項／實收，稽核與客訴查證用
+  const renderExpanded = (tx: DrawTx) => (
+    <div className="px-4 py-3 bg-neutral-50">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-neutral-400">
+            <th className="py-1.5 pr-4 font-medium">籤號</th>
+            <th className="py-1.5 pr-4 font-medium">品項</th>
+            <th className="py-1.5 pr-4 font-medium text-right">消費(G)</th>
+            <th className="py-1.5 font-medium">狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tx.records.map(r => {
+            const hasGrade = ['ichiban', 'card', 'custom'].includes(r.product?.type || '')
+            const cost = recordCost(r)
+            const info = statusInfo(r.status)
+            return (
+              <tr key={r.id} className="border-t border-neutral-200/70">
+                <td className="py-1.5 pr-4 font-mono text-neutral-600">{r.ticket_number}</td>
+                <td className="py-1.5 pr-4">
+                  <div className="flex items-center gap-1.5">
+                    {hasGrade && r.prize_level && (
+                      <Badge variant="warning" size="sm">{r.prize_level}</Badge>
+                    )}
+                    <span className="text-neutral-700">{r.prize_name || '—'}</span>
+                  </div>
+                </td>
+                <td className="py-1.5 pr-4 text-right tabular-nums text-neutral-600">
+                  {r.points_used ? `${(r.points_used * 4).toLocaleString()} 積分` : cost.toLocaleString()}
+                  {!r.points_used && cost === 0 && <span className="ml-1 text-xs text-red-500">（促銷贈送）</span>}
+                </td>
+                <td className="py-1.5">
+                  <span className={`px-2 py-0.5 rounded text-xs ${info.className}`}>{info.label}</span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+
   const handleExportCSV = () => {
     const BOM = '﻿'
-    const headers = ['時間', '用戶姓名', '用戶Email', '商品', '賞等', '品項名稱', '籤號', '消費(G)', '狀態']
-    const rows = sortedRecords.map(r => [
+    const headers = ['交易編號', '時間', '用戶姓名', '用戶Email', '商品', '賞等', '品項名稱', '籤號', '消費(G)', '狀態']
+    const rows = sortedTransactions.flatMap(tx => tx.records.map(r => [
+      formatDrawId(tx.id, tx.created_at),
       formatDateTime(r.created_at),
       r.user?.name || '',
       r.user?.email || '',
@@ -258,9 +363,9 @@ export default function DrawsPage() {
       r.prize_level || '',
       r.prize_name || '',
       String(r.ticket_number ?? ''),
-      String(slotLogOf(r)?.bet ?? r.product?.price ?? ''),
-      r.status === 'success' ? '成功' : r.status,
-    ])
+      String(r.points_used ? `${r.points_used * 4}積分` : recordCost(r)),
+      statusInfo(r.status).label,
+    ]))
     const csv = BOM + [headers, ...rows].map(row => row.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -302,8 +407,11 @@ export default function DrawsPage() {
                 onChange: setSelectedStatus,
                 options: [
                   { value: 'all', label: '全部狀態' },
-                  { value: 'success', label: '成功' },
-                  { value: 'failed', label: '失敗' }
+                  { value: 'in_warehouse', label: '倉庫中' },
+                  { value: 'pending_delivery', label: '待出貨' },
+                  { value: 'shipped', label: '已出貨' },
+                  { value: 'dismantled', label: '已拆解' },
+                  { value: 'exchanged', label: '已兌換' }
                 ]
               },
               {
@@ -347,8 +455,8 @@ export default function DrawsPage() {
               { key: 'created_at', label: '時間', visible: visibleColumns.created_at },
               { key: 'user', label: '用戶', visible: visibleColumns.user },
               { key: 'product', label: '商品', visible: visibleColumns.product },
-              { key: 'prize_level', label: '品項', visible: visibleColumns.prize_level },
-              { key: 'ticket_number', label: '籤號', visible: visibleColumns.ticket_number },
+              { key: 'count', label: '抽數', visible: visibleColumns.count },
+              { key: 'cost', label: '消費', visible: visibleColumns.cost },
               { key: 'status', label: '狀態', visible: visibleColumns.status }
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
@@ -359,7 +467,7 @@ export default function DrawsPage() {
               ...(selectedStatus !== 'all' ? [{
                 key: 'status',
                 label: '狀態',
-                value: selectedStatus === 'success' ? '成功' : '失敗',
+                value: statusInfo(selectedStatus).label,
                 color: 'primary' as const,
                 onRemove: () => setSelectedStatus('all')
               }] : []),
@@ -388,9 +496,9 @@ export default function DrawsPage() {
 
           <div className="mt-4">
             <DataTable
-              data={sortedRecords}
+              data={sortedTransactions}
               columns={columns}
-              keyField="id"
+              keyField="key"
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={handleSort}
@@ -399,10 +507,14 @@ export default function DrawsPage() {
               onLoadMore={handleLoadMore}
               enableInfiniteScroll={true}
               isLoadingMore={isLoadingMore}
-              totalCount={sortedRecords.length}
+              totalCount={sortedTransactions.length}
               visibleColumns={visibleColumns}
               emptyMessage="無相關紀錄"
               isLoading={isLoading}
+              expandable={true}
+              expandedIds={expandedIds}
+              onExpandChange={setExpandedIds}
+              renderExpanded={renderExpanded}
             />
           </div>
         </PageCard>
