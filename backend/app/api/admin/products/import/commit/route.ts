@@ -119,8 +119,18 @@ export async function POST(request: Request) {
         await supabase.from('products').update({ product_code: String(10000000 + id) }).eq('id', id)
 
         if (prizes.length) {
+          // 機率不開放手動設定（老闆定案）：檔案給什麼都忽略，
+          // 一律依數量佔比計算（40/200 = 20%），跟單筆編輯器同一條規則。
+          // 最後賞不佔機率（觸發式，不進輪盤）。
+          const isLastOne = (p: Record<string, unknown>) =>
+            p.is_last_one === true || ['Last One', 'LAST ONE', 'last one', '最後賞'].includes(String(p.level))
+          const totalSum = prizes.reduce((s, p) => s + (isLastOne(p) ? 0 : (Number(p.total) || 0)), 0)
+          const normalized = prizes.map(p => ({
+            ...p,
+            probability: isLastOne(p) || totalSum <= 0 ? 0 : (Number(p.total) || 0) * 100 / totalSum,
+          }))
           const { error: prizeErr } = await supabase.from('product_prizes').insert(
-            prizes.map(p => ({ ...pick(p, ALLOWED_PRIZE_KEYS), product_id: id }))
+            normalized.map(p => ({ ...pick(p, ALLOWED_PRIZE_KEYS), product_id: id }))
           )
           if (prizeErr) {
             // 品項寫失敗跟「廠商本來就沒給品項」是兩回事：

@@ -270,11 +270,10 @@ export const PRIZE_IMPORT_FIELDS: ImportFieldDef[] = [
     aliases: [/圖片/i, /^圖$/i, /^img$/i, /^image$/i, /画像/i],
     example: 'abc123-a.png', note: '同商品主圖：檔名或網址皆可，留空會自動搜圖',
   },
-  {
-    key: 'probability', label: '中獎機率', kind: 'number', onlyFor: PROBABILITY_TYPES,
-    aliases: [/機率/i, /概率/i, /probability/i, /^rate$/i, /確率/i],
-    example: '0.05', note: '轉蛋/盒玩用。留空會依數量自動分配',
-  },
+  // 「中獎機率」欄已移除（老闆定案）：機率不開放手動設定，
+  // 一律由系統依數量佔比計算（40/200 = 20%）。廠商檔案裡就算有
+  // 機率欄也會被忽略 —— 之前小數/百分比單位混用造成十連固定出
+  // 同一品項（migration 515），把欄位拿掉才是根治。
   {
     key: 'recycle_value', label: '分解值', kind: 'int', requiredFor: ['slot'], onlyFor: ['slot'], fallback: 0,
     aliases: [/分解/i, /回收/i, /recycle/i, /折抵/i],
@@ -306,8 +305,8 @@ export function coerce(def: ImportFieldDef, raw: unknown, type?: ProductType): u
     case 'number': {
       const n = Number(s.replace(/[^\d.-]/g, ''))
       if (!Number.isFinite(n)) return null
-      // 殺率與機率常見寫成百分比（70 / 70%），一律收斂成 0~1
-      if ((def.key === 'profit_rate' || def.key === 'probability') && (n > 1 || /%/.test(s))) return n / 100
+      // 殺率常見寫成百分比（70 / 70%），一律收斂成 0~1
+      if (def.key === 'profit_rate' && (n > 1 || /%/.test(s))) return n / 100
       return n
     }
     case 'bool':
