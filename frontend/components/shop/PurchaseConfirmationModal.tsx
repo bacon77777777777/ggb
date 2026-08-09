@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/use-media-query';
-import { X, Ticket, ChevronRight, Coins, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
+import { X, Ticket, ChevronRight, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -408,7 +408,6 @@ export function PurchaseConfirmationModal({
                     {!isPromoProduct && (
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between", isDesktop ? "px-6 py-4" : "p-3")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
-                          <Coins className="w-4 h-4 text-yellow-500" />
                           使用積分支付（4 積分 = 1 G）
                        </div>
                        <label className="relative inline-flex items-center cursor-pointer">
@@ -433,7 +432,6 @@ export function PurchaseConfirmationModal({
                     {!isPromoProduct && (
                     <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between transition-opacity", isDesktop ? "px-6 py-4" : "p-3", (usePoints || promoBonusCount > 0) && "opacity-50 pointer-events-none")}>
                        <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
-                          <Ticket className="w-4 h-4 text-accent-yellow" />
                           優惠券
                        </div>
                        <button
@@ -706,8 +704,8 @@ function QuickBtn({ children, onClick, disabled, active, accent }: {
   );
 }
 
-/** G 幣金額：金幣圖標＋數字。全彈窗的 G 金額都走這裡，單位不再寫「元」「代幣」 */
-function GAmount({ value, negative, iconSize = 14, className }: {
+/** G 幣金額：金幣圖標＋數字。全站購買彈窗的 G 金額都走這裡，單位不再寫「元」「代幣」 */
+export function GAmount({ value, negative, iconSize = 14, className }: {
   value: number; negative?: boolean; iconSize?: number; className?: string;
 }) {
   return (

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { Database } from '@/types/database.types';
 import { cn } from '@/lib/utils';
-import { Ticket, ChevronRight, Coins, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
+import { Ticket, ChevronRight, ChevronLeft, Loader2, Check, Info } from 'lucide-react';
 import { useAlert } from '@/components/ui/AlertDialog';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { GAmount } from './PurchaseConfirmationModal';
+import { fetchProductPromotion, promoBonusDraws, type ProductPromotion } from '@/lib/promotions';
 
 type UserCoupon = Database['public']['Tables']['user_coupons']['Row'] & {
   coupon: Database['public']['Tables']['coupons']['Row'] | null
@@ -42,12 +44,27 @@ export function PurchaseConfirmation({
   const { showAlert } = useAlert();
   const { user } = useAuth();
   const [usePoints, setUsePoints] = useState(false);
-  
+
   // Coupon states
   const [view, setView] = useState<'confirm' | 'coupons'>('confirm');
   const [coupons, setCoupons] = useState<UserCoupon[]>([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
   const [loadingCoupons, setLoadingCoupons] = useState(false);
+  // 促銷方案：與轉蛋彈窗同一套規則（買5送1＝付5抽錢多送1抽；促銷限 G 幣消費）
+  const [promo, setPromo] = useState<ProductPromotion | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void fetchProductPromotion(createClient(), product.id).then(p => {
+      if (!alive) return;
+      setPromo(p);
+      if (p && p.type === 'bundle' && p.free > 0) {
+        setUsePoints(false);
+        setSelectedCouponId(null);
+      }
+    });
+    return () => { alive = false; };
+  }, [product.id]);
 
   useEffect(() => {
     const fetchCoupons = async () => {
@@ -88,11 +105,21 @@ export function PurchaseConfirmation({
     }
   }, [isLoggedIn, user]);
 
+  const currentCount = selectedTickets.length;
+
+  // 促銷商品：藏積分／優惠券（促銷只能 G 幣消費，老闆指定，與轉蛋彈窗一致）
+  const isPromoProduct = !!(promo && promo.type === 'bundle' && promo.free > 0);
+  // 加贈抽數，公式與 DB 的 promo_bonus_for 一致；剩餘籤數不夠送就少送（跟 DB 夾制同步）
+  const remainingStock = typeof product.remaining === 'number' ? product.remaining : Number.POSITIVE_INFINITY;
+  const promoBonusCount = usePoints
+    ? 0
+    : Math.max(0, Math.min(promoBonusDraws(promo, currentCount), remainingStock - currentCount));
+
   const selectedCoupon = coupons.find(c => c.id === selectedCouponId);
   let discountAmount = 0;
-  
+
   // Calculate discount (only applies when NOT using points, for now)
-  if (!usePoints && selectedCoupon && selectedCoupon.coupon) {
+  if (!usePoints && !isPromoProduct && selectedCoupon && selectedCoupon.coupon) {
     if (selectedCoupon.coupon.min_spend <= totalPrice) {
         if (selectedCoupon.coupon.discount_type === 'fixed') {
             discountAmount = selectedCoupon.coupon.discount_value;
@@ -108,8 +135,6 @@ export function PurchaseConfirmation({
   const isInsufficientTokens = userTokens < finalPrice;
   const isInsufficientPoints = userPoints < pointsCost;
   const isInsufficient = usePoints ? isInsufficientPoints : isInsufficientTokens;
-  
-  const currentCount = selectedTickets.length;
 
   // Coupon Selection View
   if (view === 'coupons') {
@@ -289,24 +314,31 @@ export function PurchaseConfirmation({
         {/* Summary Text */}
         <div className="text-center text-[13px] md:text-[15px] font-bold text-neutral-500 dark:text-neutral-400 mb-1 px-3 md:px-6">
            總計: <span className="font-amount">{currentCount.toLocaleString()}</span> 張票券
-           <span className="text-[13px] md:text-[15px] text-neutral-400 ml-2">購買後扣除{usePoints ? '積分' : '代幣'}並抽選</span>
+           {promoBonusCount > 0 ? (
+             <span className="text-[13px] md:text-[15px] font-black text-accent-red ml-2">
+               加贈 {promoBonusCount} 抽，共獲得 {(currentCount + promoBonusCount).toLocaleString()} 張
+             </span>
+           ) : isPromoProduct && promo ? (
+             <span className="text-[13px] md:text-[15px] font-black text-accent-red ml-2">
+               滿 {promo.buy} 抽送 {promo.free} 抽
+             </span>
+           ) : (
+             <span className="text-[13px] md:text-[15px] text-neutral-400 ml-2">購買後扣除{usePoints ? '積分' : 'G 幣'}並抽選</span>
+           )}
         </div>
 
-        {/* Divider */}
-        <div className="h-1 bg-neutral-100/50 dark:bg-neutral-800/50 w-full shrink-0" />
-
-        {/* Options Rows */}
+        {/* Options Rows（與轉蛋購買彈窗同一套卡片式區塊） */}
         <div className="px-3 md:px-6 py-2 md:py-4 space-y-2 md:space-y-4">
-           {/* Points Toggle */}
-           <div className="flex justify-between items-center pt-2">
+           {/* Points Toggle。促銷商品整列隱藏（促銷只能 G 幣消費，老闆指定） */}
+           {!isPromoProduct && (
+           <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between p-3 md:px-6 md:py-4">
               <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
-                 <Coins className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-500" />
-                 使用積分支付 (4積分 = 1代幣)
+                 使用積分支付（4 積分 = 1 G）
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
                   checked={usePoints}
                   onChange={(e) => {
                     setUsePoints(e.target.checked);
@@ -319,14 +351,15 @@ export function PurchaseConfirmation({
                 <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-blue-600"></div>
               </label>
            </div>
+           )}
 
-           {/* Coupons */}
-           <div className={cn("flex justify-between items-center pt-2 transition-opacity", usePoints && "opacity-50 pointer-events-none")}>
+           {/* Coupons。促銷商品整列隱藏（不與促銷併用，老闆指定） */}
+           {!isPromoProduct && (
+           <div className={cn("bg-neutral-50 dark:bg-neutral-800/50 rounded-xl flex items-center justify-between p-3 md:px-6 md:py-4 transition-opacity", usePoints && "opacity-50 pointer-events-none")}>
               <div className="flex items-center gap-2 text-[13px] md:text-[15px] font-black text-neutral-700 dark:text-neutral-300">
-                 <Ticket className="w-3.5 h-3.5 md:w-4 md:h-4 text-accent-yellow" />
                  優惠券
               </div>
-              <button 
+              <button
                 onClick={() => setView('coupons')}
                 className="flex items-center gap-1 text-[13px] md:text-[15px] font-bold text-neutral-400 hover:text-neutral-600 transition-colors group"
               >
@@ -340,50 +373,52 @@ export function PurchaseConfirmation({
                  <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:translate-x-0.5 transition-transform" />
               </button>
            </div>
+           )}
 
            {/* Subtotal Block */}
            <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-xl p-3 md:p-6 mt-2 space-y-2 md:space-y-4">
-              <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-500">
+              <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-500 dark:text-neutral-400">
                  <span>商品總額</span>
-                 <span className="text-neutral-900">
-                   <span className="font-amount">
-                     {usePoints ? pointsCost.toLocaleString() : totalPrice.toLocaleString()}
-                   </span> {usePoints ? '積分' : '元'}
-                 </span>
+                 {usePoints ? (
+                   <span className="text-neutral-900 dark:text-neutral-100"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                 ) : (
+                   <GAmount value={totalPrice} className="text-neutral-900 dark:text-neutral-100" />
+                 )}
               </div>
-              
-              {discountAmount > 0 && !usePoints && (
-                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-accent-red">
-                   <span>優惠券折抵</span>
-                   <span>
-                     -<span className="font-amount">{discountAmount.toLocaleString()}</span> 元
-                   </span>
+
+              {usePoints ? (
+                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-400 dark:text-neutral-500">
+                  <span>積分餘額</span>
+                  <span><span className="font-amount">{userPoints.toLocaleString()}</span> 積分</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-400 dark:text-neutral-500">
+                  <span>G 幣餘額</span>
+                  <GAmount value={userTokens} />
                 </div>
               )}
 
-              <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-neutral-400">
-                 <span>{usePoints ? '積分餘額' : '代幣餘額'}</span>
-                 <div className="flex flex-col items-end">
-                   <span>
-                     <span className="font-amount">
-                       {usePoints ? userPoints.toLocaleString() : userTokens.toLocaleString()}
-                     </span> {usePoints ? '積分' : '代幣'}
-                   </span>
-                   {!isInsufficient && (usePoints ? pointsCost > 0 : finalPrice > 0) && (
-                      <span className="text-xs text-accent-emerald">
-                        購買後剩餘: {usePoints ? (userPoints - pointsCost).toLocaleString() : (userTokens - finalPrice).toLocaleString()}
-                      </span>
-                   )}
-                 </div>
-              </div>
+              {promoBonusCount > 0 && !usePoints && (
+                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-accent-red">
+                   <span>活動促銷{promo ? `（${promo.badgeText || promo.name}）` : ''}</span>
+                   <span>加贈 {promoBonusCount} 抽</span>
+                </div>
+              )}
+              {discountAmount > 0 && !usePoints && (
+                <div className="flex justify-between items-center text-[13px] md:text-[15px] font-bold text-accent-red">
+                   <span>折扣金額</span>
+                   <GAmount value={discountAmount} negative />
+                </div>
+              )}
+
               <div className="h-px bg-neutral-200 dark:bg-neutral-700 border-dashed w-full my-1" />
               <div className="flex justify-between items-end text-base font-black text-accent-red">
-                 <span className="text-[13px] md:text-[15px]">實付金額</span>
-                 <span className="text-xl md:text-3xl leading-none">
-                   <span className="font-amount">
-                     {usePoints ? pointsCost.toLocaleString() : finalPrice.toLocaleString()}
-                   </span> {usePoints ? '積分' : '元'}
-                 </span>
+                 <span className="font-bold text-[13px] md:text-[15px]">實付金額</span>
+                 {usePoints ? (
+                   <span className="text-xl md:text-3xl leading-none"><span className="font-amount">{pointsCost.toLocaleString()}</span> 積分</span>
+                 ) : (
+                   <GAmount value={finalPrice} iconSize={18} className="text-xl md:text-3xl leading-none" />
+                 )}
               </div>
             {isInsufficient && (
               <div className="text-right text-xs text-red-500 font-bold">
@@ -432,7 +467,11 @@ export function PurchaseConfirmation({
           className="w-full h-[44px] md:h-[52px] rounded-xl text-base md:text-lg font-black bg-accent-red hover:bg-accent-red/90 text-white shadow-xl shadow-accent-red/20 transition-all active:scale-[0.98]"
           variant="danger"
         >
-           {isProcessing ? '處理中...' : `確認支付 ${usePoints ? pointsCost.toLocaleString() + ' 積分' : finalPrice.toLocaleString() + ' 代幣'}`}
+           {isProcessing
+             ? '處理中...'
+             : usePoints
+               ? `確認支付 ${pointsCost.toLocaleString()} 積分`
+               : <span className="flex items-center justify-center gap-1.5">確認支付 <GAmount value={finalPrice} iconSize={16} /></span>}
          </Button>
       </div>
     </div>
