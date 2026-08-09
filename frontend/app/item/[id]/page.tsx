@@ -1943,9 +1943,6 @@ export default function ProductDetailPage() {
                       <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
                     </div>
                   </div>
-                  <div className="text-sm font-black text-neutral-500 leading-none mb-1 text-right">
-                    優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
-                  </div>
                 </div>
 
                 <div className="pt-2 hidden lg:block">
@@ -2238,9 +2235,6 @@ export default function ProductDetailPage() {
         <ActionBar hideOn="lg">
           <div className="flex items-center gap-4 w-full">
             <div className="flex flex-col items-center justify-center pl-2">
-              <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400 leading-none mb-1 whitespace-nowrap">
-                優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
-              </div>
               <div className="flex items-center gap-1">
                 <div className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-yellow shadow-sm">
                   <Image

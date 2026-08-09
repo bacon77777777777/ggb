@@ -338,9 +338,6 @@ export function PurchaseConfirmationModal({
                           <div className="flex items-baseline gap-0.5">
                             <span className={cn("font-black text-accent-red font-amount leading-none tracking-tighter", isDesktop ? "text-2xl" : "text-lg")}>{product.price.toLocaleString()}</span>
                             <span className={cn("font-black text-neutral-400 leading-none uppercase tracking-widest", isDesktop ? "text-[15px]" : "text-[13px]")}>/抽</span>
-                            <span className={cn("font-black text-neutral-400 leading-none ml-1", isDesktop ? "text-[15px]" : "text-[13px]")}>
-                              優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
-                            </span>
                           </div>
                         </div>
                       </div>

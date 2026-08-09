@@ -263,9 +263,6 @@ export function PurchaseConfirmation({
                 <div className="flex items-baseline gap-0.5">
                   <span className="text-lg md:text-2xl font-black text-accent-red font-amount leading-none tracking-tighter">{product.price.toLocaleString()}</span>
                   <span className="text-[13px] md:text-[15px] font-black text-neutral-400 leading-none uppercase tracking-widest">/抽</span>
-                  <span className="text-[13px] md:text-[15px] font-black text-neutral-400 leading-none ml-1">
-                    優惠前：<span className="line-through font-amount">{Math.round(product.price * 1.2).toLocaleString()}</span>
-                  </span>
                 </div>
               </div>
             </div>
