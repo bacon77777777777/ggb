@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.08.09i｜2026-08-09｜假刪節號真根因：clamp 內的 inline-flex 徽章
+
+09b/09h 修完老闆 iPhone 實測照樣點點點。DB 實錘：「三麗鷗角色系列
+草莓目印吊飾」全名 13 字、畫面全部顯示完仍加刪節號 —— 誤截確認。
+
+Safari 的 -webkit-line-clamp 有**兩類**誤判觸發源：09b 只拔了第一類
+（有定位的 inline 元素），徽章本身是 inline-flex，屬第二類
+（原子行內盒：inline-flex／inline-block／backdrop-filter）。
+clamp 內徽章全改純 inline（膠囊高度 py-[3px] 撐出 ≈ 原 h-4，視覺
+不變），backdrop-blur 一併拔。範圍：ProductCard、首頁販售卡、
+搜尋頁，共六處。
+
+> 通則定案：**line-clamp 範圍內只准放純 inline 元素** —— 定位、
+> inline-flex、inline-block、backdrop-filter 都會觸發 WebKit 假刪節號。
+
+---
+
 ## v2026.08.09h｜2026-08-09｜首頁/搜尋頁手刻小卡的 iPhone 假刪節號（09b 漏網之魚）
 
 老闆 iPhone 實測：首頁商品小卡名稱沒過長也被點點點收尾。
