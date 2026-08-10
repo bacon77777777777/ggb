@@ -69,7 +69,9 @@ export async function POST(request: Request) {
       scope === 'product' ? (b?.productIds ?? []).map((id: number) => ({ product_id: Number(id) }))
       : scope === 'category' ? (b?.categoryIds ?? []).map((id: string) => ({ category_id: String(id) }))
       : []
-    if (scope !== 'all' && !targets.length) {
+    // 分類範圍允許先不選 —— 「先建方案，商品編輯那邊再把商品勾進來」
+    // 是掛鉤定案裡的合法流程（無分類促銷）
+    if (scope === 'product' && !targets.length) {
       return NextResponse.json({ error: '請至少選一個適用對象' }, { status: 400 })
     }
 
@@ -108,23 +110,70 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * PATCH：快速調整（啟停/優先權）＋完整編輯（老闆指定要能編輯）。
+ *
+ * 掛鉤定案（2026-08-09）：方案這邊只管「分類目標」；「商品目標」
+ * 由商品編輯頁維護（/api/admin/products/[id]/promotions）——
+ * 所以這裡改 categoryIds 時**絕不動 product_id 的 target 列**，
+ * 兩個入口寫同一張表、各管一個維度，不會互相蓋掉。
+ */
 export async function PATCH(request: Request) {
   const session = await requireAdminSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const b = await request.json()
   if (!b?.id) return NextResponse.json({ error: '缺少 id' }, { status: 400 })
+  const supabase = getSupabaseAdmin()
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (b.isActive !== undefined) patch.is_active = Boolean(b.isActive)
   if (b.priority !== undefined) patch.priority = Number(b.priority) || 0
   if (b.endsAt !== undefined) patch.ends_at = b.endsAt || null
+  if (b.startsAt !== undefined) patch.starts_at = b.startsAt || null
+  if (b.name !== undefined) {
+    const name = String(b.name).trim()
+    if (!name) return NextResponse.json({ error: '請輸入方案名稱' }, { status: 400 })
+    patch.name = name
+  }
+  if (b.buy !== undefined || b.free !== undefined) {
+    const buy = Number(b.buy), free = Number(b.free)
+    if (!(buy >= 1) || !(free >= 1)) return NextResponse.json({ error: '買幾抽送幾抽要大於 0' }, { status: 400 })
+    patch.config = { buy, free }
+    if (b.badgeText !== undefined && !String(b.badgeText).trim()) patch.badge_text = `買${buy}送${free}`
+  }
+  if (b.badgeText !== undefined && String(b.badgeText).trim()) patch.badge_text = String(b.badgeText).trim()
+  if (b.scope !== undefined) {
+    // 編輯介面只提供 分類/全站；歷史的 product scope 列不從這裡產生
+    if (!['category', 'all'].includes(b.scope)) return NextResponse.json({ error: '適用範圍不正確' }, { status: 400 })
+    patch.scope = b.scope
+  }
 
-  const { error } = await getSupabaseAdmin().from('promotions').update(patch).eq('id', b.id)
+  const { error } = await supabase.from('promotions').update(patch).eq('id', b.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 分類目標同步：先清舊的分類列（product 列不碰），再寫新的。
+  // categoryIds 可為空陣列 —— 「先建方案、商品那邊自己勾」是合法用法
+  if (Array.isArray(b.categoryIds)) {
+    const { error: delErr } = await supabase
+      .from('promotion_targets')
+      .delete()
+      .eq('promotion_id', b.id)
+      .not('category_id', 'is', null)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+    const wantCategories = b.scope !== 'all' ? (b.categoryIds as string[]) : []
+    if (wantCategories.length) {
+      const { error: insErr } = await supabase.from('promotion_targets')
+        .insert(wantCategories.map((id: string) => ({ promotion_id: b.id, category_id: String(id) })))
+      if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
+    }
+  }
 
   await logAdminAction({
     adminId: session.adminId, action: '調整促銷方案',
-    targetType: 'promotions', targetId: String(b.id), detail: patch, ip: getClientIp(request),
+    targetType: 'promotions', targetId: String(b.id),
+    detail: { ...patch, categoryIds: Array.isArray(b.categoryIds) ? b.categoryIds : undefined },
+    ip: getClientIp(request),
   })
   return NextResponse.json({ ok: true })
 }

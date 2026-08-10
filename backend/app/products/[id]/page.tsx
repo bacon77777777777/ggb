@@ -83,6 +83,106 @@ function CategoryMultiSelect({ categories, selected, onChange }: {
   )
 }
 
+interface PromoOption {
+  id: number
+  name: string
+  badge_text: string | null
+  is_active: boolean
+  starts_at: string | null
+  ends_at: string | null
+}
+
+/** 方案當下狀態標籤（停用/未開始/已結束）；null = 正常檔期中 */
+function promoStateLabel(p: PromoOption): string | null {
+  if (!p.is_active) return '停用中'
+  const now = Date.now()
+  if (p.starts_at && new Date(p.starts_at).getTime() > now) return '未開始'
+  if (p.ends_at && new Date(p.ends_at).getTime() < now) return '已結束'
+  return null
+}
+
+/**
+ * 促銷方案多選（掛鉤定案 2026-08-09）—— 跟上面的 CategoryMultiSelect 同款下拉。
+ * 兩個防呆標示：
+ * - 「生效中」：可以勾多個（現行檔＋預排下一檔），但引擎同時只取
+ *   優先權最高的一個，哪個在跑要標出來
+ * - 「經由分類」唯讀列：分類帶進來的參與不能在這裡取消（去方案頁
+ *   改分類、或把商品移出該分類）
+ */
+function PromotionMultiSelect({ promos, selected, onChange, viaCategories, effectiveId }: {
+  promos: PromoOption[]
+  selected: number[]
+  onChange: (ids: number[]) => void
+  viaCategories: { promotionId: number; categoryName: string }[]
+  effectiveId: number | null
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  const toggle = (id: number) => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
+  const nameOf = (id: number) => promos.find(p => p.id === id)?.name ?? `方案 ${id}`
+  const label = selected.length === 0 ? '選擇促銷方案（可不選）' : selected.map(nameOf).join('、')
+
+  // 同一方案經由多個分類帶入時合併顯示
+  const viaMerged = new Map<number, string[]>()
+  for (const v of viaCategories) {
+    viaMerged.set(v.promotionId, [...(viaMerged.get(v.promotionId) ?? []), v.categoryName])
+  }
+  const effectiveName = effectiveId != null ? nameOf(effectiveId) : null
+
+  return (
+    <div className="col-span-2 relative" ref={ref}>
+      <label className="block text-xs font-medium text-neutral-500 mb-1">促銷方案</label>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm hover:border-neutral-300 focus:outline-none focus:ring-1 focus:ring-primary transition-colors text-left">
+        <span className={selected.length === 0 ? 'text-neutral-400' : 'text-neutral-800 truncate'}>{label}</span>
+        <span className="text-neutral-400 ml-2 flex-none">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden">
+          {promos.map(p => {
+            const state = promoStateLabel(p)
+            return (
+              <label key={p.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 cursor-pointer">
+                <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)}
+                  className="w-4 h-4 accent-primary rounded" />
+                <span className="text-sm text-neutral-700 truncate">{p.name}</span>
+                {p.badge_text && <span className="text-xs text-neutral-400 flex-none">{p.badge_text}</span>}
+                {state && <span className="text-xs text-amber-600 flex-none">{state}</span>}
+              </label>
+            )
+          })}
+          {promos.length === 0 && <p className="p-3 text-xs text-neutral-400">還沒有促銷方案，先到「促銷方案」建立</p>}
+          {selected.length > 0 && (
+            <div className="px-3 py-1.5 border-t border-neutral-100">
+              <button type="button" onClick={() => onChange([])} className="text-xs text-red-400 hover:text-red-600">清除全部</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(viaMerged.size > 0 || effectiveName) && (
+        <div className="mt-1.5 space-y-0.5">
+          {[...viaMerged.entries()].map(([pid, cats]) => (
+            <p key={pid} className="text-xs text-neutral-400">
+              經由分類〔{cats.join('、')}〕參與「{nameOf(pid)}」—— 要取消請調整分類或方案
+            </p>
+          ))}
+          {effectiveName && (
+            <p className="text-xs text-emerald-600 font-medium">
+              目前生效：「{effectiveName}」{(selected.length + viaMerged.size) > 1 ? '（多方案取優先權最高）' : ''}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function EditProductPage() {
   const { toast } = useToast()
   const router = useRouter()
@@ -122,7 +222,16 @@ export default function EditProductPage() {
     lotteryPerUserDraws: '',
     selectedTagIds: [] as string[],
     selectedCategoryIds: [] as string[],
+    selectedPromotionIds: [] as number[],
   })
+
+  // 促銷掛鉤（定案 2026-08-09）：商品這邊維護「直接勾選」的方案；
+  // 經由分類間接參與的只能看不能改（要去方案頁動分類）
+  const [promoInfo, setPromoInfo] = useState<{
+    promos: PromoOption[]
+    viaCategories: { promotionId: number; categoryName: string }[]
+    effectiveId: number | null
+  }>({ promos: [], viaCategories: [], effectiveId: null })
 
   const isLastOneLevel = (level: string) => {
     if (!level) return false
@@ -314,6 +423,18 @@ export default function EditProductPage() {
           const catRes = await fetch(`/api/admin/products/${productId}/categories`)
           const categoryIds: string[] = catRes.ok ? await catRes.json() : []
 
+          // Fetch 促銷方案（可選清單＋已勾選＋經由分類＋目前生效）
+          const promoRes = await fetch(`/api/admin/products/${productId}/promotions`)
+          const promoData = promoRes.ok ? await promoRes.json() : null
+          const promotionIds: number[] = promoData?.selected ?? []
+          if (promoData) {
+            setPromoInfo({
+              promos: promoData.promos ?? [],
+              viaCategories: promoData.viaCategories ?? [],
+              effectiveId: promoData.effectiveId ?? null,
+            })
+          }
+
           const loaded = {
             name: product.name,
             price: product.price.toString(),
@@ -337,6 +458,7 @@ export default function EditProductPage() {
             series: product.series || '',
             supplierId: product.supplier_id ? String(product.supplier_id) : '',
             selectedCategoryIds: categoryIds,
+            selectedPromotionIds: promotionIds,
             machineTheme: product.machine_theme || '',
             rarity: product.rarity || 3,
             startedAt: product.started_at ? product.started_at.split('T')[0] : '',
@@ -563,6 +685,13 @@ export default function EditProductPage() {
         body: JSON.stringify({ categoryIds: formData.selectedCategoryIds }),
       })
 
+      // Save 促銷方案（只同步「直接勾選」的 product 目標；分類目標歸方案頁管）
+      await fetch(`/api/admin/products/${productId}/promotions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promotionIds: formData.selectedPromotionIds }),
+      })
+
       addLog('修改商品', '商品管理', `修改商品「${formData.name}」`, 'success')
       router.push('/products')
 
@@ -770,6 +899,15 @@ export default function EditProductPage() {
                     categories={allCategories}
                     selected={formData.selectedCategoryIds}
                     onChange={ids => setFormData(p => ({ ...p, selectedCategoryIds: ids }))}
+                  />
+                )}
+                {promoInfo.promos.length > 0 && (
+                  <PromotionMultiSelect
+                    promos={promoInfo.promos}
+                    selected={formData.selectedPromotionIds}
+                    onChange={ids => setFormData(p => ({ ...p, selectedPromotionIds: ids }))}
+                    viaCategories={promoInfo.viaCategories}
+                    effectiveId={promoInfo.effectiveId}
                   />
                 )}
                 <div>
