@@ -8,9 +8,9 @@
  * 底圖用「離軸投影」保持 1:1 不變形 —— 直接轉鏡頭的話平面美術會
  * 被壓成梯形，只有盒子該拿到俯視角。
  *
- * 交互流程與三顆按鈕跟其他販賣機完全一致（老闆指定保留）：
- *   換一批 / 立即開盒 / 試試看 → 掉盒 → 全部落定浮出「點擊取物」
- *   → 點取物口 → onAnimationComplete() → 由商品頁彈恭喜視窗
+ * 交互流程：換一批 / 立即開盒 / 試試看（按鈕在頁面底部操作欄，
+ * 照一番賞的樣式）→ 掉盒 → 全部落定浮出「點擊取物」→ 點取物口
+ * → onAnimationComplete() → 由商品頁彈既有的恭喜視窗
  *
  * 手感參數存在 machine_theme_params（後台「抽獎模組設定 → 參數設定」
  * 可調），讀不到就用 DEFAULTS。座標系直接拿原圖 750×932 當世界單位。
@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import * as Matter from 'matter-js';
-import { ImageButton } from '@/components/ui/ImageButton';
 import { createClient } from '@/lib/supabase/client';
 
 export interface BlindboxMachineMode5Props {
@@ -33,11 +32,12 @@ export interface BlindboxMachineMode5Props {
   onTrial?: () => void;
   isSoldOut?: boolean;
   onLoaded?: () => void;
+  /** 換一批：頁面每按一次就遞增，機台看到變化才動作。
+   *  按鈕已移到頁面底部操作欄（老闆指定照一番賞），機台本身不再畫按鈕 */
+  restockSignal?: number;
 }
 
 const ASSETS = '/images/blindbox/mode5';
-// 三顆按鈕圖與其他販賣機共用（三個模式的檔案雜湊相同，不另存一份）
-const BTN = '/images/blindbox/mode2';
 
 const ART_W = 750, ART_H = 932, HALF = Math.PI / 2;
 const S = 0.80;   // 原型 v2 放大：櫃口淨高 163/154 的 65%/69%
@@ -90,8 +90,8 @@ function hasWebGL(): boolean {
 }
 
 export function BlindboxMachineMode5({
-  machineState, drawCount, remaining,
-  onAnimationComplete, onPurchase, onTrial, isSoldOut, onLoaded,
+  machineState, drawCount,
+  onAnimationComplete, isSoldOut, onLoaded, restockSignal = 0,
 }: BlindboxMachineMode5Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [readyToPick, setReadyToPick] = useState(false);
@@ -115,7 +115,8 @@ export function BlindboxMachineMode5({
     thunk: (_p: number) => {}, rumble: (_p: number) => {}, clack: () => {},
     ding: () => {}, collectSfx: () => {}, whirr: () => {},
   });
-  const resetRef = useRef<((count: number) => void) | null>(null);
+  const resetRef = useRef<(() => void) | null>(null);
+  const refillRef = useRef<(() => void) | null>(null);
 
   useEffect(() => { paramsRef.current = params; }, [params]);
 
@@ -497,25 +498,26 @@ export function BlindboxMachineMode5({
       return b;
     };
 
-    /** 依抽數擺盒：抽幾次就擺幾格（1~10，機台只有 10 格） */
-    const resetBoxes = (count: number) => {
+    const slotsRef: Box['slot'][] = [];
+
+    /** 擺盒：機台永遠擺滿十格（庫存展示用）。抽幾盒是掉的時候才決定 */
+    const resetBoxes = () => {
       S_.boxes.forEach(b => {
         scene.remove(b.group); scene.remove(b.shadow);
         if (b.body) M.Composite.remove(engine.world, b.body);
       });
       S_.boxes = [];
       const stock = paramsRef.current.stock;
-      const n = Math.max(1, Math.min(10, count));
-      const slots: Box['slot'][] = [];
+      slotsRef.length = 0;
       for (let r = 0; r < 2; r++) {
         for (let c = 0; c < 5; c++) {
-          slots.push({
+          slotsRef.push({
             x: SLOT_XS[c], y: ROW_FLOOR[r] - BH / 2 - 2, floorY: ROW_FLOOR[r],
             row: r, z0: (Math.random() - 0.5) * 12, startAt: 0, pushMs: 400,
           });
         }
       }
-      slots.slice(0, n).forEach(slot => {
+      slotsRef.forEach(slot => {
         for (let d = stock; d >= 0; d--) S_.boxes.push(makeBox(slot, d));
       });
       S_.dropping = false; S_.ctaOn = false; S_.ctaDinged = false; S_.pendingDone = false;
@@ -756,8 +758,41 @@ export function BlindboxMachineMode5({
     };
     window.addEventListener('resize', resize);
 
+    /**
+     * 補貨：把每格補回「前排 1 + 備貨 N」的滿載狀態，新盒從最後方淡入。
+     * 掉完盒、換一批之後都要補，不然機台會越玩越空。
+     */
+    const refillSlots = () => {
+      const stock = paramsRef.current.stock;
+      const want = stock + 1;
+      const bySlot = new Map<Box['slot'], Box[]>();
+      S_.boxes.forEach(b => {
+        if (b.phase === 'gone' || b.phase === 'out' || b.phase === 'phys') return;
+        bySlot.set(b.slot, [...(bySlot.get(b.slot) ?? []), b]);
+      });
+      // 清掉已經消失的盒子，表才不會無限長大
+      S_.boxes = S_.boxes.filter(b => {
+        if (b.phase !== 'gone') return true;
+        scene.remove(b.group); scene.remove(b.shadow);
+        return false;
+      });
+      slotsRef.forEach(slot => {
+        const live = (bySlot.get(slot) ?? []).length;
+        // 缺幾盒就從最後方往前補：正在遞補的盒子會停在前面的深度，
+        // 新盒一律生在最深處淡入
+        for (let i = 0; i < want - live; i++) {
+          const nb = makeBox(slot, stock - i);
+          nb.phase = 'fade'; nb.fadeIn = true; nb.fadeT = 0;
+          setBoxOpacity(nb, 0);
+          (nb.shadow.material as THREE.MeshBasicMaterial).opacity = 0;
+          S_.boxes.push(nb);
+        }
+      });
+    };
+
     resetRef.current = resetBoxes;
-    resize(); refreshCamera(); resetBoxes(1);
+    refillRef.current = refillSlots;
+    resize(); refreshCamera(); resetBoxes();
     S_.raf = requestAnimationFrame(loop);
     onLoaded?.();
 
@@ -788,16 +823,19 @@ export function BlindboxMachineMode5({
 
     const P = paramsRef.current;
     const t0 = performance.now();
-    const slotSeen = new Set<Box['slot']>();
+    // 抽幾盒就掉幾格（1~10）：挑出還有前排存貨的格子，取前 N 個
+    const n = Math.max(1, Math.min(10, drawCount || 1));
+    const usable: Box['slot'][] = [];
     S_.boxes.forEach(b => {
-      if (!slotSeen.has(b.slot)) {
-        slotSeen.add(b.slot);
-        b.slot.startAt = t0 + (b.slot.row === 1 ? 0 : 60) + Math.random() * P.jitter;
-        b.slot.pushMs = P.pushMs * (0.88 + Math.random() * 0.24);
-      }
+      if (b.phase === 'stock' && b.depth === 0 && !usable.includes(b.slot)) usable.push(b.slot);
+    });
+    const picked = new Set(usable.slice(0, n));
+    picked.forEach(slot => {
+      slot.startAt = t0 + (slot.row === 1 ? 0 : 60) + Math.random() * P.jitter;
+      slot.pushMs = P.pushMs * (0.88 + Math.random() * 0.24);
     });
     S_.boxes.forEach(b => {
-      if (b.phase !== 'stock') return;
+      if (b.phase !== 'stock' || !picked.has(b.slot)) return;
       b.startAt = b.slot.startAt;
       b.pushMs = b.slot.pushMs;
       b.queued = true;
@@ -806,13 +844,30 @@ export function BlindboxMachineMode5({
     S_.dropping = true;
     S_.ctaOn = false;
     setReadyToPick(false);
-  }, [machineState, audioInit]);
+  }, [machineState, drawCount, audioInit, uiClick]);
 
-  // 抽數變了就重新擺盒（1~10，機台只有十格）
+  // 換一批：前排淡出 → 後排遞補 → 最後方淡入新的一盒
+  const firstRestock = useRef(true);
   useEffect(() => {
-    if (machineState !== 'idle') return;
-    resetRef.current?.(Math.max(1, Math.min(10, drawCount || 1)));
-  }, [drawCount, machineState]);
+    if (firstRestock.current) { firstRestock.current = false; return; }
+    const S_ = sceneRef.current;
+    if (!S_ || machineState !== 'idle') return;
+    audioInit(); whirr();
+    S_.boxes.forEach(b => {
+      if (b.phase !== 'stock') return;
+      if (b.depth === 0) { b.phase = 'fade'; b.fadeIn = false; b.fadeT = 0; }
+      else { b.phase = 'advance'; b.advT = 0; b.advSolo = true; }
+    });
+    refillRef.current?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restockSignal]);
+
+  // 一輪玩完（回到 idle）自動補貨，機台隨時可再抽
+  const prevState = useRef(machineState);
+  useEffect(() => {
+    if (prevState.current === 'animating' && machineState === 'idle') refillRef.current?.();
+    prevState.current = machineState;
+  }, [machineState]);
 
   const collect = useCallback(() => {
     const S_ = sceneRef.current;
@@ -827,8 +882,6 @@ export function BlindboxMachineMode5({
       if (b.body) { Matter.Composite.remove(S_.engine.world, b.body); b.body = null; }
     });
   }, [collectSfx]);
-
-  const locked = isSoldOut || machineState !== 'idle' || readyToPick;
 
   return (
     <div className="relative w-full h-full select-none">
@@ -851,36 +904,6 @@ export function BlindboxMachineMode5({
         />
       )}
 
-      {/* 三顆按鈕與位置跟其他販賣機一致（老闆指定保留） */}
-      <ImageButton
-        src={`${BTN}/btn2.png`} alt="換一批" text="換一批"
-        className={`absolute ${locked ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => {
-          const S_ = sceneRef.current;
-          if (!S_ || locked) return;
-          audioInit(); whirr();
-          // 換一批：前排淡出 → 後排遞補 → 最後方淡入新的一盒
-          S_.boxes.forEach(b => {
-            if (b.phase !== 'stock') return;
-            if (b.depth === 0) { b.phase = 'fade'; b.fadeIn = false; b.fadeT = 0; }
-            else { b.phase = 'advance'; b.advT = 0; b.advSolo = true; }
-          });
-        }} />
-      <ImageButton
-        src={`${BTN}/btn1.png`} alt="立即開盒" text="立即開盒"
-        className={`absolute ${locked ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!locked) { audioInit(); uiClick(); onPurchase?.(); } }} />
-      <ImageButton
-        src={`${BTN}/btn2.png`} alt="試試看" text="試試看"
-        className={`absolute ${locked ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!locked) { audioInit(); uiClick(); onTrial?.(); } }} />
-
       {isSoldOut && (
         <div className="pointer-events-none absolute inset-0 flex justify-center items-start pt-16 bg-black/60" style={{ zIndex: 25 }}>
           <div className="inline-flex h-8 items-center px-4 rounded-full bg-black/90 shadow-lg">
@@ -889,7 +912,6 @@ export function BlindboxMachineMode5({
         </div>
       )}
 
-      {remaining <= 0 && !isSoldOut && null}
     </div>
   );
 }
