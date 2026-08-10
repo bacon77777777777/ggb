@@ -29,6 +29,8 @@ interface TearResult {
   grade: string;
   image_url: string;
   is_last_one: boolean;
+  /** 一番賞的籤號，恭喜彈窗要顯示 */
+  ticket_number?: number;
 }
 
 interface TicketSelectionFlowProps {
@@ -702,6 +704,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         grade: r.grade,
         image_url: r.image_url,
         is_last_one: r.is_last_one,
+        ticket_number: r.ticket_number,
       }));
       if (onTearFinish) {
         onTearFinish(tearResults);
@@ -999,6 +1002,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         grade: r.grade,
         image_url: r.image_url,
         is_last_one: r.is_last_one,
+        ticket_number: r.ticket_number,
       }));
       if (onTearFinish) {
         // 桌機 modal 模式：回調給商品頁，商品頁關閉 modal + 顯示彈窗

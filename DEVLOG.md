@@ -4,6 +4,32 @@
 
 ---
 
+## v2026.08.10b｜2026-08-10｜🔴 一番賞恭喜彈窗沒籤號：改錯彈窗了
+
+10a 把籤號加在 `PrizeResultModal`（標題「抽獎結果一覽」），但一番賞
+玩家抽完看到的**恭喜獲得**彈窗其實是 `GachaResultModal` —— 全站共用的
+那一支。老闆截圖：五列全是「F賞 66666」，沒有籤號。
+
+籤號在資料鏈上有兩處斷點，都補起來：
+
+1. `Prize` 型別（`components/GachaMachine.tsx`）本來就沒有 `ticket_number`。
+   抽獎 API 回來的物件其實帶著它（結構型別讓它偷渡到執行期），
+   但彈窗讀不到型別自然也沒渲染。
+2. 撕紙流程（`TicketSelectionFlow`）把結果轉成 `TearResult` 時，
+   兩個 builder 都沒複製 `ticket_number`，桌機回調與手機
+   sessionStorage 兩條路徑的籤號在這裡就掉了。
+
+彈窗端用「整批有沒有籤號」決定要不要佔那一欄（`hasTickets`），
+轉蛋／盒玩／抽卡沒有籤號，版面完全不變；一番賞才多出最左邊那格。
+最後賞與試抽（`ticket_number` 為 0 或 undefined）顯示「—」。
+
+**動到的檔案**
+- `frontend/components/shop/GachaResultModal.tsx`（新增籤號欄）
+- `frontend/components/GachaMachine.tsx`（`Prize` 補 `ticket_number`）
+- `frontend/components/shop/TicketSelectionFlow.tsx`（兩個 builder 補傳籤號）
+
+---
+
 ## v2026.08.10a｜2026-08-10｜一番賞中獎彈窗也改條列式（多一欄籤號）
 
 轉蛋／盒玩／抽卡／自製賞共用的 `GachaResultModal` 已經是條列式，
