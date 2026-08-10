@@ -207,6 +207,17 @@ Safari line-clamp 誤判照發。全部改 align-[-0.125em]，
 
 ---
 
+## v2026.08.10a｜2026-08-10｜恭喜獲得彈窗音效播兩次
+
+老闆回報中獎音效聽起來有兩個。`getpopup.mp3` 全站有兩個播放點：
+
+1. `GachaResultModal`（恭喜獲得彈窗本身，開啟時播）
+2. `TicketSelectionFlow`（A賞／最後賞彈窗開啟時播）
+
+一番賞「全部開啟」若中 A賞，會先開 A賞彈窗播一次，兩秒後接著開恭喜獲得彈窗
+再播一次 —— 同一個音檔連續兩次。移除 TicketSelectionFlow 那份（舊的），
+音效統一由彈窗自己負責。撕紙音效（tanweraman）不動。
+
 ## v2026.08.09g｜2026-08-09｜一番賞購買彈窗統一轉蛋樣式；促銷列全類別統一
 
 老闆指定：全類別購買彈窗 UI 統一跟轉蛋（PurchaseConfirmationModal）一樣。

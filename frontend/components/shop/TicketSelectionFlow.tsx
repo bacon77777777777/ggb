@@ -86,7 +86,6 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
   const tearSoundRef = useRef<HTMLAudioElement | null>(null);
-  const resultSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -155,28 +154,9 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/getpopup.mp3');
-    audio.preload = 'auto';
-    resultSoundRef.current = audio;
-
-    return () => {
-      if (resultSoundRef.current) {
-        resultSoundRef.current.pause();
-        resultSoundRef.current.src = '';
-        resultSoundRef.current.load();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!showLastOneCelebration && !showAPrizePopup) return;
-    const audio = resultSoundRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
-  }, [showLastOneCelebration, showAPrizePopup]);
+  // 中獎音效不在這裡播 —— getpopup.mp3 由恭喜獲得彈窗（GachaResultModal）自己播。
+  // 這裡原本在 A賞／最後賞彈窗開啟時也播一次同一個音檔，而那兩個彈窗開完
+  // 兩秒就接著開恭喜獲得彈窗，玩家等於連續聽到兩次同樣的音效。
 
   useEffect(() => {
     if (!product || product.type !== 'blindbox') return;
