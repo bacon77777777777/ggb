@@ -117,7 +117,11 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                   </button>
                 )}
                 <h3 className="text-base font-black tracking-tight text-neutral-900 dark:text-white">
-                  {activePrize ? '恭喜獲得' : `恭喜獲得 ${results.length} 項`}
+                  {activePrize ? '恭喜獲得' : (
+                    <>
+                      恭喜獲得 <span className="text-accent-red">{results.length}</span> 項
+                    </>
+                  )}
                 </h3>
               </div>
 
