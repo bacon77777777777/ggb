@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminScope } from '@/lib/requireAdmin'
 import { logAdminAction, getClientIp } from '@/lib/logAdminAction'
 
 export async function POST(request: Request) {
   try {
-    const session = await requireAdminSession()
+    const session = await requireAdminScope()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 出貨/改單是平台的事 —— 廠商帳號僅供查看
+    if (session.supplierScope !== undefined) {
+      return NextResponse.json({ error: '廠商帳號僅供查看，出貨作業由平台處理' }, { status: 403 })
+    }
 
     const body = await request.json()
     const ids = Array.isArray(body?.ids) ? body.ids.map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n)) : []
