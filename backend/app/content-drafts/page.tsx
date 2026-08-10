@@ -1,8 +1,7 @@
 'use client'
 
-import AdminLayout from '@/components/AdminLayout'
+import { AdminLayout, ListTableCard, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
-import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
 
@@ -92,125 +91,116 @@ export default function ContentDraftsPage() {
     setGenerating(false)
   }
 
-  const grouped = drafts.reduce<Record<string, ContentDraft[]>>((acc, d) => {
-    const key = d.draft_date
-    if (!acc[key]) acc[key] = []
-    acc[key].push(d)
-    return acc
-  }, {})
+  const [search, setSearch] = useState('')
+  const [expandedIds, setExpandedIds] = useState<Set<string | number>>(new Set())
+
+  const filtered = drafts.filter(d => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return d.text_content.toLowerCase().includes(q)
+      || (d.product_name ?? '').toLowerCase().includes(q)
+  })
+
+  const columns: ListColumn<ContentDraft>[] = [
+    {
+      key: 'date', label: '日期',
+      className: 'font-mono',
+      sortValue: d => d.draft_date,
+      render: d => <>{d.draft_date}</>,
+    },
+    {
+      key: 'product', label: '商品',
+      sortValue: d => d.product_name ?? '',
+      render: d => <span className="text-[13px] text-neutral-700">{d.product_name || '—'}</span>,
+    },
+    {
+      key: 'style', label: '風格',
+      sortValue: d => d.style,
+      render: d => (
+        <span className="text-sm font-semibold text-neutral-700">
+          {STYLE_LABEL[d.style].emoji} {STYLE_LABEL[d.style].label}
+        </span>
+      ),
+    },
+    {
+      key: 'status', label: '狀態',
+      sortValue: d => d.status,
+      render: d => <Badge status={d.status}>{STATUS_LABEL[d.status].label}</Badge>,
+    },
+    {
+      key: 'preview', label: '文案摘要',
+      render: d => <p className="max-w-md truncate text-[13px] text-neutral-600">{d.text_content}</p>,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: d => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => copyText(d.text_content, d.id)}
+            className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
+          >
+            {copied === d.id ? '已複製' : '複製文字'}
+          </button>
+          <SelectField
+            value={d.status}
+            disabled={updating === d.id}
+            onChange={e => updateStatus(d.id, e.target.value as DraftStatus)}
+            className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            {STATUS_OPTIONS.map(st => (
+              <option key={st} value={st}>{STATUS_LABEL[st].label}</option>
+            ))}
+          </SelectField>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <AdminLayout pageTitle="AI 文案草稿">
-      <div className="space-y-6">
-        {/* 操作列 */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-500">狀態篩選：</span>
-            <SelectField
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">全部（{total}）</option>
-              {STATUS_OPTIONS.map(s => (
-                <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
-              ))}
-            </SelectField>
-          </div>
-          <div className="flex items-center gap-3">
-            {generateMsg && (
-              <span className="text-sm text-neutral-600">{generateMsg}</span>
-            )}
-            <button
-              onClick={triggerGenerate}
-              disabled={generating}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {generating ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              )}
-              立即生成今日草稿
-            </button>
-          </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {generateMsg && <span className="text-sm text-neutral-600">{generateMsg}</span>}
+          <button
+            onClick={triggerGenerate}
+            disabled={generating}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            {generating ? '生成中…' : '立即生成今日草稿'}
+          </button>
         </div>
 
-        {/* 草稿列表（依日期分組） */}
-        {loading ? (
-          <CardSkeleton rows={5} />
-        ) : Object.keys(grouped).length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-neutral-400 gap-2">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="text-sm">目前沒有草稿，點選「立即生成」建立今日草稿</span>
-          </div>
-        ) : (
-          Object.entries(grouped)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([date, items]) => (
-              <div key={date} className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-                <div className="px-5 py-3 bg-neutral-50 border-b border-neutral-200">
-                  <span className="text-sm font-semibold text-neutral-700">{date}</span>
-                  {items[0]?.product_name && (
-                    <span className="ml-3 text-xs text-neutral-500">商品：{items[0].product_name}</span>
-                  )}
-                </div>
-                <div className="divide-y divide-neutral-100">
-                  {items.map(draft => {
-                    const s = STYLE_LABEL[draft.style]
-                    const st = STATUS_LABEL[draft.status]
-                    return (
-                      <div key={draft.id} className="flex gap-4 p-5">
-                        {/* 內容 */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="text-sm font-semibold text-neutral-700">{s.emoji} {s.label}</span>
-                            <Badge status={draft.status}>{st.label}</Badge>
-                          </div>
-                          <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-sans leading-relaxed bg-neutral-50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                            {draft.text_content}
-                          </pre>
-                        </div>
-
-                        {/* 操作 */}
-                        <div className="flex-shrink-0 flex flex-col gap-2">
-                          {/* 複製文字 */}
-                          <button
-                            onClick={() => copyText(draft.text_content, draft.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-                          >
-                            {copied === draft.id ? (
-                              <><svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> 已複製</>
-                            ) : (
-                              <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> 複製文字</>
-                            )}
-                          </button>
-                          {/* 狀態切換 */}
-                          <SelectField
-                            value={draft.status}
-                            disabled={updating === draft.id}
-                            onChange={e => updateStatus(draft.id, e.target.value as DraftStatus)}
-                            className="text-xs border border-neutral-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                          >
-                            {STATUS_OPTIONS.map(s => (
-                              <option key={s} value={s}>{STATUS_LABEL[s].label}</option>
-                            ))}
-                          </SelectField>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))
-        )}
+        <ListTableCard
+          pageKey="content-drafts"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={loading}
+          emptyMessage="目前沒有草稿，點選「立即生成」建立今日草稿"
+          defaultSortField="date"
+          defaultSortDirection="desc"
+          searchPlaceholder="搜尋文案內容或商品..."
+          searchValue={search}
+          onSearchChange={setSearch}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: filterStatus || 'all',
+              onChange: v => setFilterStatus(v === 'all' ? '' : v),
+              options: [
+                { value: 'all', label: `全部（${total}）` },
+                ...STATUS_OPTIONS.map(st => ({ value: st, label: STATUS_LABEL[st].label })),
+              ],
+            },
+          ]}
+          expandedIds={expandedIds}
+          onExpandChange={setExpandedIds}
+          renderExpanded={d => (
+            <pre className="whitespace-pre-wrap rounded-lg bg-white px-4 py-3 font-sans text-sm leading-relaxed text-neutral-700">
+              {d.text_content}
+            </pre>
+          )}
+        />
       </div>
     </AdminLayout>
   )

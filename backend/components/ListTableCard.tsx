@@ -63,6 +63,8 @@ interface ListTableCardProps<T> {
   filters?: FilterSelect[]
   /** 額外的工具列按鈕（批量上架那類），放在新增鈕右側 */
   toolbarChildren?: ReactNode
+  /** 匯出 CSV（報表頁用） */
+  onExportCSV?: () => void
   /** 勾選＋批次操作（商品管理同款）：三個一起給才會出現勾選欄 */
   selectable?: boolean
   selectedIds?: Set<string | number>
@@ -77,6 +79,11 @@ interface ListTableCardProps<T> {
   expandedIds?: Set<string | number>
   onExpandChange?: (ids: Set<string | number>) => void
   renderExpanded?: (row: T) => ReactNode
+  /**
+   * 置頂合計列（報表類用）。傳一個 render 函式，收到目前顯示中的欄位，
+   * 自己吐 <td>；元件負責外框樣式與欄位對齊，排序時不會被打亂。
+   */
+  summaryRow?: (shownColumns: ListColumn<T>[]) => ReactNode
 }
 
 export default function ListTableCard<T>({
@@ -95,6 +102,7 @@ export default function ListTableCard<T>({
   onAddClick,
   filters = [],
   toolbarChildren,
+  onExportCSV,
   selectable = false,
   selectedIds,
   onSelectChange,
@@ -102,6 +110,7 @@ export default function ListTableCard<T>({
   expandedIds,
   onExpandChange,
   renderExpanded,
+  summaryRow,
 }: ListTableCardProps<T>) {
   const [sortField, setSortField] = useState(defaultSortField)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection)
@@ -179,6 +188,8 @@ export default function ListTableCard<T>({
         showAddButton={!!addButtonText}
         addButtonText={addButtonText}
         onAddClick={onAddClick}
+        showExportCSV={!!onExportCSV}
+        onExportCSV={onExportCSV}
         showDensity={true}
         density={tableDensity}
         onDensityChange={setTableDensity}
@@ -242,6 +253,11 @@ export default function ListTableCard<T>({
             </tr>
           </thead>
           <tbody>
+            {!isLoading && summaryRow && sorted.length > 0 && (
+              <tr className="border-b border-neutral-100 bg-neutral-50 font-semibold">
+                {summaryRow(shownColumns)}
+              </tr>
+            )}
             {isLoading ? (
               <TableSkeleton rows={5} cols={colCount} />
             ) : sorted.length === 0 ? (

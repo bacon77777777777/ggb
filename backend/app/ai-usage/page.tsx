@@ -1,10 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AdminLayout, PageCard, SortableTableHeader, SearchToolbar, DateRangePicker } from '@/components'
-import { CardSkeleton } from '@/components/ui/Skeleton'
+import { AdminLayout, DateRangePicker, ListTableCard, type ListColumn } from '@/components'
 import { useToast } from '@/contexts/ToastContext'
-import { DataTable, type Column } from '@/components'
 
 /**
  * AI 用量
@@ -63,30 +61,57 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
 }
 
 export default function AiUsagePage() {
-  const aiusageColumns1: Column<any>[] = [
+  const agentColumns: ListColumn<AgentRow>[] = [
     {
-      key: "c0",
+      key: 'agent', label: 'AI 單位',
+      sortValue: r => r.agent,
+      render: r => (
+        <div>
+          <p className="font-medium text-neutral-800">{r.agent}</p>
+          {r.models.length > 0 && <p className="text-xs text-neutral-400">{r.models.join(' / ')}</p>}
+        </div>
+      ),
+    },
+    { key: 'calls',  label: '呼叫次數',    className: 'tabular-nums', sortValue: r => r.calls,         render: r => <>{fmt(r.calls)}</> },
+    { key: 'input',  label: '輸入 tokens', className: 'tabular-nums', sortValue: r => r.input_tokens,  render: r => <>{fmt(r.input_tokens)}</> },
+    { key: 'output', label: '輸出 tokens', className: 'tabular-nums', sortValue: r => r.output_tokens, render: r => <>{fmt(r.output_tokens)}</> },
+    { key: 'cost',   label: '估算費用',    className: 'tabular-nums font-medium', sortValue: r => r.cost_usd, render: r => <>{usd(r.cost_usd)}</> },
+  ]
+
+  const dailyColumns: ListColumn<DailyRow>[] = [
+    {
+      key: "day",
       label: "日期",
+      className: "font-mono",
+      sortValue: d => d.day,
       render: (d) => (<>{d.day}</>),
     },
     {
-      key: "c1",
+      key: "calls",
       label: "呼叫次數",
+      className: "tabular-nums",
+      sortValue: d => d.calls,
       render: (d) => (<>{fmt(d.calls)}</>),
     },
     {
-      key: "c2",
+      key: "input",
       label: "輸入 tokens",
+      className: "tabular-nums",
+      sortValue: d => d.input_tokens,
       render: (d) => (<>{fmt(d.input_tokens)}</>),
     },
     {
-      key: "c3",
+      key: "output",
       label: "輸出 tokens",
+      className: "tabular-nums",
+      sortValue: d => d.output_tokens,
       render: (d) => (<>{fmt(d.output_tokens)}</>),
     },
     {
-      key: "c4",
+      key: "cost",
       label: "估算費用",
+      className: "tabular-nums",
+      sortValue: d => d.cost_usd,
       render: (d) => (<>{usd(d.cost_usd)}</>),
     },
   ]
@@ -190,80 +215,46 @@ export default function AiUsagePage() {
           </div>
         )}
 
-        <PageCard>
-          <SearchToolbar
-            searchPlaceholder="搜尋 AI 單位..."
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            showExportCSV
-            onExportCSV={handleExport}
-            showDensity
-            density={tableDensity}
-            onDensityChange={setTableDensity}
-            showColumnToggle
-            columns={COLUMNS.map(c => ({ key: c.key, label: c.label, visible: visibleColumns[c.key] }))}
-            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
-          />
-
-          {loading ? (
-            <CardSkeleton rows={5} />
-          ) : visibleRows.length === 0 ? (
-            <div className="py-12 text-center text-sm text-neutral-400">此區間沒有 AI 用量紀錄</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-neutral-50 border-b border-neutral-200">
-                  <tr>
-                    {show('agent')  && <SortableTableHeader sortKey="agent" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>AI 單位</SortableTableHeader>}
-                    {show('calls')  && <SortableTableHeader sortKey="calls" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>呼叫次數</SortableTableHeader>}
-                    {show('input')  && <SortableTableHeader sortKey="input" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>輸入 tokens</SortableTableHeader>}
-                    {show('output') && <SortableTableHeader sortKey="output" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>輸出 tokens</SortableTableHeader>}
-                    {show('cost')   && <SortableTableHeader sortKey="cost" currentSortField={sortField} sortDirection={sortDir} onSort={handleSort} className={dc}>估算費用</SortableTableHeader>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  <tr className="bg-neutral-50 font-semibold">
-                    {show('agent')  && <td className={`${dc} text-sm text-neutral-700`}>合計（{visibleRows.length} 個單位）</td>}
-                    {show('calls')  && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.calls)}</td>}
-                    {show('input')  && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.input)}</td>}
-                    {show('output') && <td className={`${dc} font-bold tabular-nums`}>{fmt(totals.output)}</td>}
-                    {show('cost')   && <td className={`${dc} font-bold tabular-nums text-primary`}>{usd(totals.cost)}</td>}
-                  </tr>
-                  {visibleRows.map(r => (
-                    <tr key={r.agent} className="hover:bg-neutral-50 transition-colors">
-                      {show('agent')  && (
-                        <td className={dc}>
-                          <p className="font-medium text-neutral-800">{r.agent}</p>
-                          {r.models.length > 0 && <p className="text-xs text-neutral-400">{r.models.join(' / ')}</p>}
-                        </td>
-                      )}
-                      {show('calls')  && <td className={`${dc} tabular-nums`}>{fmt(r.calls)}</td>}
-                      {show('input')  && <td className={`${dc} tabular-nums`}>{fmt(r.input_tokens)}</td>}
-                      {show('output') && <td className={`${dc} tabular-nums`}>{fmt(r.output_tokens)}</td>}
-                      {show('cost')   && <td className={`${dc} tabular-nums font-medium`}>{usd(r.cost_usd)}</td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </PageCard>
+        <ListTableCard
+          pageKey="ai-usage"
+          data={visibleRows}
+          columns={agentColumns}
+          keyField="agent"
+          isLoading={loading}
+          emptyMessage="此區間沒有 AI 用量紀錄"
+          searchPlaceholder="搜尋 AI 單位..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onExportCSV={handleExport}
+          summaryRow={cols => cols.map(c => {
+            const v = c.key === 'agent' ? `合計（${visibleRows.length} 個單位）`
+              : c.key === 'calls'  ? fmt(totals.calls)
+              : c.key === 'input'  ? fmt(totals.input)
+              : c.key === 'output' ? fmt(totals.output)
+              : usd(totals.cost)
+            return (
+              <td key={c.key} className={`py-2 px-2 text-sm ${c.key === 'agent' ? 'text-neutral-700' : 'tabular-nums'} ${c.key === 'cost' ? 'text-primary' : ''}`}>
+                {v}
+              </td>
+            )
+          })}
+        />
 
         {!loading && daily.length > 0 && (
-          <PageCard>
-            <h3 className="font-semibold text-neutral-800 mb-3">每日用量</h3>
-            <div className="overflow-x-auto">
-              <DataTable
-  data={daily}
-  columns={aiusageColumns1}
-  keyField="id"
-  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
-/>
-            </div>
-            <p className="mt-3 text-xs text-neutral-400">
+          <div className="space-y-2">
+            <ListTableCard
+              pageKey="ai-usage-daily"
+              data={daily}
+              columns={dailyColumns}
+              keyField="day"
+              emptyMessage="沒有每日紀錄"
+              defaultSortField="day"
+              defaultSortDirection="desc"
+            />
+            <p className="px-1 text-xs text-neutral-400">
               費用為依模型費率換算的估算值，實際帳單以 Anthropic 後台為準。匯率以 1 USD = 32 TWD 概算。
             </p>
-          </PageCard>
+          </div>
         )}
       </div>
     </AdminLayout>
