@@ -156,6 +156,19 @@ export function BlindboxMachineMode5({
    */
   useEffect(() => { audioInit(); }, [audioInit]);
 
+  /*
+   * 後台的每格存量（stock）是非同步讀回來的，建場時 paramsRef 還停在 DEFAULTS。
+   * 不重擺的話「剛進來的排法」會用預設值，而抽完補貨走的是讀回來的值 ——
+   * 同一台機器兩種密度。參數到齊且機台閒置時重擺一次，兩邊就一致了。
+   */
+  const builtStock = useRef(DEFAULTS.stock);
+  useEffect(() => {
+    if (params.stock === builtStock.current) return;   // 只在存量真的變了才重擺，不是每次回到 idle
+    if (machineState !== 'idle') return;
+    builtStock.current = params.stock;
+    resetRef.current?.();
+  }, [params.stock, machineState]);
+
   // 音量跟著後台參數走
   useEffect(() => { setMachineVolume(params.volume); }, [params.volume]);
 
@@ -633,6 +646,9 @@ export function BlindboxMachineMode5({
       const bySlot = new Map<Box['slot'], Box[]>();
       S_.boxes.forEach(b => {
         if (b.phase === 'gone' || b.phase === 'out' || b.phase === 'phys') return;
+        // 正在淡出的盒子（換一批把前排消掉的那顆）等一下就會消失，不能算庫存 ——
+        // 算進去的話這格就補不到新盒，每按一次「換一批」機台就少一顆，越玩越空
+        if (b.phase === 'fade' && !b.fadeIn) return;
         bySlot.set(b.slot, [...(bySlot.get(b.slot) ?? []), b]);
       });
       // 清掉已經消失的盒子，表才不會無限長大
