@@ -100,7 +100,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
           >
             <div
               className={cn(
-                'relative flex w-full flex-col overflow-hidden rounded-3xl border border-neutral-100 bg-white p-6 shadow-modal',
+                'relative flex w-full flex-col overflow-hidden rounded-3xl border border-neutral-100 bg-white px-3.5 py-5 shadow-modal',
                 'dark:border-neutral-800 dark:bg-neutral-900',
               )}
             >
@@ -158,7 +158,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                 </motion.div>
               ) : (
                 /* ── 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列看大圖 ── */
-                <div className="mb-5 max-h-[46vh] space-y-2 overflow-y-auto pr-0.5">
+                <div className="mb-4 max-h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
                   {results.map((p, i) => {
                     const g = p.grade || p.rarity;
                     const gs = gradeStyle(g);
@@ -167,25 +167,25 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                         key={`${p.id ?? 'x'}-${i}`}
                         type="button"
                         onClick={() => setDetailIndex(i)}
-                        className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50 p-2 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
+                        className="flex w-full items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50 p-1.5 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
                       >
-                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
                           <Image
                             src={prizeImage(p, !!failedIds[`l${i}`])}
                             alt={p.name}
-                            width={44}
-                            height={44}
+                            width={36}
+                            height={36}
                             className="h-full w-full object-contain"
                             unoptimized
                             onError={() => markFailed(`l${i}`)}
                           />
                         </div>
                         {g && (
-                          <span className={cn('shrink-0 rounded-md px-2 py-1 text-xs font-black', gs.bg, gs.text)}>
+                          <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
                             {g}
                           </span>
                         )}
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-neutral-900 dark:text-white">
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
                           {p.name}
                         </span>
                       </button>
