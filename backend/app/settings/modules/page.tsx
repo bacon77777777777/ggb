@@ -20,6 +20,7 @@ const PRODUCT_TYPES: {
       { value: 'gacha_mode2', label: '新款機台', desc: '旋鈕式轉蛋機，蛋口出蛋設計' },
       { value: 'gacha_mode3', label: '金光閃閃機台', desc: '旋鈕式轉蛋機，金光閃閃特效版' },
       { value: 'gacha_mode4', label: '狗狗蛋箱', desc: '蛋箱風格轉蛋機，無旋鈕設計' },
+      { value: 'gacha_mode5', label: '紫金旋鈕機台', desc: '旋鈕式轉蛋機，操作鈕在頁面底部' },
     ],
   },
   {

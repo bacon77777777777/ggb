@@ -6,6 +6,7 @@ import { GachaMachineRetro } from './GachaMachineRetro';
 import { GachaMachineMode2 } from './GachaMachineMode2';
 import { GachaMachineMode3 } from './GachaMachineMode3';
 import { GachaMachineMode4 } from './GachaMachineMode4';
+import { GachaMachineMode5 } from './GachaMachineMode5';
 import { GachaCollectionList } from './GachaCollectionList';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { Prize } from '@/components/GachaMachine';
@@ -33,6 +34,7 @@ const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProp
   gacha_mode2: GachaMachineMode2,
   gacha_mode3: GachaMachineMode3,
   gacha_mode4: GachaMachineMode4,
+  gacha_mode5: GachaMachineMode5,
 }
 
 export function GachaProductDetail({ product, prizes, machineTheme, onMachineReady }: GachaProductDetailProps) {
@@ -110,6 +112,9 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   const isSoldOut = product.status === 'ended'
     || product.remaining === 0
     || (prizes.length > 0 && prizes.every(p => (p.remaining ?? 0) <= 0));
+
+  /** 演出進行中就鎖住互動。機台內建按鈕與 mode5 的底部操作欄共用同一個判斷 */
+  const machineDisabled = machineState !== 'idle' && !isPushShaking;
 
   const handlePush = () => {
     if (machineState !== 'idle') return;
@@ -411,7 +416,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
                 isSoldOut={isSoldOut}
                 pushSoundMode={pushSoundMode}
                 hasHighTierPending={forceGoldEgg || hasHighTierPending}
-                disableButtons={machineState !== 'idle' && !isPushShaking}
+                disableButtons={machineDisabled}
               />
             );
           })()}
@@ -525,6 +530,51 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
           </div>
         </div>
       </div>
+
+      {/* mode5 的底部操作欄 —— 機台上不畫按鈕（老闆指定），三顆移到這裡。
+          版型照盒玩立體機台 blindbox_mode5：左側單抽金額，右側三顆按鈕 */}
+      {machineTheme === 'gacha_mode5' && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
+            <div className="flex h-full shrink-0 flex-col justify-center pl-1">
+              <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
+                單抽
+              </span>
+              <div className="flex items-center gap-1">
+                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                  className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
+                <span className="font-amount text-xl font-black leading-none text-accent-red">
+                  {(product.price ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex h-[44px] flex-1 items-center gap-2">
+              <button
+                onClick={handlePush}
+                disabled={isSoldOut || machineDisabled}
+                className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
+              >
+                推一下
+              </button>
+              <button
+                onClick={handlePurchaseClick}
+                disabled={isSoldOut || machineDisabled}
+                className="h-full flex-1 whitespace-nowrap rounded-xl bg-accent-red text-base font-black text-white shadow-lg shadow-accent-red/30 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                立即轉蛋
+              </button>
+              <button
+                onClick={handleTrial}
+                disabled={isSoldOut || machineDisabled}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                試試看
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} />
       <PurchaseConfirmationModal

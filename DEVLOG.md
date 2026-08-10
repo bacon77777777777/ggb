@@ -4,6 +4,30 @@
 
 ---
 
+## v2026.08.10e｜2026-08-10｜轉蛋新模組 gacha_mode5（紫金旋鈕機台），操作鈕移到底部
+
+老闆給了新圖素 `public/images/gacha/mode5/`，內容是 mode2/mode3 的組合
+**少掉 btn1.png / btn2.png** —— 正好對上「三顆按鈕移除、改走底部導航」。
+
+- `GachaMachineMode5.tsx`：從 mode3 複製（同旋鈕出蛋邏輯），換圖素路徑，
+  刪掉機台上的三顆 ImageButton。旋鈕仍可直接點擊轉蛋 —— 那是機台本體的
+  互動，不是按鈕
+- 底部操作欄加在 `GachaProductDetail`，只有 `machineTheme === 'gacha_mode5'`
+  才出現。版型與配色照盒玩 blindbox_mode5：左側單抽金額，右側
+  推一下／立即轉蛋／試試看
+- 鎖定條件抽成 `machineDisabled`，機台內建按鈕與底部操作欄共用同一個判斷，
+  不會出現「機台鎖了但底部還能按」
+- 後台兩處都註冊：全站預設（settings/modules）與各別商品覆蓋（products/[id]）
+
+### 🔴 順手修掉：各別商品的機台覆蓋從來沒生效過
+測新模組時發現後台設了 `machine_theme` 前台卻沒反應。根因是
+`PRODUCT_PUBLIC_COLUMNS` **沒有列 `machine_theme`** —— 前台查商品時
+根本沒把這欄撈回來，`(product as any).machine_theme` 永遠是 undefined，
+一律 fallback 到全站預設。mode2/3/4 的單檔覆蓋一直都是壞的，不只新模組。
+
+同時補上 `box_image_url`（盒玩機台的盒面圖，同樣讀不到）。兩欄 anon
+都有 SELECT 授權，加進清單即可，不需要 migration。
+
 ## v2026.08.10d｜2026-08-10｜背景音樂小到聽不見；抽獎結果一覽改回九宮格
 
 ### 背景音樂實測：機制對、音量不對

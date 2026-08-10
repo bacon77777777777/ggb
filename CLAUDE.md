@@ -143,6 +143,7 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 - `gacha_mode2`：旋鈕式轉蛋機（GachaMachineMode2，圖素在 `gacha/mode2/`）
 - `gacha_mode3`：金光閃閃機台（GachaMachineMode3，圖素在 `gacha/mode3/`，同 mode2 邏輯換主圖）
 - `gacha_mode4`：狗狗蛋箱（GachaMachineMode4，圖素在 `gacha/mode4/`，無旋鈕/switch，有自訂 box.svg + hole.svg 遮罩）
+- `gacha_mode5`：紫金旋鈕機台（GachaMachineMode5，圖素在 `gacha/mode5/`，同 mode3 邏輯換主圖；**機台上不畫按鈕**，推一下／立即轉蛋／試試看在 `GachaProductDetail` 的固定底部操作欄，照盒玩 blindbox_mode5 的做法）
 
 ### 情報系統（News）
 
