@@ -4,7 +4,17 @@ import Image from 'next/image';
 import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import { gradeStyle } from '@/lib/prizeGrade';
+
+/**
+ * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
+ *
+ * 一律條列捲動（老闆指定，含單抽）—— 原本是左右箭頭一個一個翻，
+ * 十連要點九次才看得完。條列一眼看完全部；想看大圖點那一列，
+ * 開的是總覽同一個全螢幕 PrizeDetailSheet（大圖＋賞等＋品名），
+ * 不在彈窗內換頁。
+ */
 
 interface GachaResultModalProps {
   isOpen: boolean;
@@ -14,20 +24,22 @@ interface GachaResultModalProps {
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
 
+function prizeImage(p: Prize, failed: boolean): string {
+  if (failed) return ITEM_DEFAULT_IMG;
+  return p.image_url || `/images/item/${(p.id ?? '').toString().padStart(5, '0')}.jpg`;
+}
+
 export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [imgError, setImgError] = useState(false);
-  const hasMultiple = results.length > 1;
-  const activePrize = results[activeIndex] || results[0];
+  /** 被點開看大圖的那一項（走總覽同一個全螢幕 sheet） */
+  const [detail, setDetail] = useState<Prize | null>(null);
+  const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
   const resultSoundRef = React.useRef<HTMLAudioElement | null>(null);
-  const touchStartXRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const audio = new Audio('/audio/getpopup.mp3');
     audio.preload = 'auto';
     resultSoundRef.current = audio;
-
     return () => {
       if (resultSoundRef.current) {
         resultSoundRef.current.pause();
@@ -46,59 +58,10 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isOpen) {
-      setActiveIndex(0);
-      return;
-    }
-    if (!results[activeIndex]) {
-      setActiveIndex(0);
-    }
-  }, [isOpen, results, activeIndex]);
+    if (!isOpen) { setDetail(null); setFailedIds({}); }
+  }, [isOpen]);
 
-  const showPrev = () => {
-    if (!hasMultiple) return;
-    setImgError(false);
-    setActiveIndex((prev) => {
-      const nextIndex = prev - 1;
-      if (nextIndex < 0) return results.length - 1;
-      return nextIndex;
-    });
-  };
-
-  const showNext = () => {
-    if (!hasMultiple) return;
-    setImgError(false);
-    setActiveIndex((prev) => {
-      const nextIndex = prev + 1;
-      if (nextIndex >= results.length) return 0;
-      return nextIndex;
-    });
-  };
-
-  const activeGrade = activePrize ? activePrize.grade || activePrize.rarity : undefined;
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!hasMultiple) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    touchStartXRef.current = touch.clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!hasMultiple) return;
-    const startX = touchStartXRef.current;
-    const touch = e.changedTouches[0];
-    if (startX == null || !touch) return;
-    const diffX = touch.clientX - startX;
-    const threshold = 40;
-    if (Math.abs(diffX) < threshold) return;
-    if (diffX < 0) {
-      showNext();
-    } else {
-      showPrev();
-    }
-    touchStartXRef.current = null;
-  };
+  const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
   return (
     <AnimatePresence>
@@ -117,102 +80,76 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-sm"
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             <div
               className={cn(
-                'relative w-full overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl shadow-modal',
-                'flex flex-col items-center text-center p-6'
+                'relative flex w-full flex-col overflow-hidden rounded-3xl border border-neutral-100 bg-white px-3.5 py-5 shadow-modal',
+                'dark:border-neutral-800 dark:bg-neutral-900',
               )}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
             >
-              <h3 className="text-base font-black text-neutral-900 dark:text-white mb-4 tracking-tight">
-                恭喜獲得
+              <h3 className="mb-4 text-center text-base font-black tracking-tight text-neutral-900 dark:text-white">
+                恭喜獲得 <span className="text-accent-red">{results.length}</span> 項
               </h3>
 
-              {activePrize && (
-                <>
-                  <motion.div
-                    key={activePrize.id ?? activeIndex}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                    className="w-40 h-auto rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 mb-3 flex items-center justify-center"
-                  >
-                    <Image
-                      src={
-                        imgError
-                          ? ITEM_DEFAULT_IMG
-                          : activePrize.image_url ||
-                            `/images/item/${(activePrize.id ?? '').toString().padStart(5, '0')}.jpg`
-                      }
-                      alt={activePrize.name}
-                      width={160}
-                      height={160}
-                      className="w-full h-auto object-contain"
-                      unoptimized
-                      onError={() => setImgError(true)}
-                    />
-                  </motion.div>
-
-                  <div className="mb-6 w-full px-2">
-                    <div className="flex items-center justify-center gap-3">
-                      {hasMultiple && (
-                        <button
-                          type="button"
-                          onClick={showPrev}
-                          className="flex items-center justify-center p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
-                          aria-label="上一個"
-                        >
-                          <ChevronLeft className="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-                        </button>
-                      )}
-                      <p
-                        className="flex-1 text-neutral-900 dark:text-white font-bold text-[16px] text-center"
-                        style={{
-                          lineHeight: '1.25rem',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {activePrize.name}
-                      </p>
-                      {hasMultiple && (
-                        <button
-                          type="button"
-                          onClick={showNext}
-                          className="flex items-center justify-center p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
-                          aria-label="下一個"
-                        >
-                          <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-                        </button>
-                      )}
-                    </div>
-                    {hasMultiple && (
-                      <div className="mt-2 text-xs font-medium text-neutral-400">
-                        {activeIndex + 1} / {results.length}
+              {/* 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列開全螢幕大圖。
+                  高度固定（不是 max-h）—— 老闆指定彈窗大小不隨抽數變，
+                  抽 1 次跟抽 10 次一樣高，位置不會跳 */}
+              <div className="mb-4 h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
+                {results.map((p, i) => {
+                  const g = p.grade || p.rarity;
+                  const gs = gradeStyle(g);
+                  return (
+                    <button
+                      key={`${p.id ?? 'x'}-${i}`}
+                      type="button"
+                      onClick={() => setDetail(p)}
+                      className="flex w-full items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50 p-1.5 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
+                    >
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
+                        <Image
+                          src={prizeImage(p, !!failedIds[`l${i}`])}
+                          alt={p.name}
+                          width={36}
+                          height={36}
+                          className="h-full w-full object-contain"
+                          unoptimized
+                          onError={() => markFailed(`l${i}`)}
+                        />
                       </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              <div className="w-full mt-2">
-                <Button
-                  onClick={onClose}
-                  size="lg"
-                  className="w-full rounded-[8px] h-[40px] px-6 text-[15px] font-semibold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 text-white"
-                >
-                  確定
-                </Button>
+                      {g && (
+                        <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
+                          {g}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
+                        {p.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+
+              <Button
+                onClick={onClose}
+                size="lg"
+                className="h-[40px] w-full rounded-[8px] px-6 text-[15px] font-semibold text-white shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
+              >
+                確定
+              </Button>
             </div>
           </motion.div>
+
+          {/* 大圖走總覽同一個元件：全螢幕黑遮罩 ＋ 大圖 ＋ 賞等 ＋ 品名 */}
+          <PrizeDetailSheet
+            zIndex={3100}
+            prize={detail ? {
+              name: detail.name,
+              image_url: detail.image_url ?? null,
+              level: detail.grade || detail.rarity || null,
+            } : null}
+            onClose={() => setDetail(null)}
+          />
         </div>
       )}
     </AnimatePresence>

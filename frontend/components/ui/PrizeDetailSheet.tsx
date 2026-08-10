@@ -24,6 +24,8 @@ interface Props {
    * 轉蛋／盒玩不顯示：那些數字站上任何地方都沒公開，只在這個彈窗漏出來。
    */
   sealed?: boolean;
+  /** 疊在別的彈窗之上時要拉高（例：中獎結果彈窗是 3000，這裡要更高） */
+  zIndex?: number;
 }
 
 function getLevelStyle(level: string): string {
@@ -41,7 +43,7 @@ function getLevelStyle(level: string): string {
   return 'text-neutral-500';
 }
 
-export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Props) {
+export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -87,7 +89,8 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false }: Pro
     <AnimatePresence>
       {prize && (
         <motion.div
-          className="fixed inset-0 z-[2700] flex items-end justify-center"
+          className="fixed inset-0 flex items-end justify-center"
+          style={{ zIndex }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

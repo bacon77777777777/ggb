@@ -17,7 +17,13 @@ import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
 import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
+import dynamic from 'next/dynamic';
 import { BlindboxMachineMode4 } from '@/components/shop/BlindboxMachineMode4';
+// three.js + matter.js 只有這台用得到，動態載入避免拖累其他機台的首屏
+const BlindboxMachineMode5 = dynamic(
+  () => import('@/components/shop/BlindboxMachineMode5').then(m => m.BlindboxMachineMode5),
+  { ssr: false },
+);
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
@@ -26,7 +32,7 @@ type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
 
 /** 貨架販賣機類主題：由機台元件自己演出，不走過場影片 */
-const VENDING_THEMES = ['blindbox_mode2', 'blindbox_mode3', 'blindbox_mode4'];
+const VENDING_THEMES = ['blindbox_mode2', 'blindbox_mode3', 'blindbox_mode4', 'blindbox_mode5'];
 const isVendingTheme = (theme: unknown) => VENDING_THEMES.includes(theme as string);
 
 export default function BlindboxDetailPage() {
@@ -63,6 +69,8 @@ export default function BlindboxDetailPage() {
   // mode2 machine state
   const [mode2State, setMode2State] = useState<'idle' | 'animating'>('idle');
   const [mode2DrawCount, setMode2DrawCount] = useState(0);
+  // 立體物理機台的「換一批」：按一次遞增，機台看到變化才動作
+  const [restockSignal, setRestockSignal] = useState(0);
   const bgVideos = useMemo(() => ['/videos/bg.mp4'], []);
   const bgVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
@@ -541,6 +549,22 @@ export default function BlindboxDetailPage() {
               onLoaded={() => setIsMachineReady(true)}
             />
           </div>
+        ) : effectiveTheme === 'blindbox_mode5' ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <BlindboxMachineMode5
+              machineState={mode2State}
+              drawCount={mode2DrawCount}
+              restockSignal={restockSignal}
+              boxImageUrl={(product as any).box_image_url ?? undefined}
+              remaining={product.remaining ?? 10}
+              onAnimationComplete={handleMode2AnimComplete}
+              onPush={() => {}}
+              onPurchase={handlePlay}
+              onTrial={handleTrial}
+              isSoldOut={isSoldOut}
+              onLoaded={() => setIsMachineReady(true)}
+            />
+          </div>
         ) : effectiveTheme === 'blindbox_mode4' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode4
@@ -652,6 +676,51 @@ export default function BlindboxDetailPage() {
 
   return (
     <>
+      {/* 立體物理機台的底部操作欄 —— 版型與配色照一番賞（老闆指定）：
+          左側金額，右側三顆；立即開盒用一番賞同款亮紅，另兩顆換色區隔 */}
+      {isMachineReady && effectiveTheme === 'blindbox_mode5' && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
+            <div className="flex h-full shrink-0 flex-col justify-center pl-1">
+              <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
+                單抽
+              </span>
+              <div className="flex items-center gap-1">
+                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                  className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
+                <span className="font-amount text-xl font-black leading-none text-accent-red">
+                  {(product.price ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex h-[44px] flex-1 items-center gap-2">
+              <button
+                onClick={() => { if (!isSoldOut && mode2State === 'idle') setRestockSignal(n => n + 1); }}
+                disabled={isSoldOut || mode2State !== 'idle'}
+                className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
+              >
+                換一批
+              </button>
+              <button
+                onClick={handlePlay}
+                disabled={isSoldOut || mode2State !== 'idle'}
+                className="h-full flex-1 whitespace-nowrap rounded-xl bg-accent-red text-base font-black text-white shadow-lg shadow-accent-red/30 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                立即開盒
+              </button>
+              <button
+                onClick={handleTrial}
+                disabled={isSoldOut || mode2State !== 'idle'}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                試試看
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!isMachineReady && <ProductLoadingScreen />}
       <div
         className="min-h-screen bg-neutral-50 dark:bg-neutral-950"

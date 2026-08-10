@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import ParamsModal from './ParamsModal'
 
 const PRODUCT_TYPES: {
   type: string
@@ -52,6 +53,7 @@ const PRODUCT_TYPES: {
       { value: 'blindbox_mode2', label: '販賣機', desc: '可愛兔子貨架機台，盒子飛入取物口動畫' },
       { value: 'blindbox_mode3', label: '叢林探險販賣機', desc: '叢林主題貨架機台，盒子飛入取物口動畫' },
       { value: 'blindbox_mode4', label: '賽璐璐風格販賣機', desc: '賽璐璐動畫風貨架機台，盒子飛入取物口動畫' },
+      { value: 'blindbox_mode5', label: '立體物理販賣機', desc: '3D 盒子推出傾倒，真物理落盒滾進取物口（手感可調）' },
     ],
   },
 ]
@@ -63,6 +65,7 @@ export default function ModuleSettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [paramsFor, setParamsFor] = useState<{ theme: string; label: string } | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/settings/modules')
@@ -125,8 +128,18 @@ export default function ModuleSettingsPage() {
                       ))}
                     </SelectField>
                   </div>
-                  <div className="w-32 shrink-0 text-xs text-neutral-400 text-right">
-                    {themes.find(t => t.value === (settings[type] || themes[0].value))?.label}
+                  {/* 原本這裡是重複顯示選中主題名的灰字（下拉裡已經看得到），
+                      老闆指定換成參數設定入口 */}
+                  <div className="w-24 shrink-0 text-right">
+                    <button
+                      onClick={() => {
+                        const cur = settings[type] || themes[0].value
+                        setParamsFor({ theme: cur, label: themes.find(t => t.value === cur)?.label ?? cur })
+                      }}
+                      className="text-sm font-medium text-primary hover:text-primary"
+                    >
+                      參數設定
+                    </button>
                   </div>
                 </div>
               </div>
@@ -150,6 +163,13 @@ export default function ModuleSettingsPage() {
           </div>
         )}
       </PageCard>
+
+      <ParamsModal
+        theme={paramsFor?.theme ?? ''}
+        themeLabel={paramsFor?.label ?? ''}
+        isOpen={paramsFor !== null}
+        onClose={() => setParamsFor(null)}
+      />
     </AdminLayout>
   )
 }
