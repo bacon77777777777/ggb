@@ -77,6 +77,9 @@ const SUPPLIER_API_ALLOW: string[] = [
   '/api/admin/upload',            // 上傳商品圖
   '/api/admin/suppliers',         // 結算頁的廠商下拉（route 內只回自己那家）
   '/api/admin/reports',           // 廠商結算（route 內強制蓋成自己的 supplierId）
+  // 配送申請（老闆 2026-08-09）：route 內依 supplier_id 限縮＋玩家個資遮罩，
+  // 出貨/改單（PUT、batch）在 route 內對廠商回 403 —— 這裡只放行「看」
+  '/api/admin/orders',
 ]
 
 /**
@@ -90,6 +93,7 @@ const SUPPLIER_API_ALLOW: string[] = [
  * 老闆的要求是「廠商只能編輯，不得刪除跟驗證」。
  */
 const SUPPLIER_API_DENY: string[] = [
+  '/api/admin/orders/batch',
   '/api/admin/products/batch',
   // 整條批量匯入都不給 —— 只擋最後的 commit 的話，廠商會傳完檔案、看完預覽，
   // 按下上架才收到 403，那比一開始就沒有按鈕更糟。
@@ -118,6 +122,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   // 抽獎管理
   { prefix: '/draws',               permission: 'draws' },
   { prefix: '/orders',              permission: 'orders' },
+  { prefix: '/referrals',           permission: 'referrals' },
   { prefix: '/refund-requests',     permission: 'orders' },
   { prefix: '/products',            permission: 'products' },
   { prefix: '/suppliers',           permission: 'suppliers' },
@@ -131,8 +136,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/settings/modules',    permission: 'settings_modules' },
   { prefix: '/settings/features',   permission: 'settings_features' },
   { prefix: '/products/import',     permission: 'products' },
-  { prefix: '/settings/promotions', permission: 'settings_features' },
-  { prefix: '/settings/theme',      permission: 'settings_theme' },
+  { prefix: '/settings/promotions', permission: 'settings_promotions' },
   { prefix: '/settings/shipping',   permission: 'settings_shipping' },
   { prefix: '/settings',            permission: 'settings' },
   { prefix: '/analytics',           permission: 'admins' },
