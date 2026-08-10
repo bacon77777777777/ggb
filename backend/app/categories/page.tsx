@@ -1,7 +1,8 @@
 'use client'
 
-import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
-import { useState, useEffect, useMemo } from 'react'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
+import Switch from '@/components/ui/Switch'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter } from 'next/navigation'
@@ -9,13 +10,19 @@ import { useToast } from '@/contexts/ToastContext'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
+/**
+ * 分類清單 —— 後台列表定版樣板（ListTableCard）的第一個使用者。
+ * 版型基準是商品管理；要改所有列表頁的長相去改 ListTableCard，
+ * 這裡只負責數據、欄位定義與彈窗。
+ * 狀態欄用 Switch 直接切換啟停（老闆指定，彈窗裡不再放啟用勾選）。
+ */
+
 interface Category {
   id: string
   name: string
   sort_order: number
   is_active: boolean
   created_at: string
-  products?: { count: number }[]
 }
 
 export default function CategoriesPage() {
@@ -26,29 +33,24 @@ export default function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [sortField, setSortField] = useState<string>('sort_order')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    sort_order: 0,
-    is_active: true
-  })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('all')
+
+  const [formData, setFormData] = useState({ name: '', sort_order: 0 })
 
   const fetchData = async () => {
     try {
       setIsLoading(true)
-      // 暫時移除 products(count) 避免因關聯或權限問題導致查詢失敗
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('sort_order', { ascending: true })
-      
+
       if (error) throw error
       setCategories(data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching categories:', error)
-      toast(`載入分類失敗: ${error.message}`, 'error')
+      toast(`載入分類失敗: ${error instanceof Error ? error.message : ''}`, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -58,71 +60,37 @@ export default function CategoriesPage() {
     fetchData()
   }, [])
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const sortedCategories = useMemo(() => {
-    const data = [...categories]
-    return data.sort((a, b) => {
-      let aValue: any
-      let bValue: any
-      switch (sortField) {
-        case 'name':
-          aValue = a.name
-          bValue = b.name
-          break
-        case 'sort_order':
-          aValue = a.sort_order
-          bValue = b.sort_order
-          break
-        case 'is_active':
-          aValue = a.is_active ? 1 : 0
-          bValue = b.is_active ? 1 : 0
-          break
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
-        default:
-          aValue = a.sort_order
-          bValue = b.sort_order
-      }
-      if (typeof aValue === 'string') {
-        return sortDirection === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      } else {
-        return sortDirection === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
-      }
-    })
-  }, [categories, sortField, sortDirection])
+  const filtered = categories.filter(c => {
+    if (selectedStatus !== 'all' && (selectedStatus === 'active') !== c.is_active) return false
+    if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category)
-    setFormData({
-      name: category.name,
-      sort_order: category.sort_order,
-      is_active: category.is_active
-    })
+    setFormData({ name: category.name, sort_order: category.sort_order })
     setIsModalOpen(true)
   }
 
   const handleAdd = () => {
     setEditingCategory(null)
-    setFormData({
-      name: '',
-      sort_order: 0,
-      is_active: true
-    })
+    setFormData({ name: '', sort_order: 0 })
     setIsModalOpen(true)
+  }
+
+  /** 狀態 Switch 直接切換：樂觀更新，失敗滾回 */
+  const toggleActive = async (category: Category, next: boolean) => {
+    setCategories(prev => prev.map(c => c.id === category.id ? { ...c, is_active: next } : c))
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ id: category.id, is_active: next }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setCategories(prev => prev.map(c => c.id === category.id ? { ...c, is_active: !next } : c))
+      toast('切換失敗，請重試一次', 'error')
+    }
   }
 
   const handleDelete = async (category: Category) => {
@@ -140,15 +108,14 @@ export default function CategoriesPage() {
       title: '確認操作',
       message: "確定要刪除此分類嗎？",
       onConfirm: async () => {
-
-      try {
-        const res = await fetch(`/api/admin/categories?id=${category.id}`, { method: 'DELETE', credentials: 'include' })
-        if (!res.ok) throw new Error('刪除失敗')
-        fetchData()
-      } catch (error) {
-        console.error('Error deleting category:', error)
-        toast('刪除失敗', 'error')
-      }
+        try {
+          const res = await fetch(`/api/admin/categories?id=${category.id}`, { method: 'DELETE', credentials: 'include' })
+          if (!res.ok) throw new Error('刪除失敗')
+          fetchData()
+        } catch (error) {
+          console.error('Error deleting category:', error)
+          toast('刪除失敗', 'error')
+        }
       },
     })
   }
@@ -160,22 +127,17 @@ export default function CategoriesPage() {
         return
       }
 
-      const payload = {
-        name: formData.name,
-        sort_order: formData.sort_order,
-        is_active: formData.is_active
-      }
-
       if (editingCategory) {
         const res = await fetch('/api/admin/categories', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ id: editingCategory.id, ...payload }),
+          body: JSON.stringify({ id: editingCategory.id, ...formData }),
         })
         if (!res.ok) throw new Error('更新失敗')
       } else {
+        // 新分類預設啟用（啟用與否在表格上用 Switch 管）
         const res = await fetch('/api/admin/categories', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...formData, is_active: true }),
         })
         if (!res.ok) throw new Error('新增失敗')
       }
@@ -188,101 +150,71 @@ export default function CategoriesPage() {
     }
   }
 
-  const columns: Column<Category>[] = [
+  const columns: ListColumn<Category>[] = [
     {
-      key: 'name',
-      label: '分類名稱',
-      sortable: true,
-      className: 'align-middle',
-      render: (category: Category) => <span className="font-medium text-neutral-900">{category.name}</span>
+      key: 'name', label: '分類名稱',
+      sortValue: c => c.name,
+      render: c => <span className="font-medium text-neutral-900">{c.name}</span>,
     },
     {
-      key: 'sort_order',
-      label: '排序',
-      sortable: true,
-      className: 'align-middle',
-      render: (category: Category) => <span>{category.sort_order}</span>
+      key: 'sortOrder', label: '排序',
+      sortValue: c => c.sort_order,
+      className: 'font-mono',
+      render: c => <>{c.sort_order}</>,
     },
     {
-      key: 'is_active',
-      label: '狀態',
-      className: 'align-middle',
-      render: (category: Category) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          category.is_active 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-red-100 text-red-700'
-        }`}>
-          {category.is_active ? '啟用' : '停用'}
-        </span>
-      )
+      key: 'status', label: '狀態',
+      sortValue: c => (c.is_active ? 1 : 0),
+      render: c => (
+        <Switch checked={c.is_active} onCheckedChange={next => void toggleActive(c, next)} />
+      ),
     },
     {
-      key: 'created_at',
-      label: '建立時間',
-      sortable: true,
-      className: 'align-middle whitespace-nowrap',
-      render: (category: Category) => <span className="text-neutral-700 text-sm font-mono">{formatDateTime(category.created_at)}</span>
+      key: 'createdAt', label: '建立時間',
+      sortValue: c => new Date(c.created_at).getTime(),
+      className: 'font-mono',
+      render: c => <>{formatDateTime(c.created_at)}</>,
     },
     {
-      key: 'actions',
-      label: '操作',
-      sticky: true,
-      className: 'align-middle',
-      render: (category: Category) => (
+      key: 'operations', label: '操作', isActions: true,
+      render: c => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push(`/categories/${category.id}`)}
-            className="text-neutral-600 hover:text-neutral-900 text-sm font-medium"
-          >
-            綁商品
-          </button>
-          <button
-            onClick={() => handleEdit(category)}
-            className="text-primary hover:text-primary text-sm font-medium"
-          >
-            編輯
-          </button>
-          <button
-            onClick={() => handleDelete(category)}
-            className="text-red-500 hover:text-red-700 text-sm font-medium"
-          >
-            刪除
-          </button>
+          <RowAction onClick={() => router.push(`/categories/${c.id}`)}>綁商品</RowAction>
+          <RowAction tone="primary" onClick={() => handleEdit(c)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => handleDelete(c)}>刪除</RowAction>
         </div>
-      )
-    }
+      ),
+    },
   ]
 
   return (
-    <AdminLayout
-      pageTitle="分類清單"
-    >
+    <AdminLayout pageTitle="分類清單">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-neutral-800">分類列表</h2>
-          <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新增分類
-          </button>
-        </div>
-
-        <PageCard>
-          <DataTable
-            data={sortedCategories}
-            columns={columns}
-            keyField="id"
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            emptyMessage="沒有找到符合條件的分類"
-          />
-        </PageCard>
+        <ListTableCard
+          pageKey="categories"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="沒有找到符合條件的分類"
+          defaultSortField="sortOrder"
+          searchPlaceholder="搜尋分類名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增分類"
+          onAddClick={handleAdd}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: selectedStatus, onChange: setSelectedStatus,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '啟用' },
+                { value: 'inactive', label: '停用' },
+              ],
+            },
+          ]}
+        />
 
         <Modal
           isOpen={isModalOpen}
@@ -313,19 +245,6 @@ export default function CategoriesPage() {
                 onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
               />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4 text-primary border-neutral-300 rounded focus:ring-primary"
-              />
-              <label htmlFor="is_active" className="text-sm text-neutral-700">
-                啟用分類
-              </label>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">

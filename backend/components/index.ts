@@ -22,3 +22,5 @@ export * from './ui'
 
 // Types
 export type { Column } from './DataTable'
+export { default as ListTableCard, RowAction } from './ListTableCard'
+export type { ListColumn } from './ListTableCard'
