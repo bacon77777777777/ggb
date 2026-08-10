@@ -1361,15 +1361,16 @@ export default function ProductDetailPage() {
             <button
               type="button"
               className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-              style={{ top: 340, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
+              style={{ top: 430, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
               onClick={() => setIsCardImageMode(prev => !prev)}
             >
               <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
-                點擊卡包顯示圖片
+                點擊顯示圖片
               </span>
             </button>
 
-            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 167, height: 167, zIndex: 20 }}>
+            {/* 商品圖：點膠囊開、點圖或再點膠囊關（老闆指定）。167 放大三成 → 217 */}
+            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 217, height: 217, zIndex: 20 }}>
               {product.id && (
                 <div
                   className="absolute inset-0 flex items-center justify-center cursor-pointer"
