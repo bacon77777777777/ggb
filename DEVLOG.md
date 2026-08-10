@@ -4,6 +4,25 @@
 
 ---
 
+## v2026.08.10f｜2026-08-10｜盒玩背景音樂外洩到轉蛋彈窗；離開盒玩頁確實關閉
+
+老闆回報：轉蛋的恭喜獲得彈窗跳出來之後也有盒玩的背景音樂。
+
+根因是 `MUS.volume` 是**模組層狀態，活得比機台元件久**。盒玩機台把它設成
+0.38，離開頁面時 `disposeMachineAudio()` 只關了 AudioContext 與排程器，
+沒還原這個值。玩家接著切到轉蛋商品頁、恭喜獲得彈窗為了拿中獎號角呼叫
+`initMachineAudio()` 時，`musicStart()` 看到 volume 還是 0.38，就把盒玩專屬的
+背景音樂一起放出來了。
+
+- `disposeMachineAudio()` 一併還原 `MUS.volume = 0`、`ducking = false`、
+  排程游標歸零 —— 背景音樂只屬於盒玩機台，機台不在就不該有
+- `initMachineAudio(masterVolume?)` 改成選填：彈窗只是要號角，不帶音量進來，
+  就不該蓋掉機台從後台參數讀到的主音量（原本固定寫 0.8）
+
+實測（Playwright + swiftshader，站內導航才測得到，`page.goto` 是整頁重載
+會把模組狀態洗掉）：盒玩頁 `musicG = 0.2278` → 站內導到 `/gacha/13` 後
+context 變 `closed`，音樂與所有機械音全停。
+
 ## v2026.08.10e｜2026-08-10｜轉蛋新模組 gacha_mode5（紫金旋鈕機台），操作鈕移到底部
 
 老闆給了新圖素 `public/images/gacha/mode5/`，內容是 mode2/mode3 的組合

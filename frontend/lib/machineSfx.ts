@@ -96,11 +96,12 @@ function hookResume() {
  * 節點與排程器照樣先建好（時間軸是凍結的，不會空轉），任何互動 resume
  * 之後音樂就從凍結的地方接著播。
  */
-export function initMachineAudio(masterVolume = 0.8) {
+export function initMachineAudio(masterVolume?: number) {
   if (typeof window === 'undefined') return;
   hookResume();
   if (A) {
-    A.master.gain.value = masterVolume;
+    // 沒帶音量就別碰 —— 彈窗只是要拿中獎號角，不該蓋掉機台從後台讀來的音量
+    if (masterVolume !== undefined) A.master.gain.value = masterVolume;
     if (A.ctx.state === 'suspended') void A.ctx.resume();
     return;
   }
@@ -113,7 +114,7 @@ export function initMachineAudio(masterVolume = 0.8) {
   } catch { return; }
 
   const master = ctx.createGain();
-  master.gain.value = masterVolume;
+  master.gain.value = masterVolume ?? 0.8;
   master.connect(ctx.destination);
 
   const noise = buildPinkNoise(ctx);
@@ -161,10 +162,19 @@ export function resumeMachineAudio() {
 /**
  * 離開機台頁時收掉。常駐 loop 與音樂排程器不關會一直跑，
  * 玩家滑到別頁還聽得到嗡鳴。
+ *
+ * **音樂音量一定要歸零**：MUS 是模組層狀態，活得比機台元件久。
+ * 盒玩機台把它設成 0.38 之後如果不還原，玩家切到轉蛋商品頁、
+ * 恭喜獲得彈窗呼叫 initMachineAudio() 拿中獎號角時，音樂排程器
+ * 會跟著把盒玩的背景音樂一起放出來 —— 那是盒玩專屬的。
  */
 export function disposeMachineAudio() {
   if (MUS.timer) { clearInterval(MUS.timer); MUS.timer = null; }
   if (A) { void A.ctx.close(); A = null; }
+  MUS.volume = 0;
+  MUS.next = 0;
+  MUS.step = 0;
+  ducking = false;
 }
 
 /** 主音量（後台參數） */
