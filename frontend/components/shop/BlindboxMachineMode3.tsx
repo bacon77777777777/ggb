@@ -199,9 +199,12 @@ export function BlindboxMachineMode3({
     const GRAVITY      = 1200;
     const BOX_RES      = 0.12;
     const FLOOR_RES    = 0.06;
-    const FRICTION     = 0.975;
-    const ANG_FRIC_AIR  = 0.92;  // avZ decay in air
-    const ROT_FRIC      = 0.97;  // avX/avY decay in air
+    // 每「秒」保留的比例（原本是每幀 0.975，@60fps ≈ 每秒 0.22）
+    const FRICTION_PER_SEC     = 0.22;
+    const GROUND_DAMP_PER_SEC  = 0.05;
+    // 同樣改成「每秒保留比例」（原每幀 0.92 / 0.97 @60fps）
+    const ANG_FRIC_AIR_PER_SEC = 0.0068;  // avZ decay in air
+    const ROT_FRIC_PER_SEC     = 0.16;    // avX/avY decay in air
     const SETTLE_V      = 1.5;
 
     let lastTime: number | null = null;
@@ -217,19 +220,36 @@ export function BlindboxMachineMode3({
       for (const b of cur) {
         // Translation
         b.vy += GRAVITY * dt;
-        b.vx *= FRICTION; b.vy *= FRICTION;
+        /*
+         * 阻力一律以 dt 為基準（每幀固定乘一個係數的話，120Hz 螢幕
+         * 上的衰減是 60Hz 的兩倍，同一段動畫在不同機器上快慢不同）。
+         * 落地後再疊一層地面摩擦，讓箱子滑一小段自然停住，
+         * 而不是「還在動 → 瞬間定格」。
+         */
+        const airDamp = Math.pow(FRICTION_PER_SEC, dt);
+        b.vx *= airDamp; b.vy *= airDamp;
+        if (b.landed) b.vx *= Math.pow(GROUND_DAMP_PER_SEC, dt);
         b.x  += b.vx * dt; b.y += b.vy * dt;
 
         if (!b.landed) {
+          const angDamp = Math.pow(ANG_FRIC_AIR_PER_SEC, dt);
+          const rotDamp = Math.pow(ROT_FRIC_PER_SEC, dt);
           b.angleZ += b.avZ * dt;
-          b.avZ    *= ANG_FRIC_AIR;
+          b.avZ    *= angDamp;
           b.angleX += b.avX * dt;
-          b.avX    *= ROT_FRIC;
+          b.avX    *= rotDamp;
           b.angleY += b.avY * dt;
-          b.avY    *= ROT_FRIC;
+          b.avY    *= rotDamp;
         } else {
           // Simple friction decay — no spring, no target chasing, stops fast
-          b.avZ *= 0.80;
+          /*
+           * 落地後的角速度靠地面摩擦衰減。
+           * 用 dt 為基準（每秒衰減到 2%）而不是每幀 ×0.80 ——
+           * 後者在 120Hz 螢幕上衰減速度是 60Hz 的兩倍，看起來就是
+           * 「轉一下突然定住」。低於門檻直接歸零，免得殘留抖動。
+           */
+          b.avZ *= Math.pow(0.02, dt);
+          if (Math.abs(b.avZ) < 0.05) b.avZ = 0;
           b.angleZ += b.avZ * dt;
           b.angleX += (BASE_AX - b.angleX) * 0.35;
           b.angleY += (BASE_AY - b.angleY) * 0.35;
@@ -252,7 +272,11 @@ export function BlindboxMachineMode3({
             if (!blocked) {
               const roll = dir * Math.min(Math.abs(dxToCenter) * 3.2, 90) * dt;
               b.x      += roll;
-              b.angleZ += (roll / BOX_R) * (180 / Math.PI) * 0.45;
+              // angleZ 是**弧度**（transform 用 rotateZ(...rad)）。
+              // 原本這裡多乘了 180/π 把弧度當角度換算 —— 一幀就轉
+              // 1.8 弧度（每秒約 6400 度），這才是「落地後瘋狂旋轉」
+              // 的真正原因，跟被不被擋住無關。滾動角度 = 位移 / 半徑。
+              b.angleZ += (roll / BOX_R) * 0.45;
             }
           }
         }
