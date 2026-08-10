@@ -26,7 +26,6 @@ import LotteryDrawModal from '@/components/shop/LotteryDrawModal';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
 import CardDrawAnimation from '@/components/card/CardDrawAnimation';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
-import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
@@ -1399,24 +1398,8 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <ImageButton src="/images/gacha/btn2.png" alt="換一批" text="換一批"
-              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-              textClassName="text-base md:text-lg"
-              style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-              onClick={handleChangePack}
-            />
-            <ImageButton src="/images/gacha/btn1.png" alt="立即開包"
-              text={isSoldOut ? '查看結果' : isLotterySale ? '免費抽籤' : '立即開包'}
-              className="absolute" textClassName="text-base md:text-lg"
-              style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-              onClick={isSoldOut ? handleShowResults : handleDrawClick}
-            />
-            <ImageButton src="/images/gacha/btn2.png" alt="試試看" text="試試看"
-              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-              textClassName="text-base md:text-lg"
-              style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-              onClick={isSoldOut ? undefined : handleTrialCard}
-            />
+            {/* 機台上不畫按鈕（老闆指定）—— 換一批／立即開包／試試看
+                改走頁面底部固定操作欄，跟盒玩 blindbox_mode5、轉蛋 gacha_mode5 一致 */}
 
             {isSoldOut && (
               <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center" style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}>
@@ -1871,6 +1854,48 @@ export default function ProductDetailPage() {
             salePrices={prizes.map(p => (p as any).sale_price ?? 0)}
           />
         )}
+        {/* 底部固定操作欄 —— 機台上不再畫按鈕（老闆指定）。
+            版型與配色照盒玩 blindbox_mode5：左側單抽金額，右側三顆 */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
+            <div className="flex h-full shrink-0 flex-col justify-center pl-1">
+              <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
+                單抽
+              </span>
+              <div className="flex items-center gap-1">
+                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                  className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
+                <span className="font-amount text-xl font-black leading-none text-accent-red">
+                  {(product.price ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex h-[44px] flex-1 items-center gap-2">
+              <button
+                onClick={handleChangePack}
+                disabled={isSoldOut}
+                className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
+              >
+                換一批
+              </button>
+              <button
+                onClick={isSoldOut ? handleShowResults : handleDrawClick}
+                className="h-full flex-1 whitespace-nowrap rounded-xl bg-accent-red text-base font-black text-white shadow-lg shadow-accent-red/30 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSoldOut ? '查看結果' : isLotterySale ? '免費抽籤' : '立即開包'}
+              </button>
+              <button
+                onClick={handleTrialCard}
+                disabled={isSoldOut}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                試試看
+              </button>
+            </div>
+          </div>
+        </div>
+
         {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
       </div>
     );

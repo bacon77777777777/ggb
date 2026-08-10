@@ -21,6 +21,14 @@ interface GachaResultModalProps {
   isOpen: boolean;
   onClose: () => void;
   results: Prize[];
+  /**
+   * 隱藏籤號欄（老闆指定：轉蛋／盒玩不顯示）。
+   *
+   * 那兩種是機率抽，`ticket_number` 只是 play_gacha 拿剩餘量算出來的流水號，
+   * 對玩家沒有意義也驗不了；一番賞／抽卡／自製賞的籤號才是玩家選的、
+   * 能拿去對封存表的東西。
+   */
+  hideTicketNumber?: boolean;
 }
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
@@ -30,7 +38,7 @@ function prizeImage(p: Prize, failed: boolean): string {
   return p.image_url || `/images/item/${(p.id ?? '').toString().padStart(5, '0')}.jpg`;
 }
 
-export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalProps) {
+export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = false }: GachaResultModalProps) {
   /** 被點開看大圖的那一項（走總覽同一個全螢幕 sheet） */
   const [detail, setDetail] = useState<Prize | null>(null);
   const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
@@ -62,7 +70,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
   /** 一番賞才有籤號；整批都沒有就不佔那一欄（轉蛋／盒玩維持原樣） */
-  const hasTickets = results.some(p => typeof p.ticket_number === 'number');
+  const hasTickets = !hideTicketNumber && results.some(p => typeof p.ticket_number === 'number');
 
   return (
     <AnimatePresence>

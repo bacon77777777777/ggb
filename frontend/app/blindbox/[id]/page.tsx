@@ -866,6 +866,7 @@ export default function BlindboxDetailPage() {
             isOpen={isPrizeModalOpen}
             onClose={handlePrizeClose}
             results={blindboxResults}
+            hideTicketNumber
           />
         )}
       </div>

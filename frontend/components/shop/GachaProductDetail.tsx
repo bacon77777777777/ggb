@@ -576,7 +576,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
         </div>
       )}
 
-      <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} />
+      <GachaResultModal isOpen={showResultModal} onClose={handleResultClose} results={wonPrizes} hideTicketNumber />
       <PurchaseConfirmationModal
         isOpen={isPurchaseModalOpen}
         onClose={() => !isProcessing && setIsPurchaseModalOpen(false)}
