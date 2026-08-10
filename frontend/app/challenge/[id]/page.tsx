@@ -970,7 +970,6 @@ export default function MachinePage() {
         <PlayerProfileCard
           userId={profileUser.id}
           nickname={profileUser.nickname}
-          onWorship={() => {}}
           onClose={() => setProfileUser(null)}
         />
       )}
