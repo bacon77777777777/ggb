@@ -17,7 +17,13 @@ import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { BlindboxMachineMode2 } from '@/components/shop/BlindboxMachineMode2';
 import { BlindboxMachineMode3 } from '@/components/shop/BlindboxMachineMode3';
+import dynamic from 'next/dynamic';
 import { BlindboxMachineMode4 } from '@/components/shop/BlindboxMachineMode4';
+// three.js + matter.js 只有這台用得到，動態載入避免拖累其他機台的首屏
+const BlindboxMachineMode5 = dynamic(
+  () => import('@/components/shop/BlindboxMachineMode5').then(m => m.BlindboxMachineMode5),
+  { ssr: false },
+);
 import type { Prize as GachaPrize } from '@/components/GachaMachine';
 import { useToast } from '@/components/ui/Toast';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
@@ -26,7 +32,7 @@ type ProductRow = Database['public']['Tables']['products']['Row'];
 type PrizeRow = Database['public']['Tables']['product_prizes']['Row'];
 
 /** 貨架販賣機類主題：由機台元件自己演出，不走過場影片 */
-const VENDING_THEMES = ['blindbox_mode2', 'blindbox_mode3', 'blindbox_mode4'];
+const VENDING_THEMES = ['blindbox_mode2', 'blindbox_mode3', 'blindbox_mode4', 'blindbox_mode5'];
 const isVendingTheme = (theme: unknown) => VENDING_THEMES.includes(theme as string);
 
 export default function BlindboxDetailPage() {
@@ -529,6 +535,21 @@ export default function BlindboxDetailPage() {
         ) : effectiveTheme === 'blindbox_mode3' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
             <BlindboxMachineMode3
+              machineState={mode2State}
+              drawCount={mode2DrawCount}
+              boxImageUrl={(product as any).box_image_url ?? undefined}
+              remaining={product.remaining ?? 10}
+              onAnimationComplete={handleMode2AnimComplete}
+              onPush={() => {}}
+              onPurchase={handlePlay}
+              onTrial={handleTrial}
+              isSoldOut={isSoldOut}
+              onLoaded={() => setIsMachineReady(true)}
+            />
+          </div>
+        ) : effectiveTheme === 'blindbox_mode5' ? (
+          <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
+            <BlindboxMachineMode5
               machineState={mode2State}
               drawCount={mode2DrawCount}
               boxImageUrl={(product as any).box_image_url ?? undefined}

@@ -23,6 +23,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'blindbox_mode2',   label: '販賣機（可愛兔子貨架，盒子飛入取物口）' },
     { value: 'blindbox_mode3',   label: '販賣機（叢林探險，盒子飛入取物口）' },
     { value: 'blindbox_mode4',   label: '販賣機（賽璐璐風格，盒子飛入取物口）' },
+    { value: 'blindbox_mode5',   label: '販賣機（立體物理，3D 盒子推出翻落）' },
   ],
 }
 
