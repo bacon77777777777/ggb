@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 import { gradeStyle } from '@/lib/prizeGrade';
+import { playWinChime } from '@/lib/sfx';
 
 /**
  * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
@@ -33,28 +34,12 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   /** 被點開看大圖的那一項（走總覽同一個全螢幕 sheet） */
   const [detail, setDetail] = useState<Prize | null>(null);
   const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
-  const resultSoundRef = React.useRef<HTMLAudioElement | null>(null);
 
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const audio = new Audio('/audio/getpopup.mp3');
-    audio.preload = 'auto';
-    resultSoundRef.current = audio;
-    return () => {
-      if (resultSoundRef.current) {
-        resultSoundRef.current.pause();
-        resultSoundRef.current.src = '';
-        resultSoundRef.current.load();
-      }
-    };
-  }, []);
-
+  // 中獎音效（原盒玩「點擊取物」那顆，老闆指定移到這裡播）。
+  // 合成音效不用預載，開啟當下直接發聲
   React.useEffect(() => {
     if (!isOpen) return;
-    const audio = resultSoundRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
+    playWinChime();
   }, [isOpen]);
 
   React.useEffect(() => {

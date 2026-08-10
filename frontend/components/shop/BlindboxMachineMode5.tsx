@@ -113,7 +113,7 @@ export function BlindboxMachineMode5({
      重新產生的函式就得走 ref，不然會抓到第一次的舊 closure */
   const sfxRef = useRef({
     thunk: (_p: number) => {}, rumble: (_p: number) => {}, clack: () => {},
-    ding: () => {}, collectSfx: () => {}, whirr: () => {},
+    ding: () => {}, whirr: () => {},
   });
   const resetRef = useRef<(() => void) | null>(null);
   const refillRef = useRef<(() => void) | null>(null);
@@ -272,18 +272,11 @@ export function BlindboxMachineMode5({
     tone('triangle', 1318.5, 1318.5, 0.36, 0.075, c ? c.currentTime + 0.09 : 0);
   }, [tone]);
 
-  /** 取物：抽取聲 + 上行琶音 */
-  const collectSfx = useCallback(() => {
-    const c = A.current.ctx;
-    if (!c) return;
-    const t = c.currentTime;
-    noiseHit(0.26, 0.16, 400, 3200, 1.1, t);
-    [0, 4, 7, 12].forEach((semi, i) => {
-      const f = 523.25 * Math.pow(2, semi / 12);
-      tone('triangle', f, f, 0.7, 0.16, t + 0.06 + i * 0.065);
-    });
-  }, [noiseHit, tone]);
-
+  /*
+   * 取物本身不再出聲（老闆指定）。原本這裡的「抽取聲＋上行琶音」已搬到
+   * 恭喜獲得彈窗（lib/sfx.ts 的 playWinChime）—— 取物後彈窗馬上開，
+   * 兩邊都響等於同一個動作聽到兩次。
+   */
   const uiClick = useCallback(() => {
     noiseHit(0.05, 0.12, 1800, 600, 2.0);
     tone('square', 620, 380, 0.05, 0.05);
@@ -298,8 +291,8 @@ export function BlindboxMachineMode5({
   useEffect(() => () => { void A.current.ctx?.close(); }, []);
 
   useEffect(() => {
-    sfxRef.current = { thunk, rumble, clack, ding, collectSfx, whirr };
-  }, [thunk, rumble, clack, ding, collectSfx, whirr]);
+    sfxRef.current = { thunk, rumble, clack, ding, whirr };
+  }, [thunk, rumble, clack, ding, whirr]);
 
   // ── three.js + matter.js 建場 ────────────────────────────────────────────
   useEffect(() => {
@@ -874,14 +867,13 @@ export function BlindboxMachineMode5({
     if (!S_ || !S_.ctaOn) return;
     S_.ctaOn = false;
     S_.pendingDone = true;
-    collectSfx();
     setReadyToPick(false);
     S_.boxes.forEach(b => {
       if (b.phase !== 'phys') return;
       b.phase = 'out'; b.outT = 0;
       if (b.body) { Matter.Composite.remove(S_.engine.world, b.body); b.body = null; }
     });
-  }, [collectSfx]);
+  }, []);
 
   return (
     <div className="relative w-full h-full select-none">
