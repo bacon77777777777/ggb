@@ -105,8 +105,10 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                 恭喜獲得 <span className="text-accent-red">{results.length}</span> 項
               </h3>
 
-              {/* 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列開全螢幕大圖 */}
-              <div className="mb-4 max-h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
+              {/* 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列開全螢幕大圖。
+                  高度固定（不是 max-h）—— 老闆指定彈窗大小不隨抽數變，
+                  抽 1 次跟抽 10 次一樣高，位置不會跳 */}
+              <div className="mb-4 h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
                 {results.map((p, i) => {
                   const g = p.grade || p.rarity;
                   const gs = gradeStyle(g);
