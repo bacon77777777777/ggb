@@ -147,18 +147,17 @@ export default function ProductCard(props: ProductCardProps) {
         {/* Content */}
         <div className="flex flex-col flex-1 p-2 md:pt-2 md:-mt-0.5">
           <div className="mb-1 h-[2.75rem]">
-            <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] group-hover:text-primary transition-colors break-all">
-              {/* Safari 的 -webkit-line-clamp 有兩類誤判觸發源，這裡都踩過：
-                  1. 有定位的 inline 元素（relative -top-*）→ 改 vertical-align
-                  2. 原子行內盒（inline-flex / inline-block / backdrop-filter）
-                     → badge 必須是純 inline，膠囊高度用 py 撐（≈原 h-4）
-                  兩類都會讓名稱明明放得下也硬加刪節號（桌機 Chrome 正常、
-                  iPhone 全系瀏覽器都是 WebKit 所以全中）。名稱 13 字全顯示
-                  還加點點點就是這裡的病 —— clamp 範圍內只准放純 inline */}
+            <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white max-h-[35px] overflow-hidden leading-[1.25] group-hover:text-primary transition-colors break-all">
+              {/* 這裡刻意**不用 line-clamp**：Safari 的 -webkit-line-clamp
+                  遇到有定位的元素、inline-flex 這類原子行內盒都會誤判超行，
+                  名稱明明放得下也硬加刪節號（13 字全名照樣點點點，iPhone
+                  全系瀏覽器都是 WebKit 所以全中）。改用兩行高度＋overflow
+                  裁切：排版與行距跟原本完全一樣，超過兩行的名稱在行界
+                  乾淨切掉、永遠沒有刪節號 —— 老闆定案不需要點點點 */}
               {type && (
                 <ProductBadge
                   type={type}
-                  className="inline align-[-0.125em] mr-1 py-[3px] backdrop-blur-none"
+                  className="inline-flex align-[-0.125em] mr-1"
                 />
               )}
               <span className="inline">
