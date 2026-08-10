@@ -158,7 +158,7 @@ export default function ProductCard(props: ProductCardProps) {
               {type && (
                 <ProductBadge
                   type={type}
-                  className="inline align-[-0.125em] mr-1 py-[3px] backdrop-blur-none"
+                  className="inline align-[1px] mr-1 py-[3px] backdrop-blur-none"
                 />
               )}
               <span className="inline">
