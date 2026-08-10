@@ -1,13 +1,22 @@
 'use client'
 
-import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, FilterTags, SortableTableHeader, Modal } from '@/components'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/contexts/ToastContext'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import ConfirmDialog from '@/components/ConfirmDialog'
+
+/**
+ * 分類清單 —— 版型以「商品管理」為基準（老闆定案的全後台列表模板）：
+ * PageCard 單一容器、SearchToolbar（新增＋搜尋＋篩選＋密度＋欄位開關）、
+ * FilterTags、灰底表頭＋排序箭頭、密度共用 useTablePrefs、sticky 操作欄。
+ * 之後其他列表頁（促銷方案、輪播圖…）都照這一頁的組裝方式換數據。
+ */
 
 interface Category {
   id: string
@@ -15,7 +24,6 @@ interface Category {
   sort_order: number
   is_active: boolean
   created_at: string
-  products?: { count: number }[]
 }
 
 export default function CategoriesPage() {
@@ -28,7 +36,25 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [sortField, setSortField] = useState<string>('sort_order')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('all')
+
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('categories', 'compact', {
+    name: true,
+    sortOrder: true,
+    status: true,
+    createdAt: true,
+    operations: true,
+  })
+
+  const getDensityClasses = () => {
+    switch (tableDensity) {
+      case 'compact': return 'py-2 px-2'
+      case 'normal': return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  }
+
   const [formData, setFormData] = useState({
     name: '',
     sort_order: 0,
@@ -38,17 +64,16 @@ export default function CategoriesPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true)
-      // 暫時移除 products(count) 避免因關聯或權限問題導致查詢失敗
       const { data, error } = await supabase
         .from('categories')
         .select('*')
         .order('sort_order', { ascending: true })
-      
+
       if (error) throw error
       setCategories(data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching categories:', error)
-      toast(`載入分類失敗: ${error.message}`, 'error')
+      toast(`載入分類失敗: ${error instanceof Error ? error.message : ''}`, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -67,43 +92,41 @@ export default function CategoriesPage() {
     }
   }
 
+  const filteredCategories = useMemo(() => {
+    let result = categories
+    if (selectedStatus !== 'all') {
+      result = result.filter(c => (selectedStatus === 'active') === c.is_active)
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(c => c.name.toLowerCase().includes(q))
+    }
+    return result
+  }, [categories, selectedStatus, searchQuery])
+
   const sortedCategories = useMemo(() => {
-    const data = [...categories]
+    const data = [...filteredCategories]
     return data.sort((a, b) => {
-      let aValue: any
-      let bValue: any
+      let aValue: string | number
+      let bValue: string | number
       switch (sortField) {
         case 'name':
-          aValue = a.name
-          bValue = b.name
-          break
-        case 'sort_order':
-          aValue = a.sort_order
-          bValue = b.sort_order
-          break
-        case 'is_active':
-          aValue = a.is_active ? 1 : 0
-          bValue = b.is_active ? 1 : 0
-          break
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
+          aValue = a.name; bValue = b.name; break
+        case 'sortOrder':
+          aValue = a.sort_order; bValue = b.sort_order; break
+        case 'status':
+          aValue = a.is_active ? 1 : 0; bValue = b.is_active ? 1 : 0; break
+        case 'createdAt':
+          aValue = new Date(a.created_at).getTime(); bValue = new Date(b.created_at).getTime(); break
         default:
-          aValue = a.sort_order
-          bValue = b.sort_order
+          aValue = a.sort_order; bValue = b.sort_order
       }
-      if (typeof aValue === 'string') {
-        return sortDirection === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      } else {
-        return sortDirection === 'asc'
-          ? aValue - bValue
-          : bValue - aValue
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
       }
+      return sortDirection === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number)
     })
-  }, [categories, sortField, sortDirection])
+  }, [filteredCategories, sortField, sortDirection])
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category)
@@ -140,15 +163,14 @@ export default function CategoriesPage() {
       title: '確認操作',
       message: "確定要刪除此分類嗎？",
       onConfirm: async () => {
-
-      try {
-        const res = await fetch(`/api/admin/categories?id=${category.id}`, { method: 'DELETE', credentials: 'include' })
-        if (!res.ok) throw new Error('刪除失敗')
-        fetchData()
-      } catch (error) {
-        console.error('Error deleting category:', error)
-        toast('刪除失敗', 'error')
-      }
+        try {
+          const res = await fetch(`/api/admin/categories?id=${category.id}`, { method: 'DELETE', credentials: 'include' })
+          if (!res.ok) throw new Error('刪除失敗')
+          fetchData()
+        } catch (error) {
+          console.error('Error deleting category:', error)
+          toast('刪除失敗', 'error')
+        }
       },
     })
   }
@@ -188,100 +210,158 @@ export default function CategoriesPage() {
     }
   }
 
-  const columns: Column<Category>[] = [
-    {
-      key: 'name',
-      label: '分類名稱',
-      sortable: true,
-      className: 'align-middle',
-      render: (category: Category) => <span className="font-medium text-neutral-900">{category.name}</span>
-    },
-    {
-      key: 'sort_order',
-      label: '排序',
-      sortable: true,
-      className: 'align-middle',
-      render: (category: Category) => <span>{category.sort_order}</span>
-    },
-    {
-      key: 'is_active',
-      label: '狀態',
-      className: 'align-middle',
-      render: (category: Category) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          category.is_active 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-red-100 text-red-700'
-        }`}>
-          {category.is_active ? '啟用' : '停用'}
-        </span>
-      )
-    },
-    {
-      key: 'created_at',
-      label: '建立時間',
-      sortable: true,
-      className: 'align-middle whitespace-nowrap',
-      render: (category: Category) => <span className="text-neutral-700 text-sm font-mono">{formatDateTime(category.created_at)}</span>
-    },
-    {
-      key: 'actions',
-      label: '操作',
-      sticky: true,
-      className: 'align-middle',
-      render: (category: Category) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push(`/categories/${category.id}`)}
-            className="text-neutral-600 hover:text-neutral-900 text-sm font-medium"
-          >
-            綁商品
-          </button>
-          <button
-            onClick={() => handleEdit(category)}
-            className="text-primary hover:text-primary text-sm font-medium"
-          >
-            編輯
-          </button>
-          <button
-            onClick={() => handleDelete(category)}
-            className="text-red-500 hover:text-red-700 text-sm font-medium"
-          >
-            刪除
-          </button>
-        </div>
-      )
-    }
-  ]
-
   return (
-    <AdminLayout
-      pageTitle="分類清單"
-    >
+    <AdminLayout pageTitle="分類清單">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-neutral-800">分類列表</h2>
-          <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新增分類
-          </button>
-        </div>
-
         <PageCard>
-          <DataTable
-            data={sortedCategories}
-            columns={columns}
-            keyField="id"
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            emptyMessage="沒有找到符合條件的分類"
+          <SearchToolbar
+            searchPlaceholder="搜尋分類名稱..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            showAddButton={true}
+            addButtonText="+ 新增分類"
+            onAddClick={handleAdd}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showColumnToggle={true}
+            columns={[
+              { key: 'name', label: '分類名稱', visible: visibleColumns.name },
+              { key: 'sortOrder', label: '排序', visible: visibleColumns.sortOrder },
+              { key: 'status', label: '狀態', visible: visibleColumns.status },
+              { key: 'createdAt', label: '建立時間', visible: visibleColumns.createdAt },
+              { key: 'operations', label: '操作', visible: visibleColumns.operations },
+            ]}
+            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: '狀態',
+                type: 'select',
+                value: selectedStatus,
+                onChange: setSelectedStatus,
+                options: [
+                  { value: 'all', label: '全部狀態' },
+                  { value: 'active', label: '啟用' },
+                  { value: 'inactive', label: '停用' },
+                ]
+              },
+            ]}
           />
+
+          <FilterTags
+            tags={[
+              ...(selectedStatus !== 'all' ? [{
+                key: 'status',
+                label: '狀態',
+                value: selectedStatus === 'active' ? '啟用' : '停用',
+                color: 'primary' as const,
+                onRemove: () => setSelectedStatus('all')
+              }] : []),
+            ]}
+            onClearAll={() => { setSelectedStatus('all'); setSearchQuery('') }}
+          />
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-neutral-50 border-b border-neutral-200">
+                <tr className="border-b border-neutral-200">
+                  {visibleColumns.name && (
+                    <SortableTableHeader sortKey="name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      分類名稱
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.sortOrder && (
+                    <SortableTableHeader sortKey="sortOrder" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      排序
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.status && (
+                    <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      狀態
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.createdAt && (
+                    <SortableTableHeader sortKey="createdAt" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                      建立時間
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.operations && (
+                    <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>操作</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <TableSkeleton rows={5} cols={5} />
+                ) : sortedCategories.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center">
+                      <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
+                        <span>沒有找到符合條件的分類</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  sortedCategories.map(category => (
+                    <tr key={category.id} className="border-b border-neutral-100 hover:bg-neutral-50/60 transition-colors">
+                      {visibleColumns.name && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-700 whitespace-nowrap`}>
+                          <span className="font-medium text-neutral-900">{category.name}</span>
+                        </td>
+                      )}
+                      {visibleColumns.sortOrder && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-700 font-mono whitespace-nowrap`}>
+                          {category.sort_order}
+                        </td>
+                      )}
+                      {visibleColumns.status && (
+                        <td className={`${getDensityClasses()} whitespace-nowrap`}>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            category.is_active
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {category.is_active ? '啟用' : '停用'}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.createdAt && (
+                        <td className={`${getDensityClasses()} text-sm text-neutral-700 font-mono whitespace-nowrap`}>
+                          {formatDateTime(category.created_at)}
+                        </td>
+                      )}
+                      {visibleColumns.operations && (
+                        <td className={`${getDensityClasses()} sticky right-0 bg-white z-10 border-l border-neutral-200 whitespace-nowrap`}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => router.push(`/categories/${category.id}`)}
+                              className="text-neutral-600 hover:text-neutral-900 text-sm font-medium"
+                            >
+                              綁商品
+                            </button>
+                            <button
+                              onClick={() => handleEdit(category)}
+                              className="text-primary hover:text-primary text-sm font-medium"
+                            >
+                              編輯
+                            </button>
+                            <button
+                              onClick={() => handleDelete(category)}
+                              className="text-red-500 hover:text-red-700 text-sm font-medium"
+                            >
+                              刪除
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </PageCard>
 
         <Modal
