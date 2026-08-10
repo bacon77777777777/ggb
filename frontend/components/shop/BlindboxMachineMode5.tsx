@@ -20,6 +20,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import * as Matter from 'matter-js';
 import { createClient } from '@/lib/supabase/client';
+import {
+  initMachineAudio, disposeMachineAudio, setMachineVolume, setMusicVolume, setMachineMotion, setDucking,
+  sfxThunk, sfxRumble, sfxClack, sfxDing, sfxWhirr, sfxCollect, sfxUiClick,
+} from '@/lib/machineSfx';
 
 export interface BlindboxMachineMode5Props {
   machineState: 'idle' | 'animating';
@@ -62,6 +66,9 @@ const DEFAULTS = {
   shake: true, shadow: true,
 };
 type Params = typeof DEFAULTS;
+
+/** 背景音樂音量（原型控制面板的預設值） */
+const MUSIC_VOLUME = 0.38;
 
 type Phase = 'stock' | 'push' | 'tip' | 'phys' | 'advance' | 'fade' | 'out' | 'gone';
 
@@ -109,12 +116,8 @@ export function BlindboxMachineMode5({
   const paramsRef = useRef<Params>(DEFAULTS);
   const doneRef = useRef<(() => void) | undefined>(undefined);
   doneRef.current = onAnimationComplete;
-  /* 音效與重擺盒的橋：three.js 迴圈只建一次，要呼叫外面每次 render
-     重新產生的函式就得走 ref，不然會抓到第一次的舊 closure */
-  const sfxRef = useRef({
-    thunk: (_p: number) => {}, rumble: (_p: number) => {}, clack: () => {},
-    ding: () => {}, collectSfx: () => {}, whirr: () => {},
-  });
+  /** 撞擊音效 45ms 冷卻：十顆盒子同時落地時聲音會密但不糊 */
+  const lastSfx = useRef(0);
   const resetRef = useRef<(() => void) | null>(null);
   const refillRef = useRef<(() => void) | null>(null);
 
@@ -133,173 +136,44 @@ export function BlindboxMachineMode5({
   }, []);
 
   /*
-   * 音效：整套 WebAudio 合成，不含任何音檔（照老闆更新後的原型）。
-   * 馬達與伺服是常駐 loop，靠 gain 淡進淡出跟著機台狀態走 ——
-   * 這是它比一次性 mp3 好的地方：推出時才有伺服聲、停了就安靜。
+   * 音效：整套 WebAudio 合成，不含任何音檔（照老闆更新後的原型，共 11 個音源）。
+   * 引擎在 lib/machineSfx.ts —— 中獎號角要由「恭喜獲得」彈窗（另一個元件）
+   * 來播，兩邊得共用同一個 AudioContext，音樂 ducking 才壓得到號角。
+   *
+   * 馬達與伺服是常駐 loop，靠 gain 淡進淡出跟著機台狀態走 —— 這是它比
+   * 一次性 mp3 好的地方：推出時才有伺服聲、停了就安靜。
    */
-  const A = useRef<{
-    ctx: AudioContext | null; master: GainNode | null;
-    noise: AudioBuffer | null; motorG: GainNode | null; servoG: GainNode | null;
-  }>({ ctx: null, master: null, noise: null, motorG: null, servoG: null });
-  const lastSfx = useRef(0);
-  const lastRumble = useRef(0);
-
   const audioInit = useCallback(() => {
-    const a = A.current;
-    if (a.ctx) { if (a.ctx.state === 'suspended') void a.ctx.resume(); return; }
-    try {
-      const Ctx = window.AudioContext
-        || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      a.ctx = new Ctx();
-    } catch { return; }
-    const c = a.ctx;
-    a.master = c.createGain();
-    a.master.gain.value = paramsRef.current.volume;
-    a.master.connect(c.destination);
-
-    // 粉紅噪音（比白噪音耐聽），機械聲的底
-    const n = Math.floor(c.sampleRate * 2);
-    const buf = c.createBuffer(1, n, c.sampleRate);
-    const d = buf.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0;
-    for (let i = 0; i < n; i++) {
-      const w = Math.random() * 2 - 1;
-      b0 = 0.99765 * b0 + w * 0.0990460;
-      b1 = 0.96300 * b1 + w * 0.2965164;
-      b2 = 0.57000 * b2 + w * 1.0526913;
-      d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.22;
-    }
-    a.noise = buf;
-
-    // 機台運作：低頻嗡鳴 + 齒輪噪音 + 轉速抖動
-    a.motorG = c.createGain(); a.motorG.gain.value = 0; a.motorG.connect(a.master);
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 460; lp.Q.value = 5;
-    lp.connect(a.motorG);
-    const o1 = c.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 57;
-    const o2 = c.createOscillator(); o2.type = 'square'; o2.frequency.value = 86;
-    const og = c.createGain(); og.gain.value = 0.45; o1.connect(og); o2.connect(og); og.connect(lp);
-    const gn = c.createBufferSource(); gn.buffer = buf; gn.loop = true;
-    const gbp = c.createBiquadFilter(); gbp.type = 'bandpass'; gbp.frequency.value = 900; gbp.Q.value = 1.1;
-    const gng = c.createGain(); gng.gain.value = 0.5;
-    gn.connect(gbp); gbp.connect(gng); gng.connect(a.motorG);
-    const lfo = c.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 7.2;
-    const lg = c.createGain(); lg.gain.value = 5.5; lfo.connect(lg); lg.connect(o1.frequency);
-
-    // 推桿伺服：高一階的機械嘶聲，只在推出時開
-    a.servoG = c.createGain(); a.servoG.gain.value = 0; a.servoG.connect(a.master);
-    const sbp = c.createBiquadFilter(); sbp.type = 'bandpass'; sbp.frequency.value = 1750; sbp.Q.value = 3.4;
-    sbp.connect(a.servoG);
-    const so = c.createOscillator(); so.type = 'square'; so.frequency.value = 214;
-    const sog = c.createGain(); sog.gain.value = 0.30; so.connect(sog); sog.connect(sbp);
-    const sn = c.createBufferSource(); sn.buffer = buf; sn.loop = true;
-    const sng = c.createGain(); sng.gain.value = 0.75; sn.connect(sng); sng.connect(sbp);
-    const slfo = c.createOscillator(); slfo.type = 'sawtooth'; slfo.frequency.value = 23;
-    const slg = c.createGain(); slg.gain.value = 16; slfo.connect(slg); slg.connect(so.frequency);
-
-    o1.start(); o2.start(); gn.start(); lfo.start(); so.start(); sn.start(); slfo.start();
+    initMachineAudio(paramsRef.current.volume);
+    setMusicVolume(MUSIC_VOLUME);   // 背景音樂只在這台機器上響
   }, []);
 
-  const env = useCallback((dur: number, peak: number, t0?: number) => {
-    const c = A.current.ctx!;
-    const g = c.createGain(), t = t0 ?? c.currentTime;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    g.connect(A.current.master!);
-    return g;
-  }, []);
+  /*
+   * 進商品頁就開始播背景音樂（老闆指定），不等玩家按「立即開盒」。
+   *
+   * 此時多半還沒有任何互動，AudioContext 會是 suspended —— 節點與排程器
+   * 照樣先建好，時間軸凍結不會空轉，玩家點畫面任何一處就接上。
+   */
+  useEffect(() => { audioInit(); }, [audioInit]);
 
-  const noiseHit = useCallback((dur: number, peak: number, f0: number, f1: number, q: number, t0?: number) => {
-    const a = A.current;
-    if (!a.ctx || !a.noise) return;
-    const c = a.ctx, t = t0 ?? c.currentTime;
-    const s2 = c.createBufferSource(); s2.buffer = a.noise;
-    s2.playbackRate.value = 0.7 + Math.random() * 0.6;
-    const f = c.createBiquadFilter();
-    f.type = q ? 'bandpass' : 'lowpass';
-    if (q) f.Q.value = q;
-    f.frequency.setValueAtTime(f0, t);
-    f.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    s2.connect(f); f.connect(env(dur, peak, t));
-    s2.start(t); s2.stop(t + dur + 0.05);
-  }, [env]);
-
-  const tone = useCallback((type: OscillatorType, f0: number, f1: number, dur: number, peak: number, t0?: number) => {
-    const c = A.current.ctx;
-    if (!c) return;
-    const t = t0 ?? c.currentTime;
-    const o = c.createOscillator(); o.type = type;
-    o.frequency.setValueAtTime(f0, t);
-    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    o.connect(env(dur, peak, t)); o.start(t); o.stop(t + dur + 0.05);
-  }, [env]);
-
-  /** 紙盒撞擊（力道越大越低沉） */
-  const thunk = useCallback((power: number) => {
-    noiseHit(0.10 + power * 0.09, 0.06 + power * 0.30, 500 + power * 1900, 260, 0);
-    tone('sine', 120 - power * 35, 52, 0.13, 0.11 * power + 0.01);
-  }, [noiseHit, tone]);
-
-  /** 機台被砸到的悶響 —— 撞得夠重才觸發，配合鏡頭震動 */
-  const rumble = useCallback((power: number) => {
-    if (!A.current.ctx) return;
-    const now = performance.now();
-    if (now - lastRumble.current < 240) return;
-    lastRumble.current = now;
-    tone('sine', 76, 36, 0.45, 0.26 * power + 0.03);
-    noiseHit(0.40, 0.20 * power, 320, 80, 0);
-  }, [noiseHit, tone]);
-
-  /** 盒子脫離層板的木質喀噠 */
-  const clack = useCallback(() => {
-    noiseHit(0.055, 0.16, 2600, 700, 2.2);
-    tone('triangle', 320, 190, 0.06, 0.07);
-  }, [noiseHit, tone]);
-
-  /** 換一批：滑軌推送 */
-  const whirr = useCallback(() => {
-    const c = A.current.ctx;
-    if (!c) return;
-    noiseHit(0.42, 0.13, 700, 2200, 1.6);
-    tone('sawtooth', 90, 150, 0.40, 0.045);
-    noiseHit(0.10, 0.14, 900, 300, 0, c.currentTime + 0.44);
-  }, [noiseHit, tone]);
-
-  /** 「點擊取物」浮現 */
-  const ding = useCallback(() => {
-    const c = A.current.ctx;
-    tone('triangle', 880, 880, 0.28, 0.10);
-    tone('triangle', 1318.5, 1318.5, 0.36, 0.075, c ? c.currentTime + 0.09 : 0);
-  }, [tone]);
-
-  /** 取物：抽取聲 + 上行琶音 */
-  const collectSfx = useCallback(() => {
-    const c = A.current.ctx;
-    if (!c) return;
-    const t = c.currentTime;
-    noiseHit(0.26, 0.16, 400, 3200, 1.1, t);
-    [0, 4, 7, 12].forEach((semi, i) => {
-      const f = 523.25 * Math.pow(2, semi / 12);
-      tone('triangle', f, f, 0.7, 0.16, t + 0.06 + i * 0.065);
-    });
-  }, [noiseHit, tone]);
-
-  const uiClick = useCallback(() => {
-    noiseHit(0.05, 0.12, 1800, 600, 2.0);
-    tone('square', 620, 380, 0.05, 0.05);
-  }, [noiseHit, tone]);
+  /*
+   * 後台的每格存量（stock）是非同步讀回來的，建場時 paramsRef 還停在 DEFAULTS。
+   * 不重擺的話「剛進來的排法」會用預設值，而抽完補貨走的是讀回來的值 ——
+   * 同一台機器兩種密度。參數到齊且機台閒置時重擺一次，兩邊就一致了。
+   */
+  const builtStock = useRef(DEFAULTS.stock);
+  useEffect(() => {
+    if (params.stock === builtStock.current) return;   // 只在存量真的變了才重擺，不是每次回到 idle
+    if (machineState !== 'idle') return;
+    builtStock.current = params.stock;
+    resetRef.current?.();
+  }, [params.stock, machineState]);
 
   // 音量跟著後台參數走
-  useEffect(() => {
-    if (A.current.master) A.current.master.gain.value = params.volume;
-  }, [params.volume]);
+  useEffect(() => { setMachineVolume(params.volume); }, [params.volume]);
 
-  // 離開頁面把 AudioContext 收掉，不然常駐 loop 會一直跑
-  useEffect(() => () => { void A.current.ctx?.close(); }, []);
-
-  useEffect(() => {
-    sfxRef.current = { thunk, rumble, clack, ding, collectSfx, whirr };
-  }, [thunk, rumble, clack, ding, collectSfx, whirr]);
+  // 離開機台頁把整套收掉，不然常駐 loop 與音樂排程器會一直跑
+  useEffect(() => () => { disposeMachineAudio(); }, []);
 
   // ── three.js + matter.js 建場 ────────────────────────────────────────────
   useEffect(() => {
@@ -538,8 +412,8 @@ export function BlindboxMachineMode5({
           b.wob = Math.max(b.wob, power * 0.20);
         });
         if (paramsRef.current.shake) S_.shake = Math.max(S_.shake, power * 7);
-        if (now - lastSfx.current > 45) { lastSfx.current = now; sfxRef.current.thunk(power); }
-        if (power > 0.42) sfxRef.current.rumble(power);   // 撞得夠重才震到機台本體
+        if (now - lastSfx.current > 45) { lastSfx.current = now; sfxThunk(power); }
+        if (power > 0.42) sfxRumble(power);   // 撞得夠重才震到機台本體
       });
     });
 
@@ -625,7 +499,7 @@ export function BlindboxMachineMode5({
       M.Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.09);
       b.body = body; b.phase = 'phys'; b.zCur = b.group.position.z;
       b.mesh.material = matsLit;   // 取物口只透 25%，換補光材質
-      sfxRef.current.clack();
+      sfxClack();
       setShadow(b, 0, 1);
       M.Composite.add(engine.world, body);
     };
@@ -664,7 +538,15 @@ export function BlindboxMachineMode5({
           || b.phase === 'fade' || b.phase === 'out') busy = true;
         if (b.phase === 'push') { pushing++; moving++; }
         else if (b.phase === 'advance') moving++;
-        if (b.phase === 'phys') { inTray++; if (b.body?.isSleeping) settled++; }
+        /*
+         * 「落定」不等 matter.js 判 isSleeping —— 那要連續多幀低於門檻才會進睡眠，
+         * 十顆盒子互相推擠時常拖到一兩秒，玩家早就在等了。改成看速度：
+         * 慢到 1.6 以下就算定位，CTA 提早浮出（老闆指定）。睡著的當然也算。
+         */
+        if (b.phase === 'phys') {
+          inTray++;
+          if (b.body && (b.body.isSleeping || (b.body.speed ?? 0) < 1.6)) settled++;
+        }
       });
       if (S_.dropping && !waiting) S_.dropping = false;
 
@@ -714,7 +596,7 @@ export function BlindboxMachineMode5({
 
       // 全部落定 → 浮出「點擊取物」
       if (!busy && inTray > 0 && settled === inTray && !S_.ctaOn) {
-        if (!S_.ctaDinged) { S_.ctaDinged = true; sfxRef.current.ding(); }
+        if (!S_.ctaDinged) { S_.ctaDinged = true; sfxDing(); }
         S_.ctaOn = true;
         setReadyToPick(true);
       }
@@ -729,13 +611,9 @@ export function BlindboxMachineMode5({
       // 取物動畫跑完 → 通知商品頁彈恭喜視窗
       if (S_.pendingDone && !busy) { S_.pendingDone = false; doneRef.current?.(); }
 
-      const ac = A.current;
-      if (ac.ctx) {
-        const at = (node: GainNode | null, v: number, tau: number) =>
-          node?.gain.setTargetAtTime(v, ac.ctx!.currentTime, tau);
-        at(ac.motorG, moving ? 0.15 : 0, moving ? 0.05 : 0.10);
-        at(ac.servoG, pushing ? 0.075 : 0, pushing ? 0.04 : 0.07);
-      }
+      // 演出中（機台在動／CTA 亮著）把背景音樂壓低，讓機械聲出得來
+      setDucking(S_.busy || S_.ctaOn);
+      setMachineMotion(moving > 0, pushing > 0);
       matsLit.forEach(m => { m.emissiveIntensity = P.lit; });
       engine.gravity.y = P.gravity;
 
@@ -768,6 +646,9 @@ export function BlindboxMachineMode5({
       const bySlot = new Map<Box['slot'], Box[]>();
       S_.boxes.forEach(b => {
         if (b.phase === 'gone' || b.phase === 'out' || b.phase === 'phys') return;
+        // 正在淡出的盒子（換一批把前排消掉的那顆）等一下就會消失，不能算庫存 ——
+        // 算進去的話這格就補不到新盒，每按一次「換一批」機台就少一顆，越玩越空
+        if (b.phase === 'fade' && !b.fadeIn) return;
         bySlot.set(b.slot, [...(bySlot.get(b.slot) ?? []), b]);
       });
       // 清掉已經消失的盒子，表才不會無限長大
@@ -819,7 +700,7 @@ export function BlindboxMachineMode5({
     const S_ = sceneRef.current;
     if (!S_ || machineState !== 'animating') return;
     audioInit();
-    uiClick();
+    sfxUiClick();
 
     const P = paramsRef.current;
     const t0 = performance.now();
@@ -844,7 +725,7 @@ export function BlindboxMachineMode5({
     S_.dropping = true;
     S_.ctaOn = false;
     setReadyToPick(false);
-  }, [machineState, drawCount, audioInit, uiClick]);
+  }, [machineState, drawCount, audioInit]);
 
   // 換一批：前排淡出 → 後排遞補 → 最後方淡入新的一盒
   const firstRestock = useRef(true);
@@ -852,7 +733,7 @@ export function BlindboxMachineMode5({
     if (firstRestock.current) { firstRestock.current = false; return; }
     const S_ = sceneRef.current;
     if (!S_ || machineState !== 'idle') return;
-    audioInit(); whirr();
+    audioInit(); sfxWhirr();
     S_.boxes.forEach(b => {
       if (b.phase !== 'stock') return;
       if (b.depth === 0) { b.phase = 'fade'; b.fadeIn = false; b.fadeT = 0; }
@@ -874,14 +755,14 @@ export function BlindboxMachineMode5({
     if (!S_ || !S_.ctaOn) return;
     S_.ctaOn = false;
     S_.pendingDone = true;
-    collectSfx();
+    sfxCollect();
     setReadyToPick(false);
     S_.boxes.forEach(b => {
       if (b.phase !== 'phys') return;
       b.phase = 'out'; b.outT = 0;
       if (b.body) { Matter.Composite.remove(S_.engine.world, b.body); b.body = null; }
     });
-  }, [collectSfx]);
+  }, []);
 
   return (
     <div className="relative w-full h-full select-none">

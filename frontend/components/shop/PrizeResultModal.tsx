@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import { X } from 'lucide-react';
 import { IpLoader } from '@/components/ui/IpLoader';
-import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
-import { gradeStyle } from '@/lib/prizeGrade';
 
 export interface ResultPrize {
   id: string;
@@ -36,12 +33,7 @@ interface PrizeResultModalProps {
   skipRevealAnimation?: boolean;
 }
 
-const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
-
-function prizeImage(p: ResultPrize, failed: boolean): string {
-  if (failed) return ITEM_DEFAULT_IMG;
-  return p.image_url || ITEM_DEFAULT_IMG;
-}
+const HIGH_TIER_GRADES = ['A', 'B', 'C', 'Last One', 'LAST ONE', 'SP'];
 
 export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
   isOpen = true,
@@ -55,11 +47,7 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
   skipRevealAnimation = false,
 }) => {
   const [showContent, setShowContent] = useState(skipRevealAnimation);
-  /** 被點開看大圖的那一項（走總覽同一個全螢幕 sheet） */
-  const [detail, setDetail] = useState<ResultPrize | null>(null);
-  const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
   const hasFooterActions = !!(onGoToWarehouse || onBackToProduct || onPlayAgain);
-  const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
   // Normalize prizes from either `prizes` or `results` prop
   const displayPrizes: ResultPrize[] = React.useMemo(() => {
@@ -111,9 +99,7 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
     };
   }, [isOpen, skipRevealAnimation]);
 
-  useEffect(() => {
-    if (!isOpen) { setDetail(null); setFailedIds({}); }
-  }, [isOpen]);
+  const isHighTier = (grade: string) => HIGH_TIER_GRADES.some(tier => grade.includes(tier));
 
   return (
     <AnimatePresence>
@@ -157,63 +143,57 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
             ) : (
               /* Result View */
               <>
-                {/* 條列（可捲動）：籤號 ＋ 小圖 ＋ 賞等 ＋ 名稱，點一列開全螢幕大圖 */}
+                {/* Grid Content */}
                 <div className={cn(
-                  "flex-1 overflow-y-auto custom-scrollbar px-3.5 py-4 bg-white dark:bg-neutral-900",
+                  "flex-1 overflow-y-auto custom-scrollbar p-4 bg-white dark:bg-neutral-900",
                   hasFooterActions ? "pb-20" : "pb-4"
                 )}>
-                  <div className="space-y-1.5">
+                  <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2 content-start">
                     {displayPrizes.map((prize, idx) => {
+                      const isSpecial = isHighTier(prize.grade);
                       const isLastOne = prize.is_last_one;
-                      const gs = gradeStyle(isLastOne ? '最後賞' : prize.grade);
-
+                      
                       return (
-                        <motion.button
+                        <motion.div
                           key={`${prize.id}-${idx}`}
-                          type="button"
-                          onClick={() => setDetail(prize)}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: Math.min(idx * 0.03, 0.4), duration: 0.2 }}
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ 
+                            delay: idx * 0.03,
+                            type: "spring",
+                            stiffness: 200,
+                            damping: 15
+                          }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-xl border p-1.5 text-left transition-colors",
-                            "border-neutral-100 bg-neutral-50 hover:bg-neutral-100 active:scale-[0.99]",
-                            "dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800",
-                            isLastOne && "border-yellow-300 bg-yellow-50 dark:border-yellow-700/60 dark:bg-yellow-900/20"
+                            "aspect-square rounded-[8px] border-2 flex flex-col items-center justify-center gap-0.5 transition-all duration-200",
+                            isSpecial 
+                              ? "border-transparent bg-neutral-200 dark:bg-neutral-800" 
+                              : "border-transparent bg-neutral-200 dark:bg-neutral-800",
+                            isLastOne && "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 ring-2 ring-yellow-400 ring-offset-2 dark:ring-offset-neutral-900 shadow-sm"
                           )}
                         >
-                          {/* 籤號：一番賞玩家對號用的，擺最前面 */}
                           <span
                             className={cn(
-                              "w-9 shrink-0 text-center text-[13px] font-black tabular-nums",
+                              "font-amount font-black leading-none tracking-wider text-xs",
+                              "font-[Chiron_GoRound_TC]",
                               isLastOne
                                 ? "text-yellow-600 dark:text-yellow-500"
-                                : "text-neutral-400 dark:text-neutral-500"
+                                : "text-neutral-400 dark:text-neutral-600"
                             )}
                           >
-                            {isLastOne ? '—' : String(prize.ticket_number ?? '').padStart(2, '0')}
+                            {isLastOne ? "Last One" : String(prize.ticket_number).padStart(2, "0")}
                           </span>
-
-                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
-                            <Image
-                              src={prizeImage(prize, !!failedIds[`l${idx}`])}
-                              alt={prize.name}
-                              width={36}
-                              height={36}
-                              className="h-full w-full object-contain"
-                              unoptimized
-                              onError={() => markFailed(`l${idx}`)}
-                            />
-                          </div>
-
-                          <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
-                            {isLastOne ? '最後賞' : `${prize.grade.replace('賞', '')}賞`}
+                          <span
+                            className={cn(
+                              "text-xs font-black font-amount leading-none text-center mt-1",
+                              "font-[\"Chiron_GoRound_TC\"]",
+                              isSpecial ? "text-accent-red" : "text-neutral-400 dark:text-neutral-600",
+                              isLastOne && "text-yellow-600 dark:text-yellow-500"
+                            )}
+                          >
+                            {isLastOne ? "最後賞" : `${prize.grade.replace("賞", "")}賞`}
                           </span>
-
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
-                            {prize.name}
-                          </span>
-                        </motion.button>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -251,16 +231,6 @@ export const PrizeResultModal: React.FC<PrizeResultModalProps> = ({
               </>
             )}
           </motion.div>
-
-          {/* 大圖走總覽同一個元件：全螢幕黑遮罩 ＋ 大圖 ＋ 賞等 ＋ 品名 */}
-          <PrizeDetailSheet
-            prize={detail ? {
-              name: detail.name,
-              image_url: detail.image_url ?? null,
-              level: detail.is_last_one ? '最後賞' : detail.grade,
-            } : null}
-            onClose={() => setDetail(null)}
-          />
         </div>
       )}
     </AnimatePresence>

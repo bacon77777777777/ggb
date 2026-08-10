@@ -77,3 +77,4 @@ export const SFX = {
   gachaPush:  '/audio/gachapush.mp3',
   gachaAuto:  '/audio/gacha.mp3',
 } as const;
+

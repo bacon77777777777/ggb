@@ -48,6 +48,8 @@ export default function BlindboxDetailPage() {
   const [defaultTheme, setDefaultTheme] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMachineReady, setIsMachineReady] = useState(false);
+  /** 機台上的商品圖是否展開（預設收起，點膠囊打開，點圖或再點膠囊關） */
+  const [isBoxImageMode, setIsBoxImageMode] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
@@ -564,6 +566,35 @@ export default function BlindboxDetailPage() {
               isSoldOut={isSoldOut}
               onLoaded={() => setIsMachineReady(true)}
             />
+
+            {/* 商品圖：疊在層板上方（機台的展示區），照抽卡頁的做法 ——
+                膠囊切換、點圖也能關。座標是 375 寬的機台框，不是 750 原圖 */}
+            {product.id && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
+                style={{ top: 112, width: 232, height: 190, zIndex: 20 }}
+                onClick={() => setIsBoxImageMode(false)}
+              >
+                <Image
+                  src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                  alt={product.name} fill className="object-contain"
+                  style={{ opacity: isBoxImageMode ? 1 : 0, pointerEvents: isBoxImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
+                  onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
+                  unoptimized
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
+              style={{ top: 300, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 21 }}
+              onClick={() => setIsBoxImageMode(v => !v)}
+            >
+              <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
+                點擊顯示圖片
+              </span>
+            </button>
           </div>
         ) : effectiveTheme === 'blindbox_mode4' ? (
           <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
@@ -679,7 +710,7 @@ export default function BlindboxDetailPage() {
       {/* 立體物理機台的底部操作欄 —— 版型與配色照一番賞（老闆指定）：
           左側金額，右側三顆；立即開盒用一番賞同款亮紅，另兩顆換色區隔 */}
       {isMachineReady && effectiveTheme === 'blindbox_mode5' && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
@@ -866,6 +897,7 @@ export default function BlindboxDetailPage() {
             isOpen={isPrizeModalOpen}
             onClose={handlePrizeClose}
             results={blindboxResults}
+            hideTicketNumber
           />
         )}
       </div>

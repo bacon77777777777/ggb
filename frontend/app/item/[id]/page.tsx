@@ -26,7 +26,6 @@ import LotteryDrawModal from '@/components/shop/LotteryDrawModal';
 import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
 import CardDrawAnimation from '@/components/card/CardDrawAnimation';
 import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
-import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
@@ -1362,15 +1361,16 @@ export default function ProductDetailPage() {
             <button
               type="button"
               className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-              style={{ top: 340, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
+              style={{ top: 430, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20 }}
               onClick={() => setIsCardImageMode(prev => !prev)}
             >
               <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>
-                點擊卡包顯示圖片
+                點擊顯示圖片
               </span>
             </button>
 
-            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 167, height: 167, zIndex: 20 }}>
+            {/* 商品圖：點膠囊開、點圖或再點膠囊關（老闆指定）。167 放大三成 → 217 */}
+            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 217, height: 217, zIndex: 20 }}>
               {product.id && (
                 <div
                   className="absolute inset-0 flex items-center justify-center cursor-pointer"
@@ -1382,14 +1382,17 @@ export default function ProductDetailPage() {
                     alt={product.name}
                     width={167}
                     height={167}
-                    className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                    className="w-full h-full object-cover border border-white/20 shadow-lg shadow-black/40"
                   />
                 </div>
               )}
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
-              <div className="relative w-full flex items-center justify-center" style={{ bottom: isMobile ? '40px' : '35px' }}>
+            {/* 卡包輪播：貼機台頂端，讓輪播自己的容器決定垂直位置（老闆實測）。
+                先前加 h-1/2 想「在上半部裡居中」，反而把它推得更高 ——
+                輪播內層有自己的 perspective 容器，外面再夾一層高度只會打架 */}
+            <div className="absolute left-1/2 top-0 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
+              <div className="relative w-full flex items-center justify-center">
                 <PackSelectionCarousel
                   cardScale={cardScale}
                   ref={packCarouselRef}
@@ -1399,24 +1402,8 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <ImageButton src="/images/gacha/btn2.png" alt="換一批" text="換一批"
-              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-              textClassName="text-base md:text-lg"
-              style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-              onClick={handleChangePack}
-            />
-            <ImageButton src="/images/gacha/btn1.png" alt="立即開包"
-              text={isSoldOut ? '查看結果' : isLotterySale ? '免費抽籤' : '立即開包'}
-              className="absolute" textClassName="text-base md:text-lg"
-              style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-              onClick={isSoldOut ? handleShowResults : handleDrawClick}
-            />
-            <ImageButton src="/images/gacha/btn2.png" alt="試試看" text="試試看"
-              className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
-              textClassName="text-base md:text-lg"
-              style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-              onClick={isSoldOut ? undefined : handleTrialCard}
-            />
+            {/* 機台上不畫按鈕（老闆指定）—— 換一批／立即開包／試試看
+                改走頁面底部固定操作欄，跟盒玩 blindbox_mode5、轉蛋 gacha_mode5 一致 */}
 
             {isSoldOut && (
               <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center" style={{ bottom: '0%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 }}>
@@ -1700,7 +1687,7 @@ export default function ProductDetailPage() {
         {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
         <div
           className="block lg:hidden overflow-x-hidden pb-32"
-          style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+          style={{ paddingTop: '3.5rem' }}
         >
           <div
             className="w-full flex justify-center"
@@ -1871,7 +1858,49 @@ export default function ProductDetailPage() {
             salePrices={prizes.map(p => (p as any).sale_price ?? 0)}
           />
         )}
-        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
+        {/* 底部固定操作欄 —— 機台上不再畫按鈕（老闆指定）。
+            版型與配色照盒玩 blindbox_mode5：左側單抽金額，右側三顆 */}
+        <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+          <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
+            <div className="flex h-full shrink-0 flex-col justify-center pl-1">
+              <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
+                單抽
+              </span>
+              <div className="flex items-center gap-1">
+                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                  className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
+                <span className="font-amount text-xl font-black leading-none text-accent-red">
+                  {(product.price ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex h-[44px] flex-1 items-center gap-2">
+              <button
+                onClick={handleChangePack}
+                disabled={isSoldOut}
+                className="h-[44px] shrink-0 rounded-xl bg-neutral-200 px-3 text-sm font-black text-neutral-700 transition-colors hover:bg-neutral-300 disabled:opacity-50"
+              >
+                換一批
+              </button>
+              <button
+                onClick={isSoldOut ? handleShowResults : handleDrawClick}
+                className="h-full flex-1 whitespace-nowrap rounded-xl bg-accent-red text-base font-black text-white shadow-lg shadow-accent-red/30 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSoldOut ? '查看結果' : isLotterySale ? '免費抽籤' : '立即開包'}
+              </button>
+              <button
+                onClick={handleTrialCard}
+                disabled={isSoldOut}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                試試看
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
       </div>
     );
   }
@@ -1881,7 +1910,7 @@ export default function ProductDetailPage() {
     // 警語列是 fixed，不留這段內容會被它蓋住
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12"
-      style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+      style={{ paddingTop: '3.5rem' }}
     >
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
@@ -2494,7 +2523,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
-      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
+      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
     </div>
   );
 }

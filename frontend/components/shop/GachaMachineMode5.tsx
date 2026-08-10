@@ -5,9 +5,11 @@ import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface GachaMachineMode2Props {
+interface GachaMachineMode5Props {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
   shakeRepeats?: number;
+  /** 這支不畫按鈕（推一下／試試看在頁面底部操作欄），
+   *  但機台元件在 GachaProductDetail 共用同一個型別，介面得留著 */
   onPush?: () => void;
   onPurchase?: () => void;
   onTrial?: () => void;
@@ -36,7 +38,7 @@ interface Egg {
 // 掉落音效改走共用播放器（lib/sfx）—— 原本每支各自 new Audio 加 500ms 防抖，
 // 但音檔長 1.12 秒，兩次觸發間隔在 500~1123ms 之間就會截斷重播、疊在一起
 
-export function GachaMachineMode2({
+export function GachaMachineMode5({
   state,
   shakeRepeats = 1,
   onPurchase,
@@ -46,7 +48,7 @@ export function GachaMachineMode2({
   pushSoundMode = 'auto',
   hasHighTierPending,
   disableButtons = false,
-}: GachaMachineMode2Props) {
+}: GachaMachineMode5Props) {
   const createInitialEggs = (): Egg[] => {
     const count = 15;
     const radius = 0.1;
@@ -229,7 +231,7 @@ export function GachaMachineMode2({
       {/* Background machine image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/mode2/main.png"
+          src="/images/gacha/mode5/main.png"
           alt="gacha machine"
           fill
           className="object-fill"
@@ -251,9 +253,9 @@ export function GachaMachineMode2({
           top: '7.94%',
           width: '94.27%',
           height: '41.42%',
-          WebkitMaskImage: 'url(/images/gacha/mode2/box.svg)',
+          WebkitMaskImage: 'url(/images/gacha/mode5/box.svg)',
           WebkitMaskSize: '100% 100%',
-          maskImage: 'url(/images/gacha/mode2/box.svg)',
+          maskImage: 'url(/images/gacha/mode5/box.svg)',
           maskSize: '100% 100%',
         }}
       >
@@ -282,7 +284,7 @@ export function GachaMachineMode2({
         transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       >
-        <Image src="/images/gacha/mode2/switch.png" alt="switch" fill className="object-contain" unoptimized />
+        <Image src="/images/gacha/mode5/switch.png" alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
 
       {/* Hole animation container — (500,580), 157×157; hole.svg NOT rendered (visual is in main.png) */}
@@ -322,7 +324,7 @@ export function GachaMachineMode2({
       </div>
 
       {/* 機台上不畫按鈕 —— 推一下／立即轉蛋／試試看改走商品頁底部操作欄
-          （老闆指定，新機台圖的底座是裝飾用的，沒有按鈕位）。
+          （老闆指定，照盒玩立體機台 blindbox_mode5 的做法）。
           旋鈕仍可直接點擊轉蛋，那是機台本體的互動，不是按鈕。 */}
 
       {isSoldOut && (

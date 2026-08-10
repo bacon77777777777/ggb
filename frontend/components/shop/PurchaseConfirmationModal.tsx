@@ -141,8 +141,10 @@ export function PurchaseConfirmationModal({
   const maxByRemaining = typeof product.remaining === 'number' ? product.remaining : 0;
   const isSoldOut = product.status === 'ended' || maxByRemaining === 0;
   const maxQuantity = maxByRemaining > 0 ? maxByRemaining : 1;
-  // 步進範圍（老闆指定）：最少 1；轉蛋／盒玩最多 20，其餘 10。再受庫存夾制
-  const maxCap = product.type === 'gacha' || product.type === 'blindbox' ? 20 : 10;
+  // 步進範圍（老闆指定）：最少 1；轉蛋最多 20，其餘（含盒玩）10。再受庫存夾制。
+  // 盒玩壓到 10 是因為機台一次最多演出 10 盒（每列 5 格 × 2 列），
+  // 買超過的部分沒有盒子可掉，畫面對不上買到的數量
+  const maxCap = product.type === 'gacha' ? 20 : 10;
   // 促銷商品：付費抽數＋加贈抽數都要吃庫存（買5送1＝庫存扣6），
   // 上限退到「選了之後連贈品都裝得下」的最大值，避免玩家選 6 抽反而比 5 抽虧
   let maxSelectable = Math.min(maxCap, maxQuantity);

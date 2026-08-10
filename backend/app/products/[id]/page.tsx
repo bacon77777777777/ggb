@@ -6,6 +6,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
     { value: 'gacha_mode2',   label: '新款機台（旋鈕式蛋口出蛋）' },
     { value: 'gacha_mode3',   label: '金光閃閃機台（旋鈕式蛋口出蛋）' },
     { value: 'gacha_mode4',   label: '狗狗蛋箱（無旋鈕，蛋口出蛋）' },
+    { value: 'gacha_mode5',   label: '紫金旋鈕機台（操作鈕在底部）' },
   ],
   ichiban:  [
     { value: 'ichiban_grid', label: '經典列表（票券網格撕開）' },

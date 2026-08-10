@@ -14,6 +14,7 @@ interface ActionBarProps {
 export function ActionBar({ children, className, hideOn, zIndex = 'z-50' }: ActionBarProps) {
   return (
     <div
+      data-testid="bottom-action-bar"
       className={cn(
         'fixed bottom-0 left-0 right-0',
         'bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl',
