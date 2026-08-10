@@ -63,6 +63,11 @@ interface ListTableCardProps<T> {
   filters?: FilterSelect[]
   /** 額外的工具列按鈕（批量上架那類），放在新增鈕右側 */
   toolbarChildren?: ReactNode
+  /** 勾選＋批次操作（商品管理同款）：三個一起給才會出現勾選欄 */
+  selectable?: boolean
+  selectedIds?: Set<string | number>
+  onSelectChange?: (ids: Set<string | number>) => void
+  batchActions?: Array<{ label: string; onClick: () => void; variant?: 'primary' | 'danger' | 'secondary' }>
 }
 
 export default function ListTableCard<T>({
@@ -81,6 +86,10 @@ export default function ListTableCard<T>({
   onAddClick,
   filters = [],
   toolbarChildren,
+  selectable = false,
+  selectedIds,
+  onSelectChange,
+  batchActions,
 }: ListTableCardProps<T>) {
   const [sortField, setSortField] = useState(defaultSortField)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection)
@@ -122,6 +131,23 @@ export default function ListTableCard<T>({
 
   const activeFilters = filters.filter(f => f.value !== 'all')
 
+  // 勾選（商品管理同款）：表頭全選只針對目前排序後可見的資料
+  const withSelection = selectable && !!onSelectChange
+  const allSelected = withSelection && sorted.length > 0 &&
+    sorted.every(row => selectedIds?.has(row[keyField] as string | number))
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectChange) return
+    onSelectChange(checked ? new Set(sorted.map(row => row[keyField] as string | number)) : new Set())
+  }
+  const toggleOne = (id: string | number) => {
+    if (!onSelectChange) return
+    const next = new Set(selectedIds ?? [])
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onSelectChange(next)
+  }
+  const colCount = shownColumns.length + (withSelection ? 1 : 0)
+
   return (
     <PageCard>
       <SearchToolbar
@@ -145,6 +171,9 @@ export default function ListTableCard<T>({
           value: f.value, onChange: f.onChange, options: f.options,
         }))}
         children={toolbarChildren}
+        selectedCount={withSelection ? (selectedIds?.size ?? 0) : undefined}
+        batchActions={withSelection ? batchActions : undefined}
+        onClearSelection={withSelection ? () => onSelectChange?.(new Set()) : undefined}
       />
 
       <FilterTags
@@ -162,6 +191,16 @@ export default function ListTableCard<T>({
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr className="border-b border-neutral-200">
+              {withSelection && (
+                <th className={`${densityClasses} text-left w-10`}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={e => toggleAll(e.target.checked)}
+                    className="w-4 h-4 text-primary focus:ring-primary rounded"
+                  />
+                </th>
+              )}
               {shownColumns.map(c =>
                 c.isActions ? (
                   <th key={c.key} className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>
@@ -181,10 +220,10 @@ export default function ListTableCard<T>({
           </thead>
           <tbody>
             {isLoading ? (
-              <TableSkeleton rows={5} cols={shownColumns.length} />
+              <TableSkeleton rows={5} cols={colCount} />
             ) : sorted.length === 0 ? (
               <tr>
-                <td colSpan={shownColumns.length} className="text-center">
+                <td colSpan={colCount} className="text-center">
                   <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
                     <span>{emptyMessage}</span>
                   </div>
@@ -193,6 +232,16 @@ export default function ListTableCard<T>({
             ) : (
               sorted.map(row => (
                 <tr key={String(row[keyField])} className="border-b border-neutral-100 hover:bg-neutral-50/60 transition-colors">
+                  {withSelection && (
+                    <td className={densityClasses} onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds?.has(row[keyField] as string | number) ?? false}
+                        onChange={() => toggleOne(row[keyField] as string | number)}
+                        className="w-4 h-4 text-primary focus:ring-primary rounded"
+                      />
+                    </td>
+                  )}
                   {shownColumns.map(c => (
                     <td
                       key={c.key}

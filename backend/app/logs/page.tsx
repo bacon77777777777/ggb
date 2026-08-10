@@ -1,14 +1,10 @@
 'use client'
 
-import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, SortableTableHeader } from '@/components'
+import { AdminLayout, StatsCard, ListTableCard, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
-import { CardSkeleton } from '@/components/ui/Skeleton'
-import SelectField from '@/components/ui/SelectField'
-import { DataTable, type Column } from '@/components'
 
 interface LogEntry {
   id: number
@@ -116,87 +112,19 @@ function formatDetail(detail: unknown): string {
 }
 
 export default function LogsPage() {
-  const logsColumns1: Column<any>[] = [
-    {
-      key: "c0",
-      label: "時間",
-      className: "text-sm text-neutral-700 font-mono whitespace-nowrap",
-      render: (event) => {
-        const isSuspicious = suspiciousIps.has(event.ip)
-        return (<>
-                                {formatDateTime(event.createdAt)}
-                              </>)
-      },
-    },
-    {
-      key: "c1",
-      label: "事件",
-      className: "whitespace-nowrap",
-      render: (event) => {
-        const isSuspicious = suspiciousIps.has(event.ip)
-        return (<>
-                                <span className={`px-2 py-0.5 text-xs rounded-full ${EVENT_COLOR[event.eventType] || 'bg-neutral-100 text-neutral-600'}`}>
-                                  {EVENT_LABEL[event.eventType] || event.eventType}
-                                </span>
-                              </>)
-      },
-    },
-    {
-      key: "c2",
-      label: "用戶",
-      className: "text-sm text-neutral-500 whitespace-nowrap",
-      render: (event) => {
-        const isSuspicious = suspiciousIps.has(event.ip)
-        return (<>
-                                {event.userId ? (
-                                  <a href={`/users/${event.userId}`} className="text-primary hover:underline">
-                                    {event.userName}
-                                  </a>
-                                ) : event.userName}
-                              </>)
-      },
-    },
-    {
-      key: "c3",
-      label: "詳情",
-      className: "text-sm text-neutral-600 whitespace-nowrap",
-      render: (event) => {
-        const isSuspicious = suspiciousIps.has(event.ip)
-        return (<>
-                                {getEventDetail(event)}
-                              </>)
-      },
-    },
-    {
-      key: "c4",
-      label: "IP",
-      render: (event) => {
-        const isSuspicious = suspiciousIps.has(event.ip)
-        return (<>
-                                {event.ip || '-'}
-                                {isSuspicious && <span className="ml-1 text-xs">⚠️</span>}
-                              </>)
-      },
-    },
-  ]
-
   const [activeTab, setActiveTab] = useState<'admin' | 'user'>('admin')
 
   // --- Admin logs state ---
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [logsLoading, setLogsLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState('all')
   const [selectedAction, setSelectedAction] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const [sortField, setSortField] = useState<string>('timestamp')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [displayCount, setDisplayCount] = useState(50)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const observerTarget = useRef<HTMLDivElement>(null)
-  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('logs', 'compact', {
-    timestamp: true, user: true, role: true, action: true, target: true, details: true, ip: true, status: true
-  })
 
   // --- User events state ---
   const [userEvents, setUserEvents] = useState<UserEventEntry[]>([])
@@ -239,12 +167,6 @@ export default function LogsPage() {
     })
   }, [userEvents, ueSearch, ueEventType])
 
-  // Admin logs helpers
-  const handleSort = (field: string) => {
-    if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    else { setSortField(field); setSortDirection('asc') }
-  }
-
   const filteredLogs = useMemo(() => {
     if (!isMounted) return []
     return logs.filter(log => {
@@ -261,33 +183,17 @@ export default function LogsPage() {
     })
   }, [logs, searchQuery, selectedUser, selectedAction, selectedStatus, isMounted])
 
-  const sortedLogs = useMemo(() => {
-    if (!isMounted) return []
-    return [...filteredLogs].sort((a, b) => {
-      let aValue: any, bValue: any
-      switch (sortField) {
-        case 'timestamp': aValue = a.timestamp; bValue = b.timestamp; break
-        case 'user': aValue = a.user; bValue = b.user; break
-        case 'role': aValue = a.role; bValue = b.role; break
-        case 'action': aValue = a.action; bValue = b.action; break
-        default: aValue = a.timestamp; bValue = b.timestamp
-      }
-      if (typeof aValue === 'string') return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
-    })
-  }, [filteredLogs, sortField, sortDirection, isMounted])
-
   // Infinite scroll - admin
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !isLoadingMore && displayCount < sortedLogs.length) {
+      if (entries[0].isIntersecting && !isLoadingMore && displayCount < filteredLogs.length) {
         setIsLoadingMore(true)
-        setTimeout(() => { setDisplayCount(prev => Math.min(prev + 20, sortedLogs.length)); setIsLoadingMore(false) }, 300)
+        setTimeout(() => { setDisplayCount(prev => Math.min(prev + 20, filteredLogs.length)); setIsLoadingMore(false) }, 300)
       }
     }, { threshold: 0.1 })
     if (observerTarget.current) observer.observe(observerTarget.current)
     return () => { if (observerTarget.current) observer.unobserve(observerTarget.current) }
-  }, [displayCount, sortedLogs.length, isLoadingMore])
+  }, [displayCount, filteredLogs.length, isLoadingMore])
 
   // Infinite scroll - user events
   useEffect(() => {
@@ -307,7 +213,7 @@ export default function LogsPage() {
     if (activeTab === 'user' && userEvents.length === 0) fetchUserEvents()
   }, [activeTab])
 
-  useEffect(() => { setDisplayCount(50) }, [searchQuery, selectedUser, selectedAction, selectedStatus, sortField, sortDirection])
+  useEffect(() => { setDisplayCount(50) }, [searchQuery, selectedUser, selectedAction, selectedStatus])
   useEffect(() => { setUeDisplayCount(50) }, [ueSearch, ueEventType])
 
   const fetchLogs = async () => {
@@ -334,6 +240,7 @@ export default function LogsPage() {
         })))
       }
     } catch (error) { console.error('Error fetching logs:', error) }
+    finally { setLogsLoading(false) }
   }
 
   const fetchUserEvents = async () => {
@@ -352,44 +259,140 @@ export default function LogsPage() {
   const allUsers = useMemo(() => { if (!isMounted) return []; return Array.from(new Set(logs.map(l => l.user))).sort() }, [logs, isMounted])
   const allActions = useMemo(() => { if (!isMounted) return []; return Array.from(new Set(logs.map(l => l.action))).sort() }, [logs, isMounted])
 
-  const getDensityClasses = () => {
-    switch (tableDensity) {
-      case 'compact': return 'py-2 px-2'
-      case 'normal': return 'py-3 px-4'
-      case 'comfortable': return 'py-4 px-6'
-    }
-  }
+  const adminColumns: ListColumn<LogEntry>[] = [
+    {
+      key: 'timestamp', label: '時間',
+      sortValue: log => log.timestamp,
+      className: 'font-mono',
+      render: log => <>{formatDateTime(log.timestamp)}</>,
+    },
+    {
+      key: 'user', label: '用戶',
+      sortValue: log => log.user,
+      render: log => <>{log.user}</>,
+    },
+    {
+      key: 'role', label: '角色',
+      sortValue: log => log.role,
+      render: log => <>{log.role}</>,
+    },
+    {
+      key: 'action', label: '操作',
+      sortValue: log => log.action,
+      render: log => <>{log.action}</>,
+    },
+    {
+      key: 'target', label: '目標',
+      sortValue: log => log.target,
+      render: log => <>{log.target}</>,
+    },
+    {
+      key: 'details', label: '詳情',
+      render: log => <>{log.details}</>,
+    },
+    {
+      key: 'ip', label: 'IP',
+      sortValue: log => log.ip,
+      className: 'font-mono',
+      render: log => <>{log.ip}</>,
+    },
+    {
+      key: 'status', label: '狀態',
+      sortValue: log => log.status,
+      render: log => (
+        <Badge variant={log.status === 'success' ? 'success' : 'danger'}>
+          {log.status === 'success' ? '成功' : '失敗'}
+        </Badge>
+      ),
+    },
+  ]
+
+  const userColumns: ListColumn<UserEventEntry>[] = [
+    {
+      key: 'time', label: '時間',
+      sortValue: event => new Date(event.createdAt).getTime(),
+      className: 'font-mono',
+      render: event => <>{formatDateTime(event.createdAt)}</>,
+    },
+    {
+      key: 'event', label: '事件',
+      sortValue: event => EVENT_LABEL[event.eventType] || event.eventType,
+      render: event => (
+        <span className={`px-2 py-0.5 text-xs rounded-full ${EVENT_COLOR[event.eventType] || 'bg-neutral-100 text-neutral-600'}`}>
+          {EVENT_LABEL[event.eventType] || event.eventType}
+        </span>
+      ),
+    },
+    {
+      key: 'user', label: '用戶',
+      sortValue: event => event.userName,
+      render: event => (
+        event.userId ? (
+          <a href={`/users/${event.userId}`} className="text-primary hover:underline">
+            {event.userName}
+          </a>
+        ) : <>{event.userName}</>
+      ),
+    },
+    {
+      key: 'detail', label: '詳情',
+      render: event => <>{getEventDetail(event)}</>,
+    },
+    {
+      key: 'ip', label: 'IP',
+      sortValue: event => event.ip,
+      className: 'font-mono',
+      render: event => {
+        const isSuspicious = suspiciousIps.has(event.ip)
+        return (
+          <span className={isSuspicious ? 'text-red-600 font-medium' : ''}>
+            {event.ip || '-'}
+            {isSuspicious && <span className="ml-1 text-xs">⚠️</span>}
+          </span>
+        )
+      },
+    },
+  ]
+
+  const loadMoreSpinner = (
+    <div className="flex items-center justify-center gap-2 text-neutral-500">
+      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+      <span className="text-sm">載入中...</span>
+    </div>
+  )
 
   return (
     <AdminLayout pageTitle="操作記錄">
       <div className="space-y-6">
-        {/* Tab 切換 */}
-        <div className="flex gap-1 border-b border-neutral-200">
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'admin'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
-          >
-            後台操作
-          </button>
-          <button
-            onClick={() => setActiveTab('user')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'user'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
-          >
-            前台事件
-            {suspiciousIps.size > 0 && (
-              <span className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">
-                {suspiciousIps.size} 異常
-              </span>
-            )}
-          </button>
+        {/* Tab 切換 —— 與輪播圖管理頂部同款 pill 頁籤 */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1 bg-neutral-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'admin'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              後台操作
+            </button>
+            <button
+              onClick={() => setActiveTab('user')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'user'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              前台事件
+              {suspiciousIps.size > 0 && (
+                <span className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full">
+                  {suspiciousIps.size} 異常
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ===== 後台操作 Tab ===== */}
@@ -402,84 +405,31 @@ export default function LogsPage() {
               <StatsCard title="活躍管理員" value={uniqueUsers} onClick={() => { setSelectedStatus('all'); setSelectedUser('all'); setSelectedAction('all'); setSearchQuery('') }} activeColor="primary" />
             </div>
 
-            <PageCard>
-              <SearchToolbar
-                searchPlaceholder="搜尋用戶、操作、目標、IP..."
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-                showExportCSV={false}
-                showDensity={true}
-                density={tableDensity}
-                onDensityChange={setTableDensity}
-                showFilter={true}
-                filterOptions={[
-                  { key: 'user', label: '用戶', type: 'select', value: selectedUser, onChange: setSelectedUser, options: [{ value: 'all', label: '全部用戶' }, ...allUsers.map(u => ({ value: u, label: u }))] },
-                  { key: 'action', label: '操作類型', type: 'select', value: selectedAction, onChange: setSelectedAction, options: [{ value: 'all', label: '全部操作' }, ...allActions.map(a => ({ value: a, label: a }))] },
-                  { key: 'status', label: '狀態', type: 'select', value: selectedStatus, onChange: setSelectedStatus, options: [{ value: 'all', label: '全部狀態' }, { value: 'success', label: '成功' }, { value: 'failed', label: '失敗' }] }
-                ]}
-                showColumnToggle={true}
-                columns={[
-                  { key: 'timestamp', label: '時間', visible: visibleColumns.timestamp },
-                  { key: 'user', label: '用戶', visible: visibleColumns.user },
-                  { key: 'role', label: '角色', visible: visibleColumns.role },
-                  { key: 'action', label: '操作', visible: visibleColumns.action },
-                  { key: 'target', label: '目標', visible: visibleColumns.target },
-                  { key: 'details', label: '詳情', visible: visibleColumns.details },
-                  { key: 'ip', label: 'IP', visible: visibleColumns.ip },
-                  { key: 'status', label: '狀態', visible: visibleColumns.status }
-                ]}
-                onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
-              />
-              <FilterTags
-                tags={[
-                  ...(selectedUser !== 'all' ? [{ key: 'user', label: '用戶', value: selectedUser, color: 'primary' as const, onRemove: () => setSelectedUser('all') }] : []),
-                  ...(selectedAction !== 'all' ? [{ key: 'action', label: '操作類型', value: selectedAction, color: 'primary' as const, onRemove: () => setSelectedAction('all') }] : []),
-                  ...(selectedStatus !== 'all' ? [{ key: 'status', label: '狀態', value: selectedStatus === 'success' ? '成功' : '失敗', color: selectedStatus === 'success' ? 'green' as const : 'red' as const, onRemove: () => setSelectedStatus('all') }] : [])
-                ]}
-                onClearAll={() => { setSelectedStatus('all'); setSelectedUser('all'); setSelectedAction('all') }}
-              />
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-neutral-50 border-b border-neutral-200">
-                    <tr className="border-b border-neutral-200">
-                      {visibleColumns.timestamp && <SortableTableHeader sortKey="timestamp" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>時間</SortableTableHeader>}
-                      {visibleColumns.user && <SortableTableHeader sortKey="user" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>用戶</SortableTableHeader>}
-                      {visibleColumns.role && <SortableTableHeader sortKey="role" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>角色</SortableTableHeader>}
-                      {visibleColumns.action && <SortableTableHeader sortKey="action" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>操作</SortableTableHeader>}
-                      {visibleColumns.target && <SortableTableHeader sortKey="target" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>目標</SortableTableHeader>}
-                      {visibleColumns.details && <th className={`${getDensityClasses()} text-left text-xs font-semibold text-neutral-500`}>詳情</th>}
-                      {visibleColumns.ip && <SortableTableHeader sortKey="ip" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>IP</SortableTableHeader>}
-                      {visibleColumns.status && <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort}>狀態</SortableTableHeader>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedLogs.slice(0, displayCount).map((log) => (
-                      <tr key={log.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                        {visibleColumns.timestamp && <td className={`${getDensityClasses()} text-sm text-neutral-700 font-mono whitespace-nowrap`}>{formatDateTime(log.timestamp)}</td>}
-                        {visibleColumns.user && <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>{log.user}</td>}
-                        {visibleColumns.role && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.role}</td>}
-                        {visibleColumns.action && <td className={`${getDensityClasses()} text-sm text-neutral-500 whitespace-nowrap`}>{log.action}</td>}
-                        {visibleColumns.target && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.target}</td>}
-                        {visibleColumns.details && <td className={`${getDensityClasses()} text-sm text-neutral-600 whitespace-nowrap`}>{log.details}</td>}
-                        {visibleColumns.ip && <td className={`${getDensityClasses()} text-sm text-neutral-500 font-mono whitespace-nowrap`}>{log.ip}</td>}
-                        {visibleColumns.status && (
-                          <td className={`${getDensityClasses()} whitespace-nowrap`}>
-                            <Badge variant={log.status === 'success' ? 'success' : 'danger'}>
-                              {log.status === 'success' ? '成功' : '失敗'}
-                            </Badge>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {displayCount < sortedLogs.length && (
-                  <div ref={observerTarget} className="py-8 text-center">
-                    {isLoadingMore && <div className="flex items-center justify-center gap-2 text-neutral-500"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div><span className="text-sm">載入中...</span></div>}
-                  </div>
-                )}
+            <ListTableCard
+              pageKey="logs"
+              data={filteredLogs.slice(0, displayCount)}
+              columns={adminColumns}
+              keyField="id"
+              isLoading={logsLoading}
+              emptyMessage="沒有找到符合條件的記錄"
+              defaultSortField="timestamp"
+              defaultSortDirection="desc"
+              searchPlaceholder="搜尋用戶、操作、目標、IP..."
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              filters={[
+                { key: 'user', label: '用戶', value: selectedUser, onChange: setSelectedUser, options: [{ value: 'all', label: '全部用戶' }, ...allUsers.map(u => ({ value: u, label: u }))] },
+                { key: 'action', label: '操作類型', value: selectedAction, onChange: setSelectedAction, options: [{ value: 'all', label: '全部操作' }, ...allActions.map(a => ({ value: a, label: a }))] },
+                { key: 'status', label: '狀態', value: selectedStatus, onChange: setSelectedStatus, options: [{ value: 'all', label: '全部狀態' }, { value: 'success', label: '成功' }, { value: 'failed', label: '失敗' }] },
+              ]}
+            />
+
+            {/* 無限載入：控制放在列表卡下方，邏輯不動 */}
+            {displayCount < filteredLogs.length && (
+              <div ref={observerTarget} className="py-4 text-center">
+                {isLoadingMore && loadMoreSpinner}
               </div>
-            </PageCard>
+            )}
           </>
         )}
 
@@ -502,51 +452,41 @@ export default function LogsPage() {
               <StatsCard title="抽獎次數" value={userEvents.filter(e => e.eventType === 'draw').length} activeColor="green" />
             </div>
 
-            <PageCard>
-              <div className="flex flex-wrap gap-3 items-center mb-4">
-                <input
-                  type="text"
-                  placeholder="搜尋用戶名稱、IP..."
-                  value={ueSearch}
-                  onChange={e => setUeSearch(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-1 focus:ring-primary/20"
-                />
-                <SelectField
-                  value={ueEventType}
-                  onChange={e => setUeEventType(e.target.value)}
-                  className="border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                >
-                  <option value="all">全部事件</option>
-                  <option value="login">登入</option>
-                  <option value="draw">抽獎</option>
-                  <option value="topup">儲值</option>
-                </SelectField>
+            <ListTableCard
+              pageKey="logs-user-events"
+              data={filteredUserEvents.slice(0, ueDisplayCount)}
+              columns={userColumns}
+              keyField="id"
+              isLoading={userEventsLoading}
+              emptyMessage={userEvents.length === 0 ? '尚無前台事件記錄' : '沒有符合條件的記錄'}
+              defaultSortField="time"
+              defaultSortDirection="desc"
+              searchPlaceholder="搜尋用戶名稱、IP..."
+              searchValue={ueSearch}
+              onSearchChange={setUeSearch}
+              filters={[
+                {
+                  key: 'eventType', label: '事件',
+                  value: ueEventType, onChange: setUeEventType,
+                  options: [
+                    { value: 'all', label: '全部事件' },
+                    { value: 'login', label: '登入' },
+                    { value: 'draw', label: '抽獎' },
+                    { value: 'topup', label: '儲值' },
+                  ],
+                },
+              ]}
+              toolbarChildren={
                 <span className="text-sm text-neutral-500">{filteredUserEvents.length} 筆</span>
-              </div>
+              }
+            />
 
-              {userEventsLoading ? (
-                <CardSkeleton rows={4} />
-              ) : (
-                <div className="overflow-x-auto">
-                  <DataTable
-  data={filteredUserEvents.slice(0, ueDisplayCount)}
-  columns={logsColumns1}
-  keyField="id"
-  rowClassName={(event: any) => `border-b border-neutral-100 ${suspiciousIps.has(event.ip) ? 'bg-red-50' : 'hover:bg-neutral-50'}`}
-/>
-                  {ueDisplayCount < filteredUserEvents.length && (
-                    <div ref={ueObserverTarget} className="py-8 text-center">
-                      {ueLoadingMore && <div className="flex items-center justify-center gap-2 text-neutral-500"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div><span className="text-sm">載入中...</span></div>}
-                    </div>
-                  )}
-                  {filteredUserEvents.length === 0 && !userEventsLoading && (
-                    <div className="py-12 text-center text-neutral-400 text-sm">
-                      {userEvents.length === 0 ? '尚無前台事件記錄' : '沒有符合條件的記錄'}
-                    </div>
-                  )}
-                </div>
-              )}
-            </PageCard>
+            {/* 無限載入：控制放在列表卡下方，邏輯不動 */}
+            {ueDisplayCount < filteredUserEvents.length && (
+              <div ref={ueObserverTarget} className="py-4 text-center">
+                {ueLoadingMore && loadMoreSpinner}
+              </div>
+            )}
           </>
         )}
       </div>

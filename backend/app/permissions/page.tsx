@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, Modal } from '@/components'
+import { AdminLayout, Modal, PageCard, SearchToolbar } from '@/components'
 import { useState, useEffect } from 'react'
 import { useLog } from '@/contexts/LogContext'
 import { useToast } from '@/contexts/ToastContext'
@@ -174,6 +174,7 @@ export default function PermissionsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const { addLog } = useLog()
   
   const [formData, setFormData] = useState({
@@ -202,6 +203,13 @@ export default function PermissionsPage() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // 名稱搜尋（顯示名稱或系統代號）
+  const filteredRoles = roles.filter(r => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return r.display_name.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)
+  })
 
   const handleEdit = (role: Role) => {
     setEditingRole(role)
@@ -305,23 +313,28 @@ export default function PermissionsPage() {
   return (
     <AdminLayout pageTitle="權限管理">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-neutral-900">角色與權限設定</h2>
-          <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            + 新增角色
-          </button>
-        </div>
+        {/* 這頁是權限卡片矩陣不是表格列表，不硬套 ListTableCard；
+            外框與工具列對齊定版樣板（PageCard + SearchToolbar），卡片內容不動 */}
+        <PageCard>
+          <SearchToolbar
+            searchPlaceholder="搜尋角色名稱..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            showDensity={false}
+            showFilter={false}
+            showColumnToggle={false}
+            showAddButton={true}
+            addButtonText="+ 新增角色"
+            onAddClick={handleAdd}
+          />
 
         {isLoading ? (
           <CardSkeleton rows={3} />
-        ) : roles.length === 0 ? (
-          <EmptyState message="尚無角色資料" />
+        ) : filteredRoles.length === 0 ? (
+          <EmptyState message={roles.length === 0 ? '尚無角色資料' : '沒有找到符合條件的角色'} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {roles.map(role => {
+            {filteredRoles.map(role => {
               const isSuperAdmin = role.name === 'super_admin'
               return (
                 <div 
@@ -373,6 +386,7 @@ export default function PermissionsPage() {
             })}
           </div>
         )}
+        </PageCard>
 
         <Modal
           isOpen={isModalOpen}

@@ -1,8 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import PopupPanel from './PopupPanel'
-import Button from '@/components/ui/Button'
 import ScheduleFields from '@/components/ScheduleFields'
 import { Switch } from '@/components/ui'
 import SelectField from '@/components/ui/SelectField'
@@ -49,7 +48,7 @@ export default function BannersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'popup'>('home')
-  const [popupActions, setPopupActions] = useState<HTMLDivElement | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -252,142 +251,132 @@ export default function BannersPage() {
     }
   }
 
-  const filteredBanners = banners.filter(b => (b.page || 'home') === activeTab)
+  /** 狀態 Switch 直接切換：樂觀更新，失敗滾回 */
+  const toggleActive = async (banner: Banner, checked: boolean) => {
+    setBanners(prev => prev.map(b =>
+      b.id === banner.id ? { ...b, is_active: checked } : b
+    ))
 
-  const columns: Column<Banner>[] = [
+    try {
+      const res = await fetch(`/api/banners/${banner.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: checked }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Update failed')
+      }
+    } catch (error) {
+      console.error('Error updating banner status:', error)
+      toast('更新狀態失敗', 'error')
+      // Revert on error
+      setBanners(prev => prev.map(b =>
+        b.id === banner.id ? { ...b, is_active: !checked } : b
+      ))
+    }
+  }
+
+  const filteredBanners = banners.filter(b => {
+    if ((b.page || 'home') !== activeTab) return false
+    if (searchQuery && !(b.name || '').toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  const columns: ListColumn<Banner>[] = [
     {
-      key: 'name',
-      label: '名稱',
-      sortable: true,
-      className: 'font-medium'
+      key: 'name', label: '名稱',
+      sortValue: b => b.name || '',
+      className: 'font-medium',
+      render: b => <>{b.name}</>,
     },
     {
-      key: 'image_url',
-      label: '圖片',
-      render: (item) => (
+      key: 'image', label: '圖片',
+      render: b => (
         <div className="relative w-32 h-16 bg-neutral-100 rounded overflow-hidden border border-neutral-200">
-          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+          <img src={b.image_url} alt={b.name} className="w-full h-full object-cover" />
         </div>
-      )
+      ),
     },
     {
-      key: 'link_url',
-      label: '連結',
-      render: (item) => (
-        item.link_url ? (
-          <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px] block">
-            {item.link_url}
+      key: 'link', label: '連結',
+      render: b => (
+        b.link_url ? (
+          <a href={b.link_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px] block">
+            {b.link_url}
           </a>
         ) : <span className="text-neutral-400">-</span>
-      )
+      ),
     },
     {
-      key: 'sort_order',
-      label: '排序',
-      sortable: true,
-      className: 'font-mono'
+      key: 'sortOrder', label: '排序',
+      sortValue: b => b.sort_order,
+      className: 'font-mono',
+      render: b => <>{b.sort_order}</>,
     },
     {
-      key: 'is_active',
-      label: '狀態',
-      render: (item) => (
-        <Switch
-          checked={item.is_active}
-          onCheckedChange={async (checked) => {
-            // Optimistic update
-            setBanners(prev => prev.map(b => 
-              b.id === item.id ? { ...b, is_active: checked } : b
-            ))
-
-            try {
-              const res = await fetch(`/api/banners/${item.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_active: checked }),
-              })
-
-              if (!res.ok) {
-                throw new Error('Update failed')
-              }
-            } catch (error) {
-              console.error('Error updating banner status:', error)
-              toast('更新狀態失敗', 'error')
-              // Revert on error
-              setBanners(prev => prev.map(b => 
-                b.id === item.id ? { ...b, is_active: !checked } : b
-              ))
-            }
-          }}
-        />
-      )
+      key: 'status', label: '狀態',
+      sortValue: b => (b.is_active ? 1 : 0),
+      render: b => (
+        <Switch checked={b.is_active} onCheckedChange={checked => void toggleActive(b, checked)} />
+      ),
     },
     {
-      key: 'created_at',
-      label: '建立時間',
-      render: (item) => <span className="text-neutral-500 text-sm">{formatDateTime(item.created_at)}</span>
+      key: 'createdAt', label: '建立時間',
+      sortValue: b => new Date(b.created_at).getTime(),
+      className: 'font-mono',
+      render: b => <>{formatDateTime(b.created_at)}</>,
     },
     {
-      key: 'actions',
-      label: '操作',
-      render: (item) => (
+      key: 'operations', label: '操作', isActions: true,
+      render: b => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEdit(item)}
-            className="text-primary hover:text-primary text-sm font-medium"
-          >
-            編輯
-          </button>
-          <button
-            onClick={() => handleDelete(item.id)}
-            className="text-red-500 hover:text-red-700 text-sm font-medium"
-          >
-            刪除
-          </button>
+          <RowAction tone="primary" onClick={() => handleEdit(b)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => handleDelete(b.id)}>刪除</RowAction>
         </div>
-      )
-    }
+      ),
+    },
   ]
 
   return (
     <AdminLayout pageTitle="輪播圖管理">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          {/* Page tabs */}
-          <div className="flex gap-1 bg-neutral-100 rounded-lg p-1">
-            {PAGE_TABS.map(tab => (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value as typeof activeTab)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab.value
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-neutral-500 hover:text-neutral-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          {activeTab === 'popup' ? (
-            /* 彈窗頁籤的操作列由 PopupPanel 以 portal 掛進來 ——
-               規則與新增都屬於彈窗自己的狀態，拉到這一層會變成無謂的 prop 傳遞 */
-            <div ref={setPopupActions} className="flex items-center gap-2 flex-shrink-0" />
-          ) : (
-            <Button onClick={handleAdd}>+ 新增輪播圖</Button>
-          )}
+        {/* Page tabs（pill 頁籤保留原樣） */}
+        <div className="flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
+          {PAGE_TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => { setActiveTab(tab.value as typeof activeTab); setSearchQuery('') }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.value
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {activeTab === 'popup' ? (
-          <PopupPanel actionsSlot={popupActions} />
+          <PopupPanel />
         ) : (
-          <PageCard>
-            <DataTable
-              data={filteredBanners}
-              columns={columns}
-              keyField="id"
-              emptyMessage="尚無輪播圖資料"
-            />
-          </PageCard>
+          <ListTableCard
+            /* key 讓 useTablePrefs 依各頁籤的 pageKey 重新掛載，密度/欄位記憶各自獨立 */
+            key={activeTab}
+            pageKey={`banners-${activeTab}`}
+            data={filteredBanners}
+            columns={columns}
+            keyField="id"
+            isLoading={isLoading}
+            emptyMessage="尚無輪播圖資料"
+            defaultSortField="sortOrder"
+            searchPlaceholder="搜尋輪播圖名稱..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            addButtonText="+ 新增輪播圖"
+            onAddClick={handleAdd}
+          />
         )}
 
         <Modal

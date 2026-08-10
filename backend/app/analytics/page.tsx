@@ -1,9 +1,9 @@
 'use client'
 
-import { AdminLayout, StatsCard, SearchToolbar, PageCard, Modal, DataTable, type Column } from '@/components'
+import { AdminLayout, StatsCard, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
+import Switch from '@/components/ui/Switch'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useMemo } from 'react'
-import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useToast } from '@/contexts/ToastContext'
 import SelectField from '@/components/ui/SelectField'
 
@@ -28,11 +28,7 @@ interface Admin {
 
 export default function AdminsPage() {
   const { toast } = useToast()
-  const [sortField, setSortField] = useState<string>('created_at')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [displayCount, setDisplayCount] = useState(20)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  
+
   const [admins, setAdmins] = useState<Admin[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [suppliers, setSuppliers] = useState<Array<{ id: number; name: string }>>([])
@@ -41,10 +37,7 @@ export default function AdminsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('analytics', 'compact', {
-    id: true, username: true, nickname: true, role: true, status: true, created_at: true, last_login_at: true, actions: true
-  })
-  
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
@@ -66,7 +59,7 @@ export default function AdminsPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true)
-      
+
       const [rolesRes, adminsRes, suppliersRes] = await Promise.all([
         fetch('/api/admin/roles'),
         fetch('/api/admin/admins'),
@@ -104,15 +97,6 @@ export default function AdminsPage() {
     fetchData()
   }, [])
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
   // 篩選處理
   const filteredAdmins = useMemo(() => {
     let result = admins
@@ -138,58 +122,6 @@ export default function AdminsPage() {
 
     return result
   }, [admins, selectedRole, selectedStatus, searchQuery])
-
-  // 排序處理
-  const sortedAdmins = useMemo(() => {
-    return [...filteredAdmins].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortField) {
-        case 'username':
-          aValue = a.username
-          bValue = b.username
-          break
-        case 'nickname':
-          aValue = a.nickname || ''
-          bValue = b.nickname || ''
-          break
-        case 'role':
-          aValue = a.role?.display_name || ''
-          bValue = b.role?.display_name || ''
-          break
-        case 'status':
-          aValue = a.status
-          bValue = b.status
-          break
-        case 'last_login_at':
-          aValue = a.last_login_at ? new Date(a.last_login_at).getTime() : 0
-          bValue = b.last_login_at ? new Date(b.last_login_at).getTime() : 0
-          break
-        case 'created_at':
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-          break
-        case 'id':
-          aValue = a.id
-          bValue = b.id
-          break
-        default:
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
-      }
-
-      if (typeof aValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      } else {
-        return sortDirection === 'asc' 
-          ? aValue - bValue
-          : bValue - aValue
-      }
-    })
-  }, [filteredAdmins, sortField, sortDirection])
 
   // 統計數據
   const stats = useMemo(() => {
@@ -279,85 +211,85 @@ export default function AdminsPage() {
     setIsAddModalOpen(true)
   }
 
-  const handleLoadMore = () => {
-    setIsLoadingMore(true)
-    setTimeout(() => {
-      setDisplayCount(prev => prev + 20)
-      setIsLoadingMore(false)
-    }, 500)
+  /** 狀態 Switch 直接切換：樂觀更新，失敗滾回（沿用既有更新 API，不動其他欄位） */
+  const toggleStatus = async (admin: Admin, next: boolean) => {
+    const nextStatus: 'active' | 'inactive' = next ? 'active' : 'inactive'
+    setAdmins(prev => prev.map(a => a.id === admin.id ? { ...a, status: nextStatus } : a))
+    try {
+      const res = await fetch('/api/admin/admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: admin.id,
+          username: admin.username,
+          nickname: admin.nickname,
+          role_id: admin.role_id,
+          supplier_id: admin.supplier_id,
+          status: nextStatus,
+        }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setAdmins(prev => prev.map(a => a.id === admin.id ? { ...a, status: admin.status } : a))
+      toast('切換失敗，請重試一次', 'error')
+    }
   }
 
-  const columns: Column<Admin>[] = [
+  const columns: ListColumn<Admin>[] = [
     {
-      key: 'id',
-      label: 'ID',
-      sortable: true,
-      render: (admin) => <span className="text-neutral-500 font-mono">MNG{admin.id.toString().padStart(3, '0')}</span>
+      key: 'id', label: 'ID',
+      sortValue: a => a.id,
+      className: 'font-mono',
+      render: a => <span className="text-neutral-500">MNG{a.id.toString().padStart(3, '0')}</span>,
     },
     {
-      key: 'username',
-      label: '帳號',
-      sortable: true,
-      className: 'font-medium text-neutral-900'
+      key: 'username', label: '帳號',
+      sortValue: a => a.username,
+      render: a => <span className="font-medium text-neutral-900">{a.username}</span>,
     },
     {
-      key: 'nickname',
-      label: '暱稱',
-      sortable: true,
-      className: 'text-neutral-700'
+      key: 'nickname', label: '暱稱',
+      sortValue: a => a.nickname || '',
+      render: a => <>{a.nickname}</>,
     },
     {
-      key: 'role',
-      label: '角色',
-      sortable: true,
-      render: (admin) => (
+      key: 'role', label: '角色',
+      sortValue: a => a.role?.display_name || '',
+      render: a => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-          ${admin.role?.name === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-            admin.role?.name === 'admin' ? 'bg-primary text-primary border-blue-100' :
+          ${a.role?.name === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+            a.role?.name === 'admin' ? 'bg-primary text-primary border-blue-100' :
             'bg-neutral-50 text-neutral-700 border-neutral-100'
           }`}>
-          {admin.role?.display_name || '未知角色'}
+          {a.role?.display_name || '未知角色'}
         </span>
-      )
+      ),
     },
     {
-      key: 'status',
-      label: '狀態',
-      sortable: true,
-      render: (admin) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-          ${admin.status === 'active' 
-            ? 'bg-green-50 text-green-700 border-green-100' 
-            : 'bg-red-50 text-red-700 border-red-100'
-          }`}>
-          {admin.status === 'active' ? '啟用' : '停用'}
-        </span>
-      )
+      key: 'status', label: '狀態',
+      sortValue: a => (a.status === 'active' ? 1 : 0),
+      render: a => (
+        <Switch checked={a.status === 'active'} onCheckedChange={next => void toggleStatus(a, next)} />
+      ),
     },
     {
-      key: 'created_at',
-      label: '建立時間',
-      sortable: true,
-      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.created_at)}</span>
+      key: 'created_at', label: '建立時間',
+      sortValue: a => new Date(a.created_at).getTime(),
+      className: 'font-mono',
+      render: a => <span className="text-neutral-500">{formatDateTime(a.created_at)}</span>,
     },
     {
-      key: 'last_login_at',
-      label: '最後登入',
-      sortable: true,
-      render: (admin) => <span className="text-neutral-500 font-mono whitespace-nowrap">{formatDateTime(admin.last_login_at)}</span>
+      key: 'last_login_at', label: '最後登入',
+      sortValue: a => (a.last_login_at ? new Date(a.last_login_at).getTime() : 0),
+      className: 'font-mono',
+      render: a => <span className="text-neutral-500">{formatDateTime(a.last_login_at)}</span>,
     },
     {
-      key: 'actions',
-      label: '操作',
-      render: (admin) => (
-        <button
-          onClick={() => handleEdit(admin)}
-          className="text-primary hover:text-primary font-medium text-sm"
-        >
-          編輯
-        </button>
-      )
-    }
+      key: 'actions', label: '操作', isActions: true,
+      render: a => (
+        <RowAction tone="primary" onClick={() => handleEdit(a)}>編輯</RowAction>
+      ),
+    },
   ]
 
   return (
@@ -380,76 +312,40 @@ export default function AdminsPage() {
         </div>
 
         {/* 表格區域 */}
-        <PageCard>
-          <SearchToolbar
-            searchPlaceholder="搜尋帳號、暱稱..."
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            showDensity={true}
-            density={tableDensity}
-            onDensityChange={setTableDensity}
-            showFilter={true}
-            filterOptions={[
-              {
-                key: 'role',
-                label: '角色',
-                type: 'select',
-                options: [
-                  { value: 'all', label: '全部角色' },
-                  ...roles.map(r => ({ value: r.name, label: r.display_name }))
-                ],
-                value: selectedRole,
-                onChange: (value) => setSelectedRole(value)
-              },
-              {
-                key: 'status',
-                label: '狀態',
-                type: 'select',
-                options: [
-                  { value: 'all', label: '全部狀態' },
-                  { value: 'active', label: '啟用' },
-                  { value: 'inactive', label: '停用' }
-                ],
-                value: selectedStatus,
-                onChange: (value) => setSelectedStatus(value)
-              }
-            ]}
-            showColumnToggle={true}
-            columns={[
-              { key: 'id', label: 'ID', visible: visibleColumns.id },
-              { key: 'username', label: '帳號', visible: visibleColumns.username },
-              { key: 'nickname', label: '暱稱', visible: visibleColumns.nickname },
-              { key: 'role', label: '角色', visible: visibleColumns.role },
-              { key: 'status', label: '狀態', visible: visibleColumns.status },
-              { key: 'created_at', label: '建立時間', visible: visibleColumns.created_at },
-              { key: 'last_login_at', label: '最後登入', visible: visibleColumns.last_login_at },
-              { key: 'actions', label: '操作', visible: visibleColumns.actions }
-            ]}
-            onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
-            showAddButton={true}
-            addButtonText="+ 新增管理員"
-            onAddClick={handleAdd}
-          />
-
-          <div className="mt-4">
-            <DataTable
-              data={sortedAdmins}
-              columns={columns}
-              keyField="id"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              density={tableDensity}
-              displayCount={displayCount}
-              onLoadMore={handleLoadMore}
-              enableInfiniteScroll={true}
-              isLoadingMore={isLoadingMore}
-              totalCount={sortedAdmins.length}
-              visibleColumns={visibleColumns}
-              emptyMessage="無相關資料"
-            />
-          </div>
-        </PageCard>
+        <ListTableCard
+          pageKey="admins"
+          data={filteredAdmins}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="無相關資料"
+          defaultSortField="created_at"
+          defaultSortDirection="desc"
+          searchPlaceholder="搜尋帳號、暱稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增管理員"
+          onAddClick={handleAdd}
+          filters={[
+            {
+              key: 'role', label: '角色',
+              value: selectedRole, onChange: setSelectedRole,
+              options: [
+                { value: 'all', label: '全部角色' },
+                ...roles.map(r => ({ value: r.name, label: r.display_name })),
+              ],
+            },
+            {
+              key: 'status', label: '狀態',
+              value: selectedStatus, onChange: setSelectedStatus,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '啟用' },
+                { value: 'inactive', label: '停用' },
+              ],
+            },
+          ]}
+        />
 
         {/* Modal */}
         <Modal
@@ -561,7 +457,7 @@ export default function AdminsPage() {
                  <option value="inactive">停用</option>
                </SelectField>
              </div>
- 
+
              <div className="flex justify-end gap-3 pt-4 border-t mt-6">
                <button
                  onClick={() => {
