@@ -38,24 +38,28 @@ interface Promo {
   promotion_targets?: { product_id: number | null; category_id: string | null }[]
 }
 
-const SCOPE_LABEL: Record<Promo['scope'], string> = {
-  product: '指定商品', category: '指定分類', all: '全站',
-}
-
 const EMPTY = {
   name: '', buy: '5', free: '1', badgeText: '',
-  scope: 'category' as Promo['scope'],
+  scope: 'category' as 'category' | 'all',
   startsAt: '', endsAt: '', priority: '0',
-  productIds: [] as number[], categoryIds: [] as string[],
+  categoryIds: [] as string[],
+}
+
+/** ISO → datetime-local 輸入值（編輯預填用） */
+const toLocalInput = (iso: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
 export default function PromotionsPage() {
   const { toast } = useToast()
   const [rows, setRows] = useState<Promo[]>([])
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
-  const [products, setProducts] = useState<{ id: number; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Promo | null>(null)
@@ -73,31 +77,47 @@ export default function PromotionsPage() {
     load()
     fetch('/api/admin/categories', { credentials: 'include' })
       .then(r => r.json()).then(d => { if (Array.isArray(d)) setCategories(d) }).catch(() => {})
-    fetch('/api/admin/products?limit=300', { credentials: 'include' })
-      .then(r => r.json()).then(d => {
-        const list = Array.isArray(d) ? d : d?.products
-        if (Array.isArray(list)) setProducts(list.map((p: any) => ({ id: p.id, name: p.name })))
-      }).catch(() => {})
   }, [])
+
+  const openCreate = () => { setEditingId(null); setForm({ ...EMPTY }); setOpen(true) }
+
+  const openEdit = (p: Promo) => {
+    setEditingId(p.id)
+    setForm({
+      name: p.name,
+      buy: String(p.config?.buy ?? 5),
+      free: String(p.config?.free ?? 1),
+      badgeText: p.badge_text ?? '',
+      scope: p.scope === 'all' ? 'all' : 'category',
+      startsAt: toLocalInput(p.starts_at),
+      endsAt: toLocalInput(p.ends_at),
+      priority: String(p.priority),
+      categoryIds: (p.promotion_targets ?? [])
+        .filter(t => t.category_id)
+        .map(t => String(t.category_id)),
+    })
+    setOpen(true)
+  }
 
   const save = async () => {
     setSaving(true)
     try {
       const res = await fetch('/api/admin/promotions', {
-        method: 'POST',
+        method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          ...(editingId ? { id: editingId } : {}),
           ...form,
           buy: Number(form.buy), free: Number(form.free), priority: Number(form.priority),
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || '建立失敗')
-      toast('已建立')
-      setOpen(false); setForm({ ...EMPTY }); load()
+      if (!res.ok) throw new Error(json.error || '儲存失敗')
+      toast(editingId ? '已儲存' : '已建立')
+      setOpen(false); setForm({ ...EMPTY }); setEditingId(null); load()
     } catch (e) {
-      toast(e instanceof Error ? e.message : '建立失敗', 'error')
+      toast(e instanceof Error ? e.message : '儲存失敗', 'error')
     } finally { setSaving(false) }
   }
 
@@ -132,14 +152,23 @@ export default function PromotionsPage() {
     { key: 'badge', label: '卡片標籤', render: p => <Badge color="primary">{p.badge_text || '—'}</Badge> },
     {
       key: 'scope', label: '適用範圍',
-      render: p => (
-        <div className="text-xs">
-          <div>{SCOPE_LABEL[p.scope as Promo['scope']]}</div>
-          {p.scope !== 'all' && (
-            <div className="text-neutral-400">{p.promotion_targets?.length ?? 0} 個對象</div>
-          )}
-        </div>
-      ),
+      render: p => {
+        if (p.scope === 'all') return <div className="text-xs">全站</div>
+        const targets = (p.promotion_targets ?? []) as { product_id: number | null; category_id: string | null }[]
+        const catNames = targets
+          .filter(t => t.category_id)
+          .map(t => categories.find(c => c.id === t.category_id)?.name ?? '未命名分類')
+        const productCount = targets.filter(t => t.product_id).length
+        return (
+          <div className="text-xs">
+            {catNames.length > 0 && <div>分類：{catNames.join('、')}</div>}
+            {productCount > 0 && <div className="text-neutral-400">＋{productCount} 檔商品（商品編輯掛入）</div>}
+            {catNames.length === 0 && productCount === 0 && (
+              <div className="text-neutral-400">尚未圈定對象</div>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'period', label: '檔期', className: 'text-xs text-neutral-500',
@@ -162,15 +191,20 @@ export default function PromotionsPage() {
       render: p => <Badge status={p.is_active ? 'active' : 'inactive'}>{p.is_active ? '啟用' : '停用'}</Badge>,
     },
     {
-      key: 'actions', label: '操作',
+      key: 'actions', label: '操作', sticky: true, className: 'align-middle',
+      // 操作欄照分類清單頁的文字連結慣例（老闆指定表格樣式統一）
       render: p => (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button onClick={() => toggle(p)}
-            className="rounded border border-neutral-200 px-3 py-1 text-xs transition-colors hover:bg-neutral-50">
+            className="text-neutral-600 hover:text-neutral-900 text-sm font-medium">
             {p.is_active ? '停用' : '啟用'}
           </button>
+          <button onClick={() => openEdit(p)}
+            className="text-primary hover:text-primary text-sm font-medium">
+            編輯
+          </button>
           <button onClick={() => setDeleteTarget(p)}
-            className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 transition-colors hover:bg-red-50">
+            className="text-red-500 hover:text-red-700 text-sm font-medium">
             刪除
           </button>
         </div>
@@ -186,7 +220,7 @@ export default function PromotionsPage() {
             買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是付 5 抽的錢多送 1 抽，
             玩家拿 6 顆、庫存扣 6，收入不打折。
           </p>
-          <button onClick={() => setOpen(true)}
+          <button onClick={openCreate}
             className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-white transition-colors hover:bg-primary/90">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -202,7 +236,7 @@ export default function PromotionsPage() {
         </PageCard>
       </div>
 
-      <Modal isOpen={open} onClose={() => setOpen(false)} title="新增促銷方案">
+      <Modal isOpen={open} onClose={() => setOpen(false)} title={editingId ? '編輯促銷方案' : '新增促銷方案'}>
         <div className="space-y-4">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-500">方案名稱 <span className="text-red-500">*</span></label>
@@ -229,16 +263,18 @@ export default function PromotionsPage() {
               placeholder={`留空自動用「買${form.buy}送${form.free}」`} />
           </div>
 
+          {/* 掛鉤定案：方案這邊只圈「分類」（可留空）；圈單一商品
+              去商品編輯那邊勾（老闆指定，方案選商品太複雜） */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-neutral-500">適用範圍</label>
-            <SelectField value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value as Promo['scope'] }))}>
+            <SelectField value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value as 'category' | 'all' }))}>
               <option value="category">指定分類</option>
-              <option value="product">指定商品</option>
               <option value="all">全站</option>
             </SelectField>
             {form.scope === 'category' && (
               <p className="mt-1 text-xs text-neutral-400">
-                掛在分類上之後，往那個分類丟的新商品會自動套用，不用一個一個設。
+                掛在分類上之後，往那個分類丟的新商品會自動套用。
+                也可以先不選 —— 之後到「商品編輯」把個別商品勾進這個方案。
               </p>
             )}
           </div>
@@ -257,22 +293,6 @@ export default function PromotionsPage() {
                 </label>
               ))}
               {categories.length === 0 && <p className="p-2 text-xs text-neutral-400">還沒有分類，先到「分類清單」建立</p>}
-            </div>
-          )}
-
-          {form.scope === 'product' && (
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-neutral-200 p-2">
-              {products.map(p => (
-                <label key={p.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="h-4 w-4"
-                    checked={form.productIds.includes(p.id)}
-                    onChange={e => setForm(f => ({
-                      ...f,
-                      productIds: e.target.checked ? [...f.productIds, p.id] : f.productIds.filter(x => x !== p.id),
-                    }))} />
-                  <span className="truncate">{p.name}</span>
-                </label>
-              ))}
             </div>
           )}
 
@@ -297,9 +317,15 @@ export default function PromotionsPage() {
             </p>
           </div>
 
+          {editingId !== null && (
+            <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+              改參數只影響之後的購買 —— 已發放的贈品記錄都留在案（結算依據），不會被改動。
+            </p>
+          )}
+
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={save} isLoading={saving}>建立</Button>
+            <Button onClick={save} isLoading={saving}>{editingId ? '儲存' : '建立'}</Button>
           </div>
         </div>
       </Modal>
