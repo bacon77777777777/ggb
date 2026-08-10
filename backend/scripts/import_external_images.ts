@@ -1,7 +1,7 @@
 /**
  * 把外站抓來的商品圖搬到 GGB 自己的 R2
  *
- * 一次性匯入用（潮玩家 slimetoy.com.tw 的公開商品頁）。**不留外站網址**：
+ * 匯入用（潮玩家 slimetoy.com.tw、clove oripa.clove.jp 的公開商品頁）。**不留外站網址**：
  * 熱連別人的圖有兩個問題 —— 對方換檔名或擋 referer 我們就整批破圖，
  * 而且每個玩家開商品頁都會把 referer 送到對方伺服器。
  *
@@ -9,12 +9,13 @@
  *
  * 用法：
  *   cd backend && export $(grep -v '^#' .env.local | xargs) \
- *     && npx tsx scripts/import_slimetoy_images.ts <selection.json> <out.json>
+ *     && npx tsx scripts/import_external_images.ts <selection.json> <out.json>
  */
 
 import fs from 'fs'
 import { r2Upload } from '../lib/r2'
 
+/** 來源站的圖片主機。JSON 裡是相對路徑時才會用到（clove 給的是絕對網址） */
 const CDN = 'https://img.slimetoy.com.tw/'
 
 interface Prize { level: string; name: string; image: string | null; qty: number }
@@ -22,7 +23,7 @@ interface Item { src_id: number; type: string; name: string; price: number; imag
 
 const [, , inPath, outPath] = process.argv
 if (!inPath || !outPath) {
-  console.error('用法：tsx scripts/import_slimetoy_images.ts <selection.json> <out.json>')
+  console.error('用法：tsx scripts/import_external_images.ts <selection.json> <out.json>')
   process.exit(1)
 }
 
