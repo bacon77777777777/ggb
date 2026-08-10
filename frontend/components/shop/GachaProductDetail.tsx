@@ -534,7 +534,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
       {/* mode5 的底部操作欄 —— 機台上不畫按鈕（老闆指定），三顆移到這裡。
           版型照盒玩立體機台 blindbox_mode5：左側單抽金額，右側三顆按鈕 */}
       {machineTheme === 'gacha_mode5' && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">

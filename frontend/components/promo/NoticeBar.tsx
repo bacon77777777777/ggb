@@ -42,9 +42,16 @@ function useTabbarOffset() {
   useEffect(() => {
     // 每次都重新查詢，不抓著同一個節點：導航列先渲染 Suspense 骨架再換成本體，
     // 抓著舊節點時它被卸載會回報高度 0，警語列就會被釘到畫面最底、疊進導航列裡。
+    //
+    // 兩種底部欄都要認：首頁是 MobileTabbar，商品內頁是底部操作欄
+    // （立即抽獎／立即開包…）。兩者不會同時出現，取量到的最大值即可。
     const sync = () => {
-      const el = document.querySelector('[data-testid="mobile-tabbar"]') as HTMLElement | null;
-      setOffset(el?.offsetHeight || 0);
+      const els = document.querySelectorAll<HTMLElement>(
+        '[data-testid="mobile-tabbar"], [data-testid="bottom-action-bar"]',
+      );
+      let h = 0;
+      els.forEach(el => { h = Math.max(h, el.offsetHeight || 0); });
+      setOffset(h);
     };
     sync();
     const raf = requestAnimationFrame(sync);   // 骨架換本體那一幀

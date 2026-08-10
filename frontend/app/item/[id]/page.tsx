@@ -1387,8 +1387,11 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
-              <div className="relative w-full flex items-center justify-center" style={{ bottom: isMobile ? '40px' : '35px' }}>
+            {/* 卡包輪播：在機台上半部裡垂直置中（老闆指定）。
+                原本是靠 bottom: 40px 往上頂，機台底部的三顆按鈕拿掉之後
+                下半部空出來，整個看起來偏高 */}
+            <div className="absolute left-1/2 top-0 -translate-x-1/2 flex h-1/2 items-center justify-center" style={{ width: 375, zIndex: 10 }}>
+              <div className="relative w-full flex items-center justify-center">
                 <PackSelectionCarousel
                   cardScale={cardScale}
                   ref={packCarouselRef}
@@ -1683,7 +1686,7 @@ export default function ProductDetailPage() {
         {/* Mobile < 1024px；pt 同上，要含警語列高度 */}
         <div
           className="block lg:hidden overflow-x-hidden pb-32"
-          style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+          style={{ paddingTop: '3.5rem' }}
         >
           <div
             className="w-full flex justify-center"
@@ -1856,7 +1859,7 @@ export default function ProductDetailPage() {
         )}
         {/* 底部固定操作欄 —— 機台上不再畫按鈕（老闆指定）。
             版型與配色照盒玩 blindbox_mode5：左側單抽金額，右側三顆 */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
+        <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
               <span className="mb-0.5 text-[13px] font-black uppercase tracking-widest leading-none text-neutral-400">
@@ -1896,7 +1899,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
+        {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
       </div>
     );
   }
@@ -1906,7 +1909,7 @@ export default function ProductDetailPage() {
     // 警語列是 fixed，不留這段內容會被它蓋住
     <div
       className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-32 md:pb-12"
-      style={{ paddingTop: 'calc(3.5rem + var(--promo-notice-h, 0px))' }}
+      style={{ paddingTop: '3.5rem' }}
     >
       <div className="max-w-7xl mx-auto px-2 py-2 sm:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-6 items-start">
@@ -2519,7 +2522,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </div>
-      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar position="top" />}
+      {FAIR_ENGINE_TYPES.includes(product.type) && <NoticeBar />}
     </div>
   );
 }
