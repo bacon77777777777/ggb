@@ -63,6 +63,9 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
 
   const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
+  /** 一番賞才有籤號；整批都沒有就不佔那一欄（轉蛋／盒玩維持原樣） */
+  const hasTickets = results.some(p => typeof p.ticket_number === 'number');
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -106,6 +109,14 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                       onClick={() => setDetail(p)}
                       className="flex w-full items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50 p-1.5 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
                     >
+                      {/* 籤號：一番賞玩家對號用的，擺最前面（最後賞沒籤號） */}
+                      {hasTickets && (
+                        <span className="w-8 shrink-0 text-center text-[13px] font-black tabular-nums text-neutral-400 dark:text-neutral-500">
+                          {typeof p.ticket_number === 'number' && p.ticket_number > 0
+                            ? String(p.ticket_number).padStart(2, '0')
+                            : '—'}
+                        </span>
+                      )}
                       <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
                         <Image
                           src={prizeImage(p, !!failedIds[`l${i}`])}

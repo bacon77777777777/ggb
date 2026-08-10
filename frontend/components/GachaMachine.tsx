@@ -13,6 +13,8 @@ export interface Prize {
   image_url?: string;
   grade?: string;
   is_last_one?: boolean;
+  /** 一番賞才有：籤號。中獎彈窗有這欄才顯示籤號 */
+  ticket_number?: number;
 }
 
 interface GachaMachineProps {
