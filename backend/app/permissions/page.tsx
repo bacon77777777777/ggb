@@ -1,11 +1,9 @@
 'use client'
 
-import { AdminLayout, Modal, PageCard, SearchToolbar } from '@/components'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import { useState, useEffect } from 'react'
 import { useLog } from '@/contexts/LogContext'
 import { useToast } from '@/contexts/ToastContext'
-import { CardSkeleton } from '@/components/ui/Skeleton'
-import EmptyState from '@/components/ui/EmptyState'
 
 interface Role {
   id: number
@@ -51,6 +49,7 @@ const PERMISSION_GROUPS = [
     title: '抽獎管理',
     items: [
       { id: 'products',          label: '商品管理' },
+      { id: 'slot',              label: '挑戰機台' },
       { id: 'draws',             label: '抽獎紀錄' },
       { id: 'orders',            label: '配送管理' },
       { id: 'coupons',           label: '折價券管理' },
@@ -61,6 +60,7 @@ const PERMISSION_GROUPS = [
     title: '會員管理',
     items: [
       { id: 'users',           label: '會員管理' },
+      { id: 'referrals',       label: '邀請報表' },
       { id: 'recharge_review', label: '待複核儲值' },
     ],
   },
@@ -72,8 +72,10 @@ const PERMISSION_GROUPS = [
       { id: 'news',              label: '文章管理' },
       { id: 'announcements',     label: '公告管理' },
       { id: 'events',            label: '活動頁管理' },
-      { id: 'cs_management',     label: '客服管理' },
+      { id: 'cs_tickets',        label: '客服工單' },
+      { id: 'cs_sop',            label: '客服操作手冊' },
       { id: 'categories',        label: '分類清單' },
+      { id: 'settings_promotions', label: '促銷方案' },
       { id: 'settings_modules',  label: '抽獎模組設定' },
       { id: 'settings_features', label: '功能開關' },
       { id: 'settings_theme',    label: '主題色' },
@@ -109,6 +111,7 @@ const PERMISSION_GROUPS = [
       { id: 'agent_events',    label: '事件中心' },
       { id: 'competitor_intel',label: '競品情報' },
       { id: 'content_drafts',  label: 'AI 文案草稿' },
+      { id: 'ai_usage',        label: 'AI 用量' },
       { id: 'tools',           label: '工具' },
       { id: 'settings',        label: '殺率調整' },
     ],
@@ -310,83 +313,62 @@ export default function PermissionsPage() {
     }
   }
 
+  // 條列式（老闆指定）：角色一列一行，權限標籤雲在儲存格內換行
+  const roleColumns: ListColumn<Role>[] = [
+    {
+      key: 'role', label: '角色',
+      sortValue: r => r.display_name,
+      render: r => (
+        <div>
+          <div className="font-medium text-neutral-900">{r.display_name}</div>
+          <div className="mt-0.5 text-xs text-neutral-400 font-mono">{r.name}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'permissions', label: '可訪問頁面',
+      render: r => (
+        <div className="flex max-w-4xl flex-wrap gap-1.5 whitespace-normal py-0.5">
+          {r.name === 'super_admin' ? (
+            <span className="px-2.5 py-1 bg-blue-100 text-primary rounded-lg text-xs font-medium border border-blue-200">
+              全部頁面
+            </span>
+          ) : (r.permissions?.length ?? 0) === 0 ? (
+            <span className="text-sm text-neutral-400 italic">無權限設定</span>
+          ) : (
+            r.permissions.map(p => (
+              <span key={p} className="px-2 py-0.5 bg-neutral-50 text-neutral-700 rounded-lg text-xs font-medium border border-neutral-200">
+                {permLabel(p)}
+              </span>
+            ))
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: r => r.name === 'super_admin'
+        ? <span className="text-sm text-neutral-300">—</span>
+        : <RowAction tone="primary" onClick={() => handleEdit(r)}>編輯</RowAction>,
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="權限管理">
       <div className="space-y-6">
-        {/* 這頁是權限卡片矩陣不是表格列表，不硬套 ListTableCard；
-            外框與工具列對齊定版樣板（PageCard + SearchToolbar），卡片內容不動 */}
-        <PageCard>
-          <SearchToolbar
-            searchPlaceholder="搜尋角色名稱..."
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            showDensity={false}
-            showFilter={false}
-            showColumnToggle={false}
-            showAddButton={true}
-            addButtonText="+ 新增角色"
-            onAddClick={handleAdd}
-          />
-
-        {isLoading ? (
-          <CardSkeleton rows={3} />
-        ) : filteredRoles.length === 0 ? (
-          <EmptyState message={roles.length === 0 ? '尚無角色資料' : '沒有找到符合條件的角色'} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRoles.map(role => {
-              const isSuperAdmin = role.name === 'super_admin'
-              return (
-                <div 
-                  key={role.id} 
-                  className={`bg-white rounded-xl border p-6 shadow-sm hover:shadow-md transition-shadow ${
-                    isSuperAdmin ? 'border-blue-200 ring-1 ring-blue-100' : 'border-neutral-200'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-neutral-900">{role.display_name}</h3>
-                      <p className="text-sm text-neutral-500 font-mono mt-1">{role.name}</p>
-                    </div>
-                    {!isSuperAdmin && (
-                      <button
-                        onClick={() => handleEdit(role)}
-                        className="text-neutral-400 hover:text-primary transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">可訪問頁面</div>
-                    <div className="flex flex-wrap gap-2">
-                      {isSuperAdmin ? (
-                        <span className="px-2.5 py-1 bg-blue-100 text-primary rounded-lg text-xs font-medium border border-blue-200">
-                          全部頁面
-                        </span>
-                      ) : (
-                        <>
-                          {role.permissions?.map(p => (
-                            <span key={p} className="px-2.5 py-1 bg-neutral-50 text-neutral-700 rounded-lg text-xs font-medium border border-neutral-200">
-                              {permLabel(p)}
-                            </span>
-                          ))}
-                          {(!role.permissions || role.permissions.length === 0) && (
-                            <span className="text-sm text-neutral-400 italic">無權限設定</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-        </PageCard>
+        <ListTableCard
+          pageKey="permissions"
+          data={filteredRoles}
+          columns={roleColumns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage={roles.length === 0 ? '尚無角色資料' : '沒有找到符合條件的角色'}
+          searchPlaceholder="搜尋角色名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增角色"
+          onAddClick={handleAdd}
+        />
 
         <Modal
           isOpen={isModalOpen}

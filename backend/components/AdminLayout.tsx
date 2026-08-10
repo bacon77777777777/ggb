@@ -635,7 +635,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
     '/reports/logistics': 'reports_logistics',
-    '/reports/coupons': 'coupons',
+    // 折價券「明細」對 coupons_report —— 原本誤對 coupons（管理權），
+    // 導致勾了折價券明細也看不到（權限盤查 2026-08-09 修正）
+    '/reports/coupons': 'coupons_report',
     '/reports/products': 'reports_products',
     '/reports/dismantled': 'reports_dismantled',
     '/reports/settlement': 'reports_settlement',
@@ -653,6 +655,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/marketplace': 'marketplace',
     // 系統設定
     '/users': 'users',
+    '/referrals': 'referrals',
     '/suppliers': 'suppliers',
     '/banners': 'banners',
     '/announcements': 'announcements',
@@ -662,7 +665,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/settings/modules': 'settings_modules',
     '/settings/features': 'settings_features',
     '/settings/theme': 'settings_theme',
-    '/settings/promotions': 'settings_features',
+    '/settings/promotions': 'settings_promotions',
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
