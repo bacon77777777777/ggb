@@ -1171,11 +1171,11 @@ export default function Home() {
                       <div className="flex flex-col p-2">
                         <div className="mb-1 h-[2.75rem]">
                           <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                            <span className="inline-flex align-[-0.125em] mr-1 h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
+                            <span className="inline align-[-0.125em] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
                               販售
                             </span>
                             {listing.product.type && (
-                              <ProductBadge type={listing.product.type} className="inline-flex align-[-0.125em] mr-1" />
+                              <ProductBadge type={listing.product.type} className="inline align-[-0.125em] mr-1 py-[3px] backdrop-blur-none" />
                             )}
                             <span className="inline">{listing.product.name}</span>
                           </h3>
@@ -1278,7 +1278,7 @@ export default function Home() {
                           <div className="flex flex-col p-2">
                             <div className="mb-1 h-[2.75rem]">
                               <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
-                                <span className="inline-flex align-[-0.125em] mr-1 h-4 px-1 text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider items-center backdrop-blur-sm bg-opacity-90 bg-primary shadow-primary/20">
+                                <span className="inline align-[-0.125em] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
                                   販售
                                 </span>
                                 <span className="inline">{listing.product.name}</span>
