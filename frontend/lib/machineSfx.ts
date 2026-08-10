@@ -70,6 +70,26 @@ function buildPinkNoise(ctx: AudioContext): AudioBuffer {
 }
 
 /**
+ * 使用者互動就把 suspended 的 context 叫醒。
+ *
+ * 只掛一次、掛在 window 上：進商品頁就要開始播背景音樂，但那時多半還沒有
+ * 任何互動，AudioContext 一定是 suspended。玩家之後點畫面任何一處
+ * （不見得是機台按鈕）音樂就接上，不必等他按「立即開盒」。
+ */
+let resumeHooked = false;
+function hookResume() {
+  if (resumeHooked || typeof window === 'undefined') return;
+  resumeHooked = true;
+  const wake = () => resumeMachineAudio();
+  (['pointerdown', 'touchstart', 'keydown', 'wheel'] as const).forEach(ev => {
+    window.addEventListener(ev, wake, { capture: true, passive: true });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) wake();
+  });
+}
+
+/**
  * 建立整套音效節點。可重複呼叫，第二次以後只做 resume。
  *
  * 瀏覽器的 autoplay policy：AudioContext 在使用者互動前只能是 suspended。
@@ -78,6 +98,7 @@ function buildPinkNoise(ctx: AudioContext): AudioBuffer {
  */
 export function initMachineAudio(masterVolume = 0.8) {
   if (typeof window === 'undefined') return;
+  hookResume();
   if (A) {
     A.master.gain.value = masterVolume;
     if (A.ctx.state === 'suspended') void A.ctx.resume();

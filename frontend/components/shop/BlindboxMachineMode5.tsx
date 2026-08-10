@@ -148,6 +148,14 @@ export function BlindboxMachineMode5({
     setMusicVolume(MUSIC_VOLUME);   // 背景音樂只在這台機器上響
   }, []);
 
+  /*
+   * 進商品頁就開始播背景音樂（老闆指定），不等玩家按「立即開盒」。
+   *
+   * 此時多半還沒有任何互動，AudioContext 會是 suspended —— 節點與排程器
+   * 照樣先建好，時間軸凍結不會空轉，玩家點畫面任何一處就接上。
+   */
+  useEffect(() => { audioInit(); }, [audioInit]);
+
   // 音量跟著後台參數走
   useEffect(() => { setMachineVolume(params.volume); }, [params.volume]);
 
