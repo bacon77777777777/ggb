@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { playSfx, SFX } from '@/lib/sfx';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ImageButton } from '@/components/ui/ImageButton';
 
 interface GachaMachineMode2Props {
   state: 'idle' | 'shaking' | 'spinning' | 'dropping' | 'waiting' | 'result';
@@ -40,9 +39,7 @@ interface Egg {
 export function GachaMachineMode2({
   state,
   shakeRepeats = 1,
-  onPush,
   onPurchase,
-  onTrial,
   onHoleClick,
   onLoaded,
   isSoldOut = false,
@@ -324,38 +321,9 @@ export function GachaMachineMode2({
         </div>
       </div>
 
-      {/* Buttons (same % positions as classic) */}
-      <ImageButton
-        src="/images/gacha/mode2/btn2.png"
-        alt="推一下"
-        text="推一下"
-        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => {
-          if (isSoldOut) return;
-          playSfx(SFX.gachaPush);
-          onPush?.();
-        }}
-      />
-      <ImageButton
-        src="/images/gacha/mode2/btn1.png"
-        alt="立即轉蛋"
-        text="立即轉蛋"
-        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
-      />
-      <ImageButton
-        src="/images/gacha/mode2/btn2.png"
-        alt="試試看"
-        text="試試看"
-        className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
-        textClassName="text-base md:text-lg"
-        style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
-        onClick={() => { if (!isSoldOut && !disableButtons && onTrial) onTrial(); }}
-      />
+      {/* 機台上不畫按鈕 —— 推一下／立即轉蛋／試試看改走商品頁底部操作欄
+          （老闆指定，新機台圖的底座是裝飾用的，沒有按鈕位）。
+          旋鈕仍可直接點擊轉蛋，那是機台本體的互動，不是按鈕。 */}
 
       {isSoldOut && (
         <div

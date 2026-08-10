@@ -1387,10 +1387,10 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* 卡包輪播：在機台上半部裡垂直置中（老闆指定）。
-                原本是靠 bottom: 40px 往上頂，機台底部的三顆按鈕拿掉之後
-                下半部空出來，整個看起來偏高 */}
-            <div className="absolute left-1/2 top-0 -translate-x-1/2 flex h-1/2 items-center justify-center" style={{ width: 375, zIndex: 10 }}>
+            {/* 卡包輪播：貼機台頂端，讓輪播自己的容器決定垂直位置（老闆實測）。
+                先前加 h-1/2 想「在上半部裡居中」，反而把它推得更高 ——
+                輪播內層有自己的 perspective 容器，外面再夾一層高度只會打架 */}
+            <div className="absolute left-1/2 top-0 -translate-x-1/2 flex items-center justify-center" style={{ width: 375, zIndex: 10 }}>
               <div className="relative w-full flex items-center justify-center">
                 <PackSelectionCarousel
                   cardScale={cardScale}

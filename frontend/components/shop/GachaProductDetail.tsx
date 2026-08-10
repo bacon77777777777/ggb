@@ -27,6 +27,9 @@ interface GachaProductDetailProps {
   onMachineReady?: () => void;
 }
 
+/** 機台本身不畫按鈕的主題 —— 推一下／立即轉蛋／試試看改走頁面底部操作欄 */
+const BUTTONLESS_THEMES = ['gacha_mode2', 'gacha_mode5']
+
 const MACHINE_COMPONENTS: Record<string, React.ComponentType<React.ComponentProps<typeof GachaMachineVisual>>> = {
   gacha_classic: GachaMachineVisual,
   gacha_modern: GachaMachineModern,
@@ -81,7 +84,8 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [hasPendingResult, setHasPendingResult] = useState(false);
   const [isMachineLoaded, setIsMachineLoaded] = useState(false);
-  const [isEggBoxImageMode, setIsEggBoxImageMode] = useState(false);
+  // 商品圖預設顯示（老闆指定），點一下收起看蛋箱
+  const [isEggBoxImageMode, setIsEggBoxImageMode] = useState(true);
   const [forceGoldEgg, setForceGoldEgg] = useState(false);
 
   const animTimersRef = useRef<number[]>([]);
@@ -393,13 +397,6 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
       className="relative"
       style={{ width: 375, transform: `scale(${scale})`, transformOrigin: 'top center' }}
     >
-      {/* 點擊蛋箱提示 */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-3 rounded-full text-center"
-        style={{ top: 221, height: 20, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 20, pointerEvents: 'none' }}
-      >
-        <span className="font-medium" style={{ color: '#FFFFFF', fontSize: 12 }}>點擊蛋箱顯示圖片</span>
-      </div>
       <div className="w-full max-w-[750px] mx-auto">
         <div className="relative w-full" style={{ aspectRatio: '750/932' }}>
           {(() => {
@@ -420,29 +417,23 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
               />
             );
           })()}
-          {/* 蛋箱圖片切換區 */}
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 42, width: 167, height: 167, zIndex: 20 }}>
-            <div className="relative w-full h-full">
-              <div
-                className="absolute inset-0 cursor-pointer"
-                style={{ opacity: isEggBoxImageMode ? 0 : 1, pointerEvents: isEggBoxImageMode ? 'none' : 'auto', transition: 'opacity 200ms ease-out' }}
-                onClick={() => { if (!product.id) return; setIsEggBoxImageMode(true); }}
+          {/* 蛋箱裡的商品圖：預設就顯示（老闆指定），點一下收起、再點一下又出現。
+              整塊維持可點擊 —— 收起後那層就是「再點一次」的目標，
+              不然圖藏起來之後玩家沒有東西可以點回來。 */}
+          {product.id && (
+            <div
+              className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
+              style={{ top: 46, width: 232, height: 200, zIndex: 20 }}
+              onClick={() => setIsEggBoxImageMode(v => !v)}
+            >
+              <Image
+                src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
+                alt={product.name} fill className="object-contain"
+                style={{ opacity: isEggBoxImageMode ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+                onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
               />
-              {product.id && (
-                <div
-                  className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                  style={{ opacity: isEggBoxImageMode ? 1 : 0, pointerEvents: isEggBoxImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
-                  onClick={() => setIsEggBoxImageMode(false)}
-                >
-                  <Image
-                    src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                    alt={product.name} fill className="rounded-lg object-fill"
-                    onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
-                  />
-                </div>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -533,7 +524,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
       {/* mode5 的底部操作欄 —— 機台上不畫按鈕（老闆指定），三顆移到這裡。
           版型照盒玩立體機台 blindbox_mode5：左側單抽金額，右側三顆按鈕 */}
-      {machineTheme === 'gacha_mode5' && (
+      {BUTTONLESS_THEMES.includes(machineTheme ?? '') && (
         <div data-testid="bottom-action-bar" className="fixed bottom-0 left-0 right-0 z-40 border-t border-neutral-100 bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-modal backdrop-blur-xl dark:border-neutral-800 dark:bg-neutral-900/90">
           <div className="mx-auto flex h-16 max-w-2xl items-center gap-3 px-4">
             <div className="flex h-full shrink-0 flex-col justify-center pl-1">
