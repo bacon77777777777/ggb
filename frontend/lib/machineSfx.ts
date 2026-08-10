@@ -152,9 +152,10 @@ export function initMachineAudio(masterVolume = 0.8) {
   if (ctx.state === 'suspended') void ctx.resume();
 }
 
-/** 使用者互動後把 suspended 的 context 叫醒 */
+/** 使用者互動後把 suspended 的 context 叫醒，順便把音樂音量補上 */
 export function resumeMachineAudio() {
-  if (A && A.ctx.state === 'suspended') void A.ctx.resume();
+  if (!A) return;
+  if (A.ctx.state === 'suspended') void A.ctx.resume().then(applyMusicLevel, () => {});
 }
 
 /**
@@ -171,18 +172,36 @@ export function setMachineVolume(v: number) {
   if (A) A.master.gain.value = v;
 }
 
-/** 背景音樂音量（0 = 靜音） */
+/**
+ * 背景音樂音量（0 = 靜音）。
+ *
+ * 0.6 這個係數是原型的 0.17 調上來的 —— 照原型的比例，音樂實測只到
+ * 振幅 0.004（≈ -48 dBFS），機械音一出來就完全蓋掉，等於沒有背景音樂。
+ */
 export function setMusicVolume(v: number) {
   MUS.volume = v;
+  applyMusicLevel();
 }
 
 /** 演出中壓低音樂。busy = 機台在動／CTA 亮著／彈窗開著 */
 export function setDucking(busy: boolean) {
+  if (ducking === busy) return;
   ducking = busy;
+  applyMusicLevel();
 }
 
 function level(node: GainNode | null, v: number, tau: number) {
   if (node && A) node.gain.setTargetAtTime(v, A.ctx.currentTime, tau);
+}
+
+/**
+ * 音樂音量獨立套用，不依賴機台的 rAF 迴圈。
+ *
+ * 原本混在 setMachineMotion 裡每幀推 —— 那條路徑只有 three.js 建場成功
+ * 才會跑，WebGL 不支援時退版面就沒有音樂了；而且要等第一幀才開始淡入。
+ */
+function applyMusicLevel() {
+  level(A?.musicG ?? null, MUS.volume * 0.6 * (ducking ? 0.42 : 1), 0.45);
 }
 
 /** 機台狀態 → 兩層常駐 loop 的音量。每幀呼叫 */
@@ -190,7 +209,6 @@ export function setMachineMotion(moving: boolean, pushing: boolean) {
   if (!A) return;
   level(A.motorG, moving ? 0.15 : 0, moving ? 0.05 : 0.10);
   level(A.servoG, pushing ? 0.075 : 0, pushing ? 0.04 : 0.07);
-  level(A.musicG, MUS.volume * 0.17 * (ducking ? 0.42 : 1), 0.45);
 }
 
 /** 起音 8ms、之後指數衰減 */
