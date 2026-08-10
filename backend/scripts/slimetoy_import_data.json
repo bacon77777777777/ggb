@@ -1,0 +1,836 @@
+[
+ {
+  "src_id": 835,
+  "type": "ichiban",
+  "name": "《我的英雄學院》-成為最棒英雄之前的故事-",
+  "price": 380,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "綠谷出久＆歐爾麥特 MASTERLISE PLUS模型 歐爾麥特約27cm、綠谷出久約5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "B",
+    "name": "爆豪勝己 MASTERLISE模型 約24cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p2.webp",
+    "qty": 2
+   },
+   {
+    "level": "C",
+    "name": "相澤消太 MASTERLISE模型 約26cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D",
+    "name": "根津校長 MASTERLISE模型 約12cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "E",
+    "name": "出久：原點 MASTERLISE模型 約17cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p5.webp",
+    "qty": 2
+   },
+   {
+    "level": "F",
+    "name": "歐爾麥特玩偶 MASTERELIVE COLLECTION 約15cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p6.webp",
+    "qty": 1
+   },
+   {
+    "level": "G",
+    "name": "A班全員集合！ ~這就是我們的英雄學院~ 角色壓克力立牌(全24種隨機) 約7~14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p7.webp",
+    "qty": 24
+   },
+   {
+    "level": "H",
+    "name": "雄英校園收藏組(全7種隨機) 筆記本保護套約11cm、徽章約1.5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p8.webp",
+    "qty": 24
+   },
+   {
+    "level": "I",
+    "name": "文具收藏組(全8種隨機) 便條本約8cm、明信片約14cm、學生證約8cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p9.webp",
+    "qty": 24
+   },
+   {
+    "level": "LAST",
+    "name": "綠谷出久 -10th ANNIVERSARY- MASTERLISE模型 約21cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-835-p10.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 833,
+  "type": "ichiban",
+  "name": "《爬蟲類與兩棲類》～Tiny Friends～vol.3",
+  "price": 300,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "鬆獅蜥休息姿勢書擋 約18cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p1.webp",
+    "qty": 2
+   },
+   {
+    "level": "B",
+    "name": "球蟒面紙套 約24cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "C",
+    "name": "日本樹蛙與觀葉植物飾品架 約15cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p3.webp",
+    "qty": 2
+   },
+   {
+    "level": "D",
+    "name": "非洲肥尾守宮與躲避屋造型收納盒 約13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p4.webp",
+    "qty": 2
+   },
+   {
+    "level": "E",
+    "name": "爬蟲寶寶模型(全3種隨機) 約6cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p5.webp",
+    "qty": 3
+   },
+   {
+    "level": "F",
+    "name": "環保購物袋(全4種隨機) 約30cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p6.webp",
+    "qty": 4
+   },
+   {
+    "level": "G",
+    "name": "造型方巾(全8種隨機) 約23cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p7.webp",
+    "qty": 16
+   },
+   {
+    "level": "H",
+    "name": "A4文件夾與貼紙組(全10種隨機)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p8.webp",
+    "qty": 20
+   },
+   {
+    "level": "I",
+    "name": "橡膠雜貨系列(全9種隨機) 約4~14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p9.webp",
+    "qty": 18
+   },
+   {
+    "level": "J",
+    "name": "立體式便條紙(全6種隨機) 約8cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p10.webp",
+    "qty": 12
+   },
+   {
+    "level": "LAST",
+    "name": "非洲肥尾守宮與躲避屋收納盒 打哈欠Ver. 約13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-833-p11.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 832,
+  "type": "ichiban",
+  "name": "三麗鷗賞《帕恰狗 × 貝克鴨》",
+  "price": 380,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "① 爆米花機",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p1.png",
+    "qty": 2
+   },
+   {
+    "level": "B",
+    "name": "② 帕恰狗 絨毛玩偶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p2.png",
+    "qty": 2
+   },
+   {
+    "level": "C",
+    "name": "③ 貝克鴨 絨毛玩偶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p3.png",
+    "qty": 2
+   },
+   {
+    "level": "D",
+    "name": "④ 帕恰狗 × 貝克鴨造型浴巾",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p4.png",
+    "qty": 6
+   },
+   {
+    "level": "E",
+    "name": "⑤ 帕恰狗 吊飾玩偶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p5.png",
+    "qty": 5
+   },
+   {
+    "level": "F",
+    "name": "⑥ 貝克鴨 吊飾玩偶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p6.png",
+    "qty": 5
+   },
+   {
+    "level": "G",
+    "name": "⑦ 透明杯組",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p7.png",
+    "qty": 10
+   },
+   {
+    "level": "H",
+    "name": "⑧ 帕恰狗 收納化妝包",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p8.png",
+    "qty": 5
+   },
+   {
+    "level": "I",
+    "name": "⑨ 貝克鴨 收納化妝包",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p9.png",
+    "qty": 5
+   },
+   {
+    "level": "J",
+    "name": "⑩ 粉紅色迷你托特包",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p10.png",
+    "qty": 5
+   },
+   {
+    "level": "K",
+    "name": "⑪ 藍色迷你托特包",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p11.png",
+    "qty": 5
+   },
+   {
+    "level": "L",
+    "name": "⑫ 小方巾二件組",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p12.png",
+    "qty": 10
+   },
+   {
+    "level": "M",
+    "name": "⑬ 收納箱",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p13.png",
+    "qty": 8
+   },
+   {
+    "level": "LAST",
+    "name": "帕恰狗 × 貝克鴨 限定造型抱枕",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-832-p14.png",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 828,
+  "type": "ichiban",
+  "name": "《海賊王》艾爾帕夫篇GIANT BASH!! Vol.2★",
+  "price": 360,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "羅羅亞・索隆 MASTERLISE EXPIECE模型 約12cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p1.webp",
+    "qty": 2
+   },
+   {
+    "level": "B",
+    "name": "香吉士 MASTERLISE EXPIECE模型 約13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "C",
+    "name": "多尼多尼・喬巴 MASTERLISE EXPIECE模型 約10cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p3.webp",
+    "qty": 2
+   },
+   {
+    "level": "D",
+    "name": "布洛基 MASTERLISE EXPIECE模型 約28cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "E",
+    "name": "斯克巴・賈巴 MASTERLISE EXPIECE模型 約16cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "F",
+    "name": "艾爾帕夫長毛巾 約90cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p6.webp",
+    "qty": 1
+   },
+   {
+    "level": "G",
+    "name": "永久指針壓克力立牌(全2種隨機) 約7.5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p7.webp",
+    "qty": 4
+   },
+   {
+    "level": "H",
+    "name": "辦公桌文具組(全6種隨機)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p8.webp",
+    "qty": 18
+   },
+   {
+    "level": "I",
+    "name": "艾爾帕夫壓克力吊飾(全10種隨機) 約4.5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p9.webp",
+    "qty": 20
+   },
+   {
+    "level": "J",
+    "name": "B3懸賞令 GIANT 海報 Vol.2 (全10種隨機)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p10.webp",
+    "qty": 20
+   },
+   {
+    "level": "LAST",
+    "name": "軍子宮MASTERLISE EXPIECE模型 約19cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-828-p11.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 824,
+  "type": "custom",
+  "name": "HUNTER×HUNTER GREED ISLAND ②",
+  "price": 380,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "G.I. 活頁收藏冊＆戒指 MASTERELIVE COLLECTION 收藏冊約30cm、戒指約2cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "B",
+    "name": "小傑 MASTERLISE模型 (全2種隨機) 約15cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p2.webp",
+    "qty": 2
+   },
+   {
+    "level": "C",
+    "name": "奇犽 MASTERLISE模型 約19cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D",
+    "name": "西索 MASTERLISE模型 (全2種隨機) 約26cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p4.webp",
+    "qty": 2
+   },
+   {
+    "level": "E",
+    "name": "雷札 MASTERLISE EXTRA模型 約28cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "F",
+    "name": "果列奴 MASTERLISE模型 約25cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p6.webp",
+    "qty": 1
+   },
+   {
+    "level": "G",
+    "name": "指定口袋卡 No.084「聖騎士項鍊」MASTERELIVE COLLECTION 約4cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p7.webp",
+    "qty": 1
+   },
+   {
+    "level": "H",
+    "name": "大餐盤 約19cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p8.webp",
+    "qty": 2
+   },
+   {
+    "level": "I",
+    "name": "造型桌上擺件(全7種隨機) 約4～5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p9.webp",
+    "qty": 7
+   },
+   {
+    "level": "J",
+    "name": "橡膠收藏系列(全13種隨機) 約4~14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p10.webp",
+    "qty": 15
+   },
+   {
+    "level": "K",
+    "name": "G.I. 咒文卡 MASTERELIVE COLLECTION(全14種隨機) 約8cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p11.webp",
+    "qty": 14
+   },
+   {
+    "level": "L",
+    "name": "G.I. 指定口袋卡 MASTERELIVE COLLECTION(全33種隨機) 約8cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p12.webp",
+    "qty": 33
+   },
+   {
+    "level": "LAST",
+    "name": "比司吉・酷露佳 MASTERLISE EXTRA模型 約30cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-824-p13.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 823,
+  "type": "custom",
+  "name": "七龍珠GT",
+  "price": 330,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "超級賽亞人4 孫悟空 MASTERLISE模型 約25cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p1.webp",
+    "qty": 2
+   },
+   {
+    "level": "B",
+    "name": "超級賽亞人4貝吉塔 MASTERLISE模型 約25cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p2.webp",
+    "qty": 2
+   },
+   {
+    "level": "C",
+    "name": "孫悟空 MASTERLISE模型 約13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "D",
+    "name": "特南克斯 MASTERLISE模型 約23cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "E",
+    "name": "小芳＆吉魯 MASTERLISE PLUS模型  小芳約15cm、吉魯約5.5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "F",
+    "name": "超17號 MASTERLISE模型 約27cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p6.webp",
+    "qty": 1
+   },
+   {
+    "level": "G",
+    "name": "角色人物造型壓克力立牌(全23種隨機) 約4~7.5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p7.webp",
+    "qty": 30
+   },
+   {
+    "level": "H",
+    "name": "大型視覺板(全10種隨機) 約29~41cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p8.webp",
+    "qty": 20
+   },
+   {
+    "level": "I",
+    "name": "A4文件夾及貼紙套組 貼紙約4.5~7cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p9.webp",
+    "qty": 22
+   },
+   {
+    "level": "LAST",
+    "name": "七龍珠GT THE GIGANT NAME 約36cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-823-p10.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 821,
+  "type": "custom",
+  "name": "《勝利女神：妮姬》CHAPTER8",
+  "price": 350,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "桃樂絲 Serendipity模型 約11cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p1.webp",
+    "qty": 2
+   },
+   {
+    "level": "B",
+    "name": "拉毗 Red Hood－Red Flavor模型 約12cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p2.webp",
+    "qty": 2
+   },
+   {
+    "level": "C",
+    "name": "角色等身大掛軸(全2種隨機) 約160cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p3.webp",
+    "qty": 2
+   },
+   {
+    "level": "D",
+    "name": "角色造型遊戲桌墊(全2種隨機) 約60cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p4.webp",
+    "qty": 4
+   },
+   {
+    "level": "E",
+    "name": "角色造型涼感毛巾(全4種隨機) 約60cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p5.webp",
+    "qty": 8
+   },
+   {
+    "level": "F",
+    "name": "角色造型壓克力立牌(全8種隨機) 約11~13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p6.webp",
+    "qty": 16
+   },
+   {
+    "level": "G",
+    "name": "A3造型海報(全10種隨機)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p7.webp",
+    "qty": 20
+   },
+   {
+    "level": "H",
+    "name": "隱藏吧！DORO立體磁鐵(全5種隨機) 約5cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p8.webp",
+    "qty": 10
+   },
+   {
+    "level": "I",
+    "name": "夏日回憶寫真卡組(全8種隨機) 約9cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p9.webp",
+    "qty": 16
+   },
+   {
+    "level": "LAST",
+    "name": "伊萊格Boom and Shock TOPfocus模型 約16cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-821-p10.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 819,
+  "type": "custom",
+  "name": "Pokémon 30th ANNIVERSARY vol.2",
+  "price": 288,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-main.webp",
+  "prizes": [
+   {
+    "level": "A",
+    "name": "30週年紀念壓克力萬年曆 約20cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "B",
+    "name": "雌性皮卡丘造型30週年紀念盤 約19cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "C",
+    "name": "合眾地區御三家絨毛玩偶(全3種隨機) 約13~17cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p3.webp",
+    "qty": 3
+   },
+   {
+    "level": "D",
+    "name": "卡洛斯地區御三家絨毛玩偶(全3種隨機) 約12~14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p4.webp",
+    "qty": 3
+   },
+   {
+    "level": "E",
+    "name": "阿羅拉地區御三家絨毛玩偶(全3種隨機) 約13cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p5.webp",
+    "qty": 3
+   },
+   {
+    "level": "F",
+    "name": "伽勒爾地區御三家絨毛玩偶(3款隨機) 約11~15cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p6.webp",
+    "qty": 3
+   },
+   {
+    "level": "G",
+    "name": "帕底亞地區御三家絨毛玩偶(全3種隨機) 約14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p7.webp",
+    "qty": 3
+   },
+   {
+    "level": "H",
+    "name": "30週年紀念玻璃杯(全3種隨機) 約14cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p8.webp",
+    "qty": 6
+   },
+   {
+    "level": "I",
+    "name": "地區造型紀念小方巾(全5種隨機) 約23cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p9.webp",
+    "qty": 20
+   },
+   {
+    "level": "J",
+    "name": "造型橡膠束帶與杯墊(全6種隨機) 束帶約13cm、杯墊約8cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p10.webp",
+    "qty": 22
+   },
+   {
+    "level": "K",
+    "name": "30週年紀念金屬吊飾(全15種隨機) 約4cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p11.webp",
+    "qty": 20
+   },
+   {
+    "level": "LAST",
+    "name": "雌性皮卡丘造型30週年紀念玩偶 約39cm",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-819-p12.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 294,
+  "type": "blindbox",
+  "name": "三麗鷗換裝中公仔",
+  "price": 350,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-main.webp",
+  "prizes": [
+   {
+    "level": "一般版",
+    "name": "大耳狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p1.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "布丁狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p2.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "帕恰狗",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p3.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "美樂蒂（隱藏版）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p4.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "美樂蒂",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p5.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "庫洛米（隱藏版）",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p6.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "庫洛米",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p7.jpg",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "凱蒂貓",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-294-p8.jpg",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 659,
+  "type": "blindbox",
+  "name": "美樂蒂&酷洛米 粉餅盒造型擺飾",
+  "price": 300,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-main.webp",
+  "prizes": [
+   {
+    "level": "一般版",
+    "name": "哥德庫洛米",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "甜心美樂蒂",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "甜點庫洛米",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "蘿莉塔美樂蒂",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "櫻桃庫洛米",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "草莓甜心雙人組",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-659-p6.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 657,
+  "type": "blindbox",
+  "name": "LULU豬 美食探索家",
+  "price": 275,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-main.webp",
+  "prizes": [
+   {
+    "level": "一般版",
+    "name": "「好吃零卡」粽",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "人氣NO.1燒賣",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "大碗蔥麵",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "不能沒有白飯",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "不醉無歸",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "得閒飲茶",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p6.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "滿分餃子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p7.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "滿餡包子",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p8.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "「迷你撈」火鍋(小隱藏)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p9.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "迷你肉夾饃(大隱藏)",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-657-p10.webp",
+    "qty": 1
+   }
+  ]
+ },
+ {
+  "src_id": 621,
+  "type": "blindbox",
+  "name": "《間諜家家酒》安妮亞驚喜黏土人",
+  "price": 380,
+  "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-main.webp",
+  "prizes": [
+   {
+    "level": "一般版",
+    "name": "校服安妮亞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p1.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "公主安妮亞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p2.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "水手服安妮亞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p3.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "安妮亞訓練中",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p4.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "睡衣安妮亞",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p5.webp",
+    "qty": 1
+   },
+   {
+    "level": "一般版",
+    "name": "校服安妮亞 迷之微笑ver.",
+    "image": "https://pub-c00e655167c141b8bbdbab731167147d.r2.dev/products/import-1786368952411-621-p6.webp",
+    "qty": 1
+   }
+  ]
+ }
+]
