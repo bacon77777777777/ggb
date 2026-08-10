@@ -1,8 +1,7 @@
 'use client'
 
-import AdminLayout from '@/components/AdminLayout'
+import { AdminLayout, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
-import { CardSkeleton } from '@/components/ui/Skeleton'
 import { useState, useEffect, useCallback } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import Input from '@/components/ui/Input'
@@ -55,7 +54,8 @@ export default function CompetitorIntelPage() {
   const { confirm, dialogProps } = useConfirmDialog()
   const [showForm, setShowForm]     = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [expandedReports, setExpandedReports] = useState<Set<string | number>>(new Set())
+  const [expandedPosts, setExpandedPosts] = useState<Set<string | number>>(new Set())
   const [form, setForm]             = useState({ competitor: '', platform: '', content: '', url: '' })
 
   const loadAll = useCallback(async () => {
@@ -110,6 +110,81 @@ export default function CompetitorIntelPage() {
   const activeWatchlist = watchlist.filter(w => w.status === 'active')
   const candidateWatchlist = watchlist.filter(w => w.status === 'candidate')
 
+  const reportColumns: ListColumn<Analysis>[] = [
+    {
+      key: 'createdAt', label: '時間',
+      className: 'font-mono',
+      sortValue: a => new Date(a.created_at).getTime(),
+      render: a => (
+        <span className="text-xs text-neutral-500">
+          {new Date(a.created_at).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </span>
+      ),
+    },
+    {
+      key: 'runType', label: '類型',
+      sortValue: a => a.run_type,
+      render: a => (
+        <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600">
+          {a.run_type === 'manual' ? '手動' : a.run_type === 'weekly' ? '週報' : a.run_type}
+        </span>
+      ),
+    },
+    {
+      key: 'scraped', label: '監控家數',
+      className: 'tabular-nums',
+      sortValue: a => a.competitors_scraped,
+      render: a => <>{a.competitors_scraped}</>,
+    },
+    {
+      key: 'anomalies', label: '異常',
+      sortValue: a => a.anomalies?.length ?? 0,
+      render: a => (a.anomalies?.length ?? 0) > 0
+        ? <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">{a.anomalies.length} 個異常</span>
+        : <span className="text-xs text-neutral-300">—</span>,
+    },
+    {
+      key: 'preview', label: '報告摘要',
+      render: a => <p className="max-w-md truncate text-[13px] text-neutral-600">{a.report ?? '—'}</p>,
+    },
+  ]
+
+  const postColumns: ListColumn<Post>[] = [
+    {
+      key: 'competitor', label: '競品',
+      sortValue: pp => pp.competitor,
+      render: pp => <span className="text-sm font-semibold text-neutral-800">{pp.competitor}</span>,
+    },
+    {
+      key: 'platform', label: '平台',
+      sortValue: pp => pp.platform ?? '',
+      render: pp => pp.platform
+        ? <span className="inline-flex rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">{pp.platform}</span>
+        : <span className="text-xs text-neutral-300">—</span>,
+    },
+    {
+      key: 'source', label: '來源',
+      sortValue: pp => pp.added_by,
+      render: pp => pp.added_by === 'market_intel_v2'
+        ? <Badge variant="primary">AI 爬取</Badge>
+        : <span className="text-xs text-neutral-400">手動</span>,
+    },
+    {
+      key: 'preview', label: '內容摘要',
+      render: pp => <p className="max-w-md truncate text-[13px] text-neutral-600">{pp.content}</p>,
+    },
+    {
+      key: 'createdAt', label: '時間',
+      className: 'font-mono',
+      sortValue: pp => new Date(pp.created_at).getTime(),
+      render: pp => <span className="text-xs text-neutral-400">{new Date(pp.created_at).toLocaleDateString('zh-TW')}</span>,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: pp => <RowAction tone="danger" onClick={() => removePost(pp.id)}>刪除</RowAction>,
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="競品情報">
       <div className="space-y-5">
@@ -155,16 +230,14 @@ export default function CompetitorIntelPage() {
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-neutral-200">
+        {/* Tabs —— 輪播圖管理同款 pill 頁籤 */}
+        <div className="flex w-fit gap-1 rounded-lg bg-neutral-100 p-1">
           {(['report', 'posts'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t
-                  ? 'border-violet-600 text-violet-700'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-700'
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                tab === t ? 'bg-white text-neutral-800 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
               }`}
             >
               {t === 'report' ? `AI 情報週報（${analyses.length}）` : `原始情報（${posts.length}）`}
@@ -172,97 +245,67 @@ export default function CompetitorIntelPage() {
           ))}
         </div>
 
-        {loading ? (
-          <CardSkeleton rows={5} />
-        ) : tab === 'report' ? (
-          <div className="space-y-4">
-            {analyses.length === 0 ? (
-              <div className="text-center py-12 text-neutral-400 text-sm">
-                尚無 AI 分析報告。點擊「立即爬取分析」生成第一份週報。
-              </div>
-            ) : analyses.map(a => (
-              <div key={a.id} className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
-                <div
-                  className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-neutral-50"
-                  onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-neutral-400">
-                      {new Date(a.created_at).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 font-medium">
-                      {a.run_type === 'manual' ? '手動' : a.run_type === 'weekly' ? '週報' : a.run_type}
-                    </span>
-                    <span className="text-xs text-neutral-400">監控 {a.competitors_scraped} 家</span>
-                    {a.anomalies?.length > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600">
-                        {a.anomalies.length} 個異常
-                      </span>
-                    )}
+        {tab === 'report' ? (
+          <ListTableCard
+            pageKey="competitor-report"
+            data={analyses}
+            columns={reportColumns}
+            keyField="id"
+            isLoading={loading}
+            emptyMessage="尚無 AI 分析報告。點擊「立即爬取分析」生成第一份週報。"
+            defaultSortField="createdAt"
+            defaultSortDirection="desc"
+            expandedIds={expandedReports}
+            onExpandChange={setExpandedReports}
+            renderExpanded={a => (
+              <div className="space-y-4">
+                {a.report && (
+                  <div>
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">情報週報（LINE 推播版）</h4>
+                    <p className="whitespace-pre-wrap rounded-lg bg-white p-4 text-sm leading-relaxed text-neutral-700">{a.report}</p>
                   </div>
-                  <span className="text-neutral-400 text-xs">{expandedId === a.id ? '▲' : '▼'}</span>
-                </div>
-
-                {expandedId === a.id && (
-                  <div className="border-t border-neutral-100 px-5 py-4 space-y-4">
-                    {a.report && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-2">情報週報（LINE 推播版）</h4>
-                        <p className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed bg-neutral-50 rounded-lg p-4">{a.report}</p>
+                )}
+                {(a.facts_layer || a.insight_layer || a.suggest_layer) && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {a.facts_layer && (
+                      <div className="rounded-lg bg-blue-50 p-3">
+                        <h5 className="mb-1 text-xs font-semibold text-primary">事實層</h5>
+                        <p className="text-xs leading-relaxed text-blue-800">{a.facts_layer}</p>
                       </div>
                     )}
-                    {(a.facts_layer || a.insight_layer || a.suggest_layer) && (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {a.facts_layer && (
-                          <div className="bg-primary rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-primary mb-1">事實層</h5>
-                            <p className="text-xs text-blue-800 leading-relaxed">{a.facts_layer}</p>
-                          </div>
-                        )}
-                        {a.insight_layer && (
-                          <div className="bg-amber-50 rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-amber-700 mb-1">解讀層</h5>
-                            <p className="text-xs text-amber-800 leading-relaxed">{a.insight_layer}</p>
-                          </div>
-                        )}
-                        {a.suggest_layer && (
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <h5 className="text-xs font-semibold text-green-700 mb-1">建議層</h5>
-                            <p className="text-xs text-green-800 leading-relaxed">{a.suggest_layer}</p>
-                          </div>
-                        )}
+                    {a.insight_layer && (
+                      <div className="rounded-lg bg-amber-50 p-3">
+                        <h5 className="mb-1 text-xs font-semibold text-amber-700">解讀層</h5>
+                        <p className="text-xs leading-relaxed text-amber-800">{a.insight_layer}</p>
                       </div>
                     )}
-                    {a.anomalies?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-red-500 mb-2">即時異常</h4>
-                        {a.anomalies.map((an: any, i: number) => (
-                          <div key={i} className="text-xs text-red-700 bg-red-50 rounded px-3 py-1.5 mb-1">{an.description}</div>
-                        ))}
+                    {a.suggest_layer && (
+                      <div className="rounded-lg bg-green-50 p-3">
+                        <h5 className="mb-1 text-xs font-semibold text-green-700">建議層</h5>
+                        <p className="text-xs leading-relaxed text-green-800">{a.suggest_layer}</p>
                       </div>
                     )}
                   </div>
                 )}
+                {a.anomalies?.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-xs font-semibold text-red-500">即時異常</h4>
+                    {a.anomalies.map((an: any, i: number) => (
+                      <div key={i} className="mb-1 rounded bg-red-50 px-3 py-1.5 text-xs text-red-700">{an.description}</div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            )}
+          />
         ) : (
           <div className="space-y-3">
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowForm(v => !v)}
-                className="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700"
-              >
-                + 新增情報
-              </button>
-            </div>
-
             {showForm && (
-              <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-3">
+              <div className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4">
                 <h3 className="font-semibold text-neutral-800">新增競品情報</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-neutral-500 block mb-1">競品名稱 *</label>
+                    <label className="mb-1 block text-xs text-neutral-500">競品名稱 *</label>
                     <Input
                       placeholder="例：KujiFlip、SlimeToy"
                       value={form.competitor}
@@ -270,16 +313,15 @@ export default function CompetitorIntelPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-neutral-500 block mb-1">來源平台</label>
-                    <SelectField value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
-                    >
+                    <label className="mb-1 block text-xs text-neutral-500">來源平台</label>
+                    <SelectField value={form.platform} onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}>
                       <option value="">選擇平台</option>
-                      {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {PLATFORMS.map(pf => <option key={pf} value={pf}>{pf}</option>)}
                     </SelectField>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-neutral-500 block mb-1">內容 *（貼文文字、活動說明等）</label>
+                  <label className="mb-1 block text-xs text-neutral-500">內容 *（貼文文字、活動說明等）</label>
                   <Textarea
                     rows={4}
                     placeholder="貼入競品貼文內容…"
@@ -288,9 +330,9 @@ export default function CompetitorIntelPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-neutral-500 block mb-1">原始連結（選填）</label>
+                  <label className="mb-1 block text-xs text-neutral-500">來源連結</label>
                   <Input
-                    placeholder="https://…"
+                    placeholder="https://..."
                     value={form.url}
                     onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
                   />
@@ -299,53 +341,41 @@ export default function CompetitorIntelPage() {
                   <button
                     onClick={submitPost}
                     disabled={submitting}
-                    className="px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50"
+                    className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm text-white hover:bg-violet-700 disabled:opacity-50"
                   >
                     儲存
                   </button>
-                  <button onClick={() => setShowForm(false)} className="px-4 py-1.5 border border-neutral-200 text-sm rounded-lg hover:bg-neutral-50">
+                  <button onClick={() => setShowForm(false)} className="rounded-lg border border-neutral-200 px-4 py-1.5 text-sm hover:bg-neutral-50">
                     取消
                   </button>
                 </div>
               </div>
             )}
 
-            {posts.length === 0 ? (
-              <div className="text-center py-12 text-neutral-400 text-sm">尚無情報記錄</div>
-            ) : posts.map(p => (
-              <div key={p.id} className="bg-white rounded-xl border border-neutral-200 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-neutral-800 text-sm">{p.competitor}</span>
-                      {p.platform && (
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700">{p.platform}</span>
-                      )}
-                      {p.added_by === 'market_intel_v2' && (
-                        <Badge variant="primary">AI 爬取</Badge>
-                      )}
-                      <span className="text-xs text-neutral-400">
-                        {new Date(p.created_at).toLocaleDateString('zh-TW')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-neutral-700 whitespace-pre-wrap line-clamp-4">{p.content}</p>
-                    {p.url && (
-                      <a href={p.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline break-all"
-                      >
-                        {p.url}
-                      </a>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => removePost(p.id)}
-                    className="text-xs text-neutral-400 hover:text-red-500 flex-shrink-0"
-                  >
-                    刪除
-                  </button>
+            <ListTableCard
+              pageKey="competitor-posts"
+              data={posts}
+              columns={postColumns}
+              keyField="id"
+              isLoading={loading}
+              emptyMessage="尚無情報記錄"
+              defaultSortField="createdAt"
+              defaultSortDirection="desc"
+              addButtonText="+ 新增情報"
+              onAddClick={() => setShowForm(v => !v)}
+              expandedIds={expandedPosts}
+              onExpandChange={setExpandedPosts}
+              renderExpanded={pp => (
+                <div className="space-y-2">
+                  <p className="whitespace-pre-wrap rounded-lg bg-white px-4 py-3 text-sm leading-relaxed text-neutral-700">{pp.content}</p>
+                  {pp.url && (
+                    <a href={pp.url} target="_blank" rel="noopener noreferrer" className="break-all text-xs text-primary hover:underline">
+                      {pp.url}
+                    </a>
+                  )}
                 </div>
-              </div>
-            ))}
+              )}
+            />
           </div>
         )}
       </div>

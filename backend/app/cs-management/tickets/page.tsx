@@ -1,11 +1,14 @@
 'use client'
 
-import AdminLayout from '@/components/AdminLayout'
-import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { AdminLayout, ListTableCard, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useCallback } from 'react'
-import { TableEmpty } from '@/components/ui/EmptyState'
 import Textarea from '@/components/ui/Textarea'
+
+/**
+ * 客服工單 —— 定版樣板（ListTableCard）＋展開列。
+ * 一列一張工單，點開看聯絡資訊、問題全文、內部備註與處理動作。
+ */
 
 interface CsTicket {
   id: string
@@ -19,29 +22,23 @@ interface CsTicket {
   user: { id: string; name: string; email: string; tokens: number } | null
 }
 
-const STATUS_META = {
-  open:        { label: '待處理', cls: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
-  in_progress: { label: '處理中', cls: 'bg-primary text-primary border border-blue-200' },
-  resolved:    { label: '已解決', cls: 'bg-green-50 text-green-700 border border-green-200' },
-  closed:      { label: '已關閉', cls: 'bg-neutral-100 text-neutral-500 border border-neutral-200' },
+const STATUS_LABEL: Record<CsTicket['status'], string> = {
+  open: '待處理',
+  in_progress: '處理中',
+  resolved: '已解決',
+  closed: '已關閉',
 }
-
-const STATUS_TABS = [
-  { key: 'open', label: '待處理' },
-  { key: 'in_progress', label: '處理中' },
-  { key: 'resolved', label: '已解決' },
-  { key: 'closed', label: '已關閉' },
-  { key: 'all', label: '全部' },
-] as const
 
 export default function CsTicketsPage() {
   const [tickets, setTickets] = useState<CsTicket[]>([])
   const [filterStatus, setFilterStatus] = useState('open')
   const [loading, setLoading] = useState(false)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [expandedIds, setExpandedIds] = useState<Set<string | number>>(new Set())
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
 
+  // 狀態篩選走 API（後端已支援 status 參數），不是前端過濾
   const load = useCallback(async () => {
     setLoading(true)
     const res = await fetch(`/api/admin/cs-tickets?status=${filterStatus}&limit=100`)
@@ -70,154 +67,152 @@ export default function CsTicketsPage() {
       hour: '2-digit', minute: '2-digit',
     })
 
+  const filtered = tickets.filter(t => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return t.content.toLowerCase().includes(q)
+      || (t.user?.name ?? '').toLowerCase().includes(q)
+      || (t.email ?? '').toLowerCase().includes(q)
+  })
+
+  const columns: ListColumn<CsTicket>[] = [
+    {
+      key: 'status', label: '狀態',
+      sortValue: t => t.status,
+      render: t => <Badge status={t.status}>{STATUS_LABEL[t.status]}</Badge>,
+    },
+    {
+      key: 'category', label: '類型',
+      sortValue: t => t.category,
+      render: t => <span className="text-[13px] font-semibold text-neutral-700">{t.category}</span>,
+    },
+    {
+      key: 'user', label: '用戶',
+      sortValue: t => t.user?.name ?? '',
+      render: t => (
+        <div>
+          <p className="text-[13px] font-medium text-neutral-800">{t.user?.name || '—'}</p>
+          <p className="text-[11px] text-neutral-400">{t.user?.email || '—'}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'content', label: '問題摘要',
+      render: t => <p className="max-w-xs truncate text-[13px] text-neutral-600">{t.content}</p>,
+    },
+    {
+      key: 'createdAt', label: '時間',
+      sortValue: t => new Date(t.created_at).getTime(),
+      className: 'font-mono',
+      render: t => <span className="text-[12px] text-neutral-400">{fmtDate(t.created_at)}</span>,
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="客服工單">
       <div className="space-y-4">
-
-        {/* Filter + Actions bar */}
-        <div className="bg-white rounded-xl border border-neutral-200 px-4 py-3 flex items-center gap-2 flex-wrap">
-          {STATUS_TABS.map(tab => (
+        <ListTableCard
+          pageKey="cs-tickets"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={loading}
+          emptyMessage={`目前沒有${filterStatus !== 'all' ? STATUS_LABEL[filterStatus as CsTicket['status']] ?? '' : ''}工單`}
+          defaultSortField="createdAt"
+          defaultSortDirection="desc"
+          searchPlaceholder="搜尋內容、用戶或信箱..."
+          searchValue={search}
+          onSearchChange={setSearch}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: filterStatus, onChange: setFilterStatus,
+              options: [
+                { value: 'open', label: '待處理' },
+                { value: 'in_progress', label: '處理中' },
+                { value: 'resolved', label: '已解決' },
+                { value: 'closed', label: '已關閉' },
+                { value: 'all', label: '全部' },
+              ],
+            },
+          ]}
+          toolbarChildren={
             <button
-              key={tab.key}
-              onClick={() => setFilterStatus(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                filterStatus === tab.key
-                  ? 'bg-primary text-white'
-                  : 'text-neutral-500 hover:bg-neutral-100'
-              }`}
+              onClick={load}
+              className="h-9 whitespace-nowrap rounded-lg px-3 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100"
             >
-              {tab.label}
+              重新整理
             </button>
-          ))}
-          <button
-            onClick={load}
-            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold text-neutral-500 hover:bg-neutral-100 transition-colors"
-          >
-            重新整理
-          </button>
-        </div>
+          }
+          expandedIds={expandedIds}
+          onExpandChange={setExpandedIds}
+          renderExpanded={t => (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-6 text-[13px]">
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-400">聯絡資訊</p>
+                  <p className="text-neutral-700">{t.email}</p>
+                  <p className="text-neutral-500">{t.phone}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-400">代幣餘額</p>
+                  <p className="font-mono text-neutral-700">{t.user?.tokens?.toLocaleString() ?? '—'}</p>
+                </div>
+              </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
-              <tr className="border-b border-neutral-100 bg-neutral-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">狀態</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">類型</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">用戶</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500">問題摘要</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">時間</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500 whitespace-nowrap">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {loading && <TableSkeleton rows={5} cols={6} />}
-              {!loading && tickets.length === 0 && (
-                <TableEmpty colSpan={6} message={`目前沒有${filterStatus !== 'all' ? STATUS_META[filterStatus as keyof typeof STATUS_META]?.label : ''}工單`} />
-              )}
-              {tickets.map(t => {
-                const meta = STATUS_META[t.status]
-                const isOpen = expanded === t.id
-                return (
-                  <>
-                    <tr
-                      key={t.id}
-                      className={`cursor-pointer transition-colors ${isOpen ? 'bg-neutral-50' : 'hover:bg-neutral-50'}`}
-                      onClick={() => setExpanded(isOpen ? null : t.id)}
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <Badge status={t.status}>{meta.label}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-[13px] font-semibold text-neutral-700 whitespace-nowrap">{t.category}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-[13px] font-medium text-neutral-800">{t.user?.name || '—'}</p>
-                        <p className="text-[11px] text-neutral-400">{t.user?.email || '—'}</p>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <p className="text-[13px] text-neutral-600 truncate">{t.content}</p>
-                      </td>
-                      <td className="px-4 py-3 text-[12px] text-neutral-400 whitespace-nowrap">{fmtDate(t.created_at)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-xs text-neutral-400">{isOpen ? '收起 ▲' : '展開 ▼'}</span>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr key={`${t.id}-detail`} className="bg-neutral-50">
-                        <td colSpan={6} className="px-6 pb-5 pt-4">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-6 text-[13px]">
-                              <div>
-                                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">聯絡資訊</p>
-                                <p className="text-neutral-700">{t.email}</p>
-                                <p className="text-neutral-500">{t.phone}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">代幣餘額</p>
-                                <p className="text-neutral-700 font-mono">{t.user?.tokens?.toLocaleString() ?? '—'}</p>
-                              </div>
-                            </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-400">問題內容</p>
+                <p className="whitespace-pre-wrap rounded-lg border border-neutral-200 bg-white px-4 py-3 text-[13px] leading-relaxed text-neutral-700">{t.content}</p>
+              </div>
 
-                            <div>
-                              <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">問題內容</p>
-                              <p className="text-[13px] text-neutral-700 whitespace-pre-wrap bg-white rounded-lg border border-neutral-200 px-4 py-3 leading-relaxed">{t.content}</p>
-                            </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-neutral-400">內部備註</p>
+                <Textarea
+                  rows={2}
+                  value={notes[t.id] ?? (t.admin_note || '')}
+                  onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
+                  placeholder="填寫處理記錄…" className="resize-none text-[13px] text-neutral-800"
+                  onClick={e => e.stopPropagation()}
+                />
+              </div>
 
-                            <div>
-                              <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1">內部備註</p>
-                              <Textarea
-                                rows={2}
-                                value={notes[t.id] ?? (t.admin_note || '')}
-                                onChange={e => setNotes(n => ({ ...n, [t.id]: e.target.value }))}
-                                placeholder="填寫處理記錄…" className="text-[13px] text-neutral-800 resize-none"
-                                onClick={e => e.stopPropagation()}
-                              />
-                            </div>
-
-                            <div className="flex gap-2 flex-wrap">
-                              {t.status === 'open' && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); update(t.id, { status: 'in_progress', admin_note: notes[t.id] ?? t.admin_note }) }}
-                                  disabled={saving === t.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary disabled:opacity-50 transition-colors"
-                                >
-                                  標為處理中
-                                </button>
-                              )}
-                              {(t.status === 'open' || t.status === 'in_progress') && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); update(t.id, { status: 'resolved', admin_note: notes[t.id] ?? t.admin_note }) }}
-                                  disabled={saving === t.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
-                                >
-                                  標為已解決
-                                </button>
-                              )}
-                              <button
-                                onClick={e => { e.stopPropagation(); update(t.id, { status: 'closed', admin_note: notes[t.id] ?? t.admin_note }) }}
-                                disabled={saving === t.id}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-neutral-500 text-white hover:bg-neutral-600 disabled:opacity-50 transition-colors"
-                              >
-                                關閉工單
-                              </button>
-                              <button
-                                onClick={e => { e.stopPropagation(); update(t.id, { admin_note: notes[t.id] ?? t.admin_note }) }}
-                                disabled={saving === t.id}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-neutral-200 text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 transition-colors"
-                              >
-                                {saving === t.id ? '儲存中…' : '儲存備註'}
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
+              <div className="flex flex-wrap gap-2">
+                {t.status === 'open' && (
+                  <button
+                    onClick={e => { e.stopPropagation(); update(t.id, { status: 'in_progress', admin_note: notes[t.id] ?? t.admin_note }) }}
+                    disabled={saving === t.id}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary disabled:opacity-50"
+                  >
+                    標為處理中
+                  </button>
+                )}
+                {(t.status === 'open' || t.status === 'in_progress') && (
+                  <button
+                    onClick={e => { e.stopPropagation(); update(t.id, { status: 'resolved', admin_note: notes[t.id] ?? t.admin_note }) }}
+                    disabled={saving === t.id}
+                    className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+                  >
+                    標為已解決
+                  </button>
+                )}
+                <button
+                  onClick={e => { e.stopPropagation(); update(t.id, { status: 'closed', admin_note: notes[t.id] ?? t.admin_note }) }}
+                  disabled={saving === t.id}
+                  className="rounded-lg bg-neutral-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-neutral-600 disabled:opacity-50"
+                >
+                  關閉工單
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); update(t.id, { admin_note: notes[t.id] ?? t.admin_note }) }}
+                  disabled={saving === t.id}
+                  className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-bold text-neutral-600 transition-colors hover:bg-neutral-100 disabled:opacity-50"
+                >
+                  {saving === t.id ? '儲存中…' : '儲存備註'}
+                </button>
+              </div>
+            </div>
+          )}
+        />
       </div>
     </AdminLayout>
   )

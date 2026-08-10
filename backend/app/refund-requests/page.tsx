@@ -1,13 +1,10 @@
 'use client'
 
-import AdminLayout from '@/components/AdminLayout'
+import { AdminLayout, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
-import { useState, useEffect, useCallback } from 'react'
-import { CardSkeleton } from '@/components/ui/Skeleton'
-import EmptyState from '@/components/ui/EmptyState'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
-import { DataTable, type Column } from '@/components'
+import { useState, useEffect, useCallback } from 'react'
 
 interface RefundRequest {
   id: number
@@ -24,7 +21,7 @@ interface RefundRequest {
 }
 
 // 顏色統一交由 Badge 的 statusVariantMap 決定，此處只留標籤文字
-const STATUS_META = {
+const STATUS_META: Record<RefundRequest['status'], { label: string }> = {
   pending:   { label: '待審核' },
   approved:  { label: '已核准' },
   rejected:  { label: '已拒絕' },
@@ -32,145 +29,11 @@ const STATUS_META = {
 }
 
 export default function RefundRequestsPage() {
-  const refundrequestsColumns: Column<any>[] = [
-    {
-      key: "c0",
-      label: "#",
-      className: "font-medium text-neutral-800 whitespace-nowrap",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>#{r.id}</>)
-      },
-    },
-    {
-      key: "c1",
-      label: "會員",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
-                            <div className="text-xs text-neutral-400">{r.user?.email}</div>
-                            <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
-                          </>)
-      },
-    },
-    {
-      key: "c2",
-      label: "原因",
-      className: "max-w-[220px]",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            <div className="text-neutral-600 truncate" title={r.reason}>{r.reason}</div>
-                            {r.recharge && (
-                              <div className="text-xs text-neutral-400 truncate">
-                                儲值單 {r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}）
-                              </div>
-                            )}
-                          </>)
-      },
-    },
-    {
-      key: "c3",
-      label: "退款 (TWD)",
-      className: "text-right font-mono font-semibold text-neutral-900 whitespace-nowrap",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            {Number(r.amount_twd).toLocaleString()}
-                          </>)
-      },
-    },
-    {
-      key: "c4",
-      label: "扣回 (G)",
-      className: "text-right font-mono text-rose-500 whitespace-nowrap",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            {r.tokens_to_deduct > 0 ? `-${r.tokens_to_deduct.toLocaleString()}` : '—'}
-                          </>)
-      },
-    },
-    {
-      key: "c5",
-      label: "申請時間",
-      className: "text-xs text-neutral-500 whitespace-nowrap",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            {new Date(r.created_at).toLocaleString('zh-TW')}
-                          </>)
-      },
-    },
-    {
-      key: "c6",
-      label: "狀態",
-      className: "text-center",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            <Badge status={r.status}>{sm.label}</Badge>
-                          </>)
-      },
-    },
-    {
-      key: "c7",
-      label: "備註",
-      className: "max-w-[160px]",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            {editable ? (
-                              <Input className="text-xs"
-                                placeholder="備註..."
-                                value={notes[r.id] ?? (r.admin_note ?? '')}
-                                onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
-                              />
-                            ) : (
-                              <span className="text-xs text-neutral-400">{r.admin_note || '—'}</span>
-                            )}
-                          </>)
-      },
-    },
-    {
-      key: "c8",
-      label: "",
-      render: (r) => {
-        const sm = STATUS_META[r.status as keyof typeof STATUS_META]
-                      const editable = r.status === 'pending' || r.status === 'approved'
-        return (<>
-                            <div className="flex items-center gap-1 justify-end">
-                              {r.status === 'pending' && (
-                                <>
-                                  <button onClick={() => act(r.id, 'approve')} className="px-2 py-1 text-xs bg-primary text-primary rounded hover:bg-blue-100 whitespace-nowrap">核准</button>
-                                  <button onClick={() => act(r.id, 'reject')} className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 whitespace-nowrap">拒絕</button>
-                                </>
-                              )}
-                              {r.status === 'approved' && (
-                                <button onClick={() => act(r.id, 'process')} className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 whitespace-nowrap">執行退款</button>
-                              )}
-                              {r.status === 'processed' && r.processed_at && (
-                                <span className="text-xs text-neutral-400">{new Date(r.processed_at).toLocaleDateString('zh-TW')}</span>
-                              )}
-                            </div>
-                          </>)
-      },
-    },
-  ]
-
   const [requests, setRequests] = useState<RefundRequest[]>([])
   const [filterStatus, setFilterStatus] = useState('pending')
   const [loading, setLoading]           = useState(false)
   const [notes, setNotes]               = useState<Record<number, string>>({})
+  const [searchQuery, setSearchQuery]   = useState('')
 
   // 新增申請
   const [showForm, setShowForm]         = useState(false)
@@ -179,7 +42,7 @@ export default function RefundRequestsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const params = filterStatus ? `?status=${filterStatus}` : ''
+    const params = filterStatus !== 'all' ? `?status=${filterStatus}` : ''
     const res  = await fetch(`/api/admin/refund-requests${params}`)
     const data = await res.json()
     setRequests(Array.isArray(data) ? data : [])
@@ -218,32 +81,110 @@ export default function RefundRequestsPage() {
     load()
   }
 
+  const filtered = requests.filter(r => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (r.user?.name ?? '').toLowerCase().includes(q)
+      || (r.user?.email ?? '').toLowerCase().includes(q)
+      || (r.recharge?.order_number ?? '').toLowerCase().includes(q)
+      || r.reason.toLowerCase().includes(q)
+  })
+
+  const columns: ListColumn<RefundRequest>[] = [
+    {
+      key: 'id', label: '#',
+      sortValue: r => r.id,
+      className: 'font-mono font-medium text-neutral-800',
+      render: r => <>#{r.id}</>,
+    },
+    {
+      key: 'user', label: '會員',
+      sortValue: r => r.user?.name ?? '',
+      render: r => (
+        <>
+          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
+          <div className="text-xs text-neutral-400">{r.user?.email}</div>
+          <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
+        </>
+      ),
+    },
+    {
+      key: 'reason', label: '原因',
+      className: 'max-w-[220px]',
+      render: r => (
+        <>
+          <div className="text-neutral-600 truncate" title={r.reason}>{r.reason}</div>
+          {r.recharge && (
+            <div className="text-xs text-neutral-400 truncate">
+              儲值單 {r.recharge.order_number}（NT$ {Number(r.recharge.amount).toLocaleString()}）
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: 'amountTwd', label: '退款 (TWD)',
+      sortValue: r => Number(r.amount_twd),
+      className: 'text-right font-mono font-semibold text-neutral-900',
+      render: r => <>{Number(r.amount_twd).toLocaleString()}</>,
+    },
+    {
+      key: 'tokensToDeduct', label: '扣回 (G)',
+      sortValue: r => r.tokens_to_deduct,
+      className: 'text-right font-mono text-rose-500',
+      render: r => <>{r.tokens_to_deduct > 0 ? `-${r.tokens_to_deduct.toLocaleString()}` : '—'}</>,
+    },
+    {
+      key: 'createdAt', label: '申請時間',
+      sortValue: r => new Date(r.created_at).getTime(),
+      className: 'font-mono text-xs text-neutral-500',
+      render: r => <>{new Date(r.created_at).toLocaleString('zh-TW')}</>,
+    },
+    {
+      key: 'status', label: '狀態',
+      sortValue: r => r.status,
+      render: r => <Badge status={r.status}>{STATUS_META[r.status].label}</Badge>,
+    },
+    {
+      key: 'note', label: '備註',
+      className: 'max-w-[160px]',
+      render: r => {
+        const editable = r.status === 'pending' || r.status === 'approved'
+        return editable ? (
+          <Input className="text-xs"
+            placeholder="備註..."
+            value={notes[r.id] ?? (r.admin_note ?? '')}
+            onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
+          />
+        ) : (
+          <span className="text-xs text-neutral-400">{r.admin_note || '—'}</span>
+        )
+      },
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: r => (
+        <div className="flex items-center gap-2">
+          {r.status === 'pending' && (
+            <>
+              <RowAction tone="primary" onClick={() => void act(r.id, 'approve')}>核准</RowAction>
+              <RowAction tone="danger" onClick={() => void act(r.id, 'reject')}>拒絕</RowAction>
+            </>
+          )}
+          {r.status === 'approved' && (
+            <RowAction tone="primary" onClick={() => void act(r.id, 'process')}>執行退款</RowAction>
+          )}
+          {r.status === 'processed' && r.processed_at && (
+            <span className="text-xs text-neutral-400">{new Date(r.processed_at).toLocaleDateString('zh-TW')}</span>
+          )}
+        </div>
+      ),
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="退款申請">
       <div className="space-y-4">
-
-        {/* 控制列 */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
-          {(['', 'pending', 'approved', 'rejected', 'processed'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                filterStatus === s
-                  ? 'bg-violet-600 text-white border-violet-600'
-                  : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
-              }`}
-            >
-              {s === '' ? '全部' : STATUS_META[s].label}
-            </button>
-          ))}
-          <button
-            onClick={() => setShowForm(v => !v)}
-            className="ml-auto px-4 py-1.5 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700"
-          >
-            + 新增申請
-          </button>
-        </div>
 
         {/* 新增表單 */}
         {showForm && (
@@ -278,23 +219,34 @@ export default function RefundRequestsPage() {
           </div>
         )}
 
-        {/* 申請列表 */}
-        {loading ? (
-          <CardSkeleton rows={3} />
-        ) : requests.length === 0 ? (
-          <EmptyState message="無退款申請" />
-        ) : (
-          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <DataTable
-  data={requests}
-  columns={refundrequestsColumns}
-  keyField="id"
-  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
-/>
-            </div>
-          </div>
-        )}
+        <ListTableCard
+          pageKey="refund-requests"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={loading}
+          emptyMessage="無退款申請"
+          defaultSortField="createdAt"
+          defaultSortDirection="desc"
+          searchPlaceholder="搜尋會員、儲值單號..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增申請"
+          onAddClick={() => setShowForm(v => !v)}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: filterStatus, onChange: setFilterStatus,
+              options: [
+                { value: 'all',       label: '全部狀態' },
+                { value: 'pending',   label: '待審核' },
+                { value: 'approved',  label: '已核准' },
+                { value: 'rejected',  label: '已拒絕' },
+                { value: 'processed', label: '已處理' },
+              ],
+            },
+          ]}
+        />
       </div>
     </AdminLayout>
   )

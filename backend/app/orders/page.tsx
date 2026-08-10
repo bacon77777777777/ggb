@@ -1,6 +1,7 @@
 'use client'
 
 import { AdminLayout, StatsCard, PageCard, SearchToolbar, FilterTags, Modal, SortableTableHeader, CopyableID } from '@/components'
+import { useAdmin } from '@/contexts/AdminContext'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
@@ -14,6 +15,10 @@ import { useShipment, Shipment, ShipmentItem } from '@/contexts/ShipmentContext'
 import { useToast } from '@/contexts/ToastContext'
 
 export default function OrdersPage() {
+  // 廠商帳號唯讀（老闆指定廠商可看自己的配送申請）：
+  // 資料層由 API 過濾＋遮個資，這裡收掉出貨/批次等操作入口
+  const { user: adminUser } = useAdmin()
+  const isSupplier = adminUser?.role === 'supplier'
   const { toast } = useToast()
   const { setShipments, highlightedOrderId, setHighlightedOrderId } = useShipment()
   const { addLog } = useLog()
@@ -1171,7 +1176,7 @@ export default function OrdersPage() {
             ]}
             onColumnToggle={(key, visible) => setVisibleColumns(prev => ({ ...prev, [key]: visible }))}
             selectedCount={selectedOrders.size}
-            batchActions={[
+            batchActions={isSupplier ? [] : [
               ...(selectedStatus === 'submitted' && getSelectedOrdersStats().submitted > 0 ? [{
                 label: '批量生成配送單',
                 onClick: handleBatchGenerate,
@@ -1501,6 +1506,7 @@ export default function OrdersPage() {
                             >
                               詳情
                             </Link>
+                            {!isSupplier && (<>
                             
                             {/* 手動出貨按鈕 - 顯示在已提交或處理中 */}
                             {(shipment.status === 'submitted' || shipment.status === 'processing') && (
@@ -1635,6 +1641,7 @@ export default function OrdersPage() {
                                 取消
                               </button>
                             )}
+                            </>)}
                           </div>
                         </td>
                       </tr>

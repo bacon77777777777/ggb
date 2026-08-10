@@ -635,7 +635,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
     '/reports/logistics': 'reports_logistics',
-    '/reports/coupons': 'coupons',
+    // 折價券「明細」對 coupons_report —— 原本誤對 coupons（管理權），
+    // 導致勾了折價券明細也看不到（權限盤查 2026-08-09 修正）
+    '/reports/coupons': 'coupons_report',
     '/reports/products': 'reports_products',
     '/reports/dismantled': 'reports_dismantled',
     '/reports/settlement': 'reports_settlement',
@@ -653,6 +655,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/marketplace': 'marketplace',
     // 系統設定
     '/users': 'users',
+    '/referrals': 'referrals',
     '/suppliers': 'suppliers',
     '/banners': 'banners',
     '/announcements': 'announcements',
@@ -661,8 +664,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/categories': 'categories',
     '/settings/modules': 'settings_modules',
     '/settings/features': 'settings_features',
-    '/settings/theme': 'settings_theme',
-    '/settings/promotions': 'settings_features',
+    '/settings/promotions': 'settings_promotions',
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
@@ -768,7 +770,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '抽獎模組設定', path: '/settings/modules', icon: IconPuzzle },
           { name: '促銷方案', path: '/settings/promotions', icon: IconTag },
           { name: '功能開關', path: '/settings/features', icon: IconSliders },
-          { name: '主題色', path: '/settings/theme', icon: IconPalette },
           { name: '管理員清單', path: '/analytics', icon: IconBadge },
           { name: '管理員權限', path: '/permissions', icon: IconKey },
           { name: '操作記錄', path: '/logs', icon: IconLogs },

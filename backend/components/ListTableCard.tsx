@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useMemo, useState } from 'react'
+import { Fragment, ReactNode, useMemo, useState } from 'react'
 import PageCard from './PageCard'
 import SearchToolbar from './SearchToolbar'
 import FilterTags from './FilterTags'
@@ -63,6 +63,27 @@ interface ListTableCardProps<T> {
   filters?: FilterSelect[]
   /** 額外的工具列按鈕（批量上架那類），放在新增鈕右側 */
   toolbarChildren?: ReactNode
+  /** 匯出 CSV（報表頁用） */
+  onExportCSV?: () => void
+  /** 勾選＋批次操作（商品管理同款）：三個一起給才會出現勾選欄 */
+  selectable?: boolean
+  selectedIds?: Set<string | number>
+  onSelectChange?: (ids: Set<string | number>) => void
+  batchActions?: Array<{ label: string; onClick: () => void; variant?: 'primary' | 'danger' | 'secondary' }>
+  /**
+   * 展開列（商品管理／消費紀錄那種點一列看明細）。
+   * 給了 renderExpanded 就會啟用：整列可點、最右加收合箭頭，
+   * 展開內容用一個橫跨整列的 tr 呈現。展開狀態由頁面持有 ——
+   * 有些頁面只允許展開一列，有些可以同時展開多列，交給頁面決定。
+   */
+  expandedIds?: Set<string | number>
+  onExpandChange?: (ids: Set<string | number>) => void
+  renderExpanded?: (row: T) => ReactNode
+  /**
+   * 置頂合計列（報表類用）。傳一個 render 函式，收到目前顯示中的欄位，
+   * 自己吐 <td>；元件負責外框樣式與欄位對齊，排序時不會被打亂。
+   */
+  summaryRow?: (shownColumns: ListColumn<T>[]) => ReactNode
 }
 
 export default function ListTableCard<T>({
@@ -81,6 +102,15 @@ export default function ListTableCard<T>({
   onAddClick,
   filters = [],
   toolbarChildren,
+  onExportCSV,
+  selectable = false,
+  selectedIds,
+  onSelectChange,
+  batchActions,
+  expandedIds,
+  onExpandChange,
+  renderExpanded,
+  summaryRow,
 }: ListTableCardProps<T>) {
   const [sortField, setSortField] = useState(defaultSortField)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection)
@@ -122,6 +152,33 @@ export default function ListTableCard<T>({
 
   const activeFilters = filters.filter(f => f.value !== 'all')
 
+  // 勾選（商品管理同款）：表頭全選只針對目前排序後可見的資料
+  const withSelection = selectable && !!onSelectChange
+  const allSelected = withSelection && sorted.length > 0 &&
+    sorted.every(row => selectedIds?.has(row[keyField] as string | number))
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectChange) return
+    onSelectChange(checked ? new Set(sorted.map(row => row[keyField] as string | number)) : new Set())
+  }
+  // 展開列
+  const withExpand = !!renderExpanded && !!onExpandChange
+  const toggleExpand = (id: string | number) => {
+    if (!onExpandChange) return
+    const next = new Set(expandedIds ?? [])
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onExpandChange(next)
+  }
+
+  const toggleOne = (id: string | number) => {
+    if (!onSelectChange) return
+    const next = new Set(selectedIds ?? [])
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onSelectChange(next)
+  }
+  const colCount = shownColumns.length + (withSelection ? 1 : 0) + (withExpand ? 1 : 0)
+
   return (
     <PageCard>
       <SearchToolbar
@@ -131,6 +188,8 @@ export default function ListTableCard<T>({
         showAddButton={!!addButtonText}
         addButtonText={addButtonText}
         onAddClick={onAddClick}
+        showExportCSV={!!onExportCSV}
+        onExportCSV={onExportCSV}
         showDensity={true}
         density={tableDensity}
         onDensityChange={setTableDensity}
@@ -145,6 +204,9 @@ export default function ListTableCard<T>({
           value: f.value, onChange: f.onChange, options: f.options,
         }))}
         children={toolbarChildren}
+        selectedCount={withSelection ? (selectedIds?.size ?? 0) : undefined}
+        batchActions={withSelection ? batchActions : undefined}
+        onClearSelection={withSelection ? () => onSelectChange?.(new Set()) : undefined}
       />
 
       <FilterTags
@@ -162,6 +224,17 @@ export default function ListTableCard<T>({
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr className="border-b border-neutral-200">
+              {withSelection && (
+                <th className={`${densityClasses} text-left w-10`}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={e => toggleAll(e.target.checked)}
+                    className="w-4 h-4 text-primary focus:ring-primary rounded"
+                  />
+                </th>
+              )}
+              {withExpand && <th className={`${densityClasses} w-8`} />}
               {shownColumns.map(c =>
                 c.isActions ? (
                   <th key={c.key} className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-white z-20 border-l border-neutral-200 whitespace-nowrap`}>
@@ -180,33 +253,77 @@ export default function ListTableCard<T>({
             </tr>
           </thead>
           <tbody>
+            {!isLoading && summaryRow && sorted.length > 0 && (
+              <tr className="border-b border-neutral-100 bg-neutral-50 font-semibold">
+                {summaryRow(shownColumns)}
+              </tr>
+            )}
             {isLoading ? (
-              <TableSkeleton rows={5} cols={shownColumns.length} />
+              <TableSkeleton rows={5} cols={colCount} />
             ) : sorted.length === 0 ? (
               <tr>
-                <td colSpan={shownColumns.length} className="text-center">
+                <td colSpan={colCount} className="text-center">
                   <div className="flex flex-col items-center justify-center py-24 text-neutral-400 text-sm gap-2">
                     <span>{emptyMessage}</span>
                   </div>
                 </td>
               </tr>
             ) : (
-              sorted.map(row => (
-                <tr key={String(row[keyField])} className="border-b border-neutral-100 hover:bg-neutral-50/60 transition-colors">
-                  {shownColumns.map(c => (
-                    <td
-                      key={c.key}
-                      className={
-                        c.isActions
-                          ? `${densityClasses} sticky right-0 bg-white z-10 border-l border-neutral-200 whitespace-nowrap`
-                          : `${densityClasses} text-sm text-neutral-700 whitespace-nowrap ${c.className ?? ''}`
-                      }
+              sorted.map(row => {
+                const rowId = row[keyField] as string | number
+                const isExpanded = withExpand && (expandedIds?.has(rowId) ?? false)
+                return (
+                  <Fragment key={String(rowId)}>
+                    <tr
+                      className={`border-b border-neutral-100 transition-colors ${
+                        isExpanded ? 'bg-neutral-50' : 'hover:bg-neutral-50/60'
+                      } ${withExpand ? 'cursor-pointer' : ''}`}
+                      onClick={withExpand ? () => toggleExpand(rowId) : undefined}
                     >
-                      {c.render(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
+                      {withSelection && (
+                        <td className={densityClasses} onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds?.has(rowId) ?? false}
+                            onChange={() => toggleOne(rowId)}
+                            className="w-4 h-4 text-primary focus:ring-primary rounded"
+                          />
+                        </td>
+                      )}
+                      {withExpand && (
+                        <td className={`${densityClasses} text-neutral-400`}>
+                          <svg
+                            className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180 text-primary' : ''}`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </td>
+                      )}
+                      {shownColumns.map(c => (
+                        <td
+                          key={c.key}
+                          className={
+                            c.isActions
+                              ? `${densityClasses} sticky right-0 z-10 border-l border-neutral-200 whitespace-nowrap ${isExpanded ? 'bg-neutral-50' : 'bg-white'}`
+                              : `${densityClasses} text-sm text-neutral-700 whitespace-nowrap ${c.className ?? ''}`
+                          }
+                          onClick={c.isActions ? e => e.stopPropagation() : undefined}
+                        >
+                          {c.render(row)}
+                        </td>
+                      ))}
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-neutral-50">
+                        <td colSpan={colCount} className="px-6 pb-5 pt-4">
+                          {renderExpanded!(row)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })
             )}
           </tbody>
         </table>

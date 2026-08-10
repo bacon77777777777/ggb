@@ -1,6 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard, Modal, DataTable, type Column } from '@/components'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
+import Switch from '@/components/ui/Switch'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -42,6 +43,7 @@ export default function CouponsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState<CouponRow | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [formData, setFormData] = useState<CouponFormState>({
     code: '',
     title: '',
@@ -73,6 +75,14 @@ export default function CouponsPage() {
     fetchCoupons()
   }, [])
 
+  const filtered = coupons.filter(c => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return c.title.toLowerCase().includes(q)
+      || (c.code ?? '').toLowerCase().includes(q)
+      || (c.description ?? '').toLowerCase().includes(q)
+  })
+
   const resetForm = () => {
     setFormData({
       code: '',
@@ -103,6 +113,21 @@ export default function CouponsPage() {
       is_active: coupon.is_active,
     })
     setIsModalOpen(true)
+  }
+
+  /** 狀態 Switch 直接切換：樂觀更新，失敗滾回 */
+  const toggleActive = async (coupon: CouponRow, next: boolean) => {
+    setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: next } : c))
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ id: coupon.id, is_active: next }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: !next } : c))
+      toast('切換失敗，請重試一次', 'error')
+    }
   }
 
   const handleDelete = async (coupon: CouponRow) => {
@@ -175,93 +200,66 @@ export default function CouponsPage() {
     }
   }
 
-  const columns: Column<CouponRow>[] = [
+  const columns: ListColumn<CouponRow>[] = [
     {
-      key: 'title',
-      label: '名稱',
-      sortable: true,
-      render: (item) => (
-        <div className="space-y-1">
-          <div className="font-medium text-neutral-900">{item.title}</div>
-          {item.description && (
-            <div className="text-xs text-neutral-500 line-clamp-2">{item.description}</div>
+      key: 'title', label: '名稱',
+      sortValue: c => c.title,
+      render: c => (
+        <div className="space-y-1 max-w-xs whitespace-normal">
+          <div className="font-medium text-neutral-900">{c.title}</div>
+          {c.description && (
+            <div className="text-xs text-neutral-500 line-clamp-2">{c.description}</div>
           )}
         </div>
       ),
     },
     {
-      key: 'code',
-      label: '代碼',
-      sortable: true,
-      render: (item) => (
+      key: 'code', label: '代碼',
+      sortValue: c => c.code ?? '',
+      render: c => (
         <span className="text-xs font-mono px-2 py-1 rounded bg-neutral-50 border border-neutral-200 text-neutral-700">
-          {item.code || '系統發放'}
+          {c.code || '系統發放'}
         </span>
       ),
     },
     {
-      key: 'discount',
-      label: '折扣(TWD/%)',
-      sortable: false,
-      render: (item) => (
+      key: 'discount', label: '折扣(TWD/%)',
+      render: c => (
         <div className="text-sm font-bold text-pink-500">
-          {item.discount_type === 'fixed'
-            ? `折抵 ${item.discount_value} (TWD)`
-            : `折抵 ${item.discount_value}%`}
+          {c.discount_type === 'fixed'
+            ? `折抵 ${c.discount_value} (TWD)`
+            : `折抵 ${c.discount_value}%`}
         </div>
       ),
     },
     {
-      key: 'min_spend',
-      label: '最低消費(TWD)',
-      sortable: true,
-      render: (item) => (
+      key: 'minSpend', label: '最低消費(TWD)',
+      sortValue: c => c.min_spend,
+      render: c => (
         <span className="text-sm text-neutral-700">
-          {item.min_spend > 0 ? `滿 ${item.min_spend} (TWD) 可用` : '無限制'}
+          {c.min_spend > 0 ? `滿 ${c.min_spend} (TWD) 可用` : '無限制'}
         </span>
       ),
     },
     {
-      key: 'is_active',
-      label: '狀態',
-      sortable: true,
-      render: (item) => (
-        <span
-          className={`px-2 py-1 rounded text-xs font-semibold ${
-            item.is_active ? 'bg-green-50 text-green-700' : 'bg-neutral-100 text-neutral-600'
-          }`}
-        >
-          {item.is_active ? '啟用中' : '已停用'}
-        </span>
+      key: 'status', label: '狀態',
+      sortValue: c => (c.is_active ? 1 : 0),
+      render: c => (
+        <Switch checked={c.is_active} onCheckedChange={next => void toggleActive(c, next)} />
       ),
     },
     {
-      key: 'created_at',
-      label: '建立時間',
-      sortable: true,
-      render: (item) => (
-        <span className="text-xs text-neutral-500 font-mono">
-          {formatDateTime(item.created_at)}
-        </span>
-      ),
+      key: 'createdAt', label: '建立時間',
+      sortValue: c => new Date(c.created_at).getTime(),
+      className: 'font-mono text-xs text-neutral-500',
+      render: c => <>{formatDateTime(c.created_at)}</>,
     },
     {
-      key: 'actions',
-      label: '操作',
-      render: (item) => (
+      key: 'operations', label: '操作', isActions: true,
+      render: c => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEdit(item)}
-            className="text-primary hover:text-primary text-sm font-medium"
-          >
-            編輯
-          </button>
-          <button
-            onClick={() => handleDelete(item)}
-            className="text-red-500 hover:text-red-700 text-sm font-medium"
-          >
-            刪除
-          </button>
+          <RowAction tone="primary" onClick={() => handleEdit(c)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => handleDelete(c)}>刪除</RowAction>
         </div>
       ),
     },
@@ -270,23 +268,21 @@ export default function CouponsPage() {
   return (
     <AdminLayout pageTitle="折價券管理">
       <div className="space-y-6">
-        <div className="flex justify-end">
-          <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
-            + 新增折價券
-          </button>
-        </div>
-
-        <PageCard>
-          <DataTable
-            data={coupons}
-            columns={columns}
-            keyField="id"
-            emptyMessage={isLoading ? '載入中...' : '目前尚無折價券'}
-          />
-        </PageCard>
+        <ListTableCard
+          pageKey="coupons"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="目前尚無折價券"
+          defaultSortField="createdAt"
+          defaultSortDirection="desc"
+          searchPlaceholder="搜尋名稱、代碼..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增折價券"
+          onAddClick={handleAdd}
+        />
 
         <Modal
           isOpen={isModalOpen}
@@ -416,4 +412,3 @@ export default function CouponsPage() {
     </AdminLayout>
   )
 }
-

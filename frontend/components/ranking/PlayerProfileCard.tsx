@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { useAlert } from '@/components/ui/AlertDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Badge {
   id: string;
@@ -184,7 +186,12 @@ interface Props {
   nickname?: string;
   avatarUrl?: string;
   titleFromRanking?: { name: string; color_key: string } | null;
-  onWorship: () => void;
+  /**
+   * 膜拜的處理。**不傳的話卡片自己做** —— 首頁跑馬燈與挑戰機台
+   * 原本各自傳了空函數，按鈕點下去毫無反應（老闆 2026-08-09 回報）。
+   * 按鈕長在卡片上，預設行為就該由卡片自己負責，頁面不用記得接。
+   */
+  onWorship?: () => void;
   onClose: () => void;
   isPlaceholder?: boolean;
 }
@@ -194,6 +201,37 @@ const DESIGN_W = 960;
 const DESIGN_H = 877;
 
 export default function PlayerProfileCard({ userId, nickname: propNickname, avatarUrl: propAvatarUrl, titleFromRanking, onWorship, onClose, isPlaceholder }: Props) {
+  const { showAlert } = useAlert();
+  const { user } = useAuth();
+
+  /** 卡片自帶的膜拜流程：確認 → 呼叫 worship_player → 回報結果 */
+  const worshipSelf = () => {
+    if (isPlaceholder || !userId) return;
+    if (user && userId === user.id) {
+      showAlert({ title: '提示', message: '不可膜拜自己', type: 'info' });
+      return;
+    }
+    const who = profile?.nickname ?? propNickname ?? '這位玩家';
+    showAlert({
+      title: '膜拜大神',
+      message: `是否膜拜 ${who}？\n(膜拜後可獲得 10 積分，每日限一次)`,
+      type: 'confirm',
+      confirmText: '確認膜拜',
+      onConfirm: async () => {
+        try {
+          const { data, error } = await createClient().rpc('worship_player', { p_target_id: userId });
+          if (error) throw error;
+          if (data?.success) {
+            showAlert({ title: '膜拜成功', message: data.message || '膜拜成功！獲得 10 積分', type: 'success' });
+          } else {
+            showAlert({ title: '膜拜失敗', message: data?.message || '膜拜失敗', type: 'error' });
+          }
+        } catch (err: unknown) {
+          showAlert({ title: '錯誤', message: (err as Error).message || '發生錯誤，請稍後再試', type: 'error' });
+        }
+      },
+    });
+  };
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [scale, setScale] = useState(0.5);
@@ -391,9 +429,9 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                     </div>
                   </div>
 
-                  {/* Component2：膜拜大佬按鈕 */}
+                  {/* Component2：膜拜大神按鈕 */}
                   <button
-                    onClick={onWorship}
+                    onClick={onWorship ?? worshipSelf}
                     className="relative flex items-center justify-center shrink-0 px-[48px]"
                     style={{
                       height: 108,
@@ -404,7 +442,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                     }}
                   >
                     <p className="text-[#cb6e6e] text-[36px] font-semibold leading-none whitespace-nowrap">
-                      膜拜大佬
+                      膜拜大神
                     </p>
                   </button>
                 </div>

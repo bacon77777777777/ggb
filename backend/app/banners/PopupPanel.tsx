@@ -8,8 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { PageCard, Modal, DataTable, type Column } from '@/components'
+import { Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Switch from '@/components/ui/Switch'
 import SelectField from '@/components/ui/SelectField'
@@ -58,12 +57,13 @@ const EMPTY: Omit<Promo, 'id'> = {
   sort_order: 0,
 }
 
-export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement | null }) {
+export default function PopupPanel() {
   const { toast } = useToast()
   const [promos, setPromos] = useState<Promo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editing, setEditing] = useState<(Omit<Promo, 'id'> & { id?: string }) | null>(null)
   const [saving, setSaving] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // 排序用字串存，不直接綁 number：
   //   綁 number 時清空欄位會被 Number('') 轉成 0 又寫回去，退位鍵等於無效；
@@ -72,8 +72,6 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
     promo_audience: 'all', promo_dismiss_mode: 'always', promo_dismiss_days: '7',
   })
   const [savingRules, setSavingRules] = useState(false)
-  const [sortField, setSortField] = useState<'sort_order' | 'layout'>('sort_order')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [dismissInput, setDismissInput] = useState('')
 
   // 「點擊後前往」的下拉來源。除了活動頁，也保留自行填寫——
@@ -226,18 +224,19 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
 
   const isImagePopup = editing?.layout === 'image'
 
-  // 排序欄相同時以建立時間為次要鍵，否則兩筆同為 0 時每次讀取順序都可能不同
-  const sortedPromos = [...promos].sort((a, b) => {
-    const va = sortField === 'layout' ? a.layout : a.sort_order
-    const vb = sortField === 'layout' ? b.layout : b.sort_order
-    if (va !== vb) return (va < vb ? -1 : 1) * (sortDir === 'asc' ? 1 : -1)
-    return (a.created_at ?? '').localeCompare(b.created_at ?? '')
-  })
+  // 先以建立時間排出穩定基底：ListTableCard 的排序是穩定排序，
+  // 排序欄相同（兩筆同為 0）時就會落回這個次要鍵，順序不再飄
+  const filteredPromos = [...promos]
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+    .filter(p => {
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      return (p.title ?? '').toLowerCase().includes(q) || p.body.toLowerCase().includes(q)
+    })
 
-  const columns: Column<Promo>[] = [
+  const columns: ListColumn<Promo>[] = [
     {
-      key: 'layout',
-      label: '版型',
+      key: 'layout', label: '版型',
       render: p => (
         <Badge color={p.layout === 'image' ? 'blue' : 'purple'}>
           {p.layout === 'image' ? '純圖片' : '公告'}
@@ -245,43 +244,47 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
       ),
     },
     {
-      key: 'body',
-      label: '內容',
+      key: 'body', label: '內容',
       render: p => p.layout === 'image' ? (
         <div className="flex items-center gap-2">
           {p.image_url
             ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
             : <span className="text-red-500 text-xs">尚未設定圖片</span>}
-          <span className="text-neutral-400 text-xs line-clamp-1">{p.body}</span>
+          <span className="text-neutral-400 text-xs line-clamp-1 whitespace-normal">{p.body}</span>
         </div>
       ) : (
-        <div className="max-w-md">
+        <div className="max-w-md whitespace-normal">
           {p.title && <div className="font-medium text-neutral-900">{p.title}</div>}
           <div className="text-neutral-500 line-clamp-2">{p.body}</div>
         </div>
       ),
     },
-    { key: 'sort_order', label: '排序', sortable: true, className: 'font-mono' },
     {
-      key: 'is_active',
-      label: '上架',
+      key: 'sortOrder', label: '排序',
+      sortValue: p => p.sort_order,
+      className: 'font-mono',
+      render: p => <>{p.sort_order}</>,
+    },
+    {
+      key: 'status', label: '上架',
+      sortValue: p => (p.is_active ? 1 : 0),
       render: p => <Switch checked={p.is_active} onCheckedChange={() => toggleActive(p)} />,
     },
     {
-      key: 'actions',
-      label: '操作',
+      key: 'operations', label: '操作', isActions: true,
       render: p => (
-        <div className="whitespace-nowrap">
-          <button onClick={() => openEditor(p)} className="text-primary hover:underline mr-3">編輯</button>
-          <button onClick={() => setPendingDelete(p)} className="text-red-500 hover:underline">刪除</button>
+        <div className="flex items-center gap-2">
+          <RowAction tone="primary" onClick={() => openEditor(p)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => setPendingDelete(p)}>刪除</RowAction>
         </div>
       ),
     },
   ]
 
-  const actions = (
+  // 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想；
+  // 塞進 ListTableCard 工具列（新增鈕右側），不再另起一行
+  const ruleControls = (
     <>
-      {/* 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想 */}
       <SelectField
         className="w-auto"
         value={rules.promo_audience}
@@ -315,29 +318,26 @@ export default function PopupPanel({ actionsSlot }: { actionsSlot?: HTMLElement 
           onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
         />
       )}
-
-      <Button onClick={() => openEditor({ ...EMPTY })}>新增</Button>
     </>
   )
 
   return (
     <>
-      {actionsSlot && createPortal(actions, actionsSlot)}
-      <PageCard>
-        <DataTable
-          data={sortedPromos}
-          columns={columns}
-          keyField="id"
-          isLoading={isLoading}
-          emptyMessage="尚無首頁彈窗"
-          sortField={sortField}
-          sortDirection={sortDir}
-          onSort={f => {
-            if (f === sortField) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-            else { setSortField(f as typeof sortField); setSortDir('asc') }
-          }}
-        />
-      </PageCard>
+      <ListTableCard
+        pageKey="banners-popup"
+        data={filteredPromos}
+        columns={columns}
+        keyField="id"
+        isLoading={isLoading}
+        emptyMessage="尚無首頁彈窗"
+        defaultSortField="sortOrder"
+        searchPlaceholder="搜尋標題或內容..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        addButtonText="+ 新增彈窗"
+        onAddClick={() => openEditor({ ...EMPTY })}
+        toolbarChildren={ruleControls}
+      />
 
       <Modal
         isOpen={!!editing}

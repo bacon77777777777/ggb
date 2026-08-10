@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 import InfoDot from '@/components/ui/InfoDot'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
+import ThemePanel from './ThemePanel'
 
 type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
 
@@ -57,13 +58,15 @@ const STATE_OPTIONS: { v: FlagState; label: string }[] = [
   { v: 'off',         label: '關閉' },
 ]
 
-type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push'
+type SectionKey = 'maintenance' | 'category' | 'commerce' | 'push' | 'theme'
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'maintenance', label: '站台維護' },
   { key: 'category',    label: '類別' },
   { key: 'commerce',    label: '金流' },
   { key: 'push',        label: 'GB哥通知' },
+  // 原獨立頁 /settings/theme，老闆 2026-08-09 指定併入這裡
+  { key: 'theme',       label: '主題色' },
 ]
 
 const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
@@ -684,6 +687,8 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                   </div>
                 </>
               )}
+
+              {section === 'theme' && <ThemePanel />}
             </div>
           </div>
         </PageCard>

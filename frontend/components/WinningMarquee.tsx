@@ -104,7 +104,6 @@ export default function WinningMarquee() {
         <PlayerProfileCard
           userId={selectedUserId}
           nickname={selectedNickname}
-          onWorship={() => {}}
           onClose={() => setSelectedUserId(null)}
         />
       )}

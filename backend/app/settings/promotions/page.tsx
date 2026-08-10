@@ -1,15 +1,13 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { AdminLayout, PageCard, DataTable, Modal, type Column } from '@/components'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import { useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import SelectField from '@/components/ui/SelectField'
 import Badge from '@/components/ui/Badge'
+import Switch from '@/components/ui/Switch'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import { CardSkeleton } from '@/components/ui/Skeleton'
-import EmptyState from '@/components/ui/EmptyState'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
 
@@ -63,6 +61,7 @@ export default function PromotionsPage() {
   const [form, setForm] = useState({ ...EMPTY })
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Promo | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const load = async () => {
     try {
@@ -137,9 +136,14 @@ export default function PromotionsPage() {
     setDeleteTarget(null); load(); toast('已刪除')
   }
 
-  const columns: Column<any>[] = [
+  const filtered = rows.filter(p =>
+    !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const columns: ListColumn<Promo>[] = [
     {
       key: 'name', label: '方案', className: 'font-medium text-neutral-900',
+      sortValue: p => p.name,
       render: p => (
         <div>
           <div>{p.name}</div>
@@ -154,7 +158,7 @@ export default function PromotionsPage() {
       key: 'scope', label: '適用範圍',
       render: p => {
         if (p.scope === 'all') return <div className="text-xs">全站</div>
-        const targets = (p.promotion_targets ?? []) as { product_id: number | null; category_id: string | null }[]
+        const targets = p.promotion_targets ?? []
         const catNames = targets
           .filter(t => t.category_id)
           .map(t => categories.find(c => c.id === t.category_id)?.name ?? '未命名分類')
@@ -171,42 +175,42 @@ export default function PromotionsPage() {
       },
     },
     {
-      key: 'period', label: '檔期', className: 'text-xs text-neutral-500',
+      key: 'period', label: '檔期', className: 'font-mono',
+      sortValue: p => (p.starts_at ? new Date(p.starts_at).getTime() : 0),
       render: p => (
-        <>{p.starts_at ? formatDateTime(p.starts_at) : '即刻'} ～ {p.ends_at ? formatDateTime(p.ends_at) : '無期限'}</>
+        <span className="text-xs text-neutral-500">
+          {p.starts_at ? formatDateTime(p.starts_at) : '即刻'} ～ {p.ends_at ? formatDateTime(p.ends_at) : '無期限'}
+        </span>
       ),
     },
     {
-      key: 'usage', label: '使用情形', className: 'text-xs tabular-nums',
+      key: 'usage', label: '使用情形',
+      sortValue: p => p.uses,
       render: p => (
-        <div>
+        <div className="text-xs tabular-nums">
           <div>{p.uses} 次</div>
           <div className="text-neutral-400">送出 {(p.total_bonus ?? 0).toLocaleString()} 抽（值 {p.total_discount.toLocaleString()} 代幣）</div>
         </div>
       ),
     },
-    { key: 'priority', label: '優先權', className: 'tabular-nums text-xs', render: p => <>{p.priority}</> },
     {
-      key: 'status', label: '狀態',
-      render: p => <Badge status={p.is_active ? 'active' : 'inactive'}>{p.is_active ? '啟用' : '停用'}</Badge>,
+      key: 'priority', label: '優先權',
+      sortValue: p => p.priority,
+      render: p => <span className="text-xs tabular-nums">{p.priority}</span>,
     },
     {
-      key: 'actions', label: '操作', sticky: true, className: 'align-middle',
-      // 操作欄照分類清單頁的文字連結慣例（老闆指定表格樣式統一）
+      key: 'status', label: '狀態',
+      sortValue: p => (p.is_active ? 1 : 0),
+      // Switch 直接切換啟停，沿用 toggle()（PATCH 後重新載入）
+      render: p => <Switch checked={p.is_active} onCheckedChange={() => void toggle(p)} />,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
       render: p => (
         <div className="flex items-center gap-2">
-          <button onClick={() => toggle(p)}
-            className="text-neutral-600 hover:text-neutral-900 text-sm font-medium">
-            {p.is_active ? '停用' : '啟用'}
-          </button>
-          <button onClick={() => openEdit(p)}
-            className="text-primary hover:text-primary text-sm font-medium">
-            編輯
-          </button>
-          <button onClick={() => setDeleteTarget(p)}
-            className="text-red-500 hover:text-red-700 text-sm font-medium">
-            刪除
-          </button>
+          <RowAction onClick={() => toggle(p)}>{p.is_active ? '停用' : '啟用'}</RowAction>
+          <RowAction tone="primary" onClick={() => openEdit(p)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => setDeleteTarget(p)}>刪除</RowAction>
         </div>
       ),
     },
@@ -215,25 +219,24 @@ export default function PromotionsPage() {
   return (
     <AdminLayout pageTitle="促銷方案">
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-neutral-500">
-            買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是付 5 抽的錢多送 1 抽，
-            玩家拿 6 顆、庫存扣 6，收入不打折。
-          </p>
-          <button onClick={openCreate}
-            className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-white transition-colors hover:bg-primary/90">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新增方案
-          </button>
-        </div>
+        <p className="text-sm text-neutral-500">
+          買 N 送 M。在轉蛋平台上「買」就是「抽」—— 買五送一的意思是付 5 抽的錢多送 1 抽，
+          玩家拿 6 顆、庫存扣 6，收入不打折。
+        </p>
 
-        <PageCard noPadding>
-          {isLoading ? <CardSkeleton rows={4} />
-            : rows.length === 0 ? <EmptyState message="還沒有促銷方案，點擊「新增方案」開始" />
-            : <div className="overflow-x-auto"><DataTable data={rows} columns={columns} keyField="id" /></div>}
-        </PageCard>
+        <ListTableCard
+          pageKey="promotions"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="還沒有促銷方案，點擊「新增方案」開始"
+          searchPlaceholder="搜尋方案名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增方案"
+          onAddClick={openCreate}
+        />
       </div>
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title={editingId ? '編輯促銷方案' : '新增促銷方案'}>

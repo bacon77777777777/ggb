@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AdminLayout, PageCard, Modal } from '@/components'
+import { AdminLayout, Modal, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Switch from '@/components/ui/Switch'
 import { useToast } from '@/contexts/ToastContext'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import { DataTable, type Column } from '@/components'
 
 interface SlotTheme {
   id: number
@@ -36,108 +35,6 @@ const DEFAULT_FORM = {
 const INPUT = 'w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-sm'
 
 export default function SlotThemesPage() {
-  const slotColumns: Column<any>[] = [
-    {
-      key: "c0",
-      label: "主題",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <div className="flex items-center gap-3">
-                              {theme.image_url ? (
-                                <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 flex-shrink-0" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 flex items-center justify-center text-lg">🎰</div>
-                              )}
-                              <div>
-                                <div className="font-semibold text-neutral-900">{theme.name}</div>
-                                <div className="text-xs text-neutral-400">{theme.suppliers?.name ?? '—'}</div>
-                              </div>
-                            </div>
-                          </>)
-      },
-    },
-    {
-      key: "c1",
-      label: "機台",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <span className="text-neutral-700 font-bold">{activeMachines}</span>
-                            <span className="text-neutral-400">/{totalMachines} 台上架</span>
-                          </>)
-      },
-    },
-    {
-      key: "c2",
-      label: "投注檔次",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <div className="flex flex-wrap gap-1">
-                              {(theme.bet_tiers ?? []).map((t: any, i: any) => (
-                                <span key={i} className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded">
-                                  {t.coins.toLocaleString()} G
-                                </span>
-                              ))}
-                            </div>
-                          </>)
-      },
-    },
-    {
-      key: "c3",
-      label: "機率設定",
-      className: "text-xs text-neutral-500",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <div>觸發 {(theme.trigger_rate * 100).toFixed(2)}%</div>
-                            <div>延續 {(theme.continue_rate * 100).toFixed(0)}%</div>
-                            <div>保底 {theme.floor_spin_count} 轉</div>
-                          </>)
-      },
-    },
-    {
-      key: "c4",
-      label: "上架",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <Switch checked={theme.is_active} onCheckedChange={() => toggleActive(theme)} />
-                          </>)
-      },
-    },
-    {
-      key: "c5",
-      label: "操作",
-      render: (theme) => {
-        const activeMachines = theme.slot_machines?.filter((m: any) => m.is_active).length ?? 0
-                      const totalMachines  = theme.slot_machines?.length ?? 0
-        return (<>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => router.push(`/slot/${theme.id}`)}
-                                className="text-primary text-sm font-medium"
-                              >
-                                設定
-                              </button>
-                              <button
-                                onClick={() => handleDelete(theme)}
-                                className="text-red-500 hover:text-red-700 text-sm font-medium"
-                              >
-                                刪除
-                              </button>
-                            </div>
-                          </>)
-      },
-    },
-  ]
-
   const router = useRouter()
   const { toast } = useToast()
   const { confirm, dialogProps } = useConfirmDialog()
@@ -147,6 +44,7 @@ export default function SlotThemesPage() {
   const [form, setForm] = useState(DEFAULT_FORM)
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const fetchThemes = async () => {
     setIsLoading(true)
@@ -219,55 +117,114 @@ export default function SlotThemesPage() {
     })
   }
 
-  const filtered = themes.filter(t =>
-    !searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filtered = themes.filter(t => {
+    if (statusFilter !== 'all' && (statusFilter === 'active') !== t.is_active) return false
+    if (searchQuery && !t.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
 
   const currentTiers = parseTiers(form.bet_tiers_input)
+
+  const columns: ListColumn<SlotTheme>[] = [
+    {
+      key: 'theme', label: '主題',
+      sortValue: t => t.name,
+      render: theme => (
+        <div className="flex items-center gap-3">
+          {theme.image_url ? (
+            <img src={theme.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-neutral-100 flex-shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-neutral-100 flex-shrink-0 flex items-center justify-center text-lg">🎰</div>
+          )}
+          <div>
+            <div className="font-semibold text-neutral-900">{theme.name}</div>
+            <div className="text-xs text-neutral-400">{theme.suppliers?.name ?? '—'}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'machines', label: '機台',
+      sortValue: t => t.slot_machines?.filter(m => m.is_active).length ?? 0,
+      render: theme => {
+        const activeMachines = theme.slot_machines?.filter(m => m.is_active).length ?? 0
+        const totalMachines  = theme.slot_machines?.length ?? 0
+        return (
+          <>
+            <span className="text-neutral-700 font-bold">{activeMachines}</span>
+            <span className="text-neutral-400">/{totalMachines} 台上架</span>
+          </>
+        )
+      },
+    },
+    {
+      key: 'betTiers', label: '投注檔次',
+      render: theme => (
+        <div className="flex flex-wrap gap-1">
+          {(theme.bet_tiers ?? []).map((t, i) => (
+            <span key={i} className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded">
+              {t.coins.toLocaleString()} G
+            </span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'rates', label: '機率設定',
+      className: 'text-xs text-neutral-500',
+      render: theme => (
+        <>
+          <div>觸發 {(theme.trigger_rate * 100).toFixed(2)}%</div>
+          <div>延續 {(theme.continue_rate * 100).toFixed(0)}%</div>
+          <div>保底 {theme.floor_spin_count} 轉</div>
+        </>
+      ),
+    },
+    {
+      key: 'status', label: '上架',
+      sortValue: t => (t.is_active ? 1 : 0),
+      render: theme => (
+        <Switch checked={theme.is_active} onCheckedChange={() => toggleActive(theme)} />
+      ),
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: theme => (
+        <div className="flex items-center gap-2">
+          <RowAction tone="primary" onClick={() => router.push(`/slot/${theme.id}`)}>設定</RowAction>
+          <RowAction tone="danger" onClick={() => handleDelete(theme)}>刪除</RowAction>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <AdminLayout pageTitle="主題管理">
       <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="搜尋主題名稱..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary w-64"
-            />
-            <svg className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            + 新增主題
-          </button>
-        </div>
-
-        <PageCard noPadding>
-          {isLoading ? (
-            <div className="py-16 text-center text-sm text-neutral-400">載入中...</div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-sm text-neutral-400">
-              {searchQuery ? '找不到符合的主題' : '尚無主題，點擊右上角新增'}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <DataTable
-  data={filtered}
-  columns={slotColumns}
-  keyField="id"
-  rowClassName={() => "hover:bg-neutral-50 transition-colors"}
-/>
-            </div>
-          )}
-        </PageCard>
+        <ListTableCard
+          pageKey="slot_themes"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage={searchQuery ? '找不到符合的主題' : '尚無主題，點擊「新增主題」建立'}
+          searchPlaceholder="搜尋主題名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增主題"
+          onAddClick={() => setShowCreate(true)}
+          filters={[
+            {
+              key: 'status', label: '上架狀態',
+              value: statusFilter, onChange: setStatusFilter,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '上架中' },
+                { value: 'inactive', label: '已下架' },
+              ],
+            },
+          ]}
+        />
       </div>
 
       {/* 新增主題 Modal */}

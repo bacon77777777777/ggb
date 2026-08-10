@@ -1,13 +1,13 @@
 'use client'
 
-import { AdminLayout, PageCard } from '@/components'
+import { AdminLayout, ListTableCard, RowAction, type ListColumn } from '@/components'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { useRouter } from 'next/navigation'
 import { formatDateTime } from '@/utils/dateFormat'
-import Link from 'next/link'
 import Input from '@/components/ui/Input'
 import SelectField from '@/components/ui/SelectField'
+import Switch from '@/components/ui/Switch'
 import Modal from '@/components/Modal'
 import Button from '@/components/ui/Button'
 
@@ -229,6 +229,7 @@ export default function EventsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<Event | null>(null)
   const [availableCategories, setAvailableCategories] = useState<Array<{ id: string; name: string }>>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -287,57 +288,80 @@ export default function EventsPage() {
     } catch { toast('刪除失敗', 'error') }
   }
 
+  const openCreate = () => {
+    setIsModalOpen(true)
+    fetch('/api/admin/categories').then(r => r.ok ? r.json() : []).then(setAvailableCategories).catch(() => {})
+  }
+
+  const filtered = items.filter(ev => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return ev.title.toLowerCase().includes(q) || ev.slug.toLowerCase().includes(q)
+  })
+
+  const columns: ListColumn<Event>[] = [
+    {
+      key: 'title', label: '標題',
+      sortValue: ev => ev.title,
+      render: ev => <span className="font-medium text-neutral-900">{ev.title}</span>,
+    },
+    {
+      key: 'slug', label: '網址',
+      sortValue: ev => ev.slug,
+      className: 'font-mono',
+      render: ev => <span className="text-neutral-500">/events/{ev.slug}</span>,
+    },
+    {
+      key: 'period', label: '檔期',
+      sortValue: ev => (ev.start_at ? new Date(ev.start_at).getTime() : 0),
+      className: 'font-mono',
+      render: ev => (
+        <>{ev.start_at ? formatDateTime(ev.start_at) : '即刻'} ～ {ev.end_at ? formatDateTime(ev.end_at) : '無期限'}</>
+      ),
+    },
+    {
+      key: 'status', label: '上架',
+      sortValue: ev => (ev.is_active ? 1 : 0),
+      render: ev => (
+        <Switch checked={ev.is_active} onCheckedChange={() => void toggleActive(ev)} />
+      ),
+    },
+    {
+      key: 'createdAt', label: '建立時間',
+      sortValue: ev => new Date(ev.created_at).getTime(),
+      className: 'font-mono',
+      render: ev => <>{formatDateTime(ev.created_at)}</>,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: ev => (
+        <div className="flex items-center gap-2">
+          <RowAction tone="primary" onClick={() => router.push(`/events/${ev.id}/edit`)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => setDeleteTarget(ev)}>刪除</RowAction>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="活動頁管理">
-      <PageCard>
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-neutral-500">建立活動 Landing Page，前台路徑：/events/[slug]</p>
-          <button onClick={() => {
-              setIsModalOpen(true)
-              fetch('/api/admin/categories').then(r => r.ok ? r.json() : []).then(setAvailableCategories).catch(() => {})
-            }}
-            className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors">
-            + 新增活動
-          </button>
-        </div>
+      <div className="space-y-6">
+        <p className="text-sm text-neutral-500">建立活動 Landing Page，前台路徑：/events/[slug]</p>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-neutral-400">載入中...</div>
-        ) : items.length === 0 ? (
-          <div className="py-20 text-center text-neutral-400 text-sm">目前沒有活動</div>
-        ) : (
-          <div className="space-y-2">
-            {items.map(item => (
-              <div key={item.id}
-                className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${item.is_active ? 'border-neutral-200 bg-white' : 'border-neutral-100 bg-neutral-50 opacity-60'}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-bold text-neutral-900 truncate">{item.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-neutral-400">
-                    <span className="font-mono">/events/{item.slug}</span>
-                    {item.start_at && <span>· {formatDateTime(item.start_at)} 起</span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => toggleActive(item)}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${item.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}>
-                    {item.is_active ? '上架中' : '已下架'}
-                  </button>
-                  <Link href={`/events/${item.id}/edit`}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 font-semibold hover:bg-neutral-200 transition-colors">
-                    編輯
-                  </Link>
-                  <button onClick={() => setDeleteTarget(item)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors">
-                    刪除
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </PageCard>
+        <ListTableCard
+          pageKey="events"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage="目前沒有活動"
+          searchPlaceholder="搜尋活動標題或網址..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增活動"
+          onAddClick={openCreate}
+        />
+      </div>
 
       {/* New Modal */}
       <Modal

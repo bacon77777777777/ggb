@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireAdminSession } from '@/lib/requireAdmin'
+import { requireAdminScope } from '@/lib/requireAdmin'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
 
 type ShipmentStatus = 'submitted' | 'processing' | 'picked_up' | 'shipping' | 'delivered' | 'cancelled'
@@ -19,7 +19,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAdminSession()
+    const session = await requireAdminScope()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
@@ -49,6 +49,21 @@ export async function GET(
 
     const { data, error } = await query.single()
     if (error) throw error
+
+    // 廠商：只能看自己的單，且玩家個資遮罩（同列表 API 的規則）
+    if (session.supplierScope !== undefined) {
+      if (data.supplier_id !== session.supplierScope) {
+        return NextResponse.json({ error: '找不到訂單' }, { status: 404 })
+      }
+      return NextResponse.json({
+        ...data,
+        recipient_name: data.recipient_name ? String(data.recipient_name).slice(0, 1) + '○○' : null,
+        recipient_phone: data.recipient_phone ? '****' + String(data.recipient_phone).slice(-3) : null,
+        address: null,
+        user: null,
+      })
+    }
+
     return NextResponse.json(data)
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || '載入失敗' }, { status: 500 })
@@ -60,8 +75,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAdminSession()
+    const session = await requireAdminScope()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // 出貨/改單是平台的事 —— 廠商帳號僅供查看
+    if (session.supplierScope !== undefined) {
+      return NextResponse.json({ error: '廠商帳號僅供查看，出貨作業由平台處理' }, { status: 403 })
+    }
 
     const { id } = await params
     const supabaseAdmin = getSupabaseAdmin()

@@ -1,6 +1,7 @@
 'use client'
 
-import { AdminLayout, PageCard } from '@/components'
+import { AdminLayout, ListTableCard, RowAction, type ListColumn } from '@/components'
+import Switch from '@/components/ui/Switch'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/contexts/ToastContext'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -46,6 +47,9 @@ export default function AnnouncementsPage() {
   const [editing, setEditing] = useState<Announcement | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterCat, setFilterCat] = useState('all')
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -61,6 +65,16 @@ export default function AnnouncementsPage() {
   }
 
   useEffect(() => { fetchData() }, [])
+
+  const filtered = items.filter(a => {
+    if (filterStatus !== 'all' && (filterStatus === 'active') !== a.is_active) return false
+    if (filterCat !== 'all' && a.category !== filterCat) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      if (!a.title.toLowerCase().includes(q) && !(a.content ?? '').toLowerCase().includes(q)) return false
+    }
+    return true
+  })
 
   const openAdd = () => {
     setEditing(null)
@@ -117,91 +131,111 @@ export default function AnnouncementsPage() {
     }
   }
 
-  const toggleActive = async (item: Announcement) => {
+  /** 上架 Switch 直接切換：樂觀更新，失敗滾回 */
+  const toggleActive = async (item: Announcement, next: boolean) => {
+    setItems(prev => prev.map(a => a.id === item.id ? { ...a, is_active: next } : a))
     try {
       const res = await fetch(`/api/admin/announcements/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...item, is_active: !item.is_active }),
+        body: JSON.stringify({ ...item, is_active: next }),
       })
       if (!res.ok) throw new Error()
-      fetchData()
     } catch {
+      setItems(prev => prev.map(a => a.id === item.id ? { ...a, is_active: !next } : a))
       toast('更新失敗', 'error')
     }
   }
 
+  const columns: ListColumn<Announcement>[] = [
+    {
+      key: 'title', label: '標題',
+      sortValue: a => a.title,
+      render: a => (
+        <div className="max-w-xs whitespace-normal">
+          <p className="text-sm font-semibold text-neutral-900 line-clamp-1">{a.title}</p>
+          {a.content && (
+            <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{a.content}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'category', label: '分類',
+      sortValue: a => a.category,
+      render: a => (
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[a.category]}`}>
+          {a.category}
+        </span>
+      ),
+    },
+    {
+      key: 'pinned', label: '置頂',
+      sortValue: a => (a.is_pinned ? 1 : 0),
+      render: a => a.is_pinned
+        ? <span className="text-xs font-bold text-red-500">📌 置頂</span>
+        : <span className="text-neutral-300">—</span>,
+    },
+    {
+      key: 'status', label: '上架',
+      sortValue: a => (a.is_active ? 1 : 0),
+      render: a => (
+        <Switch checked={a.is_active} onCheckedChange={next => void toggleActive(a, next)} />
+      ),
+    },
+    {
+      key: 'publishedAt', label: '發布時間',
+      sortValue: a => new Date(a.published_at).getTime(),
+      className: 'font-mono',
+      render: a => <>{formatDateTime(a.published_at)}</>,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: a => (
+        <div className="flex items-center gap-2">
+          <RowAction tone="primary" onClick={() => openEdit(a)}>編輯</RowAction>
+          <RowAction tone="danger" onClick={() => setDeleteTarget(a)}>刪除</RowAction>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="公告管理">
-      <PageCard>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-sm text-neutral-500">前台玩家可見的平台公告，支援置頂與分類</p>
-          </div>
-          <button
-            onClick={openAdd}
-            className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-          >
-            + 新增公告
-          </button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-neutral-400">載入中...</div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-            <svg className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            <p>目前沒有公告</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {items.map(item => (
-              <div
-                key={item.id}
-                className={`flex items-start gap-4 p-4 rounded-xl border transition-colors ${item.is_active ? 'border-neutral-200 bg-white' : 'border-neutral-100 bg-neutral-50 opacity-60'}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    {item.is_pinned && (
-                      <span className="text-xs font-bold text-red-500">📌 置頂</span>
-                    )}
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category]}`}>
-                      {item.category}
-                    </span>
-                    <span className="text-xs text-neutral-400">{formatDateTime(item.published_at)}</span>
-                  </div>
-                  <p className="text-sm font-semibold text-neutral-900 truncate">{item.title}</p>
-                  {item.content && (
-                    <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{item.content}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => toggleActive(item)}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${item.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
-                  >
-                    {item.is_active ? '上架' : '下架'}
-                  </button>
-                  <button
-                    onClick={() => openEdit(item)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-neutral-100 text-neutral-700 font-semibold hover:bg-neutral-200 transition-colors"
-                  >
-                    編輯
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(item)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors"
-                  >
-                    刪除
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </PageCard>
+      <div className="space-y-6">
+        <ListTableCard
+          pageKey="announcements"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          emptyMessage={items.length === 0 ? '目前沒有公告' : '沒有符合條件的公告'}
+          searchPlaceholder="搜尋公告標題、內容..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增公告"
+          onAddClick={openAdd}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: filterStatus, onChange: setFilterStatus,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '上架中' },
+                { value: 'inactive', label: '已下架' },
+              ],
+            },
+            {
+              key: 'category', label: '分類',
+              value: filterCat, onChange: setFilterCat,
+              options: [
+                { value: 'all', label: '全部分類' },
+                ...CATEGORIES.map(c => ({ value: c, label: c })),
+              ],
+            },
+          ]}
+        />
+      </div>
 
       {/* Edit/Add Modal */}
       {isModalOpen && (

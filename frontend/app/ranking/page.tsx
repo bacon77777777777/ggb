@@ -202,7 +202,7 @@ export default function RankingPage() {
     }
 
     showAlert({
-      title: '膜拜大佬',
+      title: '膜拜大神',
       message: `是否膜拜 ${item.nickname}？\n(膜拜後可獲得 10 積分，每日限一次)`,
       type: 'confirm',
       confirmText: '確認膜拜',
@@ -365,7 +365,7 @@ export default function RankingPage() {
                     <div className="w-full text-center pt-8 border-t border-white/10 pb-0 mb-0">
                       <p className="text-[#818181] text-[24px] font-normal">
                         {activeTab === 'daily' ? '排行榜數據每日00:00更新' : '排行榜數據每週一00:00更新'}<br/>
-                        每日限膜拜一位大佬，可獲得 10 積分獎勵
+                        每日限膜拜一位大神，可獲得 10 積分獎勵
                       </p>
                     </div>
                   </>

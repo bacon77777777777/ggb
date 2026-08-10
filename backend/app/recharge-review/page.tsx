@@ -1,9 +1,10 @@
 'use client'
 
-import AdminLayout from '@/components/AdminLayout'
+import { AdminLayout, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
+import Input from '@/components/ui/Input'
 import { useState, useEffect, useCallback } from 'react'
-import { CardSkeleton } from '@/components/ui/Skeleton'
+import { useRouter } from 'next/navigation'
 
 interface RechargeRecord {
   id: number
@@ -28,10 +29,12 @@ function ageLabel(created_at: string): string {
 }
 
 export default function RechargeReviewPage() {
+  const router = useRouter()
   const [records, setRecords]   = useState<RechargeRecord[]>([])
   const [loading, setLoading]   = useState(false)
   const [notes, setNotes]       = useState<Record<number, string>>({})
   const [acting, setActing]     = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,6 +47,7 @@ export default function RechargeReviewPage() {
   useEffect(() => { load() }, [load])
 
   const act = async (id: number, action: 'dismiss' | 'force_fail' | 'force_success') => {
+    if (acting !== null) return // 處理中不重複觸發（原 disabled 行為）
     if (action === 'force_fail') {
       if (!confirm('確定將此筆儲值標記為「失敗」？此操作不可逆。')) return
     }
@@ -60,6 +64,95 @@ export default function RechargeReviewPage() {
     load()
   }
 
+  const filtered = records.filter(r => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (r.order_number ?? `#${r.id}`).toLowerCase().includes(q)
+      || (r.user?.name ?? '').toLowerCase().includes(q)
+      || (r.user?.email ?? '').toLowerCase().includes(q)
+  })
+
+  const columns: ListColumn<RechargeRecord>[] = [
+    {
+      key: 'orderNumber', label: '單號',
+      sortValue: r => r.order_number ?? `#${r.id}`,
+      className: 'font-mono',
+      render: r => <span className="font-semibold text-neutral-800">{r.order_number ?? `#${r.id}`}</span>,
+    },
+    {
+      key: 'user', label: '會員',
+      sortValue: r => r.user?.name ?? '',
+      render: r => (
+        <>
+          <div className="font-medium text-neutral-800">{r.user?.name || '(未命名)'}</div>
+          <div className="text-xs text-neutral-400">{r.user?.email}</div>
+          <div className="text-xs text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</div>
+        </>
+      ),
+    },
+    {
+      key: 'amount', label: '金額 (TWD)',
+      sortValue: r => Number(r.amount),
+      className: 'text-right font-mono font-semibold text-neutral-900',
+      render: r => <>NT$ {Number(r.amount).toLocaleString()}</>,
+    },
+    {
+      key: 'status', label: '狀態',
+      sortValue: r => r.status,
+      render: r => (
+        <div className="flex items-center gap-2">
+          <Badge variant="warning">待複核</Badge>
+          <span className="text-xs text-neutral-500">{r.status}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'createdAt', label: '建立時間',
+      sortValue: r => new Date(r.created_at).getTime(),
+      className: 'font-mono',
+      render: r => (
+        <>
+          <div>{new Date(r.created_at).toLocaleString('zh-TW')}</div>
+          <div className="text-xs text-neutral-400">{ageLabel(r.created_at)} 建立</div>
+        </>
+      ),
+    },
+    {
+      key: 'flaggedAt', label: '標記時間',
+      sortValue: r => (r.needs_review_at ? new Date(r.needs_review_at).getTime() : 0),
+      className: 'font-mono',
+      render: r => r.needs_review_at
+        ? <span className="text-xs text-rose-400">{ageLabel(r.needs_review_at)} 標記</span>
+        : <span className="text-neutral-400">-</span>,
+    },
+    {
+      key: 'note', label: '備註',
+      render: r => (
+        <div className="w-44">
+          <Input
+            className="text-xs"
+            placeholder="備註（選填）..."
+            value={notes[r.id] ?? ''}
+            onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: r => (
+        <div className="flex items-center gap-2">
+          <RowAction onClick={() => router.push(`/users/${r.user_id}`)}>查看用戶</RowAction>
+          <RowAction onClick={() => void act(r.id, 'dismiss')}>忽略</RowAction>
+          <RowAction tone="primary" onClick={() => void act(r.id, 'force_success')}>
+            補發代幣 +{(Number(r.amount) + Number(r.bonus ?? 0)).toLocaleString()} G
+          </RowAction>
+          <RowAction tone="danger" onClick={() => void act(r.id, 'force_fail')}>標記失敗</RowAction>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="待複核儲值">
       <div className="space-y-6">
@@ -69,87 +162,17 @@ export default function RechargeReviewPage() {
           ECPay 對帳排程（每 2 小時）會自動修復其中已實際付款的訂單；若已超過 2 小時仍顯示，請人工確認。
         </div>
 
-        {loading ? (
-          <CardSkeleton rows={3} />
-        ) : records.length === 0 ? (
-          <div className="text-center py-16 text-neutral-400">
-            <p className="text-4xl mb-3">✅</p>
-            <p>目前沒有待複核的儲值訂單</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {records.map(r => {
-              const age = ageLabel(r.created_at)
-              const flaggedAge = r.needs_review_at ? ageLabel(r.needs_review_at) : null
-              return (
-                <div key={r.id} className="bg-white rounded-xl border border-neutral-200 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-sm font-semibold text-neutral-800">
-                          {r.order_number ?? `#${r.id}`}
-                        </span>
-                        <Badge variant="warning">待複核</Badge>
-                        <span className="text-xs text-neutral-400">{age} 建立</span>
-                        {flaggedAge && (
-                          <span className="text-xs text-rose-400">• {flaggedAge} 標記</span>
-                        )}
-                      </div>
-                      <div className="text-sm text-neutral-700">
-                        <span className="font-medium">{r.user?.name || '(未命名)'}</span>
-                        <span className="text-neutral-400 ml-2">{r.user?.email}</span>
-                        <span className="ml-2 text-violet-600">餘額 {(r.user?.tokens ?? 0).toLocaleString()} G</span>
-                      </div>
-                      <div className="text-xs text-neutral-500">
-                        建立：{new Date(r.created_at).toLocaleString('zh-TW')}
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold text-neutral-900">NT$ {Number(r.amount).toLocaleString()}</p>
-                      <p className="text-xs text-neutral-500">{r.status}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 flex-wrap">
-                    <input
-                      className="flex-1 min-w-0 border border-neutral-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                      placeholder="備註（選填）..."
-                      value={notes[r.id] ?? ''}
-                      onChange={e => setNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
-                    />
-                    <a
-                      href={`/users/${r.user_id}`}
-                      className="px-3 py-1.5 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50 whitespace-nowrap"
-                    >
-                      查看用戶
-                    </a>
-                    <button
-                      onClick={() => act(r.id, 'dismiss')}
-                      disabled={acting === r.id}
-                      className="px-3 py-1.5 text-sm bg-neutral-50 text-neutral-700 rounded-lg border border-neutral-200 hover:bg-neutral-100 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      忽略
-                    </button>
-                    <button
-                      onClick={() => act(r.id, 'force_success')}
-                      disabled={acting === r.id}
-                      className="px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg border border-green-200 hover:bg-green-100 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      補發代幣 +{(Number(r.amount) + Number(r.bonus ?? 0)).toLocaleString()} G
-                    </button>
-                    <button
-                      onClick={() => act(r.id, 'force_fail')}
-                      disabled={acting === r.id}
-                      className="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 disabled:opacity-50 whitespace-nowrap"
-                    >
-                      標記失敗
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <ListTableCard
+          pageKey="recharge-review"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={loading}
+          emptyMessage="目前沒有待複核的儲值訂單"
+          searchPlaceholder="搜尋單號、會員名稱..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
       </div>
     </AdminLayout>
   )

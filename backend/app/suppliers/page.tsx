@@ -1,18 +1,15 @@
 'use client'
 
 import AdminLayout from '@/components/AdminLayout'
-import PageCard from '@/components/PageCard'
-import Badge from '@/components/ui/Badge'
-import { CardSkeleton } from '@/components/ui/Skeleton'
 import Modal from '@/components/Modal'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import Switch from '@/components/ui/Switch'
+import Input from '@/components/ui/Input'
+import Textarea from '@/components/ui/Textarea'
 import { useState, useEffect } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
-import EmptyState from '@/components/ui/EmptyState'
-import Input from '@/components/ui/Input'
-import Textarea from '@/components/ui/Textarea'
-import { DataTable, type Column } from '@/components'
+import { ListTableCard, RowAction, type ListColumn } from '@/components'
 
 interface Supplier {
   id: number
@@ -48,100 +45,6 @@ const EMPTY_FORM = {
 }
 
 export default function SuppliersPage() {
-  const suppliersColumns: Column<any>[] = [
-    {
-      key: "c0",
-      label: "廠商名稱",
-      className: "font-medium text-neutral-900",
-      // 標記出平台自營那筆。列表上一堆名字時，看得出哪一個是自己家的
-      render: (s) => (
-        <span className="inline-flex items-center gap-2">
-          {s.name}
-          {s.is_platform && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-black text-primary">
-              平台自營
-            </span>
-          )}
-        </span>
-      ),
-    },
-    {
-      key: "c1",
-      label: "統編",
-      className: "text-neutral-600 font-mono text-xs",
-      render: (s) => (<>{s.tax_id ?? '—'}</>),
-    },
-    {
-      key: "c2",
-      label: "聯絡人",
-      className: "text-neutral-600",
-      render: (s) => (<>{s.contact_name ?? '—'}</>),
-    },
-    {
-      key: "c3",
-      label: "電話",
-      className: "text-neutral-600",
-      render: (s) => (<>{s.contact_phone ?? '—'}</>),
-    },
-    {
-      key: "c4",
-      label: "Email",
-      className: "text-neutral-500 text-xs",
-      render: (s) => (<>{s.contact_email ?? '—'}</>),
-    },
-    {
-      key: "c5",
-      label: "狀態",
-      render: (s) => (<>
-                          <Badge status={s.is_active ? 'active' : 'inactive'}>{s.is_active ? '啟用' : '停用'}</Badge>
-                        </>),
-    },
-    {
-      key: "c6",
-      label: "備註",
-      className: "text-neutral-500 max-w-[200px] truncate",
-      render: (s) => (<>{s.notes ?? '—'}</>),
-    },
-    {
-      key: "c7",
-      label: "建立時間",
-      className: "text-neutral-400 text-xs whitespace-nowrap",
-      render: (s) => (<>{formatDateTime(s.created_at)}</>),
-    },
-    {
-      key: "c8",
-      label: "操作",
-      render: (s) => (<>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openEdit(s)}
-                              className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                            >
-                              編輯
-                            </button>
-                            {/* 平台自營那筆不給停用也不給刪：自營商品都掛在它底下。
-                                按鈕直接不顯示，比讓人按下去再跳錯誤好 */}
-                            {!s.is_platform && (
-                              <>
-                                <button
-                                  onClick={() => setToggleTarget(s)}
-                                  className="text-xs px-3 py-1 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
-                                >
-                                  {s.is_active ? '停用' : '啟用'}
-                                </button>
-                                <button
-                                  onClick={() => setDeleteTarget(s)}
-                                  className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                                >
-                                  刪除
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </>),
-    },
-  ]
-
   const { toast } = useToast()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
@@ -150,9 +53,11 @@ export default function SuppliersPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
-  // 停用／啟用從編輯視窗搬到列表的操作欄：那是一個獨立的決定，
+  // 停用／啟用從編輯視窗搬到列表的狀態欄：那是一個獨立的決定，
   // 不該要人先進編輯、改勾選、再按儲存
   const [toggleTarget, setToggleTarget] = useState<Supplier | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('all')
 
   const fetchSuppliers = async () => {
     setLoading(true)
@@ -168,6 +73,17 @@ export default function SuppliersPage() {
   }
 
   useEffect(() => { fetchSuppliers() }, [])
+
+  const filtered = suppliers.filter(s => {
+    if (selectedStatus !== 'all' && (selectedStatus === 'active') !== s.is_active) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      const hit = [s.name, s.tax_id, s.contact_name, s.contact_phone, s.contact_email]
+        .some(v => (v ?? '').toLowerCase().includes(q))
+      if (!hit) return false
+    }
+    return true
+  })
 
   const openCreate = () => {
     setEditing(null)
@@ -255,40 +171,105 @@ export default function SuppliersPage() {
     }
   }
 
+  const columns: ListColumn<Supplier>[] = [
+    {
+      key: 'name', label: '廠商名稱',
+      sortValue: s => s.name,
+      // 標記出平台自營那筆。列表上一堆名字時，看得出哪一個是自己家的
+      render: s => (
+        <span className="inline-flex items-center gap-2 font-medium text-neutral-900">
+          {s.name}
+          {s.is_platform && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-black text-primary">
+              平台自營
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'taxId', label: '統編',
+      className: 'font-mono text-xs',
+      render: s => <>{s.tax_id ?? '—'}</>,
+    },
+    {
+      key: 'contactName', label: '聯絡人',
+      render: s => <>{s.contact_name ?? '—'}</>,
+    },
+    {
+      key: 'contactPhone', label: '電話',
+      render: s => <>{s.contact_phone ?? '—'}</>,
+    },
+    {
+      key: 'contactEmail', label: 'Email',
+      className: 'text-xs',
+      render: s => <>{s.contact_email ?? '—'}</>,
+    },
+    {
+      key: 'status', label: '狀態',
+      sortValue: s => (s.is_active ? 1 : 0),
+      // 平台自營那筆不給停用：自營商品都掛在它底下。
+      // Switch 直接鎖死，比讓人按下去再跳錯誤好。
+      // 切換有登入權限等後果，所以按下去先開確認彈窗，不直接生效
+      render: s => (
+        <Switch
+          checked={s.is_active}
+          disabled={!!s.is_platform}
+          onCheckedChange={() => setToggleTarget(s)}
+        />
+      ),
+    },
+    {
+      key: 'notes', label: '備註',
+      className: 'max-w-[200px] truncate',
+      render: s => <>{s.notes ?? '—'}</>,
+    },
+    {
+      key: 'createdAt', label: '建立時間',
+      sortValue: s => new Date(s.created_at).getTime(),
+      className: 'font-mono',
+      render: s => <>{formatDateTime(s.created_at)}</>,
+    },
+    {
+      key: 'operations', label: '操作', isActions: true,
+      render: s => (
+        <div className="flex items-center gap-2">
+          <RowAction tone="primary" onClick={() => openEdit(s)}>編輯</RowAction>
+          {!s.is_platform && (
+            <RowAction tone="danger" onClick={() => setDeleteTarget(s)}>刪除</RowAction>
+          )}
+        </div>
+      ),
+    },
+  ]
+
   return (
     <AdminLayout pageTitle="廠商管理">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-500">管理商品供應廠商資訊</p>
-          <button
-            onClick={openCreate}
-            className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新增廠商
-          </button>
-        </div>
-
-        {/* Table */}
-        <PageCard noPadding>
-          {loading ? (
-            <CardSkeleton rows={5} />
-          ) : suppliers.length === 0 ? (
-            <EmptyState message="尚無廠商資料，點擊「新增廠商」開始建立" />
-          ) : (
-            <div className="overflow-x-auto">
-              <DataTable
-  data={suppliers}
-  columns={suppliersColumns}
-  keyField="id"
-  rowClassName={() => "border-b border-neutral-100 hover:bg-neutral-50 transition-colors"}
-/>
-            </div>
-          )}
-        </PageCard>
+        <ListTableCard
+          pageKey="suppliers"
+          data={filtered}
+          columns={columns}
+          keyField="id"
+          isLoading={loading}
+          emptyMessage={suppliers.length === 0 ? '尚無廠商資料，點擊「新增廠商」開始建立' : '沒有找到符合條件的廠商'}
+          searchPlaceholder="搜尋廠商名稱、統編、聯絡人..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          addButtonText="+ 新增廠商"
+          onAddClick={openCreate}
+          filters={[
+            {
+              key: 'status', label: '狀態',
+              value: selectedStatus, onChange: setSelectedStatus,
+              options: [
+                { value: 'all', label: '全部狀態' },
+                { value: 'active', label: '啟用' },
+                { value: 'inactive', label: '停用' },
+              ],
+            },
+          ]}
+        />
       </div>
 
       {/* Create / Edit Modal */}
@@ -415,7 +396,7 @@ export default function SuppliersPage() {
         </div>
       </Modal>
 
-      {/* Delete Confirm */}
+      {/* Toggle Active Confirm */}
       <ConfirmDialog
         isOpen={!!toggleTarget}
         onClose={() => setToggleTarget(null)}
