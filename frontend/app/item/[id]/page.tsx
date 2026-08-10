@@ -1382,7 +1382,7 @@ export default function ProductDetailPage() {
                     alt={product.name}
                     width={167}
                     height={167}
-                    className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                    className="w-full h-full object-cover border border-white/20 shadow-lg shadow-black/40"
                   />
                 </div>
               )}
