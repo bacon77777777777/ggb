@@ -5,8 +5,8 @@ import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
-import { gradeStyle } from '@/lib/prizeGrade';
-import { playWinChime } from '@/lib/sfx';
+import { gradeStyle, gradeRank } from '@/lib/prizeGrade';
+import { initMachineAudio, sfxFanfare, sfxUiClick, setDucking } from '@/lib/machineSfx';
 
 /**
  * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
@@ -35,11 +35,24 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   const [detail, setDetail] = useState<Prize | null>(null);
   const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
 
-  // 中獎音效（原盒玩「點擊取物」那顆，老闆指定移到這裡播）。
-  // 合成音效不用預載，開啟當下直接發聲
+  /*
+   * 中獎號角：賞別越高吹越久（A賞六音＋亮片、B賞四音、其餘兩音）。
+   * 合成音效不用預載，彈窗開啟當下直接發聲。
+   *
+   * 彈窗開著時把背景音樂壓低，關掉才放回來 —— 跟機台演出用同一套 ducking。
+   */
   React.useEffect(() => {
     if (!isOpen) return;
-    playWinChime();
+    initMachineAudio();
+    setDucking(true);
+    const best = results.reduce(
+      (min, p) => Math.min(min, gradeRank(p.grade ?? p.rarity)),
+      9,
+    );
+    sfxFanfare(best);
+    return () => setDucking(false);
+    // results 在彈窗開啟後不會換人，只在開啟那一刻取一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   React.useEffect(() => {
@@ -127,7 +140,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
               </div>
 
               <Button
-                onClick={onClose}
+                onClick={() => { sfxUiClick(); onClose(); }}
                 size="lg"
                 className="h-[40px] w-full rounded-[8px] px-6 text-[15px] font-semibold text-white shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
               >
