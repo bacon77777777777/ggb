@@ -4,7 +4,15 @@ import Image from 'next/image';
 import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+
+/**
+ * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
+ *
+ * 抽多次時改成條列捲動（老闆指定）—— 原本是左右箭頭一個一個翻，
+ * 十連要點九次才看得完，還記不住剛剛翻過什麼。條列一眼看完全部，
+ * 想看大圖再點那一列。抽一次就直接顯示大圖，不用多一層列表。
+ */
 
 interface GachaResultModalProps {
   isOpen: boolean;
@@ -14,20 +22,40 @@ interface GachaResultModalProps {
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
 
+/** 賞等膠囊配色：越大的賞越暖越搶眼，一眼看得出輕重 */
+function gradeStyle(grade?: string): { bg: string; text: string } {
+  const g = String(grade ?? '').trim();
+  if (!g) return { bg: 'bg-neutral-100', text: 'text-neutral-500' };
+  if (/最後賞|last\s*one/i.test(g)) return { bg: 'bg-purple-100', text: 'text-purple-700' };
+  if (/隱藏/.test(g)) return { bg: 'bg-violet-100', text: 'text-violet-700' };
+  if (/^A|SSR|SP/i.test(g)) return { bg: 'bg-red-100', text: 'text-red-700' };
+  if (/^B|SR/i.test(g)) return { bg: 'bg-orange-100', text: 'text-orange-700' };
+  if (/^C/i.test(g)) return { bg: 'bg-amber-100', text: 'text-amber-700' };
+  if (/^D/i.test(g)) return { bg: 'bg-green-100', text: 'text-green-700' };
+  if (/^E/i.test(g)) return { bg: 'bg-sky-100', text: 'text-sky-700' };
+  return { bg: 'bg-neutral-100', text: 'text-neutral-500' };
+}
+
+function prizeImage(p: Prize, failed: boolean): string {
+  if (failed) return ITEM_DEFAULT_IMG;
+  return p.image_url || `/images/item/${(p.id ?? '').toString().padStart(5, '0')}.jpg`;
+}
+
 export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [imgError, setImgError] = useState(false);
-  const hasMultiple = results.length > 1;
-  const activePrize = results[activeIndex] || results[0];
+  /** null = 顯示列表；數字 = 顯示該筆大圖。只有一筆時直接看大圖 */
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
   const resultSoundRef = React.useRef<HTMLAudioElement | null>(null);
-  const touchStartXRef = React.useRef<number | null>(null);
+
+  const single = results.length === 1;
+  const activeIndex = single ? 0 : detailIndex;
+  const activePrize = activeIndex === null ? null : results[activeIndex];
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const audio = new Audio('/audio/getpopup.mp3');
     audio.preload = 'auto';
     resultSoundRef.current = audio;
-
     return () => {
       if (resultSoundRef.current) {
         resultSoundRef.current.pause();
@@ -46,59 +74,10 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isOpen) {
-      setActiveIndex(0);
-      return;
-    }
-    if (!results[activeIndex]) {
-      setActiveIndex(0);
-    }
-  }, [isOpen, results, activeIndex]);
+    if (!isOpen) { setDetailIndex(null); setFailedIds({}); }
+  }, [isOpen]);
 
-  const showPrev = () => {
-    if (!hasMultiple) return;
-    setImgError(false);
-    setActiveIndex((prev) => {
-      const nextIndex = prev - 1;
-      if (nextIndex < 0) return results.length - 1;
-      return nextIndex;
-    });
-  };
-
-  const showNext = () => {
-    if (!hasMultiple) return;
-    setImgError(false);
-    setActiveIndex((prev) => {
-      const nextIndex = prev + 1;
-      if (nextIndex >= results.length) return 0;
-      return nextIndex;
-    });
-  };
-
-  const activeGrade = activePrize ? activePrize.grade || activePrize.rarity : undefined;
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!hasMultiple) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    touchStartXRef.current = touch.clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!hasMultiple) return;
-    const startX = touchStartXRef.current;
-    const touch = e.changedTouches[0];
-    if (startX == null || !touch) return;
-    const diffX = touch.clientX - startX;
-    const threshold = 40;
-    if (Math.abs(diffX) < threshold) return;
-    if (diffX < 0) {
-      showNext();
-    } else {
-      showPrev();
-    }
-    touchStartXRef.current = null;
-  };
+  const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
   return (
     <AnimatePresence>
@@ -117,100 +96,111 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-sm"
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             <div
               className={cn(
-                'relative w-full overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl shadow-modal',
-                'flex flex-col items-center text-center p-6'
+                'relative flex w-full flex-col overflow-hidden rounded-3xl border border-neutral-100 bg-white p-6 shadow-modal',
+                'dark:border-neutral-800 dark:bg-neutral-900',
               )}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
             >
-              <h3 className="text-base font-black text-neutral-900 dark:text-white mb-4 tracking-tight">
-                恭喜獲得
-              </h3>
-
-              {activePrize && (
-                <>
-                  <motion.div
-                    key={activePrize.id ?? activeIndex}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                    className="w-40 h-auto rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 mb-3 flex items-center justify-center"
+              {/* 標題列：看大圖時左邊給返回，抽一次沒有列表可返回 */}
+              <div className="relative mb-4 flex items-center justify-center">
+                {activePrize && !single && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailIndex(null)}
+                    className="absolute left-0 flex items-center justify-center rounded-full p-1 transition-transform hover:bg-neutral-100 active:scale-95 dark:hover:bg-neutral-800"
+                    aria-label="回到列表"
                   >
-                    <Image
-                      src={
-                        imgError
-                          ? ITEM_DEFAULT_IMG
-                          : activePrize.image_url ||
-                            `/images/item/${(activePrize.id ?? '').toString().padStart(5, '0')}.jpg`
-                      }
-                      alt={activePrize.name}
-                      width={160}
-                      height={160}
-                      className="w-full h-auto object-contain"
-                      unoptimized
-                      onError={() => setImgError(true)}
-                    />
-                  </motion.div>
+                    <ChevronLeft className="h-5 w-5 text-neutral-500 dark:text-neutral-300" />
+                  </button>
+                )}
+                <h3 className="text-base font-black tracking-tight text-neutral-900 dark:text-white">
+                  {activePrize ? '恭喜獲得' : `恭喜獲得 ${results.length} 項`}
+                </h3>
+              </div>
 
-                  <div className="mb-6 w-full px-2">
-                    <div className="flex items-center justify-center gap-3">
-                      {hasMultiple && (
-                        <button
-                          type="button"
-                          onClick={showPrev}
-                          className="flex items-center justify-center p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
-                          aria-label="上一個"
-                        >
-                          <ChevronLeft className="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-                        </button>
-                      )}
-                      <p
-                        className="flex-1 text-neutral-900 dark:text-white font-bold text-[16px] text-center"
-                        style={{
-                          lineHeight: '1.25rem',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {activePrize.name}
-                      </p>
-                      {hasMultiple && (
-                        <button
-                          type="button"
-                          onClick={showNext}
-                          className="flex items-center justify-center p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
-                          aria-label="下一個"
-                        >
-                          <ChevronRight className="w-5 h-5 text-neutral-500 dark:text-neutral-300" />
-                        </button>
-                      )}
-                    </div>
-                    {hasMultiple && (
-                      <div className="mt-2 text-xs font-medium text-neutral-400">
-                        {activeIndex + 1} / {results.length}
-                      </div>
-                    )}
+              {activePrize ? (
+                /* ── 大圖 ── */
+                <motion.div
+                  key={activePrize.id ?? activeIndex}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="mb-3 flex h-auto w-44 items-center justify-center overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800">
+                    <Image
+                      src={prizeImage(activePrize, !!failedIds[`d${activeIndex}`])}
+                      alt={activePrize.name}
+                      width={176}
+                      height={176}
+                      className="h-auto w-full object-contain"
+                      unoptimized
+                      onError={() => markFailed(`d${activeIndex}`)}
+                    />
                   </div>
-                </>
+                  {(activePrize.grade || activePrize.rarity) && (
+                    <span
+                      className={cn(
+                        'mb-2 rounded-lg px-2.5 py-1 text-xs font-black',
+                        gradeStyle(activePrize.grade || activePrize.rarity).bg,
+                        gradeStyle(activePrize.grade || activePrize.rarity).text,
+                      )}
+                    >
+                      {activePrize.grade || activePrize.rarity}
+                    </span>
+                  )}
+                  <p className="mb-5 px-2 text-center text-[16px] font-bold text-neutral-900 dark:text-white">
+                    {activePrize.name}
+                  </p>
+                </motion.div>
+              ) : (
+                /* ── 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列看大圖 ── */
+                <div className="mb-5 max-h-[46vh] space-y-2 overflow-y-auto pr-0.5">
+                  {results.map((p, i) => {
+                    const g = p.grade || p.rarity;
+                    const gs = gradeStyle(g);
+                    return (
+                      <button
+                        key={`${p.id ?? 'x'}-${i}`}
+                        type="button"
+                        onClick={() => setDetailIndex(i)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50 p-2 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
+                      >
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
+                          <Image
+                            src={prizeImage(p, !!failedIds[`l${i}`])}
+                            alt={p.name}
+                            width={44}
+                            height={44}
+                            className="h-full w-full object-contain"
+                            unoptimized
+                            onError={() => markFailed(`l${i}`)}
+                          />
+                        </div>
+                        {g && (
+                          <span className={cn('shrink-0 rounded-md px-2 py-1 text-xs font-black', gs.bg, gs.text)}>
+                            {g}
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-neutral-900 dark:text-white">
+                          {p.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
 
-              <div className="w-full mt-2">
-                <Button
-                  onClick={onClose}
-                  size="lg"
-                  className="w-full rounded-[8px] h-[40px] px-6 text-[15px] font-semibold bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 text-white"
-                >
-                  確定
-                </Button>
-              </div>
+              <Button
+                onClick={onClose}
+                size="lg"
+                className="h-[40px] w-full rounded-[8px] px-6 text-[15px] font-semibold text-white shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
+              >
+                確定
+              </Button>
             </div>
           </motion.div>
         </div>
