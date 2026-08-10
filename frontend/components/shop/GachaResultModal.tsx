@@ -4,14 +4,15 @@ import Image from 'next/image';
 import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
-import { ChevronLeft } from 'lucide-react';
+import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
 
 /**
  * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
  *
- * 抽多次時改成條列捲動（老闆指定）—— 原本是左右箭頭一個一個翻，
- * 十連要點九次才看得完，還記不住剛剛翻過什麼。條列一眼看完全部，
- * 想看大圖再點那一列。抽一次就直接顯示大圖，不用多一層列表。
+ * 一律條列捲動（老闆指定，含單抽）—— 原本是左右箭頭一個一個翻，
+ * 十連要點九次才看得完。條列一眼看完全部；想看大圖點那一列，
+ * 開的是總覽同一個全螢幕 PrizeDetailSheet（大圖＋賞等＋品名），
+ * 不在彈窗內換頁。
  */
 
 interface GachaResultModalProps {
@@ -42,14 +43,10 @@ function prizeImage(p: Prize, failed: boolean): string {
 }
 
 export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalProps) {
-  /** null = 顯示列表；數字 = 顯示該筆大圖。只有一筆時直接看大圖 */
-  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  /** 被點開看大圖的那一項（走總覽同一個全螢幕 sheet） */
+  const [detail, setDetail] = useState<Prize | null>(null);
   const [failedIds, setFailedIds] = useState<Record<string, boolean>>({});
   const resultSoundRef = React.useRef<HTMLAudioElement | null>(null);
-
-  const single = results.length === 1;
-  const activeIndex = single ? 0 : detailIndex;
-  const activePrize = activeIndex === null ? null : results[activeIndex];
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -74,7 +71,7 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
   }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isOpen) { setDetailIndex(null); setFailedIds({}); }
+    if (!isOpen) { setDetail(null); setFailedIds({}); }
   }, [isOpen]);
 
   const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
@@ -104,99 +101,45 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
                 'dark:border-neutral-800 dark:bg-neutral-900',
               )}
             >
-              {/* 標題列：看大圖時左邊給返回，抽一次沒有列表可返回 */}
-              <div className="relative mb-4 flex items-center justify-center">
-                {activePrize && !single && (
-                  <button
-                    type="button"
-                    onClick={() => setDetailIndex(null)}
-                    className="absolute left-0 flex items-center justify-center rounded-full p-1 transition-transform hover:bg-neutral-100 active:scale-95 dark:hover:bg-neutral-800"
-                    aria-label="回到列表"
-                  >
-                    <ChevronLeft className="h-5 w-5 text-neutral-500 dark:text-neutral-300" />
-                  </button>
-                )}
-                <h3 className="text-base font-black tracking-tight text-neutral-900 dark:text-white">
-                  {activePrize ? '恭喜獲得' : (
-                    <>
-                      恭喜獲得 <span className="text-accent-red">{results.length}</span> 項
-                    </>
-                  )}
-                </h3>
-              </div>
+              <h3 className="mb-4 text-center text-base font-black tracking-tight text-neutral-900 dark:text-white">
+                恭喜獲得 <span className="text-accent-red">{results.length}</span> 項
+              </h3>
 
-              {activePrize ? (
-                /* ── 大圖 ── */
-                <motion.div
-                  key={activePrize.id ?? activeIndex}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="mb-3 flex h-auto w-44 items-center justify-center overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800">
-                    <Image
-                      src={prizeImage(activePrize, !!failedIds[`d${activeIndex}`])}
-                      alt={activePrize.name}
-                      width={176}
-                      height={176}
-                      className="h-auto w-full object-contain"
-                      unoptimized
-                      onError={() => markFailed(`d${activeIndex}`)}
-                    />
-                  </div>
-                  {(activePrize.grade || activePrize.rarity) && (
-                    <span
-                      className={cn(
-                        'mb-2 rounded-lg px-2.5 py-1 text-xs font-black',
-                        gradeStyle(activePrize.grade || activePrize.rarity).bg,
-                        gradeStyle(activePrize.grade || activePrize.rarity).text,
-                      )}
+              {/* 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列開全螢幕大圖 */}
+              <div className="mb-4 max-h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
+                {results.map((p, i) => {
+                  const g = p.grade || p.rarity;
+                  const gs = gradeStyle(g);
+                  return (
+                    <button
+                      key={`${p.id ?? 'x'}-${i}`}
+                      type="button"
+                      onClick={() => setDetail(p)}
+                      className="flex w-full items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50 p-1.5 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
                     >
-                      {activePrize.grade || activePrize.rarity}
-                    </span>
-                  )}
-                  <p className="mb-5 px-2 text-center text-[16px] font-bold text-neutral-900 dark:text-white">
-                    {activePrize.name}
-                  </p>
-                </motion.div>
-              ) : (
-                /* ── 條列（可捲動）：小圖 ＋ 賞等 ＋ 名稱，點一列看大圖 ── */
-                <div className="mb-4 max-h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
-                  {results.map((p, i) => {
-                    const g = p.grade || p.rarity;
-                    const gs = gradeStyle(g);
-                    return (
-                      <button
-                        key={`${p.id ?? 'x'}-${i}`}
-                        type="button"
-                        onClick={() => setDetailIndex(i)}
-                        className="flex w-full items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50 p-1.5 text-left transition-colors hover:bg-neutral-100 active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:bg-neutral-800"
-                      >
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
-                          <Image
-                            src={prizeImage(p, !!failedIds[`l${i}`])}
-                            alt={p.name}
-                            width={36}
-                            height={36}
-                            className="h-full w-full object-contain"
-                            unoptimized
-                            onError={() => markFailed(`l${i}`)}
-                          />
-                        </div>
-                        {g && (
-                          <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
-                            {g}
-                          </span>
-                        )}
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
-                          {p.name}
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-neutral-900">
+                        <Image
+                          src={prizeImage(p, !!failedIds[`l${i}`])}
+                          alt={p.name}
+                          width={36}
+                          height={36}
+                          className="h-full w-full object-contain"
+                          unoptimized
+                          onError={() => markFailed(`l${i}`)}
+                        />
+                      </div>
+                      {g && (
+                        <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
+                          {g}
                         </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
+                        {p.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
               <Button
                 onClick={onClose}
@@ -207,6 +150,17 @@ export function GachaResultModal({ isOpen, onClose, results }: GachaResultModalP
               </Button>
             </div>
           </motion.div>
+
+          {/* 大圖走總覽同一個元件：全螢幕黑遮罩 ＋ 大圖 ＋ 賞等 ＋ 品名 */}
+          <PrizeDetailSheet
+            zIndex={3100}
+            prize={detail ? {
+              name: detail.name,
+              image_url: detail.image_url ?? null,
+              level: detail.grade || detail.rarity || null,
+            } : null}
+            onClose={() => setDetail(null)}
+          />
         </div>
       )}
     </AnimatePresence>
