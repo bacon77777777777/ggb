@@ -5,6 +5,7 @@ import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import { gradeStyle } from '@/lib/prizeGrade';
 
 /**
  * 中獎結果彈窗（全站共用：轉蛋／盒玩／一番賞／自製賞）
@@ -22,20 +23,6 @@ interface GachaResultModalProps {
 }
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
-
-/** 賞等膠囊配色：越大的賞越暖越搶眼，一眼看得出輕重 */
-function gradeStyle(grade?: string): { bg: string; text: string } {
-  const g = String(grade ?? '').trim();
-  if (!g) return { bg: 'bg-neutral-100', text: 'text-neutral-500' };
-  if (/最後賞|last\s*one/i.test(g)) return { bg: 'bg-purple-100', text: 'text-purple-700' };
-  if (/隱藏/.test(g)) return { bg: 'bg-violet-100', text: 'text-violet-700' };
-  if (/^A|SSR|SP/i.test(g)) return { bg: 'bg-red-100', text: 'text-red-700' };
-  if (/^B|SR/i.test(g)) return { bg: 'bg-orange-100', text: 'text-orange-700' };
-  if (/^C/i.test(g)) return { bg: 'bg-amber-100', text: 'text-amber-700' };
-  if (/^D/i.test(g)) return { bg: 'bg-green-100', text: 'text-green-700' };
-  if (/^E/i.test(g)) return { bg: 'bg-sky-100', text: 'text-sky-700' };
-  return { bg: 'bg-neutral-100', text: 'text-neutral-500' };
-}
 
 function prizeImage(p: Prize, failed: boolean): string {
   if (failed) return ITEM_DEFAULT_IMG;
