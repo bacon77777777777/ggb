@@ -1,14 +1,17 @@
 'use client';
 
+import { Suspense } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
-export default function ItemSelectTicketPage() {
+function ItemSelectTicketInner() {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const router = useRouter();
+  // ?trial=1 → 試試看：跳過選籤直接進撕紙，不扣款
+  const isTrial = useSearchParams().get('trial') === '1';
 
   return (
     <div className="min-h-screen relative bg-neutral-900 flex items-center justify-center md:fixed md:inset-0 md:z-[100]">
@@ -44,6 +47,7 @@ export default function ItemSelectTicketPage() {
         >
           <TicketSelectionFlow
             isModal={isDesktop}
+            trial={isTrial}
           />
         </div>
       </div>
@@ -51,3 +55,11 @@ export default function ItemSelectTicketPage() {
   );
 }
 
+// useSearchParams 需要 Suspense 邊界（Next 靜態產生時會抱怨）
+export default function ItemSelectTicketPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-900" />}>
+      <ItemSelectTicketInner />
+    </Suspense>
+  );
+}

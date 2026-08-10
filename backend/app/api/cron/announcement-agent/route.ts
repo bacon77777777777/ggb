@@ -23,12 +23,23 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 
 const NEW_PRODUCT_THRESHOLD = 5   // 當日新上架商品達此數才發彙總
 
+/** 公告內文用的型別名稱（玩家看得懂的字，不是 DB 代號） */
+const TYPE_LABEL: Record<string, string> = {
+  ichiban: '一番賞',
+  gacha: '轉蛋',
+  blindbox: '盒玩',
+  card: '抽卡',
+  custom: '自製賞',
+}
+
 type Result = { created: string[]; skipped: number; errors: number }
 
 async function publish(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   r: Result,
   row: { title: string; content: string; category: '消息' | '活動' | '系統'; source_key: string; is_pinned?: boolean },
+  /** 同 source_key 已存在時改成更新內容（當日新品彙總用：下午又上新品要補進同一則） */
+  refreshIfExists = false,
 ) {
   const { error } = await supabase.from('announcements').insert({
     title: row.title,
@@ -38,7 +49,16 @@ async function publish(
     is_pinned: row.is_pinned ?? false,
   })
   if (!error) { r.created.push(row.title); return }
-  if (error.code === '23505') { r.skipped++; return }   // 已發過
+  if (error.code === '23505') {
+    if (refreshIfExists) {
+      await supabase
+        .from('announcements')
+        .update({ title: row.title, content: row.content })
+        .eq('source_key', row.source_key)
+    }
+    r.skipped++
+    return
+  }   // 已發過
   r.errors++
   console.error('[announcement-agent]', error.message)
 }
@@ -104,14 +124,15 @@ export async function GET(req: NextRequest) {
 
   const list = (newProducts ?? []).filter(p => p.type !== 'slot')   // 機台獎池商品不算新品
   if (list.length >= NEW_PRODUCT_THRESHOLD) {
-    const names = list.slice(0, 5).map(p => `・${p.name}`).join('\n')
-    const more = list.length > 5 ? `\n…等共 ${list.length} 項` : ''
+    // 全部列出來（老闆指定）—— 原本只列 5 項再寫「…等共 N 項」，
+    // 玩家看不到自己想找的那檔，等於還要再去搜一次
+    const names = list.map(p => `・${TYPE_LABEL[p.type] ?? '商品'}｜${p.name}`).join('\n')
     await publish(supabase, r, {
       title: `今日新品上架 ${list.length} 項`,
-      content: `今天有 ${list.length} 項新商品上架：\n\n${names}${more}`,
+      content: `今天有 ${list.length} 項新商品上架：\n\n${names}`,
       category: '消息',
       source_key: `products:${today}`,
-    })
+    }, true)   // 當天稍晚又上新品 → 更新同一則，不再開新公告
   }
 
   return NextResponse.json({ ok: true, ...r })

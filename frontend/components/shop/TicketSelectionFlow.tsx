@@ -34,6 +34,11 @@ interface TearResult {
 }
 
 interface TicketSelectionFlowProps {
+  /**
+   * 試玩模式（試試看）：不扣款、不寫 DB，直接用最高賞塞一筆假結果，
+   * 走跟真抽一模一樣的演出（沉浸式撕紙／開籤格）。一律單抽。
+   */
+  trial?: boolean;
   isModal?: boolean;
   onClose?: () => void;
   onRefreshProduct?: () => void;
@@ -79,7 +84,7 @@ const getPlayErrorMessage = (err: unknown): string => {
   return '購買失敗';
 };
 
-export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct, onTearFinish }: TicketSelectionFlowProps) {
+export function TicketSelectionFlow({ trial = false, isModal = false, onClose, onRefreshProduct, onTearFinish }: TicketSelectionFlowProps) {
   const params = useParams();
   const router = useRouter();
   const [supabase] = useState(() => createClient());
@@ -146,6 +151,9 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   // 每次新購買給不同的 sessionId，作為 FigmaTearScene key 的一部分，確保重新掛載
   const [tearSessionId, setTearSessionId] = useState(0);
 
+  /** 單一商品可覆蓋全站模組設定；沒設才吃全站的 */
+  const effectiveTheme = (product as { machine_theme?: string } | null)?.machine_theme || ichibanTheme;
+
   useEffect(() => {
     fetch('/api/module-settings')
       .then(r => r.json())
@@ -188,6 +196,60 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     const timer = setTimeout(() => setBlindboxPhase('revealed'), 2000);
     return () => clearTimeout(timer);
   }, [product, drawnResults]);
+
+  /*
+   * 試玩（試試看）：不呼叫 play_ichiban_locked、不扣代幣、不寫 draw_records，
+   * 只是把「最高賞」塞成一筆假結果丟進同一套演出。
+   *
+   * 走 drawnResults 這條路，所以沉浸式主題自動進撕紙、格狀主題自動進開籤格 ——
+   * 玩家看到的就是真抽會看到的畫面，差別只有結果是假的、而且一律一抽。
+   */
+  useEffect(() => {
+    if (!trial || !product || drawnResults.length > 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const { data: rows } = await supabase
+        .from('product_prizes')
+        .select('level, name, image_url')
+        .eq('product_id', product.id);
+      if (cancelled) return;
+
+      // 挑最高賞當誘餌：A賞 > B賞 > … ，同級取有圖的
+      const rank = (lv: string) => {
+        const s = String(lv || '').trim();
+        if (/最後賞|last\s*one/i.test(s)) return 1;
+        if (/^A|SSR|SP/i.test(s)) return 2;
+        if (/^B|SR/i.test(s)) return 3;
+        if (/^C/i.test(s)) return 4;
+        if (/^D/i.test(s)) return 5;
+        return 6;
+      };
+      const best = (rows ?? []).slice().sort((a, b) => {
+        const d = rank(a.level || '') - rank(b.level || '');
+        if (d !== 0) return d;
+        return (b.image_url ? 1 : 0) - (a.image_url ? 1 : 0);
+      })[0];
+
+      setDrawnResults([{
+        grade: best?.level || 'A賞',
+        name: best?.name || '最高賞',
+        isOpened: false,
+        image_url: best?.image_url || '',
+        is_last_one: false,
+        ticket_number: 0,   // 試玩不佔籤號
+      }]);
+
+      if (effectiveTheme === 'ichiban_tear') {
+        setTearIndex(0);
+        setTearIsDone(false);
+        setTearSessionId(s => s + 1);
+        setShowFigmaTear(true);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [trial, product, drawnResults.length, effectiveTheme, supabase]);
 
   const handleShowFullResults = useCallback(async () => {
     if (!product) return;
@@ -555,7 +617,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       setDrawnResults(results);
 
       // 沉浸式撕紙模式：在票券網格前先播全畫面撕紙動畫
-      if (product?.type === 'ichiban' && ichibanTheme === 'ichiban_tear') {
+      if (product?.type === 'ichiban' && effectiveTheme === 'ichiban_tear') {
         setTearIndex(0);
         setTearIsDone(false);
         setTearSessionId(s => s + 1);  // 強制 FigmaTearScene 重新掛載
@@ -718,6 +780,8 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   }, [openAllDone]);
 
   const handleContinueDraw = () => {
+    // 試玩沒有「繼續抽」這回事 —— 清掉結果只會退回選籤頁，直接收工回商品頁
+    if (trial) { handleBackToProduct(); return; }
     setDrawnResults([]);
     setFullResults([]);
     setSelectedTickets([]);
@@ -1041,7 +1105,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
   if (drawnResults.length > 0) {
     // ichiban_tear 主題 + 桌機 modal 模式：FigmaTearScene 負責觸發 onTearFinish，
     // 跳過這個中間畫面，讓父層在 modal 關閉後顯示 GachaResultModal
-    if (isModal && ichibanTheme === 'ichiban_tear') return null;
+    if (isModal && effectiveTheme === 'ichiban_tear') return null;
 
     const allOpened = drawnResults.every(r => r.isOpened);
     const hasLastOne = drawnResults.some(r => r.is_last_one);
