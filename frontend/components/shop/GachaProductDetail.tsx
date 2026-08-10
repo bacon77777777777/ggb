@@ -423,7 +423,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
           {product.id && (
             <div
               className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
-              style={{ top: 46, width: 232, height: 200, zIndex: 20 }}
+              style={{ top: 30, width: 232, height: 200, zIndex: 20 }}
               onClick={() => setIsEggBoxImageMode(v => !v)}
             >
               <Image
