@@ -24,8 +24,9 @@
 - `GachaMachineMode2` 移除機台上的三顆 ImageButton（旋鈕仍可點擊轉蛋）
 - `GachaProductDetail` 的底部操作欄條件改成 `BUTTONLESS_THEMES`
   （`gacha_mode2` / `gacha_mode5`），mode3／mode4／classic 維持機台內建按鈕
-- ⚠️ 代價：`gacha/mode5/main.png` 原本那張紫金圖被覆蓋掉了（它從未進 git），
-  現在 mode2 與 mode5 是同一張圖。要區分的話得重新給 mode5 一張
+- 期間 `gacha/mode5/main.png` 的紫金圖一度被覆蓋（它當時還沒進 git），
+  老闆隨後重新提供，兩個模組各有各的機台圖：mode2 白紅、mode5 紫金，
+  兩者都走 `BUTTONLESS_THEMES`（機台不畫按鈕、操作鈕在底部）
 
 ### 蛋箱裡的商品圖：預設顯示、放大、無圓角、點擊切換
 - 預設就顯示（原本要點才出現），點一下收起看蛋箱、再點一下又出現 ——
