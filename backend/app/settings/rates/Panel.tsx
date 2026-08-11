@@ -56,7 +56,15 @@ interface Row {
  * 依賞等合併 —— 同一賞等常有多個品項（例如 C賞 有 4 個不同公仔），
  * 逐筆列出會爆版，合併後才看得懂整體分佈。
  */
+/** 最後賞不參與抽獎（完抽才發），排籤與出獎都排除它，這裡也要 */
+const isLastOne = (p: Prize) => /最後賞|last\s*one/i.test(p.level ?? '')
+
 function applyRate(prizes: Prize[], rate: number) {
+  // 先把最後賞剔掉再算。它不佔籤也沒有機率，卻會被算進 totalOfAll，
+  // 把「大獎 / 小獎」的分界線往下拉；列出來還會印一個百分比，
+  // 看起來像是「它有機率」—— 最後賞是完抽才發的，跟機率無關
+  prizes = prizes.filter(p => !isLastOne(p))
+
   const totalOfAll = prizes.reduce((s, p) => s + p.total, 0)
   const major = (p: Prize) => totalOfAll > 0 && p.total / totalOfAll <= MAJOR_PRIZE_RATIO
 

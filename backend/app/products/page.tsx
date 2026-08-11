@@ -1305,15 +1305,17 @@ export default function ProductsPage() {
                         <td colSpan={2 + Object.values(visibleColumns).filter(Boolean).length} className="py-4 px-4">
                           <div className="pl-8 space-y-2">
                             {(() => {
-                              // 計算所有獎項的剩餘數量總和 (排除 LAST ONE)
+                              // 分母排除最後賞。用檔案裡既有的 isLastOneLevel（認得「最後賞」）——
+                              // 這裡原本只比對 'last_one'/'last one'，中文賞等整個漏掉，
+                              // 最後賞於是被算進分母、還印出一個百分比（1/75 = 1.33%）
                               const totalRemaining = product.prizes
-                                .filter(p => !['last_one', 'last one'].includes(p.level.toLowerCase()))
+                                .filter(p => !isLastOneLevel(p.level))
                                 .reduce((sum, p) => sum + p.remaining, 0)
-                              
+
                               return product.prizes.map((prize, idx) => {
-                                // 計算當前機率：該獎項剩餘數量 / 所有獎項剩餘數量總和 × 100%
-                                // 如果是 LAST ONE，不計算機率
-                                const isLastOne = ['last_one', 'last one'].includes(prize.level.toLowerCase())
+                                // 最後賞是完抽才發的加碼獎，本來就沒有機率可言，
+                                // 印 0.00% 會讓人以為「有機率、只是設成 0」
+                                const isLastOne = isLastOneLevel(prize.level)
                                 const currentProbability = (!isLastOne && totalRemaining > 0)
                                   ? ((prize.remaining / totalRemaining) * 100).toFixed(2)
                                   : '0.00'
@@ -1336,7 +1338,9 @@ export default function ProductsPage() {
                                       <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700 shrink-0">{prize.level}</span>
                                       <span className="text-neutral-700 min-w-[100px]">{prize.name}</span>
                                       <span className="text-neutral-700 min-w-[60px]">{prize.remaining}/{prize.total}</span>
-                                      <span className="text-primary font-mono text-xs min-w-[50px]">({currentProbability}%)</span>
+                                      <span className="text-primary font-mono text-xs min-w-[50px] whitespace-nowrap">
+                                        {isLastOne ? '(最後一抽獲得)' : `(${currentProbability}%)`}
+                                      </span>
                                       {drawn > 0 && <span className="text-xs text-neutral-400">已抽 {drawn}</span>}
                                     </div>
                                     {isExpanded && (
