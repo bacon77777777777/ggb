@@ -588,9 +588,27 @@ export default function Home() {
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
         if (prefMap.size > 0) {
+          /*
+           * 新品曝光期：上架 7 天內的商品，系列分保底拉到「熱度榜中位數」。
+           *
+           * 不這樣做會有死結 —— 全新 IP 的系列分是 0，在推薦頁被埋在所有
+           * 有分的系列後面；但玩家看不到就不會抽，不抽就永遠拿不到分。
+           * 保底取中位數而不是最高分：新品進得了上半部，但不會蓋過真正
+           * 賣得動的那幾檔。過了 7 天就自動掉回自己系列的真實分數。
+           */
+          const scored = Array.from(prefMap.values()).filter(v => v > 0).sort((x, y) => x - y);
+          const newcomerFloor = scored.length > 0 ? scored[Math.floor(scored.length / 2)] : 0;
+          const NEW_WINDOW_MS = 7 * 24 * 3600 * 1000;
+          const now = Date.now();
+          const scoreOf = (p: ProductRow) => {
+            const base = prefMap.get(p.series || '') || 0;
+            const age = p.created_at ? now - new Date(p.created_at).getTime() : Infinity;
+            return age <= NEW_WINDOW_MS ? Math.max(base, newcomerFloor) : base;
+          };
+
           result.sort((a, b) => {
-            const scoreA = prefMap.get(a.series || '') || 0;
-            const scoreB = prefMap.get(b.series || '') || 0;
+            const scoreA = scoreOf(a);
+            const scoreB = scoreOf(b);
             if (scoreA !== scoreB) return scoreB - scoreA;
             if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
             const da = a.created_at ? new Date(a.created_at).getTime() : 0;
