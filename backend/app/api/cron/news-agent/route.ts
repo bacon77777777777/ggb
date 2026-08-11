@@ -333,10 +333,17 @@ const DEFAULT_NEWS_IMAGE =
  */
 type WmVisionResult = WmCorner | 'none'
 
-/** 上緣／下緣兩條長條（取自內容區，已拉高對比）—— 送給模型看的就是這兩張 */
-async function edgeStrips(buf: Buffer): Promise<[string, string] | null> {
+type Box = { left: number; top: number; width: number; height: number }
+
+/**
+ * 上緣／下緣兩條長條（取自內容區，已拉高對比）—— 送給模型看的就是這兩張
+ *
+ * `box` 一定要由呼叫端算好傳進來，不要在這裡自己算：蓋完 logo 之後那塊
+ * 白墊會跟左右的白色留白連成一片，trim 會多吃掉一截，量出來的內容區
+ * 跟原圖不一樣，複驗裁到的位置就整個歪掉（實跑一輪 6 篇全被誤判擋下）。
+ */
+async function edgeStrips(buf: Buffer, box: Box): Promise<[string, string] | null> {
   try {
-    const box = await contentBox(buf)
     const W = box.width, H = box.height
     if (!W || !H) return null
     const sh = Math.max(40, Math.round(H * 0.16))
@@ -390,7 +397,7 @@ async function askVision(strips: [string, string], prompt: string, re: RegExp): 
  * 回 'none' = 乾淨；回角落 = 那一角有站方浮水印；回 null = 不確定 →
  * 呼叫端一律不用這張圖。
  */
-async function findWatermarkWithVision(buf: Buffer, sourceUrl = ''): Promise<WmVisionResult | null> {
+async function findWatermarkWithVision(buf: Buffer, sourceUrl = '', box?: Box): Promise<WmVisionResult | null> {
   const hash = crypto.createHash('sha1').update(buf).digest('hex')
   if (wmVerdictCache.has(hash)) return wmVerdictCache.get(hash) ?? null
   const remember = (v: WmVisionResult | null) => {
@@ -399,7 +406,7 @@ async function findWatermarkWithVision(buf: Buffer, sourceUrl = ''): Promise<WmV
     return v
   }
   try {
-    const strips = await edgeStrips(buf)
+    const strips = await edgeStrips(buf, box ?? await contentBox(buf))
     if (!strips) return remember(null)
     let host = ''
     try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
@@ -408,7 +415,7 @@ async function findWatermarkWithVision(buf: Buffer, sourceUrl = ''): Promise<WmV
       '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
       host ? `照片取自新聞網站 ${host}。` : '',
       '請判斷這個新聞網站有沒有在角落壓上自己的站標／浮水印（通常半透明、低對比，跟照片內容無關）。',
-      '有的話在哪一角：TL（上緣左側）、TR（上緣右側）、BL（下緣左側）、BR（下緣右側）；沒有就 NONE。',
+      '有的話在哪一角：TL（上緣的左邊三分之一）、TR（上緣的右邊三分之一）、BL（下緣的左邊三分之一）、BR（下緣的右邊三分之一）；沒有就 NONE。',
       '注意：商品或包裝上印的品牌標誌、玩具廠商官方 logo（BANDAI、GASHAPON、FuRyu、TOMY、Good Smile…）、',
       '作品本身的 logo、宣傳圖裡的價格與規格文字，都**不算**浮水印，不要選它們。',
       '先用一句話說明，最後單獨一行只寫 TL、TR、BL、BR 或 NONE。',
@@ -431,9 +438,9 @@ async function findWatermarkWithVision(buf: Buffer, sourceUrl = ''): Promise<WmV
  * 誤判成 DIRTY 只是多跳一篇（實測三張中一張），誤判成 CLEAN 才會漏圖，
  * 所以這裡寧可保守。
  */
-async function verifyBrandedClean(buf: Buffer, sourceUrl = ''): Promise<boolean> {
+async function verifyBrandedClean(buf: Buffer, sourceUrl = '', box?: Box): Promise<boolean> {
   try {
-    const strips = await edgeStrips(buf)
+    const strips = await edgeStrips(buf, box ?? await contentBox(buf))
     if (!strips) return false
     let host = ''
     try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
@@ -546,7 +553,9 @@ async function downloadSmartToR2(
     }
 
     // 不分來源一律檢查
-    const found = await findWatermarkWithVision(buf, sourceUrl || imgUrl)
+    // 內容區只量原圖這一次，蓋完之後不能重量（白墊會跟留白邊連成一片）
+    const box = await contentBox(buf)
+    const found = await findWatermarkWithVision(buf, sourceUrl || imgUrl, box)
     if (found === null) return null   // 看不出來 = 不確定 → 不用這張
 
     const alwaysWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
@@ -564,7 +573,7 @@ async function downloadSmartToR2(
     const branded = await brandCoverImage(buf, found)
     if (!branded) return null
     // 蓋完再驗一次：還看得到就是沒蓋乾淨（挑錯角、或浮水印比白墊大）
-    if (!await verifyBrandedClean(branded, sourceUrl || imgUrl)) return null
+    if (!await verifyBrandedClean(branded, sourceUrl || imgUrl, box)) return null
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
     return await r2Upload(key, branded, 'image/jpeg')
   } catch { return null }
