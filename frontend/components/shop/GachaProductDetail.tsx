@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { trackEvent } from '@/lib/trackEvent';
 import ProductBadge from '@/components/ui/ProductBadge';
 
@@ -422,17 +423,31 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
               不然圖藏起來之後玩家沒有東西可以點回來。 */}
           {product.id && (
             <div
-              className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
-              style={{ top: 30, width: 232, height: 200, zIndex: 20 }}
-              onClick={() => setIsEggBoxImageMode(v => !v)}
+              className="absolute left-1/2 -translate-x-1/2"
+              style={{ top: 30, width: 232, height: 200, zIndex: 20,
+                       opacity: isEggBoxImageMode ? 1 : 0,
+                       // 收起時整層不吃觸控，不然看不見的縮放區還會攔手勢
+                       pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
+                       transition: 'opacity 200ms ease-out' }}
             >
-              <Image
+              {/* 雙指可放大／拖移看細節（放開彈回，放大時會浮到全螢幕不被機台框裁掉）；
+                  單指點一下才收起 —— 跟盒玩、抽卡走同一支元件，手感一致 */}
+              <PinchZoomImage
                 src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                alt={product.name} fill className="object-contain"
-                style={{ opacity: isEggBoxImageMode ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-                onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
+                alt={product.name}
+                className="h-full w-full"
+                onTap={() => setIsEggBoxImageMode(false)}
               />
             </div>
+          )}
+          {/* 收起後的點擊區：圖藏起來就沒有東西可以點回來，
+              所以留一塊透明的觸發區在原位 */}
+          {product.id && !isEggBoxImageMode && (
+            <div
+              className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
+              style={{ top: 30, width: 232, height: 200, zIndex: 21 }}
+              onClick={() => setIsEggBoxImageMode(true)}
+            />
           )}
         </div>
       </div>
