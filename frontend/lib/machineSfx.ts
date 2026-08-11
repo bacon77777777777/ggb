@@ -19,6 +19,8 @@
  *   取物 / 中獎號角 / 滑軌推送 / 按鈕 blip
  */
 
+import { isSoundMuted, subscribeSoundMuted } from './soundPrefs';
+
 type Nodes = {
   ctx: AudioContext;
   master: GainNode;
@@ -29,6 +31,21 @@ type Nodes = {
 };
 
 let A: Nodes | null = null;
+
+/*
+ * 全站靜音（玩家在機台右上角按的那顆）走 master 這個總開關。
+ *
+ * 所有音源 —— 機械嗡鳴、伺服嘶聲、撞擊、號角、背景音樂 —— 都接在 master 上，
+ * 所以只要把 master 壓成 0 就整套閉嘴，不用逐一去關。baseMaster 記住玩家
+ * 沒靜音時該有的音量（後台參數），解除靜音時原值回來，不會被洗成預設值。
+ */
+let baseMaster = 0.8;
+
+function applyMaster() {
+  if (A) A.master.gain.value = isSoundMuted() ? 0 : baseMaster;
+}
+
+if (typeof window !== 'undefined') subscribeSoundMuted(applyMaster);
 
 /*
  * 背景音樂排程器狀態。
@@ -101,7 +118,8 @@ export function initMachineAudio(masterVolume?: number) {
   hookResume();
   if (A) {
     // 沒帶音量就別碰 —— 彈窗只是要拿中獎號角，不該蓋掉機台從後台讀來的音量
-    if (masterVolume !== undefined) A.master.gain.value = masterVolume;
+    if (masterVolume !== undefined) baseMaster = masterVolume;
+    applyMaster();
     if (A.ctx.state === 'suspended') void A.ctx.resume();
     return;
   }
@@ -114,7 +132,8 @@ export function initMachineAudio(masterVolume?: number) {
   } catch { return; }
 
   const master = ctx.createGain();
-  master.gain.value = masterVolume ?? 0.8;
+  baseMaster = masterVolume ?? 0.8;
+  master.gain.value = isSoundMuted() ? 0 : baseMaster;
   master.connect(ctx.destination);
 
   const noise = buildPinkNoise(ctx);
@@ -177,9 +196,10 @@ export function disposeMachineAudio() {
   ducking = false;
 }
 
-/** 主音量（後台參數） */
+/** 主音量（後台參數）。實際輸出還要過靜音開關，見 applyMaster。 */
 export function setMachineVolume(v: number) {
-  if (A) A.master.gain.value = v;
+  baseMaster = v;
+  applyMaster();
 }
 
 /**
