@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 /**
@@ -42,6 +43,25 @@ export default function PinchZoomImage({
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
   const [animating, setAnimating] = useState(true);
+
+  /**
+   * 放大時把圖搬到 body 底下的全螢幕圖層。
+   *
+   * 呼叫端的容器幾乎都會裁切 —— 品項詳情的 bottom sheet 是 overflow-y-auto、
+   * 機台的商品圖疊在 overflow-hidden 的機台框裡。留在原地放大，超出容器的部分
+   * 會被切掉，等於「放大」只放大了看得到的那一塊。
+   *
+   * 外框留在原地負責接手勢（尺寸不變、hit-test 不受影響），只有會動的那層
+   * 搬去 fixed 圖層照著原本的位置畫。
+   */
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const zoomed = scale > 1.01;
+  useLayoutEffect(() => {
+    if (!zoomed) { setRect(null); return; }
+    const el = boxRef.current;
+    if (el) setRect(el.getBoundingClientRect());
+  }, [zoomed]);
 
   /** 目前按著的指頭 */
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -122,8 +142,22 @@ export default function PinchZoomImage({
     reset();
   };
 
+  const img = (
+    <Image
+      src={src}
+      alt={alt}
+      width={960}
+      height={960}
+      className="pointer-events-none h-full w-full object-contain"
+      draggable={false}
+      unoptimized
+      priority={priority}
+    />
+  );
+
   return (
     <div
+      ref={boxRef}
       className={cn('relative select-none overflow-hidden', className)}
       style={{ touchAction: 'none' }}
       onPointerDown={onPointerDown}
@@ -131,24 +165,35 @@ export default function PinchZoomImage({
       onPointerUp={endPointer}
       onPointerCancel={endPointer}
     >
-      <div
-        className="h-full w-full will-change-transform"
-        style={{
-          transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
-          transition: animating ? 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
-        }}
-      >
-        <Image
-          src={src}
-          alt={alt}
-          width={960}
-          height={960}
-          className="pointer-events-none h-full w-full object-contain"
-          draggable={false}
-          unoptimized
-          priority={priority}
-        />
-      </div>
+      {/* 沒放大時就地顯示；放大時這裡留空，由下面的全螢幕圖層接手 */}
+      {!(zoomed && rect) && (
+        <div
+          className="h-full w-full will-change-transform"
+          style={{
+            transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
+            transition: animating ? 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+          }}
+        >
+          {img}
+        </div>
+      )}
+
+      {zoomed && rect && createPortal(
+        <div className="pointer-events-none fixed inset-0 z-[4000]">
+          {/* 壓一層暗底，放大時圖才不會跟後面的內容糊在一起 */}
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="absolute will-change-transform"
+            style={{
+              left: rect.left, top: rect.top, width: rect.width, height: rect.height,
+              transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
+            }}
+          >
+            {img}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -40,6 +40,20 @@ interface Props {
 export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700, onPrev, onNext }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  /* 鍵盤左右鍵切換、Esc 關閉。
+     箭頭鈕拿掉之後，電腦上只剩「拖曳」這個操作，沒有任何提示；
+     方向鍵是桌機使用者對「上一張／下一張」的直覺，補上才不會變成隱藏功能 */
+  useEffect(() => {
+    if (!prize) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') onPrev?.();
+      else if (e.key === 'ArrowRight') onNext?.();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [prize, onPrev, onNext, onClose]);
 
   if (!mounted) return null;
 
@@ -115,7 +129,9 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
               </button>
             </div>
 
-            {/* 圖片：雙指縮放／拖移（放開彈回），沒放大時左右滑切換品項 */}
+            {/* 圖片：雙指縮放／拖移（放開彈回），沒放大時左右滑切換品項。
+                不畫左右箭頭（老闆指定）—— 手機本來就用滑的，電腦滑鼠拖曳
+                走的是同一套 pointer 事件，再擺兩顆鈕只是擋住圖 */}
             <div className="relative px-5 pt-1 pb-2">
               <PinchZoomImage
                 key={prize?.name ?? ''}
@@ -125,26 +141,6 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
                 onSwipeLeft={onNext}
                 onSwipeRight={onPrev}
               />
-              {onPrev && (
-                <button
-                  type="button"
-                  onClick={onPrev}
-                  aria-label="上一項"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm transition-opacity hover:bg-black/40 active:scale-95"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-              )}
-              {onNext && (
-                <button
-                  type="button"
-                  onClick={onNext}
-                  aria-label="下一項"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm transition-opacity hover:bg-black/40 active:scale-95"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              )}
             </div>
 
             {/* name */}
