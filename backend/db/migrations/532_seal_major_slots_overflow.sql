@@ -1,4 +1,5 @@
--- 522: 🔴 殺率調低時封存會靜靜吃掉大獎，籤號還會超出封存範圍
+-- 532（原本編 522，與另一台電腦的 522_invite_achievement_rewards 撞號，改號）：
+-- 🔴 殺率調低時封存會靜靜吃掉大獎，籤號還會超出封存範圍
 --
 -- PROD 事故：《新世紀福音戰士》30th Anniversary（id 653）玩家選到籤號 56 就報
 --   INVALID_TICKET: 籤號 56 不在封存範圍 1~55 內
@@ -93,7 +94,7 @@ BEGIN
   VALUES (p_product_id, v_salt, v_assignment, v_commitment, v_rate, p_sealed_by)
   ON CONFLICT (product_id) DO UPDATE SET salt=EXCLUDED.salt, assignment=EXCLUDED.assignment,
     commitment=EXCLUDED.commitment, profit_rate=EXCLUDED.profit_rate, sealed_at=now(), sealed_by=EXCLUDED.sealed_by;
-  -- total_count 對齊「實際排出的籤數」（433 的校正，522 改成用 v_placed）
+  -- total_count 對齊「實際排出的籤數」（433 的校正，本次改成用 v_placed）
   UPDATE products SET seed=v_seed, txid_hash=v_commitment, sealed_at=now(),
                       total_count=v_placed, remaining=v_placed
    WHERE id = p_product_id;
