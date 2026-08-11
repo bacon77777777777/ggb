@@ -8,7 +8,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { brandCoverImage } from '@/lib/newsBranding'
+import { brandCoverImage, contentBox } from '@/lib/newsBranding'
 import type { WmCorner } from '@/lib/dengekiWm'
 import { createClaude } from '@/lib/aiUsage'
 import crypto from 'crypto'
@@ -254,15 +254,44 @@ const isWatermarkedSource = (...urls: string[]) =>
  * 全程本地 sharp，不呼叫付費服務。放在 Claude 改寫「之前」——
  * 多抓一張圖是幾十 KB，改寫一篇才是真的成本。
  */
+/*
+ * 同一次執行內，同一張圖只下載一次、只問一次 Claude。
+ *
+ * 封面圖會被摸兩次（先體檢、再處理），內文圖也常常就是封面的同一張，
+ * 每次都重抓重問等於白花額度。用網址擋下載、用內容雜湊擋視覺呼叫 ——
+ * 網址不同但內容相同的縮圖變體也擋得掉。
+ */
+const imgBufCache = new Map<string, Buffer | null>()
+const wmVerdictCache = new Map<string, WmVisionResult | null>()
+
+async function fetchImageOnce(url: string): Promise<Buffer | null> {
+  if (imgBufCache.has(url)) return imgBufCache.get(url) ?? null
+  let out: Buffer | null = null
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (res.ok) {
+      const b = Buffer.from(await res.arrayBuffer())
+      if (b.length >= 3_000) out = b
+    }
+  } catch { out = null }
+  // 單次執行的快取，超過就整個清掉（serverless 實例可能被重用）
+  if (imgBufCache.size > 60) imgBufCache.clear()
+  imgBufCache.set(url, out)
+  return out
+}
+
 const MIN_COVER_W = 480
 const MIN_COVER_H = 270
 const MIN_COVER_COLORS = 300
 
 async function isUsableCover(url: string): Promise<boolean> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
-    if (!res.ok) return false
-    const buf = Buffer.from(await res.arrayBuffer())
+    const buf = await fetchImageOnce(url)
+    if (!buf) return false
     const meta = await sharp(buf).metadata()
     const W = meta.width ?? 0, H = meta.height ?? 0
     if (W < MIN_COVER_W || H < MIN_COVER_H) return false
@@ -304,52 +333,119 @@ const DEFAULT_NEWS_IMAGE =
  */
 type WmVisionResult = WmCorner | 'none'
 
-async function findWatermarkWithVision(buf: Buffer): Promise<WmVisionResult | null> {
+/** 上緣／下緣兩條長條（取自內容區，已拉高對比）—— 送給模型看的就是這兩張 */
+async function edgeStrips(buf: Buffer): Promise<[string, string] | null> {
   try {
-    const meta = await sharp(buf).metadata()
-    const W = meta.width ?? 0, H = meta.height ?? 0
+    const box = await contentBox(buf)
+    const W = box.width, H = box.height
     if (!W || !H) return null
-    const cw = Math.round(W * 0.3), ch = Math.round(H * 0.18)
-    const spots: [WmCorner, number, number][] = [
-      ['top-left', 0, 0], ['top-right', W - cw, 0],
-      ['bottom-left', 0, H - ch], ['bottom-right', W - cw, H - ch],
-    ]
-    const crops: { c: WmCorner; b64: string }[] = []
-    for (const [c, l, t] of spots) {
-      const b = await sharp(buf).extract({ left: l, top: t, width: cw, height: ch })
-        .resize(500, null).normalise().png().toBuffer()
-      crops.push({ c, b64: b.toString('base64') })
-    }
-    const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
-    const res = await claude.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 30,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: [
-            '這是同一張圖的四個角落（已拉高對比），依序是 TL、TR、BL、BR。',
-            '請判斷有沒有「網站／媒體壓上去的浮水印」—— 例如站名的英數字或圖標，',
-            '通常半透明、低對比，貼在角落，跟照片內容無關。',
-            '注意：商品包裝或商品本身印的品牌標誌（BANDAI、GASHAPON、TOMY、萬代、',
-            '各種作品 logo）不算浮水印，那是商品的一部分，不要當成浮水印。',
-            '只回 TL / TR / BL / BR / NONE 其中一個字。',
-          ].join('') },
-          ...crops.flatMap((cr, i) => [
-            { type: 'text' as const, text: `第${i + 1}張（${cr.c === 'top-left' ? 'TL' : cr.c === 'top-right' ? 'TR' : cr.c === 'bottom-left' ? 'BL' : 'BR'}）：` },
-            { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: cr.b64 } },
-          ]),
-        ],
-      }],
-    })
-    const ans = (res.content[0] as { text?: string }).text?.trim().toUpperCase().match(/TL|TR|BL|BR|NONE/)?.[0]
-    if (!ans) return null
-    if (ans === 'NONE') return 'none'
-    const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
-    return map[ans]
-  } catch {
-    return null  // 看不出來就是不確定 —— 寧可不用這張圖
+    const sh = Math.max(40, Math.round(H * 0.16))
+    const top = await sharp(buf).extract({ left: box.left, top: box.top, width: W, height: sh })
+      .resize(700, null).normalise().png().toBuffer()
+    const bottom = await sharp(buf).extract({ left: box.left, top: box.top + H - sh, width: W, height: sh })
+      .resize(700, null).normalise().png().toBuffer()
+    return [top.toString('base64'), bottom.toString('base64')]
+  } catch { return null }
+}
+
+async function askVision(strips: [string, string], prompt: string, re: RegExp): Promise<string | null> {
+  const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
+  const res = await claude.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    // 給它一句話的思考空間再作答。逼它一個字答完反而會亂猜 ——
+    // 實測「不准說明」時三張錯兩張，允許先描述再作答是三張全對
+    max_tokens: 150,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'text', text: '上緣：' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: strips[0] } },
+        { type: 'text', text: '下緣：' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: strips[1] } },
+      ],
+    }],
+  })
+  const raw = (res.content[0] as { text?: string }).text ?? ''
+  const all = [...raw.toUpperCase().matchAll(re)].map(m => m[1])
+  return all.length ? all[all.length - 1] : null   // 取最後一次出現＝結論那行
+}
+
+/**
+ * 浮水印偵測：**所有來源、所有圖都跑**（老闆：百分之百不要看到別人 logo）
+ *
+ * 送的是「上緣整條 + 下緣整條」而不是四張角落裁圖。實測差很多：
+ * 四張角落裁圖時 Haiku 三張錯兩張、換 Sonnet 才全對；改成兩條長條之後
+ * Haiku 就三張全對，而且 input 從約 800 token 掉到約 400 —— 模型看得到
+ * 整條邊，比看四塊各自孤立的裁圖好判斷。既準又便宜。
+ *
+ * 三個關鍵細節：
+ *   1. 長條取自**內容區**而非畫布。電ホビ的 og:image 常是直式照片放進
+ *      1200×630 畫布、左右補白，站標壓在照片角落 —— 用畫布角落去找，
+ *      差半張圖（老闆截圖那張的內容區從 x=286 才開始）
+ *   2. normalise() 拉高對比，半透明站標才看得出來
+ *   3. prompt 必須列出「不算浮水印」的東西：商品／包裝上的品牌標誌、
+ *      廠商 logo（BANDAI、GASHAPON、FuRyu…）、作品 logo、價格規格文字
+ *
+ * 回 'none' = 乾淨；回角落 = 那一角有站方浮水印；回 null = 不確定 →
+ * 呼叫端一律不用這張圖。
+ */
+async function findWatermarkWithVision(buf: Buffer, sourceUrl = ''): Promise<WmVisionResult | null> {
+  const hash = crypto.createHash('sha1').update(buf).digest('hex')
+  if (wmVerdictCache.has(hash)) return wmVerdictCache.get(hash) ?? null
+  const remember = (v: WmVisionResult | null) => {
+    if (wmVerdictCache.size > 120) wmVerdictCache.clear()
+    wmVerdictCache.set(hash, v)
+    return v
   }
+  try {
+    const strips = await edgeStrips(buf)
+    if (!strips) return remember(null)
+    let host = ''
+    try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
+
+    const ans = await askVision(strips, [
+      '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
+      host ? `照片取自新聞網站 ${host}。` : '',
+      '請判斷這個新聞網站有沒有在角落壓上自己的站標／浮水印（通常半透明、低對比，跟照片內容無關）。',
+      '有的話在哪一角：TL（上緣左側）、TR（上緣右側）、BL（下緣左側）、BR（下緣右側）；沒有就 NONE。',
+      '注意：商品或包裝上印的品牌標誌、玩具廠商官方 logo（BANDAI、GASHAPON、FuRyu、TOMY、Good Smile…）、',
+      '作品本身的 logo、宣傳圖裡的價格與規格文字，都**不算**浮水印，不要選它們。',
+      '先用一句話說明，最後單獨一行只寫 TL、TR、BL、BR 或 NONE。',
+    ].join(''), /\b(TL|TR|BL|BR|NONE)\b/g)
+
+    if (!ans) return remember(null)
+    if (ans === 'NONE') return remember('none')
+    const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
+    return remember(map[ans])
+  } catch {
+    return remember(null)  // 看不出來就是不確定 —— 寧可不用這張圖
+  }
+}
+
+/**
+ * 蓋完之後的複驗：白框以外還看不看得到原本的站標
+ *
+ * 問的是二元問題而不是再問一次「浮水印在哪一角」—— 後者在蓋完之後會把
+ * 我們自己的 GGB logo 當成浮水印指回來，等於每張都被判失敗。
+ * 誤判成 DIRTY 只是多跳一篇（實測三張中一張），誤判成 CLEAN 才會漏圖，
+ * 所以這裡寧可保守。
+ */
+async function verifyBrandedClean(buf: Buffer, sourceUrl = ''): Promise<boolean> {
+  try {
+    const strips = await edgeStrips(buf)
+    if (!strips) return false
+    let host = ''
+    try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
+    const ans = await askVision(strips, [
+      '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
+      '我們已經在其中一角蓋上白色方塊＋粉紅色扭蛋機的「吉吉比」logo，那是我們自己的，請完全忽略它。',
+      `請問在那個白色方塊以外，還看不看得到${host ? ` ${host}` : '原本新聞網站'}壓上去的站標／浮水印？`,
+      '商品或包裝上的品牌標誌、玩具廠商 logo、作品 logo 都不算。',
+      '先用一句話說明，最後單獨一行只寫 CLEAN 或 DIRTY。',
+    ].join(''), /\b(CLEAN|DIRTY)\b/g)
+    return ans === 'CLEAN'
+  } catch { return false }
 }
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
@@ -434,14 +530,9 @@ async function downloadSmartToR2(
   seen?: Set<string>,
 ): Promise<string | null> {
   try {
-    const res = await fetch(imgUrl, {
-      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
-      signal: AbortSignal.timeout(12_000),
-      redirect: 'follow',
-    })
-    if (!res.ok) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 3_000) return null
+    // 封面圖在 isUsableCover 已經抓過一次，這裡直接吃快取，不重抓
+    const buf = await fetchImageOnce(imgUrl)
+    if (!buf) return null
 
     // 同一張圖只處理一次。
     // 封面的 og:image 常常就是內文的第一張圖，只是網址不同（縮圖變體、帶 query）——
@@ -455,7 +546,7 @@ async function downloadSmartToR2(
     }
 
     // 不分來源一律檢查
-    const found = await findWatermarkWithVision(buf)
+    const found = await findWatermarkWithVision(buf, sourceUrl || imgUrl)
     if (found === null) return null   // 看不出來 = 不確定 → 不用這張
 
     const alwaysWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
@@ -473,8 +564,7 @@ async function downloadSmartToR2(
     const branded = await brandCoverImage(buf, found)
     if (!branded) return null
     // 蓋完再驗一次：還看得到就是沒蓋乾淨（挑錯角、或浮水印比白墊大）
-    const after = await findWatermarkWithVision(branded)
-    if (after !== 'none') return null
+    if (!await verifyBrandedClean(branded, sourceUrl || imgUrl)) return null
     const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
     return await r2Upload(key, branded, 'image/jpeg')
   } catch { return null }

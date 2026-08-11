@@ -44,6 +44,33 @@ function wmPlatePath(w: number, h: number, corner: WmCorner): string {
   }
 }
 
+/**
+ * 取「內容區」——扣掉上下左右的純色留白之後，真正有畫面的那個方框
+ *
+ * 電ホビ的 og:image 常常是把直式照片放進 1200×630 的畫布，左右補白邊。
+ * 站方浮水印是壓在**照片**的角落，不是畫布角落 —— 實測一張內容區從
+ * x=285 才開始，浮水印就落在 x≈285，而我們的白墊蓋在畫布右上，
+ * 兩者差了半張圖，等於完全沒蓋到（老闆截圖的第二張就是這個）。
+ *
+ * 沒有留白的圖，回傳的就是整張圖，行為跟以前一樣。
+ */
+export async function contentBox(buf: Buffer): Promise<{ left: number; top: number; width: number; height: number }> {
+  const meta = await sharp(buf).metadata()
+  const W = meta.width ?? 0, H = meta.height ?? 0
+  try {
+    const { info } = await sharp(buf).trim({ threshold: 12 }).toBuffer({ resolveWithObject: true })
+    const left = Math.max(0, -(info.trimOffsetLeft ?? 0))
+    const top = Math.max(0, -(info.trimOffsetTop ?? 0))
+    const width = Math.min(info.width || W, W - left)
+    const height = Math.min(info.height || H, H - top)
+    // 整張都被裁光（純色圖）或裁過頭時退回原尺寸
+    if (width < W * 0.3 || height < H * 0.3) return { left: 0, top: 0, width: W, height: H }
+    return { left, top, width, height }
+  } catch {
+    return { left: 0, top: 0, width: W, height: H }
+  }
+}
+
 /** 蓋掉站方浮水印：在指定角落壓白色圓角墊 + GGB logo，保留原圖 */
 export async function brandCoverImage(
   buf: Buffer,
@@ -53,8 +80,11 @@ export async function brandCoverImage(
     const logo = await getLogoBuffer()
     if (!logo) return null
     const meta = await sharp(buf).metadata()
-    const W = meta.width ?? 0, H = meta.height ?? 0
-    if (!W || !H) return null
+    const canvasW = meta.width ?? 0, canvasH = meta.height ?? 0
+    if (!canvasW || !canvasH) return null
+    // 角落一律以內容區為準（留白邊的圖，浮水印貼在照片角落而非畫布角落）
+    const box = await contentBox(buf)
+    const W = box.width, H = box.height
     const logoW = Math.round(W * 0.21)
     const logoH = Math.round((logoW * 107) / 300)
     const pad = Math.round(logoW * 0.05)
@@ -79,8 +109,8 @@ export async function brandCoverImage(
      */
     const plateW = Math.max(logoW + pad * 2, Math.round(W * 0.30), 210)
     const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.11), 66)
-    const left = corner.endsWith('left') ? 0 : W - plateW
-    const top = corner.startsWith('top') ? 0 : H - plateH
+    const left = box.left + (corner.endsWith('left') ? 0 : W - plateW)
+    const top = box.top + (corner.startsWith('top') ? 0 : H - plateH)
     // logo 貼外側角落，白墊往內延伸
     const logoLeft = corner.endsWith('left') ? pad : plateW - pad - logoW
     const logoTop = corner.startsWith('top') ? pad : plateH - pad - logoH
