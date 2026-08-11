@@ -32,12 +32,6 @@ interface Banner {
   event_id: string | null
 }
 
-interface PromoOption {
-  id: number
-  name: string
-  is_active: boolean
-}
-
 export default function BannersPage() {
   const { toast } = useToast()
   const { confirm, dialogProps } = useConfirmDialog()
@@ -65,7 +59,8 @@ export default function BannersPage() {
   })
 
   // 促銷方案清單：連結欄可一鍵指向 /promo/<id> 促銷分類清單頁
-  const [promotions, setPromotions] = useState<PromoOption[]>([])
+  /** 首頁的一級頁籤就是「分類清單」，連結要指到分類而不是促銷方案 */
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
 
   const fetchData = async () => {
     try {
@@ -88,10 +83,10 @@ export default function BannersPage() {
 
   useEffect(() => {
     fetchData()
-    fetch('/api/admin/promotions', { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : []))
-      .then((list: PromoOption[]) => setPromotions((list || []).filter(p => p.is_active)))
-      .catch(() => setPromotions([]))
+    fetch('/api/admin/categories', { credentials: 'include' })
+      .then(r => r.json())
+      .then((list: { id: string; name: string }[]) => setCategories(list || []))
+      .catch(() => {})
   }, [])
 
   const handleEdit = (banner: Banner) => {
@@ -426,9 +421,9 @@ export default function BannersPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">連結促銷分類頁 (選填)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">連結首頁分類頁籤 (選填)</label>
               <SelectField
-                value={promotions.some(p => formData.link_url === `/promo/${p.id}`)
+                value={categories.some(c => formData.link_url === `/?menu=${c.id}`)
                   ? formData.link_url
                   : ''}
                 onChange={e => {
@@ -436,12 +431,17 @@ export default function BannersPage() {
                 }}
                 disabled={!!formData.event_id}
               >
-                <option value="">不連結促銷（自訂網址）</option>
-                {promotions.map(p => (
-                  <option key={p.id} value={`/promo/${p.id}`}>{p.name}</option>
+                <option value="">不連結分類（自訂網址）</option>
+                {categories.map(c => (
+                  <option key={c.id} value={`/?menu=${c.id}`}>{c.name}</option>
                 ))}
               </SelectField>
-              <p className="mt-1 text-xs text-neutral-400">選擇後點擊輪播圖會進入該促銷的商品清單頁</p>
+              {/* 原本是連到 /promo/[id] 那個獨立頁，老闆指定改成「在首頁切頁籤」：
+                  玩家留在原本的瀏覽流程裡，上面那排分類頁籤也還在，
+                  想跳去別類直接點。/promo/[id] 沒有拿掉，那個網址還能對外分享 */}
+              <p className="mt-1 text-xs text-neutral-400">
+                點擊輪播圖會直接在首頁切到該分類的頁籤，不會另開頁面
+              </p>
             </div>
 
             <div>

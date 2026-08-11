@@ -372,6 +372,28 @@ export default function Home() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
 
+  /*
+   * 網址帶分類 → 直接切到那個頁籤，不另開頁面。
+   *
+   *   /?menu=<分類 id>   例：輪播圖連到「開學買五送一」
+   *
+   * 這樣輪播圖點下去是在首頁換頁籤，玩家還留在原本的瀏覽流程裡，
+   * 上面那排分類頁籤也還在，想跳去別類直接點就好 —— 比開一個
+   * 只有商品格的獨立促銷頁順。/promo/[id] 保留，那個網址還能對外分享。
+   *
+   * 讀 window.location 而不是 useSearchParams：後者在 App Router 需要
+   * Suspense 邊界，為了一個參數把整頁包起來不划算。
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const menu = new URLSearchParams(window.location.search).get('menu');
+    if (menu) {
+      setActivePrimaryTab(`menu:${menu}` as PrimaryTabId);
+      // 帶參數進來就不要再套用上次離開時的頁籤
+      sessionStorage.removeItem(homeRestoreKey);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const shouldRestore = sessionStorage.getItem(homeRestoreKey) === '1';
@@ -689,18 +711,33 @@ export default function Home() {
     setHomeDisplayCount(10);
   }, [activePrimaryTab, activeSecondaryTab]);
 
-  // Home page lazy load — window scroll
+  /*
+   * 分批載入：盯著列表底部的哨兵，看得到就再載 10 筆。
+   *
+   * 原本只掛 window 的 scroll 事件，在桌機上是壞的 —— 首批 10 張卡在
+   * 五欄版面只有兩列，整頁根本沒有捲軸，scroll 事件永遠不觸發，於是
+   * 綜合與轉蛋（商品多）就卡在 10 張＋底下一行永遠的「載入中...」。
+   * 其他類別只有 4 件商品、一次就載完，所以看起來正常。
+   *
+   * 哨兵（homeSentinelRef）本來就已經掛在 DOM 上，只是沒有人在看它。
+   * 改用 IntersectionObserver：不需要捲動也會觸發，會一路補到畫面被填滿
+   * 或商品出完為止。
+   */
   useEffect(() => {
     const total = filteredProducts.length;
-    if (total === 0) return;
-    const handleScroll = () => {
-      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
-        setHomeDisplayCount(prev => prev < total ? prev + 10 : prev);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [filteredProducts.length]);
+    const el = homeSentinelRef.current;
+    if (!el || total === 0 || homeDisplayCount >= total) return;
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          setHomeDisplayCount(prev => (prev < total ? prev + 10 : prev));
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [filteredProducts.length, homeDisplayCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1678,7 +1715,7 @@ export default function Home() {
               </aside>
             )}
 
-            <main className="flex-1" {...swipePrimaryTabs}>
+            <main className="min-w-0 flex-1" {...swipePrimaryTabs}>
               <div className="mb-3 rounded-[8px] overflow-hidden">
                 <WinningMarquee />
               </div>
@@ -1703,8 +1740,12 @@ export default function Home() {
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-neutral-50 dark:bg-neutral-950 z-0" />
                   <div className="relative z-10 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
+                    {/* min-w-0 是必要的：flex 子項預設 min-width:auto，會被裡面的
+                        頁籤撐開而不是自己捲動。頁籤一多（綜合／轉蛋有 20 顆）
+                        整條列就把桌機的內容欄撐到 1650px，連帶把輪播圖與商品格
+                        一起撐爆、整頁出現橫向捲軸 */}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
                         <div className="flex items-center gap-1.5">
                           {secondaryTabs.map((tab: { id: string; label: string }) => (
                             <button

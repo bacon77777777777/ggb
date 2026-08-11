@@ -104,8 +104,13 @@ export async function POST(request: Request) {
           txid_hash: sha256Hex(seed),
           product_code: `TEMP-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
           sales: 0,
-          status: noPrize ? 'pending' : clean.status,
-          started_at: !noPrize && clean.status === 'active' && !clean.started_at ? now : (clean.started_at ?? null),
+          /*
+           * 批量匯入一律建成「待上架」（老闆指定），即使檔案裡寫了「上架」。
+           * 一番賞／抽卡／自製賞一上架就自動排籤封存、殺率同時鎖死，
+           * 匯入完直接上架等於沒有調殺率的機會。上架改成人工按。
+           */
+          status: 'pending',
+          started_at: clean.started_at ?? null,
         }
 
         const { data: created, error: insErr } = await supabase

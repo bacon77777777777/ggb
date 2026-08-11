@@ -15,11 +15,10 @@
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { AdminLayout, PageCard, ConfirmDialog, DataTable, type Column } from '@/components'
+import { PageCard, ConfirmDialog, DataTable, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 
 /** 只有這三種走 play_ichiban，才會用到 profit_rate */
@@ -88,26 +87,36 @@ export function RatesPanel() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [sortField, setSortField] = useState<'type' | 'name' | 'rate'>('type')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('products')
-        .select('id, product_code, name, type, profit_rate, sealed_at, product_prizes(level, name, total, probability)')
-        .in('type', APPLICABLE_TYPES)
-        .order('id', { ascending: false })
+      /*
+       * 走後端 API 而不是 anon client：`profit_rate` 對 anon 沒有 SELECT
+       * 權限（migration 471），直接查會整包被 42501 擋掉。原本沒有檢查
+       * error，於是這頁靜靜地變成空白 —— 看起來像「沒有商品」。
+       */
+      let data: any[] = []
+      try {
+        const res = await fetch('/api/admin/settings/rates', { credentials: 'include' })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`)
+        data = json.products ?? []
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : '讀取失敗')
+        setIsLoading(false)
+        return
+      }
 
       // 已封存的不可調整。判定用 products.sealed_at 而不是抽獎筆數 ——
       // 上架後還沒人抽的商品也已經封存，用抽獎筆數會讓它看起來還能改。
-      // 也不要直接查 product_ticket_seals：那張表是 service role only，
-      // 這裡的 anon client 只會拿到空陣列，而且不會報錯。
 
       const initial: Record<number, number> = {}
-      for (const p of data ?? []) initial[p.id] = Number(p.profit_rate ?? 1)
+      for (const p of data) initial[p.id] = Number(p.profit_rate ?? 1)
 
-      setRows((data ?? []).map((p: any) => ({
+      setRows(data.map((p: any) => ({
         id: p.id,
         name: p.name,
         productCode: p.product_code,
@@ -133,11 +142,14 @@ export function RatesPanel() {
 
   // 已開賣的調不了，列出來只是雜訊；要看的話再切換
   const [showLocked, setShowLocked] = useState(false)
+  /** 類別頁籤。三種玩法的賞等結構差很多，混在一起看很吃力 */
+  const [typeFilter, setTypeFilter] = useState<'all' | 'ichiban' | 'card' | 'custom'>('all')
   const lockedCount = useMemo(() => rows.filter(r => r.isSealed).length, [rows])
 
   const visible = useMemo(() => {
     const k = keyword.trim().toLowerCase()
     const list = rows
+      .filter(r => typeFilter === 'all' || r.type === typeFilter)
       .filter(r => showLocked || !r.isSealed)
       .filter(r => !k || r.name.toLowerCase().includes(k) || (r.productCode ?? '').toLowerCase().includes(k))
 
@@ -149,21 +161,32 @@ export function RatesPanel() {
       const bv = sortField === 'type' ? (TYPE_LABEL[b.type] ?? b.type) : b.name
       return av.localeCompare(bv, 'zh-Hant') * dir
     })
-  }, [rows, keyword, showLocked, sortField, sortDir, rates])
+  }, [rows, keyword, showLocked, sortField, sortDir, rates, typeFilter])
 
   const save = async () => {
     setIsSaving(true)
+    const failed: number[] = []
     for (const id of changed) {
-      await fetch(`/api/admin/products/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ product: { profit_rate: rates[id] } }),
-      })
+      try {
+        const res = await fetch(`/api/admin/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ product: { profit_rate: rates[id] } }),
+        })
+        if (!res.ok) failed.push(id)
+      } catch { failed.push(id) }
     }
-    setSaved({ ...rates })
     setIsSaving(false)
-    toast(`已儲存 ${changed.length} 筆`)
+    // 只把真的存進去的記成已儲存，失敗的留在「未存」狀態
+    const ok = changed.filter(id => !failed.includes(id))
+    setSaved(prev => {
+      const next = { ...prev }
+      for (const id of ok) next[id] = rates[id]
+      return next
+    })
+    if (failed.length === 0) toast(`已儲存 ${ok.length} 筆`)
+    else toast(`${ok.length} 筆已存，${failed.length} 筆失敗（可能已封存）`, 'error')
   }
 
   const resetAll = () => {
@@ -175,12 +198,13 @@ export function RatesPanel() {
   }
 
   const columns: Column<Row>[] = [
-    {
+    // 已經用頁籤切開時就不必再重複一欄，把寬度讓給機率
+    ...(typeFilter === 'all' ? [{
       key: 'type',
       label: '類別',
       sortable: true,
-      render: r => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
-    },
+      render: (r: Row) => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
+    } as Column<Row>] : []),
     {
       key: 'name',
       label: '商品',
@@ -206,7 +230,9 @@ export function RatesPanel() {
           <div className="flex items-center gap-3 min-w-[240px]">
             <input
               type="range"
-              min={1} max={200} step={1}
+              /* 上限 100：排籤時是 LEAST(v_rate*100, 100)，超過 100 完全沒有
+                 效果，但滑桿拉得動會讓人以為 150% 跟 100% 有差 */
+              min={1} max={100} step={1}
               value={Math.round(rate * 100)}
               disabled={locked}
               onChange={e => setRates({ ...rates, [r.id]: Number(e.target.value) / 100 })}
@@ -248,7 +274,9 @@ export function RatesPanel() {
         return (
           <div>
             <div className="flex items-start gap-4">
-              <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1">
+              {/* 等寬格子而不是 flex-wrap：各商品賞等數量不同，用 wrap 會讓
+                  上下兩列的數字對不齊，一整頁掃下來很難比較 */}
+              <div className="grid flex-1 grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-x-3 gap-y-1">
                 {rest.map(cell)}
               </div>
               <div className="w-28 flex-shrink-0 text-right">{cell(worst)}</div>
@@ -266,6 +294,35 @@ export function RatesPanel() {
   return (
     <>
       <PageCard>
+        {/* 類別頁籤：三種玩法的賞等結構差很多（A~E賞 vs 卡池階級），
+            混在同一張表裡逐列比對很吃力，先切開再看 */}
+        <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 pb-3">
+          {([
+            { k: 'all' as const,     label: '全部' },
+            { k: 'ichiban' as const, label: '一番賞' },
+            { k: 'card' as const,    label: '抽卡' },
+            { k: 'custom' as const,  label: '自製賞' },
+          ]).map(t => {
+            const n = t.k === 'all'
+              ? rows.filter(r => showLocked || !r.isSealed).length
+              : rows.filter(r => r.type === t.k && (showLocked || !r.isSealed)).length
+            const active = typeFilter === t.k
+            return (
+              <button
+                key={t.k}
+                type="button"
+                onClick={() => setTypeFilter(t.k)}
+                className={`h-9 rounded-md px-4 text-sm transition-colors ${
+                  active ? 'bg-primary/5 font-medium text-primary' : 'text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {t.label}
+                <span className={`ml-1.5 tabular-nums ${active ? 'text-primary/60' : 'text-neutral-400'}`}>{n}</span>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0">
             <Input
@@ -293,6 +350,12 @@ export function RatesPanel() {
             </Button>
           </div>
         </div>
+
+        {loadError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            讀取失敗：{loadError}
+          </div>
+        )}
 
         <DataTable
           data={visible}
