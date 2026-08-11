@@ -567,7 +567,7 @@ export function BlindboxMachineMode2({
       {/* Background */}
       <div className="absolute inset-0">
         <Image
-          src="/images/blindbox/mode2/main.png" alt="blindbox machine"
+          src="/images/blindbox/mode2/main.webp" alt="blindbox machine"
           fill className="object-fill" unoptimized
           onLoad={() => onLoaded?.()}
         />
@@ -732,7 +732,7 @@ export function BlindboxMachineMode2({
 
       {/* hole_bg (z=12): opaque overlay with transparent oval */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 12 }}>
-        <Image src="/images/blindbox/mode2/hole_bg.png" alt="" fill className="object-fill" unoptimized />
+        <Image src="/images/blindbox/mode2/hole_bg.webp" alt="" fill className="object-fill" unoptimized />
       </div>
 
       {/* Retrieval slot click area (z=14) */}

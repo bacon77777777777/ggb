@@ -653,7 +653,7 @@ export default function SellOrderDetailPage() {
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="flex items-center gap-1 justify-end">
-                  <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                   <span className="text-[14px] font-black font-amount text-neutral-900 dark:text-white">
                     {totalPrice.toLocaleString()}
                   </span>
@@ -664,7 +664,7 @@ export default function SellOrderDetailPage() {
             <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <div className="text-[13px] font-black text-neutral-900 dark:text-white">訂單金額</div>
               <div className="flex items-center gap-1.5">
-                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                 <span className="text-[16px] font-black font-amount text-primary">{totalPrice.toLocaleString()}</span>
               </div>
             </div>

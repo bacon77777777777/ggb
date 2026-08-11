@@ -529,7 +529,7 @@ export default function SellDetailPage() {
 
                 <div className="hidden lg:flex items-end justify-between gap-2 pb-5 border-b border-neutral-50 dark:border-neutral-800">
                   <div className="flex items-baseline gap-2">
-                    <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                    <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                         {Math.round(minUnitPrice).toLocaleString()}
@@ -861,7 +861,7 @@ export default function SellDetailPage() {
 
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Image src="/images/gcoin.png" alt="G Coin" width={18} height={18} className="w-[18px] h-[18px] object-contain" />
+                <Image src="/images/gcoin.webp" alt="G Coin" width={18} height={18} className="w-[18px] h-[18px] object-contain" />
                 <div className="text-[22px] font-black font-amount text-primary tracking-tight">
                   {Math.round(selectedTotalPrice).toLocaleString()}
                 </div>
@@ -885,7 +885,7 @@ export default function SellDetailPage() {
           <div className="flex flex-col items-start justify-center">
             <div className="flex items-center gap-1">
               <div className="w-4 h-4">
-                <Image src="/images/gcoin.png" alt="G Coin" width={16} height={16} className="w-full h-full object-contain" />
+                <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-full h-full object-contain" />
               </div>
               <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                 {Math.round(minUnitPrice).toLocaleString()}

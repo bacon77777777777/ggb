@@ -321,7 +321,7 @@ export default function SellNewPage() {
             <div className="text-[14px] font-black text-neutral-900 dark:text-white">價格</div>
             <div className="flex items-center gap-2 flex-1 justify-end">
               <div className="w-4 h-4">
-                <Image src="/images/gcoin.png" alt="G" width={16} height={16} className="w-full h-full object-contain" />
+                <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="w-full h-full object-contain" />
               </div>
               <input
                 inputMode="numeric"

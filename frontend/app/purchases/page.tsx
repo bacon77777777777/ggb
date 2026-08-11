@@ -262,7 +262,7 @@ export default function PurchasesPage() {
                           {status.label}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Image src="/images/gcoin.png" alt="G Coin" width={14} height={14} className="object-contain" />
+                          <Image src="/images/gcoin.webp" alt="G Coin" width={14} height={14} className="object-contain" />
                           <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
                             {Math.round(total).toLocaleString()}
                           </span>

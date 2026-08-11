@@ -29,7 +29,7 @@ import { MissionService, type UserMission } from '@/services/mission';
  * QR 取框內短邊的九成，四周留白就是掃碼的靜區。
  * 換圖要重掃這幾個數字；CSS 與下載 canvas 共用，只改這裡。
  */
-const HERO_SRC = '/images/invite/invite.png';
+const HERO_SRC = '/images/invite/invite.webp';
 const QR_CENTER_Y = 0.766;
 const QR_SIZE = 0.336; // 相對圖寬（= 269px / 800px）
 

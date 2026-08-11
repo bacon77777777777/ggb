@@ -1270,7 +1270,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
         {/* Background Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image 
-            src="/images/gacha_bg.png" 
+            src="/images/gacha_bg.webp" 
             alt="" 
             fill
             className="object-cover filter brightness-[0.85] scale-105"
@@ -1469,7 +1469,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
           <div className="flex flex-col shrink-0 pl-1 justify-center h-full">
             <span className="text-[13px] text-neutral-400 font-black uppercase tracking-widest leading-none mb-0.5">已選 <span className="font-amount">{selectedTickets.length.toLocaleString()}</span> 張</span>
             <div className="flex items-center gap-1">
-              <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+              <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
                 className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
               <span className="text-xl font-black text-accent-red font-amount leading-none">{(selectedTickets.length * product.price).toLocaleString()}</span>
             </div>

@@ -1127,7 +1127,7 @@ export default function MachinePage() {
                     <div className="flex flex-col justify-end mt-1">
                       <div className="flex items-center gap-1">
                         <div className="relative shrink-0 w-5 h-5 md:w-6 md:h-6">
-                          <Image src="/images/gcoin.png" alt="G" fill className="object-contain" unoptimized />
+                          <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
                         </div>
                         <div className="flex items-baseline gap-0.5">
                           <span className="font-black text-accent-red font-amount leading-none tracking-tighter text-lg md:text-2xl">{directCost.toLocaleString()}</span>

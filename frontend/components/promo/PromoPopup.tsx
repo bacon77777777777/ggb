@@ -22,7 +22,7 @@ import { dismiss } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
-const TEMPLATE_BG = '/images/bg.png';
+const TEMPLATE_BG = '/images/bg.webp';
 
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
 const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起

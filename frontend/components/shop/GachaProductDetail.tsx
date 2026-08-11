@@ -508,7 +508,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
 
                   <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                     <div className="flex items-baseline gap-2">
-                      <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                      <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                           {product.price.toLocaleString()}
@@ -547,7 +547,7 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
                 單抽
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}

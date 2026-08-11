@@ -169,13 +169,16 @@ export default function BlindboxDetailPage() {
           return;
         }
 
-        const { data: productData, error: productError } = await supabase
-          .from('products')
-          .select(PRODUCT_PUBLIC_COLUMNS)
-          .eq('id', productId)
-          .neq('status', 'pending')
-          .single();
+        // 商品與品項並行查 —— 兩個都只要網址上的 productId，沒有先後依賴。
+        // 原本串著跑，白等一趟往返
+        const [prodRes, prizesRes] = await Promise.all([
+          supabase.from('products').select(PRODUCT_PUBLIC_COLUMNS)
+            .eq('id', productId).neq('status', 'pending').single(),
+          supabase.from('product_prizes').select(PRIZE_PUBLIC_COLUMNS)
+            .eq('product_id', productId).order('level', { ascending: true }),
+        ]);
 
+        const { data: productData, error: productError } = prodRes;
         if (productError) throw productError;
         if (!productData) {
           setIsLoading(false);
@@ -189,14 +192,8 @@ export default function BlindboxDetailPage() {
 
         setProduct(productData);
 
-        const { data: prizesData, error: prizesError } = await supabase
-          .from('product_prizes')
-          .select(PRIZE_PUBLIC_COLUMNS)
-          .eq('product_id', productId)
-          .order('level', { ascending: true });
-
-        if (prizesError) throw prizesError;
-        setPrizes(prizesData || []);
+        if (prizesRes.error) throw prizesRes.error;
+        setPrizes(prizesRes.data || []);
       } catch (err) {
         console.error('Error loading blindbox product:', err);
       } finally {
@@ -720,7 +717,7 @@ export default function BlindboxDetailPage() {
                 單抽
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}
@@ -799,7 +796,7 @@ export default function BlindboxDetailPage() {
                     </h1>
                     <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                       <div className="flex items-baseline gap-2">
-                        <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                             {product.price.toLocaleString()}
@@ -848,7 +845,7 @@ export default function BlindboxDetailPage() {
           <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-black/90 pointer-events-auto">
             <div className="absolute inset-0 -z-10">
               <Image
-                src="/images/gacha_bg.png"
+                src="/images/gacha_bg.webp"
                 alt=""
                 fill
                 className="object-cover filter brightness-[0.3] blur-[10px]"

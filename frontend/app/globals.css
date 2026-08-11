@@ -1,8 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Tilt+Warp&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+HK:wght@200..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400&display=swap');
+/* 字型全部移到 app/layout.tsx 的 <head>。
+ *
+ * CSS 裡的 @import 是最慢的載入方式：瀏覽器要先下載 globals.css、解析完
+ * 才發現這幾行，然後才去連 fonts.googleapis.com —— 一連串往返全都在擋畫面。
+ * 改成 <head> 裡的 <link> 之後，字型與 CSS 同時開始下載。
+ *
+ * 另外原本載了六套，但全站真正需要的只有 Chiron GoRound TC（內文）與
+ * Tilt Warp（金額數字）；Inter／Noto Sans JP 只有排行榜在用、
+ * Noto Serif HK 只有抽卡對戰特效在用、Noto Sans SC 一次都沒用到。 */
 
 @tailwind base;
 @tailwind components;

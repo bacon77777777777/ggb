@@ -2561,7 +2561,7 @@ function ProfileContent() {
                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                               <div className="flex items-center gap-1">
                                 <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                               </div>
                               <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                             </div>
@@ -3059,7 +3059,7 @@ function ProfileContent() {
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                   <div className="flex items-center gap-1">
                                     <span className="text-[13px] font-black text-accent-red">+{item.recycleValue}</span>
-                                    <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                   </div>
                                   <span className="text-[10px] text-neutral-400 font-bold">{item.dismantled_at}</span>
                                 </div>
@@ -3133,7 +3133,7 @@ function ProfileContent() {
                                         className: 'w-[140px]',
                                         render: (item) => (
                                           <div className="flex items-center gap-1.5">
-                                            <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                            <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                             <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
                                               +{item.recycleValue.toLocaleString()}
                                             </span>
@@ -3211,7 +3211,7 @@ function ProfileContent() {
                             <span className="font-black text-primary">免運費</span>
                           ) : (
                             <div className="flex items-center gap-1">
-                              <Image src="/images/gcoin.png" alt="G" width={16} height={16} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="object-contain" />
                               <span className="font-black text-accent-red font-amount tracking-tighter">{currentShippingFee}</span>
                               <span className="font-bold text-accent-red text-[13px]">代幣</span>
                             </div>
@@ -3226,7 +3226,7 @@ function ProfileContent() {
                           <div className={cn("flex justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700", isDesktop ? "text-sm" : "text-[13px]")}>
                             <span className="text-neutral-500 dark:text-neutral-400 font-bold">抽籤商品價金</span>
                             <div className="flex items-center gap-1">
-                              <Image src="/images/gcoin.png" alt="G" width={16} height={16} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={16} height={16} className="object-contain" />
                               <span className="font-black text-accent-red font-amount tracking-tighter">{lotteryPurchaseTotal}</span>
                               <span className="font-bold text-accent-red text-[13px]">代幣</span>
                             </div>
@@ -3606,7 +3606,7 @@ function ProfileContent() {
                           <div className={cn("absolute top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none", isDesktop ? "left-4" : "left-3")}>
                              <div className="relative w-5 h-5">
                                <Image
-                                 src="/images/gcoin.png"
+                                 src="/images/gcoin.webp"
                                  alt="G"
                                  fill
                                  className="object-contain"
@@ -3830,7 +3830,7 @@ function ProfileContent() {
                               
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-1.5">
-                                  <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                   <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                     {item.price.toLocaleString()}
                                   </span>
@@ -3886,7 +3886,7 @@ function ProfileContent() {
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-[10px] text-neutral-400">{item.updated_at.split(' ')[0]}</span>
                                 <div className="flex items-center gap-1.5">
-                                  <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                   <span className={cn(
                                     "text-[14px] font-black font-amount tracking-tighter",
                                     item.type === 'sell' ? "text-accent-emerald" : "text-red-500"
@@ -4080,7 +4080,7 @@ function ProfileContent() {
                             className: 'w-[140px]',
                             render: (item) => (
                               <div className="flex items-center gap-1.5">
-                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                 <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                   {item.price.toLocaleString()}
                                 </span>
@@ -4249,7 +4249,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {item.price.toLocaleString()}
                               </span>
@@ -4275,7 +4275,7 @@ function ProfileContent() {
                             const sign = item.type === 'sell' ? '+' : '-'
                             return (
                               <div className="flex items-center gap-1.5">
-                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                 <span className={cn('text-[14px] font-black font-amount tracking-tighter', item.type === 'sell' ? 'text-accent-emerald' : 'text-red-500')}>
                                   {sign}
                                   {amount.toLocaleString()}
@@ -4817,7 +4817,7 @@ function ProfileContent() {
                                     </span>
                                   ) : (
                                     <>
-                                      <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                      <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                       <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                         {item.cost.toLocaleString()}
                                       </span>
@@ -4994,7 +4994,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-accent-red font-amount tracking-tighter">
                                 {item.cost.toLocaleString()}
                               </span>
@@ -5169,7 +5169,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-2">
                                 <div className="text-[14px] font-black text-neutral-900 dark:text-white leading-tight flex items-center gap-1.5">
                                   儲值 
-                                  <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                                  <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                                   <span className="font-amount tracking-tighter">{item.tokens.toLocaleString()}</span>
                                 </div>
                             </div>
@@ -5275,7 +5275,7 @@ function ProfileContent() {
                           className: 'w-[180px]',
                           render: (item) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {item.tokens.toLocaleString()}
                               </span>
@@ -5554,7 +5554,7 @@ function ProfileContent() {
                           className: 'w-[140px]',
                           render: (p: FollowedProduct) => (
                             <div className="flex items-center gap-1.5">
-                              <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="object-contain" />
+                              <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
                               <span className="text-[14px] font-black text-neutral-900 dark:text-white font-amount tracking-tighter">
                                 {(p.price || 0).toLocaleString()}
                               </span>
@@ -6410,7 +6410,7 @@ function ProfileContent() {
               {/* Background */}
               <div className="absolute inset-0 w-full h-full">
                 <Image 
-                  src="/images/profile/topbg.png" 
+                  src="/images/profile/topbg.webp" 
                   alt="Background" 
                   fill 
                   className="object-cover pointer-events-none" 
@@ -6554,7 +6554,7 @@ function ProfileContent() {
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center gap-1.5">
                         <div className="relative w-4 h-4">
-                          <Image src="/images/gcoin.png" alt="Token" fill className="object-contain" unoptimized />
+                          <Image src="/images/gcoin.webp" alt="Token" fill className="object-contain" unoptimized />
                         </div>
                         <span className="text-xs text-white/90 font-medium">代幣餘額</span>
                       </div>
@@ -6901,7 +6901,7 @@ function ProfileContent() {
                   
                   <div className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded-lg border border-neutral-100 dark:border-neutral-800">
                     <div className="flex items-center gap-1.5">
-                      <Image src="/images/gcoin.png" alt="G" width={24} height={24} className="object-contain" />
+                      <Image src="/images/gcoin.webp" alt="G" width={24} height={24} className="object-contain" />
                       {isGuest ? (
                         <Link
                           href={loginHref}

@@ -281,7 +281,7 @@ export default function SellManagePage() {
                       {formatDate(l.created_at)} · {l.status === 'active' ? '上架中' : l.status === 'sold' ? '已售出' : '已下架'}
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <Image src="/images/gcoin.png" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
+                      <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
                       <div className="text-[16px] font-black text-accent-red font-amount">{Math.round(l.price).toLocaleString()}</div>
                     </div>
                   </div>
@@ -327,7 +327,7 @@ export default function SellManagePage() {
                         {formatDate(o.created_at)} · x{o.quantity} · {o.buyer.name}
                       </div>
                       <div className="mt-2 flex items-center gap-2">
-                        <Image src="/images/gcoin.png" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
+                        <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
                         <div className="text-[16px] font-black text-accent-red font-amount">{Math.round(total).toLocaleString()}</div>
                       </div>
                     </div>

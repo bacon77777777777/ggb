@@ -258,7 +258,7 @@ export default function RankingPage() {
         >
           <div className="absolute top-0 left-0 w-full z-0 pointer-events-none">
             <Image
-              src="/images/rank/topbg.png"
+              src="/images/rank/topbg.webp"
               alt="Ranking Background"
               width={750}
               height={561}

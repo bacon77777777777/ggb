@@ -279,7 +279,7 @@ export function PurchaseConfirmation({
             <div className="flex flex-col justify-end mt-1">
               <div className="flex items-center gap-1">
                 <Image
-                        src="/images/gcoin.png"
+                        src="/images/gcoin.webp"
                         alt="G Coin"
                         width={24}
                         height={24}

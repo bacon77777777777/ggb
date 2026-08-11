@@ -72,7 +72,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
               <div className="flex items-center gap-1">
                 <span className="text-sm font-black text-accent-red block">+{item.recycleValue}</span>
                 <Image
-                  src="/images/gcoin.png"
+                  src="/images/gcoin.webp"
                   alt="G"
                   width={14}
                   height={14}

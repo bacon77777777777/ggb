@@ -733,7 +733,7 @@ function NavbarInner() {
             {pathname === '/topup' && user && (
               <div className="flex items-center gap-1 mr-1">
                 <div className="w-5 h-5 relative">
-                  <Image src="/images/gcoin.png" alt="G" fill className="object-contain" unoptimized />
+                  <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
                 </div>
                 <span className="text-lg font-black text-accent-red font-amount leading-none tracking-tight">
                   {(user.tokens || 0).toLocaleString()}
@@ -961,7 +961,7 @@ function NavbarInner() {
                     <div className="text-[13px] font-black text-neutral-400 uppercase tracking-widest mb-1 leading-none">可用代幣</div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 relative">
-                        <Image src="/images/gcoin.png" alt="G" fill className="object-contain" unoptimized />
+                        <Image src="/images/gcoin.webp" alt="G" fill className="object-contain" unoptimized />
                       </div>
                       <span className="text-xl font-black text-accent-red font-amount leading-none tracking-tight">
                         {(user.tokens || 0).toLocaleString()}

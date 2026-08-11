@@ -123,7 +123,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     setPhase('idle');
   }, [phase, triggerTear]);
 
-  const imgSrc = packImage ?? '/images/card/front.png';
+  const imgSrc = packImage ?? '/images/card/front.webp';
 
   const packFace = () => (
     <div style={{ position: 'relative', width: PW * s, height: PH * s }}>
@@ -167,7 +167,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
     >
       {/* 層 0：背景 */}
       <Image
-        src="/images/card/charge/bg.png"
+        src="/images/card/charge/bg.webp"
         alt="" fill
         className="object-cover"
         unoptimized priority
@@ -180,7 +180,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         draggable={false}
-        src="/images/card/charge/hand1.png"
+        src="/images/card/charge/hand1.webp"
         alt=""
         style={{
           position: 'absolute',
@@ -310,7 +310,7 @@ export default function BoosterPackOpenEffect({ packImage, onComplete }: Booster
       {/* 層 3：hand2（拇指，卡包上方） */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/card/charge/hand2.png"
+        src="/images/card/charge/hand2.webp"
         alt=""
         style={{
           position: 'absolute',

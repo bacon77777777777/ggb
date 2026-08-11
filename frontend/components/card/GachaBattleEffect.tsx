@@ -23,10 +23,10 @@ interface GachaBattleEffectProps {
 type Phase = 'loading' | 'intro' | 'qte' | 'outcome' | 'cards';
 
 function getCardBackImage(rarity: Rarity) {
-  if (rarity === 'SSR') return '/images/card/cardback1.png';
-  if (rarity === 'SR') return '/images/card/cardback2.png';
-  if (rarity === 'R') return '/images/card/cardback3.png';
-  return '/images/card/cardback4.png';
+  if (rarity === 'SSR') return '/images/card/cardback1.webp';
+  if (rarity === 'SR') return '/images/card/cardback2.webp';
+  if (rarity === 'R') return '/images/card/cardback3.webp';
+  return '/images/card/cardback4.webp';
 }
 
 const LOADER_CHARS = [
@@ -284,7 +284,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
       {/* Global Background */}
       <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/gacha_bg.png"
+          src="/images/gacha_bg.webp"
           alt=""
           fill
           className="object-cover filter brightness-[0.3] blur-[10px]"
@@ -545,7 +545,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
             >
               <div className="absolute inset-0 -z-10">
                 <Image
-                  src="/images/gacha_bg.png"
+                  src="/images/gacha_bg.webp"
                   alt=""
                   fill
                   className="object-cover filter brightness-[0.9] blur-[4px] scale-105"

@@ -19,10 +19,10 @@ type Phase = 'pack' | 'swipe';
 function getCardImage(prize: Prize) {
   if (prize.image_url) return prize.image_url;
   const raw = (prize.grade || prize.rarity || '').toUpperCase();
-  if (raw.includes('SSR') || raw.includes('超稀有')) return '/images/card/00001.png';
-  if (raw.includes('SR')) return '/images/card/00002.png';
-  if (raw.includes('R') || raw.includes('稀有')) return '/images/card/00003.png';
-  return '/images/card/00004.png';
+  if (raw.includes('SSR') || raw.includes('超稀有')) return '/images/card/00001.webp';
+  if (raw.includes('SR')) return '/images/card/00002.webp';
+  if (raw.includes('R') || raw.includes('稀有')) return '/images/card/00003.webp';
+  return '/images/card/00004.webp';
 }
 
 function getRarity(prize: Prize) {
@@ -288,7 +288,7 @@ export default function CardDrawAnimation({
             >
               {/* Background */}
               <Image
-                src="/images/card/charge/bg.png"
+                src="/images/card/charge/bg.webp"
                 alt=""
                 fill
                 className="object-cover"
@@ -302,7 +302,7 @@ export default function CardDrawAnimation({
               {/* hand1 — open palm, behind cards */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/card/charge/hand1.png"
+                src="/images/card/charge/hand1.webp"
                 alt=""
                 draggable={false}
                 style={{
@@ -373,7 +373,7 @@ export default function CardDrawAnimation({
               {/* hand2 — in front of card, same position as charge screen */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/card/charge/hand2.png"
+                src="/images/card/charge/hand2.webp"
                 alt=""
                 draggable={false}
                 style={{
