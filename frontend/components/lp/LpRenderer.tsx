@@ -9,8 +9,8 @@ import ProductCard from '@/components/ProductCard'
 import { scheduleState } from '@/lib/schedule'
 
 const LP_LOADING_CHARS = [
-  '/loading/1.svg', '/loading/2.svg', '/loading/3.svg', '/loading/4.svg',
-  '/loading/5.svg', '/loading/6.svg', '/loading/7.svg', '/loading/8.svg',
+  '/loading/1.webp', '/loading/2.webp', '/loading/3.webp', '/loading/4.webp',
+  '/loading/5.webp', '/loading/6.webp', '/loading/7.webp', '/loading/8.webp',
 ]
 
 function LpLoadingScreen({ bg }: { bg?: string }) {

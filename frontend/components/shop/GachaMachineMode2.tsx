@@ -19,7 +19,7 @@ interface GachaMachineMode2Props {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
+const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
 
 interface Egg {
   id: number;
@@ -288,7 +288,7 @@ export function GachaMachineMode2({
         transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       >
-        <Image src="/images/gacha/mode2/switch.png" alt="switch" fill className="object-contain" unoptimized />
+        <Image src="/images/gacha/mode2/switch.webp" alt="switch" fill className="object-contain" unoptimized />
       </motion.div>
 
       {/* Hole animation container — (500,580), 157×157; hole.svg NOT rendered (visual is in main.png) */}

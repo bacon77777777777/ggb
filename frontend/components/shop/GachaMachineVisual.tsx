@@ -18,7 +18,7 @@ interface GachaMachineVisualProps {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
+const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
 
 interface Egg {
   id: number;
@@ -475,7 +475,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       </div>
 
       <ImageButton
-        src="/images/gacha/btn2.png"
+        src="/images/gacha/btn2.webp"
         alt="推一下"
         text="推一下"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -495,7 +495,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       />
 
       <ImageButton
-        src="/images/gacha/btn1.png"
+        src="/images/gacha/btn1.webp"
         alt="立即轉蛋"
         text="立即轉蛋"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -513,7 +513,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
       />
 
       <ImageButton
-        src="/images/gacha/btn2.png"
+        src="/images/gacha/btn2.webp"
         alt="試試看"
         text="試試看"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -532,7 +532,7 @@ export function GachaMachineVisual(props: GachaMachineVisualProps) {
 
       <div className="absolute inset-0 pointer-events-none">
         <Image
-          src="/images/gacha/boxmask.png"
+          src="/images/gacha/boxmask.webp"
           alt="gacha box overlay"
           fill
           className="object-contain object-top"
