@@ -668,6 +668,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/products/import': 'products',
     '/settings/shipping': 'settings_shipping',
     '/settings/rates': 'settings',
+    // 「其他設定」把原黑科技那一組併進來，權限沿用系統設定
+    '/settings/other': 'settings',
     '/analytics': 'admins',
     '/permissions': 'permissions',
     '/logs': 'logs',
@@ -774,6 +776,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
           { name: '管理員權限', path: '/permissions', icon: IconKey },
           { name: '操作記錄', path: '/logs', icon: IconLogs },
           { name: '開發紀錄', path: '/dev-logs', icon: IconCode },
+          // 原「其他黑科技」那一組九個頁面併成這一頁（左頁籤右內容），
+          // 進去要先過六位代碼
+          { name: '其他設定', path: '/settings/other', icon: IconTools },
         ],
       },
       {
@@ -813,21 +818,6 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '交換商品管理', path: '/exchange', icon: IconExchange },
           { name: '交換紀錄', path: '/exchange-orders', icon: IconHistory },
-        ],
-      },
-      {
-        id: 'blacktech',
-        title: '其他黑科技',
-        items: [
-          { name: '商品補齊', path: '/products/import', icon: IconSparkles },
-          { name: '事件中心', path: '/agent-events', icon: IconEvents },
-          { name: '競品情報', path: '/competitor-intel', icon: IconSearch },
-          { name: 'AI 文案草稿', path: '/content-drafts', icon: IconSparkle },
-          { name: 'AI 用量', path: '/ai-usage', icon: IconBolt },
-          { name: '工具', path: '/tools', icon: IconTools },
-          { name: '殺率調整', path: '/settings/rates', icon: IconBolt },
-          { name: 'Design System', path: '/design-system', icon: IconPalette },
-          { name: '前台 DS 稽核', path: '/frontend-design-system', icon: IconFrontendDS },
         ],
       },
     ],

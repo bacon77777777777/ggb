@@ -8,8 +8,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { r2Upload } from '@/lib/r2'
 import sharp from 'sharp'
-import { brandCoverImage } from '@/lib/newsBranding'
-import { detectWatermark, type WmCorner } from '@/lib/dengekiWm'
+import { brandCoverImage, contentBox } from '@/lib/newsBranding'
+import type { WmCorner } from '@/lib/dengekiWm'
 import { createClaude } from '@/lib/aiUsage'
 import crypto from 'crypto'
 
@@ -235,57 +235,224 @@ const WATERMARKED_SOURCES = ['dengeki.com']
 /** 這張圖是不是來自會壓浮水印的站 */
 const isWatermarkedSource = (...urls: string[]) =>
   urls.some(u => WATERMARKED_SOURCES.some(d => u?.includes(d)))
+/**
+ * 封面圖體檢：擋掉「站方拿自家 logo 當 og:image」的文章
+ *
+ * 玩具人與 oneone universe 在沒有專屬 og:image 時會回傳站標，結果文章
+ * 封面就是一塊紅底白字的 logo（老闆截圖回報）。老闆的規則是
+ * 「沒圖就不要生成此文章，找別篇」—— 所以這裡回 false 就整篇跳過。
+ *
+ * 兩個門檻是拿實際資料量出來的（站上 14 張正常封面 vs 那兩張 logo）：
+ *
+ *   尺寸    正常封面最小 640×360；玩具人站標只有 161×50
+ *   色彩數  縮到 32×32 後數不重複顏色，正常封面 505～1021；
+ *           oneone 站標只有 123（純色塊 + 白字）
+ *
+ * 為什麼兩個都要：玩具人站標太小，縮放到 32×32 反而被插值撐出 853 色，
+ * 光看色彩數抓不到；oneone 是 700×700 的正方形，光看尺寸也抓不到。
+ *
+ * 全程本地 sharp，不呼叫付費服務。放在 Claude 改寫「之前」——
+ * 多抓一張圖是幾十 KB，改寫一篇才是真的成本。
+ */
+/*
+ * 同一次執行內，同一張圖只下載一次、只問一次 Claude。
+ *
+ * 封面圖會被摸兩次（先體檢、再處理），內文圖也常常就是封面的同一張，
+ * 每次都重抓重問等於白花額度。用網址擋下載、用內容雜湊擋視覺呼叫 ——
+ * 網址不同但內容相同的縮圖變體也擋得掉。
+ */
+const imgBufCache = new Map<string, Buffer | null>()
+const wmVerdictCache = new Map<string, WmVisionResult | null>()
+
+async function fetchImageOnce(url: string): Promise<Buffer | null> {
+  if (imgBufCache.has(url)) return imgBufCache.get(url) ?? null
+  let out: Buffer | null = null
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(12_000),
+      redirect: 'follow',
+    })
+    if (res.ok) {
+      const b = Buffer.from(await res.arrayBuffer())
+      if (b.length >= 3_000) out = b
+    }
+  } catch { out = null }
+  // 單次執行的快取，超過就整個清掉（serverless 實例可能被重用）
+  if (imgBufCache.size > 60) imgBufCache.clear()
+  imgBufCache.set(url, out)
+  return out
+}
+
+const MIN_COVER_W = 480
+const MIN_COVER_H = 270
+const MIN_COVER_COLORS = 300
+
+async function isUsableCover(url: string): Promise<boolean> {
+  try {
+    const buf = await fetchImageOnce(url)
+    if (!buf) return false
+    const meta = await sharp(buf).metadata()
+    const W = meta.width ?? 0, H = meta.height ?? 0
+    if (W < MIN_COVER_W || H < MIN_COVER_H) return false
+
+    const { data, info } = await sharp(buf).resize(32, 32, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true })
+    const seen = new Set<string>()
+    for (let i = 0; i < data.length; i += info.channels) {
+      seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`)
+    }
+    return seen.size >= MIN_COVER_COLORS
+  } catch {
+    return false
+  }
+}
+
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
 
 /**
- * 蓋 logo 前的視覺複核（老闆的規則：不確定就不發，發出去的一律蓋對）
+ * 浮水印偵測：讓 Claude 視覺看四個角（**所有來源、所有圖都跑**）
  *
- * 本地模板比對挑角是 97%（30 張實測），剩下的 3% 是「自信地挑錯」——
- * 分數看不出來。所以讓 Claude 視覺獨立看一次四個角：兩邊一致才蓋，
- * 不一致就回 null，呼叫端把整篇文章跳過。兩個獨立方法同時錯在
- * 同一個角的機率遠低於各自的錯誤率，一致 ≈ 百分之百安全。
- * 成本：每張浮水印圖一次 Haiku 視覺呼叫，零頭。
+ * 原本只有 dengeki 走這條，其他來源的圖完全不檢查、原樣轉存 ——
+ * 只要哪家開始壓站標就會直接出現在文章裡。老闆的要求是「百分之百
+ * 無差錯，不要看到別人 logo」，所以改成不分來源一律檢查。
+ *
+ * 為什麼不用本地模板比對當主判準：那支是照電ホビ浮水印做的邊緣模板，
+ * 只認得那一種；而且實測三張電ホビ原圖只挑對一張（分數 0.175／0.176／
+ * 0.140，全都低於門檻）。半透明疊白的浮水印本來就沒什麼邊緣可對。
+ *
+ * 兩個關鍵細節：
+ *   1. 角落裁切先做 normalise（直方圖拉伸）—— 浮水印是半透明的，
+ *      拉伸後對比才看得出來，直接送原圖 Claude 也容易漏。
+ *   2. Prompt 必須講清楚「商品包裝上的品牌 logo（BANDAI／GASHAPON／
+ *      TOMY…）不算浮水印」，否則商品照會被誤判，蓋在商品本體上。
+ *
+ * 回傳 'none' = 乾淨；回傳角落 = 那一角有站方浮水印；
+ * 回傳 null = 呼叫失敗／看不懂 → 呼叫端一律當作不確定，整張不用。
  */
-async function verifyCornerWithVision(buf: Buffer): Promise<WmCorner | null> {
+type WmVisionResult = WmCorner | 'none'
+
+type Box = { left: number; top: number; width: number; height: number }
+
+/**
+ * 上緣／下緣兩條長條（取自內容區，已拉高對比）—— 送給模型看的就是這兩張
+ *
+ * `box` 一定要由呼叫端算好傳進來，不要在這裡自己算：蓋完 logo 之後那塊
+ * 白墊會跟左右的白色留白連成一片，trim 會多吃掉一截，量出來的內容區
+ * 跟原圖不一樣，複驗裁到的位置就整個歪掉（實跑一輪 6 篇全被誤判擋下）。
+ */
+async function edgeStrips(buf: Buffer, box: Box): Promise<[string, string] | null> {
   try {
-    const meta = await sharp(buf).metadata()
-    const W = meta.width ?? 0, H = meta.height ?? 0
+    const W = box.width, H = box.height
     if (!W || !H) return null
-    const cw = Math.round(W * 0.3), ch = Math.round(H * 0.18)
-    const spots: [WmCorner, number, number][] = [
-      ['top-left', 0, 0], ['top-right', W - cw, 0],
-      ['bottom-left', 0, H - ch], ['bottom-right', W - cw, H - ch],
-    ]
-    const crops: { c: WmCorner; b64: string }[] = []
-    for (const [c, l, t] of spots) {
-      const b = await sharp(buf).extract({ left: l, top: t, width: cw, height: ch })
-        .resize(500, null).png().toBuffer()
-      crops.push({ c, b64: b.toString('base64') })
-    }
-    // 走 createClaude 才會被記進 AI 用量統計
-    const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
-    const res = await claude.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 30,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: '這是同一張圖的四個角落，依序是 TL、TR、BL、BR。其中一個角落印有半透明的「DENGEKI HOBBY WEB 電ホビ」浮水印（對比可能很低）。浮水印在哪個角落？只回 TL / TR / BL / BR / NONE 其中一個字。' },
-          ...crops.flatMap((cr, i) => [
-            { type: 'text' as const, text: `第${i + 1}張（${cr.c === 'top-left' ? 'TL' : cr.c === 'top-right' ? 'TR' : cr.c === 'bottom-left' ? 'BL' : 'BR'}）：` },
-            { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/png' as const, data: cr.b64 } },
-          ]),
-        ],
-      }],
-    })
-    const ans = (res.content[0] as { text?: string }).text?.trim().toUpperCase().match(/TL|TR|BL|BR/)?.[0]
-    const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
-    return ans ? map[ans] : null
-  } catch {
-    return null  // 複核失敗視同不確定 —— 寧可不發
+    const sh = Math.max(40, Math.round(H * 0.16))
+    const top = await sharp(buf).extract({ left: box.left, top: box.top, width: W, height: sh })
+      .resize(700, null).normalise().png().toBuffer()
+    const bottom = await sharp(buf).extract({ left: box.left, top: box.top + H - sh, width: W, height: sh })
+      .resize(700, null).normalise().png().toBuffer()
+    return [top.toString('base64'), bottom.toString('base64')]
+  } catch { return null }
+}
+
+async function askVision(strips: [string, string], prompt: string, re: RegExp): Promise<string | null> {
+  const claude = createClaude('news-agent-wm-verify', process.env.ANTHROPIC_API_KEY)
+  const res = await claude.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    // 給它一句話的思考空間再作答。逼它一個字答完反而會亂猜 ——
+    // 實測「不准說明」時三張錯兩張，允許先描述再作答是三張全對
+    max_tokens: 150,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'text', text: '上緣：' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: strips[0] } },
+        { type: 'text', text: '下緣：' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: strips[1] } },
+      ],
+    }],
+  })
+  const raw = (res.content[0] as { text?: string }).text ?? ''
+  const all = [...raw.toUpperCase().matchAll(re)].map(m => m[1])
+  return all.length ? all[all.length - 1] : null   // 取最後一次出現＝結論那行
+}
+
+/**
+ * 浮水印偵測：**所有來源、所有圖都跑**（老闆：百分之百不要看到別人 logo）
+ *
+ * 送的是「上緣整條 + 下緣整條」而不是四張角落裁圖。實測差很多：
+ * 四張角落裁圖時 Haiku 三張錯兩張、換 Sonnet 才全對；改成兩條長條之後
+ * Haiku 就三張全對，而且 input 從約 800 token 掉到約 400 —— 模型看得到
+ * 整條邊，比看四塊各自孤立的裁圖好判斷。既準又便宜。
+ *
+ * 三個關鍵細節：
+ *   1. 長條取自**內容區**而非畫布。電ホビ的 og:image 常是直式照片放進
+ *      1200×630 畫布、左右補白，站標壓在照片角落 —— 用畫布角落去找，
+ *      差半張圖（老闆截圖那張的內容區從 x=286 才開始）
+ *   2. normalise() 拉高對比，半透明站標才看得出來
+ *   3. prompt 必須列出「不算浮水印」的東西：商品／包裝上的品牌標誌、
+ *      廠商 logo（BANDAI、GASHAPON、FuRyu…）、作品 logo、價格規格文字
+ *
+ * 回 'none' = 乾淨；回角落 = 那一角有站方浮水印；回 null = 不確定 →
+ * 呼叫端一律不用這張圖。
+ */
+async function findWatermarkWithVision(buf: Buffer, sourceUrl = '', box?: Box): Promise<WmVisionResult | null> {
+  const hash = crypto.createHash('sha1').update(buf).digest('hex')
+  if (wmVerdictCache.has(hash)) return wmVerdictCache.get(hash) ?? null
+  const remember = (v: WmVisionResult | null) => {
+    if (wmVerdictCache.size > 120) wmVerdictCache.clear()
+    wmVerdictCache.set(hash, v)
+    return v
   }
+  try {
+    const strips = await edgeStrips(buf, box ?? await contentBox(buf))
+    if (!strips) return remember(null)
+    let host = ''
+    try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
+
+    const ans = await askVision(strips, [
+      '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
+      host ? `照片取自新聞網站 ${host}。` : '',
+      '請判斷這個新聞網站有沒有在角落壓上自己的站標／浮水印（通常半透明、低對比，跟照片內容無關）。',
+      '有的話在哪一角：TL（上緣的左邊三分之一）、TR（上緣的右邊三分之一）、BL（下緣的左邊三分之一）、BR（下緣的右邊三分之一）；沒有就 NONE。',
+      '注意：商品或包裝上印的品牌標誌、玩具廠商官方 logo（BANDAI、GASHAPON、FuRyu、TOMY、Good Smile…）、',
+      '作品本身的 logo、宣傳圖裡的價格與規格文字，都**不算**浮水印，不要選它們。',
+      '先用一句話說明，最後單獨一行只寫 TL、TR、BL、BR 或 NONE。',
+    ].join(''), /\b(TL|TR|BL|BR|NONE)\b/g)
+
+    if (!ans) return remember(null)
+    if (ans === 'NONE') return remember('none')
+    const map: Record<string, WmCorner> = { TL: 'top-left', TR: 'top-right', BL: 'bottom-left', BR: 'bottom-right' }
+    return remember(map[ans])
+  } catch {
+    return remember(null)  // 看不出來就是不確定 —— 寧可不用這張圖
+  }
+}
+
+/**
+ * 蓋完之後的複驗：白框以外還看不看得到原本的站標
+ *
+ * 問的是二元問題而不是再問一次「浮水印在哪一角」—— 後者在蓋完之後會把
+ * 我們自己的 GGB logo 當成浮水印指回來，等於每張都被判失敗。
+ * 誤判成 DIRTY 只是多跳一篇（實測三張中一張），誤判成 CLEAN 才會漏圖，
+ * 所以這裡寧可保守。
+ */
+async function verifyBrandedClean(buf: Buffer, sourceUrl = '', box?: Box): Promise<boolean> {
+  try {
+    const strips = await edgeStrips(buf, box ?? await contentBox(buf))
+    if (!strips) return false
+    let host = ''
+    try { host = new URL(sourceUrl).hostname.replace(/^www\./, '') } catch { host = '' }
+    const ans = await askVision(strips, [
+      '兩張圖分別是同一張照片的「上緣整條」與「下緣整條」（已拉高對比）。',
+      '我們已經在其中一角蓋上白色方塊＋粉紅色扭蛋機的「吉吉比」logo，那是我們自己的，請完全忽略它。',
+      `請問在那個白色方塊以外，還看不看得到${host ? ` ${host}` : '原本新聞網站'}壓上去的站標／浮水印？`,
+      '商品或包裝上的品牌標誌、玩具廠商 logo、作品 logo 都不算。',
+      '先用一句話說明，最後單獨一行只寫 CLEAN 或 DIRTY。',
+    ].join(''), /\b(CLEAN|DIRTY)\b/g)
+    return ans === 'CLEAN'
+  } catch { return false }
 }
 
 // 下載浮水印來源圖 → 壓 GGB logo → 上傳 R2；失敗回 null（呼叫端用預設圖）
@@ -316,7 +483,7 @@ async function injectBodyImages(
   for (const u of candidates) {
     if (hosted.length >= 2) break
     // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
-    const r = await downloadSmartToR2(u, forceBrand, pageUrl, seen)
+    const r = await downloadSmartToR2(u, forceBrand, pageUrl, seen, 'body')
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -348,28 +515,47 @@ function figureHtml(url: string): string {
 /**
  * 轉存到 R2，來源會壓浮水印時蓋上 GGB logo
  *
- * 封面圖與內文圖共用同一條路徑。**是否要蓋由來源網域決定**
- *（WATERMARKED_SOURCES），四角模板比對只用來決定蓋在哪一角 ——
- * 那個分數分不出乾淨圖與浮水印圖，不能拿來當「有沒有浮水印」的判準。
- * 乾淨來源一律原樣轉存，不會為了保險而亂蓋。
- * forceBrand 讓呼叫端強制蓋（例如已知這批圖來自浮水印站但網址被轉導過）。
- * 只抓一次圖，比對為本地運算，不產生額外費用。
+ * 封面圖與內文圖共用同一條路徑。**不分來源，每一張都檢查**（老闆要求：
+ * 百分之百不要看到別人的 logo）。原本只查 dengeki，其他來源原樣轉存，
+ * 只要哪家開始壓站標就會直接漏出去。
+ *
+ * 流程（封面）：
+ *   1. Claude 視覺看上下緣 → 乾淨就原樣轉存
+ *   2. 有浮水印 → 蓋 GGB logo → **再驗一次**，確認蓋完真的看不到了
+ *   3. 任何一步不確定（API 失敗、蓋完還看得到、已知會壓浮水印的站卻
+ *      回報乾淨）→ 回 null，呼叫端整篇不發
+ *
+ * 內文配圖走簡化版：**有浮水印就丟掉那張圖**，不蓋也不複驗；
+ * 已知會壓浮水印的站連下載都省。內文圖少一兩張不影響文章，
+ * 為它多花兩次視覺呼叫不划算（老闆規則）。
+ *
+ * 第 2 步是關鍵：驗的是「實際成品」而不是「兩個定位方法有沒有共識」，
+ * 直接對應我們真正在意的事 —— 成品上還看不看得到別人的浮水印。
+ *
+ * forceBrand 已無作用（現在一律檢查），保留參數避免動到所有呼叫端。
  */
 async function downloadSmartToR2(
   imgUrl: string,
   forceBrand = false,
   sourceUrl = '',
   seen?: Set<string>,
+  /**
+   * 'cover' = 封面，蓋得掉就蓋，蓋不掉整篇不發
+   * 'body'  = 內文配圖，**有浮水印就直接不要這張**，不花力氣蓋也不複驗
+   *
+   * 老闆規則：難蓋的內文圖就捨棄，網上文章多的是，主圖顧好就行。
+   * 這樣一張有浮水印的內文圖從「2 次視覺呼叫 + 蓋圖」變成「1 次呼叫」，
+   * 已知一定會壓浮水印的站更是連下載都省。
+   */
+  role: 'cover' | 'body' = 'cover',
 ): Promise<string | null> {
   try {
-    const res = await fetch(imgUrl, {
-      headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
-      signal: AbortSignal.timeout(12_000),
-      redirect: 'follow',
-    })
-    if (!res.ok) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.length < 3_000) return null
+    // 已知一定會壓浮水印的站，內文圖直接放棄 —— 連圖都不用抓、更不用問 Claude
+    if (role === 'body' && isWatermarkedSource(sourceUrl, imgUrl)) return null
+
+    // 封面圖在 isUsableCover 已經抓過一次，這裡直接吃快取，不重抓
+    const buf = await fetchImageOnce(imgUrl)
+    if (!buf) return null
 
     // 同一張圖只處理一次。
     // 封面的 og:image 常常就是內文的第一張圖，只是網址不同（縮圖變體、帶 query）——
@@ -382,38 +568,33 @@ async function downloadSmartToR2(
       seen.add(h)
     }
 
-    /*
-     * 蓋不蓋，看來源；蓋哪一角，才看偵測。
-     *
-     * 原本是「偵測過門檻就蓋」，但那個分數分不出乾淨圖與浮水印圖，
-     * 於是乾淨的商品照被蓋上 GGB logo，真的有浮水印的反而漏掉。
-     */
-    const fromWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
-    if (!fromWatermarked && !forceBrand) {
+    // 不分來源一律檢查
+    // 內容區只量原圖這一次，蓋完之後不能重量（白墊會跟留白邊連成一片）
+    const box = await contentBox(buf)
+    const found = await findWatermarkWithVision(buf, sourceUrl || imgUrl, box)
+    if (found === null) return null   // 看不出來 = 不確定 → 不用這張
+
+    const alwaysWatermarked = isWatermarkedSource(sourceUrl, imgUrl)
+    if (found === 'none') {
+      // 已知一定會壓浮水印的站卻回報乾淨 → 是漏看，不是真的乾淨
+      if (alwaysWatermarked) return null
+      // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完
+      // 220KB → 44KB，放到內文的容器寬度就明顯糊掉。改成 92 並把上限拉到
+      // 1600 —— withoutEnlargement 保證不會把小圖硬撐大，只是不再多壓一手
       const webp = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
       return await r2Upload(key, webp, 'image/webp')
     }
 
-    const wm = await detectWatermark(buf)
-    // 雙重驗證：兩個獨立方法一致才蓋，不一致 = 不確定 → 整篇不發（老闆規則）
-    const visionCorner = await verifyCornerWithVision(buf)
-    if (!visionCorner || visionCorner !== wm.corner) return null
-    const corner = wm.corner
+    // 內文圖有浮水印就丟掉，不蓋也不複驗（省一次視覺呼叫）
+    if (role === 'body') return null
 
-    {
-      const branded = await brandCoverImage(buf, corner)
-      if (branded) {
-        const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
-        return await r2Upload(key, branded, 'image/jpeg')
-      }
-    }
-    // 來源圖多半只有 800px 寬（電擊、PR TIMES 都是），quality 82 壓完 220KB → 44KB，
-    // 放到內文的容器寬度就明顯糊掉。改成 92 並把上限拉到 1600 ——
-    // withoutEnlargement 保證不會把小圖硬撐大，只是不再多壓一手。
-    const webp = await sharp(buf).resize(1600, null, { withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
-    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
-    return await r2Upload(key, webp, 'image/webp')
+    const branded = await brandCoverImage(buf, found)
+    if (!branded) return null
+    // 蓋完再驗一次：還看得到就是沒蓋乾淨（挑錯角、或浮水印比白墊大）
+    if (!await verifyBrandedClean(branded, sourceUrl || imgUrl, box)) return null
+    const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-gg.jpg`
+    return await r2Upload(key, branded, 'image/jpeg')
   } catch { return null }
 }
 
@@ -790,7 +971,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -813,6 +994,8 @@ export async function POST(req: NextRequest) {
       const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
                    || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const title = extractMeta(articleHtml, 'og:title') || ''
       const desc  = extractMeta(articleHtml, 'og:description') || ''
@@ -829,15 +1012,13 @@ export async function POST(req: NextRequest) {
       if (!draft) { results.skipped++; results.skipReasons.claudeReject++; continue }
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
-      // 玩具人圖片無浮水印，仍走偵測式轉存（偵測到才蓋 logo）
+      // 每張圖都驗浮水印，轉存不成功就整篇不發（老闆規則：百分之百不要
+      // 看到別人的 logo）。原本會退回 ogImage hotlink —— 那等於把沒驗過的
+      // 原圖直接端到玩家面前，是這條路最後一個漏洞
       const seenImages = new Set<string>()
       const hostedCover = await downloadSmartToR2(ogImage, false, realUrl, seenImages)
-      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發。
-      // 原本會退回原網址 hotlink，等於把帶浮水印的圖原樣端出去
-      if (!hostedCover && WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))) {
-        results.skipped++; results.skipReasons.wmUnsafe++; continue
-      }
-      const imageUrl = hostedCover ?? ogImage
+      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+      const imageUrl = hostedCover
       // 玩具人是直接解析列表頁抓連結，沒有 RSS 可退，articleHtml 抓不到就沒有內文圖
       const contentWithImages = await injectBodyImages(draft.content, articleHtml, ogImage, realUrl, false, seenImages)
       const finalCategory = (draft.category && draft.category !== 'toy')
@@ -894,6 +1075,8 @@ export async function POST(req: NextRequest) {
       }
       // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const bodyText = articleHtml
         ? articleHtml
@@ -911,17 +1094,14 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
-      // 已知帶浮水印的來源即使未達門檻也照蓋
+      // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
+      // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
       // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
       const seenImages = new Set<string>()
       const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
-      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發（老闆規則：
-      // 只發百分之百確定蓋對 logo 的）
-      if (!hostedCover && isWatermarked) {
-        results.skipped++; results.skipReasons.wmUnsafe++; continue
-      }
-      const imageUrl = hostedCover ?? ogImage
+      // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
+      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+      const imageUrl = hostedCover
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')
@@ -989,6 +1169,8 @@ export async function POST(req: NextRequest) {
       }
       // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const bodyText = articleHtml
         ? articleHtml
@@ -1011,17 +1193,14 @@ export async function POST(req: NextRequest) {
       if (isDuplicateTopic(draft.title)) { results.skipped++; results.skipReasons.titleDup++; continue }
 
       const isWatermarked = WATERMARKED_SOURCES.some(d => realUrl.includes(d) || ogImage.includes(d))
-      // 封面與內文圖共用同一條路徑：四角比對，偵測到才蓋 logo；
-      // 已知帶浮水印的來源即使未達門檻也照蓋
+      // 封面與內文圖共用同一條路徑：每張都用 Claude 視覺驗浮水印，
+      // 有就蓋 GGB logo 再驗一次確認蓋乾淨了
       // 同一篇文章共用一份已處理清單，封面先進去，內文圖就不會重複處理同一張
       const seenImages = new Set<string>()
       const hostedCover = await downloadSmartToR2(ogImage, isWatermarked, realUrl, seenImages)
-      // 浮水印來源但蓋不安全（雙重驗證不一致）→ 這篇不發（老闆規則：
-      // 只發百分之百確定蓋對 logo 的）
-      if (!hostedCover && isWatermarked) {
-        results.skipped++; results.skipReasons.wmUnsafe++; continue
-      }
-      const imageUrl = hostedCover ?? ogImage
+      // 轉存不成功 = 沒驗過或沒蓋乾淨 → 整篇不發，不退回原圖 hotlink
+      if (!hostedCover) { results.skipped++; results.skipReasons.wmUnsafe++; continue }
+      const imageUrl = hostedCover
       const finalCategory = (draft.category && draft.category !== 'toy')
         ? draft.category
         : (classifyByKeywords(`${draft.title} ${item.title} ${(draft.tags ?? []).join(',')}`) ?? 'toy')

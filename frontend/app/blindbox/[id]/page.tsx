@@ -12,6 +12,7 @@ import { Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaCollectionList } from '@/components/shop/GachaCollectionList';
+import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
@@ -571,16 +572,20 @@ export default function BlindboxDetailPage() {
                 膠囊切換、點圖也能關。座標是 375 寬的機台框，不是 750 原圖 */}
             {product.id && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 cursor-pointer"
-                style={{ top: 112, width: 232, height: 190, zIndex: 20 }}
-                onClick={() => setIsBoxImageMode(false)}
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{
+                  top: 112, width: 232, height: 190, zIndex: 20,
+                  opacity: isBoxImageMode ? 1 : 0,
+                  pointerEvents: isBoxImageMode ? 'auto' : 'none',
+                  transition: 'opacity 200ms ease-out',
+                }}
               >
-                <Image
+                {/* 雙指可放大／拖移看細節，放開彈回；單指點一下才收起 */}
+                <PinchZoomImage
                   src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
-                  alt={product.name} fill className="object-contain"
-                  style={{ opacity: isBoxImageMode ? 1 : 0, pointerEvents: isBoxImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
-                  onError={(e) => { const t = e.target as HTMLImageElement; t.srcset = '/images/item.png'; t.src = '/images/item.png'; }}
-                  unoptimized
+                  alt={product.name}
+                  className="h-full w-full"
+                  onTap={() => setIsBoxImageMode(false)}
                 />
               </div>
             )}
@@ -646,14 +651,12 @@ export default function BlindboxDetailPage() {
                     pointerEvents: isEggBoxImageMode ? 'auto' : 'none',
                     transition: 'opacity 200ms ease-out',
                   }}
-                  onClick={() => setIsEggBoxImageMode(false)}
                 >
-                  <Image
+                  <PinchZoomImage
                     src={sanitizeImageUrl(product.image_url) ?? `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
                     alt={product.name}
-                    width={167}
-                    height={167}
-                    className="w-full h-full object-cover rounded-2xl border border-white/20 shadow-lg shadow-black/40"
+                    className="w-full h-full rounded-2xl border border-white/20"
+                    onTap={() => setIsEggBoxImageMode(false)}
                   />
                 </div>
               )}

@@ -50,8 +50,10 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     <AlertContext.Provider value={{ showAlert }}>
       {children}
       <AnimatePresence>
+        {/* z 要壓過所有彈窗（資訊小卡 3001、中獎大圖 3100）——
+            確認框永遠是最上層，不然會被叫出它的那張卡蓋住 */}
         {alert && (
-          <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[3500] flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}

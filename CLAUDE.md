@@ -200,6 +200,71 @@ psql <SUPABASE_DB_URL> -f backend/db/migrations/<n>_name.sql
 - `frontend/middleware.ts` — 攔截 auth code → 轉 `/auth/callback`
 - `AuthContext` 封裝 session 狀態，`FeatureFlagsContext` 控制功能開關
 
+### 匯入外站商品（基礎資料）
+
+老闆常指定「去某站抓 N 件商品進來當基礎資料」。**一律走以下四步，不要每次重寫一套。**
+
+**前提**：只讀公開頁面、以一般訪客身分取材，**不繞過任何存取控制**
+（Cloudflare Turnstile／CAPTCHA／需登入的頁面一律放棄該來源），
+不引入任何付費服務（同情報系統的取材成本原則）。
+
+**① 取材** — 先判斷站型，用最省的方式：
+
+| 站型 | 作法 | 實例 |
+|------|------|------|
+| SSR / HTML | `curl` 抓 HTML，正則解析 og:title／og:image／賞等區塊 | fortune-cookie.tokyo（`.rarity-section` + `data-name` / `data-image-url`） |
+| Next.js SSR | 解析 `__NEXT_DATA__` 的 `pageProps` | clove（oripa.clove.jp） |
+| SPA + 同源 API | Playwright 開站 → 攔訪客本來就會拿到的 token → `page.evaluate` 打同源 API | 潮玩家（`/api/products?type=0\|1\|2`） |
+
+Playwright 走 `frontend/node_modules/playwright`（後台沒裝）。
+**暫存檔一律放 `backend/.tmp/`**（腳本要能 resolve `backend/node_modules`，
+放系統 tmp 會找不到 sharp／pg），做完刪掉。
+
+**② 產 selection.json** — 統一格式，後面兩支腳本都吃這個：
+
+```jsonc
+{ "src": "slimetoy:839",           // <站名>:<對方商品 id>，可追溯
+  "type": "ichiban|custom|blindbox|card",
+  "category": "一番賞|自製賞|盒玩|抽卡",
+  "name": "...", "price": 350, "image": "<外站主圖網址>",
+  "total_count": 70,               // 不含最後賞
+  "prizes": [{ "level": "A賞", "is_last": false, "name": "...", "image": "...", "qty": 2 }] }
+```
+
+**③ 搬圖 + 蓋 logo** — `npx tsx scripts/import_competitor_products.ts <selection.json> <out.json>`
+
+- **絕不留外站網址**：對方換檔名或擋 referer 我們就整批破圖，且玩家每次開商品頁都會把 referer 送過去
+- R2 是 STG／PROD 共用，圖只上傳一次、兩邊寫同一個網址
+- 主圖走 `lib/productBranding.ts` 的 `coverSourceLogo()`：左上角壓白墊 + GGB logo
+  （白墊 36.1% × 13.2%、logo 33.4% 寬貼在 2.68%/1.07%，比例量自老闆手修的成品，
+  換來源尺寸也蓋得一樣）。**只有主圖蓋，品項圖不處理**
+- 品項圖原檔上傳，超過 400KB 才轉 WebP
+
+**④ 寫入兩環境** — `npx tsx scripts/insert_competitor_products.ts <out.json> [--apply]`
+（不加 `--apply` 是乾跑；注意 identity 序號乾跑也會被吃掉，實際 id 會往後跳）
+
+- **一律 `status='pending'`（待上架）+ `is_active=false`**。
+  ⚠️ 不可寫 `active`：`trg_auto_seal_on_publish` 看到 active 會立刻排籤封存，
+  之後 `guard_sealed_product` 擋掉所有賞項異動，老闆連數量都改不了
+- `supplier_id = 3`（吉吉比，兩環境都有）
+- 機率依 migration 516：品項數量 ÷ `total_count` × 100
+- 最後賞：`level='最後賞'`、`is_last_one=true`、`probability=0`、**不進 `total_count`**
+  （前台配率表跳過它，另走 LastOne 獨立卡片與演出）
+
+**⑤ 驗收 SQL**（兩環境都跑）：缺主圖／缺品項圖數、機率加總是否 100、
+`total_count` 是否等於非最後賞的 `sum(total)`、`product_ticket_seals` 應為 0（沒被誤封存）。
+
+**分類無法從 API 判斷時看主圖**：潮玩家一番賞與自製賞混在同一個 `type=0`、
+卡片全掛「一番賞」標籤。判準是主圖上的品牌 —— 官方くじ品牌
+（一番くじ／タイトーくじ／Happyくじ／FuRyu賞／トミカ賞／三麗鷗賞）算一番賞，
+店家自組（潮玩賞／GK大合集／公仔大亂鬥／PSA卡／3C 抽獎）算自製賞。
+用 sharp 拼 4×3 聯絡表逐張看，比一張張開快得多。
+
+**日圓價格換算**：`コイン／pt × 0.22` 再取 5 的倍數（clove 2000pt → 440G）。
+外文品名與換算價都要在 DEVLOG 標「上架前必須改名／覆核」。
+
+已匯入批次的資料留在 `backend/scripts/*_import_data*.json`，可回溯每件商品的來源 id。
+
 ## Environment Variables
 
 後台（`backend/.env.local`）關鍵變數：

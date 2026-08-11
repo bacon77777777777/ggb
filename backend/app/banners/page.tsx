@@ -12,6 +12,39 @@ import { useToast } from '@/contexts/ToastContext'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import ConfirmDialog from '@/components/ConfirmDialog'
 
+/**
+ * 輪播圖「首頁頁籤」可以指定的目標。
+ *
+ * 內建頁籤走 `/?tab=<id>`、老闆自建的分類走 `/?menu=<uuid>`（分類清單另外從
+ * /api/admin/categories 拉）。這份 id 要跟前台 `app/page.tsx` 的
+ * BUILT_IN_TAB_IDS 一致，改了兩邊一起改。
+ */
+const HOME_TABS = [
+  { id: 'all',      label: '綜合' },
+  { id: 'ichiban',  label: '一番賞' },
+  { id: 'blindbox', label: '盒玩' },
+  { id: 'gacha',    label: '轉蛋' },
+  { id: 'card',     label: '抽卡' },
+  { id: 'custom',   label: '自製賞' },
+  { id: 'sell',     label: '販售' },
+]
+
+/** 連結目標三擇一，存進 DB 的還是 link_url / event_id，這個只是編輯時的模式 */
+type LinkMode = 'url' | 'event' | 'tab'
+
+const LINK_MODES: { value: LinkMode; label: string }[] = [
+  { value: 'url',   label: '連結' },
+  { value: 'event', label: '活動頁' },
+  { value: 'tab',   label: '首頁頁籤' },
+]
+
+/** 從既有資料回推目前是哪一種模式（沒有欄位存模式，避免為了 UI 加 migration） */
+function linkModeOf(banner: { link_url?: string | null; event_id?: string | null }): LinkMode {
+  if (banner.event_id) return 'event'
+  if (/^\/\?(tab|menu)=/.test(banner.link_url || '')) return 'tab'
+  return 'url'
+}
+
 const PAGE_TABS = [
   { value: 'home', label: '首頁輪播圖' },
   { value: 'challenge', label: '挑戰頁輪播圖' },
@@ -32,12 +65,6 @@ interface Banner {
   event_id: string | null
 }
 
-interface PromoOption {
-  id: number
-  name: string
-  is_active: boolean
-}
-
 export default function BannersPage() {
   const { toast } = useToast()
   const { confirm, dialogProps } = useConfirmDialog()
@@ -48,6 +75,7 @@ export default function BannersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [activeTab, setActiveTab] = useState<'home' | 'challenge' | 'popup'>('home')
+  const [linkMode, setLinkMode] = useState<LinkMode>('url')
   const [searchQuery, setSearchQuery] = useState('')
 
   const [formData, setFormData] = useState({
@@ -65,7 +93,11 @@ export default function BannersPage() {
   })
 
   // 促銷方案清單：連結欄可一鍵指向 /promo/<id> 促銷分類清單頁
-  const [promotions, setPromotions] = useState<PromoOption[]>([])
+  /** 首頁的一級頁籤就是「分類清單」，連結要指到分類而不是促銷方案 */
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  /** 活動清單：連結模式選「活動頁」時用。以前掛在 ScheduleFields 裡，
+      三擇一之後那個選單搬到這頁自己管 */
+  const [events, setEvents] = useState<{ id: string; title: string; slug: string }[]>([])
 
   const fetchData = async () => {
     try {
@@ -88,14 +120,19 @@ export default function BannersPage() {
 
   useEffect(() => {
     fetchData()
-    fetch('/api/admin/promotions', { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : []))
-      .then((list: PromoOption[]) => setPromotions((list || []).filter(p => p.is_active)))
-      .catch(() => setPromotions([]))
+    fetch('/api/admin/categories', { credentials: 'include' })
+      .then(r => r.json())
+      .then((list: { id: string; name: string }[]) => setCategories(list || []))
+      .catch(() => {})
+    fetch('/api/admin/events', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setEvents(d.events ?? d ?? []))
+      .catch(() => {})
   }, [])
 
   const handleEdit = (banner: Banner) => {
     setEditingBanner(banner)
+    setLinkMode(linkModeOf(banner))
     setFormData({
       name: banner.name || '',
       image_url: banner.image_url,
@@ -114,6 +151,7 @@ export default function BannersPage() {
 
   const handleAdd = () => {
     setEditingBanner(null)
+    setLinkMode('url')
     setFormData({
       name: '',
       image_url: '',
@@ -171,6 +209,15 @@ export default function BannersPage() {
     if (savingLock.current) return
     if (!formData.name) {
       toast('請輸入輪播圖名稱', 'warning')
+      return
+    }
+    // 選了「活動頁」「首頁頁籤」卻沒挑，存下去會變成點了沒反應的死圖
+    if (linkMode === 'event' && !formData.event_id) {
+      toast('請選擇要連到哪個活動頁', 'warning')
+      return
+    }
+    if (linkMode === 'tab' && !formData.link_url) {
+      toast('請選擇要切到哪個首頁頁籤', 'warning')
       return
     }
     savingLock.current = true
@@ -425,68 +472,6 @@ export default function BannersPage() {
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">連結促銷分類頁 (選填)</label>
-              <SelectField
-                value={promotions.some(p => formData.link_url === `/promo/${p.id}`)
-                  ? formData.link_url
-                  : ''}
-                onChange={e => {
-                  if (e.target.value) setFormData({ ...formData, link_url: e.target.value })
-                }}
-                disabled={!!formData.event_id}
-              >
-                <option value="">不連結促銷（自訂網址）</option>
-                {promotions.map(p => (
-                  <option key={p.id} value={`/promo/${p.id}`}>{p.name}</option>
-                ))}
-              </SelectField>
-              <p className="mt-1 text-xs text-neutral-400">選擇後點擊輪播圖會進入該促銷的商品清單頁</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">連結網址 (選填)</label>
-              <input
-                type="text"
-                value={formData.link_url}
-                onChange={e => setFormData({ ...formData, link_url: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg disabled:bg-neutral-50 disabled:text-neutral-400"
-                placeholder="https://..."
-                disabled={!!formData.event_id}
-              />
-              {formData.event_id && (
-                <p className="mt-1 text-xs text-neutral-400">已關聯活動，連結由系統自動指向該活動頁</p>
-              )}
-            </div>
-
-            <ScheduleFields
-              startAt={formData.start_at}
-              endAt={formData.end_at}
-              eventId={formData.event_id}
-              showEventLink
-              onChange={patch => setFormData(prev => ({ ...prev, ...patch }))}
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>
-              <div className="flex gap-2">
-                {PAGE_TABS.filter(t => t.value !== 'popup').map(tab => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' })}
-                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      formData.page === tab.value
-                        ? 'bg-primary text-white border-primary'
-                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">排序 (數字越小越前面)</label>
@@ -508,6 +493,122 @@ export default function BannersPage() {
                   />
                   <span className="text-sm font-medium text-neutral-700">啟用狀態</span>
                 </label>
+              </div>
+            </div>
+
+            {/* 點擊目標三擇一。以前三個欄位（分類頁籤／自訂網址／關聯活動）同時攤在
+                表單上，彼此靠 disabled 互卡，很容易填了甲又選了乙，看不出最後會連去哪。
+                改成先選一種，只出現那一種的欄位；切換時把另外兩種清乾淨 */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">點擊後前往</label>
+              <div className="flex gap-2">
+                {LINK_MODES.map(m => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => {
+                      setLinkMode(m.value)
+                      // 換模式一律清空另外兩種的值，不留殘影
+                      setFormData(prev => ({ ...prev, link_url: '', event_id: null }))
+                    }}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      linkMode === m.value
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {linkMode === 'url' && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">連結網址</label>
+                <input
+                  type="text"
+                  value={formData.link_url}
+                  onChange={e => setFormData({ ...formData, link_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                  placeholder="https://... 或站內路徑 /news"
+                />
+                <p className="mt-1 text-xs text-neutral-400">站外網址會開新分頁，站內路徑直接跳頁</p>
+              </div>
+            )}
+
+            {linkMode === 'event' && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">活動頁</label>
+                <SelectField
+                  value={formData.event_id ?? ''}
+                  onChange={e => setFormData({ ...formData, event_id: e.target.value || null })}
+                >
+                  <option value="">請選擇活動</option>
+                  {events.map(ev => (
+                    <option key={ev.id} value={ev.id}>{ev.title}（/events/{ev.slug}）</option>
+                  ))}
+                </SelectField>
+                <p className="mt-1 text-xs text-neutral-400">
+                  連結由系統指向該活動頁，活動改網址也不會變死連結；
+                  下方檔期的結束時間留空就跟著活動結束
+                </p>
+              </div>
+            )}
+
+            {linkMode === 'tab' && (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">首頁頁籤</label>
+                <SelectField
+                  value={formData.link_url}
+                  onChange={e => setFormData({ ...formData, link_url: e.target.value })}
+                >
+                  <option value="">請選擇頁籤</option>
+                  <optgroup label="所有類別">
+                    {HOME_TABS.map(t => (
+                      <option key={t.id} value={`/?tab=${t.id}`}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                  {categories.length > 0 && (
+                    <optgroup label="分類清單">
+                      {categories.map(c => (
+                        <option key={c.id} value={`/?menu=${c.id}`}>{c.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </SelectField>
+                {/* 原本是連到 /promo/[id] 那個獨立頁，老闆指定改成「在首頁切頁籤」：
+                    玩家留在原本的瀏覽流程裡，上面那排分類頁籤也還在，
+                    想跳去別類直接點。/promo/[id] 沒有拿掉，那個網址還能對外分享 */}
+                <p className="mt-1 text-xs text-neutral-400">
+                  點擊輪播圖會直接在首頁切到該頁籤，不會另開頁面
+                </p>
+              </div>
+            )}
+
+            <ScheduleFields
+              startAt={formData.start_at}
+              endAt={formData.end_at}
+              onChange={patch => setFormData(prev => ({ ...prev, ...patch }))}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">顯示頁面 <span className="text-red-500">*</span></label>
+              <div className="flex gap-2">
+                {PAGE_TABS.filter(t => t.value !== 'popup').map(tab => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, page: tab.value as 'home' | 'challenge' })}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      formData.page === tab.value
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 

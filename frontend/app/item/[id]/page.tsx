@@ -30,6 +30,7 @@ import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
+import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import FairnessPanel from '@/components/product/FairnessPanel';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS, PRIZE_PUBLIC_COLUMNS } from '@/lib/productColumns'
@@ -397,7 +398,24 @@ export default function ProductDetailPage() {
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [isGachaLoading, setIsGachaLoading] = useState(false);
-  const [viewingPrize, setViewingPrize] = useState<{ name: string; image_url?: string; level: string; total: number; remaining: number; probability?: number | null; recycle_value?: number | null } | null>(null);
+  /**
+   * 看大圖時記的是「prizes 裡的第幾項」而不是那一項本身 ——
+   * 這樣品項詳情彈窗才有辦法左右滑切換上一項／下一項
+   */
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const viewingPrize = viewingIndex !== null && prizes[viewingIndex]
+    ? {
+        name: prizes[viewingIndex].name,
+        image_url: prizes[viewingIndex].image_url || undefined,
+        level: prizes[viewingIndex].level,
+        total: prizes[viewingIndex].total,
+        remaining: prizes[viewingIndex].remaining,
+        probability: (prizes[viewingIndex] as { probability?: number | null }).probability ?? null,
+        recycle_value: (prizes[viewingIndex] as { recycle_value?: number | null }).recycle_value ?? null,
+      }
+    : null;
+  const stepPrize = (d: 1 | -1) =>
+    setViewingIndex(i => (i === null ? null : (i + d + prizes.length) % prizes.length));
   const [recommendations, setRecommendations] = useState<Database['public']['Tables']['products']['Row'][]>([]);
   
   // Purchase Flow State
@@ -409,6 +427,8 @@ export default function ProductDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [wonPrizes, setWonPrizes] = useState<Prize[]>([]);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  /** 選籤彈窗是否為試玩（試試看）：試玩不扣款、直接進撕紙 */
+  const [isTicketTrial, setIsTicketTrial] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Result Modal State
@@ -725,6 +745,7 @@ export default function ProductDetailPage() {
       if (isMobile) {
         router.push(`/item/${params.id}/select`);
       } else {
+        setIsTicketTrial(false);
         setIsTicketModalOpen(true);
       }
       return;
@@ -752,16 +773,14 @@ export default function ProductDetailPage() {
     setActivePackStyle(newStyles[currentIdx]);
   };
 
-  const handleTrialCard = () => {
-    if (!product) return;
-
-    trackEvent('draw_trial', { productId: product.id });
+  /** 試玩用的假中獎：挑全商品最高賞當誘餌（不扣款、不寫 DB） */
+  const makeTrialPrize = (): Prize | null => {
+    if (!product) return null;
 
     const scoreLevel = (levelRaw: string) => {
       const level = String(levelRaw || '').trim()
       if (level.includes('A賞') || level === 'A') return 1000
       if (level.includes('SSR')) return 1000
-      if (level.includes('最後賞') || /last\s*one/i.test(level)) return 950
       if (level.includes('SP賞') || level.includes('SP')) return 900
       if (level.includes('S賞') || level === 'S') return 880
       if (level.includes('B賞') || level === 'B') return 800
@@ -777,18 +796,26 @@ export default function ProductDetailPage() {
       return 500
     }
 
-    const best = prizes.length > 0
-      ? prizes.reduce((acc, cur) => {
+    /*
+     * 最後賞不列入試玩結果（老闆指定）。它在真抽裡是「抽完最後一張才觸發」的獎，
+     * 試試看就跳出最後賞很怪 —— 玩家會以為隨便抽就有。挑大賞（A賞）就好。
+     */
+    const pool = prizes.filter(
+      p => !(p as { is_last_one?: boolean }).is_last_one
+        && !/最後賞|last\s*one/i.test(String(p.level || '')),
+    )
+    const best = pool.length > 0
+      ? pool.reduce((acc, cur) => {
           const accScore = scoreLevel(acc.level || '')
           const curScore = scoreLevel(cur.level || '')
           if (curScore !== accScore) return curScore > accScore ? cur : acc
           if (cur.image_url && !acc.image_url) return cur
           return acc
-        }, prizes[0])
+        }, pool[0])
       : null
 
     const rarity: Prize['rarity'] = String(best?.level || 'SSR')
-    const trialPrize: Prize = {
+    return {
       id: `trial-${best?.id ?? rarity}`,
       name: String(best?.name || rarity),
       rarity,
@@ -796,10 +823,42 @@ export default function ProductDetailPage() {
       grade: rarity,
       is_last_one: false,
     }
+  };
 
+  /** 抽卡的試試看：開卡包影片 */
+  const handleTrialCard = () => {
+    const trialPrize = makeTrialPrize();
+    if (!product || !trialPrize) return;
+    trackEvent('draw_trial', { productId: product.id });
     setWonPrizes([trialPrize]);
     setIsVideoMuted(false);
     setIsVideoOpen(true);
+  };
+
+  /**
+   * 一番賞／自製賞的試試看：直接進該模組自己的演出，一律單抽。
+   *
+   * 一番賞 → 跳過選籤，直接進撕紙（沉浸式主題就是沉浸式撕紙畫面）；
+   * 自製賞 → 直接播開獎演出。兩者都不扣代幣、不寫紀錄。
+   */
+  const handleTrialPlay = () => {
+    if (!product) return;
+    trackEvent('draw_trial', { productId: product.id });
+
+    if (product.type === 'ichiban') {
+      if (isMobile) {
+        router.push(`/item/${params.id}/select?trial=1`);
+      } else {
+        setIsTicketTrial(true);
+        setIsTicketModalOpen(true);
+      }
+      return;
+    }
+
+    const trialPrize = makeTrialPrize();
+    if (!trialPrize) return;
+    setWonPrizes([trialPrize]);
+    setIsGachaOpen(true);
   };
 
   const handlePurchaseConfirm = async (quantity: number, options?: { usePoints: boolean, couponId?: string }) => {
@@ -1376,14 +1435,13 @@ export default function ProductDetailPage() {
                 <div
                   className="absolute inset-0 flex items-center justify-center cursor-pointer"
                   style={{ opacity: isCardImageMode ? 1 : 0, pointerEvents: isCardImageMode ? 'auto' : 'none', transition: 'opacity 200ms ease-out' }}
-                  onClick={() => setIsCardImageMode(false)}
                 >
-                  <Image
+                  {/* 雙指可放大／拖移看細節，放開彈回；單指點一下才收起 */}
+                  <PinchZoomImage
                     src={product.image_url || `/images/item/${product.id.toString().padStart(5, '0')}.jpg`}
                     alt={product.name}
-                    width={167}
-                    height={167}
-                    className="w-full h-full object-cover border border-white/20 shadow-lg shadow-black/40"
+                    className="w-full h-full border border-white/20"
+                    onTap={() => setIsCardImageMode(false)}
                   />
                 </div>
               )}
@@ -1422,7 +1480,7 @@ export default function ProductDetailPage() {
       <div className="space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">店家配率表</h2>
+                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
               </div>
               
               <div className="overflow-x-auto relative custom-scrollbar">
@@ -1448,15 +1506,7 @@ export default function ProductDetailPage() {
                           "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer",
                           prize.remaining === 0 && "opacity-50"
                         )}
-                        onClick={() => setViewingPrize({
-                          name: prize.name,
-                          image_url: prize.image_url || undefined,
-                          level: prize.level,
-                          total: prize.total,
-                          remaining: prize.remaining,
-                          probability: (prize as any).probability ?? null,
-                          recycle_value: (prize as any).recycle_value ?? null,
-                        })}
+                        onClick={() => setViewingIndex(prizes.indexOf(prize))}
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
@@ -1518,17 +1568,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       className="w-full text-left bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-neutral-900 dark:text-neutral-100 shadow-xl relative overflow-hidden group border border-yellow-200/60 dark:border-yellow-700/40"
-                      onClick={() =>
-                        setViewingPrize({
-                          name: lastOnePrize.name,
-                          image_url: lastOnePrize.image_url || undefined,
-                          level: lastOnePrize.level,
-                          total: lastOnePrize.total,
-                          remaining: lastOnePrize.remaining,
-                          probability: (lastOnePrize as any).probability ?? null,
-                          recycle_value: (lastOnePrize as any).recycle_value ?? null,
-                        })
-                      }
+                      onClick={() => setViewingIndex(prizes.indexOf(lastOnePrize))}
                     >
                       <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/20 dark:bg-yellow-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100" />
                       
@@ -1750,7 +1790,9 @@ export default function ProductDetailPage() {
 
         <PrizeDetailSheet
           prize={viewingPrize}
-          onClose={() => setViewingPrize(null)}
+          onClose={() => setViewingIndex(null)}
+          onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
+          onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
         />
 
@@ -2025,7 +2067,7 @@ export default function ProductDetailPage() {
           <div className="lg:col-span-8 space-y-2 sm:space-y-5">
             <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
               <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">店家配率表</h2>
+                <h2 className="text-sm sm:text-lg font-black text-neutral-900 dark:text-neutral-50 tracking-tight uppercase tracking-wider">品項總覽</h2>
               </div>
               
               <div className="overflow-x-auto relative custom-scrollbar">
@@ -2051,15 +2093,7 @@ export default function ProductDetailPage() {
                           "hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer",
                           prize.remaining === 0 && "opacity-50"
                         )}
-                        onClick={() => setViewingPrize({
-                          name: prize.name,
-                          image_url: prize.image_url || undefined,
-                          level: prize.level,
-                          total: prize.total,
-                          remaining: prize.remaining,
-                          probability: (prize as any).probability ?? null,
-                          recycle_value: (prize as any).recycle_value ?? null,
-                        })}
+                        onClick={() => setViewingIndex(prizes.indexOf(prize))}
                       >
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
@@ -2121,17 +2155,7 @@ export default function ProductDetailPage() {
                     <button
                       type="button"
                       className="w-full text-left bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-neutral-900 dark:text-neutral-100 shadow-xl relative overflow-hidden group border border-yellow-200/60 dark:border-yellow-700/40"
-                      onClick={() =>
-                        setViewingPrize({
-                          name: lastOnePrize.name,
-                          image_url: lastOnePrize.image_url || undefined,
-                          level: lastOnePrize.level,
-                          total: lastOnePrize.total,
-                          remaining: lastOnePrize.remaining,
-                          probability: (lastOnePrize as any).probability ?? null,
-                          recycle_value: (lastOnePrize as any).recycle_value ?? null,
-                        })
-                      }
+                      onClick={() => setViewingIndex(prizes.indexOf(lastOnePrize))}
                     >
                       <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/20 dark:bg-yellow-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100" />
                       
@@ -2291,7 +2315,9 @@ export default function ProductDetailPage() {
 
         <PrizeDetailSheet
           prize={viewingPrize}
-          onClose={() => setViewingPrize(null)}
+          onClose={() => setViewingIndex(null)}
+          onPrev={prizes.length > 1 ? () => stepPrize(-1) : undefined}
+          onNext={prizes.length > 1 ? () => stepPrize(1) : undefined}
           sealed={FAIR_ENGINE_TYPES.includes(product.type)}
         />
 
@@ -2334,6 +2360,15 @@ export default function ProductDetailPage() {
                     ? '立即抽獎'
                     : '立即轉蛋'}
             </Button>
+            {/* 試試看：一律單抽的免費試玩，走該商品模組自己的演出 */}
+            {(product.type === 'ichiban' || product.type === 'custom') && totalRemaining > 0 && !isLotterySale && (
+              <button
+                onClick={handleTrialPlay}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700"
+              >
+                試試看
+              </button>
+            )}
           </div>
         </ActionBar>
 
@@ -2434,15 +2469,17 @@ export default function ProductDetailPage() {
           <div className="fixed inset-0 z-[2100] flex items-center justify-center">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setIsTicketModalOpen(false)}
+              onClick={() => { setIsTicketModalOpen(false); setIsTicketTrial(false); }}
             />
             <div className="relative z-[2101] w-full max-w-[640px] max-h-[90vh] px-4">
               <TicketSelectionFlow
                 isModal
-                onClose={() => setIsTicketModalOpen(false)}
+                trial={isTicketTrial}
+                onClose={() => { setIsTicketModalOpen(false); setIsTicketTrial(false); }}
                 onRefreshProduct={fetchData}
                 onTearFinish={(results) => {
                   setIsTicketModalOpen(false);
+                  setIsTicketTrial(false);
                   setTearGachaResults(results as Prize[]);
                 }}
               />

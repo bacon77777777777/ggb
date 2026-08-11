@@ -28,6 +28,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
 }
 
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
 import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
@@ -57,7 +58,9 @@ export default function NewProductPage() {
     cost: '',
     image: null as File | null,
     imagePreview: '/images/item.png',
-    status: 'active',
+    // 一律先建成「待上架」（老闆指定）：一番賞／抽卡／自製賞一上架就會
+    // 自動排籤封存、殺率同時鎖死，所以要留一個能調殺率的空檔
+    status: 'pending',
     category: '',
     categoryId: '',
     selectedTagIds: [] as string[],
@@ -190,6 +193,9 @@ export default function NewProductPage() {
   const [librarySearchQuery, setLibrarySearchQuery] = useState('')
   const [librarySelectedCategory, setLibrarySelectedCategory] = useState('all')
   const prizeSectionRef = useRef<HTMLDivElement | null>(null)
+  // 系列沒填時先攔一次（不強制擋，有些商品確實沒有 IP）
+  const [showSeriesWarning, setShowSeriesWarning] = useState(false)
+  const seriesWarningAcked = useRef(false)
 
   const addPrize = () => {
     const newPrize = {
@@ -241,8 +247,8 @@ export default function NewProductPage() {
     }
   }, [showSmallItemLibrary])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     
     // 驗證必填欄位
     if (!formData.name || (!isSlot && !isLottery && !formData.price) || prizes.length === 0) {
@@ -261,6 +267,11 @@ export default function NewProductPage() {
     }
     if (!formData.supplierId) {
       toast('請選擇廠商', 'warning')
+      return
+    }
+    // 系列是前台二級頁籤與推薦排序的唯一依據，沒填等於這檔商品在首頁隱形
+    if (!isSlot && !formData.series?.trim() && !seriesWarningAcked.current) {
+      setShowSeriesWarning(true)
       return
     }
     if (isSlot && prizes.some(p => !(p.recycleValue > 0))) {
@@ -665,6 +676,9 @@ export default function NewProductPage() {
                   className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors hover:border-neutral-300"
                   placeholder="寶可夢、鬼滅之刃..."
                 />
+                <p className="mt-1 text-xs text-neutral-400">
+                  首頁的二級頁籤與推薦排序都是照這欄分組算出來的，沒填的商品不會有頁籤、也會排在後面。
+                </p>
               </div>}
               {canLottery && (
                 <div>
@@ -1154,6 +1168,21 @@ export default function NewProductPage() {
             </div>
           </div>
         </Modal>
+
+        <ConfirmDialog
+          isOpen={showSeriesWarning}
+          onClose={() => setShowSeriesWarning(false)}
+          onConfirm={() => {
+            seriesWarningAcked.current = true
+            setShowSeriesWarning(false)
+            void handleSubmit()
+          }}
+          title="系列沒有填"
+          message={'首頁的二級頁籤與推薦排序都是照「系列」分組算的。沒填的話，這檔商品不會出現在任何系列頁籤，在推薦頁也會排在有系列的商品後面。\n\n沒有明確 IP 的商品可以留空，確定要這樣存嗎？'}
+          confirmText="就這樣存"
+          cancelText="回去填"
+          type="warning"
+        />
       </div>
     </AdminLayout>
   )

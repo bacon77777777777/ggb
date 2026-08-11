@@ -1,6 +1,6 @@
 'use client';
 // v3
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Database } from '@/types/database.types';
 import ProductCard from '@/components/ProductCard';
@@ -31,6 +31,50 @@ type BannerRow = Database['public']['Tables']['banners']['Row'];
 
 type SortMode = 'latest' | 'price-asc' | 'price-desc' | 'sold-out';
 
+/**
+ * 輪播圖「首頁頁籤」可以指定的內建頁籤 id（網址 `/?tab=<id>`）。
+ *
+ * 後台 `app/banners/page.tsx` 的下拉選單要跟這份一致，改了記得兩邊一起改。
+ * 不收 `exchange`：那個頁籤目前沒有畫面（`filteredExchangeOffers` 算了但沒渲染）。
+ * 自建分類不在這裡，走 `/?menu=<uuid>`。
+ */
+const BUILT_IN_TAB_IDS = ['all', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'sell'] as const;
+
+/**
+ * 分批載入的哨兵登記簿：把每一顆哨兵都記下來，而不是只留最後掛上的那一顆。
+ *
+ * 為什麼需要：`renderProductSections()` 在同一頁被呼叫兩次 —— 手機版包在
+ * `md:hidden` 的容器裡、桌機版包在 `<main>` 裡，兩份 DOM 同時存在，靠 CSS
+ * 決定哪一份顯示。兩份各自渲染一顆哨兵，但共用同一個 `useRef`，
+ * 後掛上的桌機那顆會蓋掉手機那顆。
+ *
+ * 結果就是桌機正常、手機永遠卡在「載入中...」：被觀察的是桌機那顆，
+ * 它在手機上整段 `display:none`、量出來的 rect 是 0×0，
+ * IntersectionObserver 永遠不會回報 isIntersecting。
+ *
+ * 改成兩顆都觀察，哪一顆在畫面上就由哪一顆觸發；沒顯示的那顆不會誤觸發，
+ * 因為 display:none 的元素本來就不會 intersect。
+ */
+function useSentinelRegistry() {
+  const nodes = useRef<Set<HTMLDivElement>>(new Set());
+  const [version, bump] = useReducer((v: number) => v + 1, 0);
+
+  const register = useCallback((el: HTMLDivElement | null) => {
+    // React 18 的 ref callback 沒有 cleanup，卸載時只會收到 null；
+    // 舊節點改在 liveNodes() 用 isConnected 掃掉，不會累積。
+    if (!el || nodes.current.has(el)) return;
+    nodes.current.add(el);
+    bump();
+  }, []);
+
+  const liveNodes = useCallback(() => {
+    for (const el of nodes.current) if (!el.isConnected) nodes.current.delete(el);
+    return [...nodes.current];
+  }, []);
+
+  return { register, liveNodes, version };
+}
+
 export default function Home() {
   const homeRestoreKey = 'gachago:home_restore';
   const homeStateKey = 'gachago:home_state';
@@ -46,6 +90,9 @@ export default function Home() {
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
   // Map<series, score> — global platform popularity (used as default for new users)
   const [globalSeriesPop, setGlobalSeriesPop] = useState<Map<string, number>>(new Map());
+  // Map<product_id, score> — 商品層熱度（近期真人抽數，含時間衰減）。
+  // 系列分只知道「哪個 IP 紅」，這張表才知道「同一個 IP 裡哪一檔紅」
+  const [productHeat, setProductHeat] = useState<Map<number, number>>(new Map());
   /*
    * 有幾個分類頁籤存在。
    *
@@ -234,6 +281,23 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [supabase]);
 
+  // 商品層熱度（取代原本的 is_hot 排序 —— is_hot 現在純粹是後台手動的精選標籤）
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_popular_products', { p_limit: 200 });
+        if (cancelled || !Array.isArray(data)) return;
+        const map = new Map<number, number>();
+        for (const row of data as Array<{ product_id: number; score: number }>) {
+          map.set(Number(row.product_id), Number(row.score) || 0);
+        }
+        setProductHeat(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
+
   // Fetch personalized series preferences for logged-in users
   useEffect(() => {
     if (!user?.id) return;
@@ -325,12 +389,12 @@ export default function Home() {
   const [sellPage, setSellPage] = useState(0);
   const [sellHasMore, setSellHasMore] = useState(true);
   const [isSellFetchingMore, setIsSellFetchingMore] = useState(false);
-  const sellSentinelRef = useRef<HTMLDivElement | null>(null);
+  const sellSentinel = useSentinelRegistry();
   const secondaryTabsRef = useRef<HTMLDivElement>(null);
   const restoringSecondaryTabRef = useRef<string | null>(null);
   const restoringScrollRef = useRef<number | null>(null);
   const [homeDisplayCount, setHomeDisplayCount] = useState(10);
-  const homeSentinelRef = useRef<HTMLDivElement>(null);
+  const homeSentinel = useSentinelRegistry();
 
   const featuredSellCards = useMemo(() => {
     if (!flags.sell) return [];
@@ -351,6 +415,93 @@ export default function Home() {
   }, [activeSecondaryTab]);
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+
+  /*
+   * 網址帶頁籤 → 直接切到那一籤，不另開頁面。輪播圖的「首頁頁籤」就走這個。
+   *
+   *   /?tab=<內建頁籤 id>   例：/?tab=ichiban（一番賞）
+   *   /?menu=<分類 id>      例：/?menu=<uuid>（老闆自建的分類，如「開學買五送一」）
+   *
+   * 兩個參數並存是為了相容：`?menu=` 先做、正式站已經有輪播圖在用，不能換掉。
+   *
+   * 這樣輪播圖點下去是在首頁換頁籤，玩家還留在原本的瀏覽流程裡，
+   * 上面那排分類頁籤也還在，想跳去別類直接點就好 —— 比開一個
+   * 只有商品格的獨立促銷頁順。/promo/[id] 保留，那個網址還能對外分享。
+   *
+   * 讀 window.location 而不是 useSearchParams：後者在 App Router 需要
+   * Suspense 邊界，為了一個參數把整頁包起來不划算。
+   *
+   * ⚠️ 代價是這個值不會自己更新，所以三個入口都要各自打一次 goToHomeTab()：
+   * 掛載（從別頁進來）、popstate（上一頁／下一頁）、輪播圖點擊。
+   * 少了第三個就是老闆回報的那個 bug —— 人已經在首頁時點輪播圖，
+   * next/link 走同路由的淺導覽，網址換了但 Home 不會重新掛載，
+   * 頁籤原地不動；重新整理才會重新掛載，所以「刷新就對了」。
+   */
+  /** 被網址帶去某一籤之前待在哪，按上一頁時要退回去 */
+  const tabBeforeDeepLinkRef = useRef<PrimaryTabId | null>(null);
+  const deepLinkedTabRef = useRef<PrimaryTabId | null>(null);
+
+  const goToHomeTab = useCallback((tabId: PrimaryTabId) => {
+    deepLinkedTabRef.current = tabId;
+    setActivePrimaryTab((prev) => {
+      if (prev === tabId) return prev;
+      tabBeforeDeepLinkRef.current = prev;
+      return tabId;
+    });
+    setActiveSecondaryTab('all');
+    // 帶參數進來就不要再套用上次離開時的頁籤
+    sessionStorage.removeItem(homeRestoreKey);
+    restoringScrollRef.current = null;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [homeRestoreKey]);
+
+  /** 網址上的頁籤參數不見了（按上一頁）→ 退回被帶走之前的那一籤 */
+  const leaveDeepLinkedTab = useCallback(() => {
+    setActivePrimaryTab((prev) => {
+      if (prev !== deepLinkedTabRef.current) return prev;
+      const back = tabBeforeDeepLinkRef.current ?? ('all' as PrimaryTabId);
+      tabBeforeDeepLinkRef.current = null;
+      deepLinkedTabRef.current = null;
+      return back;
+    });
+    setActiveSecondaryTab('all');
+  }, []);
+
+  /**
+   * 連到首頁且帶頁籤參數的網址 → 取出頁籤 id，其餘回 null。
+   *
+   * `?tab=` 只認內建那幾顆（白名單），不然後台打錯字會切到一個不存在的籤、
+   * 畫面整片空白還沒有任何提示。自建分類走 `?menu=`，id 是 uuid 沒得比對。
+   */
+  const homeTabFromHref = useCallback((href: string): PrimaryTabId | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin || url.pathname !== '/') return null;
+      const menu = url.searchParams.get('menu');
+      if (menu) return `menu:${menu}` as PrimaryTabId;
+      const tab = url.searchParams.get('tab');
+      return tab && (BUILT_IN_TAB_IDS as readonly string[]).includes(tab)
+        ? (tab as PrimaryTabId)
+        : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const tab = homeTabFromHref(window.location.href);
+    if (tab) goToHomeTab(tab);
+
+    const onPop = () => {
+      const next = homeTabFromHref(window.location.href);
+      if (next) goToHomeTab(next);
+      else leaveDeepLinkedTab();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [goToHomeTab, leaveDeepLinkedTab, homeTabFromHref]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -410,15 +561,24 @@ export default function Home() {
     return [...base, ...menuTabs];
   }, [flagStates, flags.sell, menus]);
 
+  /*
+   * 這兩段是「頁籤不存在就別停在上面」的保護，但**功能旗標載完之前不能動手**。
+   *
+   * 旗標還在載的時候 flagStates 是空的，數出來的分類數是 0 ——
+   * 於是 `/?tab=ichiban` 這種深連結才剛把頁籤切過去，就被這裡打回「綜合」。
+   * 冷開必中、熱開（旗標已在 context 裡）反而正常，很難重現。
+   */
   useEffect(() => {
+    if (isFlagsLoading) return;
     if (!singlePrimaryTab) return;
     if (activePrimaryTab !== singlePrimaryTab) setActivePrimaryTab(singlePrimaryTab);
-  }, [activePrimaryTab, singlePrimaryTab]);
+  }, [activePrimaryTab, isFlagsLoading, singlePrimaryTab]);
 
   useEffect(() => {
+    if (isFlagsLoading) return;
     if (hasAnyPrimaryFeature) return;
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
-  }, [activePrimaryTab, hasAnyPrimaryFeature]);
+  }, [activePrimaryTab, hasAnyPrimaryFeature, isFlagsLoading]);
 
   useEffect(() => {
     if (!activePrimaryTab.startsWith('menu:')) return;
@@ -473,6 +633,10 @@ export default function Home() {
     [activePrimaryTab, flagStates, menuProductIdsByMenuId]
   );
 
+  // 二級頁籤最多顯示幾顆。轉蛋光是現在就有 18 個系列，抓 14 會有四個
+  // 系列永遠顯示不出來、畫面上也沒有任何提示（老闆指定放寬到 20）
+  const MAX_SERIES_TABS = 20;
+
   // Series tabs: personal prefs → global popularity → product count
   // Only include series from products in the current primary tab
   const seriesTabs = useMemo(() => {
@@ -492,7 +656,7 @@ export default function Home() {
         if (popDiff !== 0) return popDiff;
         return b[1] - a[1];
       })
-      .slice(0, 14)
+      .slice(0, MAX_SERIES_TABS)
       .map(([s]) => ({
         id: `series:${s}`,
         label: s.length > 8 ? s.slice(0, 8) : s,
@@ -515,7 +679,7 @@ export default function Home() {
         if (seen.has(s)) continue;
         seen.add(s);
         ordered.push(s);
-        if (ordered.length >= 14) break;
+        if (ordered.length >= MAX_SERIES_TABS) break;
       }
       return [
         { id: 'featured', label: '推薦' },
@@ -588,23 +752,58 @@ export default function Home() {
       } else if (activeSecondaryTab === 'featured') {
         const prefMap = userSeriesPref.size > 0 ? userSeriesPref : globalSeriesPop;
         if (prefMap.size > 0) {
+          /*
+           * 新品曝光期：上架 7 天內的商品，系列分保底拉到「熱度榜中位數」。
+           *
+           * 不這樣做會有死結 —— 全新 IP 的系列分是 0，在推薦頁被埋在所有
+           * 有分的系列後面；但玩家看不到就不會抽，不抽就永遠拿不到分。
+           * 保底取中位數而不是最高分：新品進得了上半部，但不會蓋過真正
+           * 賣得動的那幾檔。過了 7 天就自動掉回自己系列的真實分數。
+           */
+          const scored = Array.from(prefMap.values()).filter(v => v > 0).sort((x, y) => x - y);
+          const newcomerFloor = scored.length > 0 ? scored[Math.floor(scored.length / 2)] : 0;
+          const NEW_WINDOW_MS = 7 * 24 * 3600 * 1000;
+          const now = Date.now();
+          const scoreOf = (p: ProductRow) => {
+            const base = prefMap.get(p.series || '') || 0;
+            const age = p.created_at ? now - new Date(p.created_at).getTime() : Infinity;
+            return age <= NEW_WINDOW_MS ? Math.max(base, newcomerFloor) : base;
+          };
+
           result.sort((a, b) => {
-            const scoreA = prefMap.get(a.series || '') || 0;
-            const scoreB = prefMap.get(b.series || '') || 0;
+            const scoreA = scoreOf(a);
+            const scoreB = scoreOf(b);
             if (scoreA !== scoreB) return scoreB - scoreA;
-            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            // 同一個系列裡，比誰最近真的在賣（is_hot 只是手動精選標籤，不參與排序）
+            const heatA = productHeat.get(Number(a.id)) || 0;
+            const heatB = productHeat.get(Number(b.id)) || 0;
+            if (heatA !== heatB) return heatB - heatA;
             const da = a.created_at ? new Date(a.created_at).getTime() : 0;
             const db = b.created_at ? new Date(b.created_at).getTime() : 0;
             return db - da;
           });
         } else {
           result.sort((a, b) => {
-            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            const heatA = productHeat.get(Number(a.id)) || 0;
+            const heatB = productHeat.get(Number(b.id)) || 0;
+            if (heatA !== heatB) return heatB - heatA;
             const da = a.created_at ? new Date(a.created_at).getTime() : 0;
             const db = b.created_at ? new Date(b.created_at).getTime() : 0;
             return db - da;
           });
         }
+      } else {
+        // 系列頁籤：同一個系列內比系列分沒有意義，改用商品熱度 → 新到舊。
+        // 以前這裡沒有任何 sort，靠 fetch 的 created_at desc 撐著 ——
+        // 看起來對，但只要查詢順序一改就會無聲亂掉
+        result.sort((a, b) => {
+          const heatA = productHeat.get(Number(a.id)) || 0;
+          const heatB = productHeat.get(Number(b.id)) || 0;
+          if (heatA !== heatB) return heatB - heatA;
+          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return db - da;
+        });
       }
 
       if (sortMode !== 'sold-out') {
@@ -617,7 +816,7 @@ export default function Home() {
 
       return result;
     },
-    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop]
+    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop, productHeat]
   );
 
   const filteredProducts = useMemo(
@@ -630,18 +829,39 @@ export default function Home() {
     setHomeDisplayCount(10);
   }, [activePrimaryTab, activeSecondaryTab]);
 
-  // Home page lazy load — window scroll
+  /*
+   * 分批載入：盯著列表底部的哨兵，看得到就再載 10 筆。
+   *
+   * 原本只掛 window 的 scroll 事件，在桌機上是壞的 —— 首批 10 張卡在
+   * 五欄版面只有兩列，整頁根本沒有捲軸，scroll 事件永遠不觸發，於是
+   * 綜合與轉蛋（商品多）就卡在 10 張＋底下一行永遠的「載入中...」。
+   * 其他類別只有 4 件商品、一次就載完，所以看起來正常。
+   *
+   * 哨兵本來就已經掛在 DOM 上，只是沒有人在看它。
+   * 改用 IntersectionObserver：不需要捲動也會觸發，會一路補到畫面被填滿
+   * 或商品出完為止。
+   *
+   * 觀察對象走 useSentinelRegistry()（手機／桌機兩份面板各一顆哨兵），
+   * 不能只留一個 ref —— 細節見該 hook 的註解。
+   */
   useEffect(() => {
     const total = filteredProducts.length;
-    if (total === 0) return;
-    const handleScroll = () => {
-      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
-        setHomeDisplayCount(prev => prev < total ? prev + 10 : prev);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [filteredProducts.length]);
+    if (total === 0 || homeDisplayCount >= total) return;
+    const nodes = homeSentinel.liveNodes();
+    if (nodes.length === 0) return;
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries.some(e => e.isIntersecting)) {
+          setHomeDisplayCount(prev => (prev < total ? prev + 10 : prev));
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    for (const el of nodes) io.observe(el);
+    return () => io.disconnect();
+    // 切頁籤時兩份面板會重掛哨兵，但商品數與已顯示數有可能剛好沒變
+    //（例如兩個頁籤的商品數相同），所以要靠 version 把觀察者重新接上
+  }, [filteredProducts.length, homeDisplayCount, homeSentinel, homeSentinel.version]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -692,6 +912,19 @@ export default function Home() {
     setActiveSecondaryTab('all');
     requestAnimationFrame(() => setIsCategoryChanging(false));
   }
+
+  /*
+   * 輪播圖點擊：埋點 + 「連結首頁分類頁籤」就地切頁籤。
+   *
+   * HeroBanner 走的是 next/link，人已經在首頁時點 `/?menu=<id>` 是同路由的
+   * 淺導覽 —— 網址會換、Home 不會重新掛載，所以不能只靠讀網址的那個 effect。
+   * 這裡直接從 banner 自己的連結取分類 id，不等網址更新。
+   */
+  const handleBannerClick = useCallback((banner: { id: string | number; link: string }) => {
+    trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } });
+    const tab = homeTabFromHref(banner.link);
+    if (tab) goToHomeTab(tab);
+  }, [goToHomeTab, homeTabFromHref]);
 
   const swipeConfidenceThreshold = 10000;
   const swipePower = (offset: number, velocity: number) => {
@@ -925,17 +1158,17 @@ export default function Home() {
     if (activePrimaryTab !== 'sell') return;
     if (!sellHasMore) return;
     if (isSellListingsLoading || isSellFetchingMore) return;
-    const node = sellSentinelRef.current;
-    if (!node) return;
+    const nodes = sellSentinel.liveNodes();
+    if (nodes.length === 0) return;
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) setSellPage((p) => p + 1);
       },
       { rootMargin: '600px 0px' }
     );
-    io.observe(node);
+    for (const node of nodes) io.observe(node);
     return () => io.disconnect();
-  }, [activePrimaryTab, sellHasMore, isSellFetchingMore, isSellListingsLoading]);
+  }, [activePrimaryTab, sellHasMore, isSellFetchingMore, isSellListingsLoading, sellSentinel, sellSentinel.version]);
 
   const filteredSellListings = useMemo(() => {
     let result = [...sellListings];
@@ -1206,7 +1439,7 @@ export default function Home() {
                 )}
               </div>
 
-              <div ref={sellSentinelRef} className="h-10" />
+              <div ref={sellSentinel.register} className="h-10" />
               {!isSellListingsLoading && isSellFetchingMore && (
                 <div className="py-6 text-center text-[13px] font-black text-neutral-400">載入中</div>
               )}
@@ -1371,7 +1604,7 @@ export default function Home() {
           )}
           {activePrimaryTab !== 'sell' && (
             <div
-              ref={homeSentinelRef}
+              ref={homeSentinel.register}
               className={`text-center text-[13px] font-black text-neutral-400 ${!isLoading && !loadError && filteredProducts.length === 0 ? 'min-h-[40vh] flex items-center justify-center' : 'py-6'}`}
             >
               {homeDisplayCount < filteredProducts.length
@@ -1410,7 +1643,7 @@ export default function Home() {
                 image: b.image_url,
                 link: b.link_url || '#',
               }))}
-              onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
+              onBannerClick={handleBannerClick}
             />
           )}
         </section>
@@ -1619,7 +1852,7 @@ export default function Home() {
               </aside>
             )}
 
-            <main className="flex-1" {...swipePrimaryTabs}>
+            <main className="min-w-0 flex-1" {...swipePrimaryTabs}>
               <div className="mb-3 rounded-[8px] overflow-hidden">
                 <WinningMarquee />
               </div>
@@ -1634,7 +1867,7 @@ export default function Home() {
                       image: b.image_url,
                       link: b.link_url || '#',
                     }))}
-                    onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
+                    onBannerClick={handleBannerClick}
                   />
                 )}
               </section>
@@ -1644,8 +1877,12 @@ export default function Home() {
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-neutral-50 dark:bg-neutral-950 z-0" />
                   <div className="relative z-10 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
+                    {/* min-w-0 是必要的：flex 子項預設 min-width:auto，會被裡面的
+                        頁籤撐開而不是自己捲動。頁籤一多（綜合／轉蛋有 20 顆）
+                        整條列就把桌機的內容欄撐到 1650px，連帶把輪播圖與商品格
+                        一起撐爆、整頁出現橫向捲軸 */}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
                         <div className="flex items-center gap-1.5">
                           {secondaryTabs.map((tab: { id: string; label: string }) => (
                             <button

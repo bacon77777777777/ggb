@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, Bell, MessageCircle, LogOut, User as UserIcon, ChevronDown, ChevronLeft, X, History, Flame, Heart, CheckCircle2, Share2, Copy, MoreVertical, Flag, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
+import { categoryState } from '@/lib/categoryFlags';
 import NavbarLayout from './NavbarLayout';
 import { countUnread } from '@/lib/announcementRead';
 import { startKeyboardRelay } from '@/lib/keyboardRelay';
@@ -27,8 +28,13 @@ function NavbarInner() {
   const { user, logout, isLoading, isAuthenticated } = useAuth();
   const { showToast } = useToast();
   // 儲值維護中時「立即儲值」不換頁、改跳提示
-  const { states: featureStates } = useFeatureFlags();
+  const { states: featureStates, isLoading: isFlagsLoading } = useFeatureFlags();
   const rechargeState = featureStates.recharge;
+  /* 機台關閉時整個「挑戰」入口要消失 —— 功能開關頁的說明就是這樣寫的
+     （「關閉後挑戰入口與機台頁都會消失」）。首頁的懸浮入口與 /challenge
+     頁本身都有擋，只有這裡的頂部導航漏了，桌機關掉還看得到。
+     維護中照常顯示：那是暫時停一下，點進去頁面會說明。 */
+  const slotOff = !isFlagsLoading && categoryState('slot', featureStates, false) === 'off';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMessagesMoreOpen, setIsMessagesMoreOpen] = useState(false);
   const [productName, setProductName] = useState<string | null>(null);
@@ -45,6 +51,17 @@ function NavbarInner() {
   useEffect(() => {
     const check = async () => {
       try {
+        // 個人通知（綁定禮入帳、邀請獎勵可領…）也要點亮鈴鐺，
+        // 不然玩家拿到獎勵完全沒感覺 —— 私訊類歸「訊息」頁管，不算
+        if (user) {
+          const { count } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('is_read', false)
+            .not('type', 'in', '(exchange_message,sell_message)');
+          if ((count ?? 0) > 0) { setBellUnread(true); return; }
+        }
+
         const res = await fetch('/api/announcements?limit=30');
         if (!res.ok) return;
         const data = await res.json();
@@ -58,7 +75,7 @@ function NavbarInner() {
     const handler = () => { void check(); };
     window.addEventListener('ggb:announcementsRead', handler);
     return () => window.removeEventListener('ggb:announcementsRead', handler);
-  }, []);
+  }, [user, supabase]);
 
   // Check if we just logged in
   const isLoginRedirect = searchParams.get('login_success') === 'true';
@@ -677,20 +694,22 @@ function NavbarInner() {
                   <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
                 )}
               </Link>
-              <Link
-                href="/challenge"
-                className={cn(
-                  "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
-                  pathname === '/challenge' || pathname.startsWith('/challenge/')
-                    ? "text-primary"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
-                )}
-              >
-                <span>挑戰</span>
-                {(pathname === '/challenge' || pathname.startsWith('/challenge/')) && (
-                  <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
-                )}
-              </Link>
+              {!slotOff && (
+                <Link
+                  href="/challenge"
+                  className={cn(
+                    "relative flex items-center h-9 text-[15px] lg:text-[16px] font-black transition-colors",
+                    pathname === '/challenge' || pathname.startsWith('/challenge/')
+                      ? "text-primary"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-primary"
+                  )}
+                >
+                  <span>挑戰</span>
+                  {(pathname === '/challenge' || pathname.startsWith('/challenge/')) && (
+                    <span className="absolute inset-x-0 -bottom-1 h-1 rounded-full bg-primary" />
+                  )}
+                </Link>
+              )}
               <Link
                 href="/ranking"
                 className={cn(
