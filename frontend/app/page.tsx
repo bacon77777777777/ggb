@@ -372,6 +372,28 @@ export default function Home() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
 
+  /*
+   * 網址帶分類 → 直接切到那個頁籤，不另開頁面。
+   *
+   *   /?menu=<分類 id>   例：輪播圖連到「開學買五送一」
+   *
+   * 這樣輪播圖點下去是在首頁換頁籤，玩家還留在原本的瀏覽流程裡，
+   * 上面那排分類頁籤也還在，想跳去別類直接點就好 —— 比開一個
+   * 只有商品格的獨立促銷頁順。/promo/[id] 保留，那個網址還能對外分享。
+   *
+   * 讀 window.location 而不是 useSearchParams：後者在 App Router 需要
+   * Suspense 邊界，為了一個參數把整頁包起來不划算。
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const menu = new URLSearchParams(window.location.search).get('menu');
+    if (menu) {
+      setActivePrimaryTab(`menu:${menu}` as PrimaryTabId);
+      // 帶參數進來就不要再套用上次離開時的頁籤
+      sessionStorage.removeItem(homeRestoreKey);
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const shouldRestore = sessionStorage.getItem(homeRestoreKey) === '1';

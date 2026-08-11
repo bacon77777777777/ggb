@@ -230,7 +230,9 @@ export function RatesPanel() {
           <div className="flex items-center gap-3 min-w-[240px]">
             <input
               type="range"
-              min={1} max={200} step={1}
+              /* 上限 100：排籤時是 LEAST(v_rate*100, 100)，超過 100 完全沒有
+                 效果，但滑桿拉得動會讓人以為 150% 跟 100% 有差 */
+              min={1} max={100} step={1}
               value={Math.round(rate * 100)}
               disabled={locked}
               onChange={e => setRates({ ...rates, [r.id]: Number(e.target.value) / 100 })}
