@@ -483,7 +483,7 @@ async function injectBodyImages(
   for (const u of candidates) {
     if (hosted.length >= 2) break
     // 逐張偵測：有浮水印就蓋 logo，沒有就原樣轉存
-    const r = await downloadSmartToR2(u, forceBrand, pageUrl, seen)
+    const r = await downloadSmartToR2(u, forceBrand, pageUrl, seen, 'body')
     if (r) hosted.push(r)
   }
   if (hosted.length === 0) return content
@@ -519,11 +519,15 @@ function figureHtml(url: string): string {
  * 百分之百不要看到別人的 logo）。原本只查 dengeki，其他來源原樣轉存，
  * 只要哪家開始壓站標就會直接漏出去。
  *
- * 流程：
- *   1. Claude 視覺看四角 → 乾淨就原樣轉存
+ * 流程（封面）：
+ *   1. Claude 視覺看上下緣 → 乾淨就原樣轉存
  *   2. 有浮水印 → 蓋 GGB logo → **再驗一次**，確認蓋完真的看不到了
  *   3. 任何一步不確定（API 失敗、蓋完還看得到、已知會壓浮水印的站卻
- *      回報乾淨）→ 回 null，這張圖不用
+ *      回報乾淨）→ 回 null，呼叫端整篇不發
+ *
+ * 內文配圖走簡化版：**有浮水印就丟掉那張圖**，不蓋也不複驗；
+ * 已知會壓浮水印的站連下載都省。內文圖少一兩張不影響文章，
+ * 為它多花兩次視覺呼叫不划算（老闆規則）。
  *
  * 第 2 步是關鍵：驗的是「實際成品」而不是「兩個定位方法有沒有共識」，
  * 直接對應我們真正在意的事 —— 成品上還看不看得到別人的浮水印。
@@ -535,8 +539,20 @@ async function downloadSmartToR2(
   forceBrand = false,
   sourceUrl = '',
   seen?: Set<string>,
+  /**
+   * 'cover' = 封面，蓋得掉就蓋，蓋不掉整篇不發
+   * 'body'  = 內文配圖，**有浮水印就直接不要這張**，不花力氣蓋也不複驗
+   *
+   * 老闆規則：難蓋的內文圖就捨棄，網上文章多的是，主圖顧好就行。
+   * 這樣一張有浮水印的內文圖從「2 次視覺呼叫 + 蓋圖」變成「1 次呼叫」，
+   * 已知一定會壓浮水印的站更是連下載都省。
+   */
+  role: 'cover' | 'body' = 'cover',
 ): Promise<string | null> {
   try {
+    // 已知一定會壓浮水印的站，內文圖直接放棄 —— 連圖都不用抓、更不用問 Claude
+    if (role === 'body' && isWatermarkedSource(sourceUrl, imgUrl)) return null
+
     // 封面圖在 isUsableCover 已經抓過一次，這裡直接吃快取，不重抓
     const buf = await fetchImageOnce(imgUrl)
     if (!buf) return null
@@ -569,6 +585,9 @@ async function downloadSmartToR2(
       const key = `news/img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
       return await r2Upload(key, webp, 'image/webp')
     }
+
+    // 內文圖有浮水印就丟掉，不蓋也不複驗（省一次視覺呼叫）
+    if (role === 'body') return null
 
     const branded = await brandCoverImage(buf, found)
     if (!branded) return null
