@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ImageButton } from '@/components/ui/ImageButton';
 import { GachaCollectionList } from '@/components/shop/GachaCollectionList';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
+import { SoundToggle } from '@/components/ui/SoundToggle';
+import { isSoundMuted, subscribeSoundMuted } from '@/lib/soundPrefs';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import ProductBadge from '@/components/ui/ProductBadge';
 import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmationModal';
@@ -236,9 +238,11 @@ export default function BlindboxDetailPage() {
     }
   };
 
+  // 背景影片預設 muted（瀏覽器 autoplay policy 要求），玩家做出互動後才開聲。
+  // 這裡多擋一道靜音偏好，不然按了右上角的靜音鈕、換一批的時候聲音又會回來。
   const enableBackgroundAudio = () => {
     const el = bgVideoRef.current;
-    if (!el) return;
+    if (!el || isSoundMuted()) return;
     try {
       el.muted = false;
       el.volume = 1;
@@ -246,6 +250,13 @@ export default function BlindboxDetailPage() {
     } catch {
     }
   };
+
+  // 靜音鈕按下時，正在出聲的背景影片要立刻閉嘴；解除時交還給
+  // enableBackgroundAudio（下一次互動才開聲，不在這裡自作主張放出來）
+  useEffect(() => subscribeSoundMuted(m => {
+    const el = bgVideoRef.current;
+    if (el && m) el.muted = true;
+  }), []);
 
   const handlePlay = () => {
     if (!product) return;
@@ -761,10 +772,13 @@ export default function BlindboxDetailPage() {
         {/* Mobile < 1024px */}
         <div className="block lg:hidden overflow-x-hidden pb-32 pt-14">
           <div
-            className="w-full flex justify-center"
+            className="relative w-full flex justify-center"
             style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
           >
             {renderMachineInner()}
+            {/* 聲音開關掛在機台外層而不是 renderMachineInner 裡面 ——
+                機台那層有 scale()，放進去按鈕會跟著機台一起被縮放。 */}
+            <SoundToggle className="absolute top-3 right-3 z-30" />
           </div>
           <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2">
             <GachaCollectionList
@@ -783,10 +797,11 @@ export default function BlindboxDetailPage() {
               <div className="col-span-4 sticky top-20">
                 <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
                   <div
-                    className="w-full overflow-hidden flex justify-center"
+                    className="relative w-full overflow-hidden flex justify-center"
                     style={{ height: Math.round(scale * 375 * 932 / 750) }}
                   >
                     {renderMachineInner()}
+                    <SoundToggle className="absolute top-3 right-3 z-30" />
                   </div>
                   <div className="p-5 space-y-3">
                     <h1 className="text-lg font-black text-neutral-900 dark:text-neutral-50 leading-tight tracking-tight break-all">

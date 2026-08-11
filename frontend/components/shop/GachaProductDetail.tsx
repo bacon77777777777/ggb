@@ -18,6 +18,7 @@ import { PurchaseConfirmationModal } from '@/components/shop/PurchaseConfirmatio
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import PinchZoomImage from '@/components/ui/PinchZoomImage';
+import { SoundToggle } from '@/components/ui/SoundToggle';
 import { trackEvent } from '@/lib/trackEvent';
 import ProductBadge from '@/components/ui/ProductBadge';
 
@@ -460,10 +461,13 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
       {/* ── 手機/平板（< 1024px）：原始直式佈局，完全不動 ── */}
       <div className="block lg:hidden overflow-x-hidden pb-32">
         <div
-          className="w-full flex justify-center"
+          className="relative w-full flex justify-center"
           style={{ marginBottom: Math.round(375 * (932 / 750) * (scale - 1)) }}
         >
           {renderMachineInner()}
+          {/* 聲音開關掛在機台外層而不是 renderMachineInner 裡面 ——
+              機台那層有 scale()，放進去按鈕會跟著機台一起被縮放。 */}
+          <SoundToggle className="absolute top-3 right-3 z-30" />
         </div>
         <div className="w-full max-w-[560px] mx-auto px-2 pb-2 mt-2">
           <GachaCollectionList productId={product.id} product={product} prizes={prizes} refreshKey={collectionRefreshKey} />
@@ -480,10 +484,11 @@ export function GachaProductDetail({ product, prizes, machineTheme, onMachineRea
               <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 overflow-hidden">
                 {/* 機台：明確高度 = 視覺高度，防止 overflow-hidden 切掉 */}
                 <div
-                  className="w-full overflow-hidden flex justify-center"
+                  className="relative w-full overflow-hidden flex justify-center"
                   style={{ height: Math.round(scale * 375 * 932 / 750) }}
                 >
                   {renderMachineInner()}
+                  <SoundToggle className="absolute top-3 right-3 z-30" />
                 </div>
 
                 {/* 商品名稱 + 價格 + 剩餘 */}

@@ -17,6 +17,8 @@
  *   - 防抖長度改成音檔自己的長度，不再是猜的數字
  */
 
+import { isSoundMuted, subscribeSoundMuted } from './soundPrefs';
+
 type Entry = { audio: HTMLAudioElement; playingUntil: number };
 
 const cache = new Map<string, Entry>();
@@ -46,6 +48,8 @@ function getEntry(src: string): Entry | null {
  *              只有那種蓋掉前一個才合理的音效才用（例如結果彈窗）。
  */
 export function playSfx(src: string, opts?: { interrupt?: boolean; volume?: number }) {
+  if (isSoundMuted()) return;
+
   const entry = getEntry(src);
   if (!entry) return;
 
@@ -70,6 +74,12 @@ export function stopAllSfx() {
     entry.audio.pause();
     entry.playingUntil = 0;
   }
+}
+
+// 按下靜音時，正在播的那一聲要立刻停 —— 只擋後續播放的話，玩家會覺得
+// 「我按了但它還在響」。
+if (typeof window !== 'undefined') {
+  subscribeSoundMuted(m => { if (m) stopAllSfx(); });
 }
 
 export const SFX = {

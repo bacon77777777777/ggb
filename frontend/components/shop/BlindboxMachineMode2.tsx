@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { playSfx, SFX } from '@/lib/sfx';
+import { isSoundMuted } from '@/lib/soundPrefs';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ImageButton } from '@/components/ui/ImageButton';
@@ -148,9 +149,11 @@ function useBoxSounds() {
     };
   }, []);
 
+  // 這兩個音檔沒走 lib/sfx（機台嗡鳴要 loop、換箱要能重疊），所以靜音開關
+  // 得在這裡自己擋一次，不然玩家按了靜音機台還是在響。
   const play = (ref: React.MutableRefObject<HTMLAudioElement | null>, volume = 1) => {
     const a = ref.current;
-    if (!a) return;
+    if (!a || isSoundMuted()) return;
     a.volume = volume;
     a.currentTime = 0;
     void a.play().catch(() => {});
@@ -158,7 +161,7 @@ function useBoxSounds() {
 
   const startMachine = () => {
     const a = machineRef.current;
-    if (!a) return;
+    if (!a || isSoundMuted()) return;
     a.volume = 0.55;
     a.currentTime = 0;
     void a.play().catch(() => {});
@@ -210,6 +213,7 @@ export function BlindboxMachineMode2({
   // Web Audio impact thud — throttled to avoid overlapping
   const lastImpactRef = useRef(0);
   const impactRef = useRef(() => {
+    if (isSoundMuted()) return;
     const now = Date.now();
     if (now - lastImpactRef.current < 120) return;
     lastImpactRef.current = now;
