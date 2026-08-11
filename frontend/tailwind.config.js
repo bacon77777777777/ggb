@@ -4,6 +4,10 @@ module.exports = {
   content: [
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // lib 也要掃：賞等配色（lib/prizeGrade.ts）等常數把 class 字串寫在這裡，
+    // 漏掉的話那些 class 不會被產生 —— 畫面上是「元素在、顏色沒了」，
+    // 例如 A賞 變成白字白底，看起來像整個標籤消失
+    './lib/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
