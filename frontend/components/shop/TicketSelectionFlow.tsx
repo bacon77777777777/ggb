@@ -851,7 +851,19 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
     }
   }, [drawnResults]);
 
-  if (isLoading) return (
+  /*
+   * 試玩還在備料時，沿用同一塊載入畫面，**不要先把籤格畫出來**。
+   *
+   * 試試看是「跳過選籤、直接進演出」，但這支元件的本體就是選籤畫面 ——
+   * 商品一載完就先渲染籤格，等試玩把假結果算出來（要等模組設定 + 撈賞別）
+   * 才切到撕紙，中間那半秒玩家會看到一閃而過的選籤頁，很像點錯了。
+   *
+   * 備料一定會結束：模組設定 fetch 成功或失敗都會定出主題，
+   * 接著 effect 必定 setDrawnResults（撈不到賞別也有預設值），不會卡在載入。
+   */
+  const isTrialPreparing = trial && drawnResults.length === 0;
+
+  if (isLoading || isTrialPreparing) return (
     <div className="fixed inset-0 z-[2000] bg-neutral-950/80 flex items-center justify-center backdrop-blur-sm">
       <IpLoader dark />
     </div>
