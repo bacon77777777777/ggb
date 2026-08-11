@@ -248,7 +248,8 @@ async function insertProduct(p: EnrichedProduct, supplierId?: number | null): Pr
     price: p.jp_price_yen ? Math.round(p.jp_price_yen / 2) : 50,
     total_count: total,
     remaining: total,
-    status: 'active',
+    // 匯入一律先下架，讓老闆調完殺率再手動上架（上架＝封存＝鎖死）
+    status: 'pending',
     is_hot: false,
     image_url: p.image_url,
     barcode: p.barcode,

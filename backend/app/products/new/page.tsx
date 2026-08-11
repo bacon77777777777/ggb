@@ -58,7 +58,9 @@ export default function NewProductPage() {
     cost: '',
     image: null as File | null,
     imagePreview: '/images/item.png',
-    status: 'active',
+    // 一律先建成「待上架」（老闆指定）：一番賞／抽卡／自製賞一上架就會
+    // 自動排籤封存、殺率同時鎖死，所以要留一個能調殺率的空檔
+    status: 'pending',
     category: '',
     categoryId: '',
     selectedTagIds: [] as string[],
