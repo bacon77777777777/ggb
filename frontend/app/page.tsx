@@ -605,6 +605,16 @@ export default function Home() {
             return db - da;
           });
         }
+      } else {
+        // 系列頁籤：同一個系列內比系列分沒有意義，改用熱門 → 新到舊。
+        // 以前這裡沒有任何 sort，靠 fetch 的 created_at desc 撐著 ——
+        // 看起來對，但只要查詢順序一改就會無聲亂掉
+        result.sort((a, b) => {
+          if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return db - da;
+        });
       }
 
       if (sortMode !== 'sold-out') {
