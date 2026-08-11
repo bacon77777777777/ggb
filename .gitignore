@@ -45,3 +45,9 @@ backend/public/images/item/
 backend/test-results/
 # 老闆給的廠商實際清單，不進版控
 frontend/public/test/
+
+# Supabase CLI 本機暫存狀態
+backend/supabase/.temp/
+
+# 一次性量測腳本
+frontend/sw.mjs
