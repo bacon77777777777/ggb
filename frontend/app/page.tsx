@@ -46,6 +46,9 @@ export default function Home() {
   const [userSeriesPref, setUserSeriesPref] = useState<Map<string, number>>(new Map());
   // Map<series, score> — global platform popularity (used as default for new users)
   const [globalSeriesPop, setGlobalSeriesPop] = useState<Map<string, number>>(new Map());
+  // Map<product_id, score> — 商品層熱度（近期真人抽數，含時間衰減）。
+  // 系列分只知道「哪個 IP 紅」，這張表才知道「同一個 IP 裡哪一檔紅」
+  const [productHeat, setProductHeat] = useState<Map<number, number>>(new Map());
   /*
    * 有幾個分類頁籤存在。
    *
@@ -229,6 +232,23 @@ export default function Home() {
           if (row.series) map.set(row.series, Number(row.score) || 0);
         }
         setGlobalSeriesPop(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
+
+  // 商品層熱度（取代原本的 is_hot 排序 —— is_hot 現在純粹是後台手動的精選標籤）
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_popular_products', { p_limit: 200 });
+        if (cancelled || !Array.isArray(data)) return;
+        const map = new Map<number, number>();
+        for (const row of data as Array<{ product_id: number; score: number }>) {
+          map.set(Number(row.product_id), Number(row.score) || 0);
+        }
+        setProductHeat(map);
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -614,25 +634,32 @@ export default function Home() {
             const scoreA = scoreOf(a);
             const scoreB = scoreOf(b);
             if (scoreA !== scoreB) return scoreB - scoreA;
-            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            // 同一個系列裡，比誰最近真的在賣（is_hot 只是手動精選標籤，不參與排序）
+            const heatA = productHeat.get(Number(a.id)) || 0;
+            const heatB = productHeat.get(Number(b.id)) || 0;
+            if (heatA !== heatB) return heatB - heatA;
             const da = a.created_at ? new Date(a.created_at).getTime() : 0;
             const db = b.created_at ? new Date(b.created_at).getTime() : 0;
             return db - da;
           });
         } else {
           result.sort((a, b) => {
-            if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+            const heatA = productHeat.get(Number(a.id)) || 0;
+            const heatB = productHeat.get(Number(b.id)) || 0;
+            if (heatA !== heatB) return heatB - heatA;
             const da = a.created_at ? new Date(a.created_at).getTime() : 0;
             const db = b.created_at ? new Date(b.created_at).getTime() : 0;
             return db - da;
           });
         }
       } else {
-        // 系列頁籤：同一個系列內比系列分沒有意義，改用熱門 → 新到舊。
+        // 系列頁籤：同一個系列內比系列分沒有意義，改用商品熱度 → 新到舊。
         // 以前這裡沒有任何 sort，靠 fetch 的 created_at desc 撐著 ——
         // 看起來對，但只要查詢順序一改就會無聲亂掉
         result.sort((a, b) => {
-          if (a.is_hot !== b.is_hot) return b.is_hot ? 1 : -1;
+          const heatA = productHeat.get(Number(a.id)) || 0;
+          const heatB = productHeat.get(Number(b.id)) || 0;
+          if (heatA !== heatB) return heatB - heatA;
           const da = a.created_at ? new Date(a.created_at).getTime() : 0;
           const db = b.created_at ? new Date(b.created_at).getTime() : 0;
           return db - da;
@@ -649,7 +676,7 @@ export default function Home() {
 
       return result;
     },
-    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop]
+    [filterByPrimaryTab, sortMode, priceMin, priceMax, activeSecondaryTab, userSeriesPref, globalSeriesPop, productHeat]
   );
 
   const filteredProducts = useMemo(
