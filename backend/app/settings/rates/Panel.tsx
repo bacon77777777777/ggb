@@ -142,11 +142,14 @@ export function RatesPanel() {
 
   // 已開賣的調不了，列出來只是雜訊；要看的話再切換
   const [showLocked, setShowLocked] = useState(false)
+  /** 類別頁籤。三種玩法的賞等結構差很多，混在一起看很吃力 */
+  const [typeFilter, setTypeFilter] = useState<'all' | 'ichiban' | 'card' | 'custom'>('all')
   const lockedCount = useMemo(() => rows.filter(r => r.isSealed).length, [rows])
 
   const visible = useMemo(() => {
     const k = keyword.trim().toLowerCase()
     const list = rows
+      .filter(r => typeFilter === 'all' || r.type === typeFilter)
       .filter(r => showLocked || !r.isSealed)
       .filter(r => !k || r.name.toLowerCase().includes(k) || (r.productCode ?? '').toLowerCase().includes(k))
 
@@ -158,7 +161,7 @@ export function RatesPanel() {
       const bv = sortField === 'type' ? (TYPE_LABEL[b.type] ?? b.type) : b.name
       return av.localeCompare(bv, 'zh-Hant') * dir
     })
-  }, [rows, keyword, showLocked, sortField, sortDir, rates])
+  }, [rows, keyword, showLocked, sortField, sortDir, rates, typeFilter])
 
   const save = async () => {
     setIsSaving(true)
@@ -195,12 +198,13 @@ export function RatesPanel() {
   }
 
   const columns: Column<Row>[] = [
-    {
+    // 已經用頁籤切開時就不必再重複一欄，把寬度讓給機率
+    ...(typeFilter === 'all' ? [{
       key: 'type',
       label: '類別',
       sortable: true,
-      render: r => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
-    },
+      render: (r: Row) => <Badge color="purple">{TYPE_LABEL[r.type] ?? r.type}</Badge>,
+    } as Column<Row>] : []),
     {
       key: 'name',
       label: '商品',
@@ -268,7 +272,9 @@ export function RatesPanel() {
         return (
           <div>
             <div className="flex items-start gap-4">
-              <div className="flex-1 flex flex-wrap gap-x-4 gap-y-1">
+              {/* 等寬格子而不是 flex-wrap：各商品賞等數量不同，用 wrap 會讓
+                  上下兩列的數字對不齊，一整頁掃下來很難比較 */}
+              <div className="grid flex-1 grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-x-3 gap-y-1">
                 {rest.map(cell)}
               </div>
               <div className="w-28 flex-shrink-0 text-right">{cell(worst)}</div>
@@ -286,6 +292,35 @@ export function RatesPanel() {
   return (
     <>
       <PageCard>
+        {/* 類別頁籤：三種玩法的賞等結構差很多（A~E賞 vs 卡池階級），
+            混在同一張表裡逐列比對很吃力，先切開再看 */}
+        <div className="mb-4 flex items-center gap-1 border-b border-neutral-100 pb-3">
+          {([
+            { k: 'all' as const,     label: '全部' },
+            { k: 'ichiban' as const, label: '一番賞' },
+            { k: 'card' as const,    label: '抽卡' },
+            { k: 'custom' as const,  label: '自製賞' },
+          ]).map(t => {
+            const n = t.k === 'all'
+              ? rows.filter(r => showLocked || !r.isSealed).length
+              : rows.filter(r => r.type === t.k && (showLocked || !r.isSealed)).length
+            const active = typeFilter === t.k
+            return (
+              <button
+                key={t.k}
+                type="button"
+                onClick={() => setTypeFilter(t.k)}
+                className={`h-9 rounded-md px-4 text-sm transition-colors ${
+                  active ? 'bg-primary/5 font-medium text-primary' : 'text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {t.label}
+                <span className={`ml-1.5 tabular-nums ${active ? 'text-primary/60' : 'text-neutral-400'}`}>{n}</span>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0">
             <Input
