@@ -1,8 +1,8 @@
 'use client';
 
 import { createPortal } from 'react-dom';
-import Image from 'next/image';
-import { X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import PinchZoomImage from '@/components/ui/PinchZoomImage';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
@@ -26,6 +26,13 @@ interface Props {
   sealed?: boolean;
   /** 疊在別的彈窗之上時要拉高（例：中獎結果彈窗是 3000，這裡要更高） */
   zIndex?: number;
+  /**
+   * 上一項／下一項。有給才會顯示左右箭頭，圖片也才吃左右滑手勢。
+   * 品項總覽與配率表都是一整份清單，看完一項自然想看下一項 ——
+   * 關掉再點下一列太囉唆。
+   */
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 function getLevelStyle(level: string): string {
@@ -43,7 +50,7 @@ function getLevelStyle(level: string): string {
   return 'text-neutral-500';
 }
 
-export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700 }: Props) {
+export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700, onPrev, onNext }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -121,16 +128,36 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
               </button>
             </div>
 
-            {/* image：容器貼合圖片本身比例，不留白邊 */}
-            <div className="px-5 pt-1 pb-2 flex justify-center">
-              <Image
+            {/* 圖片：雙指縮放／拖移（放開彈回），沒放大時左右滑切換品項 */}
+            <div className="relative px-5 pt-1 pb-2">
+              <PinchZoomImage
+                key={prize?.name ?? ''}
                 src={prize?.image_url || '/images/item_defaulet.png'}
                 alt={prize?.name ?? ''}
-                width={480}
-                height={480}
-                className="h-[36dvh] max-h-[320px] w-auto max-w-full object-contain rounded-xl"
-                unoptimized
+                className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
+                onSwipeLeft={onNext}
+                onSwipeRight={onPrev}
               />
+              {onPrev && (
+                <button
+                  type="button"
+                  onClick={onPrev}
+                  aria-label="上一項"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm transition-opacity hover:bg-black/40 active:scale-95"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {onNext && (
+                <button
+                  type="button"
+                  onClick={onNext}
+                  aria-label="下一項"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm transition-opacity hover:bg-black/40 active:scale-95"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
             {/* name */}

@@ -28,7 +28,8 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   const [recommendations, setRecommendations] = useState<ProductRow[]>([]);
   const [supplierName, setSupplierName] = useState<string | null>(null);
   const [supabase] = useState(() => createClient());
-  const [previewPrize, setPreviewPrize] = useState<Prize | null>(null);
+  /** 看大圖時記的是「第幾項」而不是那一項本身 —— 才有辦法左右切換 */
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [brokenPrizeIds, setBrokenPrizeIds] = useState<Set<number>>(new Set());
   const markBroken = (id: number) => setBrokenPrizeIds(prev => new Set(prev).add(id));
   // 進行中的促銷：商品資訊要列出來，玩家才知道這一檔有活動
@@ -93,6 +94,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   const displayPrizes = prizes.filter(
     p => p.level !== 'Last One' && p.level !== 'LAST ONE' && !p.level?.includes('最後賞')
   );
+  const previewPrize = previewIndex !== null ? displayPrizes[previewIndex] ?? null : null;
 
   const typeLabel: Record<string, string> = {
     ichiban: '一番賞',
@@ -112,11 +114,11 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
   return (
     <div className="space-y-2 sm:space-y-5 w-full">
 
-      {/* 總覽 */}
+      {/* 品項總覽 */}
       <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
         <div className="p-2 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
           <h2 className="font-black text-neutral-900 dark:text-neutral-50 text-base sm:text-xl tracking-tight">
-            總覽
+            品項總覽
           </h2>
         </div>
 
@@ -132,7 +134,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
                 <tr
                   key={prize.id}
                   className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 transition-colors cursor-pointer"
-                  onClick={() => setPreviewPrize(prize)}
+                  onClick={() => setPreviewIndex(displayPrizes.indexOf(prize))}
                 >
                   <td className="px-2 sm:px-6 py-1.5 sm:py-3">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -260,6 +262,12 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
       )}
 
       <PrizeDetailSheet
+        onPrev={previewIndex !== null && displayPrizes.length > 1
+          ? () => setPreviewIndex(i => ((i ?? 0) - 1 + displayPrizes.length) % displayPrizes.length)
+          : undefined}
+        onNext={previewIndex !== null && displayPrizes.length > 1
+          ? () => setPreviewIndex(i => ((i ?? 0) + 1) % displayPrizes.length)
+          : undefined}
         prize={previewPrize ? {
           name: previewPrize.name,
           image_url: brokenPrizeIds.has(previewPrize.id) ? null : previewPrize.image_url,
@@ -267,7 +275,7 @@ export function GachaCollectionList({ productId, product, prizes, refreshKey }: 
           total: previewPrize.total,
           remaining: previewPrize.remaining,
         } : null}
-        onClose={() => setPreviewPrize(null)}
+        onClose={() => setPreviewIndex(null)}
       />
     </div>
   );
