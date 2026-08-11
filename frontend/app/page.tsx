@@ -32,6 +32,15 @@ type BannerRow = Database['public']['Tables']['banners']['Row'];
 type SortMode = 'latest' | 'price-asc' | 'price-desc' | 'sold-out';
 
 /**
+ * 輪播圖「首頁頁籤」可以指定的內建頁籤 id（網址 `/?tab=<id>`）。
+ *
+ * 後台 `app/banners/page.tsx` 的下拉選單要跟這份一致，改了記得兩邊一起改。
+ * 不收 `exchange`：那個頁籤目前沒有畫面（`filteredExchangeOffers` 算了但沒渲染）。
+ * 自建分類不在這裡，走 `/?menu=<uuid>`。
+ */
+const BUILT_IN_TAB_IDS = ['all', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'sell'] as const;
+
+/**
  * 分批載入的哨兵登記簿：把每一顆哨兵都記下來，而不是只留最後掛上的那一顆。
  *
  * 為什麼需要：`renderProductSections()` 在同一頁被呼叫兩次 —— 手機版包在
@@ -408,9 +417,12 @@ export default function Home() {
   const [priceMax, setPriceMax] = useState('');
 
   /*
-   * 網址帶分類 → 直接切到那個頁籤，不另開頁面。
+   * 網址帶頁籤 → 直接切到那一籤，不另開頁面。輪播圖的「首頁頁籤」就走這個。
    *
-   *   /?menu=<分類 id>   例：輪播圖連到「開學買五送一」
+   *   /?tab=<內建頁籤 id>   例：/?tab=ichiban（一番賞）
+   *   /?menu=<分類 id>      例：/?menu=<uuid>（老闆自建的分類，如「開學買五送一」）
+   *
+   * 兩個參數並存是為了相容：`?menu=` 先做、正式站已經有輪播圖在用，不能換掉。
    *
    * 這樣輪播圖點下去是在首頁換頁籤，玩家還留在原本的瀏覽流程裡，
    * 上面那排分類頁籤也還在，想跳去別類直接點就好 —— 比開一個
@@ -419,20 +431,21 @@ export default function Home() {
    * 讀 window.location 而不是 useSearchParams：後者在 App Router 需要
    * Suspense 邊界，為了一個參數把整頁包起來不划算。
    *
-   * ⚠️ 代價是這個值不會自己更新，所以三個入口都要各自打一次 goToMenuTab()：
+   * ⚠️ 代價是這個值不會自己更新，所以三個入口都要各自打一次 goToHomeTab()：
    * 掛載（從別頁進來）、popstate（上一頁／下一頁）、輪播圖點擊。
    * 少了第三個就是老闆回報的那個 bug —— 人已經在首頁時點輪播圖，
    * next/link 走同路由的淺導覽，網址換了但 Home 不會重新掛載，
    * 頁籤原地不動；重新整理才會重新掛載，所以「刷新就對了」。
    */
-  /** 進分類頁籤前待在哪一籤，按上一頁時要退回去 */
-  const tabBeforeMenuRef = useRef<PrimaryTabId | null>(null);
+  /** 被網址帶去某一籤之前待在哪，按上一頁時要退回去 */
+  const tabBeforeDeepLinkRef = useRef<PrimaryTabId | null>(null);
+  const deepLinkedTabRef = useRef<PrimaryTabId | null>(null);
 
-  const goToMenuTab = useCallback((menuId: string) => {
-    const tabId = `menu:${menuId}` as PrimaryTabId;
+  const goToHomeTab = useCallback((tabId: PrimaryTabId) => {
+    deepLinkedTabRef.current = tabId;
     setActivePrimaryTab((prev) => {
       if (prev === tabId) return prev;
-      if (!prev.startsWith('menu:')) tabBeforeMenuRef.current = prev;
+      tabBeforeDeepLinkRef.current = prev;
       return tabId;
     });
     setActiveSecondaryTab('all');
@@ -442,24 +455,35 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [homeRestoreKey]);
 
-  /** 網址上的 ?menu= 不見了（按上一頁）→ 退回點輪播圖之前的那一籤 */
-  const leaveMenuTab = useCallback(() => {
+  /** 網址上的頁籤參數不見了（按上一頁）→ 退回被帶走之前的那一籤 */
+  const leaveDeepLinkedTab = useCallback(() => {
     setActivePrimaryTab((prev) => {
-      if (!prev.startsWith('menu:')) return prev;
-      const back = tabBeforeMenuRef.current ?? ('all' as PrimaryTabId);
-      tabBeforeMenuRef.current = null;
+      if (prev !== deepLinkedTabRef.current) return prev;
+      const back = tabBeforeDeepLinkRef.current ?? ('all' as PrimaryTabId);
+      tabBeforeDeepLinkRef.current = null;
+      deepLinkedTabRef.current = null;
       return back;
     });
     setActiveSecondaryTab('all');
   }, []);
 
-  /** 連到首頁且帶 ?menu= 的網址 → 取出分類 id，其餘回 null */
-  const menuIdFromHref = useCallback((href: string): string | null => {
+  /**
+   * 連到首頁且帶頁籤參數的網址 → 取出頁籤 id，其餘回 null。
+   *
+   * `?tab=` 只認內建那幾顆（白名單），不然後台打錯字會切到一個不存在的籤、
+   * 畫面整片空白還沒有任何提示。自建分類走 `?menu=`，id 是 uuid 沒得比對。
+   */
+  const homeTabFromHref = useCallback((href: string): PrimaryTabId | null => {
     if (typeof window === 'undefined') return null;
     try {
       const url = new URL(href, window.location.origin);
       if (url.origin !== window.location.origin || url.pathname !== '/') return null;
-      return url.searchParams.get('menu');
+      const menu = url.searchParams.get('menu');
+      if (menu) return `menu:${menu}` as PrimaryTabId;
+      const tab = url.searchParams.get('tab');
+      return tab && (BUILT_IN_TAB_IDS as readonly string[]).includes(tab)
+        ? (tab as PrimaryTabId)
+        : null;
     } catch {
       return null;
     }
@@ -467,17 +491,17 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const menu = menuIdFromHref(window.location.href);
-    if (menu) goToMenuTab(menu);
+    const tab = homeTabFromHref(window.location.href);
+    if (tab) goToHomeTab(tab);
 
     const onPop = () => {
-      const next = menuIdFromHref(window.location.href);
-      if (next) goToMenuTab(next);
-      else leaveMenuTab();
+      const next = homeTabFromHref(window.location.href);
+      if (next) goToHomeTab(next);
+      else leaveDeepLinkedTab();
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, [goToMenuTab, leaveMenuTab, menuIdFromHref]);
+  }, [goToHomeTab, leaveDeepLinkedTab, homeTabFromHref]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -537,15 +561,24 @@ export default function Home() {
     return [...base, ...menuTabs];
   }, [flagStates, flags.sell, menus]);
 
+  /*
+   * 這兩段是「頁籤不存在就別停在上面」的保護，但**功能旗標載完之前不能動手**。
+   *
+   * 旗標還在載的時候 flagStates 是空的，數出來的分類數是 0 ——
+   * 於是 `/?tab=ichiban` 這種深連結才剛把頁籤切過去，就被這裡打回「綜合」。
+   * 冷開必中、熱開（旗標已在 context 裡）反而正常，很難重現。
+   */
   useEffect(() => {
+    if (isFlagsLoading) return;
     if (!singlePrimaryTab) return;
     if (activePrimaryTab !== singlePrimaryTab) setActivePrimaryTab(singlePrimaryTab);
-  }, [activePrimaryTab, singlePrimaryTab]);
+  }, [activePrimaryTab, isFlagsLoading, singlePrimaryTab]);
 
   useEffect(() => {
+    if (isFlagsLoading) return;
     if (hasAnyPrimaryFeature) return;
     if (activePrimaryTab !== 'all') setActivePrimaryTab('all');
-  }, [activePrimaryTab, hasAnyPrimaryFeature]);
+  }, [activePrimaryTab, hasAnyPrimaryFeature, isFlagsLoading]);
 
   useEffect(() => {
     if (!activePrimaryTab.startsWith('menu:')) return;
@@ -889,9 +922,9 @@ export default function Home() {
    */
   const handleBannerClick = useCallback((banner: { id: string | number; link: string }) => {
     trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } });
-    const menu = menuIdFromHref(banner.link);
-    if (menu) goToMenuTab(menu);
-  }, [goToMenuTab, menuIdFromHref]);
+    const tab = homeTabFromHref(banner.link);
+    if (tab) goToHomeTab(tab);
+  }, [goToHomeTab, homeTabFromHref]);
 
   const swipeConfidenceThreshold = 10000;
   const swipePower = (offset: number, velocity: number) => {
