@@ -473,6 +473,10 @@ export default function Home() {
     [activePrimaryTab, flagStates, menuProductIdsByMenuId]
   );
 
+  // 二級頁籤最多顯示幾顆。轉蛋光是現在就有 18 個系列，抓 14 會有四個
+  // 系列永遠顯示不出來、畫面上也沒有任何提示（老闆指定放寬到 20）
+  const MAX_SERIES_TABS = 20;
+
   // Series tabs: personal prefs → global popularity → product count
   // Only include series from products in the current primary tab
   const seriesTabs = useMemo(() => {
@@ -492,7 +496,7 @@ export default function Home() {
         if (popDiff !== 0) return popDiff;
         return b[1] - a[1];
       })
-      .slice(0, 14)
+      .slice(0, MAX_SERIES_TABS)
       .map(([s]) => ({
         id: `series:${s}`,
         label: s.length > 8 ? s.slice(0, 8) : s,
@@ -515,7 +519,7 @@ export default function Home() {
         if (seen.has(s)) continue;
         seen.add(s);
         ordered.push(s);
-        if (ordered.length >= 14) break;
+        if (ordered.length >= MAX_SERIES_TABS) break;
       }
       return [
         { id: 'featured', label: '推薦' },
