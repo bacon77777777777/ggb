@@ -418,16 +418,66 @@ export default function Home() {
    *
    * 讀 window.location 而不是 useSearchParams：後者在 App Router 需要
    * Suspense 邊界，為了一個參數把整頁包起來不划算。
+   *
+   * ⚠️ 代價是這個值不會自己更新，所以三個入口都要各自打一次 goToMenuTab()：
+   * 掛載（從別頁進來）、popstate（上一頁／下一頁）、輪播圖點擊。
+   * 少了第三個就是老闆回報的那個 bug —— 人已經在首頁時點輪播圖，
+   * next/link 走同路由的淺導覽，網址換了但 Home 不會重新掛載，
+   * 頁籤原地不動；重新整理才會重新掛載，所以「刷新就對了」。
    */
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const menu = new URLSearchParams(window.location.search).get('menu');
-    if (menu) {
-      setActivePrimaryTab(`menu:${menu}` as PrimaryTabId);
-      // 帶參數進來就不要再套用上次離開時的頁籤
-      sessionStorage.removeItem(homeRestoreKey);
+  /** 進分類頁籤前待在哪一籤，按上一頁時要退回去 */
+  const tabBeforeMenuRef = useRef<PrimaryTabId | null>(null);
+
+  const goToMenuTab = useCallback((menuId: string) => {
+    const tabId = `menu:${menuId}` as PrimaryTabId;
+    setActivePrimaryTab((prev) => {
+      if (prev === tabId) return prev;
+      if (!prev.startsWith('menu:')) tabBeforeMenuRef.current = prev;
+      return tabId;
+    });
+    setActiveSecondaryTab('all');
+    // 帶參數進來就不要再套用上次離開時的頁籤
+    sessionStorage.removeItem(homeRestoreKey);
+    restoringScrollRef.current = null;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [homeRestoreKey]);
+
+  /** 網址上的 ?menu= 不見了（按上一頁）→ 退回點輪播圖之前的那一籤 */
+  const leaveMenuTab = useCallback(() => {
+    setActivePrimaryTab((prev) => {
+      if (!prev.startsWith('menu:')) return prev;
+      const back = tabBeforeMenuRef.current ?? ('all' as PrimaryTabId);
+      tabBeforeMenuRef.current = null;
+      return back;
+    });
+    setActiveSecondaryTab('all');
+  }, []);
+
+  /** 連到首頁且帶 ?menu= 的網址 → 取出分類 id，其餘回 null */
+  const menuIdFromHref = useCallback((href: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin || url.pathname !== '/') return null;
+      return url.searchParams.get('menu');
+    } catch {
+      return null;
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const menu = menuIdFromHref(window.location.href);
+    if (menu) goToMenuTab(menu);
+
+    const onPop = () => {
+      const next = menuIdFromHref(window.location.href);
+      if (next) goToMenuTab(next);
+      else leaveMenuTab();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [goToMenuTab, leaveMenuTab, menuIdFromHref]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -829,6 +879,19 @@ export default function Home() {
     setActiveSecondaryTab('all');
     requestAnimationFrame(() => setIsCategoryChanging(false));
   }
+
+  /*
+   * 輪播圖點擊：埋點 + 「連結首頁分類頁籤」就地切頁籤。
+   *
+   * HeroBanner 走的是 next/link，人已經在首頁時點 `/?menu=<id>` 是同路由的
+   * 淺導覽 —— 網址會換、Home 不會重新掛載，所以不能只靠讀網址的那個 effect。
+   * 這裡直接從 banner 自己的連結取分類 id，不等網址更新。
+   */
+  const handleBannerClick = useCallback((banner: { id: string | number; link: string }) => {
+    trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } });
+    const menu = menuIdFromHref(banner.link);
+    if (menu) goToMenuTab(menu);
+  }, [goToMenuTab, menuIdFromHref]);
 
   const swipeConfidenceThreshold = 10000;
   const swipePower = (offset: number, velocity: number) => {
@@ -1547,7 +1610,7 @@ export default function Home() {
                 image: b.image_url,
                 link: b.link_url || '#',
               }))}
-              onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
+              onBannerClick={handleBannerClick}
             />
           )}
         </section>
@@ -1771,7 +1834,7 @@ export default function Home() {
                       image: b.image_url,
                       link: b.link_url || '#',
                     }))}
-                    onBannerClick={(banner) => trackEvent('banner_click', { meta: { banner_id: banner.id, link: banner.link } })}
+                    onBannerClick={handleBannerClick}
                   />
                 )}
               </section>
