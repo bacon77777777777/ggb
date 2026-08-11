@@ -144,7 +144,8 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
   const [openAllDone, setOpenAllDone] = useState(false);
 
   // FigmaTear mode
-  const [ichibanTheme, setIchibanTheme] = useState<string>('ichiban_grid');
+  /** null = 全站模組設定還沒拿到。不能一開始就當成 grid —— 見 themeReady */
+  const [ichibanTheme, setIchibanTheme] = useState<string | null>(null);
   const [showFigmaTear, setShowFigmaTear] = useState(false);
   const [tearIsDone, setTearIsDone] = useState(false);
   const [tearIndex, setTearIndex] = useState(0);
@@ -152,15 +153,23 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
   const [tearSessionId, setTearSessionId] = useState(0);
 
   /** 單一商品可覆蓋全站模組設定；沒設才吃全站的 */
-  const effectiveTheme = (product as { machine_theme?: string } | null)?.machine_theme || ichibanTheme;
+  const effectiveTheme = (product as { machine_theme?: string } | null)?.machine_theme || ichibanTheme || 'ichiban_grid';
+
+  /*
+   * 主題到底定了沒。商品自己有設就一定準；沒設的話要等 /api/module-settings 回來。
+   *
+   * 為什麼要分這個狀態：試玩是一進頁面就跑，會跑贏那支 fetch。
+   * 以前 ichibanTheme 初值直接寫 'ichiban_grid'，於是全站設成沉浸式撕紙時
+   * 試試看照樣給你籤格 —— 而且那支 effect 產生結果後就被
+   * `drawnResults.length > 0` 擋住，設定晚一步回來也不會補救。
+   */
+  const themeReady = !!(product as { machine_theme?: string } | null)?.machine_theme || ichibanTheme !== null;
 
   useEffect(() => {
     fetch('/api/module-settings')
       .then(r => r.json())
-      .then((d: Record<string, string>) => {
-        if (d.ichiban) setIchibanTheme(d.ichiban);
-      })
-      .catch(() => {});
+      .then((d: Record<string, string>) => setIchibanTheme(d.ichiban || 'ichiban_grid'))
+      .catch(() => setIchibanTheme('ichiban_grid'));
   }, []);
 
   useEffect(() => {
@@ -206,26 +215,34 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
    */
   useEffect(() => {
     if (!trial || !product || drawnResults.length > 0) return;
+    if (!themeReady) return;   // 主題還沒定就先別演，不然一律變成籤格
     let cancelled = false;
 
     (async () => {
       const { data: rows } = await supabase
         .from('product_prizes')
-        .select('level, name, image_url')
+        .select('level, name, image_url, is_last_one')
         .eq('product_id', product.id);
       if (cancelled) return;
 
-      // 挑最高賞當誘餌：A賞 > B賞 > … ，同級取有圖的
+      /*
+       * 挑大賞當誘餌：A賞 > B賞 > … ，同級取有圖的。
+       *
+       * **最後賞要排除**（老闆指定）。它在真抽裡是「抽完最後一張才會拿到」的
+       * 觸發式獎，試玩就跳出最後賞很怪 —— 玩家會以為隨便抽就有。
+       */
       const rank = (lv: string) => {
         const s = String(lv || '').trim();
-        if (/最後賞|last\s*one/i.test(s)) return 1;
-        if (/^A|SSR|SP/i.test(s)) return 2;
-        if (/^B|SR/i.test(s)) return 3;
-        if (/^C/i.test(s)) return 4;
-        if (/^D/i.test(s)) return 5;
-        return 6;
+        if (/^A|SSR|SP/i.test(s)) return 1;
+        if (/^B|SR/i.test(s)) return 2;
+        if (/^C/i.test(s)) return 3;
+        if (/^D/i.test(s)) return 4;
+        return 5;
       };
-      const best = (rows ?? []).slice().sort((a, b) => {
+      const candidates = (rows ?? []).filter(
+        r => !r.is_last_one && !/最後賞|last\s*one/i.test(String(r.level || '')),
+      );
+      const best = candidates.slice().sort((a, b) => {
         const d = rank(a.level || '') - rank(b.level || '');
         if (d !== 0) return d;
         return (b.image_url ? 1 : 0) - (a.image_url ? 1 : 0);
@@ -249,7 +266,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
     })();
 
     return () => { cancelled = true; };
-  }, [trial, product, drawnResults.length, effectiveTheme, supabase]);
+  }, [trial, product, drawnResults.length, themeReady, effectiveTheme, supabase]);
 
   const handleShowFullResults = useCallback(async () => {
     if (!product) return;

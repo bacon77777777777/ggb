@@ -780,7 +780,6 @@ export default function ProductDetailPage() {
       const level = String(levelRaw || '').trim()
       if (level.includes('A賞') || level === 'A') return 1000
       if (level.includes('SSR')) return 1000
-      if (level.includes('最後賞') || /last\s*one/i.test(level)) return 950
       if (level.includes('SP賞') || level.includes('SP')) return 900
       if (level.includes('S賞') || level === 'S') return 880
       if (level.includes('B賞') || level === 'B') return 800
@@ -796,14 +795,22 @@ export default function ProductDetailPage() {
       return 500
     }
 
-    const best = prizes.length > 0
-      ? prizes.reduce((acc, cur) => {
+    /*
+     * 最後賞不列入試玩結果（老闆指定）。它在真抽裡是「抽完最後一張才觸發」的獎，
+     * 試試看就跳出最後賞很怪 —— 玩家會以為隨便抽就有。挑大賞（A賞）就好。
+     */
+    const pool = prizes.filter(
+      p => !(p as { is_last_one?: boolean }).is_last_one
+        && !/最後賞|last\s*one/i.test(String(p.level || '')),
+    )
+    const best = pool.length > 0
+      ? pool.reduce((acc, cur) => {
           const accScore = scoreLevel(acc.level || '')
           const curScore = scoreLevel(cur.level || '')
           if (curScore !== accScore) return curScore > accScore ? cur : acc
           if (cur.image_url && !acc.image_url) return cur
           return acc
-        }, prizes[0])
+        }, pool[0])
       : null
 
     const rarity: Prize['rarity'] = String(best?.level || 'SSR')
