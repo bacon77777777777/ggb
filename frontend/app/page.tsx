@@ -1,6 +1,6 @@
 'use client';
 // v3
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Database } from '@/types/database.types';
 import ProductCard from '@/components/ProductCard';
@@ -30,6 +30,41 @@ type ProductRow = Database['public']['Tables']['products']['Row'];
 type BannerRow = Database['public']['Tables']['banners']['Row'];
 
 type SortMode = 'latest' | 'price-asc' | 'price-desc' | 'sold-out';
+
+/**
+ * 分批載入的哨兵登記簿：把每一顆哨兵都記下來，而不是只留最後掛上的那一顆。
+ *
+ * 為什麼需要：`renderProductSections()` 在同一頁被呼叫兩次 —— 手機版包在
+ * `md:hidden` 的容器裡、桌機版包在 `<main>` 裡，兩份 DOM 同時存在，靠 CSS
+ * 決定哪一份顯示。兩份各自渲染一顆哨兵，但共用同一個 `useRef`，
+ * 後掛上的桌機那顆會蓋掉手機那顆。
+ *
+ * 結果就是桌機正常、手機永遠卡在「載入中...」：被觀察的是桌機那顆，
+ * 它在手機上整段 `display:none`、量出來的 rect 是 0×0，
+ * IntersectionObserver 永遠不會回報 isIntersecting。
+ *
+ * 改成兩顆都觀察，哪一顆在畫面上就由哪一顆觸發；沒顯示的那顆不會誤觸發，
+ * 因為 display:none 的元素本來就不會 intersect。
+ */
+function useSentinelRegistry() {
+  const nodes = useRef<Set<HTMLDivElement>>(new Set());
+  const [version, bump] = useReducer((v: number) => v + 1, 0);
+
+  const register = useCallback((el: HTMLDivElement | null) => {
+    // React 18 的 ref callback 沒有 cleanup，卸載時只會收到 null；
+    // 舊節點改在 liveNodes() 用 isConnected 掃掉，不會累積。
+    if (!el || nodes.current.has(el)) return;
+    nodes.current.add(el);
+    bump();
+  }, []);
+
+  const liveNodes = useCallback(() => {
+    for (const el of nodes.current) if (!el.isConnected) nodes.current.delete(el);
+    return [...nodes.current];
+  }, []);
+
+  return { register, liveNodes, version };
+}
 
 export default function Home() {
   const homeRestoreKey = 'gachago:home_restore';
@@ -345,12 +380,12 @@ export default function Home() {
   const [sellPage, setSellPage] = useState(0);
   const [sellHasMore, setSellHasMore] = useState(true);
   const [isSellFetchingMore, setIsSellFetchingMore] = useState(false);
-  const sellSentinelRef = useRef<HTMLDivElement | null>(null);
+  const sellSentinel = useSentinelRegistry();
   const secondaryTabsRef = useRef<HTMLDivElement>(null);
   const restoringSecondaryTabRef = useRef<string | null>(null);
   const restoringScrollRef = useRef<number | null>(null);
   const [homeDisplayCount, setHomeDisplayCount] = useState(10);
-  const homeSentinelRef = useRef<HTMLDivElement>(null);
+  const homeSentinel = useSentinelRegistry();
 
   const featuredSellCards = useMemo(() => {
     if (!flags.sell) return [];
@@ -719,25 +754,31 @@ export default function Home() {
    * 綜合與轉蛋（商品多）就卡在 10 張＋底下一行永遠的「載入中...」。
    * 其他類別只有 4 件商品、一次就載完，所以看起來正常。
    *
-   * 哨兵（homeSentinelRef）本來就已經掛在 DOM 上，只是沒有人在看它。
+   * 哨兵本來就已經掛在 DOM 上，只是沒有人在看它。
    * 改用 IntersectionObserver：不需要捲動也會觸發，會一路補到畫面被填滿
    * 或商品出完為止。
+   *
+   * 觀察對象走 useSentinelRegistry()（手機／桌機兩份面板各一顆哨兵），
+   * 不能只留一個 ref —— 細節見該 hook 的註解。
    */
   useEffect(() => {
     const total = filteredProducts.length;
-    const el = homeSentinelRef.current;
-    if (!el || total === 0 || homeDisplayCount >= total) return;
+    if (total === 0 || homeDisplayCount >= total) return;
+    const nodes = homeSentinel.liveNodes();
+    if (nodes.length === 0) return;
     const io = new IntersectionObserver(
       entries => {
-        if (entries[0]?.isIntersecting) {
+        if (entries.some(e => e.isIntersecting)) {
           setHomeDisplayCount(prev => (prev < total ? prev + 10 : prev));
         }
       },
       { rootMargin: '400px' },
     );
-    io.observe(el);
+    for (const el of nodes) io.observe(el);
     return () => io.disconnect();
-  }, [filteredProducts.length, homeDisplayCount]);
+    // 切頁籤時兩份面板會重掛哨兵，但商品數與已顯示數有可能剛好沒變
+    //（例如兩個頁籤的商品數相同），所以要靠 version 把觀察者重新接上
+  }, [filteredProducts.length, homeDisplayCount, homeSentinel, homeSentinel.version]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1021,17 +1062,17 @@ export default function Home() {
     if (activePrimaryTab !== 'sell') return;
     if (!sellHasMore) return;
     if (isSellListingsLoading || isSellFetchingMore) return;
-    const node = sellSentinelRef.current;
-    if (!node) return;
+    const nodes = sellSentinel.liveNodes();
+    if (nodes.length === 0) return;
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) setSellPage((p) => p + 1);
       },
       { rootMargin: '600px 0px' }
     );
-    io.observe(node);
+    for (const node of nodes) io.observe(node);
     return () => io.disconnect();
-  }, [activePrimaryTab, sellHasMore, isSellFetchingMore, isSellListingsLoading]);
+  }, [activePrimaryTab, sellHasMore, isSellFetchingMore, isSellListingsLoading, sellSentinel, sellSentinel.version]);
 
   const filteredSellListings = useMemo(() => {
     let result = [...sellListings];
@@ -1302,7 +1343,7 @@ export default function Home() {
                 )}
               </div>
 
-              <div ref={sellSentinelRef} className="h-10" />
+              <div ref={sellSentinel.register} className="h-10" />
               {!isSellListingsLoading && isSellFetchingMore && (
                 <div className="py-6 text-center text-[13px] font-black text-neutral-400">載入中</div>
               )}
@@ -1467,7 +1508,7 @@ export default function Home() {
           )}
           {activePrimaryTab !== 'sell' && (
             <div
-              ref={homeSentinelRef}
+              ref={homeSentinel.register}
               className={`text-center text-[13px] font-black text-neutral-400 ${!isLoading && !loadError && filteredProducts.length === 0 ? 'min-h-[40vh] flex items-center justify-center' : 'py-6'}`}
             >
               {homeDisplayCount < filteredProducts.length
