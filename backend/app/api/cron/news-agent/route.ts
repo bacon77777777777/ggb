@@ -235,6 +235,49 @@ const WATERMARKED_SOURCES = ['dengeki.com']
 /** 這張圖是不是來自會壓浮水印的站 */
 const isWatermarkedSource = (...urls: string[]) =>
   urls.some(u => WATERMARKED_SOURCES.some(d => u?.includes(d)))
+/**
+ * 封面圖體檢：擋掉「站方拿自家 logo 當 og:image」的文章
+ *
+ * 玩具人與 oneone universe 在沒有專屬 og:image 時會回傳站標，結果文章
+ * 封面就是一塊紅底白字的 logo（老闆截圖回報）。老闆的規則是
+ * 「沒圖就不要生成此文章，找別篇」—— 所以這裡回 false 就整篇跳過。
+ *
+ * 兩個門檻是拿實際資料量出來的（站上 14 張正常封面 vs 那兩張 logo）：
+ *
+ *   尺寸    正常封面最小 640×360；玩具人站標只有 161×50
+ *   色彩數  縮到 32×32 後數不重複顏色，正常封面 505～1021；
+ *           oneone 站標只有 123（純色塊 + 白字）
+ *
+ * 為什麼兩個都要：玩具人站標太小，縮放到 32×32 反而被插值撐出 853 色，
+ * 光看色彩數抓不到；oneone 是 700×700 的正方形，光看尺寸也抓不到。
+ *
+ * 全程本地 sharp，不呼叫付費服務。放在 Claude 改寫「之前」——
+ * 多抓一張圖是幾十 KB，改寫一篇才是真的成本。
+ */
+const MIN_COVER_W = 480
+const MIN_COVER_H = 270
+const MIN_COVER_COLORS = 300
+
+async function isUsableCover(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return false
+    const buf = Buffer.from(await res.arrayBuffer())
+    const meta = await sharp(buf).metadata()
+    const W = meta.width ?? 0, H = meta.height ?? 0
+    if (W < MIN_COVER_W || H < MIN_COVER_H) return false
+
+    const { data, info } = await sharp(buf).resize(32, 32, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true })
+    const seen = new Set<string>()
+    for (let i = 0; i < data.length; i += info.channels) {
+      seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`)
+    }
+    return seen.size >= MIN_COVER_COLORS
+  } catch {
+    return false
+  }
+}
+
 const DEFAULT_NEWS_IMAGE =
   `${(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.com.tw').replace(/\/$/, '')}/images/banner_defaulet.png`
 
@@ -790,7 +833,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limitOverride: number | undefined = typeof body?.limit === 'number' ? body.limit : undefined
 
-  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0 } }
+  const results = { written: 0, skipped: 0, errors: 0, articles: [] as string[], skipReasons: { duplicate: 0, noHtml: 0, noImage: 0, claudeReject: 0, titleDup: 0, insertErr: 0, wmUnsafe: 0, logoCover: 0 } }
   const DEADLINE     = Date.now() + 240_000  // 最多跑 4 分鐘
   const MAX_TOTAL    = limitOverride ?? 3    // 每次全局上限（手動觸發可傳 limit:1）
   const MAX_PER_QUERY = limitOverride === 1 ? 1 : 2
@@ -813,6 +856,8 @@ export async function POST(req: NextRequest) {
       const ogImage = resolveImageUrl(extractOgImage(articleHtml), realUrl)
                    || resolveImageUrl(extractBodyImage(articleHtml), realUrl)
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const title = extractMeta(articleHtml, 'og:title') || ''
       const desc  = extractMeta(articleHtml, 'og:description') || ''
@@ -894,6 +939,8 @@ export async function POST(req: NextRequest) {
       }
       // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const bodyText = articleHtml
         ? articleHtml
@@ -989,6 +1036,8 @@ export async function POST(req: NextRequest) {
       }
       // 沒有真實圖片 → 直接跳過，不呼叫 Claude，省 token
       if (!ogImage) { results.skipped++; results.skipReasons.noImage++; continue }
+      // 站方拿自家 logo 當 og:image → 這篇不發，換下一篇（老闆指定）
+      if (!(await isUsableCover(ogImage))) { results.skipped++; results.skipReasons.logoCover++; continue }
 
       const bodyText = articleHtml
         ? articleHtml

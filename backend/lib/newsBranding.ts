@@ -58,10 +58,32 @@ export async function brandCoverImage(
     const logoW = Math.round(W * 0.21)
     const logoH = Math.round((logoW * 107) / 300)
     const pad = Math.round(logoW * 0.05)
-    const plateW = logoW + pad * 2
-    const plateH = logoH + pad * 2
+
+    /*
+     * 白墊要蓋掉的是「站方浮水印」，不是「我們的 logo」—— 這兩件事以前
+     * 綁在一起（墊子剛好等於 logo + padding），所以只要浮水印比我們的 logo
+     * 大一點點，右邊就會露出一截（老闆截圖：GGB logo 旁邊還看得到
+     * 「HOBBY WEB」）。
+     *
+     * 關鍵：**浮水印是固定像素大小，不隨圖片縮放**。實測
+     *   1200×630 封面圖 → 約 180×53px（15% 寬）
+     *   800×800  內文圖 → 約 144×50px（18% 寬）
+     * 但白墊是按圖寬算的，圖越小墊子越小 —— 640 寬的圖只有 147px 墊子
+     * 對上 150px 的浮水印，右邊就露出那一小截（老闆截圖看到的「ジ」）。
+     *
+     * 所以下限要同時有比例與絕對值：比例 30%／11% 顧大圖，
+     * 絕對 210×66px 顧小圖，兩者取大的那個。
+     *
+     * logo 本身的大小與位置不變（維持貼齊角落 + padding），只有白色區域
+     * 往圖內延伸 —— 老闆已經看過的版面不會跑掉。
+     */
+    const plateW = Math.max(logoW + pad * 2, Math.round(W * 0.30), 210)
+    const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.11), 66)
     const left = corner.endsWith('left') ? 0 : W - plateW
     const top = corner.startsWith('top') ? 0 : H - plateH
+    // logo 貼外側角落，白墊往內延伸
+    const logoLeft = corner.endsWith('left') ? pad : plateW - pad - logoW
+    const logoTop = corner.startsWith('top') ? pad : plateH - pad - logoH
 
     const plate = Buffer.from(
       `<svg width="${plateW}" height="${plateH}"><path d="${wmPlatePath(plateW, plateH, corner)}" fill="white" fill-opacity="0.97"/></svg>`
@@ -70,7 +92,7 @@ export async function brandCoverImage(
     return await sharp(buf)
       .composite([
         { input: plate, top, left },
-        { input: logoResized, top: top + pad, left: left + pad },
+        { input: logoResized, top: top + logoTop, left: left + logoLeft },
       ])
       .jpeg({ quality: 88 })
       .toBuffer()
