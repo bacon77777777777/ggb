@@ -45,6 +45,17 @@ function NavbarInner() {
   useEffect(() => {
     const check = async () => {
       try {
+        // 個人通知（綁定禮入帳、邀請獎勵可領…）也要點亮鈴鐺，
+        // 不然玩家拿到獎勵完全沒感覺 —— 私訊類歸「訊息」頁管，不算
+        if (user) {
+          const { count } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('is_read', false)
+            .not('type', 'in', '(exchange_message,sell_message)');
+          if ((count ?? 0) > 0) { setBellUnread(true); return; }
+        }
+
         const res = await fetch('/api/announcements?limit=30');
         if (!res.ok) return;
         const data = await res.json();
@@ -58,7 +69,7 @@ function NavbarInner() {
     const handler = () => { void check(); };
     window.addEventListener('ggb:announcementsRead', handler);
     return () => window.removeEventListener('ggb:announcementsRead', handler);
-  }, []);
+  }, [user, supabase]);
 
   // Check if we just logged in
   const isLoginRedirect = searchParams.get('login_success') === 'true';

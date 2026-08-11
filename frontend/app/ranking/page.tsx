@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   RankingListItem,
   RankingTop3,
@@ -13,7 +12,6 @@ import {
   RankingItemData
 } from './components/RankingComponents';
 import { imgAvatar } from './assets';
-import { useAlert } from '@/components/ui/AlertDialog';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import PlayerProfileCard from '@/components/ranking/PlayerProfileCard';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
@@ -35,7 +33,6 @@ interface RankingRpcItem {
 
 export default function RankingPage() {
   const router = useRouter();
-  const { user } = useAuth();
 
   useLayoutEffect(() => {
     if (window.innerWidth >= 768) router.replace('/');
@@ -53,7 +50,6 @@ export default function RankingPage() {
   const [scaledHeight, setScaledHeight] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  const { showAlert } = useAlert();
   const supabase = createClient();
 
   const categories = ['reward', 'draws'] as const;
@@ -183,49 +179,7 @@ export default function RankingPage() {
     setProfileItem(item);
   };
 
-  // 膜拜（從資料卡觸發）
-  const handleWorshipFromCard = async () => {
-    if (!profileItem) return;
-    const item = profileItem;
-    setProfileItem(null);
-    handleWorshipClick(item);
-  };
-
-  // Handle Worship Click
-  const handleWorshipClick = (item: RankingItemData) => {
-    if (item.isPlaceholder) return;
-
-    // Check if user is worshiping themselves
-    if (user && item.user_id === user.id) {
-      showAlert({ title: '提示', message: '不可膜拜自己', type: 'info' });
-      return;
-    }
-
-    showAlert({
-      title: '膜拜大神',
-      message: `是否膜拜 ${item.nickname}？\n(膜拜後可獲得 10 積分，每日限一次)`,
-      type: 'confirm',
-      confirmText: '確認膜拜',
-      onConfirm: async () => {
-        try {
-          const { data, error } = await supabase.rpc('worship_player', {
-            p_target_id: item.user_id
-          });
-
-          if (error) throw error;
-
-          if (data && data.success) {
-            showAlert({ title: '膜拜成功', message: data.message || '膜拜成功！獲得 10 積分', type: 'success' });
-          } else {
-            showAlert({ title: '膜拜失敗', message: data?.message || '膜拜失敗', type: 'error' });
-          }
-        } catch (err: unknown) {
-          console.error('Worship error:', err);
-          showAlert({ title: '錯誤', message: (err as Error).message || '發生錯誤，請稍後再試', type: 'error' });
-        }
-      },
-    });
-  };
+  // 膜拜一律由 PlayerProfileCard 自己處理（跑馬燈／挑戰頁／排行榜同一套流程）
 
   const handleCategoryChange = (newCategory: typeof activeCategory) => {
     if (newCategory === activeCategory) return;
@@ -385,7 +339,6 @@ export default function RankingPage() {
           nickname={profileItem.nickname}
           avatarUrl={profileItem.avatar_url}
           titleFromRanking={profileItem.title}
-          onWorship={handleWorshipFromCard}
           onClose={() => setProfileItem(null)}
           isPlaceholder={profileItem.isPlaceholder}
         />

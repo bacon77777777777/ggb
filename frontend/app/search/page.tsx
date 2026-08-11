@@ -51,6 +51,9 @@ export default function SearchPage() {
   const restoringScrollRef = useRef<number | null>(null);
   const [activePrimaryTab, setActivePrimaryTab] = useState<PrimaryTabId>('all');
   const [activeSecondaryTab, setActiveSecondaryTab] = useState<'all' | 'hot' | 'new'>('all');
+  // 商品層熱度（近期真人抽數，含時間衰減）。「熱門」分頁與預設排序都吃這個，
+  // is_hot 現在純粹是後台手動的精選標籤，不參與排序
+  const [productHeat, setProductHeat] = useState<Map<number, number>>(new Map());
 
   useEffect(() => {
     const c1 = trackPageView();
@@ -68,6 +71,23 @@ export default function SearchPage() {
     }
   }, []);
 
+  // 商品熱度：跟首頁同一支 RPC，同一套 7/30 天衰減與機器人過濾
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_popular_products', { p_limit: 200 });
+        if (cancelled || !Array.isArray(data)) return;
+        const map = new Map<number, number>();
+        for (const row of data as Array<{ product_id: number; score: number }>) {
+          map.set(Number(row.product_id), Number(row.score) || 0);
+        }
+        setProductHeat(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
+
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
@@ -77,7 +97,6 @@ export default function SearchPage() {
           .select(PRODUCT_PUBLIC_COLUMNS)
           .eq('type', 'gacha')
           .neq('status', 'pending')
-          .order('is_hot', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(200);
 
@@ -360,7 +379,12 @@ export default function SearchPage() {
       activeSecondaryTab === 'new'
         ? [...filteredByTab].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
         : activeSecondaryTab === 'hot'
-          ? [...filteredByTab].sort((a, b) => Number((b as any)?.is_hot ? 1 : 0) - Number((a as any)?.is_hot ? 1 : 0))
+          ? [...filteredByTab].sort((a, b) => {
+              const heatA = productHeat.get(Number((a as { id: number }).id)) || 0;
+              const heatB = productHeat.get(Number((b as { id: number }).id)) || 0;
+              if (heatA !== heatB) return heatB - heatA;
+              return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+            })
           : filteredByTab;
 
     return sorted;
@@ -374,6 +398,7 @@ export default function SearchPage() {
     flags.gacha,
     flags.ichiban,
     trimmedQuery,
+    productHeat,
   ]);
 
   const filteredSellListings = useMemo(() => {

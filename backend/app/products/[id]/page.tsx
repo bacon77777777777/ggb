@@ -29,6 +29,7 @@ const MODULE_OPTIONS: Record<string, { value: string; label: string }[]> = {
 }
 
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { YearMonthPicker, DatePicker, Modal, Input, TagSelector } from '@/components'
 import SelectField from '@/components/ui/SelectField'
 import { useLog } from '@/contexts/LogContext'
@@ -513,13 +514,23 @@ export default function EditProductPage() {
     fetchProduct()
   }, [productId, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // 系列沒填時先攔一次（不強制擋，有些商品確實沒有 IP）
+  const [showSeriesWarning, setShowSeriesWarning] = React.useState(false)
+  const seriesWarningAcked = React.useRef(false)
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
 
     // 廠商必填。新增頁本來就擋，編輯頁沒擋 —— 等於可以把既有商品改回未指定，
     // 前台倉庫就會出現「未知廠商」，而出貨是以廠商為單位分批的
     if (!formData.supplierId) {
       toast('請選擇廠商', 'warning')
+      return
+    }
+
+    // 系列是前台二級頁籤與推薦排序的唯一依據，沒填等於這檔商品在首頁隱形
+    if (!formData.series?.trim() && !seriesWarningAcked.current) {
+      setShowSeriesWarning(true)
       return
     }
 
@@ -895,6 +906,9 @@ export default function EditProductPage() {
                   <label className="block text-xs font-medium text-neutral-500 mb-1">系列</label>
                   <Input value={formData.series} onChange={(e) => setFormData({ ...formData, series: e.target.value })}
                     placeholder="寶可夢、鬼滅之刃..." />
+                  <p className="mt-1 text-xs text-neutral-400">
+                    首頁二級頁籤與推薦排序照這欄分組，沒填不會有頁籤。
+                  </p>
                 </div>
                 {allCategories.length > 0 && (
                   <CategoryMultiSelect
@@ -1536,6 +1550,21 @@ export default function EditProductPage() {
             </div>
           </div>
         </Modal>
+
+        <ConfirmDialog
+          isOpen={showSeriesWarning}
+          onClose={() => setShowSeriesWarning(false)}
+          onConfirm={() => {
+            seriesWarningAcked.current = true
+            setShowSeriesWarning(false)
+            void handleSubmit()
+          }}
+          title="系列沒有填"
+          message={'首頁的二級頁籤與推薦排序都是照「系列」分組算的。沒填的話，這檔商品不會出現在任何系列頁籤，在推薦頁也會排在有系列的商品後面。\n\n沒有明確 IP 的商品可以留空，確定要這樣存嗎？'}
+          confirmText="就這樣存"
+          cancelText="回去填"
+          type="warning"
+        />
       </div>
     </AdminLayout>
   )

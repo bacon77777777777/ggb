@@ -408,6 +408,8 @@ export default function ProductDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [wonPrizes, setWonPrizes] = useState<Prize[]>([]);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  /** 選籤彈窗是否為試玩（試試看）：試玩不扣款、直接進撕紙 */
+  const [isTicketTrial, setIsTicketTrial] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Result Modal State
@@ -724,6 +726,7 @@ export default function ProductDetailPage() {
       if (isMobile) {
         router.push(`/item/${params.id}/select`);
       } else {
+        setIsTicketTrial(false);
         setIsTicketModalOpen(true);
       }
       return;
@@ -751,10 +754,9 @@ export default function ProductDetailPage() {
     setActivePackStyle(newStyles[currentIdx]);
   };
 
-  const handleTrialCard = () => {
-    if (!product) return;
-
-    trackEvent('draw_trial', { productId: product.id });
+  /** 試玩用的假中獎：挑全商品最高賞當誘餌（不扣款、不寫 DB） */
+  const makeTrialPrize = (): Prize | null => {
+    if (!product) return null;
 
     const scoreLevel = (levelRaw: string) => {
       const level = String(levelRaw || '').trim()
@@ -787,7 +789,7 @@ export default function ProductDetailPage() {
       : null
 
     const rarity: Prize['rarity'] = String(best?.level || 'SSR')
-    const trialPrize: Prize = {
+    return {
       id: `trial-${best?.id ?? rarity}`,
       name: String(best?.name || rarity),
       rarity,
@@ -795,10 +797,42 @@ export default function ProductDetailPage() {
       grade: rarity,
       is_last_one: false,
     }
+  };
 
+  /** 抽卡的試試看：開卡包影片 */
+  const handleTrialCard = () => {
+    const trialPrize = makeTrialPrize();
+    if (!product || !trialPrize) return;
+    trackEvent('draw_trial', { productId: product.id });
     setWonPrizes([trialPrize]);
     setIsVideoMuted(false);
     setIsVideoOpen(true);
+  };
+
+  /**
+   * 一番賞／自製賞的試試看：直接進該模組自己的演出，一律單抽。
+   *
+   * 一番賞 → 跳過選籤，直接進撕紙（沉浸式主題就是沉浸式撕紙畫面）；
+   * 自製賞 → 直接播開獎演出。兩者都不扣代幣、不寫紀錄。
+   */
+  const handleTrialPlay = () => {
+    if (!product) return;
+    trackEvent('draw_trial', { productId: product.id });
+
+    if (product.type === 'ichiban') {
+      if (isMobile) {
+        router.push(`/item/${params.id}/select?trial=1`);
+      } else {
+        setIsTicketTrial(true);
+        setIsTicketModalOpen(true);
+      }
+      return;
+    }
+
+    const trialPrize = makeTrialPrize();
+    if (!trialPrize) return;
+    setWonPrizes([trialPrize]);
+    setIsGachaOpen(true);
   };
 
   const handlePurchaseConfirm = async (quantity: number, options?: { usePoints: boolean, couponId?: string }) => {
@@ -1382,7 +1416,7 @@ export default function ProductDetailPage() {
                     alt={product.name}
                     width={167}
                     height={167}
-                    className="w-full h-full object-cover border border-white/20 shadow-lg shadow-black/40"
+                    className="w-full h-full object-cover border border-white/20"
                   />
                 </div>
               )}
@@ -2327,6 +2361,15 @@ export default function ProductDetailPage() {
                     ? '立即抽獎'
                     : '立即轉蛋'}
             </Button>
+            {/* 試試看：一律單抽的免費試玩，走該商品模組自己的演出 */}
+            {(product.type === 'ichiban' || product.type === 'custom') && totalRemaining > 0 && !isLotterySale && (
+              <button
+                onClick={handleTrialPlay}
+                className="h-[44px] shrink-0 rounded-xl bg-purple-600 px-3 text-sm font-black text-white shadow-lg shadow-purple-600/30 transition-colors hover:bg-purple-700"
+              >
+                試試看
+              </button>
+            )}
           </div>
         </ActionBar>
 
@@ -2427,15 +2470,17 @@ export default function ProductDetailPage() {
           <div className="fixed inset-0 z-[2100] flex items-center justify-center">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setIsTicketModalOpen(false)}
+              onClick={() => { setIsTicketModalOpen(false); setIsTicketTrial(false); }}
             />
             <div className="relative z-[2101] w-full max-w-[640px] max-h-[90vh] px-4">
               <TicketSelectionFlow
                 isModal
-                onClose={() => setIsTicketModalOpen(false)}
+                trial={isTicketTrial}
+                onClose={() => { setIsTicketModalOpen(false); setIsTicketTrial(false); }}
                 onRefreshProduct={fetchData}
                 onTearFinish={(results) => {
                   setIsTicketModalOpen(false);
+                  setIsTicketTrial(false);
                   setTearGachaResults(results as Prize[]);
                 }}
               />
