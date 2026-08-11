@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import GradeBadge from '@/components/ui/GradeBadge';
 
 export interface PrizeInfo {
   name: string;
@@ -28,20 +29,6 @@ interface Props {
   zIndex?: number;
 }
 
-function getLevelStyle(level: string): string {
-  const l = level.toUpperCase();
-  if (l === 'GOD') return 'text-violet-600';
-  if (l === 'LEGEND') return 'text-amber-500';
-  if (l === 'STAR') return 'text-blue-500';
-  if (l === 'CORE') return 'text-neutral-500';
-  if (l.includes('LAST') || l.includes('最後')) return 'text-yellow-500';
-  if (l === 'A賞' || l === 'A') return 'text-red-500';
-  if (l === 'B賞' || l === 'B') return 'text-orange-500';
-  if (l === 'C賞' || l === 'C') return 'text-amber-500';
-  if (l === 'D賞' || l === 'D') return 'text-green-500';
-  if (l === 'E賞' || l === 'E') return 'text-blue-500';
-  return 'text-neutral-500';
-}
 
 export default function PrizeDetailSheet({ prize, onClose, sealed = false, zIndex = 2700 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -53,7 +40,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
   if (prize?.level && prize.level !== prize.name) {
     rows.push({
       label: '賞等',
-      value: <span className={`font-black ${getLevelStyle(prize.level)}`}>{prize.level}</span>,
+      value: <GradeBadge grade={prize.level} />,
     });
   }
   // 剩餘只給封存制的玩法看：它們的商品頁配率表本來就公開張數，這裡是同一份資訊。

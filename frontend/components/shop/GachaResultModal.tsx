@@ -5,7 +5,8 @@ import { Prize } from '@/components/GachaMachine';
 import { cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import PrizeDetailSheet from '@/components/ui/PrizeDetailSheet';
-import { gradeStyle, gradeRank } from '@/lib/prizeGrade';
+import { gradeRank } from '@/lib/prizeGrade';
+import GradeBadge from '@/components/ui/GradeBadge';
 import { initMachineAudio, sfxFanfare, sfxUiClick, setDucking } from '@/lib/machineSfx';
 
 /**
@@ -55,7 +56,7 @@ export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = 
     setDucking(true);
     const best = results.reduce(
       (min, p) => Math.min(min, gradeRank(p.grade ?? p.rarity)),
-      9,
+      99,
     );
     sfxFanfare(best);
     return () => setDucking(false);
@@ -71,6 +72,16 @@ export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = 
 
   /** 一番賞才有籤號；整批都沒有就不佔那一欄（轉蛋／盒玩維持原樣） */
   const hasTickets = !hideTicketNumber && results.some(p => typeof p.ticket_number === 'number');
+
+  /* 由好到爛排序（老闆指定）。十連抽時大獎會被淹在中間，玩家得自己找；
+     排序後最想看的那一張永遠在第一列。同賞等維持抽出順序（穩定排序） */
+  const sorted = React.useMemo(
+    () => results
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => gradeRank(a.p.grade ?? a.p.rarity) - gradeRank(b.p.grade ?? b.p.rarity) || a.i - b.i)
+      .map(x => x.p),
+    [results],
+  );
 
   return (
     <AnimatePresence>
@@ -105,9 +116,8 @@ export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = 
                   高度固定（不是 max-h）—— 老闆指定彈窗大小不隨抽數變，
                   抽 1 次跟抽 10 次一樣高，位置不會跳 */}
               <div className="mb-4 h-[46vh] space-y-1.5 overflow-y-auto pr-0.5">
-                {results.map((p, i) => {
+                {sorted.map((p, i) => {
                   const g = p.grade || p.rarity;
-                  const gs = gradeStyle(g);
                   return (
                     <button
                       key={`${p.id ?? 'x'}-${i}`}
@@ -134,11 +144,7 @@ export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = 
                           onError={() => markFailed(`l${i}`)}
                         />
                       </div>
-                      {g && (
-                        <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-black', gs.bg, gs.text)}>
-                          {g}
-                        </span>
-                      )}
+                      <GradeBadge grade={g} />
                       <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-neutral-900 dark:text-white">
                         {p.name}
                       </span>

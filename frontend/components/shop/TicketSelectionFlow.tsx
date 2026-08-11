@@ -706,11 +706,12 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         is_last_one: r.is_last_one,
         ticket_number: r.ticket_number,
       }));
+      deliveredRef.current = true;
       if (onTearFinish) {
         onTearFinish(tearResults);
       } else {
         try { sessionStorage.setItem('ggb_tear_results', JSON.stringify(tearResults)); } catch { /* ignore */ }
-        handleBackToProduct();
+        handleBackToProduct('replace');
       }
     }, 2000);
     return () => clearTimeout(t);
@@ -729,7 +730,16 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
     setBlindboxPhase('opening');
   };
 
-  const handleBackToProduct = () => {
+  /**
+   * 回商品頁。
+   *
+   * `mode: 'replace'` 用在「抽完了」的路徑 —— 把選籤／撕紙那一格從歷史裡換掉。
+   * 不然玩家按上一頁（iPhone 從左邊緣右滑是很常見的手勢）會退回撕紙畫面，
+   * 而且畫面還原後可以再撕一次。那是純演出重播、不會真的再抽一次
+   * （籤已經寫進 draw_records，再抽會被 TICKET_ALREADY_DRAWN 擋下），
+   * 但玩家看起來就像抽了兩次，會來問是不是被扣兩次錢。
+   */
+  const handleBackToProduct = (mode: 'push' | 'replace' = 'push') => {
     onRefreshProduct?.();
 
     if (onClose) {
@@ -737,23 +747,43 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
       return;
     }
 
+    const go = mode === 'replace' ? router.replace : router.push;
+
     if (product?.type === 'blindbox' && product.id) {
-      router.push(`/blindbox/${product.id}`);
+      go(`/blindbox/${product.id}`);
       return;
     }
 
     if (params?.id) {
-      router.push(`/item/${params.id}`);
+      go(`/item/${params.id}`);
       return;
     }
 
     if (product?.id) {
-      router.push(`/item/${product.id}`);
+      go(`/item/${product.id}`);
       return;
     }
 
-    router.push('/');
+    go('/');
   };
+
+  /**
+   * bfcache 還原時的保險。
+   *
+   * replace 已經把選籤／撕紙那一格從歷史裡換掉，正常按上一頁不會回到這裡；
+   * 但 iOS Safari 的 back-forward cache 會把整個頁面連同 JS 狀態凍起來，
+   * 少數還原路徑仍可能把撕完的畫面端回來。結果已經送出就直接回商品頁。
+   */
+  const deliveredRef = useRef(false);
+  const backRef = useRef(handleBackToProduct);
+  backRef.current = handleBackToProduct;
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted && deliveredRef.current) backRef.current('replace');
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
 
   // If we are showing results, render the result flow (New: Inline, Old: Modal)
   // Logic moved to inside the Reveal View block to prevent intercepting Last One full results
@@ -961,7 +991,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
               <Button
                 variant="outline"
                 className="flex-1 h-[44px] rounded-xl text-sm font-black tracking-widest uppercase"
-                onClick={handleBackToProduct}
+                onClick={() => handleBackToProduct()}
               >
                 返回盒玩頁
               </Button>
@@ -1004,6 +1034,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         is_last_one: r.is_last_one,
         ticket_number: r.ticket_number,
       }));
+      deliveredRef.current = true;
       if (onTearFinish) {
         // 桌機 modal 模式：回調給商品頁，商品頁關閉 modal + 顯示彈窗
         onTearFinish(results);
@@ -1012,7 +1043,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
         try {
           sessionStorage.setItem('ggb_tear_results', JSON.stringify(results));
         } catch { /* ignore */ }
-        router.push(`/item/${params.id}`);
+        router.replace(`/item/${params.id}`);
       }
     };
 
@@ -1285,7 +1316,7 @@ export function TicketSelectionFlow({ isModal = false, onClose, onRefreshProduct
           <PrizeResultModal 
             results={(fullResults.length > 0 ? fullResults : drawnResults)}
             onClose={() => setShowResultModal(false)}
-            onBackToProduct={handleBackToProduct}
+            onBackToProduct={() => handleBackToProduct()}
             isLoading={isFetchingFullResults}
             skipRevealAnimation={hasLastOne || fullResults.some(r => r.is_last_one)}
           />

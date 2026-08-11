@@ -37,6 +37,7 @@ import { useRequireLogin } from '@/hooks/useRequireLogin';
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 import { isCategoryHidden, isCategoryUnderMaintenance, categoryFlagKey, CATEGORY_LABELS } from '@/lib/categoryFlags';
 import { fetchProductPromotion, type ProductPromotion } from '@/lib/promotions';
+import GradeBadge from '@/components/ui/GradeBadge';
 
 /**
  * 走 commit-reveal 抽獎引擎的三種商品（migration 405 的 play_ichiban_auto）。
@@ -1462,6 +1463,9 @@ export default function ProductDetailPage() {
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
                               <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
+                            {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
+                                的重點是「這是幾賞」，名稱反而是次要資訊 */}
+                            <GradeBadge grade={prize.level} size="sm" />
                             <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
                               {prize.name}
                             </div>
@@ -2062,6 +2066,9 @@ export default function ProductDetailPage() {
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
                               <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
+                            {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
+                                的重點是「這是幾賞」，名稱反而是次要資訊 */}
+                            <GradeBadge grade={prize.level} size="sm" />
                             <div className="font-black text-neutral-900 dark:text-neutral-50 text-[13px] sm:text-sm leading-tight tracking-tight whitespace-nowrap">
                               {prize.name}
                             </div>
