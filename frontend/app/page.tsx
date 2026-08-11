@@ -1693,7 +1693,7 @@ export default function Home() {
               </aside>
             )}
 
-            <main className="flex-1" {...swipePrimaryTabs}>
+            <main className="min-w-0 flex-1" {...swipePrimaryTabs}>
               <div className="mb-3 rounded-[8px] overflow-hidden">
                 <WinningMarquee />
               </div>
@@ -1718,8 +1718,12 @@ export default function Home() {
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-x-0 -top-6 h-10 bg-neutral-50 dark:bg-neutral-950 z-0" />
                   <div className="relative z-10 bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
+                    {/* min-w-0 是必要的：flex 子項預設 min-width:auto，會被裡面的
+                        頁籤撐開而不是自己捲動。頁籤一多（綜合／轉蛋有 20 顆）
+                        整條列就把桌機的內容欄撐到 1650px，連帶把輪播圖與商品格
+                        一起撐爆、整頁出現橫向捲軸 */}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain scrollbar-hide">
                         <div className="flex items-center gap-1.5">
                           {secondaryTabs.map((tab: { id: string; label: string }) => (
                             <button
