@@ -36,6 +36,32 @@ interface Props {
 const MAX_SCALE = 5;
 const SWIPE_THRESHOLD = 60;
 
+/**
+ * 吃掉緊接在 onTap 之後那一發 click（幽靈點擊）
+ *
+ * 瀏覽器在 pointerup 之後還會補一發 click。呼叫端常見的寫法是「點圖片收起，
+ * 收起後原位掛一塊透明層讓玩家點回來」—— onTap 收起圖片、React 重繪把透明層
+ * 掛上，然後那發 click 就打在剛掛上的透明層，等於自己把自己又打開，玩家看到
+ * 的是「點了沒反應」。
+ *
+ * 真機 iOS/Android 的 click 會落在 touchstart 當下的元素，所以不會踩到；
+ * **但桌面瀏覽器的裝置模擬模式會**（Safari 的裝置工具、Chrome DevTools 的
+ * device toolbar 都重現得出來）。老闆就是在 Safari 裝置工具下回報這個問題。
+ *
+ * 修在這裡而不是各呼叫端，是因為轉蛋、盒玩、抽卡、品項詳情全都走這支元件。
+ */
+function swallowNextClick() {
+  if (typeof window === 'undefined') return;
+  const kill = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); cleanup(); };
+  const cleanup = () => {
+    window.removeEventListener('click', kill, true);
+    window.clearTimeout(timer);
+  };
+  // 沒等到 click 就自己拆掉，不要留著攔到玩家下一次真正的點擊
+  const timer = window.setTimeout(cleanup, 400);
+  window.addEventListener('click', kill, true);
+}
+
 export default function PinchZoomImage({
   src, alt, className, onSwipeLeft, onSwipeRight, onTap, priority,
 }: Props) {
@@ -134,7 +160,7 @@ export default function PinchZoomImage({
     const dx = was ? was.x - start.current.cx : 0;
     const zoomed = start.current.scale > 1.01 || scale > 1.01;
 
-    if (!zoomed && !start.current.moved && onTap) { onTap(); }
+    if (!zoomed && !start.current.moved && onTap) { onTap(); swallowNextClick(); }
     else if (!zoomed && Math.abs(dx) > SWIPE_THRESHOLD) {
       if (dx < 0) onSwipeLeft?.();   // 往左滑 → 下一項
       else onSwipeRight?.();
