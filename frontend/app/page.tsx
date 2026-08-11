@@ -689,18 +689,33 @@ export default function Home() {
     setHomeDisplayCount(10);
   }, [activePrimaryTab, activeSecondaryTab]);
 
-  // Home page lazy load — window scroll
+  /*
+   * 分批載入：盯著列表底部的哨兵，看得到就再載 10 筆。
+   *
+   * 原本只掛 window 的 scroll 事件，在桌機上是壞的 —— 首批 10 張卡在
+   * 五欄版面只有兩列，整頁根本沒有捲軸，scroll 事件永遠不觸發，於是
+   * 綜合與轉蛋（商品多）就卡在 10 張＋底下一行永遠的「載入中...」。
+   * 其他類別只有 4 件商品、一次就載完，所以看起來正常。
+   *
+   * 哨兵（homeSentinelRef）本來就已經掛在 DOM 上，只是沒有人在看它。
+   * 改用 IntersectionObserver：不需要捲動也會觸發，會一路補到畫面被填滿
+   * 或商品出完為止。
+   */
   useEffect(() => {
     const total = filteredProducts.length;
-    if (total === 0) return;
-    const handleScroll = () => {
-      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
-        setHomeDisplayCount(prev => prev < total ? prev + 10 : prev);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [filteredProducts.length]);
+    const el = homeSentinelRef.current;
+    if (!el || total === 0 || homeDisplayCount >= total) return;
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          setHomeDisplayCount(prev => (prev < total ? prev + 10 : prev));
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [filteredProducts.length, homeDisplayCount]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -15,11 +15,10 @@
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { AdminLayout, PageCard, ConfirmDialog, DataTable, type Column } from '@/components'
+import { PageCard, ConfirmDialog, DataTable, type Column } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/contexts/ToastContext'
 
 /** 只有這三種走 play_ichiban，才會用到 profit_rate */
@@ -88,26 +87,36 @@ export function RatesPanel() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [sortField, setSortField] = useState<'type' | 'name' | 'rate'>('type')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('products')
-        .select('id, product_code, name, type, profit_rate, sealed_at, product_prizes(level, name, total, probability)')
-        .in('type', APPLICABLE_TYPES)
-        .order('id', { ascending: false })
+      /*
+       * 走後端 API 而不是 anon client：`profit_rate` 對 anon 沒有 SELECT
+       * 權限（migration 471），直接查會整包被 42501 擋掉。原本沒有檢查
+       * error，於是這頁靜靜地變成空白 —— 看起來像「沒有商品」。
+       */
+      let data: any[] = []
+      try {
+        const res = await fetch('/api/admin/settings/rates', { credentials: 'include' })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`)
+        data = json.products ?? []
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : '讀取失敗')
+        setIsLoading(false)
+        return
+      }
 
       // 已封存的不可調整。判定用 products.sealed_at 而不是抽獎筆數 ——
       // 上架後還沒人抽的商品也已經封存，用抽獎筆數會讓它看起來還能改。
-      // 也不要直接查 product_ticket_seals：那張表是 service role only，
-      // 這裡的 anon client 只會拿到空陣列，而且不會報錯。
 
       const initial: Record<number, number> = {}
-      for (const p of data ?? []) initial[p.id] = Number(p.profit_rate ?? 1)
+      for (const p of data) initial[p.id] = Number(p.profit_rate ?? 1)
 
-      setRows((data ?? []).map((p: any) => ({
+      setRows(data.map((p: any) => ({
         id: p.id,
         name: p.name,
         productCode: p.product_code,
@@ -153,17 +162,28 @@ export function RatesPanel() {
 
   const save = async () => {
     setIsSaving(true)
+    const failed: number[] = []
     for (const id of changed) {
-      await fetch(`/api/admin/products/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ product: { profit_rate: rates[id] } }),
-      })
+      try {
+        const res = await fetch(`/api/admin/products/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ product: { profit_rate: rates[id] } }),
+        })
+        if (!res.ok) failed.push(id)
+      } catch { failed.push(id) }
     }
-    setSaved({ ...rates })
     setIsSaving(false)
-    toast(`已儲存 ${changed.length} 筆`)
+    // 只把真的存進去的記成已儲存，失敗的留在「未存」狀態
+    const ok = changed.filter(id => !failed.includes(id))
+    setSaved(prev => {
+      const next = { ...prev }
+      for (const id of ok) next[id] = rates[id]
+      return next
+    })
+    if (failed.length === 0) toast(`已儲存 ${ok.length} 筆`)
+    else toast(`${ok.length} 筆已存，${failed.length} 筆失敗（可能已封存）`, 'error')
   }
 
   const resetAll = () => {
@@ -293,6 +313,12 @@ export function RatesPanel() {
             </Button>
           </div>
         </div>
+
+        {loadError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            讀取失敗：{loadError}
+          </div>
+        )}
 
         <DataTable
           data={visible}
