@@ -51,6 +51,8 @@ backend/supabase/.temp/
 
 # 一次性量測腳本
 frontend/*.mjs
+!frontend/next.config.mjs
+!frontend/*.config.mjs
 
 # 匯入用的商品清單原始檔（放在 public/ 會被公開下載）
 backend/public/*.xlsx
