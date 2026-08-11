@@ -85,7 +85,9 @@ export async function brandCoverImage(
     // 角落一律以內容區為準（留白邊的圖，浮水印貼在照片角落而非畫布角落）
     const box = await contentBox(buf)
     const W = box.width, H = box.height
-    const logoW = Math.round(W * 0.21)
+    // logo 佔內容寬 15%（原 21%）。白墊至少要裝得下 logo，logo 太大白墊就跟著大 ——
+    // 老闆嫌白底佔版面，這是主因之一
+    const logoW = Math.round(W * 0.15)
     const logoH = Math.round((logoW * 107) / 300)
     const pad = Math.round(logoW * 0.05)
 
@@ -108,13 +110,22 @@ export async function brandCoverImage(
      * 往圖內延伸 —— 老闆已經看過的版面不會跑掉。
      */
     /*
-     * 白墊的涵蓋範圍要對齊「問模型的範圍」：偵測時送的是上／下緣各
-     * 16% 高的長條，模型回答的 TL/TR/BL/BR 指的是那條長條的左／右 30%。
-     * 白墊蓋滿同一塊區域，模型只要角落答對，站標就必然被蓋住 ——
-     * 以前白墊只有 11% 高、30% 寬，模型答對了還是可能露出來。
+     * 白墊尺寸：涵蓋「站方浮水印實際大小」即可，不再涵蓋「問模型的整段長條」。
+     *
+     * 原本為了保險，白墊蓋滿偵測長條（30% 寬 × 16% 高）—— 只要模型角落答對
+     * 就必然蓋住。但那是一大塊白底（1280 寬的圖是 384×122），老闆嫌太佔版面。
+     *
+     * 改成貼著浮水印本身的尺寸抓：實測站標是**固定像素、不隨圖片縮放**的
+     *   1200×630 封面 → 約 180×53px
+     *   800×800 內文 → 約 144×50px
+     * 所以絕對下限 190×58 就蓋得住，比例項只是大圖時多留一點餘裕。
+     * 1280 寬的圖從 384×122 降到 230×88，白底面積剩約 43%。
+     *
+     * 代價：浮水印若離角落較遠（不貼邊），有機會露出來。實測的來源都是
+     * 貼齊角落，真的遇到再把絕對下限調大即可。
      */
-    const plateW = Math.max(logoW + pad * 2, Math.round(W * 0.30), 210)
-    const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.16), 66)
+    const plateW = Math.max(logoW + pad * 2, Math.round(W * 0.18), 190)
+    const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.10), 58)
     const left = box.left + (corner.endsWith('left') ? 0 : W - plateW)
     const top = box.top + (corner.startsWith('top') ? 0 : H - plateH)
     // logo 貼外側角落，白墊往內延伸
