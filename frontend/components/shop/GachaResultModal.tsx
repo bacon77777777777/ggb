@@ -70,8 +70,15 @@ export function GachaResultModal({ isOpen, onClose, results, hideTicketNumber = 
 
   const markFailed = (key: string) => setFailedIds(prev => ({ ...prev, [key]: true }));
 
-  /** 一番賞才有籤號；整批都沒有就不佔那一欄（轉蛋／盒玩維持原樣） */
-  const hasTickets = !hideTicketNumber && results.some(p => typeof p.ticket_number === 'number');
+  /**
+   * 一番賞才有籤號；整批都沒有就不佔那一欄（轉蛋／盒玩維持原樣）。
+   *
+   * 條件要 `> 0`：試試看（試抽）與最後賞的 ticket_number 是 0，
+   * 只判 `typeof === 'number'` 的話 0 也算數，整欄就會浮出來、每一列印一個
+   * 「—」。老闆看到的就是那個破折號 —— 它其實代表「這一抽沒有籤號」。
+   */
+  const hasTickets = !hideTicketNumber
+    && results.some(p => typeof p.ticket_number === 'number' && p.ticket_number > 0);
 
   /* 由好到爛排序（老闆指定）。十連抽時大獎會被淹在中間，玩家得自己找；
      排序後最想看的那一張永遠在第一列。同賞等維持抽出順序（穩定排序） */
