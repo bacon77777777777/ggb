@@ -44,12 +44,12 @@ const BACK_FLOOR  = HOLE_B - BOX_R * 1.2;
 
 // ─── 6-face image paths (shared with mode3) ───────────────────────────────────
 const FACES = {
-  front:  '/images/blindbox/mode3/box/4.png',
-  back:   '/images/blindbox/mode3/box/6.png',
-  left:   '/images/blindbox/mode3/box/3.png',
-  right:  '/images/blindbox/mode3/box/5.png',
-  top:    '/images/blindbox/mode3/box/2.png', // 交換：原 bottom 圖
-  bottom: '/images/blindbox/mode3/box/1.png', // 交換：原 top 圖
+  front:  '/images/blindbox/mode3/box/4.webp',
+  back:   '/images/blindbox/mode3/box/6.webp',
+  left:   '/images/blindbox/mode3/box/3.webp',
+  right:  '/images/blindbox/mode3/box/5.webp',
+  top:    '/images/blindbox/mode3/box/2.webp', // 交換：原 bottom 圖
+  bottom: '/images/blindbox/mode3/box/1.webp', // 交換：原 top 圖
 } as const;
 
 const BASE_AX = -20;
@@ -569,6 +569,12 @@ export function BlindboxMachineMode2({
         <Image
           src="/images/blindbox/mode2/main.webp" alt="blindbox machine"
           fill className="object-fill" unoptimized
+          priority
+          /* priority 一定要留著。
+             盒玩頁在機台回報載入完成前是 visibility:hidden，而 Next/Image 預設
+             lazy —— 瀏覽器看它不在畫面上就不下載，圖不下載就永遠不會回報，
+             結果只能等頁面那道 3 秒保險計時器。變成「網路再快也是 3 秒起跳」的死結。
+             priority 讓它無視可視範圍立刻下載，同時解掉死結。 */
           onLoad={() => onLoaded?.()}
         />
       </div>
@@ -766,19 +772,19 @@ export function BlindboxMachineMode2({
 
       {/* Buttons (z=20) */}
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png" alt="換一批" text="換一批"
+        src="/images/blindbox/mode2/btn2.webp" alt="換一批" text="換一批"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '5.33%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}
         onClick={handleShuffle} />
       <ImageButton
-        src="/images/blindbox/mode2/btn1.png" alt="立即開盒" text="立即開盒"
+        src="/images/blindbox/mode2/btn1.webp" alt="立即開盒" text="立即開盒"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '31.73%', top: '84.5%', width: '36.53%', height: '11.2%', zIndex: 20 }}
         onClick={() => { if (machineState === 'idle' && !readyToPick) onPurchase?.(); }} />
       <ImageButton
-        src="/images/blindbox/mode2/btn2.png" alt="試試看" text="試試看"
+        src="/images/blindbox/mode2/btn2.webp" alt="試試看" text="試試看"
         className={`absolute ${isSoldOut || machineState !== 'idle' || readyToPick ? 'grayscale pointer-events-none' : ''}`}
         textClassName="text-base md:text-lg"
         style={{ left: '69.6%', top: '84.5%', width: '25.06%', height: '11.2%', zIndex: 20 }}

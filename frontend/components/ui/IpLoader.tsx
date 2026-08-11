@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CHARS = [
-  '/loading/1.svg','/loading/2.svg','/loading/3.svg','/loading/4.svg',
-  '/loading/5.svg','/loading/6.svg','/loading/7.svg','/loading/8.svg',
+  '/loading/1.webp','/loading/2.webp','/loading/3.webp','/loading/4.webp',
+  '/loading/5.webp','/loading/6.webp','/loading/7.webp','/loading/8.webp',
 ];
 
 interface IpLoaderProps {

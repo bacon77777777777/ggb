@@ -20,7 +20,7 @@ interface GachaMachineMode4Props {
   disableButtons?: boolean;
 }
 
-const EGG_IMAGES = ['/images/gacha/begg.png', '/images/gacha/gegg.png', '/images/gacha/pegg.png'];
+const EGG_IMAGES = ['/images/gacha/begg.webp', '/images/gacha/gegg.webp', '/images/gacha/pegg.webp'];
 
 interface Egg {
   id: number;
@@ -315,7 +315,7 @@ export function GachaMachineMode4({
 
       {/* Buttons */}
       <ImageButton
-        src="/images/gacha/mode4/btn2.png"
+        src="/images/gacha/mode4/btn2.webp"
         alt="推一下"
         text="推一下"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -328,7 +328,7 @@ export function GachaMachineMode4({
         }}
       />
       <ImageButton
-        src="/images/gacha/mode4/btn1.png"
+        src="/images/gacha/mode4/btn1.webp"
         alt="立即轉蛋"
         text="立即轉蛋"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}
@@ -337,7 +337,7 @@ export function GachaMachineMode4({
         onClick={() => { if (!isSoldOut && !disableButtons && onPurchase) onPurchase(); }}
       />
       <ImageButton
-        src="/images/gacha/mode4/btn2.png"
+        src="/images/gacha/mode4/btn2.webp"
         alt="試試看"
         text="試試看"
         className={`absolute ${isSoldOut || disableButtons ? 'grayscale pointer-events-none' : ''}`}

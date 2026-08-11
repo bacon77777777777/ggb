@@ -83,40 +83,41 @@ export default function BlindboxDetailPage() {
 
   const isSoldOut = !!product && (product.status === 'ended' || product.remaining === 0);
 
+  /**
+   * 開場影片預熱 —— 一定要等機台出現、且瀏覽器閒下來之後才做
+   *
+   * `blindbox_op.mp4` 有 7 MB，只有玩家真的按下抽獎、那層 overlay mount 之後
+   * 才會播。原本這段是在進頁面的第一個 effect 就 `preload='auto'` 硬拉下來，
+   * 等於玩家還在等機台顯示的時候，頻寬先被一支他還沒要看的影片吃掉 7 MB
+   * —— 那頁量到 8 MB 傳輸量、載入時間忽快忽慢，全是這支影片造成的。
+   *
+   * 改成掛在 isMachineReady 後面 + requestIdleCallback：機台先出來，影片在
+   * 背景慢慢補。玩家從進頁到按下抽獎中間怎麼樣都有好幾秒，來得及。
+   *
+   * 背景影片 bg.mp4（0.7 MB）不在這裡 —— 它進頁面就要播，由 JSX 自己載。
+   */
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isMachineReady) return;
 
-    const sources = [...bgVideos, '/videos/blindbox_op.mp4'];
-    let loadedCount = 0;
-    const onOneLoaded = () => {
-      loadedCount += 1;
-      if (loadedCount >= sources.length) {
-        // setIsMediaReady(true);
-      }
+    let video: HTMLVideoElement | null = null;
+    const warm = () => {
+      video = document.createElement('video');
+      video.src = '/videos/blindbox_op.mp4';
+      video.preload = 'auto';
+      video.load();
     };
 
-    const videos: HTMLVideoElement[] = sources.map((src) => {
-      const video = document.createElement('video');
-      video.src = src;
-      video.preload = 'auto';
-      video.oncanplaythrough = onOneLoaded;
-      video.onerror = onOneLoaded;
-      video.load();
-      return video;
-    });
-
-    const timeoutId = window.setTimeout(() => {
-      // setIsMediaReady((prev) => prev || loadedCount > 0);
-    }, 4000);
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout: number }) => number)
+      | undefined;
+    const handle = ric ? ric(warm, { timeout: 3000 }) : window.setTimeout(warm, 1200);
 
     return () => {
-      window.clearTimeout(timeoutId);
-      videos.forEach((video) => {
-        video.oncanplaythrough = null;
-        video.onerror = null;
-      });
+      if (ric) (window as any).cancelIdleCallback?.(handle);
+      else window.clearTimeout(handle);
+      if (video) { video.removeAttribute('src'); video.load(); }
     };
-  }, [bgVideos]);
+  }, [isMachineReady]);
 
   // 實際生效的主題：商品自訂優先，沒設（null / 空字串）才用全站預設
   const effectiveTheme = ((product as any)?.machine_theme || defaultTheme) ?? null;
@@ -660,7 +661,7 @@ export default function BlindboxDetailPage() {
             </div>
 
             <ImageButton
-              src="/images/gacha/btn2.png"
+              src="/images/gacha/btn2.webp"
               alt="換一盒"
               text="換一盒"
               className={`absolute ${isSoldOut ? 'opacity-40 grayscale pointer-events-none' : ''}`}
@@ -669,7 +670,7 @@ export default function BlindboxDetailPage() {
               onClick={handleChangeBox}
             />
             <ImageButton
-              src="/images/gacha/btn1.png"
+              src="/images/gacha/btn1.webp"
               alt="立即開盒"
               text="立即開盒"
               className="absolute"
@@ -678,7 +679,7 @@ export default function BlindboxDetailPage() {
               onClick={handlePlay}
             />
             <ImageButton
-              src="/images/gacha/btn2.png"
+              src="/images/gacha/btn2.webp"
               alt="試試看"
               text="試試看"
               className="absolute"

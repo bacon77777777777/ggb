@@ -48,7 +48,10 @@ const websiteJsonLd = {
   },
 }
 
-const OG_IMAGE = `${siteUrl}/images/banner.png`
+// 分享到 LINE／FB 時的預覽圖。原本指 banner.png，但 repo 裡從來沒有這個檔案，
+// 等於全站分享都沒有預覽圖。改用實際存在的 banner_defaulet.png（檔名 typo 是原本就有的）。
+// 這張刻意保持 PNG 不轉 WebP —— 各家爬蟲對 OG 圖的 WebP 支援不一致。
+const OG_IMAGE = `${siteUrl}/images/banner_defaulet.png`
 
 export const metadata: Metadata = {
   title: {
