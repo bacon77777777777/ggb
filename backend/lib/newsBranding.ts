@@ -107,8 +107,14 @@ export async function brandCoverImage(
      * logo 本身的大小與位置不變（維持貼齊角落 + padding），只有白色區域
      * 往圖內延伸 —— 老闆已經看過的版面不會跑掉。
      */
+    /*
+     * 白墊的涵蓋範圍要對齊「問模型的範圍」：偵測時送的是上／下緣各
+     * 16% 高的長條，模型回答的 TL/TR/BL/BR 指的是那條長條的左／右 30%。
+     * 白墊蓋滿同一塊區域，模型只要角落答對，站標就必然被蓋住 ——
+     * 以前白墊只有 11% 高、30% 寬，模型答對了還是可能露出來。
+     */
     const plateW = Math.max(logoW + pad * 2, Math.round(W * 0.30), 210)
-    const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.11), 66)
+    const plateH = Math.max(logoH + pad * 2, Math.round(H * 0.16), 66)
     const left = box.left + (corner.endsWith('left') ? 0 : W - plateW)
     const top = box.top + (corner.startsWith('top') ? 0 : H - plateH)
     // logo 貼外側角落，白墊往內延伸
