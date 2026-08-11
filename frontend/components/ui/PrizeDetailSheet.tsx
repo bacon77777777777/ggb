@@ -135,7 +135,7 @@ export default function PrizeDetailSheet({ prize, onClose, sealed = false, zInde
             <div className="relative px-5 pt-1 pb-2">
               <PinchZoomImage
                 key={prize?.name ?? ''}
-                src={prize?.image_url || '/images/item_defaulet.png'}
+                src={prize?.image_url || '/images/item_defaulet.webp'}
                 alt={prize?.name ?? ''}
                 className="mx-auto h-[36dvh] max-h-[320px] w-full rounded-xl"
                 onSwipeLeft={onNext}

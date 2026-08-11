@@ -1081,7 +1081,7 @@ export default function Home() {
               if (!id) continue;
               displayById.set(id, {
                 name: String((d as any)?.name || 'user'),
-                avatar_url: String((d as any)?.avatar_url || '/images/avatar.png'),
+                avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp'),
               });
             }
           }
@@ -1089,7 +1089,7 @@ export default function Home() {
 
         const mapped: SaleListing[] = listingRows.map((row: any) => {
           const sellerId = String(row?.seller_id || '');
-          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const createdAtRaw = String(row?.created_at || '');
           const createdAt = createdAtRaw ? createdAtRaw.slice(0, 10) : '';
           const title = String(row?.title || '').trim();
@@ -1122,7 +1122,7 @@ export default function Home() {
               image:
                 (imageCandidates[0] ||
                   items.map((x: any) => x.image).filter(Boolean)[0] ||
-                  '/images/item.png') as string,
+                  '/images/item_defaulet.webp') as string,
             },
           };
         });
@@ -1243,7 +1243,7 @@ export default function Home() {
           for (const d of Array.isArray(displays) ? displays : []) {
             const id = String((d as any).id || '');
             if (!id) continue;
-            displayById.set(id, { name: String((d as any).name || 'user'), avatar_url: String((d as any).avatar_url || '/images/avatar.png') });
+            displayById.set(id, { name: String((d as any).name || 'user'), avatar_url: String((d as any).avatar_url || '/images/avatar.webp') });
           }
         }
 
@@ -1257,7 +1257,7 @@ export default function Home() {
 
         const mapped: ExchangeOffer[] = offerRows.map((row: any) => {
           const ownerId = String(row.owner_id || '');
-          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const cardRows = Array.isArray(row.cards) ? row.cards : [];
           cardRows.sort((a: any, b: any) => (Number(a.position) || 0) - (Number(b.position) || 0));
           const getting = cardRows.filter((c: any) => c.side === 'want').map(toCard);
@@ -1418,7 +1418,7 @@ export default function Home() {
                           <div className="flex items-end justify-between gap-1">
                             <div className="flex items-center gap-1">
                               <div className="w-3.5 h-3.5">
-                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
                               <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
@@ -1522,7 +1522,7 @@ export default function Home() {
                               <div className="flex items-end justify-between gap-1">
                                 <div className="flex items-center gap-1">
                                   <div className="w-3.5 h-3.5">
-                                    <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                   </div>
                                   <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                     {Math.round(listing.price).toLocaleString()}

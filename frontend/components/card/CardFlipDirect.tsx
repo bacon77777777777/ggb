@@ -68,18 +68,18 @@ function normalizeRank(grade?: string, rarity?: string): 'SSR' | 'SR' | 'R' | 'N
 
 function getCardFront(grade?: string, rarity?: string) {
   const r = normalizeRank(grade, rarity);
-  return r === 'SSR' ? '/images/card/00001.png'
-    : r === 'SR'  ? '/images/card/00002.png'
-    : r === 'R'   ? '/images/card/00003.png'
-    : '/images/card/00004.png';
+  return r === 'SSR' ? '/images/card/00001.webp'
+    : r === 'SR'  ? '/images/card/00002.webp'
+    : r === 'R'   ? '/images/card/00003.webp'
+    : '/images/card/00004.webp';
 }
 
 function getCardBack(grade?: string, rarity?: string) {
   const r = normalizeRank(grade, rarity);
-  return r === 'SSR' ? '/images/card/cardback1.png'
-    : r === 'SR'  ? '/images/card/cardback2.png'
-    : r === 'R'   ? '/images/card/cardback3.png'
-    : '/images/card/cardback4.png';
+  return r === 'SSR' ? '/images/card/cardback1.webp'
+    : r === 'SR'  ? '/images/card/cardback2.webp'
+    : r === 'R'   ? '/images/card/cardback3.webp'
+    : '/images/card/cardback4.webp';
 }
 
 export default function CardFlipDirect({
@@ -129,7 +129,7 @@ export default function CardFlipDirect({
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 -z-10">
-        <Image src="/images/gacha_bg.png" alt="" fill className="object-cover brightness-[0.25] blur-[8px]" unoptimized />
+        <Image src="/images/gacha_bg.webp" alt="" fill className="object-cover brightness-[0.25] blur-[8px]" unoptimized />
         <div className="absolute inset-0 bg-black/50" />
       </div>
 

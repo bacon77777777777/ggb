@@ -172,7 +172,7 @@ export default function ProductCard(props: ProductCardProps) {
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
                   <div className="w-3.5 h-3.5">
-                    <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                    <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">{price.toLocaleString()}</span>

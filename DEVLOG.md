@@ -4,6 +4,76 @@
 
 ---
 
+## v2026.08.12a｜2026-08-12｜🔴 進商品頁要 3 秒：機台圖 lazy 撞上 visibility:hidden，等滿 3 秒逃生計時器
+
+老闆回報「點商品小卡進內頁要 3 秒以上」，另一台電腦查完給的結論是
+「JS bundle 419KB、DCL 2.1s，建議改 SSR」。實測後發現 **主因不是 bundle**。
+
+### 真正的根因：一個永遠等滿的逃生計時器
+
+商品頁在機台圖載完（`onLoaded`）前，把整個內容包在 `visibility: hidden` 裡，
+另外掛一個 3 秒 fallback 計時器防止卡死。但機台主圖是 `loading="lazy"` ——
+
+> **瀏覽器不會下載 `visibility:hidden` 容器裡的 lazy 圖片**（它不在視窗內、不算可見），
+> 圖片不下載 → `onLoaded` 不會觸發 → 容器不解除隱藏 → 圖片還是不可見。
+
+死結。所以**每一次**進商品頁都是走 3 秒逃生計時器，跟網速、跟 bundle 大小都無關，
+那 3 秒是寫死的。追蹤紀錄直接證實這件事：
+
+```
+內容顯示     3.94s   ← 逃生計時器到期才顯示
+main.webp   4.48s   ← 圖片是「顯示之後」才開始下載的
+```
+
+修法是給五個機台元件的主圖加 `priority`（等同 `loading="eager"` + preload），
+並在原地留註解說明為什麼不能拿掉。
+
+### 一併做的載入優化
+
+| 項目 | 做法 | 結果 |
+|------|------|------|
+| 圖片 | 38 張被引用的 PNG/JPG 轉 WebP（q88、alphaQuality 100），42 個檔案的引用同步改寫 | **26.9 MB → 3.0 MB（−89%）** |
+| 字型 | `globals.css` 五個 `@import` 全移除（`@import` 會阻塞 CSS 解析）。改在 `<head>` 放 preconnect ＋ Chiron/Tilt Warp 同步載入；Inter／Noto Sans JP／Noto Serif HK 走 `media="print"` 非阻塞載入。Noto Sans SC 全站 0 引用，直接刪 | 少一輪阻塞往返 |
+| 查詢 | 商品內頁與盒玩頁的 供應商／分類／品項／推薦 四個查詢由串接改 `Promise.all` 並行 | 四趟往返併成一趟 |
+| Bundle | `TicketSelectionFlow`／`LotteryDrawModal`／`GachaBattleEffect`／`CardDrawAnimation`／`ProductPackViewer3D` 改 `dynamic(..., { ssr: false })` | `/item/[id]` First Load **379 → 348 kB** |
+
+頁面傳輸量 **2,523 KB → 880 KB（−65%）**。
+
+### 實測（`/gacha/19`，判定基準＝機台主圖載完且其容器未被隱藏）
+
+| 情境 | 秒數 |
+|------|------|
+| 桌機／不限速 | **0.88 秒** |
+| 一般 4G（8 Mbps、80ms、CPU ×4） | **2.29 秒** |
+| 弱 4G（4 Mbps、100ms、CPU ×4） | **4.22 秒** |
+
+達到老闆要求的「1.5 秒內進商品頁」（桌機與一般網路）。弱網下剩餘時間幾乎
+都花在「載 JS → 跑 JS → 才發出 Supabase 查詢」這條往返鏈上，那是 client component
+的先天限制，只有改 SSR（伺服器端先把商品資料塞好）能再壓，這次沒動。
+
+### 工具
+
+新增 `backend/scripts/convert_frontend_images.ts`：批次 PNG/JPG → WebP，
+預設 dry-run 只報告，加 `--apply` 才實際寫檔並刪原檔。以後有新的大圖可以直接跑。
+
+### 順手修掉四個長期壞掉的圖片引用
+
+掃描全前台 138 個靜態圖片路徑，發現 **4 個引用的檔案根本不存在**（都不是這次造成的）：
+
+| 壞引用 | 引用數 | 改成 |
+|--------|--------|------|
+| `/images/item.png` | 32 處 / 17 檔 | `/images/item_defaulet.webp` |
+| `/images/item_default.png` | 1 處 | 同上（檔名 typo：實際檔案是 `defaulet`） |
+| `/images/last_one_hidden.png` | 1 處 | 同上（最後賞未揭曉，外層本來就有金光與票券框） |
+| `/images/default.png` | 2 處 | 頭像那處 → `/images/avatar.webp`；市集商品那處 → `item_defaulet.webp` |
+
+`item_defaulet.png` 是灰階 GGB logo 佔位圖，本來就存在，只是全站都拼錯檔名在叫它。
+順手把兩張佔位圖轉 WebP（46KB→13KB、44KB→5KB），既有的 `avatar.png` 引用一併改掉。
+
+修完再掃：**134 個靜態圖片路徑，0 個對不到檔案**。
+
+---
+
 ## v2026.08.11j｜2026-08-11｜🔴 賞等標籤在線上沒有顏色：Tailwind 沒掃 lib/
 
 老闆回報 PROD 的 A賞 標籤整個看不見、C賞／D賞 只剩文字沒底色，只有 B賞正常。

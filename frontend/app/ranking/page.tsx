@@ -148,7 +148,7 @@ export default function RankingPage() {
           user_id: `placeholder-${i}`,
           rank: i,
           nickname: '虛位以待',
-          avatar_url: '/images/default.png',
+          avatar_url: '/images/avatar.webp',
           amount: '0',
           isPlaceholder: true
         });
@@ -258,7 +258,7 @@ export default function RankingPage() {
         >
           <div className="absolute top-0 left-0 w-full z-0 pointer-events-none">
             <Image
-              src="/images/rank/topbg.png"
+              src="/images/rank/topbg.webp"
               alt="Ranking Background"
               width={750}
               height={561}

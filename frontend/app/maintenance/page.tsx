@@ -74,7 +74,7 @@ export default async function MaintenancePage() {
       {/* 主訊息吃掉剩下的空間並置中，所以畫面高矮不同時 logo 與底部小字都待在原位 */}
       <div className="flex flex-1 flex-col items-center justify-center py-8">
         <Image
-          src="/images/maintain.png"
+          src="/images/maintain.webp"
           alt=""
           width={200}
           height={200}

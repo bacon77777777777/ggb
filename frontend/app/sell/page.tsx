@@ -103,7 +103,7 @@ export default function SellListPage() {
               if (!id) continue;
               displayById.set(id, {
                 name: (d.name || 'user').toString(),
-                avatar: (d.avatar_url || '/images/avatar.png').toString(),
+                avatar: (d.avatar_url || '/images/avatar.webp').toString(),
               });
             }
           }
@@ -128,7 +128,7 @@ export default function SellListPage() {
               }))
             : [];
           const firstItemImage = items.map((x: any) => x.image).filter(Boolean)[0] || '';
-          const mainImage = (imageCandidates[0] || firstItemImage || '/images/item.png') as string;
+          const mainImage = (imageCandidates[0] || firstItemImage || '/images/item_defaulet.webp') as string;
           const itemPrices = items.map((x: any) => Number(x?.price || 0)).filter((n: number) => Number.isFinite(n) && n > 0);
           const minPrice = itemPrices.length > 0 ? Math.min(...itemPrices) : Number(r?.price || 0);
           return {
@@ -136,7 +136,7 @@ export default function SellListPage() {
             seller: {
               id: sellerId,
               name: d?.name || 'user',
-              avatar: d?.avatar || '/images/avatar.png',
+              avatar: d?.avatar || '/images/avatar.webp',
             },
             createdAt: String(r?.created_at || ''),
             price: minPrice,

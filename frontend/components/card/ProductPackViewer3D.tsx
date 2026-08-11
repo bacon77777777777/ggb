@@ -43,7 +43,7 @@ const FALLBACK = { top: '#e8e4dc', bot: '#b8b0a8' };
 
 export function ProductPackViewer3D({
   packImage,
-  backImage = '/images/card/back.png',
+  backImage = '/images/card/back.webp',
   showSSRGlare = true,
   interactive = true,
 }: ProductPackViewer3DProps) {

@@ -1,6 +1,12 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+/* 彈窗與演出元件一律動態載入。
+   這頁把七支轉蛋機台、卡包 3D 檢視器、對戰特效全部靜態 import，
+   但一個商品只用得到其中一條路徑 —— 沒下載的 JS 不用解析，
+   慢手機省下的是解析時間，不只是流量。 */
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database.types';
@@ -21,11 +27,21 @@ import GachaMachine, { Prize } from '@/components/GachaMachine';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { GachaThemeRenderer, type MachineTheme } from '@/components/gacha-themes';
 import { PrizeResultModal } from '@/components/shop/PrizeResultModal';
-import { TicketSelectionFlow } from '@/components/shop/TicketSelectionFlow';
-import LotteryDrawModal from '@/components/shop/LotteryDrawModal';
-import { GachaBattleEffect, CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
-import CardDrawAnimation from '@/components/card/CardDrawAnimation';
-import { ProductPackViewer3D } from '@/components/card/ProductPackViewer3D';
+const TicketSelectionFlow = dynamic(
+  () => import('@/components/shop/TicketSelectionFlow').then(m => m.TicketSelectionFlow),
+  { ssr: false },
+);
+const LotteryDrawModal = dynamic(() => import('@/components/shop/LotteryDrawModal'), { ssr: false });
+import type { CardItem as BattleCardItem } from '@/components/card/GachaBattleEffect';
+const GachaBattleEffect = dynamic(
+  () => import('@/components/card/GachaBattleEffect').then(m => m.GachaBattleEffect),
+  { ssr: false },
+);
+const CardDrawAnimation = dynamic(() => import('@/components/card/CardDrawAnimation'), { ssr: false });
+const ProductPackViewer3D = dynamic(
+  () => import('@/components/card/ProductPackViewer3D').then(m => m.ProductPackViewer3D),
+  { ssr: false },
+);
 import { GachaProductDetail } from '@/components/shop/GachaProductDetail';
 import { GachaResultModal } from '@/components/shop/GachaResultModal';
 import { MissionService } from '@/services/mission';
@@ -819,7 +835,7 @@ export default function ProductDetailPage() {
       id: `trial-${best?.id ?? rarity}`,
       name: String(best?.name || rarity),
       rarity,
-      image_url: best?.image_url || '/images/card/00001.png',
+      image_url: best?.image_url || '/images/card/00001.webp',
       grade: rarity,
       is_last_one: false,
     }
@@ -1086,10 +1102,10 @@ export default function ProductDetailPage() {
                 ? 'R'
                 : 'N';
 
-        let cardFrontImage = '/images/card/00004.png';
-        if (rarity === 'SSR') cardFrontImage = '/images/card/00001.png';
-        else if (rarity === 'SR') cardFrontImage = '/images/card/00002.png';
-        else if (rarity === 'R') cardFrontImage = '/images/card/00003.png';
+        let cardFrontImage = '/images/card/00004.webp';
+        if (rarity === 'SSR') cardFrontImage = '/images/card/00001.webp';
+        else if (rarity === 'SR') cardFrontImage = '/images/card/00002.webp';
+        else if (rarity === 'R') cardFrontImage = '/images/card/00003.webp';
 
         return {
           id: prize.id,
@@ -1105,13 +1121,20 @@ export default function ProductDetailPage() {
       const productId = parseInt(params.id as string);
       if (isNaN(productId)) return;
 
+      /*
+       * 商品先查（要靠它判斷是不是盒玩、拿 supplier_id），其餘四個並行。
+       *
+       * 原本五個 await 接力，但只有 suppliers 真的相依（需要 supplier_id）；
+       * 品項、分類、推薦商品只要網址上的 productId 就能查，卻乖乖排隊等前面
+       * —— 白等約 0.3~0.4 秒。純前端渲染的頁面本來就慢，沒必要再自己加碼。
+       */
       const { data: productData, error: productError } = await supabase
         .from('products')
         .select(PRODUCT_PUBLIC_COLUMNS)
         .eq('id', productId)
         .neq('status', 'pending')
         .single();
-      
+
       if (productError) throw productError;
 
       if (productData?.type === 'blindbox') {
@@ -1121,45 +1144,29 @@ export default function ProductDetailPage() {
 
       setProduct(productData);
 
-      if (productData?.supplier_id) {
-        const { data: supData } = await supabase
-          .from('suppliers')
-          .select('name')
-          .eq('id', productData.supplier_id)
-          .single();
-        setSupplierName(supData?.name ?? null);
-      } else {
-        setSupplierName(null);
-      }
+      const [supRes, menuRes, prizesRes, recRes] = await Promise.all([
+        productData?.supplier_id
+          ? supabase.from('suppliers').select('name').eq('id', productData.supplier_id).single()
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from('product_categories').select('categories(id, name)').eq('product_id', productId),
+        supabase.from('product_prizes').select(PRIZE_PUBLIC_COLUMNS).eq('product_id', productId)
+          .order('level', { ascending: true }),
+        supabase.from('products').select(PRODUCT_PUBLIC_COLUMNS).neq('id', productId)
+          .eq('status', 'active').limit(4),
+      ]);
 
-      // Fetch categories this product belongs to (product_categories → categories)
-      const { data: menuRows } = await supabase
-        .from('product_categories')
-        .select('categories(id, name)')
-        .eq('product_id', productId)
+      setSupplierName((supRes.data as { name?: string } | null)?.name ?? null);
+
       setProductCategories(
-        (menuRows || [])
-          .map((r: Record<string, unknown>) => r.categories as { id: string; name: string } | null)
+        ((menuRes.data as Record<string, unknown>[] | null) || [])
+          .map(r => r.categories as { id: string; name: string } | null)
           .filter((c): c is { id: string; name: string } => !!c)
       )
 
-      const { data: prizesData, error: prizesError } = await supabase
-        .from('product_prizes')
-        .select(PRIZE_PUBLIC_COLUMNS)
-        .eq('product_id', productId)
-        .order('level', { ascending: true });
-      
-      if (prizesError) throw prizesError;
-      setPrizes(prizesData || []);
+      if (prizesRes.error) throw prizesRes.error;
+      setPrizes(prizesRes.data || []);
 
-      const { data: recData } = await supabase
-        .from('products')
-        .select(PRODUCT_PUBLIC_COLUMNS)
-        .neq('id', productId)
-        .eq('status', 'active')
-        .limit(4);
-      
-      if (recData) setRecommendations(recData);
+      if (recRes.data) setRecommendations(recRes.data);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -1412,7 +1419,7 @@ export default function ProductDetailPage() {
             className="relative w-full"
             style={{
               aspectRatio: '750/932',
-              backgroundImage: "url('/images/card/bg.png')",
+              backgroundImage: "url('/images/card/bg.webp')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -1511,7 +1518,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -1562,7 +1569,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item.png';
+                      : '/images/item_defaulet.webp';
                   
                   return (
                     <button
@@ -1765,7 +1772,7 @@ export default function ProductDetailPage() {
                     </h1>
                     <div className="flex items-end justify-between gap-2 pb-4 border-b border-neutral-50 dark:border-neutral-800">
                       <div className="flex items-baseline gap-2">
-                        <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                        <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">{product.price.toLocaleString()}</span>
                           <span className="text-sm text-neutral-400 font-black uppercase tracking-widest">/ 抽</span>
@@ -1913,7 +1920,7 @@ export default function ProductDetailPage() {
                 單抽
               </span>
               <div className="flex items-center gap-1">
-                <Image src="/images/gcoin.png" alt="G" width={16} height={16}
+                <Image src="/images/gcoin.webp" alt="G" width={16} height={16}
                   className="inline-block shrink-0" style={{ width: 16, height: 16 }} unoptimized />
                 <span className="font-amount text-xl font-black leading-none text-accent-red">
                   {(product.price ?? 0).toLocaleString()}
@@ -2025,7 +2032,7 @@ export default function ProductDetailPage() {
                 <div className="hidden lg:flex items-end justify-between gap-2 pb-5 border-b border-neutral-50 dark:border-neutral-800">
                   <div className="flex items-baseline gap-2">
                     <Image
-                      src="/images/gcoin.png"
+                      src="/images/gcoin.webp"
                       alt="G Coin"
                       width={20}
                       height={20}
@@ -2098,7 +2105,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -2149,7 +2156,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item.png';
+                      : '/images/item_defaulet.webp';
                   
                   return (
                     <button
@@ -2327,7 +2334,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-1">
                 <div className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-yellow shadow-sm">
                   <Image
-                    src="/images/gcoin.png"
+                    src="/images/gcoin.webp"
                     alt="G"
                     width={10}
                     height={10}

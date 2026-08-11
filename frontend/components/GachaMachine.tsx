@@ -213,7 +213,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
       {/* Background Image */}
       <div className="absolute inset-0 z-[-1]">
         <Image 
-          src="/images/gacha_bg.png" 
+          src="/images/gacha_bg.webp" 
           alt="" 
           fill
           className="object-cover filter brightness-[0.85] blur-[3px] scale-105"
@@ -302,7 +302,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
                       const imageSrc =
                         lastOnePrize?.image_url && !lastOnePrize.image_url.startsWith('blob:')
                           ? lastOnePrize.image_url
-                          : '/images/item.png';
+                          : '/images/item_defaulet.webp';
                       return lastOnePrize ? (
                          <Image 
                            src={imageSrc} 

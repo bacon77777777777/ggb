@@ -35,7 +35,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
         {/* Image Section */}
         <div className="relative aspect-square w-full bg-item-bg rounded-2xl overflow-hidden shadow-inner">
           <Image 
-            src={item.image || '/images/item.png'} 
+            src={item.image || '/images/item_defaulet.webp'} 
             alt={item.name} 
             fill
             className="object-cover"
@@ -72,7 +72,7 @@ export function WarehouseItemDetailModal({ item, isOpen, onClose }: WarehouseIte
               <div className="flex items-center gap-1">
                 <span className="text-sm font-black text-accent-red block">+{item.recycleValue}</span>
                 <Image
-                  src="/images/gcoin.png"
+                  src="/images/gcoin.webp"
                   alt="G"
                   width={14}
                   height={14}

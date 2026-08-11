@@ -216,11 +216,17 @@ export function GachaMachineMode4({
       {/* Background machine image */}
       <div className="absolute inset-0">
         <Image
-          src="/images/gacha/mode4/main.png"
+          src="/images/gacha/mode4/main.webp"
           alt="gacha machine"
           fill
           className="object-fill"
           unoptimized
+          priority
+          /* priority 一定要留著。
+             商品頁在機台回報載入完成前是 visibility:hidden，而 Next/Image 預設
+             lazy —— 瀏覽器看它不在畫面上就不下載，圖不下載就永遠不會回報，
+             結果只能等頁面那道 3 秒保險計時器。變成「網路再快也是 3 秒起跳」的死結。
+             priority 讓它無視可視範圍立刻下載，同時解掉死結。 */
           onLoadingComplete={() => {
             if (!hasNotifiedLoadedRef.current) {
               hasNotifiedLoadedRef.current = true;

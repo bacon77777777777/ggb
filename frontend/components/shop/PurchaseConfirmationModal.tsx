@@ -316,8 +316,8 @@ export function PurchaseConfirmationModal({
                         unoptimized
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.srcset = '/images/item.png';
-                          target.src = '/images/item.png';
+                          target.srcset = '/images/item_defaulet.webp';
+                          target.src = '/images/item_defaulet.webp';
                         }}
                       />
                     </div>
@@ -341,7 +341,7 @@ export function PurchaseConfirmationModal({
                         <div className="flex items-center gap-1">
                           <div className={cn("relative shrink-0", isDesktop ? "w-6 h-6" : "w-5 h-5")}>
                             <Image 
-                              src="/images/gcoin.png" 
+                              src="/images/gcoin.webp" 
                               alt="G" 
                               fill
                               className="object-contain"
@@ -713,7 +713,7 @@ export function GAmount({ value, negative, iconSize = 14, className }: {
   return (
     <span className={cn("inline-flex items-center gap-1 align-middle", className)}>
       {negative && <span>-</span>}
-      <Image src="/images/gcoin.png" alt="G" width={iconSize} height={iconSize}
+      <Image src="/images/gcoin.webp" alt="G" width={iconSize} height={iconSize}
         className="inline-block shrink-0" style={{ width: iconSize, height: iconSize }} />
       <span className="font-amount">{value.toLocaleString()}</span>
     </span>

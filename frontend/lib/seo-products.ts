@@ -88,7 +88,7 @@ export function buildProductMetadata(product: DbProduct | null): Metadata {
 
   const description = descriptionRaw ? `${descriptionRaw.slice(0, 100)} — ${typeLabel} | 吉吉比` : autoDesc
 
-  const imagePath = product.image_url || '/images/item.png'
+  const imagePath = product.image_url || '/images/item_defaulet.webp'
   const imageUrl = imagePath.startsWith('http') ? imagePath : `${siteUrl}${imagePath}`
   const images = [{ url: imageUrl, width: 800, height: 800, alt: `${product.name} ${typeLabel}` }]
 
@@ -136,7 +136,7 @@ export function buildProductJsonLd(product: DbProduct | null) {
 
   const { path } = productRoutePath(product)
   const url = `${siteUrl}${path}`
-  const image = product.image_url || `${siteUrl}/images/item.png`
+  const image = product.image_url || `${siteUrl}/images/item_defaulet.webp`
 
   const availability =
     product.status === 'active' && (product.remaining ?? 0) > 0

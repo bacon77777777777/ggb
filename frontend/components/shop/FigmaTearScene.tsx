@@ -222,7 +222,7 @@ export default function FigmaTearScene({
       style={{ minHeight: '100dvh', background: '#111', touchAction: 'none' }}
     >
       {/* 全屏背景 */}
-      <Image src="/images/ichiban-tear/bg.png" alt="" fill className="object-cover" unoptimized priority />
+      <Image src="/images/ichiban-tear/bg.webp" alt="" fill className="object-cover" unoptimized priority />
 
       {/* 場景群組：手 + 票 */}
       <div
@@ -236,7 +236,7 @@ export default function FigmaTearScene({
       >
         {/* 手 */}
         <Image
-          src="/images/ichiban-tear/hand.png" alt="" unoptimized
+          src="/images/ichiban-tear/hand.webp" alt="" unoptimized
           style={{
             position: 'absolute', top: 11 * s, left: 5 * s,
             width: 283 * s, height: 467 * s,

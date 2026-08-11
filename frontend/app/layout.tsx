@@ -115,6 +115,32 @@ export default async function RootLayout({
   return (
     <html lang="zh-TW">
       <head>
+        {/* 先把連線建起來：字型在 googleapis（CSS）與 gstatic（字檔）兩個網域，
+            不 preconnect 的話 DNS＋TLS 要等到解析出 @font-face 才開始 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+
+        {/* 全站都要的兩套：內文與金額數字，照常阻塞載入 */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&family=Tilt+Warp&display=swap"
+        />
+
+        {/* 只有特定頁面用得到的三套，改成不擋渲染：
+            先以 media="print" 下載（瀏覽器不會為了它延後繪製），載完再切回 all。
+            Inter／Noto Sans JP 只有排行榜、Noto Serif HK 只有抽卡對戰特效在用，
+            為了它們讓每一頁都慢下來不划算。（Noto Sans SC 全站沒用到，已移除） */}
+        <link
+          rel="stylesheet"
+          media="print"
+          href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,700&family=Noto+Sans+JP:wght@400;500;700;800;900&family=Noto+Serif+HK:wght@200..900&display=swap"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.querySelectorAll('link[media="print"]').forEach(l=>{l.onload=()=>{l.media='all'}})`,
+          }}
+        />
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}

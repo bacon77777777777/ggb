@@ -136,13 +136,13 @@ export default function MessagesListPage() {
           for (const d of Array.isArray(displays) ? displays : []) {
             const id = String((d as any).id || '');
             if (!id) continue;
-            displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || '/images/avatar.png') });
+            displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || '/images/avatar.webp') });
           }
         }
 
         const list: ThreadPreview[] = Array.from(byThread.entries())
           .map(([id, t]) => {
-            const display = displayById.get(t.otherId) || { name: 'user', avatar: '/images/avatar.png' };
+            const display = displayById.get(t.otherId) || { name: 'user', avatar: '/images/avatar.webp' };
             return {
               id,
               title: `@${display.name}`,

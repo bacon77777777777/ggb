@@ -669,7 +669,7 @@ export default function SearchPage() {
                       onClick={persistSearchState}
                     >
                       <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                        <Image src={listing.image || '/images/default.png'} alt={listing.title} fill className="object-cover" unoptimized />
+                        <Image src={listing.image || '/images/item_defaulet.webp'} alt={listing.title} fill className="object-cover" unoptimized />
                       </div>
 
                       <div className="flex flex-col p-2">
@@ -686,7 +686,7 @@ export default function SearchPage() {
                           <div className="flex items-end justify-between gap-1">
                             <div className="flex items-center gap-1">
                               <div className="w-3.5 h-3.5">
-                                <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                               </div>
                               <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                 {Math.round(listing.price).toLocaleString()}
@@ -751,7 +751,7 @@ export default function SearchPage() {
                               onClick={persistSearchState}
                             >
                               <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                                <Image src={listing.image || '/images/default.png'} alt={listing.title} fill className="object-cover" unoptimized />
+                                <Image src={listing.image || '/images/item_defaulet.webp'} alt={listing.title} fill className="object-cover" unoptimized />
                               </div>
 
                               <div className="flex flex-col p-2">
@@ -768,7 +768,7 @@ export default function SearchPage() {
                                   <div className="flex items-end justify-between gap-1">
                                     <div className="flex items-center gap-1">
                                       <div className="w-3.5 h-3.5">
-                                        <Image src="/images/gcoin.png" alt="G" width={14} height={14} className="w-full h-full object-contain" />
+                                        <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="w-full h-full object-contain" />
                                       </div>
                                       <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                                         {Math.round(listing.price).toLocaleString()}

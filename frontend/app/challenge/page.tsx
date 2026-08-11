@@ -174,7 +174,7 @@ function TierSelectModal({
               <Image
                 src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
                 alt={machine.name} fill className="object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = '/images/item_defaulet.webp'; }}
               />
             </div>
             <h3 className="font-black text-base text-neutral-900 dark:text-white truncate">
@@ -394,7 +394,7 @@ function MachineCard({
         <Image
           src={machine.image_url || machine.slot_themes?.image_url || '/images/slot/item.png'}
           alt={machine.name} fill className="object-cover"
-          onError={(e) => { (e.target as HTMLImageElement).src = '/images/item.png'; }}
+          onError={(e) => { (e.target as HTMLImageElement).src = '/images/item_defaulet.webp'; }}
         />
         {sched === 'running' && (
           <OccupancyOverlay

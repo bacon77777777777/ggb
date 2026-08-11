@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { imgAvatar, img, imgAvatar1, img1, imgAvatar2, img2 } from '../assets';
 
 // Global G Coin Icon
-const imgGCoin = "/images/gcoin.png";
-const imgRanking123 = "/images/rank/ranking123.png";
-const imgDefaultAvatar = "/images/avatar.png";
+const imgGCoin = "/images/gcoin.webp";
+const imgRanking123 = "/images/rank/ranking123.webp";
+const imgDefaultAvatar = "/images/avatar.webp";
 
 const TITLE_STYLES: Record<string, string> = {
   gold:   'bg-gradient-to-r from-yellow-400 to-amber-500',
@@ -210,7 +210,7 @@ export function BackgroundImageAndText4({ text, type = 'token' }: BackgroundImag
       {type === 'token' && <GiftboxBackgroundImage />}
       {type === 'gift' && (
         <div className="relative shrink-0 size-[25px]">
-          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.png" />
+          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.webp" />
         </div>
       )}
       <p className="font-amount font-bold leading-[26px] not-italic relative shrink-0 text-[#ffc700] text-[28.125px]">{text}</p>
@@ -236,7 +236,7 @@ export function BackgroundImageAndText3({ text, type = 'token' }: { text: string
       )}
       {type === 'gift' && (
         <div className="relative shrink-0 size-[23.438px]">
-          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.png" />
+          <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src="/images/gift.webp" />
         </div>
       )}
       <p className="font-amount font-bold leading-[1.2] not-italic relative shrink-0 text-[#ffc700] text-[28.125px]">{text}</p>

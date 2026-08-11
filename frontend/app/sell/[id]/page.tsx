@@ -115,13 +115,13 @@ export default function SellDetailPage() {
 
         const sellerId = String((row as any)?.seller_id || '');
         let sellerName = 'user';
-        let sellerAvatar = '/images/avatar.png';
+        let sellerAvatar = '/images/avatar.webp';
         if (sellerId) {
           const { data: displays, error: displayError } = await supabase.rpc('get_user_displays', { p_ids: [sellerId] });
           if (!displayError && Array.isArray(displays) && displays[0]) {
             const d = displays[0] as any;
             sellerName = String(d?.name || 'user');
-            sellerAvatar = String(d?.avatar_url || '/images/avatar.png');
+            sellerAvatar = String(d?.avatar_url || '/images/avatar.webp');
           }
         }
 
@@ -147,7 +147,7 @@ export default function SellDetailPage() {
             }))
           : [];
 
-        const primaryImage = imageCandidates[0] || String(items[0]?.image || '').trim() || '/images/item.png';
+        const primaryImage = imageCandidates[0] || String(items[0]?.image || '').trim() || '/images/item_defaulet.webp';
         const imagesFromItems = items.map((x) => x.image).filter(Boolean);
         const images = (imageCandidates.length > 0 ? imageCandidates : imagesFromItems.length > 0 ? imagesFromItems : [primaryImage]).filter(Boolean);
 
@@ -244,14 +244,14 @@ export default function SellDetailPage() {
             for (const d of Array.isArray(displays) ? displays : []) {
               const uid = String((d as any)?.id || '');
               if (!uid) continue;
-              displayById.set(uid, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.png') });
+              displayById.set(uid, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp') });
             }
           }
         }
 
         const mapped = list.map((r: any): SaleListing => {
           const sellerId = String(r?.seller_id || '');
-          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const createdAtRaw = String(r?.created_at || '');
           const createdAt = createdAtRaw ? createdAtRaw.slice(0, 10) : '';
           const type = undefined;
@@ -271,7 +271,7 @@ export default function SellDetailPage() {
                 quantity: Math.max(1, Math.round(Number(x?.quantity ?? 1) || 1)),
               }))
             : [];
-          const primaryImage = imageCandidates[0] || String(items[0]?.image || '').trim() || '/images/item.png';
+          const primaryImage = imageCandidates[0] || String(items[0]?.image || '').trim() || '/images/item_defaulet.webp';
           const imagesFromItems = items.map((x) => x.image).filter(Boolean);
           const images = (imageCandidates.length > 0 ? imageCandidates : imagesFromItems.length > 0 ? imagesFromItems : [primaryImage]).filter(Boolean);
 
@@ -529,7 +529,7 @@ export default function SellDetailPage() {
 
                 <div className="hidden lg:flex items-end justify-between gap-2 pb-5 border-b border-neutral-50 dark:border-neutral-800">
                   <div className="flex items-baseline gap-2">
-                    <Image src="/images/gcoin.png" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
+                    <Image src="/images/gcoin.webp" alt="G Coin" width={20} height={20} className="w-5 h-5 object-contain" />
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-4xl font-black text-accent-red font-amount tracking-tighter leading-none">
                         {Math.round(minUnitPrice).toLocaleString()}
@@ -554,7 +554,7 @@ export default function SellDetailPage() {
                         }
                         if (typeof window !== 'undefined') {
                           sessionStorage.setItem(`messages:title:sell:${listing.id}--${listing.seller.id}`, `@${listing.seller.name}`);
-                          sessionStorage.setItem(`messages:avatar:sell:${listing.id}--${listing.seller.id}`, listing.seller.avatar || '/images/avatar.png');
+                          sessionStorage.setItem(`messages:avatar:sell:${listing.id}--${listing.seller.id}`, listing.seller.avatar || '/images/avatar.webp');
                         }
                         router.push(`/messages/sell:${listing.id}--${listing.seller.id}`);
                       }}
@@ -861,7 +861,7 @@ export default function SellDetailPage() {
 
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <Image src="/images/gcoin.png" alt="G Coin" width={18} height={18} className="w-[18px] h-[18px] object-contain" />
+                <Image src="/images/gcoin.webp" alt="G Coin" width={18} height={18} className="w-[18px] h-[18px] object-contain" />
                 <div className="text-[22px] font-black font-amount text-primary tracking-tight">
                   {Math.round(selectedTotalPrice).toLocaleString()}
                 </div>
@@ -885,7 +885,7 @@ export default function SellDetailPage() {
           <div className="flex flex-col items-start justify-center">
             <div className="flex items-center gap-1">
               <div className="w-4 h-4">
-                <Image src="/images/gcoin.png" alt="G Coin" width={16} height={16} className="w-full h-full object-contain" />
+                <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-full h-full object-contain" />
               </div>
               <span className="text-[24px] leading-none font-black font-amount text-primary tracking-tight">
                 {Math.round(minUnitPrice).toLocaleString()}
