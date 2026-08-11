@@ -85,7 +85,7 @@ export default function DanmakuLayer({ items, paused, onNameClick }: {
         >
           <div className="flex items-center gap-1.5 pl-0.5 pr-3 py-0.5 rounded-full bg-black/55 backdrop-blur-sm border border-white/15">
             <span className="relative w-5 h-5 rounded-full overflow-hidden shrink-0 bg-white/20">
-              <Image src={f.avatar || '/images/avatar.png'} alt="" fill className="object-cover" unoptimized />
+              <Image src={f.avatar || '/images/avatar.webp'} alt="" fill className="object-cover" unoptimized />
             </span>
             <span className="text-[11px] font-black text-white leading-none">
               {/* 整層 pointer-events-none 不擋機台操作，只有暱稱單獨開啟點擊 */}

@@ -108,7 +108,7 @@ export default function SellManagePage() {
           const rawItems = r?.items ?? [];
           const items = Array.isArray(rawItems) ? rawItems : [];
           const firstItemImage = String(items[0]?.image || '').trim();
-          const image = images[0] || firstItemImage || '/images/item.png';
+          const image = images[0] || firstItemImage || '/images/item_defaulet.webp';
           return {
             id: toNum(r?.id),
             title: String(r?.title || '').trim() || (String(items[0]?.name || '').trim() || '販售商品'),
@@ -128,14 +128,14 @@ export default function SellManagePage() {
             for (const d of Array.isArray(displays) ? displays : []) {
               const id = String((d as any)?.id || '');
               if (!id) continue;
-              displayById.set(id, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.png') });
+              displayById.set(id, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp') });
             }
           }
         }
 
         const mappedOrders: SellerOrder[] = list.map((r: any) => {
           const buyerId = String(r?.buyer_id || '');
-          const display = displayById.get(buyerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(buyerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const listing = r?.sell_listings || null;
           return {
             id: toNum(r?.id),
@@ -301,7 +301,7 @@ export default function SellManagePage() {
                 const img =
                   (Array.isArray(o.listing?.images) ? (o.listing?.images as string[])[0] : '') ||
                   String(items[o.item_index]?.image || '').trim() ||
-                  '/images/item.png';
+                  '/images/item_defaulet.webp';
                 const total = Math.max(0, o.unit_price) * Math.max(1, o.quantity);
                 const subtitle = optionName ? optionName : listingTitle || '販售商品';
                 const statusText = o.step === 1 ? '待付款' : o.step === 2 || o.step === 3 ? '待出貨' : o.step === 4 ? '待收貨' : '完成';

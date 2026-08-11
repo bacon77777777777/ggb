@@ -21,7 +21,7 @@ const ITEM_IMAGES = [
   '/images/item/10020.jpg',
 ];
 
-export const DEFAULT_ITEM_IMAGE = '/images/item_default.png';
+export const DEFAULT_ITEM_IMAGE = '/images/item_defaulet.webp';
 
 export function getItemImageForId(id: string | number): string {
   if (ITEM_IMAGES.length === 0) return DEFAULT_ITEM_IMAGE;

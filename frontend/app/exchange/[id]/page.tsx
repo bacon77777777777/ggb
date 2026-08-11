@@ -166,7 +166,7 @@ export default function ExchangeDetailPage() {
         if (displayError) throw displayError;
         const display = Array.isArray(displays) ? displays[0] : null;
         const ownerName = String(display?.name || 'user');
-        const ownerAvatar = String(display?.avatar_url || '/images/avatar.png');
+        const ownerAvatar = String(display?.avatar_url || '/images/avatar.webp');
 
         const createdAtRaw = String((data as any).created_at || '');
         const createdAt = createdAtRaw ? createdAtRaw.slice(0, 10) : '';

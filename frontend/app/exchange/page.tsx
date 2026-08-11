@@ -223,7 +223,7 @@ export default function ExchangeListPage() {
               if (!id) continue;
               displayById.set(id, {
                 name: String(d.name || 'user'),
-                avatar_url: String(d.avatar_url || '/images/avatar.png'),
+                avatar_url: String(d.avatar_url || '/images/avatar.webp'),
               });
             }
           }
@@ -239,7 +239,7 @@ export default function ExchangeListPage() {
 
         const mapped: ExchangeOffer[] = offerRows.map((row) => {
           const ownerId = String(row.owner_id || '');
-          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(ownerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const cardRows = Array.isArray(row.cards) ? row.cards : [];
           cardRows.sort((a, b) => (Number(a.position) || 0) - (Number(b.position) || 0));
           const getting = cardRows.filter((c) => c.side === 'want').map(toCard);

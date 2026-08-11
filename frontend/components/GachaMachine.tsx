@@ -302,7 +302,7 @@ export default function GachaMachine({ prizes, isOpen, onGoToWarehouse, onContin
                       const imageSrc =
                         lastOnePrize?.image_url && !lastOnePrize.image_url.startsWith('blob:')
                           ? lastOnePrize.image_url
-                          : '/images/item.png';
+                          : '/images/item_defaulet.webp';
                       return lastOnePrize ? (
                          <Image 
                            src={imageSrc} 

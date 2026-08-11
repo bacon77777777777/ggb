@@ -56,10 +56,21 @@ main.webp   4.48s   ← 圖片是「顯示之後」才開始下載的
 新增 `backend/scripts/convert_frontend_images.ts`：批次 PNG/JPG → WebP，
 預設 dry-run 只報告，加 `--apply` 才實際寫檔並刪原檔。以後有新的大圖可以直接跑。
 
-### 已知遺留（本次未處理，非本次造成）
+### 順手修掉四個長期壞掉的圖片引用
 
-`/images/default.png` 在 repo 裡從來不存在，`app/ranking/page.tsx:151` 與
-`app/search/page.tsx:672,754` 引用它 → 404。要嘛補圖，要嘛改引用，待老闆決定。
+掃描全前台 138 個靜態圖片路徑，發現 **4 個引用的檔案根本不存在**（都不是這次造成的）：
+
+| 壞引用 | 引用數 | 改成 |
+|--------|--------|------|
+| `/images/item.png` | 32 處 / 17 檔 | `/images/item_defaulet.webp` |
+| `/images/item_default.png` | 1 處 | 同上（檔名 typo：實際檔案是 `defaulet`） |
+| `/images/last_one_hidden.png` | 1 處 | 同上（最後賞未揭曉，外層本來就有金光與票券框） |
+| `/images/default.png` | 2 處 | 頭像那處 → `/images/avatar.webp`；市集商品那處 → `item_defaulet.webp` |
+
+`item_defaulet.png` 是灰階 GGB logo 佔位圖，本來就存在，只是全站都拼錯檔名在叫它。
+順手把兩張佔位圖轉 WebP（46KB→13KB、44KB→5KB），既有的 `avatar.png` 引用一併改掉。
+
+修完再掃：**134 個靜態圖片路徑，0 個對不到檔案**。
 
 ---
 

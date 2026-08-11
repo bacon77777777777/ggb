@@ -1518,7 +1518,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -1569,7 +1569,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item.png';
+                      : '/images/item_defaulet.webp';
                   
                   return (
                     <button
@@ -2105,7 +2105,7 @@ export default function ProductDetailPage() {
                         <td className="px-2 sm:px-6 py-2 sm:py-3.5">
                           <div className="flex items-center gap-2 sm:gap-3">
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 flex-shrink-0 relative overflow-hidden">
-                              <Image src={prize.image_url || '/images/item_defaulet.png'} alt={prize.name} fill className="object-cover" unoptimized />
+                              <Image src={prize.image_url || '/images/item_defaulet.webp'} alt={prize.name} fill className="object-cover" unoptimized />
                             </div>
                             {/* 賞等擺名稱左邊（老闆指定）：一番賞／抽卡／自製賞
                                 的重點是「這是幾賞」，名稱反而是次要資訊 */}
@@ -2156,7 +2156,7 @@ export default function ProductDetailPage() {
                   const lastOneImage =
                     lastOnePrize.image_url && !lastOnePrize.image_url.startsWith('blob:')
                       ? lastOnePrize.image_url
-                      : '/images/item.png';
+                      : '/images/item_defaulet.webp';
                   
                   return (
                     <button

@@ -148,7 +148,7 @@ export default function RankingPage() {
           user_id: `placeholder-${i}`,
           rank: i,
           nickname: '虛位以待',
-          avatar_url: '/images/default.png',
+          avatar_url: '/images/avatar.webp',
           amount: '0',
           isPlaceholder: true
         });

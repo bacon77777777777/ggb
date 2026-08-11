@@ -1116,7 +1116,7 @@ export default function MachinePage() {
                 <div className="flex gap-3 p-3 pb-2 md:p-6 md:pb-4 md:gap-5">
                   <div className="relative bg-neutral-100 dark:bg-neutral-800 rounded-lg overflow-hidden shrink-0 shadow-sm border border-neutral-100 dark:border-neutral-700 w-12 h-12 md:w-16 md:h-16">
                     <Image
-                      src={machine.slot_themes?.image_url || machine.image_url || '/images/item.png'}
+                      src={machine.slot_themes?.image_url || machine.image_url || '/images/item_defaulet.webp'}
                       alt={machine.name} fill className="object-cover" unoptimized
                     />
                   </div>

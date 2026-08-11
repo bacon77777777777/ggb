@@ -316,8 +316,8 @@ export function PurchaseConfirmationModal({
                         unoptimized
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.srcset = '/images/item.png';
-                          target.src = '/images/item.png';
+                          target.srcset = '/images/item_defaulet.webp';
+                          target.src = '/images/item_defaulet.webp';
                         }}
                       />
                     </div>

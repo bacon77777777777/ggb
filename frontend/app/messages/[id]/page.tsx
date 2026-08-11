@@ -176,7 +176,7 @@ export default function MessageThreadPage() {
         if (error) throw error;
         const d = Array.isArray(data) ? data[0] : null;
         const name = String((d as any)?.name || 'user');
-        const avatar = String((d as any)?.avatar_url || '/images/avatar.png');
+        const avatar = String((d as any)?.avatar_url || '/images/avatar.webp');
         if (cancelled) return;
         sessionStorage.setItem(`messages:title:${rawId}`, `@${name}`);
         sessionStorage.setItem(`messages:avatar:${rawId}`, avatar);
@@ -270,7 +270,7 @@ export default function MessageThreadPage() {
         if (displayError) throw displayError;
         const display = Array.isArray(displays) ? displays[0] : null;
         const ownerName = String(display?.name || 'user');
-        const ownerAvatar = String(display?.avatar_url || '/images/avatar.png');
+        const ownerAvatar = String(display?.avatar_url || '/images/avatar.webp');
 
         const cardRows = Array.isArray((data as any).cards) ? (data as any).cards : [];
         cardRows.sort((a: any, b: any) => (Number(a.position) || 0) - (Number(b.position) || 0));
@@ -336,7 +336,7 @@ export default function MessageThreadPage() {
               for (const d of Array.isArray(ds) ? ds : []) {
                 const id = String((d as any).id || '');
                 if (!id) continue;
-                displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || '/images/avatar.png') });
+                displayById.set(id, { name: String((d as any).name || 'user'), avatar: String((d as any).avatar_url || '/images/avatar.webp') });
               }
             }
 
@@ -358,7 +358,7 @@ export default function MessageThreadPage() {
             const list = otherIds
               .map((otherId) => {
                 const last = map.get(otherId)!;
-                const display = displayById.get(otherId) || { name: 'user', avatar: '/images/avatar.png' };
+                const display = displayById.get(otherId) || { name: 'user', avatar: '/images/avatar.webp' };
                 const state = orderStateByInitiator.get(otherId) || '';
                 return { otherId, name: display.name, avatar: display.avatar, lastText: last.lastText, lastAt: last.lastAt, orderState: state };
               })

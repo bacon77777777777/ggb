@@ -32,7 +32,7 @@ interface GachaResultModalProps {
   hideTicketNumber?: boolean;
 }
 
-const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
+const ITEM_DEFAULT_IMG = '/images/item_defaulet.webp';
 
 function prizeImage(p: Prize, failed: boolean): string {
   if (failed) return ITEM_DEFAULT_IMG;

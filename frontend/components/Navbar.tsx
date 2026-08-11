@@ -926,7 +926,7 @@ function NavbarInner() {
                   <div className="px-3.5 py-2.5 mb-2 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-700 relative">
                       <Image
-                        src={user.avatar_url || '/images/avatar.png'}
+                        src={user.avatar_url || '/images/avatar.webp'}
                         alt={user.name || 'User'}
                         fill
                         className="object-cover"

@@ -55,7 +55,7 @@ export default function SellOrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
   const [sellerName, setSellerName] = useState<string>('user');
-  const [sellerAvatar, setSellerAvatar] = useState<string>('/images/avatar.png');
+  const [sellerAvatar, setSellerAvatar] = useState<string>('/images/avatar.webp');
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -162,12 +162,12 @@ export default function SellOrderDetailPage() {
         };
 
         let displayName = 'user';
-        let displayAvatar = '/images/avatar.png';
+        let displayAvatar = '/images/avatar.webp';
         if (nextOrder.sellerId) {
           const { data: displays } = await supabase.rpc('get_user_displays', { p_ids: [nextOrder.sellerId] });
           const d = Array.isArray(displays) ? (displays[0] as any) : null;
           displayName = String(d?.name || 'user');
-          displayAvatar = String(d?.avatar_url || '/images/avatar.png');
+          displayAvatar = String(d?.avatar_url || '/images/avatar.webp');
         }
 
         const { data: p, error: profileError } = await supabase
@@ -640,7 +640,7 @@ export default function SellOrderDetailPage() {
 
             <div className="mt-3 flex items-start gap-3">
               <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 flex-shrink-0">
-                <Image src={pickedItem?.image || listing.images[0] || '/images/item.png'} alt="" fill className="object-cover" unoptimized />
+                <Image src={pickedItem?.image || listing.images[0] || '/images/item_defaulet.webp'} alt="" fill className="object-cover" unoptimized />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-black text-neutral-900 dark:text-white leading-tight break-all line-clamp-2">
@@ -723,7 +723,7 @@ export default function SellOrderDetailPage() {
               onClick={() => {
                 if (typeof window !== 'undefined') {
                   sessionStorage.setItem(`messages:title:sell:${listing.id}--${order.sellerId}`, `@${sellerName}`);
-                  sessionStorage.setItem(`messages:avatar:sell:${listing.id}--${order.sellerId}`, sellerAvatar || '/images/avatar.png');
+                  sessionStorage.setItem(`messages:avatar:sell:${listing.id}--${order.sellerId}`, sellerAvatar || '/images/avatar.webp');
                 }
                 router.push(`/messages/sell:${listing.id}--${order.sellerId}`);
               }}

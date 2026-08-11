@@ -51,7 +51,7 @@ export function LastOneCelebrationModal({ onClose, prize }: LastOneCelebrationMo
               const imageSrc =
                 activePrize.image_url && !activePrize.image_url.startsWith('blob:')
                   ? activePrize.image_url
-                  : '/images/item.png';
+                  : '/images/item_defaulet.webp';
 
               return (
             <>

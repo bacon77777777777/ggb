@@ -669,7 +669,7 @@ export default function SearchPage() {
                       onClick={persistSearchState}
                     >
                       <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                        <Image src={listing.image || '/images/default.png'} alt={listing.title} fill className="object-cover" unoptimized />
+                        <Image src={listing.image || '/images/item_defaulet.webp'} alt={listing.title} fill className="object-cover" unoptimized />
                       </div>
 
                       <div className="flex flex-col p-2">
@@ -751,7 +751,7 @@ export default function SearchPage() {
                               onClick={persistSearchState}
                             >
                               <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                                <Image src={listing.image || '/images/default.png'} alt={listing.title} fill className="object-cover" unoptimized />
+                                <Image src={listing.image || '/images/item_defaulet.webp'} alt={listing.title} fill className="object-cover" unoptimized />
                               </div>
 
                               <div className="flex flex-col p-2">

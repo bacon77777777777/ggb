@@ -2467,7 +2467,7 @@ function ProfileContent() {
                           >
                             <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
-                                src={item.image || '/images/item.png'}
+                                src={item.image || '/images/item_defaulet.webp'}
                                 alt={item.name}
                                 fill
                                 className="object-cover"
@@ -2539,7 +2539,7 @@ function ProfileContent() {
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2">
                             <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image
-                                src={item.image || '/images/item.png'}
+                                src={item.image || '/images/item_defaulet.webp'}
                                 alt={item.name}
                                 fill
                                 className="object-cover"
@@ -2800,7 +2800,7 @@ function ProfileContent() {
                                   </div>
                                   <div className="relative w-14 h-14 rounded-xl bg-item-bg overflow-hidden flex-shrink-0">
                                     <Image
-                                      src={item.image || '/images/item.png'}
+                                      src={item.image || '/images/item_defaulet.webp'}
                                       alt={item.name}
                                       fill
                                       className="object-cover"
@@ -2899,7 +2899,7 @@ function ProfileContent() {
                                           <div className="flex items-center gap-3 min-w-0">
                                             <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                               <Image
-                                                src={item.image || '/images/item.png'}
+                                                src={item.image || '/images/item_defaulet.webp'}
                                                 alt={item.name}
                                                 fill
                                                 className="object-cover"
@@ -3037,7 +3037,7 @@ function ProfileContent() {
                               <div key={item.id} className="flex items-center gap-3 px-4 py-2">
                                 <div className="relative w-[56px] h-[56px] rounded-[8px] bg-item-bg overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                                   <Image
-                                    src={item.image || '/images/item.png'}
+                                    src={item.image || '/images/item_defaulet.webp'}
                                     alt={item.name}
                                     fill
                                     className="object-cover"
@@ -3103,7 +3103,7 @@ function ProfileContent() {
                                           <div className="flex items-center gap-3 min-w-0">
                                             <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                               <Image
-                                                src={item.image || '/images/item.png'}
+                                                src={item.image || '/images/item_defaulet.webp'}
                                                 alt={item.name}
                                                 fill
                                                 className="object-cover"
@@ -3585,7 +3585,7 @@ function ProfileContent() {
                       {sellingItem && (
                         <div className={cn("bg-neutral-50 dark:bg-neutral-800 rounded-xl flex items-center gap-4", isDesktop ? "p-4" : "p-3")}>
                           <Image 
-                            src={sellingItem.image || '/images/item.png'} 
+                            src={sellingItem.image || '/images/item_defaulet.webp'} 
                             alt={sellingItem.name} 
                             width={64} 
                             height={64} 
@@ -3866,7 +3866,7 @@ function ProfileContent() {
                             </div>
                             <div className="relative w-12 h-12 rounded-lg bg-neutral-100 dark:bg-neutral-800 overflow-hidden flex-shrink-0 border border-neutral-100 dark:border-neutral-800">
                               <Image 
-                                src={item.product.image || '/images/item.png'} 
+                                src={item.product.image || '/images/item_defaulet.webp'} 
                                 alt={item.product.name} 
                                 fill 
                                 className="object-cover" 
@@ -4060,7 +4060,7 @@ function ProfileContent() {
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                   <Image
-                                    src={item.product.image || '/images/item.png'}
+                                    src={item.product.image || '/images/item_defaulet.webp'}
                                     alt={item.product.name}
                                     fill
                                     className="object-cover"
@@ -4204,7 +4204,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                 <Image
-                                  src={item.product.image || '/images/item.png'}
+                                  src={item.product.image || '/images/item_defaulet.webp'}
                                   alt={item.product.name}
                                   fill
                                   className="object-cover"
@@ -5516,7 +5516,7 @@ function ProfileContent() {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shrink-0">
                                 <Image
-                                  src={p.image || '/images/item.png'}
+                                  src={p.image || '/images/item_defaulet.webp'}
                                   alt={p.name}
                                   fill
                                   className="object-cover"
@@ -5961,7 +5961,7 @@ function ProfileContent() {
                               </div>
                            ) : (
                               <Image 
-                                src={user?.avatar_url || '/images/avatar.png'} 
+                                src={user?.avatar_url || '/images/avatar.webp'} 
                                 alt="Avatar" 
                                 fill 
                                 className="object-cover" 
@@ -6136,7 +6136,7 @@ function ProfileContent() {
                             </div>
                          ) : (
                             <Image 
-                              src={user?.avatar_url || '/images/avatar.png'} 
+                              src={user?.avatar_url || '/images/avatar.webp'} 
                               alt="Avatar" 
                               fill 
                               className="object-cover" 
@@ -6433,7 +6433,7 @@ function ProfileContent() {
                         </div>
                       ) : (
                         <Image
-                          src={user.avatar_url || '/images/avatar.png'}
+                          src={user.avatar_url || '/images/avatar.webp'}
                           alt={user.name || 'User'}
                           fill
                           className="object-cover"

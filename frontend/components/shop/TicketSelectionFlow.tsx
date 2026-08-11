@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 
-const ITEM_DEFAULT_IMG = '/images/item_defaulet.png';
+const ITEM_DEFAULT_IMG = '/images/item_defaulet.webp';
 
 interface TearResult {
   id: string;
@@ -1299,10 +1299,10 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
                   const isLastOne = result.is_last_one;
                   const isHidden = isLastOne && !allNormalOpened;
                   const displayImage = isHidden
-                    ? '/images/last_one_hidden.png'
+                    ? '/images/item_defaulet.webp'
                     : result.image_url && !result.image_url.startsWith('blob:')
                       ? result.image_url
-                      : '/images/item.png';
+                      : '/images/item_defaulet.webp';
                   
                   return (
                   <div key={idx} className={cn(

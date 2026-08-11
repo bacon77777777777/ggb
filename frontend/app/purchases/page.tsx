@@ -96,14 +96,14 @@ export default function PurchasesPage() {
             for (const d of Array.isArray(displays) ? displays : []) {
               const id = String((d as any)?.id || '');
               if (!id) continue;
-              displayById.set(id, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.png') });
+              displayById.set(id, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp') });
             }
           }
         }
 
         const mapped: PurchaseOrder[] = list.map((r: any) => {
           const sellerId = String(r?.seller_id || '');
-          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.png' };
+          const display = displayById.get(sellerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
           const listing = r?.sell_listings || null;
           return {
             id: toNum(r?.id),
@@ -218,7 +218,7 @@ export default function PurchasesPage() {
                 const img =
                   (Array.isArray(o.listing?.images) ? (o.listing?.images as string[])[0] : '') ||
                   String(items[o.item_index]?.image || '').trim() ||
-                  '/images/item.png';
+                  '/images/item_defaulet.webp';
                 const total = Math.max(0, o.unit_price) * Math.max(1, o.quantity);
                 const subtitle = optionName ? optionName : listingTitle || '販售商品';
                 const status = getStatusConfig(o.step, o.cancelled);
