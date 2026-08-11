@@ -4,6 +4,44 @@
 
 ---
 
+## v2026.08.12e｜2026-08-12｜一番賞／抽卡／自製賞的抽獎畫面都補上聲音開關
+
+老闆指定：一番賞與抽卡的抽獎畫面右上角，比照轉蛋商品頁那顆聲音圖標；
+自製賞抽獎影片左上角那顆舊的，也換成同一顆並移到右上角。
+
+**五個抽獎畫面全部接上共用的 `SoundToggle`**（38px 圓形、`bg-black/30` + blur，
+就是 v2026.08.12b 抽出來給轉蛋／盒玩商品頁用的那顆）：
+
+| 畫面 | 元件 | 位置 |
+|------|------|------|
+| 一番賞・沉浸式撕紙 | `FigmaTearScene` | `top-4 right-4` |
+| 一番賞・經典列表（開籤） | `TicketSelectionFlow` | `top-3 right-3` |
+| 抽卡・開卡包 | `CardDrawAnimation` | `top-4 right-4` |
+| 抽卡・過場影片 | `app/item/[id]/page.tsx` 影片疊層 | `top-4 right-4` |
+| 自製賞・影片互動 | `GachaBattleEffect` | `top-4 right-4` |
+
+間距跟著各畫面自己的家具走：有 SKIP 的疊層用 16px（與 `bottom-4 right-4` 的
+SKIP 對齊），開籤畫面用 12px（與容器 `p-3` 對齊）。
+
+**不只是換張圖 —— 這些畫面的聲音以前根本不歸那顆開關管。**
+抽獎演出的聲音走兩條路，兩條都繞過 `lib/sfx`：
+
+- `<video muted={...}>`：自製賞與抽卡過場影片各自 `useState(false)` 管一顆自己的開關。
+  更糟的是每次開影片都 `setIsVideoMuted(false)` 強制開聲 —— 玩家在商品頁把聲音關掉，
+  一抽下去照樣有聲音。改吃 `soundPrefs`（新增 `hooks/useSoundMuted`），
+  那四行強制開聲直接拿掉。
+- `new Audio()`：一番賞的撕紙聲與中獎音效（`FigmaTearScene`、`TicketSelectionFlow`）
+  完全沒有靜音判斷，播放前補 `isSoundMuted()`。
+
+`SoundToggle` 自己也改用同一支 hook，不再重複一份訂閱邏輯。
+
+**驗證**：STG 的一番賞／抽卡／自製賞目前全是未上架，而改成上架會觸發
+`trg_auto_seal_on_publish` 自動封存排籤、改不回來，所以用 Playwright 攔截
+`/rest/v1/products`（含 `.single()` 要回物件不是陣列）與 `module_settings`
+造出五種主題組合，**沒有動到資料庫**。五個畫面都確認：
+圖標出現在右上角、38×38、點一下 `ggb-muted` 寫入、有影片的兩個 `video.muted`
+確實變 true、再點一次還原，無 console error。lint 警告數改動前後都是 21。
+
 ## v2026.08.12d｜2026-08-12｜點機台商品圖收不起來：幽靈點擊把自己又打開
 
 老闆回報「電腦上點機台商品圖沒辦法隱藏，iPhone 可以」，後續補充

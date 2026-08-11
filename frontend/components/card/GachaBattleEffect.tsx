@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { Volume2, VolumeX } from 'lucide-react';
+import SoundToggle from '@/components/ui/SoundToggle';
+import { useSoundMuted } from '@/hooks/useSoundMuted';
 
 type Rarity = 'SSR' | 'SR' | 'R' | 'N';
 
@@ -61,7 +62,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
   const [clickCount, setClickCount] = useState(0);
   const [timerStarted, setTimerStarted] = useState(false);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
-  const [isMuted, setIsMuted] = useState(false);
+  const isMuted = useSoundMuted();   // 全站偏好，不再各自管一顆
   const [videoSources, setVideoSources] = useState<{ intro: string; qte: string; outcome: string } | null>(null);
   const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -297,17 +298,7 @@ export function GachaBattleEffect({ isOpen, pullResults, onComplete, productType
       <div className="relative w-full max-w-[560px] h-full overflow-hidden bg-black shadow-2xl ring-1 ring-white/10">
         {phase !== 'cards' && (
           <>
-            <button
-              type="button"
-              className="absolute top-4 left-4 z-[1500] w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white backdrop-blur-sm transition-transform active:scale-95"
-              onClick={() => setIsMuted((prev) => !prev)}
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </button>
+            <SoundToggle className="absolute top-4 right-4 z-[1500]" />
             <button
               type="button"
               className="absolute bottom-4 right-4 z-[1500] px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em] backdrop-blur-sm transition-transform active:scale-95"

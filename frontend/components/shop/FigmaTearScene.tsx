@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import SoundToggle from '@/components/ui/SoundToggle';
+import { isSoundMuted } from '@/lib/soundPrefs';
 
 declare global {
   interface Window { jQuery: any }
@@ -179,7 +181,7 @@ export default function FigmaTearScene({
           // turning gate 已移除：turn.js 需要拖曳過 50% 才完成，純點擊不會到達，不需攔截
           turned: (_e: Event, page: number) => {
             if (page === 2) {
-              tearAudioRef.current?.play().catch(() => {});
+              if (!isSoundMuted()) tearAudioRef.current?.play().catch(() => {});
               setTimeout(() => setDone(true), 300);
             } else if (page === 1) {
               // 彈回時清除拖曳狀態
@@ -223,6 +225,9 @@ export default function FigmaTearScene({
     >
       {/* 全屏背景 */}
       <Image src="/images/ichiban-tear/bg.webp" alt="" fill className="object-cover" unoptimized priority />
+
+      {/* 聲音開關：撕紙聲跟中獎音效都在這個畫面響，位置與轉蛋機台同一套 */}
+      <SoundToggle className="absolute top-4 right-4 z-30" />
 
       {/* 場景群組：手 + 票 */}
       <div

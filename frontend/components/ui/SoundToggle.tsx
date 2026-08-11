@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { isSoundMuted, setSoundMuted, subscribeSoundMuted } from '@/lib/soundPrefs';
+import { setSoundMuted } from '@/lib/soundPrefs';
+import { useSoundMuted } from '@/hooks/useSoundMuted';
 
 /**
  * 聲音開關 —— 浮在機台右上角的半透明圓鈕
@@ -16,13 +16,7 @@ import { isSoundMuted, setSoundMuted, subscribeSoundMuted } from '@/lib/soundPre
  * 發聲來源，換頁後也要記得玩家的選擇。
  */
 export function SoundToggle({ className }: { className?: string }) {
-  // SSR 一律當作沒靜音，掛載後才讀 localStorage，避免 hydration 不一致
-  const [muted, setMuted] = useState(false);
-
-  useEffect(() => {
-    setMuted(isSoundMuted());
-    return subscribeSoundMuted(setMuted);
-  }, []);
+  const muted = useSoundMuted();
 
   return (
     <button

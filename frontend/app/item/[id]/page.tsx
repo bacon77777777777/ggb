@@ -13,7 +13,9 @@ import { Database } from '@/types/database.types';
 import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Volume2, VolumeX, Check, BookOpen } from 'lucide-react';
+import { Share2, Heart, ShieldCheck, Info, Trophy, FileCheck, Loader2, Check, BookOpen } from 'lucide-react';
+import SoundToggle from '@/components/ui/SoundToggle';
+import { useSoundMuted } from '@/hooks/useSoundMuted';
 import { ProductLoadingScreen } from '@/components/ui/ProductLoadingScreen';
 import ProductCard from '@/components/ProductCard';
 import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -468,7 +470,12 @@ export default function ProductDetailPage() {
   }, []);
   const openingVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [isVideoMuted, setIsVideoMuted] = useState(false);
+  /*
+   * 過場影片的靜音跟著全站偏好走（`lib/soundPrefs`），不再自己 useState。
+   * 以前每次開影片都 setIsVideoMuted(false) 強制開聲 —— 玩家在商品頁把聲音
+   * 關掉，一抽下去影片照樣有聲音，等於那顆開關管不到這裡。
+   */
+  const isVideoMuted = useSoundMuted();
 
   const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false);
   const [tearGachaResults, setTearGachaResults] = useState<Prize[]>([]);
@@ -847,7 +854,6 @@ export default function ProductDetailPage() {
     if (!product || !trialPrize) return;
     trackEvent('draw_trial', { productId: product.id });
     setWonPrizes([trialPrize]);
-    setIsVideoMuted(false);
     setIsVideoOpen(true);
   };
 
@@ -989,7 +995,6 @@ export default function ProductDetailPage() {
       // 任務追蹤由 /api/gacha route 統一處理（避免重複計算）
 
       if (isCardType) {
-        setIsVideoMuted(false);
         setIsVideoOpen(true);
       }
       // For non-card: GachaMachine already opened above; auto-spin fires via useEffect in GachaMachine
@@ -1059,7 +1064,6 @@ export default function ProductDetailPage() {
 
   const handleVideoEnd = () => {
     setIsVideoOpen(false);
-    setIsVideoMuted(false);
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
       if (product) {
@@ -1075,7 +1079,6 @@ export default function ProductDetailPage() {
 
   const handleVideoError = () => {
     setIsVideoOpen(false);
-    setIsVideoMuted(false);
     if (wonPrizes.length > 0) {
       setIsPrizeModalOpen(true);
       if (product) {
@@ -1830,23 +1833,7 @@ export default function ProductDetailPage() {
                   onEnded={handleVideoEnd}
                   onError={handleVideoError}
                 />
-                <button
-                  type="button"
-                  className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/30 flex items-center justify-center text-white"
-                  onClick={() => {
-                    setIsVideoMuted((prev) => {
-                      const next = !prev;
-                      const el = openingVideoRef.current;
-                      if (el) {
-                        el.muted = next;
-                        if (!next) el.play().catch(() => undefined);
-                      }
-                      return next;
-                    });
-                  }}
-                >
-                  {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
+                <SoundToggle className="absolute top-4 right-4 z-10" />
                 <button
                   type="button"
                   className="absolute bottom-4 right-4 z-10 px-5 h-10 rounded-[8px] bg-black/60 border border-white/30 flex items-center justify-center text-white text-sm font-black tracking-[0.25em]"
