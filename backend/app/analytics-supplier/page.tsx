@@ -47,13 +47,13 @@ interface Payload {
     totalSales: number; totalDraws: number
     activeProducts: number; totalProducts: number; avgPerDraw: number
     todaySales: number; todayDraws: number
-    sellThrough: number; prizeSold: number; prizeTotal: number; prizeItems: number
+    sellThrough: number; periodSold: number; cumulativeSold: number; prizeTotal: number; prizeItems: number
     bars: { label: string; sales: number; draws: number }[]
     spark: { x: number; date: string; sales: number; draws: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     topProducts: TopProduct[]
   }
-  growth: { sales: number; draws: number; salesToday: number; drawsToday: number }
+  growth: { sales: number; draws: number; salesToday: number; drawsToday: number; sellThrough: number }
 }
 
 const toDS = (d: Date) => d.toLocaleDateString('sv')
@@ -213,16 +213,19 @@ export default function SupplierAnalyticsPage() {
                 footerLabel="平均客單" footerValue={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
               />
 
-              {/* 銷售成數是庫存快照（remaining 只有現在這一個值），不隨上方日期區間變動，
-                  所以中段標「累計」避免跟其他三張卡的期間統計混淆 */}
+              {/* 銷售成數＝本區間抽掉的份數 ÷ 總備貨量，會跟著上方日期切換而變。
+                  頁尾另附累計值，方便對照「這檔到目前為止總共出了幾成」 */}
               <StatCard
                 title="銷售成數" loading={loading} skeletonWidth="w-16"
                 value={`${(c?.sellThrough ?? 0).toLocaleString()}%`}
-                mid={<div className="text-sm" style={{ color: 'rgba(0,0,0,0.45)' }}>
-                  累計已售出 {(c?.prizeSold ?? 0).toLocaleString()} / 總數量 {(c?.prizeTotal ?? 0).toLocaleString()}
-                </div>}
-                footerLabel="上架中商品"
-                footerValue={`${(c?.activeProducts ?? 0).toLocaleString()} / ${(c?.totalProducts ?? 0).toLocaleString()} 件・品項 ${(c?.prizeItems ?? 0).toLocaleString()}`}
+                mid={<>
+                  {g && <GrowthTag value={g.sellThrough} label="期間同比" />}
+                  <div className="text-sm" style={{ color: 'rgba(0,0,0,0.45)' }}>
+                    本期售出 {(c?.periodSold ?? 0).toLocaleString()} / 總備貨 {(c?.prizeTotal ?? 0).toLocaleString()}
+                  </div>
+                </>}
+                footerLabel="累計售出"
+                footerValue={`${(c?.cumulativeSold ?? 0).toLocaleString()} / ${(c?.prizeTotal ?? 0).toLocaleString()}・品項 ${(c?.prizeItems ?? 0).toLocaleString()}`}
               />
             </div>
 

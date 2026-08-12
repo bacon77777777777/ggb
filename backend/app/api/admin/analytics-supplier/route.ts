@@ -79,16 +79,17 @@ export async function GET(req: NextRequest) {
     const productIds = products.map(p => p.id)
 
     /*
-     * 銷售成數＝已售出品項 ÷ 總品項數（老闆指定）。
+     * 銷售成數的分母：這家廠商所有品項備貨量的總和（`product_prizes.total`）。
      *
-     * 用 `product_prizes` 的 total／remaining 算：total 是這個品項備了幾份、
-     * remaining 是還剩幾份，相減就是賣掉的。
+     * 分子改用「這個區間抽掉幾份」（= 期間內的抽獎筆數，一抽出一份），
+     * 所以卡片會跟著上方日期切換而變 —— 老闆要的是區間售出比例，
+     * 不是庫存快照。
      *
-     * ⚠️ 這是**庫存快照、不隨日期區間變動** —— remaining 只有「現在」這一個值，
-     * 沒有歷史軌跡可以還原任一時點的剩餘量。所以它回答的是
-     * 「這家廠商備的貨到目前為止出掉幾成」，跟上面幾張卡的期間統計不同。
+     * 為什麼不用 `total - remaining`：remaining 只有「現在」一個值、
+     * 沒有歷史軌跡，還原不出任一時點的剩餘量，那個算法永遠是累計的。
+     * 順帶把累計值一起回傳（`cumulativeSold`），需要時可以對照。
      */
-    let prizeTotal = 0, prizeSold = 0, prizeItems = 0
+    let prizeTotal = 0, cumulativeSold = 0, prizeItems = 0
     if (productIds.length > 0) {
       const prizeRows = await fetchAllRows<any>(() => db
         .from('product_prizes')
@@ -97,17 +98,16 @@ export async function GET(req: NextRequest) {
       for (const r of prizeRows) {
         prizeItems++
         prizeTotal += r.total ?? 0
-        prizeSold += Math.max(0, (r.total ?? 0) - (r.remaining ?? 0))
+        cumulativeSold += Math.max(0, (r.total ?? 0) - (r.remaining ?? 0))
       }
     }
-    const sellThrough = prizeTotal > 0 ? Math.round(prizeSold * 1000 / prizeTotal) / 10 : 0
     const supplierName = (await db.from('suppliers').select('name').eq('id', supplierId).single()).data?.name ?? ''
 
     if (productIds.length === 0) {
       return NextResponse.json({
         supplierName, empty: true,
-        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, sellThrough: 0, prizeSold: 0, prizeTotal: 0, prizeItems: 0, bars: [], spark: [], categories: [], topProducts: [] },
-        growth: { sales: 0, draws: 0, salesToday: 0, drawsToday: 0 },
+        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, sellThrough: 0, periodSold: 0, cumulativeSold: 0, prizeTotal: 0, prizeItems: 0, bars: [], spark: [], categories: [], topProducts: [] },
+        growth: { sales: 0, draws: 0, salesToday: 0, drawsToday: 0, sellThrough: 0 },
       })
     }
 
@@ -124,6 +124,10 @@ export async function GET(req: NextRequest) {
     const totalSales = draws.reduce((s, r) => s + amountOf(r), 0)
     const totalDraws = draws.length
     const prevSales = prevDraws.reduce((s, r) => s + amountOf(r), 0)
+
+    // 銷售成數＝這個區間抽掉的份數 ÷ 總備貨量（一抽出一份）
+    const sellThrough = prizeTotal > 0 ? Math.round(totalDraws * 1000 / prizeTotal) / 10 : 0
+    const prevSellThrough = prizeTotal > 0 ? Math.round(prevDraws.length * 1000 / prizeTotal) / 10 : 0
 
     // 走勢分桶：key 的算法與分析頁一字不差
     const dtKey = (createdAt: string) => {
@@ -233,12 +237,13 @@ export async function GET(req: NextRequest) {
         avgPerDraw: totalDraws > 0 ? Math.round(totalSales / totalDraws) : 0,
         todaySales: todayDraws.reduce((s, r) => s + amountOf(r), 0),
         todayDraws: todayDraws.length,
-        sellThrough, prizeSold, prizeTotal, prizeItems,
+        sellThrough, periodSold: totalDraws, cumulativeSold, prizeTotal, prizeItems,
         bars, spark, categories, topProducts,
       },
       growth: {
         sales: pct(totalSales, prevSales),
         draws: pct(totalDraws, prevDraws.length),
+        sellThrough: pct(sellThrough, prevSellThrough),
         salesToday: pct(todayDraws.reduce((s, r) => s + amountOf(r), 0), yestDraws.reduce((s, r) => s + amountOf(r), 0)),
         drawsToday: pct(todayDraws.length, yestDraws.length),
       },

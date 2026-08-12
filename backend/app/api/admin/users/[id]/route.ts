@@ -3,17 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
 import { randomBytes } from 'crypto'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
-
-async function pushLineAlert(text: string) {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  const id    = process.env.NOTIFY_TARGET_ID
-  if (!token || !id) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ to: id, messages: [{ type: 'text', text }] }),
-  }).catch(() => {})
-}
+import { pushSensitiveAlert } from '@/lib/sensitiveAlert'
 
 export const runtime = 'nodejs'
 
@@ -180,7 +170,7 @@ export async function PUT(
       // 即時通知：手動調整代幣
       if (profileUpdates.tokens !== undefined) {
         const before = updatedUser?.tokens ?? '?'
-        pushLineAlert(
+        pushSensitiveAlert(
           `🔧 管理員敏感操作\n操作：手動調整代幣\n管理員ID：${session.adminId}\n用戶ID：${id}\n新餘額：${profileUpdates.tokens} G`
         )
       }

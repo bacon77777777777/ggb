@@ -3,17 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope, assertOwnedBySupplier, stripSecretsForSupplier, ScopeError } from '@/lib/requireAdmin'
 import { detectSeriesFromName } from '@/lib/detectSeries'
 import { getClientIp, logAdminAction } from '@/lib/logAdminAction'
-
-async function pushLineAlert(text: string) {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  const id    = process.env.NOTIFY_TARGET_ID
-  if (!token || !id) return
-  await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ to: id, messages: [{ type: 'text', text }] }),
-  }).catch(() => {})
-}
+import { pushSensitiveAlert } from '@/lib/sensitiveAlert'
 
 /**
  * 單筆商品
@@ -213,7 +203,7 @@ export async function DELETE(
       ip: getClientIp(request),
     })
 
-    pushLineAlert(
+    pushSensitiveAlert(
       `🗑️ 管理員敏感操作\n操作：刪除商品\n管理員ID：${scope.adminId}\n商品：${product?.name ?? productId}`
     )
 
