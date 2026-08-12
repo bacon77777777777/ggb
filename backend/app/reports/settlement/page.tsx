@@ -271,8 +271,10 @@ export default function SettlementPage() {
 
         {/* 頂部控制列 */}
         <div className="space-y-2">
-          {/* 第一列：廠商選擇 + 期間（老闆指定時間移到上面）*/}
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* 一整列：廠商選擇（靠左）＋ 期間 ＋ 匯出 ＋ 費率設定（靠右）
+              老闆指定併成同一行。期間那組不換行、寬度不夠時自己橫向捲，
+              才不會把右邊的匯出與費率設定擠掉 */}
+          <div className="flex items-center gap-2">
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
@@ -289,7 +291,7 @@ export default function SettlementPage() {
             </div>
 
             {/* 期間按鈕 */}
-            <div className="flex gap-1.5 flex-wrap justify-end">
+            <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0 justify-end flex-1">
               {periods.map((p, i) => (
                 <button
                   key={i}
@@ -305,10 +307,7 @@ export default function SettlementPage() {
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* 第二列：匯出與費率設定（老闆指定匯出移到下面）*/}
-          <div className="flex flex-wrap items-center justify-end gap-2">
             {/* 匯出 + 費率設定 */}
             <div className="flex items-center gap-2">
               <button
