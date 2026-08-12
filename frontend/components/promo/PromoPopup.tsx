@@ -167,7 +167,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                           key={p.id}
                           href={productHref(p)}
                           onClick={go(productHref(p))}
-                          className="flex w-full items-center gap-2.5 py-2 text-left transition-transform active:scale-[0.99]"
+                          className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform active:scale-[0.99]"
                         >
                           {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉 */}
                           {/* 不加白底：外框上緣是粉紅漸層，白色方塊會浮出來
@@ -177,17 +177,26 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                               ? <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
                               : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">無圖</span>}
                           </span>
-                          {/* 膠囊固定寬度：兩字（抽卡）與三字（自製賞）才會等寬，
-                              後面的商品名也才對得齊 */}
-                          {cat && (
-                            <span className="inline-flex w-[46px] shrink-0 items-center justify-center rounded-md bg-neutral-100 py-1 text-[11px] font-black leading-none text-neutral-500">
-                              {CATEGORY_LABELS[cat]}
-                            </span>
-                          )}
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-bold leading-[1.3] text-neutral-900">{p.name}</span>
+                            {/* 類別膠囊擺在商品名上面、與名稱切齊左緣（老闆指定）。
+                                固定寬 46px：兩字（抽卡）與三字（自製賞）等寬，
+                                一排看下來邊緣才是一直線。
+                                底色與字色都調深過 —— neutral-100/500 在粉紅漸層上看不清楚 */}
+                            {cat && (
+                              <span className="mb-0.5 inline-flex w-[46px] items-center justify-center rounded-md bg-neutral-200 py-0.5 text-[10px] font-black leading-none text-neutral-700">
+                                {CATEGORY_LABELS[cat]}
+                              </span>
+                            )}
+                            <span className="block truncate text-[13px] font-bold leading-[1.25] text-neutral-900">{p.name}</span>
+                            {/* 金額比照商品小卡：G 幣圖示 ＋ font-amount ＋ 主題色。
+                                小卡是 24px，這裡是列表所以縮到 15px，其餘一致 */}
                             {p.price != null && (
-                              <span className="block text-[11px] font-black leading-[1.3] text-[#e0357f]">{p.price.toLocaleString()} G</span>
+                              <span className="mt-0.5 flex items-center gap-1">
+                                <Image src="/images/gcoin.webp" alt="G" width={12} height={12} className="h-3 w-3 object-contain" />
+                                <span className="font-amount text-[15px] font-black leading-none tracking-tight text-primary">
+                                  {p.price.toLocaleString()}
+                                </span>
+                              </span>
                             )}
                           </span>
                         </Link>

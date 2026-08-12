@@ -24,12 +24,13 @@ const NEW_ARRIVAL_DAYS = 30;
 /*
  * 一次最多秀幾件。
  *
- * 2026-08-12 換成更寬的外框（800×1189）之後內容區變高，六列塞得下：
- * 內容區 66.5% × 卡片高 490px ≈ 326px，一列 52px、五條分隔線 ≈ 317px。
- * 再多一列就會被切在白板下緣 —— 那看起來像壞掉，不像「可以往下捲」
- * （這個坑在 2×2 與五列版都踩過，所以數量一律先量再定）。
+ * 類別膠囊移到商品名上面之後，一列從 52px 變成 66px（膠囊自己佔一行），
+ * 內容區實測 326px → **四列**（264px + 三條分隔線）剛好，五列 334px 會溢出。
+ *
+ * 數量一律先量再定：2×2、五列、六列三個版本都因為多塞一列而被切在白板下緣，
+ * 那看起來像壞掉，不像「可以往下捲」。
  */
-const NEW_ARRIVAL_LIMIT = 6;
+const NEW_ARRIVAL_LIMIT = 4;
 
 export interface SitePromo {
   id: string;
@@ -115,7 +116,21 @@ export function usePromos(placement: string) {
           .order('created_at', { ascending: false })
           .limit(NEW_ARRIVAL_LIMIT);
 
-        const products = (newRows ?? []) as unknown as NewArrivalProduct[];
+        /*
+         * 依類別排序、同類別擺在一起（老闆指定順序：
+         * 一番賞 → 盒玩 → 轉蛋 → 抽卡 → 自製賞 → 機台）。
+         * 同一類之內維持「新的在前」（查詢已經照 created_at 倒序）。
+         *
+         * 是「先取最新的 N 件、再照類別排」，不是每類各取幾件 ——
+         * 這個彈窗要講的是最近上了什麼，不是各類別的目錄。
+         */
+        const CATEGORY_SORT = ['ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot'];
+        const rank = (t?: string | null) => {
+          const i = CATEGORY_SORT.indexOf(String(t ?? ''));
+          return i < 0 ? CATEGORY_SORT.length : i;      // 沒對到的類別排最後
+        };
+        const products = ((newRows ?? []) as unknown as NewArrivalProduct[])
+          .sort((a, b) => rank(a.type) - rank(b.type));
         if (!cancelled && products.length > 0) {
           queue.push({
             id: NEW_ARRIVAL_ID,
