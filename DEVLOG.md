@@ -161,9 +161,23 @@ PostgREST（Supabase）預設一次最多回 **1000 列**，而且是**靜默截
 內部用 `.range()` 一頁一頁接到底。參數收 function 不收 builder ——
 Supabase 的 builder 是 thenable，同一個實例重複加 `.range()` 會疊在一起。
 
-三支路由的「撈回來自己加總」查詢全部改走它：
-`analytics-supplier`、`analytics-overview`、`reports`（settlement 分頁）。
-`visit_logs` 那幾支用的是 `head + count`（資料庫端算好只回數字），不受影響、維持原樣。
+**五支**路由的「撈回來自己加總」查詢全部改走它：
+
+| 路由 | 影響 |
+|------|------|
+| `admin/reports`（settlement 分頁） | 廠商分潤基底，**會少付錢** |
+| `cron/monthly-settlement` | 寫 `settlement_snapshots`，**就是實付金額** |
+| `admin/dashboard` | 儀表板營收／筆數／熱門商品（4,006 筆被截成 1,000） |
+| `admin/analytics-overview` | 分析頁全站數字 |
+| `admin/analytics-supplier` | 廠商分析 |
+
+後兩支是第一輪就修的，前三支是老闆追問「這問題修了嗎」時回頭全面盤查才補上的 ——
+**第一輪只修了當下手上碰到的，沒有掃過全庫**。
+
+不受影響、維持原樣的：`visit_logs` 用 `head + count`（資料庫端算好只回數字）、
+`admin/behavior` 已有明確 `.limit(100000)`。
+`cron/auto-deliver` 沒有 limit 但只是逐筆處理訂單，截斷只影響單次處理量、
+下一輪會接著跑，不是正確性問題。
 
 ### 順帶翻出兩件事
 

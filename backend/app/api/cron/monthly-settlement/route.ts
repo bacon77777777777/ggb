@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createLinePusher } from '@/lib/linePush'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 const pushLine = createLinePusher('line_push_finance')
 
 export const dynamic = 'force-dynamic'
@@ -16,25 +17,39 @@ async function calcSupplierSettlement(supabase: any, supplierId: number, start: 
   endExclusive.setDate(endExclusive.getDate() + 1)
   const endStr = endExclusive.toISOString().slice(0, 10)
 
-  const [supplierRes, drawRes, rechargeRes, recycleRes, ordersRes] = await Promise.all([
+  /*
+   * 全部走 fetchAllRows —— PostgREST 預設只回 1000 列且靜默截斷。
+   * 這支寫的是 `settlement_snapshots`，也就是**實際要付給廠商的金額**，
+   * 截斷等於少付。同樣的洞在 /api/admin/reports 的結算分頁也修過
+   * （實測某廠商整年 totalG 114,940 被截成 32,950）。
+   *
+   * orders 那支容錯：STG 與 PROD 的 orders schema 不一樣（STG 沒有
+   * coupon_discount／total_amount／supplier_id），失敗就以 0 計，
+   * 不要讓整個月結 cron 掛掉。
+   */
+  const [supplierRes, drawRows, rechargeRows, recycleRows, orderRows] = await Promise.all([
     supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
-    supabase.from('draw_records')
+    fetchAllRows<any>(() => supabase.from('draw_records')
       .select('product_id, created_at, product:products(id, name, price, supplier_id)')
-      .gte('created_at', start).lt('created_at', endStr),
-    supabase.from('recharge_records')
+      .gte('created_at', start).lt('created_at', endStr)),
+    fetchAllRows<any>(() => supabase.from('recharge_records')
       .select('amount, status, payment_fee, created_at')
-      .gte('created_at', start).lt('created_at', endStr),
-    supabase.from('admin_recycle_pool')
+      .gte('created_at', start).lt('created_at', endStr)),
+    fetchAllRows<any>(() => supabase.from('admin_recycle_pool')
       .select('recycle_value, product:products(supplier_id)')
-      .gte('created_at', start).lt('created_at', endStr),
-    supabase.from('orders')
+      .gte('created_at', start).lt('created_at', endStr)),
+    fetchAllRows<any>(() => supabase.from('orders')
       .select('coupon_discount, total_amount')
       .eq('supplier_id', supplierId)
-      .gte('created_at', start).lt('created_at', endStr),
+      .gte('created_at', start).lt('created_at', endStr))
+      .catch((e: any) => {
+        console.warn('[monthly-settlement] orders 查詢失敗，折價券／運費以 0 計：', e?.message)
+        return [] as any[]
+      }),
   ])
 
-  const draws: any[]    = drawRes.data ?? []
-  const recharges: any[] = rechargeRes.data ?? []
+  const draws: any[]    = drawRows
+  const recharges: any[] = rechargeRows
 
   const supplierDraws   = draws.filter(d => String(d.product?.supplier_id) === String(supplierId))
   const totalG          = supplierDraws.reduce((s, d) => s + (d.product?.price || 0), 0)
@@ -57,11 +72,11 @@ async function calcSupplierSettlement(supabase: any, supplierId: number, start: 
   const allocatedActualFee = effectiveFeeRate != null ? Math.round(totalG * effectiveFeeRate) : null
   const ecpayFee           = allocatedActualFee ?? Math.round(totalG * (ECPAY_RATE / 100))
 
-  const dismantleTotal  = (recycleRes.data ?? [])
+  const dismantleTotal  = recycleRows
     .filter((r: any) => String(r.product?.supplier_id) === String(supplierId))
     .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
 
-  const supplierOrders  = ordersRes.data ?? []
+  const supplierOrders  = orderRows
   const couponTotal     = supplierOrders.reduce((s: number, r: any) => s + (r.coupon_discount || 0), 0)
   const shippingTotal   = supplierOrders.reduce((s: number, r: any) => s + (r.total_amount || 0), 0)
 

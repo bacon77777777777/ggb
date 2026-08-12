@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 const parseDateOnly = (value: string | null) => {
   if (!value) return null
@@ -33,17 +34,22 @@ export async function GET(request: Request) {
     const botIds = (botRows ?? []).map((r: any) => r.id as string)
     const excludeBots = (q: any) => botIds.length > 0 ? q.not('user_id', 'in', `(${botIds.join(',')})`) : q
 
-    const [{ data: recharges, error: rechargeError }, { data: draws, error: drawError }, { data: users, error: userError }, { data: coupons }] =
+    /*
+     * 儲值與抽獎走 fetchAllRows —— PostgREST 預設只回 1000 列且靜默截斷，
+     * 儀表板的營收、筆數、熱門商品全是拿這兩批在 JS 端算的，
+     * 過千就整片偏低（同樣的洞在分析頁與廠商結算都修過）。
+     */
+    const [recharges, draws, { data: users, error: userError }, { data: coupons }] =
       await Promise.all([
-        excludeBots(
+        fetchAllRows<any>(() => excludeBots(
           supabaseAdmin
             .from('recharge_records')
             .select('amount, created_at, user_id')
             .eq('status', 'success')
             .gte('created_at', startDate.toISOString())
             .lt('created_at', queryEndDate.toISOString())
-        ),
-        excludeBots(
+        )),
+        fetchAllRows<any>(() => excludeBots(
           supabaseAdmin
             .from('draw_records')
             .select(
@@ -55,7 +61,7 @@ export async function GET(request: Request) {
             )
             .gte('created_at', startDate.toISOString())
             .lt('created_at', queryEndDate.toISOString())
-        ),
+        )),
         supabaseAdmin.from('users').select('created_at, tokens, id').or('is_bot.eq.false,is_bot.is.null'),
         supabaseAdmin
           .from('user_coupons')
@@ -65,8 +71,7 @@ export async function GET(request: Request) {
           .lt('used_at', queryEndDate.toISOString()),
       ])
 
-    if (rechargeError) throw rechargeError
-    if (drawError) throw drawError
+    // recharges／draws 改走 fetchAllRows，它自己會在查詢出錯時丟例外
     if (userError) throw userError
 
     let couponDiscountFixed = 0
