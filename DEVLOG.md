@@ -4,6 +4,35 @@
 
 ---
 
+## v2026.08.12f｜2026-08-12｜修：商品頁的「開賣時公布的驗證碼」永遠空白
+
+老闆回報一番賞／抽卡／自製賞的商品頁看不到驗證碼，但點「看驗證說明」
+進 `/fairness/[id]` 又看得到那串碼。
+
+**原因**：`lib/productColumns.ts` 的 `PRODUCT_PUBLIC_COLUMNS` 漏了 `sealed_at`。
+
+商品頁的 `FairnessPanel` 用 `isSealed={!!product.sealed_at}` 判斷這一檔封存了沒。
+前台查商品時沒 select 那一欄，PostgREST 自然不會回，`sealed_at` 永遠是 undefined
+→ `isSealed` 永遠 false → 即使 `txid_hash` 有值也被當成沒封存，欄位顯示
+「這一檔沒有封存對照表」。而 `/fairness/[id]` 走的是 `get_ticket_seal` RPC、
+讀 `product_ticket_seals`，不受這份白名單影響 —— 所以兩邊說法不一致。
+
+實際資料是好的：PROD 已上架那批（757～764）`sealed_at`／`txid_hash`／
+`product_ticket_seals.commitment` 三者都有值，純粹是前台沒把欄位撈回來。
+
+**修法**：把 `sealed_at` 加進 `PRODUCT_PUBLIC_COLUMNS`。該欄位本來就已授權給
+anon（`information_schema.column_privileges` 有），不需要動資料庫權限。
+
+**驗證**（Playwright 攔 REST，未動資料庫）：一開始的測試是假的 ——
+mock 不管前端 select 什麼都把 `sealed_at` 塞回去，等於繞過要驗的東西，
+修正前後都「通過」。改成**照請求的 `select=` 投影**（PostgREST 不會回沒被
+select 的欄位）之後才測得出來：
+
+| | 修正前 | 修正後 |
+|---|--------|--------|
+| 已封存商品 | 這一檔沒有封存對照表 | 顯示完整驗證碼 |
+| 未封存商品 | 這一檔沒有封存對照表 | 這一檔沒有封存對照表（不變） |
+
 ## v2026.08.12e｜2026-08-12｜一番賞／抽卡／自製賞的抽獎畫面都補上聲音開關
 
 老闆指定：一番賞與抽卡的抽獎畫面右上角，比照轉蛋商品頁那顆聲音圖標；
