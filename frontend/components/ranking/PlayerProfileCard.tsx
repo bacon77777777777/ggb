@@ -290,7 +290,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
     // mock UUID (00000000-...) = SQL 假用戶
     const isMockUUID = !!userId && userId.startsWith('00000000-');
     if (isPlaceholder || !userId || isMockUUID) {
-      setProfile(buildFakeProfile(userId || 'placeholder-1', propAvatarUrl || '/images/avatar/01.webp', titleFromRanking));
+      setProfile(buildFakeProfile(userId || 'placeholder-1', propAvatarUrl || '/images/avatar/01.png', titleFromRanking));
       setLoading(false);
       return;
     }
@@ -421,7 +421,7 @@ export default function PlayerProfileCard({ userId, nickname: propNickname, avat
                         </div>
                       ) : (
                         <Image
-                          src={profile?.avatar_url || propAvatarUrl || '/images/avatar/01.webp'}
+                          src={profile?.avatar_url || propAvatarUrl || '/images/avatar/01.png'}
                           alt={displayName}
                           width={180}
                           height={180}

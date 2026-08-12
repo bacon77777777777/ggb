@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .select('id, name, avatar_url')
     .in('id', userIds)
 
-  const DEFAULT_AVATAR = '/images/avatar/01.webp'
+  const DEFAULT_AVATAR = '/images/avatar/01.png'
   const userMap: Record<string, { name: string; avatar_url: string | null }> = {}
   for (const u of usersData ?? []) {
     userMap[u.id] = { name: u.name || '用戶', avatar_url: u.avatar_url || DEFAULT_AVATAR }
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null
   const metaName = user.user_metadata?.full_name || user.user_metadata?.name || null
-  const DEFAULT_AVATAR = '/images/avatar/01.webp'
+  const DEFAULT_AVATAR = '/images/avatar/01.png'
 
   return NextResponse.json({
     ...data,
