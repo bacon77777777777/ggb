@@ -647,7 +647,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/products': 'products',
     // 挑戰機台
     '/slot': 'slot',
-    '/slot/reports': 'slot',
+    '/slot/reports': 'slot_reports',
     '/slot/[id]': 'slot',
     '/draws': 'draws',
     '/orders': 'orders',
@@ -697,8 +697,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/competitor-intel': 'competitor_intel',
     '/content-drafts': 'content_drafts',
     '/ai-usage': 'ai_usage',
-    '/analytics-overview': 'reports_overview',
-    '/analytics-supplier': ['reports_overview', 'reports_settlement'],
+    '/analytics-overview': 'analytics_overview',
+    '/analytics-supplier': 'analytics_supplier',
     '/design-system': 'tools',
     '/frontend-design-system': 'tools',
   }

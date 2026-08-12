@@ -36,19 +36,33 @@
 
 驗證：模擬兩種 Supabase URL，STG／本機打 LINE API **0 次**、PROD **1 次**。
 
-### ③ 權限勾選盤點（僅記錄，未動）
+### ③ 權限勾選盤點 → 拆出三個獨立權限（migration 533）
 
 側欄 44 個項目對 51 個權限勾選，沒有「有頁面卻完全沒權限對應」的漏洞，
-但有 3 個頁面**沒有自己的勾選項**、只能跟別人共用同一個權限：
+但有 3 個頁面**沒有自己的勾選項**、只能跟別人共用，所以無法單獨授權。
+老闆指定拆開：
 
-| 頁面 | 實際吃的權限 | 勾選標籤 |
-|------|------------|---------|
-| 分析頁 | `reports_overview` | 轉換分析 |
-| 廠商分析 | `reports_overview` 或 `reports_settlement` | 轉換分析／廠商結算 |
-| 機台報表 | `slot` | 挑戰機台 |
+| 頁面 | 原本吃的權限 | 新權限 |
+|------|------------|--------|
+| 分析頁 | `reports_overview`（標籤是「轉換分析」） | `analytics_overview` |
+| 廠商分析 | `reports_overview` 或 `reports_settlement` | `analytics_supplier` |
+| 機台報表 | `slot`（標籤是「挑戰機台」） | `slot_reports` |
 
-代表沒辦法「只給分析頁、不給轉換分析」。要拆開就得新增權限 key 並回填既有角色，
-**會改變現有帳號看得到什麼，待老闆決定**。
+**新增 key 一定要同時回填**，否則既有帳號會立刻看不到原本進得去的頁面。
+migration 533 照舊對應補：有 `reports_overview` → 補 `analytics_overview`；
+有 `reports_overview` 或 `reports_settlement` → 補 `analytics_supplier`；
+有 `slot` → 補 `slot_reports`（目前沒有角色帶 slot，這條實際沒動到資料）。
+**STG／PROD 都已執行**，兩環境結果一致（各 UPDATE 2／4／0）。
+
+驗證（三種角色實打頁面）：
+
+| 角色 | 分析頁 | 廠商分析 | 轉換分析 |
+|------|--------|---------|---------|
+| supplier | 307 → /products | **200** | 307 → /products |
+| marketing（已回填） | 200 | 200 | 200 |
+| 只有 `reports_overview`（模擬未回填） | **307 → /reports/overview** | 307 | 200 |
+
+最後一列證明權限真的獨立了 —— 光有「轉換分析」不再等於能看「分析頁」。
 
 ## v2026.08.12n｜2026-08-12｜🔴 修：統計查詢被 PostgREST 靜默截斷在 1000 列（廠商結算少算 71%）
 

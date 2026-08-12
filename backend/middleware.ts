@@ -173,8 +173,8 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }>
   { prefix: '/cs-management',          permission: 'cs_management' },
   { prefix: '/ai-usage',               permission: 'tools' },
   // 維護頁本身不需要權限 —— 它就是給被擋下來的人看的
-  { prefix: '/analytics-overview',     permission: 'reports_overview' },
-  { prefix: '/analytics-supplier',     permission: ['reports_overview', 'reports_settlement'] },
+  { prefix: '/analytics-overview',     permission: 'analytics_overview' },
+  { prefix: '/analytics-supplier',     permission: 'analytics_supplier' },
   { prefix: '/design-system',          permission: 'tools' },
   { prefix: '/frontend-design-system', permission: 'tools' },
   // 父層保底：/reports/xxx 各自的規則前綴更長，會優先命中
