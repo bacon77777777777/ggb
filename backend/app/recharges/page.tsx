@@ -7,6 +7,7 @@ import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
+import { ECPAY_FEE_RULES } from '@/lib/ecpayFees'
 
 interface RechargeRecord {
   id: number
@@ -33,14 +34,16 @@ const MARKETING_KEYS = ['promotion', 'compensation', 'test'] as const
 
 type ChannelFilter = 'all' | 'ecpay' | 'manual'
 
+/*
+ * 綠界那幾筆的名稱與費率直接取自 lib/ecpayFees —— 那份也是 callback 實際
+ * 計算 payment_fee 用的。以前這裡手寫一份，跟計算邏輯漂掉過：
+ * 台灣 Pay 表上寫 1%、實際卻按信用卡 2.75%+1 記帳。
+ */
 const PAYMENT_METHOD_INFO: Record<string, { name: string; formula: string; channel: 'ecpay' | 'manual' }> = {
   // 綠界
-  credit_card:     { name: '信用卡 / 簽帳金融卡', formula: '2.75%+NT$1',    channel: 'ecpay' },
-  webatm:          { name: '網路 ATM',            formula: '1% max NT$15',   channel: 'ecpay' },
-  vacc:            { name: 'ATM 虛擬帳號',         formula: '1% max NT$15',   channel: 'ecpay' },
-  cvs:             { name: '超商代碼',             formula: 'NT$31/筆',        channel: 'ecpay' },
-  barcode:         { name: '超商條碼',             formula: 'NT$16/筆',        channel: 'ecpay' },
-  twqr:            { name: '台灣 Pay QR',          formula: '1%',             channel: 'ecpay' },
+  ...Object.fromEntries(
+    Object.entries(ECPAY_FEE_RULES).map(([k, v]) => [k, { name: v.name, formula: v.formula, channel: 'ecpay' as const }]),
+  ),
   other:           { name: '其他（綠界）',          formula: '—',              channel: 'ecpay' },
   // 手動
   manual_transfer: { name: '銀行轉帳',             formula: '—',              channel: 'manual' },

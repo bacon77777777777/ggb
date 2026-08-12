@@ -4,6 +4,32 @@
 
 ---
 
+## v2026.08.12h｜2026-08-12｜修：台灣 Pay 手續費算成信用卡費率；費率改單一事實來源
+
+老闆問綠界手續費怎麼定義時翻出來的：費率寫在兩個地方，而且已經漂掉。
+
+- **算的**：`app/api/payment/ecpay/callback/route.ts` 的 `calcEcpayFee()`，
+  結果寫進 `recharge_records.payment_fee`
+- **顯示的**：`app/recharges/page.tsx` 的 `PAYMENT_METHOD_INFO`，另外手寫一份字串
+
+台灣 Pay QR 表上寫 1%，但 `calcEcpayFee()` 沒有 TWQR 分支、掉進最後那行的
+信用卡公式 → 實際記成 2.75%+1。金流建立時 `toEcpayPayment()` 對 `twqr` 是回
+`'ALL'`（讓玩家在綠界頁面自己選），所以玩家確實選得到台灣 Pay，
+一旦有人用就會把帳面成本墊高、跟綠界帳單對不起來，還會壓低廠商分潤
+（月結的手續費是按消費佔比分攤的）。
+
+**修法**：新增 `lib/ecpayFees.ts` 當單一事實來源，計算與顯示都從那裡出，
+補上 TWQR = 1%。順帶把「認不出來的付款方式」註記清楚：綠界的 Apple Pay／
+Google Pay／銀聯都回 `Credit_CreditCard`，走信用卡那條是對的，不是漏接。
+
+**PROD 現況（不需回補）**：成功儲值有記手續費的只有 4 筆，全是
+`Credit_CreditCard`，合計 NT$8,282 —— 沒有任何 TWQR 紀錄，這次是預防性修正。
+另有 1 筆成功儲值 `payment_fee IS NULL`（對帳 cron 補單時傳 null），
+不列入平台手續費總額。
+
+**驗證**：六種付款方式各兩個金額共 10 組期望值全數通過
+（含 ATM 上限 15 元、TWQR 1%）；PROD 那 4 筆信用卡回推 8,282 相符。
+
 ## v2026.08.12g｜2026-08-12｜修：每次進站都噴 hydration mismatch（非阻塞字型）
 
 Console 每次載入都跳 "A tree hydrated but some attributes of the server rendered
