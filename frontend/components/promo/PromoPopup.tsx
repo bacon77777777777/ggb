@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePromos, type SitePromo, type NewArrivalProduct } from './usePromos';
 import { hideForToday } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
+import { CATEGORY_LABELS, categoryFlagKey } from '@/lib/categoryFlags';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
 const TEMPLATE_BG = '/images/bg.webp';
@@ -152,44 +153,38 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   unoptimized
                 />
                 <div className="absolute flex flex-col" style={PANEL}>
-                  {/*
-                    只有一件時單獨占滿，兩件以上走 2×2 —— 一件卻用格子排
-                    會在右邊留一個空洞，看起來像圖沒載出來。
-
-                    高度分配是「文字固定、圖片吃剩下的」：
-                    圖片如果綁 aspect-square，兩排加起來會超出白板，
-                    第二排的商品名就被切在白板下緣（看起來像壞掉，不像可以捲）。
-                    改成 grid-rows 平分高度、圖片 flex-1，塞幾件都剛好貼齊。
-                  */}
-                  <div
-                    className={`flex-1 min-h-0 grid gap-2.5 ${
-                      (promo.products?.length ?? 0) === 1
-                        ? 'grid-cols-1 grid-rows-1'
-                        : (promo.products?.length ?? 0) <= 2
-                          ? 'grid-cols-2 grid-rows-1'
-                          : 'grid-cols-2 grid-rows-2'
-                    }`}
-                  >
-                    {(promo.products ?? []).map(p => (
-                      <Link
-                        key={p.id}
-                        href={productHref(p)}
-                        onClick={go(productHref(p))}
-                        className="flex flex-col min-h-0 active:scale-[0.97] transition-transform"
-                      >
-                        {/* object-contain 不裁切：商品主圖有直式也有橫式，
-                            用 cover 會把直式海報的標題切掉 */}
-                        <span className="relative flex-1 min-h-0 w-full rounded-xl overflow-hidden bg-white">
-                          {p.image_url
-                            ? <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-contain" />
-                            : <span className="absolute inset-0 flex items-center justify-center text-[11px] text-neutral-400">無圖</span>}
-                        </span>
-                        <span className="mt-1 shrink-0 text-[12px] font-bold leading-[1.25] text-neutral-800 truncate">{p.name}</span>
-                        {p.price != null && (
-                          <span className="shrink-0 text-[12px] font-black leading-[1.25] text-[#e0357f]">{p.price.toLocaleString()} G</span>
-                        )}
-                      </Link>
-                    ))}
+                  {/* 條列式：小圖 ＋ 類別膠囊 ＋ 名稱／價格，版型比照「恭喜獲得」彈窗（老闆指定）。
+                      白板放得下六列，超過就自己捲 */}
+                  <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto pr-0.5">
+                    {(promo.products ?? []).map(p => {
+                      const cat = categoryFlagKey(p.type)
+                      return (
+                        <Link
+                          key={p.id}
+                          href={productHref(p)}
+                          onClick={go(productHref(p))}
+                          className="flex w-full items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50/90 p-1.5 text-left transition-transform active:scale-[0.99]"
+                        >
+                          {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉 */}
+                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white">
+                            {p.image_url
+                              ? <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
+                              : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">無圖</span>}
+                          </span>
+                          {cat && (
+                            <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-neutral-200 px-1.5 py-0.5 text-[11px] font-black leading-none text-neutral-600">
+                              {CATEGORY_LABELS[cat]}
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-bold leading-[1.3] text-neutral-900">{p.name}</span>
+                            {p.price != null && (
+                              <span className="block text-[11px] font-black leading-[1.3] text-[#e0357f]">{p.price.toLocaleString()} G</span>
+                            )}
+                          </span>
+                        </Link>
+                      )
+                    })}
                   </div>
                 </div>
               </div>

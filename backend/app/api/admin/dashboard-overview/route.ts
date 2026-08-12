@@ -29,7 +29,7 @@ const MIN_SAMPLE_DRAWS = 30
 
 const CAT: Record<string, string> = {
   gacha: '轉蛋', ichiban: '一番賞', blindbox: '盒玩', card: '抽卡', custom: '自製賞',
-  slot: '挑戰機台',
+  slot: '機台',
   // 商品被刪掉之後 draw_records 還留著，join 不到就落到這裡。
   // 給它一個看得懂的名字，不要在畫面上出現「other」這種內部代號。
   other: '已刪除商品',

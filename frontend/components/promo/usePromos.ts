@@ -21,8 +21,14 @@ export const NEW_ARRIVAL_ID = '__new_arrival__';
 
 /** 幾天內上架算「新品」。太舊的東西掛著「最新上架」比不顯示還糟 */
 const NEW_ARRIVAL_DAYS = 30;
-/** 一次最多秀幾件（版面是 2×2） */
-const NEW_ARRIVAL_LIMIT = 4;
+/*
+ * 一次最多秀幾件。
+ *
+ * 白板高度是外框的 66%（top 30.5% / bottom 3.5%），在 max-w-330 的卡片上約 324px，
+ * 一列 48px + 間距 6px，**五列剛好塞得下**。第六列會被切在白板下緣 ——
+ * 那看起來像壞掉，不像「可以往下捲」（同一個坑在 2×2 版型也踩過一次）。
+ */
+const NEW_ARRIVAL_LIMIT = 5;
 
 export interface SitePromo {
   id: string;
