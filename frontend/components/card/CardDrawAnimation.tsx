@@ -123,12 +123,17 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
           borderRadius: 14 * s,
           overflow: 'hidden',
           position: 'relative',
+          // 品項圖用 contain 不裁切，比例對不上時露出的邊要有底色，
+          // 不然會直接透出後面的場景，看起來像卡片破圖
+          background: '#101014',
           boxShadow: isSSR
             ? `0 0 12px ${rs.glow}, 0 0 5px ${rs.glow}, 0 6px 15px rgba(0,0,0,0.85)`
             : `0 0 6px ${rs.glow}, 0 5px 12px rgba(0,0,0,0.8)`,
         }}
       >
-        <Image src={getCardImage(prize)} alt={prize.name} fill className="object-cover" unoptimized priority />
+        {/* object-contain：卡框是固定的 63:88（205×286），但品項圖什麼比例都有
+            —— PSA 鑑定卡是細長的，用 cover 會把上面的鑑定標籤和左右邊整個切掉 */}
+        <Image src={getCardImage(prize)} alt={prize.name} fill className="object-contain" unoptimized priority />
 
         {isSSR && (
           <motion.div
@@ -335,6 +340,7 @@ export default function CardDrawAnimation({
                       height: CH * s,
                       borderRadius: 14 * s,
                       overflow: 'hidden',
+                      background: '#101014',   // 同上：contain 露出的邊要有底
                       zIndex: 2 - depth,
                       pointerEvents: 'none',
                       rotate: CR + depth * 4,
@@ -351,7 +357,7 @@ export default function CardDrawAnimation({
                       src={getCardImage(prizes[idx])}
                       alt=""
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       unoptimized
                       draggable={false}
                     />
