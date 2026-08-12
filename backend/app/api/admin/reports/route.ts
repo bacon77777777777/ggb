@@ -485,13 +485,18 @@ export async function GET(request: NextRequest) {
         return q
       }
 
+      /*
+       * 這四批都走 fetchAllRows：user_events 是全站埋點，量體遠大於 1000，
+       * PostgREST 預設只回 1000 列而且靜默截斷 —— 排行與轉換率會整片偏低。
+       * （同樣的洞在分析頁、廠商結算、月結 cron 都修過。）
+       */
       // 熱門搜尋字（search 事件的 meta.query）
-      const { data: searchEvents } = await applyBehaviorDate(
+      const searchEvents = await fetchAllRows<any>(() => applyBehaviorDate(
         supabase
           .from('user_events')
           .select('meta')
           .eq('event_type', 'search')
-      )
+      ))
       const queryCount = new Map<string, number>()
       for (const e of searchEvents ?? []) {
         const q = (e.meta as any)?.query
@@ -506,13 +511,13 @@ export async function GET(request: NextRequest) {
         .map(([query, count]) => ({ query, count }))
 
       // 最多點擊系列
-      const { data: clickEvents } = await applyBehaviorDate(
+      const clickEvents = await fetchAllRows<any>(() => applyBehaviorDate(
         supabase
           .from('user_events')
           .select('series')
           .in('event_type', ['product_click', 'series_click'])
           .not('series', 'is', null)
-      )
+      ))
       const seriesCount = new Map<string, number>()
       for (const e of clickEvents ?? []) {
         const s = e.series
@@ -524,22 +529,22 @@ export async function GET(request: NextRequest) {
         .map(([series, count]) => ({ series, count }))
 
       // 點擊→抽轉化（同 product_id 先有 click 再有 draw 的 user 數）
-      const { data: clickUsers } = await applyBehaviorDate(
+      const clickUsers = await fetchAllRows<any>(() => applyBehaviorDate(
         supabase
           .from('user_events')
           .select('user_id, product_id')
           .eq('event_type', 'product_click')
           .not('user_id', 'is', null)
           .not('product_id', 'is', null)
-      )
-      const { data: drawUsers } = await applyBehaviorDate(
+      ))
+      const drawUsers = await fetchAllRows<any>(() => applyBehaviorDate(
         supabase
           .from('user_events')
           .select('user_id, product_id')
           .eq('event_type', 'draw')
           .not('user_id', 'is', null)
           .not('product_id', 'is', null)
-      )
+      ))
       const clickSet = new Set((clickUsers ?? []).map((e: any) => `${e.user_id}:${e.product_id}`))
       const drawSet = new Set((drawUsers ?? []).map((e: any) => `${e.user_id}:${e.product_id}`))
       const converted = [...drawSet].filter(k => clickSet.has(k)).length

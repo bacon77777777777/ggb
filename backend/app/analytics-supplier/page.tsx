@@ -9,7 +9,7 @@ import { StatCard, GrowthTag, InfoIcon } from '@/components/analytics/StatCard'
 import { RankingList } from '@/components/analytics/RankingList'
 
 /*
- * 廠商分析
+ * 廠商儀表板（原「廠商分析」，2026-08-12 只改名，內容沒動）
  *
  * UI 沿用「分析頁」那一套（老闆指定）：AntD Pro 風格的 KPI 卡、迷你圖、
  * 儀表板的 TOP 15 排行卡、外標籤甜甜圈。卡片與排行卡已抽成
@@ -122,7 +122,7 @@ export default function SupplierAnalyticsPage() {
   const hasData = (c?.totalDraws ?? 0) > 0
 
   return (
-    <AdminLayout pageTitle="廠商分析">
+    <AdminLayout pageTitle="廠商儀表板">
       <div className="space-y-5">
 
         {/* 工具列：廠商下拉擺最左邊（老闆指定），其餘沿用分析頁 */}

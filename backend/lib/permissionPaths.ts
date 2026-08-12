@@ -4,8 +4,11 @@
 
 export const MENU_PATH_ORDER: Array<{ path: string; permission: string }> = [
   { path: '/dashboard',          permission: 'dashboard' },
-  { path: '/reports/overview',   permission: 'reports_overview' },
-  { path: '/reports/behavior',   permission: 'reports_behavior' },
+  // 營運總覽收成三頁：數據分析（併了原轉換分析／點擊分析）、廠商儀表板。
+  // 舊的 /reports/overview 與 /reports/behavior 不再掛選單，權限跟著數據分析走，
+  // 排在這裡是為了「登入後導到第一個有權限的頁」時順序正確。
+  { path: '/analytics-overview', permission: 'analytics_overview' },
+  { path: '/analytics-supplier', permission: 'analytics_supplier' },
   { path: '/recharges',          permission: 'recharges' },
   { path: '/reports/logistics',  permission: 'reports_logistics' },
   { path: '/reports/products',   permission: 'reports_products' },

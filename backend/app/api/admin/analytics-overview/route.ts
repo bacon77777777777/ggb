@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
      */
     const [draws, prevDraws, rcCurRows, rcPrevRows, todayDraws, yesterdayDraws, visCur, visPrev, visToday, visYest, kwCurRows, kwPrevRows, rcTodayRows, rcYestRows] =
       await Promise.all([
-        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, created_at, product:products(id, name, price, type, supplier:suppliers(id, name))')), curStart, curEnd)),
         fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, product:products(price)')), prevStart, prevEnd)),
         fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount, created_at').eq('status', 'success')), curStart, curEnd)),
         fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd)),
@@ -209,7 +209,12 @@ export async function GET(req: NextRequest) {
       }))
 
     // Categories
-    const CAT: Record<string, string> = { gacha: '轉蛋', ichiban: '一番賞', blindbox: '盲盒', card: '抽卡', custom: '自製賞' }
+    /* 標籤與儀表板／廠商儀表板統一：盒玩不要在這頁叫「盲盒」，
+       slot 與已刪除商品也要有看得懂的名字，不然圖上會出現 other 這種內部代號 */
+    const CAT: Record<string, string> = {
+      gacha: '轉蛋', ichiban: '一番賞', blindbox: '盒玩', card: '抽卡', custom: '自製賞',
+      slot: '挑戰機台', other: '已刪除商品',
+    }
     const catMap: Record<string, { count: number; amount: number }> = {}
     draws.forEach((d: any) => {
       const t = d.product?.type ?? 'other'
@@ -238,12 +243,29 @@ export async function GET(req: NextRequest) {
     const convRate = totalVisits > 0 ? Math.round(totalDrawCount / totalVisits * 100) : 0
     const prevConvRate = prevVisits > 0 ? Math.round(prevDrawCount / prevVisits * 100) : 0
 
+    /*
+     * 熱門商品 TOP 15。原本掛在儀表板，儀表板改成營運駕駛艙之後排行榜統一收到這頁，
+     * 免得兩頁各算一份、數字還不一樣（舊儀表板是前端自己 reduce 的）。
+     */
+    const prodMap: Record<string, { name: string; draws: number }> = {}
+    for (const d of draws) {
+      const p = (d as any).product
+      if (!p?.id) continue
+      const k = String(p.id)
+      if (!prodMap[k]) prodMap[k] = { name: p.name ?? `#${k}`, draws: 0 }
+      prodMap[k].draws++
+    }
+    const topProducts = Object.values(prodMap)
+      .sort((a, b) => b.draws - a.draws)
+      .slice(0, 15)
+      .map(p => ({ name: p.name, value: p.draws }))
+
     return NextResponse.json({
       current: {
         totalSales, totalDrawCount, totalRecharges, totalVisits,
         todaySales, todayDrawCount, todayVisits, todayRecharges,
         yesterdaySales, yesterdayDrawCount, yesterdayVisits, yesterdayRecharges,
-        convRate, bars, spark, keywords, categories,
+        convRate, bars, spark, keywords, categories, topProducts,
         suppliers: suppliers.map((s, i) => ({
           ...s, rank: i + 1,
           salesPct: Math.round(s.sales / maxSales * 100),

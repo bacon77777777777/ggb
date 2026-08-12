@@ -630,8 +630,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const PATH_PERMISSION_MAP: Record<string, string | string[]> = {
     // 營運總覽
     '/dashboard': 'dashboard',
-    '/reports/overview': 'reports_overview',
-    '/reports/behavior': 'reports_behavior',
+    // 這兩頁已併進「數據分析」，不再掛選單；舊書籤還是要能開，權限跟著數據分析走
+    '/reports/overview': 'analytics_overview',
+    '/reports/behavior': 'analytics_overview',
     // 金流報表
     '/recharges': 'recharges',
     '/recharge-review': 'recharge_review',
@@ -723,11 +724,17 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         id: 'home',
         title: '營運總覽',
         items: [
-          { name: '儀表板', path: '/dashboard', icon: IconDashboard },
-          { name: '分析頁', path: '/analytics-overview', icon: IconLineChart },
-          { name: '廠商分析', path: '/analytics-supplier', icon: IconLineChart },
-          { name: '轉換分析', path: '/reports/overview', icon: IconConversion },
-          { name: '點擊分析', path: '/reports/behavior', icon: IconClick },
+          /*
+           * 營運總覽從五頁收成三頁（老闆指定）：
+           *   儀表板 → 營運儀表板（改成駕駛艙，五層）
+           *   分析頁 → 數據分析（併入原「轉換分析」「點擊分析」的指標與排行榜）
+           *   廠商分析 → 廠商儀表板（只改名，內容不動；廠商帳號也看這頁）
+           * `/reports/overview` 與 `/reports/behavior` 兩支路由留著（同一個
+           * `/reports/[type]` 還在服務對帳報表的消費明細），只是不再掛選單。
+           */
+          { name: '營運儀表板', path: '/dashboard', icon: IconDashboard },
+          { name: '數據分析', path: '/analytics-overview', icon: IconLineChart },
+          { name: '廠商儀表板', path: '/analytics-supplier', icon: IconLineChart },
         ],
       },
       {

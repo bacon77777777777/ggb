@@ -28,11 +28,11 @@ const PERMISSION_GROUPS = [
   {
     title: '營運總覽',
     items: [
-      { id: 'dashboard',          label: '儀表板' },
-      { id: 'analytics_overview', label: '分析頁' },
-      { id: 'analytics_supplier', label: '廠商分析' },
-      { id: 'reports_overview',   label: '轉換分析' },
-      { id: 'reports_behavior',   label: '點擊分析' },
+      // 五頁收成三頁；reports_overview / reports_behavior 兩個 key 已停用，
+      // 由 migration 536 回填成 analytics_overview 再從角色身上移除
+      { id: 'dashboard',          label: '營運儀表板' },
+      { id: 'analytics_overview', label: '數據分析' },
+      { id: 'analytics_supplier', label: '廠商儀表板' },
     ],
   },
   {
@@ -137,11 +137,11 @@ const ROLE_PRESETS: { label: string; permissions: string[] }[] = [
   },
   {
     label: '行銷人員',
-    permissions: ['dashboard', 'reports_overview', 'banners', 'news', 'coupons'],
+    permissions: ['dashboard', 'analytics_overview', 'banners', 'news', 'coupons'],
   },
   {
     label: '一般管理員',
-    permissions: ['dashboard', 'reports_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'logs'],
+    permissions: ['dashboard', 'analytics_overview', 'recharges', 'reports_logistics', 'reports_products', 'products', 'suppliers', 'categories', 'draws', 'orders', 'users', 'banners', 'news', 'coupons', 'logs'],
   },
 ]
 

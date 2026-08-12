@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 // 驚嘆號說明改用共用元件：本地那顆是 absolute 定位，會被卡片的 overflow-hidden 裁掉
 import { InfoIcon } from '@/components/analytics/StatCard'
+import { RankingList } from '@/components/analytics/RankingList'
 
 // ── Dynamic chart imports (Canvas, no SSR) ────────────────────────────────────
 
@@ -95,12 +96,27 @@ interface AnalyticsData {
     bars: { label: string; sales: number; draws: number; visits: number; recharges: number }[]
     spark: { x: number; date: string; sales: number; draws: number; visits: number }[]
     keywords: { rank: number; keyword: string; count: number; growth: number }[]
+    topProducts: { name: string; value: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     suppliers: { id: string; name: string; rank: number; draws: number; sales: number; salesPct: number; drawsPct: number; convRate: number }[]
   }
   growth: {
     sales: number; draws: number; recharges: number; visits: number
     salesToday: number; drawsToday: number; visitsToday: number; rechargesToday: number; convRate: number
+  }
+}
+
+/** 併進來的「轉換分析」「點擊分析」兩頁的數字，來自 /api/admin/reports */
+interface MergedData {
+  overview?: {
+    avgTokenPerDraw: number; couponDiscountFixed: number; couponDiscountPercentageCount: number
+    totalMembers: number; uniquePayers: number; uniqueDrawers: number; newUserCount: number
+  }
+  funnel?: { firstTimePayers: number; uniquePayers: number; repurchaseRateInPeriod: number; newUserConversionRate: number }
+  behavior?: {
+    topSearches: { query: string; count: number }[]
+    topSeries: { series: string; count: number }[]
+    conversionRate: number; clickTotal: number; converted: number
   }
 }
 
@@ -137,6 +153,13 @@ export default function AnalyticsOverviewPage() {
   const [lineChartH, setLineChartH] = useState(300)
   const lineChartContainerRef = React.useRef<HTMLDivElement>(null)
   const [chartMode, setChartMode] = useState<'sales' | 'visits'>('sales')
+  /*
+   * 「轉換分析」與「點擊分析」原本是選單上的兩個獨立頁面，各自只有幾個數字。
+   * 老闆要把營運總覽收成三頁，這兩頁併進來 —— 直接沿用 /api/admin/reports
+   * 既有的 overview / behavior 兩個 tab，不重寫一份算法（重寫就會出現兩套數字）。
+   * `/reports/[type]` 路由本身留著，它還在服務對帳報表的消費明細。
+   */
+  const [merged, setMerged] = useState<MergedData>({})
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -144,8 +167,16 @@ export default function AnalyticsOverviewPage() {
       const p = new URLSearchParams()
       if (startDate) p.set('start', startDate)
       if (endDate) p.set('end', endDate)
-      const res = await fetch(`/api/admin/analytics-overview?${p}`)
+      const [res, ov, bh] = await Promise.all([
+        fetch(`/api/admin/analytics-overview?${p}`),
+        fetch(`/api/admin/reports?tab=overview&${p}`),
+        fetch(`/api/admin/reports?tab=behavior&${p}`),
+      ])
       if (res.ok) setData(await res.json())
+      const m: MergedData = {}
+      if (ov.ok) { const j = await ov.json(); m.overview = j.overview; m.funnel = j.funnel }
+      if (bh.ok) m.behavior = await bh.json()
+      setMerged(m)
     } finally {
       setLoading(false)
     }
@@ -183,7 +214,7 @@ export default function AnalyticsOverviewPage() {
   const spark = c?.spark ?? []
 
   return (
-    <AdminLayout pageTitle="分析頁">
+    <AdminLayout pageTitle="數據分析">
       <div className="space-y-5">
 
         {/* ── Toolbar ──────────────────────────────────────────────────────── */}
@@ -631,6 +662,77 @@ export default function AnalyticsOverviewPage() {
                 tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: (d: any) => d.type }] } as any}
               />
             )}
+          </div>
+        </div>
+
+        {/* ── 排行榜 TOP 15（原本掛在儀表板，儀表板改成營運駕駛艙後統一收到這頁）── */}
+        <div className="grid grid-cols-3 gap-6">
+          <RankingList
+            title="熱門商品 TOP 15" limit={15}
+            data={(c?.topProducts ?? []).map(p => ({ name: p.name, value: p.value }))}
+            extra={<InfoIcon width={300} text={'這段期間被抽最多次的商品。\n可以拿來決定補貨、首頁推薦與選品方向。'} />}
+          />
+          <RankingList
+            title="最多點擊系列 TOP 15" limit={15}
+            data={(merged.behavior?.topSeries ?? []).map(x => ({ name: x.series, value: x.count }))}
+            extra={<InfoIcon width={300} text={'玩家最常點進去看的系列（IP／品牌）。\n點得多不代表買得多，兩邊差很大時通常是價格或獎品內容的問題。'} />}
+          />
+          <RankingList
+            title="熱門搜尋字 TOP 15" limit={15}
+            data={(merged.behavior?.topSearches ?? []).map(x => ({ name: x.query, value: x.count }))}
+            extra={<InfoIcon width={300} text={'玩家在站上搜尋的關鍵字。\n有人一直搜卻找不到東西，就是還沒上架的機會。'} />}
+          />
+        </div>
+
+        {/* ── 轉換概況 ＋ 點擊行為（原「轉換分析」「點擊分析」兩頁併進來）── */}
+        <div className="grid grid-cols-2 gap-6">
+          <div className="rounded-lg border border-[#f0f0f0] bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              <span className="flex-1 min-w-0 truncate">轉換概況</span>
+              <InfoIcon width={300} text={'玩家從註冊到掏錢的整體狀況。\n首次付費佔比＝這段期間付費的人裡面，有多少是生平第一次付費（其餘是回頭客）。\n折價券折損只算固定金額的券，打折型的券要看實際訂單才算得出來，另外列出張數。'} />
+            </div>
+            <div className="p-6 grid grid-cols-2 gap-y-5">
+              {[
+                { label: '平均每次抽賞', value: merged.overview ? `${merged.overview.avgTokenPerDraw.toLocaleString()} G` : '—' },
+                { label: '折價券折損', value: merged.overview ? `${merged.overview.couponDiscountFixed.toLocaleString()} 元` : '—' },
+                { label: '累積會員總數', value: merged.overview ? `${merged.overview.totalMembers.toLocaleString()} 人` : '—' },
+                {
+                  label: '首次付費用戶佔比',
+                  value: merged.funnel && merged.funnel.uniquePayers > 0
+                    ? `${Math.round(merged.funnel.firstTimePayers / merged.funnel.uniquePayers * 1000) / 10}%`
+                    : '—',
+                },
+                { label: '本期付費人數', value: merged.overview ? `${merged.overview.uniquePayers.toLocaleString()} 人` : '—' },
+                { label: '本期參與抽獎人數', value: merged.overview ? `${merged.overview.uniqueDrawers.toLocaleString()} 人` : '—' },
+              ].map(x => (
+                <div key={x.label}>
+                  <p className="text-xs text-neutral-500 mb-1">{x.label}</p>
+                  <p className="text-lg font-semibold text-neutral-900">{loading ? '—' : x.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#f0f0f0] bg-white">
+            <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+              style={{ color: 'rgba(0,0,0,0.88)' }}>
+              <span className="flex-1 min-w-0 truncate">點擊行為</span>
+              <InfoIcon width={300} text={'玩家點進商品之後有沒有真的抽。\n點擊後成功抽獎＝同一個人點過某件商品、後來也抽了那件商品。\n轉換率低代表商品頁看得到、但不吸引人下手。'} />
+            </div>
+            <div className="p-6 grid grid-cols-2 gap-y-5">
+              {[
+                { label: '點擊商品數（去重）', value: merged.behavior ? merged.behavior.clickTotal.toLocaleString() : '—' },
+                { label: '點擊後成功抽獎', value: merged.behavior ? merged.behavior.converted.toLocaleString() : '—' },
+                { label: '點擊→抽獎轉換率', value: merged.behavior ? `${merged.behavior.conversionRate}%` : '—' },
+                { label: '新會員付費轉換率', value: merged.funnel ? `${merged.funnel.newUserConversionRate}%` : '—' },
+              ].map(x => (
+                <div key={x.label}>
+                  <p className="text-xs text-neutral-500 mb-1">{x.label}</p>
+                  <p className="text-lg font-semibold text-neutral-900">{loading ? '—' : x.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

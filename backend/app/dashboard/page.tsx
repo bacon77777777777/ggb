@@ -1,1415 +1,549 @@
 'use client'
 
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
-import { format } from 'date-fns'
-import { RankingList } from '@/components/analytics/RankingList'
+import DateRangePicker from '@/components/DateRangePicker'
+import { StatCard, GrowthTag, InfoIcon } from '@/components/analytics/StatCard'
 
-// Types
-interface DashboardStats {
-  totalRevenue: number
-  totalOrders: number
-  totalUsers: number
-  avgOrderValue: number
-  revenueTrend: number
-  ordersTrend: number
-  usersTrend: number
-  avgOrderTrend: number
-}
+/*
+ * 營運儀表板（駕駛艙）
+ *
+ * 舊版是「交易數據統計」：總儲值、消耗代幣、抽獎數、註冊量再加三個排行榜，
+ * 看得出發生什麼事，看不出**該做什麼**。改成由上而下五層，
+ * 閱讀順序是「錢 → 玩家 → 玩法 → 賞池／商品 → 現在該處理什麼」：
+ *
+ *   ① 核心 KPI（兩排八張）
+ *   ② 營運趨勢 ＋ 平台健康度
+ *   ③ 玩家分析 ＋ 玩法分析
+ *   ④ 熱門賞池 ＋ 商品健康度
+ *   ⑤ 營運警報 / 行動建議
+ *
+ * UI 沿用分析頁那一套（老闆指定三頁要長一樣）：`StatCard`／`GrowthTag`／
+ * `InfoIcon`、56px 標題列 + 分線的白卡、AntD Charts。這頁不新增任何視覺系統。
+ *
+ * 資料全部來自 `/api/admin/dashboard-overview` 一支 —— 五層算的是同一批
+ * 抽獎與儲值紀錄，拆成多支會把同一份資料撈很多遍，期間邊界也容易各走各的。
+ *
+ * ⚠️ 樣本不足時（見 API 的 MIN_SAMPLE_DRAWS）分級與趨勢類警報會顯示「資料不足」，
+ * 這是刻意的：拿個位數玩家算出來的漲跌是雜訊。畫面上沒有任何 mock data。
+ */
 
-interface ChartData {
-  date: string
-  value: number
-  [key: string]: string | number
-}
+const ColumnChart = dynamic(() => import('@ant-design/charts').then(m => ({ default: m.Column })), { ssr: false })
+const TinyArea = dynamic(() => import('@ant-design/charts').then(m => ({ default: m.Tiny.Area })), { ssr: false })
+const TinyColumn = dynamic(() => import('@ant-design/charts').then(m => ({ default: m.Tiny.Column })), { ssr: false })
 
-interface TopProduct {
-  id: number
-  name: string
-  sales: number
-  revenue: number
-  image_url: string
-}
+type HealthStatus = 'grow' | 'ok' | 'warn' | 'bad' | 'unknown' | 'nobase'
+type AlertLevel = 'red' | 'yellow' | 'blue' | 'green'
 
-interface RecentOrder {
-  id: number
-  order_number: string
-  user: {
-    name: string
-    email: string
+interface Payload {
+  updatedAt: string
+  sampleEnough: boolean
+  minSample: number
+  hasActualFee: boolean
+  feeRatePct: number
+  kpi: {
+    revenue: number; recharge: number; spend: number; draws: number
+    activeUsers: number; payingUsers: number; payRate: number; arppu: number
+    todayRevenue: number; todayRecharge: number; todaySpend: number; todayDraws: number; todayActive: number
   }
-  status: string
-  created_at: string
-  items_count: number
-}
-
-// 自適應寬度 hook
-function useContainerWidth(ref: React.RefObject<HTMLElement | null>) {
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    if (!ref.current) return
-    setWidth(ref.current.getBoundingClientRect().width)
-    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width))
-    ro.observe(ref.current)
-    return () => ro.disconnect()
-  }, [])
-  return width
-}
-
-// Y軸智能格式化
-function fmtY(v: number): string {
-  if (v === 0) return '0'
-  if (Math.abs(v) >= 10000) return `${Math.round(v / 1000)}k`
-  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`
-  if (Math.abs(v) >= 10) return String(Math.round(v))
-  return String(Math.round(v * 10) / 10)
-}
-
-// 小型圖表組件（用於卡片內）
-function MiniChart({ data, type, color, id }: { data: number[], type: 'line' | 'bar', color: string, id: string }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  const width = 200
-  const height = 50
-  const padding = 2
-  const maxValue = Math.max(...data)
-  const minValue = Math.min(...data)
-  const range = maxValue - minValue || 1
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full h-12 flex items-center justify-center text-neutral-300 text-xs">
-        無數據
-      </div>
-    )
+  growth: Record<string, number>
+  spark: { x: number; date: string; revenue: number; recharge: number; spend: number; draws: number }[]
+  trend: { label: string; revenue: number; recharge: number; spend: number; refund: number }[]
+  health: { key: string; label: string; value: string; delta: number; status: HealthStatus; showDelta?: boolean }[]
+  players: { dau: number; newUsers: number; returning: number; paying: number; payRate: number; arppu: number }
+  funnel: { key: string; label: string; users: number; rate: number | null }[]
+  playTypes: { type: string; label: string; draws: number; spend: number; players: number; sharePct: number; marginPct: number }[]
+  pools: {
+    id: string; name: string; label: string; draws: number; spend: number; players: number
+    remainPct: number | null; marginPct: number; growth: number | null
+    status: 'hot' | 'normal' | 'nearly' | 'cold' | 'unknown'
+  }[]
+  productHealth: {
+    total: number; normal: number; nearlySoldOut: number; soldOut: number; stale: number
+    items: { id: string; name: string; reason: string }[]
   }
-
-  if (type === 'line') {
-    const points = data.map((value, index) => {
-      const x = padding + (index / (data.length - 1 || 1)) * (width - padding * 2)
-      const y = height - padding - ((value - minValue) / range) * (height - padding * 2)
-      return { x, y, value, index }
-    })
-
-    const pathData = points.map((point, index) => 
-      `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
-    ).join(' ')
-    
-    // 如果只有一個點，無法繪製面積，只繪製線條
-    const areaPath = points.length > 1 
-      ? `${pathData} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
-      : ''
-
-    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const svgX = e.clientX - rect.left
-      
-      // 找到最接近的點
-      let closestIndex = 0
-      let minDistance = Math.abs(points[0].x - svgX)
-      points.forEach((point, index) => {
-        const distance = Math.abs(point.x - svgX)
-        if (distance < minDistance) {
-          minDistance = distance
-          closestIndex = index
-        }
-      })
-      
-      setHoveredIndex(closestIndex)
-      setHoverPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    }
-
-    const handleMouseLeave = () => {
-      setHoveredIndex(null)
-      setHoverPosition(null)
-    }
-
-    return (
-      <div ref={containerRef} className="relative w-full h-12">
-        <svg 
-          width={width} 
-          height={height} 
-          className="w-full h-12"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          <defs>
-            <linearGradient id={`gradient-${id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {areaPath && (
-            <path 
-              d={areaPath}
-              fill={`url(#gradient-${id})`}
-            />
-          )}
-          <path 
-            d={pathData} 
-            fill="none" 
-            stroke={color} 
-            strokeWidth="1.5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          />
-          {/* 資料點 */}
-          {points.map((point) => (
-            <circle
-              key={point.index}
-              cx={point.x}
-              cy={point.y}
-              r={hoveredIndex === point.index ? 4 : 0}
-              fill={color}
-              className="transition-all"
-            />
-          ))}
-          {/* Hover 區域 */}
-          {points.map((point, index) => {
-            const hoverWidth = index < points.length - 1 
-              ? (points[index + 1].x - point.x) / 2 
-              : (point.x - (index > 0 ? points[index - 1].x : padding)) / 2
-            const hoverX = index === 0 
-              ? point.x 
-              : point.x - (point.x - (index > 0 ? points[index - 1].x : padding)) / 2
-            return (
-              <rect
-                key={`hover-${index}`}
-                x={hoverX}
-                y={0}
-                width={hoverWidth}
-                height={height}
-                fill="transparent"
-                onMouseEnter={() => {
-                  setHoveredIndex(index)
-                }}
-                onMouseLeave={handleMouseLeave}
-              />
-            )
-          })}
-        </svg>
-        {/* Hover 提示框 */}
-        {hoveredIndex !== null && hoverPosition && (
-          <div
-            className="absolute bg-neutral-900 text-white text-xs rounded px-2 py-1 shadow-lg z-10 pointer-events-none whitespace-nowrap"
-            style={{
-              left: `${hoverPosition.x}px`,
-              top: `${hoverPosition.y - 30}px`,
-              transform: 'translateX(-50%)'
-            }}
-          >
-            {data[hoveredIndex].toLocaleString()}
-          </div>
-        )}
-      </div>
-    )
-  } else {
-    const barWidth = (width - padding * 2) / data.length * 0.6
-    const barGap = (width - padding * 2) / data.length * 0.4
-
-    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const svgX = e.clientX - rect.left
-      
-      // 找到對應的柱子
-      const index = data.findIndex((_, i) => {
-        const x = padding + i * (barWidth + barGap) + barGap / 2
-        return svgX >= x && svgX <= x + barWidth
-      })
-      
-      if (index !== -1) {
-        setHoveredIndex(index)
-        setHoverPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-      }
-    }
-
-    const handleMouseLeave = () => {
-      setHoveredIndex(null)
-      setHoverPosition(null)
-    }
-
-    return (
-      <div ref={containerRef} className="relative w-full h-12">
-        <svg 
-          width={width} 
-          height={height} 
-          className="w-full h-12"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          {data.map((value, index) => {
-            const x = padding + index * (barWidth + barGap) + barGap / 2
-            const barHeight = ((value - minValue) / range) * (height - padding * 2)
-            const y = height - padding - barHeight
-            return (
-              <rect
-                key={index}
-                x={x}
-                y={y}
-                width={barWidth}
-                height={barHeight}
-                fill={color}
-                rx="1"
-                opacity={hoveredIndex === index ? 0.8 : 1}
-                className="transition-opacity"
-              />
-            )
-          })}
-        </svg>
-        {/* Hover 提示框 */}
-        {hoveredIndex !== null && hoverPosition && (
-          <div
-            className="absolute bg-neutral-900 text-white text-xs rounded px-2 py-1 shadow-lg z-10 pointer-events-none whitespace-nowrap"
-            style={{
-              left: `${hoverPosition.x}px`,
-              top: `${hoverPosition.y - 30}px`,
-              transform: 'translateX(-50%)'
-            }}
-          >
-            {data[hoveredIndex].toLocaleString()}
-          </div>
-        )}
-      </div>
-    )
-  }
+  alerts: { level: AlertLevel; title: string; detail: string; action: string; href?: string }[]
+  alertsTotal: number
 }
 
-// 說明 tooltip 組件
-function InfoTooltip({ text }: { text: string }) {
-  const [show, setShow] = useState(false)
-  return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
-        !
-      </div>
-      {show && (
-        <div className="absolute right-0 top-5 w-52 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none">
-          {text}
-        </div>
-      )}
-    </div>
-  )
-}
+const toDS = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const mondayOf = (d: Date) => { const x = new Date(d); const w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x }
+const sundayOf = (d: Date) => { const x = mondayOf(d); x.setDate(x.getDate() + 6); return x }
 
-// 統計卡片組件
-function StatCard({ title, value, unit, subtext, trend, trendValue, trendPeriod, chartData, chartType, chartColor, cardId, selectedPeriod, tooltip }: {
-  title: string
-  value: string | number
-  unit?: string
-  subtext?: string
-  trend?: 'up' | 'down'
-  trendValue?: number
-  trendPeriod?: string
-  chartData?: number[]
-  chartType?: 'line' | 'bar'
-  chartColor?: string
-  cardId?: string
-  selectedPeriod?: string
-  tooltip?: string
+/** 白卡外框：56px 標題列 + 分線 + 右側驚嘆號，跟分析頁的「銷售走勢」同一套 */
+function Panel({ title, tip, children, extra, className = '' }: {
+  title: string; tip: string; children: React.ReactNode; extra?: React.ReactNode; className?: string
 }) {
-  // 根據選擇的時間段顯示對應的文字
-  const getPeriodText = (period: string) => {
-    const periodMap: { [key: string]: string } = {
-      '日': '同日',
-      '週': '同週',
-      '月': '同月',
-      '年': '同年'
-    }
-    return periodMap[period] || '同日'
-  }
-  
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 hover:bg-neutral-50 transition-all h-full min-h-[100px] flex flex-col">
-      <div className="flex items-start justify-between mb-1.5 gap-2">
-        <p className="text-sm text-neutral-600">
-          {title}{unit && <span className="text-neutral-500">({unit})</span>}
-        </p>
-        {tooltip && <InfoTooltip text={tooltip} />}
+    <div className={`rounded-lg border border-[#f0f0f0] bg-white flex flex-col ${className}`}>
+      <div className="flex items-center gap-2 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+        style={{ color: 'rgba(0,0,0,0.88)' }}>
+        <span className="flex-1 min-w-0 truncate">{title}</span>
+        {extra}
+        <InfoIcon text={tip} width={300} />
       </div>
-      <p className="text-xl font-bold text-neutral-900 whitespace-nowrap font-mono mb-1">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-      {subtext && <p className="text-xs text-neutral-400 mb-2">{subtext}</p>}
-      <div className="mb-4 h-10 flex-shrink-0">
-        {chartData && chartType && chartColor && cardId && (
-          <MiniChart data={chartData} type={chartType} color={chartColor} id={cardId} />
-        )}
-      </div>
-      {trend && trendValue && selectedPeriod && (
-        <div className="flex items-center gap-1 text-xs text-neutral-600 mt-auto">
-          <span>{getPeriodText(selectedPeriod)}相比 {trendValue}%</span>
-          <svg className={`w-3 h-3 ${trend === 'up' ? 'text-green-600' : 'text-red-500'}`} fill="currentColor" viewBox="0 0 20 20">
-            {trend === 'up' ? (
-              <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            ) : (
-              <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            )}
-          </svg>
-        </div>
-      )}
+      <div className="p-6 flex-1">{children}</div>
     </div>
   )
 }
 
-// 趨勢圖表組件（單線）— 自適應寬度
-function TrendChart({ title, data, colors, tooltip }: {
-  title: string,
-  data: Array<{ date: string, value: number }>,
-  colors: string[],
-  tooltip?: string
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const svgWidth = useContainerWidth(containerRef)
-  const [hovered, setHovered] = useState<{ x: number; y: number; date: string; value: number } | null>(null)
-
-  const CH = 180
-  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
-  const maxV = Math.max(...data.map(d => d.value), 1)
-  const range = maxV || 1
-  const W = svgWidth || 600
-
-  const pts = data.map((item, i) => {
-    const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
-    const y = pad.top + (CH - pad.top - pad.bottom) * (1 - item.value / range)
-    return { x, y, ...item }
-  })
-
-  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const areaPath = pts.length > 1
-    ? `${linePath} L ${pts[pts.length - 1].x} ${CH - pad.bottom} L ${pts[0].x} ${CH - pad.bottom} Z`
-    : ''
-
-  const labelMinGap = 38
-  const maxLabels = Math.max(1, Math.floor((W - pad.left - pad.right) / labelMinGap))
-  const step = Math.max(1, Math.ceil(data.length / maxLabels))
-  const dotR = data.length > 20 ? 2 : 3.5
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </div>
-      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
-        {svgWidth > 0 && (
-          <svg width={W} height={CH} className="absolute inset-0">
-            <defs>
-              <linearGradient id={`area-${title}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={colors[0]} stopOpacity="0.15" />
-                <stop offset="100%" stopColor={colors[0]} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {[0, 1, 2, 3, 4].map(i => {
-              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
-              const v = maxV * (1 - i / 4)
-              return (
-                <g key={i}>
-                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(v)}</text>
-                </g>
-              )
-            })}
-            {areaPath && <path d={areaPath} fill={`url(#area-${title})`} />}
-            <path d={linePath} fill="none" stroke={colors[0]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            {pts.map((p, i) => {
-              const showLabel = i % step === 0
-              return (
-                <g key={i}>
-                  <circle cx={p.x} cy={p.y} r={dotR} fill={colors[0]} />
-                  <circle cx={p.x} cy={p.y} r={12} fill="transparent"
-                    onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} style={{ cursor: 'pointer' }} />
-                  {showLabel && (
-                    <text x={p.x} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{p.date}</text>
-                  )}
-                </g>
-              )
-            })}
-          </svg>
-        )}
-        {hovered && (
-          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
-            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
-            <div className="font-medium">{hovered.date}</div>
-            <div>{hovered.value.toLocaleString()}</div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const HEALTH_STYLE: Record<HealthStatus, { label: string; cls: string }> = {
+  grow: { label: '成長', cls: 'bg-blue-50 text-blue-600' },
+  ok: { label: '正常', cls: 'bg-green-50 text-green-600' },
+  warn: { label: '注意', cls: 'bg-amber-50 text-amber-600' },
+  bad: { label: '異常', cls: 'bg-red-50 text-red-500' },
+  unknown: { label: '資料不足', cls: 'bg-neutral-100 text-neutral-400' },
+  nobase: { label: '無前期可比', cls: 'bg-neutral-100 text-neutral-400' },
 }
 
-// 多線折線圖組件 — 自適應寬度
-function MultiLineChart({ title, data, series, colors, tooltip }: {
-  title: string,
-  data: Array<{ date: string, [key: string]: string | number }>,
-  series: Array<{ key: string, label: string }>,
-  colors: string[],
-  tooltip?: string
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const svgWidth = useContainerWidth(containerRef)
-  const [hovered, setHovered] = useState<{ x: number; y: number; date: string; values: { [k: string]: number } } | null>(null)
-
-  const CH = 180
-  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
-  const allVals = data.flatMap(d => series.map(s => Number(d[s.key]) || 0))
-  const maxV = Math.max(...allVals, 1)
-  const range = maxV || 1
-  const W = svgWidth || 600
-  const labelMinGap = 38
-  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor((W - pad.left - pad.right) / labelMinGap))))
-  const dotR = data.length > 20 ? 2 : 3.5
-
-  const seriesPts = series.map(s =>
-    data.map((item, i) => {
-      const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
-      const v = Number(item[s.key]) || 0
-      const y = pad.top + (CH - pad.top - pad.bottom) * (1 - v / range)
-      return { x, y, v, date: item.date, key: s.key }
-    })
-  )
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </div>
-      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
-        {svgWidth > 0 && (
-          <svg width={W} height={CH} className="absolute inset-0">
-            {[0, 1, 2, 3, 4].map(i => {
-              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
-              return (
-                <g key={i}>
-                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(maxV * (1 - i / 4))}</text>
-                </g>
-              )
-            })}
-            {seriesPts.map((pts, si) => (
-              <path key={si}
-                d={pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')}
-                fill="none" stroke={colors[si % colors.length]} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              />
-            ))}
-            {data.map((item, i) => {
-              const x = pad.left + (i / Math.max(data.length - 1, 1)) * (W - pad.left - pad.right)
-              return (
-                <g key={i}>
-                  {seriesPts.map((pts, si) => (
-                    <circle key={si} cx={pts[i].x} cy={pts[i].y} r={dotR} fill={colors[si % colors.length]} />
-                  ))}
-                  <rect x={x - 8} y={pad.top} width={16} height={CH - pad.top - pad.bottom} fill="transparent"
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => {
-                      const vals: { [k: string]: number } = {}
-                      seriesPts.forEach(pts => { vals[pts[i].key] = pts[i].v })
-                      setHovered({ x, y: seriesPts[0][i].y, date: item.date as string, values: vals })
-                    }}
-                    onMouseLeave={() => setHovered(null)}
-                  />
-                  {i % step === 0 && (
-                    <text x={x} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.date}</text>
-                  )}
-                </g>
-              )
-            })}
-          </svg>
-        )}
-        {hovered && (
-          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
-            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
-            <div className="font-medium mb-0.5">{hovered.date}</div>
-            {series.map(s => (
-              <div key={s.key} className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: colors[series.indexOf(s) % colors.length] }} />
-                {s.label}: {(hovered.values[s.key] || 0).toLocaleString()}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-4 mt-2">
-        {series.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-1.5 text-xs text-neutral-500">
-            <span className="w-3 h-3 rounded-sm inline-block" style={{ backgroundColor: colors[i % colors.length] }} />
-            {s.label}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const POOL_STATUS: Record<string, { label: string; cls: string }> = {
+  hot: { label: '熱門', cls: 'bg-red-50 text-red-500' },
+  normal: { label: '正常', cls: 'bg-green-50 text-green-600' },
+  nearly: { label: '即將售罄', cls: 'bg-amber-50 text-amber-600' },
+  cold: { label: '低人氣', cls: 'bg-neutral-100 text-neutral-500' },
+  unknown: { label: '資料不足', cls: 'bg-neutral-100 text-neutral-400' },
 }
 
-// 柱狀圖組件 — 自適應寬度
-function BarChart({ title, data, colors, tooltip }: {
-  title: string,
-  data: Array<{ label: string, value: number }>,
-  colors: string[],
-  tooltip?: string
-}) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const svgWidth = useContainerWidth(containerRef)
-  const [hovered, setHovered] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
-
-  const CH = 180
-  const pad = { top: 16, right: 16, bottom: 28, left: 48 }
-  const maxV = Math.max(...data.map(d => d.value), 1)
-  const range = maxV || 1
-  const W = svgWidth || 600
-  const innerW = W - pad.left - pad.right
-  const step = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(innerW / 38))))
-  const slotW = innerW / Math.max(data.length, 1)
-  const barW = Math.max(slotW * 0.6, 2)
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </div>
-      <div ref={containerRef} className="relative w-full" style={{ height: CH }}>
-        {svgWidth > 0 && (
-          <svg width={W} height={CH} className="absolute inset-0">
-            <defs>
-              <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={colors[0]} stopOpacity="0.85" />
-                <stop offset="100%" stopColor={colors[0]} stopOpacity="1" />
-              </linearGradient>
-            </defs>
-            {[0, 1, 2, 3, 4].map(i => {
-              const y = pad.top + (i / 4) * (CH - pad.top - pad.bottom)
-              return (
-                <g key={i}>
-                  <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="#f3f4f6" strokeWidth="1" />
-                  <text x={pad.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{fmtY(maxV * (1 - i / 4))}</text>
-                </g>
-              )
-            })}
-            {data.map((item, i) => {
-              const cx = pad.left + (i + 0.5) * slotW
-              const bh = Math.max((item.value / range) * (CH - pad.top - pad.bottom), 1)
-              const y = CH - pad.bottom - bh
-              return (
-                <g key={i}>
-                  <rect x={cx - barW / 2} y={y} width={barW} height={bh} fill="url(#barGrad)" rx="2"
-                    onMouseEnter={() => setHovered({ x: cx, y, label: item.label, value: item.value })}
-                    onMouseLeave={() => setHovered(null)}
-                    style={{ cursor: 'pointer' }}
-                    className="hover:opacity-75 transition-opacity"
-                  />
-                  {i % step === 0 && (
-                    <text x={cx} y={CH - 6} textAnchor="middle" fontSize="11" fill="#9ca3af">{item.label}</text>
-                  )}
-                </g>
-              )
-            })}
-          </svg>
-        )}
-        {hovered && (
-          <div className="absolute bg-neutral-900 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg z-10 pointer-events-none whitespace-nowrap"
-            style={{ left: `${(hovered.x / W) * 100}%`, top: `${(hovered.y / CH) * 100}%`, transform: 'translate(-50%, -130%)' }}>
-            <div className="font-medium">{hovered.label}</div>
-            <div>{hovered.value.toLocaleString()}</div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const ALERT_STYLE: Record<AlertLevel, { bar: string; dot: string }> = {
+  red: { bar: 'bg-red-500', dot: 'text-red-500' },
+  yellow: { bar: 'bg-amber-500', dot: 'text-amber-600' },
+  blue: { bar: 'bg-blue-500', dot: 'text-blue-600' },
+  green: { bar: 'bg-green-500', dot: 'text-green-600' },
 }
 
-// 圓餅圖組件
-function PieChart({ title, data, colors, tooltip }: {
-  title: string,
-  data: Array<{ label: string, value: number }>,
-  colors: string[],
-  tooltip?: string
-}) {
-  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
-  
-  const total = data.reduce((sum, item) => sum + item.value, 0)
-  const chartSize = 300
-  const centerX = chartSize / 2
-  const centerY = chartSize / 2
-  const radius = 100
-  const innerRadius = 0 // 實心圓餅圖，設為 0 可改為甜甜圈圖
+/** 營運趨勢可切換的四條線 */
+const TREND_METRICS = [
+  { key: 'revenue', label: '營收', color: '#1677ff' },
+  { key: 'recharge', label: '儲值', color: '#722ed1' },
+  { key: 'spend', label: '消費', color: '#10b981' },
+  { key: 'refund', label: '退款', color: '#f5222d' },
+] as const
 
-  if (total > 0 && data.length === 1) {
-    const only = data[0]
-    const slice = {
-      ...only,
-      percentage: 100,
-      labelX: centerX,
-      labelY: centerY,
-      color: colors[0] || '#9333EA',
-    }
-
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-          {tooltip && <InfoTooltip text={tooltip} />}
-        </div>
-        <div className="flex items-center justify-center gap-6">
-          <div className="relative">
-            <svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
-              <circle
-                cx={centerX}
-                cy={centerY}
-                r={radius}
-                fill={slice.color}
-                stroke="white"
-                strokeWidth="2"
-                onMouseEnter={() => setHoveredSlice(0)}
-                onMouseLeave={() => setHoveredSlice(null)}
-                style={{ cursor: 'pointer' }}
-                className="transition-opacity"
-              />
-              {hoveredSlice === 0 ? (
-                <text
-                  x={slice.labelX}
-                  y={slice.labelY}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-sm fill-white font-semibold pointer-events-none"
-                >
-                  100.0%
-                </text>
-              ) : null}
-            </svg>
-            {hoveredSlice === 0 ? (
-              <div
-                className="absolute bg-neutral-900 text-white text-base rounded-lg px-3 py-2 shadow-lg z-10 pointer-events-none"
-                style={{
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)'
-                }}
-              >
-                <div className="font-semibold whitespace-nowrap">{slice.label}</div>
-                <div className="whitespace-nowrap">{slice.value.toLocaleString()} (100.0%)</div>
-              </div>
-            ) : null}
-          </div>
-          <div className="space-y-3">
-            <div
-              className="flex items-center gap-3 cursor-pointer"
-              onMouseEnter={() => setHoveredSlice(0)}
-              onMouseLeave={() => setHoveredSlice(null)}
-            >
-              <div className="w-4 h-4 rounded flex-shrink-0" style={{ backgroundColor: slice.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900">{slice.label}</p>
-                <p className="text-xs text-neutral-500">{slice.value.toLocaleString()} (100.0%)</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  
-  let currentAngle = -90 // 從頂部開始（-90度）
-  
-  const slices = data.map((item, index) => {
-    const percentage = total > 0 ? (item.value / total) * 100 : 0
-    const angle = total > 0 ? (item.value / total) * 360 : 0
-    const startAngle = currentAngle
-    const endAngle = currentAngle + angle
-    currentAngle = endAngle
-    
-    // 計算扇形路徑
-    const startAngleRad = (startAngle * Math.PI) / 180
-    const endAngleRad = (endAngle * Math.PI) / 180
-    
-    const x1 = centerX + radius * Math.cos(startAngleRad)
-    const y1 = centerY + radius * Math.sin(startAngleRad)
-    const x2 = centerX + radius * Math.cos(endAngleRad)
-    const y2 = centerY + radius * Math.sin(endAngleRad)
-    
-    const largeArcFlag = angle > 180 ? 1 : 0
-    
-    const pathData = [
-      `M ${centerX} ${centerY}`,
-      `L ${x1} ${y1}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-      'Z'
-    ].join(' ')
-    
-    // 計算標籤位置（在扇形中間）
-    const labelAngle = (startAngle + endAngle) / 2
-    const labelAngleRad = (labelAngle * Math.PI) / 180
-    const labelRadius = radius * 0.7
-    const labelX = centerX + labelRadius * Math.cos(labelAngleRad)
-    const labelY = centerY + labelRadius * Math.sin(labelAngleRad)
-    
-    return {
-      pathData,
-      percentage,
-      labelX,
-      labelY,
-      color: colors[index % colors.length],
-      ...item
-    }
-  })
-  
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
-      </div>
-      <div className="flex items-center justify-center gap-6">
-        <div className="relative">
-          <svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
-            {slices.map((slice, index) => (
-              <g key={index}>
-                <path
-                  d={slice.pathData}
-                  fill={slice.color}
-                  stroke="white"
-                  strokeWidth="2"
-                  onMouseEnter={() => setHoveredSlice(index)}
-                  onMouseLeave={() => setHoveredSlice(null)}
-                  style={{ cursor: 'pointer' }}
-                  className="transition-opacity"
-                  opacity={hoveredSlice !== null && hoveredSlice !== index ? 0.5 : 1}
-                />
-                {hoveredSlice === index && (
-                  <text
-                    x={slice.labelX}
-                    y={slice.labelY}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="text-sm fill-white font-semibold pointer-events-none"
-                  >
-                    {slice.percentage.toFixed(1)}%
-                  </text>
-                )}
-              </g>
-            ))}
-          </svg>
-          {/* Hover提示框 */}
-          {hoveredSlice !== null && (
-            <div
-              className="absolute bg-neutral-900 text-white text-base rounded-lg px-3 py-2 shadow-lg z-10 pointer-events-none"
-              style={{
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)'
-              }}
-            >
-              <div className="font-semibold whitespace-nowrap">{slices[hoveredSlice].label}</div>
-              <div className="whitespace-nowrap">{slices[hoveredSlice].value.toLocaleString()} ({slices[hoveredSlice].percentage.toFixed(1)}%)</div>
-            </div>
-          )}
-        </div>
-        {/* 圖例 */}
-        <div className="space-y-3">
-          {slices.map((slice, index) => (
-            <div 
-              key={index} 
-              className="flex items-center gap-3 cursor-pointer"
-              onMouseEnter={() => setHoveredSlice(index)}
-              onMouseLeave={() => setHoveredSlice(null)}
-            >
-              <div 
-                className="w-4 h-4 rounded flex-shrink-0"
-                style={{ backgroundColor: slice.color }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900">{slice.label}</p>
-                <p className="text-xs text-neutral-500">{slice.value.toLocaleString()} ({slice.percentage.toFixed(1)}%)</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// 排名列表組件
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true)
-  const [cardPeriod, setCardPeriod] = useState('日')
-  const [dateRangeStart, setDateRangeStart] = useState('')
-  const [dateRangeEnd, setDateRangeEnd] = useState('')
-  const [totalMembers, setTotalMembers] = useState(0)
+  const today = useMemo(() => new Date(), [])
+  const [startDate, setStartDate] = useState(toDS(today))
+  const [endDate, setEndDate] = useState(toDS(today))
+  const [data, setData] = useState<Payload | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [metric, setMetric] = useState<typeof TREND_METRICS[number]['key']>('revenue')
 
-  const [stats, setStats] = useState<any>({
-    totalRecharge: { value: 0, trend: 'up', trendValue: 0, title: '總儲值金額（GMV）', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#9333EA' },
-    tokenConsumed: { value: 0, trend: 'down', trendValue: 0, title: '消耗代幣（Burn）', unit: 'G', chartData: [], chartType: 'bar', chartColor: '#10b981' },
-    totalDraws: { value: 0, trend: 'up', trendValue: 0, title: '抽獎次數（Draws）', unit: '次', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
-    totalTokenBalance: { value: 0, trend: 'down', trendValue: 0, title: '總代幣餘額（Balance）', unit: 'G', chartData: [], chartType: 'line', chartColor: '#EF4444' },
-    abcPrizeCount: { value: 0, trend: 'up', trendValue: 0, title: '付費用戶數（PU）', unit: '人', chartData: [], chartType: 'bar', chartColor: '#9333EA' },
-    visitCount: { value: 0, trend: 'down', trendValue: 0, title: '訪問量（PV）', unit: '次', chartData: [], chartType: 'line', chartColor: '#9333EA' },
-    registeredUsers: { value: 0, trend: 'up', trendValue: 0, title: '註冊量（NU）', unit: '人', chartData: [], chartType: 'line', chartColor: '#10b981' },
-    conversionRate: { value: 0, trend: 'up', trendValue: 0, title: '平均客單價（ATV）', unit: 'TWD', chartData: [], chartType: 'line', chartColor: '#F59E0B' },
-  })
-  
-  const [topProducts, setTopProducts] = useState<any[]>([])
-  const [topKeywords, setTopKeywords] = useState<any[]>([])
-  const [topSeries, setTopSeries] = useState<any[]>([])
-  const [behaviorStats, setBehaviorStats] = useState({ clickTotal: 0, converted: 0, conversionRate: 0 })
-  const [discountStats, setDiscountStats] = useState({ netRevenue: 0, couponFixed: 0, discountRate: '0.0', dailyAvg: 0, isSingleDay: true })
-  const [pendingActions, setPendingActions] = useState({ pendingShipments: 0, lowInventory: 0, pendingRefunds: 0, pendingSettlements: 0, pendingRechargeReview: 0 })
-  const [dauData, setDauData] = useState<Array<{ date: string; value: number }>>([])
-  const [mainChartData, setMainChartData] = useState({
-    visitTrend: [] as any[],
-    rechargeTrend: [] as any[],
-    rechargeConsume: [] as any[],
-    dailyDraws: [] as any[],
-    categoryDraws: [] as any[],
-  })
+  const PRESETS = useMemo(() => {
+    const y = today.getFullYear(), m = today.getMonth()
+    return [
+      { label: '今日', start: toDS(today), end: toDS(today) },
+      { label: '本週', start: toDS(mondayOf(today)), end: toDS(sundayOf(today)) },
+      { label: '本月', start: `${y}-${String(m + 1).padStart(2, '0')}-01`, end: toDS(new Date(y, m + 1, 0)) },
+      { label: '本年', start: `${y}-01-01`, end: `${y}-12-31` },
+    ]
+  }, [today])
+  const activePreset = PRESETS.find(p => p.start === startDate && p.end === endDate)?.label
 
-  // Log visit
-  useEffect(() => {
-    const logVisit = async () => {
-      try {
-        await fetch('/api/stats/visit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            page_path: '/dashboard',
-            user_agent: navigator.userAgent
-          })
-        })
-      } catch (e) {
-        console.error('Failed to log visit:', e)
-      }
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      const r = await fetch(`/api/admin/dashboard-overview?start=${startDate}&end=${endDate}`, { credentials: 'include' })
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.error || '載入失敗')
+      setData(json)
+    } catch (e: any) {
+      setError(e.message || '載入失敗')
+    } finally {
+      setLoading(false)
     }
-    logVisit()
-  }, [])
+  }, [startDate, endDate])
 
-  // 根據時間段計算日期範圍
-  const calculateDateRangeByPeriod = (period: string) => {
-    const today = new Date()
-    const endDate = new Date(today)
-    endDate.setHours(23, 59, 59, 999)
-    
-    let startDate = new Date(today)
-    
-    if (period === '日') {
-      // 當日
-      // startDate is already today
-    } else if (period === '週') {
-      // 最近7天
-      startDate.setDate(today.getDate() - 6)
-    } else if (period === '月') {
-      // 最近30天
-      startDate.setDate(today.getDate() - 29)
-    } else if (period === '年') {
-      // 最近1年
-      startDate.setFullYear(today.getFullYear() - 1)
-    }
-    
-    startDate.setHours(0, 0, 0, 0)
-    
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
-    
-    return {
-      start: formatDate(startDate),
-      end: formatDate(endDate)
-    }
-  }
+  useEffect(() => { fetchData() }, [fetchData])
 
-  // 初始化日期範圍
-  useEffect(() => {
-    const dateRange = calculateDateRangeByPeriod(cardPeriod)
-    setDateRangeStart(dateRange.start)
-    setDateRangeEnd(dateRange.end)
-  }, [])
-
-  // 當時間段改變時，自動更新日期範圍
-  useEffect(() => {
-    const dateRange = calculateDateRangeByPeriod(cardPeriod)
-    setDateRangeStart(dateRange.start)
-    setDateRangeEnd(dateRange.end)
-  }, [cardPeriod])
-
-  // Fetch Dashboard Data
-  useEffect(() => {
-    if (!dateRangeStart || !dateRangeEnd) return
-
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const startDate = new Date(dateRangeStart)
-        const endDate = new Date(dateRangeEnd)
-        // Add one day to end date to include the whole day
-        const queryEndDate = new Date(endDate)
-        queryEndDate.setDate(queryEndDate.getDate() + 1)
-
-        // Helper to generate date array for charts
-        const getDatesArray = (start: Date, end: Date) => {
-          const arr = []
-          for(let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)){
-              arr.push(new Date(dt))
-          }
-          return arr
-        }
-        const dates = getDatesArray(startDate, endDate)
-        
-        // Determine if we are in Daily View (Hourly data) or Range View (Daily data)
-        const isDailyView = dates.length === 1
-        
-        let timeSlots: any[] = []
-        let getLabel: (slot: any) => string
-        let getFilterFn: (slot: any, createdAt: string) => boolean
-        
-        if (isDailyView) {
-            const targetDate = dates[0]
-            const targetYear = targetDate.getFullYear()
-            const targetMonth = targetDate.getMonth()
-            const targetDay = targetDate.getDate()
-            
-            timeSlots = Array.from({length: 24}, (_, i) => i) // 0..23
-            getLabel = (hour: any) => `${String(hour).padStart(2, '0')}:00`
-            getFilterFn = (hour: any, createdAt: string) => {
-                 const d = new Date(createdAt)
-                 return d.getDate() === targetDay && 
-                        d.getMonth() === targetMonth &&
-                        d.getFullYear() === targetYear &&
-                        d.getHours() === hour
-            }
-        } else {
-            timeSlots = dates
-            getLabel = (date: any) => format(date, 'MM/dd')
-            getFilterFn = (date: any, createdAt: string) => {
-                return createdAt.startsWith(format(date, 'yyyy-MM-dd'))
-            }
-        }
-
-        const dashboardRes = await fetch(`/api/admin/dashboard?start=${dateRangeStart}&end=${dateRangeEnd}`)
-        if (!dashboardRes.ok) {
-          const data = await dashboardRes.json().catch(() => null)
-          throw new Error(data?.error || 'Dashboard API 載入失敗')
-        }
-        const { recharges, draws, users, couponDiscountFixed = 0 } = (await dashboardRes.json()) as {
-          recharges: Array<{ amount: number; created_at: string; user_id: string }>
-          draws: Array<{ created_at: string; prize_level: string; products?: { id: number; name: string; price: number; type: string | null; category: any } | null }>
-          users: Array<{ created_at: string; tokens: number; id: string }>
-          couponDiscountFixed: number
-        }
-
-        // 3.5 Fetch Search & Visit Stats from API (to handle missing tables gracefully)
-        let searchStats = { topKeywords: [] }
-        let visitStats = { totalVisits: 0, totalVisitsPeriod: 0, trend: 0, chartData: [] as number[] }
-        
-        try {
-          const searchRes = await fetch(`/api/stats/search?period=${cardPeriod === '月' ? '30d' : '7d'}`)
-          if (searchRes.ok) searchStats = await searchRes.json()
-
-          const visitRes = await fetch(`/api/stats/visit?start=${dateRangeStart}&end=${dateRangeEnd}`)
-          if (visitRes.ok) visitStats = await visitRes.json()
-        } catch (e) {
-          console.error('Error fetching analytics stats:', e)
-        }
-
-        // Filter users by date for registration stats
-        const newUsers = users.filter(u => {
-          const d = new Date(u.created_at)
-          return d >= startDate && d < queryEndDate
-        })
-
-        // 4. Calculate Stats
-        
-        // Total Revenue
-        const totalRevenue = recharges?.reduce((sum, r) => sum + r.amount, 0) || 0
-
-        // New metrics: net revenue, discount rate, daily avg
-        const netRevenue = Math.max(0, totalRevenue - couponDiscountFixed)
-        const discountRate = totalRevenue > 0 ? ((couponDiscountFixed / totalRevenue) * 100).toFixed(1) : '0.0'
-        const dailyAvg = isDailyView ? 0 : Math.round(totalRevenue / dates.length)
-        setDiscountStats({ netRevenue, couponFixed: couponDiscountFixed, discountRate, dailyAvg, isSingleDay: isDailyView })
-
-        // Revenue Chart Data
-        const revenueByDay = timeSlots.map(slot => {
-          const slotRecharges = recharges?.filter(r => getFilterFn(slot, r.created_at))
-          return slotRecharges?.reduce((sum, r) => sum + r.amount, 0) || 0
-        })
-
-        const rechargeTrendData = timeSlots.map(slot => ({
-          date: getLabel(slot),
-          value: recharges?.filter(r => getFilterFn(slot, r.created_at)).reduce((sum, r) => sum + r.amount, 0) || 0
-        }))
-
-        // Token Consumed
-        const tokenConsumed = draws?.reduce((sum, d: any) => sum + (d.products?.price || 0), 0) || 0
-        const tokenConsumedByDay = timeSlots.map(slot => {
-          const slotDraws = draws?.filter(d => getFilterFn(slot, d.created_at))
-          return slotDraws?.reduce((sum, d: any) => sum + (d.products?.price || 0), 0) || 0
-        })
-
-        const consumeTrendData = timeSlots.map(slot => ({
-          date: getLabel(slot),
-          value: draws?.filter(d => getFilterFn(slot, d.created_at)).reduce((sum, d: any) => sum + (d.products?.price || 0), 0) || 0
-        }))
-
-        // Recharge vs Consume Data
-        const rechargeConsumeData = timeSlots.map(slot => {
-          const dateLabel = getLabel(slot)
-          const slotRecharges = recharges?.filter(r => getFilterFn(slot, r.created_at))?.reduce((sum, r) => sum + r.amount, 0) || 0
-          const slotConsume = draws?.filter(d => getFilterFn(slot, d.created_at))?.reduce((sum, d: any) => sum + (d.products?.price || 0), 0) || 0
-          return {
-            date: dateLabel,
-            recharge: slotRecharges,
-            consume: slotConsume
-          }
-        })
-
-        // Total Draws
-        const totalDraws = draws?.length || 0
-        const drawsByDay = timeSlots.map(slot => {
-          return draws?.filter(d => getFilterFn(slot, d.created_at)).length || 0
-        })
-
-        const dailyDrawsData = timeSlots.map(slot => ({
-          label: getLabel(slot),
-          value: draws?.filter(d => getFilterFn(slot, d.created_at)).length || 0
-        }))
-
-        // Token Balance (Snapshot of current total)
-        const totalTokenBalance = users.reduce((sum, u) => sum + (u.tokens || 0), 0)
-        // Mocking balance trend since we don't have balance history
-        const balanceData = timeSlots.map(() => totalTokenBalance) 
-
-        // 付費用戶數（期間內有儲值的不重複用戶）
-        const payingUserIdSet = new Set(recharges?.map(r => r.user_id) || [])
-        const uniquePayersCount = payingUserIdSet.size
-        const payersByDay = timeSlots.map(slot => {
-          const ids = new Set(recharges?.filter(r => getFilterFn(slot, r.created_at)).map(r => r.user_id))
-          return ids.size
-        })
-
-        // Registered Users
-        const registeredCount = newUsers.length
-        const usersByDay = timeSlots.map(slot => {
-          return newUsers.filter(u => getFilterFn(slot, u.created_at)).length
-        })
-
-        // 平均客單價 (avg spend per paying user)
-        const avgSpendPerPayer = uniquePayersCount > 0 ? Math.round(totalRevenue / uniquePayersCount) : 0
-        const avgSpendByDay = revenueByDay
-
-        // Top Products Calculation
-        const productStats = new Map<string, {name: string, sales: number, revenue: number}>()
-        draws?.forEach((d: any) => {
-          if (d.products) {
-             const pid = d.products.id
-             const current = productStats.get(pid) || { name: d.products.name, sales: 0, revenue: 0 }
-             current.sales += 1
-             current.revenue += d.products.price || 0
-             productStats.set(pid, current)
-          }
-        })
-        const topProductsList = Array.from(productStats.values())
-          .sort((a, b) => b.sales - a.sales)
-          .slice(0, 15)
-          .map(p => ({
-            name: p.name,
-            value: p.sales,
-            change: 0
-          }))
-        
-        setTopProducts(topProductsList)
-
-        // Top Series Calculation（從 draws 計算，不依賴 user_events）
-        const seriesStats = new Map<string, number>()
-        draws?.forEach((d: any) => {
-          const s = d.products?.series
-          if (s && s.trim()) seriesStats.set(s.trim(), (seriesStats.get(s.trim()) || 0) + 1)
-        })
-        setTopSeries(
-          Array.from(seriesStats.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 15)
-            .map(([name, value]) => ({ name, value }))
-        )
-
-        // Visit Count Stats
-        const visitCountVal = visitStats.totalVisitsPeriod || visitStats.totalVisits || 0
-        const visitsByDay = visitStats.chartData || []
-        const visitTrendVal = visitStats.trend || 0
-
-        // Category Draws — group by product type (Chinese label)
-        const typeLabels: Record<string, string> = {
-          gacha: '轉蛋', ichiban: '一番賞', blindbox: '盲盒',
-          card: '卡牌', sell: '二手', custom: '客製', exchange: '交換',
-        }
-        const categoryStats = new Map<string, number>()
-        draws?.forEach((d: any) => {
-          const raw = d.products?.type || d.products?.category || ''
-          const label = typeLabels[raw] || raw || '其他'
-          categoryStats.set(label, (categoryStats.get(label) || 0) + 1)
-        })
-        const categoryDrawsData = Array.from(categoryStats.entries()).map(([label, value]) => ({ label, value }))
-
-        setStats({
-          totalRecharge: { 
-            value: totalRevenue, 
-            trend: 'up', 
-            trendValue: 0, 
-            title: '總儲值金額（GMV）',
-            unit: 'TWD', 
-            chartData: revenueByDay, 
-            chartType: 'line', 
-            chartColor: '#9333EA' 
-          },
-          tokenConsumed: { 
-            value: tokenConsumed, 
-            trend: 'down', 
-            trendValue: 0, 
-            title: '消耗代幣（Burn）',
-            unit: 'G', 
-            chartData: tokenConsumedByDay, 
-            chartType: 'bar', 
-            chartColor: '#10b981' 
-          },
-          totalDraws: { 
-            value: totalDraws, 
-            trend: 'up', 
-            trendValue: 0, 
-            title: '抽獎次數（Draws）',
-            unit: '次', 
-            chartData: drawsByDay, 
-            chartType: 'line', 
-            chartColor: '#F59E0B' 
-          },
-          totalTokenBalance: { 
-            value: totalTokenBalance, 
-            trend: 'down', 
-            trendValue: 0, 
-            title: '總代幣餘額（Balance）',
-            unit: 'G', 
-            chartData: balanceData, 
-            chartType: 'line', 
-            chartColor: '#EF4444' 
-          },
-          abcPrizeCount: {
-            value: uniquePayersCount,
-            trend: 'up',
-            trendValue: 0,
-            title: '付費用戶數（PU）',
-            unit: '人',
-            chartData: payersByDay,
-            chartType: 'bar',
-            chartColor: '#9333EA'
-          },
-          visitCount: { 
-            value: visitCountVal, 
-            trend: visitTrendVal >= 0 ? 'up' : 'down', 
-            trendValue: Math.abs(visitTrendVal), 
-            title: '訪問量（PV）',
-            unit: '次', 
-            chartData: visitsByDay, 
-            chartType: 'line', 
-            chartColor: '#9333EA' 
-          },
-          registeredUsers: { 
-            value: registeredCount, 
-            trend: 'up', 
-            trendValue: 0, 
-            title: '註冊量（NU）',
-            unit: '人', 
-            chartData: usersByDay, 
-            chartType: 'line', 
-            chartColor: '#10b981' 
-          },
-          conversionRate: {
-            value: avgSpendPerPayer,
-            trend: 'up',
-            trendValue: 0,
-            title: '平均客單價（ATV）',
-            unit: 'TWD',
-            chartData: avgSpendByDay,
-            chartType: 'line',
-            chartColor: '#F59E0B'
-          },
-        })
-
-        setMainChartData({
-          visitTrend: [],
-          rechargeTrend: rechargeTrendData,
-          rechargeConsume: rechargeConsumeData,
-          dailyDraws: dailyDrawsData,
-          categoryDraws: categoryDrawsData
-        })
-
-        // 用戶行為數據
-        try {
-          const behaviorRes = await fetch(`/api/admin/reports?tab=behavior&start=${dateRangeStart}&end=${dateRangeEnd}`)
-          if (behaviorRes.ok) {
-            const b = await behaviorRes.json()
-            setBehaviorStats({
-              clickTotal: b.clickTotal || 0,
-              converted: b.converted || 0,
-              conversionRate: b.conversionRate || 0,
-            })
-            setDauData((b.dailyActiveUsers || []).map((d: any) => ({ date: d.date, value: d.count })))
-            setTopKeywords((b.topSearches || []).slice(0, 15).map((s: any) => ({ name: s.query, value: s.count })))
-          }
-        } catch (e) {
-          console.error('behavior fetch error', e)
-        }
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [dateRangeStart, dateRangeEnd])
-
-  // 待處理事項 + 累積會員（不依賴日期範圍，只在 mount 時載入一次）
-  useEffect(() => {
-    fetch('/api/admin/dashboard/pending')
-      .then(r => r.json())
-      .then(d => {
-        if (!d.error) {
-          setPendingActions(d)
-          if (d.totalMembers) setTotalMembers(d.totalMembers)
-        }
-      })
-      .catch(() => {})
-  }, [])
-
-  // 處理時間段切換
-  const handlePeriodChange = (period: string) => {
-    setCardPeriod(period)
-  }
+  const k = data?.kpi
+  const g = data?.growth
+  const spark = data?.spark ?? []
+  const hasSpark = (f: 'revenue' | 'recharge' | 'spend' | 'draws') => spark.some(s => s[f] > 0)
+  const updatedAt = data?.updatedAt
+    ? new Date(data.updatedAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : '—'
+  const currentMetric = TREND_METRICS.find(m => m.key === metric)!
 
   return (
-    <AdminLayout pageTitle="儀表板">
-      <div className="space-y-4">
-        {/* 時間段切換 */}
-        <div className="flex items-center justify-end">
-          <div className="flex items-center gap-1 bg-white rounded-lg border border-neutral-200 p-1">
-            {['日', '週', '月', '年'].map((p) => (
-              <button
-                key={p}
-                onClick={() => handlePeriodChange(p)}
-                className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                  cardPeriod === p ? 'bg-primary text-white' : 'text-neutral-600 hover:bg-neutral-100'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+    <AdminLayout pageTitle="營運儀表板">
+      <div className="space-y-5">
+
+        {/* ── 工具列：最後更新靠左，期間／日期／刷新靠右（同分析頁的一整行）── */}
+        <div className="flex items-center gap-2">
+          <div className="mr-auto flex items-center gap-1.5 text-sm text-neutral-500 whitespace-nowrap">
+            最後更新
+            <span className="text-neutral-800">{updatedAt}</span>
           </div>
+          {PRESETS.map(p => (
+            <button key={p.label}
+              onClick={() => { setStartDate(p.start); setEndDate(p.end) }}
+              className={`h-9 px-3 text-sm rounded-lg border transition-colors ${
+                activePreset === p.label
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+          <div className="min-w-0 shrink">
+            <DateRangePicker
+              startDate={startDate} endDate={endDate}
+              onStartDateChange={setStartDate} onEndDateChange={setEndDate}
+              placeholder="自訂日期"
+            />
+          </div>
+          <button onClick={fetchData} title="刷新"
+            className="h-9 w-9 flex items-center justify-center border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors">
+            <svg className={`w-4 h-4 text-neutral-500 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
 
-        {/* 待處理事項（已移至頂部導航列圖標） */}
-        {/* 主要統計卡片（6 張）*/}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard
-            title="淨營收（NR）"
-            value={discountStats.netRevenue}
-            unit="TWD"
-            subtext={`GMV ${stats.totalRecharge.value.toLocaleString()} 扣券 ${discountStats.couponFixed.toLocaleString()}`}
-            cardId="netRevenue"
-            selectedPeriod={cardPeriod}
-            tooltip="總儲值金額扣除折價券折抵後的實際入帳金額。"
-          />
-          <StatCard
-            title={stats.totalRecharge.title}
-            value={stats.totalRecharge.value}
-            unit={stats.totalRecharge.unit}
-            trend={stats.totalRecharge.trend}
-            trendValue={stats.totalRecharge.trendValue}
-            chartData={stats.totalRecharge.chartData}
-            chartType={stats.totalRecharge.chartType}
-            chartColor={stats.totalRecharge.chartColor}
-            cardId="totalRecharge"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內用戶儲值總金額（TWD），直接反映平台收入規模。"
-          />
-          <StatCard
-            title={stats.tokenConsumed.title}
-            value={stats.tokenConsumed.value}
-            unit={stats.tokenConsumed.unit}
-            trend={stats.tokenConsumed.trend}
-            trendValue={stats.tokenConsumed.trendValue}
-            chartData={stats.tokenConsumed.chartData}
-            chartType={stats.tokenConsumed.chartType}
-            chartColor={stats.tokenConsumed.chartColor}
-            cardId="tokenConsumed"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內用戶花費的代幣總量（G），反映抽獎活躍程度。消耗越高代表用戶黏著度越好。"
-          />
-          <StatCard
-            title={stats.totalDraws.title}
-            value={stats.totalDraws.value}
-            unit={stats.totalDraws.unit}
-            trend={stats.totalDraws.trend}
-            trendValue={stats.totalDraws.trendValue}
-            chartData={stats.totalDraws.chartData}
-            chartType={stats.totalDraws.chartType}
-            chartColor={stats.totalDraws.chartColor}
-            cardId="totalDraws"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內完成的抽獎總次數，直接反映用戶參與度與商品吸引力。"
-          />
-          <StatCard
-            title={stats.registeredUsers.title}
-            value={stats.registeredUsers.value}
-            unit={stats.registeredUsers.unit}
-            trend={stats.registeredUsers.trend}
-            trendValue={stats.registeredUsers.trendValue}
-            chartData={stats.registeredUsers.chartData}
-            chartType={stats.registeredUsers.chartType}
-            chartColor={stats.registeredUsers.chartColor}
-            cardId="registeredUsers"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內新增的註冊用戶數，反映獲客效率。搭配儲值量可觀察新用戶付費轉換情況。"
-          />
-          <StatCard
-            title={stats.abcPrizeCount.title}
-            value={stats.abcPrizeCount.value}
-            unit={stats.abcPrizeCount.unit}
-            trend={stats.abcPrizeCount.trend}
-            trendValue={stats.abcPrizeCount.trendValue}
-            chartData={stats.abcPrizeCount.chartData}
-            chartType={stats.abcPrizeCount.chartType}
-            chartColor={stats.abcPrizeCount.chartColor}
-            cardId="abcPrizeCount"
-            selectedPeriod={cardPeriod}
-            tooltip="期間內完成儲值的不重複用戶數。搭配訪問量與註冊量，可觀察流量→付費的完整轉化鏈路。"
-          />
-        </div>
+        {error && (
+          <div className="bg-white rounded-xl border border-neutral-200 py-10 text-center text-sm text-red-500">{error}</div>
+        )}
 
-        {/* 圖表區域（只留核心兩張）*/}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TrendChart title="每日活躍用戶（DAU）" data={dauData} colors={['#6366f1']} tooltip="每日有操作行為的不重複用戶數。持續上升代表用戶黏著度良好；驟降需排查是否有異常。" />
-          <MultiLineChart
-            title="儲值與消耗對比"
-            data={mainChartData.rechargeConsume}
-            series={[
-              { key: 'recharge', label: '儲值金額' },
-              { key: 'consume', label: '消耗代幣' }
-            ]}
-            colors={['#9333EA', '#10b981']}
-            tooltip="同時展示儲值金額與代幣消耗量。儲值高於消耗代表用戶在囤幣；消耗高於儲值代表用戶在花存量。"
-          />
-        </div>
+        {!error && (
+          <>
+            {/* ── ① 核心 KPI ─────────────────────────────────────────────── */}
+            {/* 錢那排放迷你圖（看趨勢），人那排放同比標籤（看比較）——
+                StatCard 中段只有 46px，兩者塞不下，各取所需 */}
+            <div className="grid grid-cols-4 gap-6">
+              <StatCard
+                title="總營收" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon width={300} text={'玩家儲值進來的錢，扣掉金流公司抽走的手續費之後，平台實際收到的金額。\n抽獎不算在這裡 —— 錢是在儲值那一刻進來的，抽獎只是把已經收到的 G 換成商品。'} />}
+                value={`${(k?.revenue ?? 0).toLocaleString()} G幣`}
+                mid={!loading && hasSpark('revenue') ? (
+                  <TinyArea data={spark} xField="x" yField="revenue" height={46} autoFit
+                    style={{ fill: 'rgba(22,119,255,0.25)', stroke: '#1677ff', lineWidth: 2, shape: 'smooth' } as any}
+                    axis={false} padding={[2, 0, 0, 0]}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '總營收' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="今日" footerValue={(k?.todayRevenue ?? 0).toLocaleString()}
+              />
+              <StatCard
+                title="儲值金額" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon width={300} text={'這段期間玩家儲值進來的總金額，手續費還沒扣。\n只算付款成功的，已排除機器人帳號。'} />}
+                value={`${(k?.recharge ?? 0).toLocaleString()} 元`}
+                mid={!loading && hasSpark('recharge') ? (
+                  <TinyArea data={spark} xField="x" yField="recharge" height={46} autoFit
+                    style={{ fill: 'rgba(114,46,209,0.25)', stroke: '#722ed1', lineWidth: 2, shape: 'smooth' } as any}
+                    axis={false} padding={[2, 0, 0, 0]}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '儲值金額' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="今日" footerValue={(k?.todayRecharge ?? 0).toLocaleString()}
+              />
+              <StatCard
+                title="消費金額" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon width={300} text={'玩家實際花在抽獎上的 G 幣（1G = 1 元）。\n跟儲值不一樣：儲值是把錢放進來，這裡是真的花掉。'} />}
+                value={`${(k?.spend ?? 0).toLocaleString()} G幣`}
+                mid={!loading && hasSpark('spend') ? (
+                  <TinyArea data={spark} xField="x" yField="spend" height={46} autoFit
+                    style={{ fill: 'rgba(16,185,129,0.25)', stroke: '#10b981', lineWidth: 2, shape: 'smooth' } as any}
+                    axis={false} padding={[2, 0, 0, 0]}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '消費金額' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="今日" footerValue={(k?.todaySpend ?? 0).toLocaleString()}
+              />
+              <StatCard
+                title="抽獎次數" loading={loading} skeletonWidth="w-20"
+                titleExtra={<InfoIcon width={300} text={'這段期間玩家抽了幾次，抽一次算一次。\n這是抽獎平台最要緊的量體指標 —— 比「消費筆數」更能看出玩家有沒有在玩。'} />}
+                value={(k?.draws ?? 0).toLocaleString()}
+                mid={!loading && hasSpark('draws') ? (
+                  <TinyColumn data={spark} xField="x" yField="draws" height={46} autoFit
+                    style={{ fill: '#1677ff', opacity: 0.85 } as any} axis={false} padding={0}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '抽獎次數' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="今日" footerValue={(k?.todayDraws ?? 0).toLocaleString()}
+              />
+            </div>
 
-        {/* 排名列表 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} extra={<InfoTooltip text="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />} />
-          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} extra={<InfoTooltip text="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />} />
-          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} extra={<InfoTooltip text="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />} />
-        </div>
+            <div className="grid grid-cols-4 gap-6">
+              <StatCard
+                title="活躍用戶" loading={loading} skeletonWidth="w-20"
+                titleExtra={<InfoIcon width={300} text={'這段期間有做過任何事的會員人數（逛過、抽過或儲值過），同一個人只算一次。\n沒登入的訪客算在下面「玩家分析」的訪問人數，不算在這裡。'} />}
+                value={`${(k?.activeUsers ?? 0).toLocaleString()} 人`}
+                mid={g && <GrowthTag value={g.activeUsers} label="期間同比" />}
+                footerLabel="今日活躍" footerValue={`${(k?.todayActive ?? 0).toLocaleString()} 人`}
+              />
+              <StatCard
+                title="付費用戶" loading={loading} skeletonWidth="w-20"
+                titleExtra={<InfoIcon width={300} text={'這段期間真的花 G 抽過獎的會員人數，同一個人只算一次。\n只是逛逛沒抽的不算。'} />}
+                value={`${(k?.payingUsers ?? 0).toLocaleString()} 人`}
+                mid={g && <GrowthTag value={g.payingUsers} label="期間同比" />}
+                footerLabel="活躍用戶" footerValue={`${(k?.activeUsers ?? 0).toLocaleString()} 人`}
+              />
+              <StatCard
+                title="付費率" loading={loading} skeletonWidth="w-16"
+                titleExtra={<InfoIcon width={300} text={'付費用戶 ÷ 活躍用戶。\n來的人裡面有多少比例真的掏錢玩，越高代表商品與價格越對得上玩家胃口。'} />}
+                value={`${(k?.payRate ?? 0)}%`}
+                mid={g && <GrowthTag value={g.payRate} label="期間同比" />}
+                footerLabel="付費 / 活躍" footerValue={`${(k?.payingUsers ?? 0).toLocaleString()} / ${(k?.activeUsers ?? 0).toLocaleString()}`}
+              />
+              <StatCard
+                title="ARPPU" loading={loading} skeletonWidth="w-24"
+                titleExtra={<InfoIcon width={300} text={'每位付費用戶平均花多少＝消費金額 ÷ 付費用戶。\n人數沒變但這個數字掉下來，代表大戶變少了。'} />}
+                value={`${(k?.arppu ?? 0).toLocaleString()} G幣`}
+                mid={g && <GrowthTag value={g.arppu} label="期間同比" />}
+                footerLabel="消費金額" footerValue={`${(k?.spend ?? 0).toLocaleString()} G幣`}
+              />
+            </div>
 
+            {/* ── ② 營運趨勢 ＋ 平台健康度 ────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-6">
+              <Panel
+                title="營運趨勢"
+                tip={'這段期間的走勢。上面四個字可以切換要看哪一項：\n營收＝儲值扣掉手續費；儲值＝玩家放進來的錢；消費＝玩家花掉的 G；退款＝已經退出去的錢。\n沒有交易的時段一樣會列出來、顯示 0，才看得出哪幾天是掛零的。'}
+                extra={
+                  <div className="flex gap-1">
+                    {TREND_METRICS.map(m => (
+                      <button key={m.key} onClick={() => setMetric(m.key)}
+                        className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                          metric === m.key
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-300'
+                        }`}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                }
+              >
+                {loading ? (
+                  <div className="h-[280px] bg-neutral-50 rounded animate-pulse" />
+                ) : !data?.trend.length ? (
+                  <div className="h-[280px] flex items-center justify-center text-sm text-neutral-400">本期無資料</div>
+                ) : (
+                  <ColumnChart height={280} data={data.trend} xField="label" yField={metric} autoFit
+                    style={{ fill: currentMetric.color, opacity: 0.85 } as any}
+                    axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }}
+                    tooltip={{ title: (d: any) => d.label, items: [{ channel: 'y', name: currentMetric.label }] } as any} />
+                )}
+              </Panel>
+
+              <Panel
+                title="平台健康度"
+                tip={'六個面向各自亮燈，不合成一個總分 —— 總分的加權是人訂的，掉了幾分也解釋不清楚。\n綠＝正常、藍＝成長、黃＝注意、紅＝異常。\n退款率與毛利率看絕對值，其餘看跟前一段同樣長度期間的漲跌。\n毛利率是廠商分潤比與金流費率決定的固定比例，不會自己漲跌，所以不顯示同比。\n抽獎筆數太少會顯示「資料不足」；上一段期間完全沒有資料則顯示「無前期可比」。'}
+              >
+                {loading ? (
+                  <div className="space-y-3">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="h-9 bg-neutral-50 rounded animate-pulse" />)}</div>
+                ) : (
+                  <div className="divide-y divide-neutral-100">
+                    {(data?.health ?? []).map(h => (
+                      <div key={h.key} className="flex items-center py-3 first:pt-0 last:pb-0">
+                        <span className="text-sm text-neutral-600 w-24 shrink-0">{h.label}</span>
+                        <span className="text-sm font-semibold text-neutral-900 flex-1">{h.value}</span>
+                        {h.status !== 'unknown' && h.status !== 'nobase' && h.showDelta !== false && (
+                          <span className={`text-xs mr-3 ${h.delta >= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                            {h.delta >= 0 ? '▲' : '▼'} {Math.abs(h.delta)}%
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-md shrink-0 ${HEALTH_STYLE[h.status].cls}`}>
+                          {HEALTH_STYLE[h.status].label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            </div>
+
+            {/* ── ③ 玩家分析 ＋ 玩法分析 ──────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-6">
+              <Panel
+                title="玩家分析"
+                tip={'上半是這段期間的玩家組成，下半是從逛到付錢的四個關卡。\n回流＝以前就註冊、上一段期間沒來、這段期間又回來玩的人。\n每一關右邊的百分比是「從上一關走到這一關」的比例；追蹤資料不齊時顯示「—」，不會硬給數字。'}
+              >
+                <div className="grid grid-cols-3 gap-y-4 pb-5 mb-5 border-b border-neutral-100">
+                  {[
+                    { label: '今日活躍', value: data?.players.dau },
+                    { label: '新增會員', value: data?.players.newUsers },
+                    { label: '回流會員', value: data?.players.returning },
+                    { label: '付費會員', value: data?.players.paying },
+                    { label: '付費率', value: data?.players.payRate, suffix: '%' },
+                    { label: 'ARPPU', value: data?.players.arppu, suffix: ' G' },
+                  ].map(x => (
+                    <div key={x.label}>
+                      <p className="text-xs text-neutral-500 mb-1">{x.label}</p>
+                      <p className="text-lg font-semibold text-neutral-900">
+                        {loading ? '—' : `${(x.value ?? 0).toLocaleString()}${x.suffix ?? ''}`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2.5">
+                  {(data?.funnel ?? []).map((f, i) => {
+                    const max = Math.max(1, ...(data?.funnel ?? []).map(x => x.users))
+                    const w = Math.max(4, Math.round(f.users / max * 100))
+                    return (
+                      <div key={f.key} className="flex items-center gap-3">
+                        <span className="text-xs text-neutral-500 w-16 shrink-0">{f.label}</span>
+                        <div className="flex-1 h-6 bg-neutral-50 rounded overflow-hidden">
+                          <div className="h-full bg-primary/80 rounded" style={{ width: `${w}%` }} />
+                        </div>
+                        <span className="text-sm font-semibold text-neutral-900 w-14 text-right shrink-0">
+                          {f.users.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-neutral-500 w-14 text-right shrink-0">
+                          {i === 0 ? '' : f.rate == null ? '—' : `${f.rate}%`}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Panel>
+
+              <Panel
+                title="玩法分析"
+                tip={'玩家的錢花在哪一種玩法上。長條的長度是消費金額佔比。\n每種玩法的毛利率都由「廠商分潤比」決定、彼此一樣，所以不逐列列出 —— 看「平台健康度」那一欄就好。'}
+              >
+                {loading ? (
+                  <div className="space-y-4">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-neutral-50 rounded animate-pulse" />)}</div>
+                ) : !data?.playTypes.length ? (
+                  <div className="h-[220px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
+                ) : (
+                  <div className="space-y-4">
+                    {data.playTypes.map(p => (
+                      <div key={p.type}>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-sm text-neutral-700 w-16 shrink-0">{p.label}</span>
+                          <div className="flex-1 h-5 bg-neutral-50 rounded overflow-hidden">
+                            <div className="h-full bg-primary/80 rounded" style={{ width: `${Math.max(2, p.sharePct)}%` }} />
+                          </div>
+                          <span className="text-sm font-semibold text-neutral-900 w-14 text-right shrink-0">{p.sharePct}%</span>
+                        </div>
+                        <p className="text-xs text-neutral-400 pl-[76px]">
+                          {p.draws.toLocaleString()} 抽・{p.spend.toLocaleString()} G・{p.players.toLocaleString()} 人
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            </div>
+
+            {/* ── ④ 熱門賞池 ＋ 商品健康度 ────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-6">
+              <Panel
+                title="熱門賞池"
+                tip={'這段期間消費金額最高的十件商品。\n剩餘＝還沒被抽走的份數比例；同比＝跟前一段同樣長度的期間相比，上一期沒有資料就顯示「—」。\n狀態：庫存看得出來就先講庫存；熱門／低人氣要抽數夠多才敢說，不然顯示「資料不足」。'}
+              >
+                {loading ? (
+                  <div className="space-y-2">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-neutral-50 rounded animate-pulse" />)}</div>
+                ) : !data?.pools.length ? (
+                  <div className="h-[220px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
+                ) : (
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-neutral-500 border-b border-neutral-100">
+                          <th className="text-left font-normal py-2">賞池</th>
+                          <th className="text-right font-normal py-2 px-2 whitespace-nowrap">抽數</th>
+                          <th className="text-right font-normal py-2 px-2 whitespace-nowrap">消費</th>
+                          <th className="text-right font-normal py-2 px-2 whitespace-nowrap">剩餘</th>
+                          <th className="text-right font-normal py-2 px-2 whitespace-nowrap">同比</th>
+                          <th className="text-right font-normal py-2 whitespace-nowrap">狀態</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.pools.map(p => (
+                          <tr key={p.id} className="border-b border-neutral-50 last:border-0">
+                            <td className="py-2 pr-2">
+                              <Link href={`/products/${p.id}`} className="text-neutral-900 hover:text-primary line-clamp-1">{p.name}</Link>
+                              <span className="text-xs text-neutral-400">{p.label}・{p.players.toLocaleString()} 人</span>
+                            </td>
+                            <td className="text-right tabular-nums px-2">{p.draws.toLocaleString()}</td>
+                            <td className="text-right tabular-nums px-2">{p.spend.toLocaleString()}</td>
+                            <td className="text-right tabular-nums px-2">{p.remainPct == null ? '—' : `${p.remainPct}%`}</td>
+                            <td className={`text-right tabular-nums px-2 ${p.growth == null ? 'text-neutral-400' : p.growth >= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                              {p.growth == null ? '—' : `${p.growth >= 0 ? '+' : ''}${p.growth}%`}
+                            </td>
+                            <td className="text-right whitespace-nowrap">
+                              <span className={`text-xs px-2 py-0.5 rounded-md ${POOL_STATUS[p.status].cls}`}>
+                                {POOL_STATUS[p.status].label}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Panel>
+
+              <Panel
+                title="商品健康度"
+                tip={'全站商品的庫存狀況，不是庫存明細，只看整體健不健康。\n即將售罄＝剩餘一成以下；滯銷＝上架滿 30 天、近 30 天一次都沒被抽過。\n下面列出需要處理的，點名稱可以直接進商品頁。'}
+              >
+                <div className="grid grid-cols-4 gap-y-4 pb-5 mb-5 border-b border-neutral-100">
+                  {[
+                    { label: '商品總數', value: data?.productHealth.total, cls: 'text-neutral-900' },
+                    { label: '正常販售', value: data?.productHealth.normal, cls: 'text-green-600' },
+                    { label: '即將售罄', value: data?.productHealth.nearlySoldOut, cls: 'text-amber-600' },
+                    { label: '已售罄', value: data?.productHealth.soldOut, cls: 'text-neutral-500' },
+                  ].map(x => (
+                    <div key={x.label}>
+                      <p className="text-xs text-neutral-500 mb-1">{x.label}</p>
+                      <p className={`text-lg font-semibold ${x.cls}`}>{loading ? '—' : (x.value ?? 0).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+                {!data?.productHealth.items.length ? (
+                  <p className="text-sm text-neutral-400 py-4 text-center">目前沒有需要處理的商品</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
+                    {data.productHealth.items.map(it => (
+                      <div key={`${it.id}-${it.reason}`} className="flex items-center gap-2 text-sm">
+                        <Link href={`/products/${it.id}`} className="flex-1 min-w-0 truncate text-neutral-700 hover:text-primary">{it.name}</Link>
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 shrink-0">{it.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            </div>
+
+            {/* ── ⑤ 營運警報 / 行動建議 ───────────────────────────────────── */}
+            <Panel
+              title="營運警報"
+              tip={'把數字翻成「現在該做什麼」。紅＝立刻處理、黃＝要注意、藍＝一般資訊、綠＝值得把握的機會。\n庫存類警報照事實直接發；漲跌類要抽獎筆數夠多才會出現，樣本太小時只會看到一則藍色說明。'}
+            >
+              {loading ? (
+                <div className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="h-14 bg-neutral-50 rounded animate-pulse" />)}</div>
+              ) : !data?.alerts.length ? (
+                <p className="text-sm text-neutral-400 py-6 text-center">目前沒有需要處理的事項</p>
+              ) : (
+                <div className="space-y-3">
+                  {data.alerts.map((a, i) => (
+                    <div key={i} className="flex gap-3">
+                      <span className={`w-1 rounded-full shrink-0 ${ALERT_STYLE[a.level].bar}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-neutral-900">{a.title}</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">{a.detail}</p>
+                        <p className={`text-xs mt-1 ${ALERT_STYLE[a.level].dot}`}>建議：{a.action}</p>
+                      </div>
+                      {a.href && (
+                        <Link href={a.href}
+                          className="self-center text-xs text-primary hover:underline whitespace-nowrap shrink-0">
+                          前往處理 →
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                  {data.alertsTotal > data.alerts.length && (
+                    <p className="text-xs text-neutral-400 pt-1">
+                      另有 {data.alertsTotal - data.alerts.length} 則優先度較低的提醒未列出
+                    </p>
+                  )}
+                </div>
+              )}
+            </Panel>
+          </>
+        )}
       </div>
     </AdminLayout>
   )
