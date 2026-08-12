@@ -4,6 +4,23 @@
 
 ---
 
+## v2026.08.12g｜2026-08-12｜修：每次進站都噴 hydration mismatch（非阻塞字型）
+
+Console 每次載入都跳 "A tree hydrated but some attributes of the server rendered
+HTML didn't match the client properties"，指向 `app/layout.tsx` 的字型 `<link>`。
+
+**原因**：那三套只有特定頁面用的字型走「先 `media="print"` 下載、載完切回 `all`」
+的非阻塞技巧。React 在伺服器渲染出 `media="print"`，而字型通常在 hydrate **之前**
+就載完、`onload` 已經把 media 改成 `all` —— React 拿 DOM 跟自己記得的 `print`
+一比就報 mismatch。結果其實是對的（media 本來就該變成 all），但每次進站都噴一則。
+
+**修法**：那顆 `<link>` 改用 script 動態建立，不放進 React 的樹。元素不由 React 管，
+就沒有比對這回事，非阻塞的行為完全不變。順便把原本 `querySelectorAll('link[media="print"]')`
+的廣泛選取改成只操作自己那一顆。
+
+**驗證**（Playwright 監聽 console）：修正前必噴該則訊息，修正後為 0；
+兩支字型 stylesheet 都確認 `sheet` 有值（真的載到），非阻塞那支最終 `media="all"`。
+
 ## v2026.08.12f｜2026-08-12｜修：商品頁的「開賣時公布的驗證碼」永遠空白
 
 老闆回報一番賞／抽卡／自製賞的商品頁看不到驗證碼，但點「看驗證說明」
