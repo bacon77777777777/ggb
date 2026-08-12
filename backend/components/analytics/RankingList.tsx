@@ -14,7 +14,7 @@ export function RankingList({ title, data, limit = 10, extra }: {
   title: string
   data: Array<{ name: string; value: number | string; change?: number }>
   limit?: number
-  /** 標題右側，通常放藍色驚嘆號說明 */
+  /** 標題列最右側，通常放藍色驚嘆號說明 */
   extra?: React.ReactNode
 }) {
   const displayData = Array(limit).fill(null).map((_, index) => (
@@ -22,12 +22,15 @@ export function RankingList({ title, data, limit = 10, extra }: {
   ))
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+    <div className="rounded-lg border border-[#f0f0f0] bg-white">
+      {/* 標題列與「銷售走勢」等區塊同一套：56px 高、px-6、16px 半粗、底下一條分線。
+          外框刻意不加 overflow-hidden —— 加了會把 InfoIcon 的說明泡泡裁掉 */}
+      <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+        style={{ color: 'rgba(0,0,0,0.88)' }}>
+        <span className="flex-1 min-w-0 truncate">{title}</span>
         {extra}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1 px-4 py-3">
         {displayData.map((item, index) => (
           <div key={index} className="flex items-center justify-between py-1.5 border-b border-neutral-100 last:border-0">
             <div className="flex items-center gap-2 flex-1 min-w-0">

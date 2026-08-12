@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 
 /**
  * 分析頁系列的 KPI 卡（AntD Pro 風格）
@@ -17,7 +17,7 @@ import React, { useState } from 'react'
  */
 export function StatCard({ title, titleExtra, value, loading, skeletonWidth = 'w-24', mid, footerLabel, footerValue }: {
   title: string
-  /** 標題右側，通常放 <InfoIcon> */
+  /** 標題列最右側，通常放 <InfoIcon> */
   titleExtra?: React.ReactNode
   value: React.ReactNode
   loading?: boolean
@@ -30,9 +30,9 @@ export function StatCard({ title, titleExtra, value, loading, skeletonWidth = 'w
 }) {
   return (
     <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
-      <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+      <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
         style={{ color: 'rgba(0,0,0,0.88)' }}>
-        {title}
+        <span className="flex-1 min-w-0 truncate">{title}</span>
         {titleExtra}
       </div>
       <div style={{ padding: '20px 24px 8px' }}>
@@ -77,18 +77,63 @@ export function GrowthTag({ value, label, style }: { value: number; label?: stri
 export default StatCard
 
 /**
- * 藍色驚嘆號說明（分析頁那顆）
+ * 藍色驚嘆號說明
  *
- * `whitespace-pre-line` 而不是 `normal` —— 說明常常是多行（用 \n 分段），
- * normal 會把換行當空白吃掉、擠成一整段。分析頁與結算頁都踩過這個。
+ * 泡泡用 `position: fixed` 而不是 `absolute` —— 卡片外框有 `overflow-hidden`
+ * （為了讓標題列的底線貼齊圓角），`absolute` 的泡泡會被裁掉一半。
+ * fixed 是相對視窗定位，跳出所有 overflow 容器。
+ *
+ * 位置自己算：預設開在圖示下方、右緣對齊圖示；
+ * 右邊空間不夠就往左貼、下面空間不夠就翻到上方。
+ * 都是拿實際量到的視窗尺寸判斷，不是寫死方向。
  */
-export function InfoIcon({ text }: { text: string }) {
+export function InfoIcon({ text, width = 240 }: { text: string; width?: number }) {
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const tipRef = useRef<HTMLDivElement>(null)
   const [show, setShow] = useState(false)
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: -9999, left: -9999 })
+
+  /*
+   * 先把泡泡畫出來（畫在畫面外），量到真實高度之後再定位。
+   *
+   * 一開始是用「行數 × 行高」估高度，結果估不準 —— 中文會折行，
+   * 三行的文字實際可能佔五行，於是靠近底部的那顆就翻不上去、被切在視窗外。
+   * 量實際的最保險。
+   */
+  useLayoutEffect(() => {
+    if (!show) return
+    const a = anchorRef.current, t = tipRef.current
+    if (!a || !t) return
+    const ar = a.getBoundingClientRect()
+    const th = t.offsetHeight
+    const M = 8                                   // 離視窗邊緣至少留 8px
+
+    let left = ar.right - width                   // 預設右緣對齊圖示
+    if (left + width > window.innerWidth - M) left = window.innerWidth - width - M
+    if (left < M) left = M
+
+    const below = ar.bottom + 6
+    const top = below + th > window.innerHeight - M
+      ? Math.max(M, ar.top - th - 6)              // 下面放不下就翻到上方
+      : below
+
+    setPos({ top, left })
+  }, [show, text, width])
+
   return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+    <div
+      ref={anchorRef}
+      className="relative flex-shrink-0"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
       <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
       {show && (
-        <div className="absolute left-0 top-5 w-56 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none font-normal">
+        <div
+          ref={tipRef}
+          className="bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl leading-relaxed whitespace-pre-line pointer-events-none font-normal"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width, zIndex: 9999 }}
+        >
           {text}
         </div>
       )}
