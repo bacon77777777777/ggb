@@ -7,8 +7,6 @@ import { useAdmin } from '@/contexts/AdminContext'
 import { useShipment } from '@/contexts/ShipmentContext'
 import { useLog } from '@/contexts/LogContext'
 import { useProduct } from '@/contexts/ProductContext'
-import { supabase } from '@/lib/supabaseClient'
-import { Product } from '@/types/product'
 
 interface Breadcrumb {
   label: string
@@ -20,6 +18,18 @@ interface AdminLayoutProps {
   pageTitle?: string
   pageSubtitle?: string
   breadcrumbs?: Breadcrumb[]
+}
+
+/** 台灣時間的日期／時分。資料庫回的是 ISO，不能用 split(' ') 硬拆 */
+const fmtDate = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+}
+const fmtTime = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcrumbs }: AdminLayoutProps) {
@@ -36,7 +46,13 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   const [isGroupInitialized, setIsGroupInitialized] = useState(false)
   const navRef = useRef<HTMLElement>(null)
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
+  /** 系統警示：由 /api/admin/dashboard/pending 算好送來（原本在前端從全站商品自己算） */
+  const [alerts, setAlerts] = useState<Array<{
+    type: 'high-rate' | 'low-stock'
+    product: string; productId: number
+    level?: string; rate?: number; threshold?: number; remaining?: number
+    severity: 'high' | 'medium'
+  }>>([])
   const [pendingOrders, setPendingOrders] = useState<any[]>([])
   const [isAlertOpen, setIsAlertOpen] = useState(false)
   const [isShipmentOpen, setIsShipmentOpen] = useState(false)
@@ -75,47 +91,16 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     localStorage.setItem('sidebarOpen_last', String(isSidebarOpen))
   }, [isSidebarOpen, sidebarTransitionReady, user?.username])
 
-  // Fetch products and pending orders
+  // Fetch header badges（警示、待配送、待辦數字）
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch Products
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('*, prizes:product_prizes(*)')
-      
-      if (productsData) {
-        const mappedProducts: Product[] = productsData.map((p: any) => ({
-          id: p.id,
-          productCode: p.product_code,
-          name: p.name,
-          category: p.category,
-          type: p.type,
-          price: p.price,
-          remaining: p.remaining,
-          status: p.status,
-          sales: p.sales,
-          isHot: p.is_hot,
-          createdAt: p.created_at,
-          imageUrl: p.image_url,
-          prizes: p.prizes.map((pz: any) => ({
-            name: pz.name,
-            level: pz.level,
-            imageUrl: pz.image_url,
-            total: pz.total,
-            remaining: pz.remaining,
-            probability: pz.probability
-          })),
-          totalCount: p.total_count,
-          releaseYear: p.release_year,
-          releaseMonth: p.release_month,
-          distributor: p.distributor,
-          rarity: p.rarity,
-          majorPrizes: p.major_prizes
-        }))
-        setProducts(mappedProducts)
-      }
-
-      // Fetch pending counts + member count for header icons
+      /*
+       * 系統警示與待配送原本在這裡用 anon client 直接查 `products` 與 `orders`，
+       * 兩支都是壞的：products 被 RLS 擋掉回 401（鈴鐺永遠空的）、
+       * orders 因為 RLS 只放行「玩家自己的訂單」而靜默回 `[]`（配送待辦永遠 0）。
+       * 改由 `/api/admin/dashboard/pending` 用 service role 算好再送過來，
+       * 那支本來就是 header badge 的資料源，也已經依廠商範圍限縮。
+       */
       fetch('/api/admin/dashboard/pending')
         .then(r => r.ok ? r.json() : null)
         .then(d => {
@@ -129,6 +114,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
             setSettlementItems(d.settlementItems ?? [])
             setRefundItems(d.refundItems ?? [])
             setRechargeItems(d.rechargeItems ?? [])
+            setAlerts(d.alertItems ?? [])
+            setPendingOrders(d.shipmentItems ?? [])
           }
         })
         .catch(() => {})
@@ -151,15 +138,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       }
 
       // Fetch Pending Orders (submitted status)
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*, items:order_items(*), user:users(name, email)')
-        .eq('status', 'submitted')
-        .order('submitted_at', { ascending: true })
-      if (ordersData) setPendingOrders(ordersData)
-
-      // 月結／退款／儲值三份清單改由 /api/admin/dashboard/pending 供應（service role），
-      // 與 badge 數字同源。原本走 anon client 會被 RLS 擋成空陣列。
+      // 系統警示、待配送、月結／退款／儲值三份清單全部由
+      // /api/admin/dashboard/pending 供應（service role），與 badge 數字同源。
+      // 原本走 anon client 的那幾支都會被 RLS 擋成 401 或空陣列。
     }
 
     fetchData()
@@ -174,83 +155,28 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       .catch(() => {})
   }, [pathname])
 
-  // 從實際商品數據計算系統警示
-  const alerts = useMemo(() => {
-    const alertList: Array<{
-      type: 'high-rate' | 'low-stock'
-      product: string
-      productId: number
-      level?: string
-      rate?: number
-      threshold?: number
-      remaining?: number
-      severity: 'high' | 'medium'
-    }> = []
-
-    // 遍歷所有商品
-    products.forEach(product => {
-      // 檢查低庫存警示（剩餘數量 < 5）
-      if (product.status === 'active' && product.remaining > 0 && product.remaining < 5) {
-        alertList.push({
-          type: 'low-stock',
-          product: product.name,
-          productId: product.id,
-          remaining: product.remaining,
-          threshold: 5,
-          severity: product.remaining < 3 ? 'high' : 'medium'
-        })
-      }
-
-      // 轉蛋商品不需賞率警示（品項無賞等意義），只看庫存
-      if (product.type !== 'gacha') {
-        // 檢查高配率警示（實際配率超過設定值）
-        product.prizes.forEach(prize => {
-          const soldCount = prize.total - prize.remaining
-          if (product.sales > 0 && soldCount > 0) {
-            const actualRate = (soldCount / product.sales) * 100
-            const threshold = prize.probability * 1.3
-            if (actualRate > threshold && prize.probability > 0) {
-              alertList.push({
-                type: 'high-rate',
-                product: product.name,
-                productId: product.id,
-                level: prize.level,
-                rate: Number(actualRate.toFixed(2)),
-                threshold: Number(threshold.toFixed(2)),
-                severity: actualRate > prize.probability * 1.8 ? 'high' : 'medium'
-              })
-            }
-          }
-        })
-      }
-    })
-
-    // 按嚴重程度排序（高優先級在前）
-    return alertList.sort((a, b) => {
-      if (a.severity === 'high' && b.severity !== 'high') return -1
-      if (a.severity !== 'high' && b.severity === 'high') return 1
-      return 0
-    })
-  }, [products])
 
   // 從實際訂單數據獲取待配送訂單（與配送管理頁面一致：只包括 submitted 狀態）
   const pendingShipments = useMemo(() => {
     // 計算天數的輔助函數
+    /*
+     * 已提交幾天。
+     *
+     * 原本是先 `split(' ')` 再 `split('-')` 拆日期 —— 那假設時間長成
+     * 「2026-07-22 01:49:43」，但資料庫回的是 ISO 的「2026-07-22T01:49:43+00:00」，
+     * 拆出來的「日」會是 `22T01:49:43...`，`Number()` 得到 NaN，畫面就印「NaN 天」。
+     * 這段程式以前從來沒跑到（清單永遠是空的），所以沒人看見。
+     */
     const calculateDays = (submittedAt: string): number => {
-      try {
-        const [datePart] = (submittedAt).split(' ')
-        const [year, month, day] = datePart.split('-').map(Number)
-        const submittedDate = new Date(year, month - 1, day)
-        const today = new Date()
-        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const submittedDateOnly = new Date(year, month - 1, day)
-        const diffTime = todayOnly.getTime() - submittedDateOnly.getTime()
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-        // 未滿一天都顯示1天，不會有0天
-        return Math.max(1, diffDays)
-      } catch (error) {
-        return 1
-      }
+      const t = new Date(submittedAt)
+      if (Number.isNaN(t.getTime())) return 1
+      const todayOnly = new Date()
+      todayOnly.setHours(0, 0, 0, 0)
+      const submittedOnly = new Date(t)
+      submittedOnly.setHours(0, 0, 0, 0)
+      const diffDays = Math.floor((todayOnly.getTime() - submittedOnly.getTime()) / 86400000)
+      // 未滿一天都顯示 1 天，不會有 0 天
+      return Math.max(1, diffDays)
     }
     
     // 與配送管理頁面保持一致：待配送 = 已提交的訂單（status === 'submitted'）
@@ -1248,14 +1174,17 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
                                     <p className="text-xs text-neutral-600 mb-1">商品 ({order.quantity} 件)：</p>
                                     <div className="space-y-0.5">
                                       {order.items.slice(0, 2).map((item: any, idx: number) => (
-                                        <p key={idx} className="text-xs text-neutral-700">• {item.product} - {item.prize}</p>
+                                        <p key={idx} className="text-xs text-neutral-700">
+                                          • {[item.product, item.prize].filter(Boolean).join(' - ') || '商品已移除'}
+                                        </p>
                                       ))}
                                       {order.items.length > 2 && <p className="text-xs text-neutral-500">... 還有 {order.items.length - 2} 件商品</p>}
                                     </div>
                                   </div>
                                   <div className="flex items-center justify-between text-xs text-neutral-500 mt-2 pt-2 border-t border-neutral-200">
-                                    <span>提交時間：{order.submittedAt?.split(' ')[0] || order.date}</span>
-                                    {order.submittedAt?.includes(' ') && <span>{order.submittedAt.split(' ')[1]?.substring(0, 5)}</span>}
+                                    {/* 同上：時間是 ISO 格式，用 split(' ') 拆不開，會把整串印出來 */}
+                                    <span>提交時間：{fmtDate(order.submittedAt) || order.date}</span>
+                                    <span>{fmtTime(order.submittedAt)}</span>
                                   </div>
                                 </button>
                               ))}
