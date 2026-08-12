@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -34,10 +34,13 @@ export function NumberField({
 }) {
   const [text, setText] = useState(String(value))
 
+  // 只想在「外部改值」時同步，不想因為自己打字而重跑，所以中途文字放 ref 不放相依陣列
+  const textRef = useRef(text)
+  textRef.current = text
+
   // 外部改值（例如切換廠商、載入設定）時同步進來；正在輸入的中途狀態不覆蓋
   useEffect(() => {
-    if (Number(text) !== value) setText(String(value))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (Number(textRef.current) !== value) setText(String(value))
   }, [value])
 
   const commit = () => {
