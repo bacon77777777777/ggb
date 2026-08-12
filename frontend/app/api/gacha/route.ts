@@ -84,7 +84,6 @@ export async function POST(request: NextRequest) {
         p_event_type: usePoints ? 'spend_points' : 'spend_amount',
         p_data: { amount: count },  // 精確金額由 DB 端自行計算
       }),
-      userSupabase.rpc('check_achievements', { p_user_id: user.id }),
     ]).catch(() => {})
 
     const rpcData = data as any

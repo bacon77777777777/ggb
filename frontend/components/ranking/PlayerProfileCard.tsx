@@ -31,7 +31,7 @@ const BADGE_IMAGE: Record<string, string> = {
   first_draw:       '/images/mask/初心試煉.png',
   draw_30:          '/images/mask/命運啟程.png',
   draw_100:         '/images/mask/停不下來.png',
-  draw_500:         '/images/mask/轉蛋成癮.png',
+  draw_500:         '/images/mask/抽獎成癮.png',
   draw_1000:        '/images/mask/抽獎之神.png',
   draw_5000:        '/images/mask/命運支配者.webp',
   draw_streak_10:   '/images/mask/每日修行.png',
@@ -62,7 +62,7 @@ const BADGE_IMAGE: Record<string, string> = {
 
 // ── 稱號 → 對應徽章 ID（對應 migration 223 titles.badge_id）──
 const TITLE_TO_BADGE_ID: Record<string, string> = {
-  '轉蛋狂熱者': 'draw_500',
+  '抽獎狂熱者': 'draw_500',
   '抽獎之神':   'draw_1000',
   '命運支配者': 'draw_5000',
   '全勤戰士':   'login_streak_30',
@@ -92,7 +92,7 @@ const BADGE_SORT: Record<string, number> = {
 // ── 徽章 ID → 中文名稱（對應 migration 223 badges.name）──
 const BADGE_NAME: Record<string, string> = {
   first_draw: '初心試煉', draw_30: '命運啟程', draw_100: '停不下來',
-  draw_500: '轉蛋成癮', draw_1000: '抽獎之神', draw_5000: '命運支配者',
+  draw_500: '抽獎成癮', draw_1000: '抽獎之神', draw_5000: '命運支配者',
   draw_streak_10: '每日修行', draw_streak_20: '永不缺席',
   login_streak_7: '習慣養成', login_streak_30: '全勤戰士',
   login_streak_100: '常駐居民', first_topup: '初次獻祭',
@@ -106,23 +106,55 @@ const BADGE_NAME: Record<string, string> = {
   single_day_100: '火力全開', birthday_draw: '壽星最大',
 };
 
+/**
+ * 排行榜機器人的資料小卡假數據
+ *
+ * ── 為什麼要有「每天遞增」
+ *
+ * 這些數字原本是寫死的常數。但排行榜天天都在玩家眼前，同一個「傳說課長」
+ * 連續看一個月都還是 512 抽、1254 膜拜，一眼就知道是假的。
+ *
+ * 作法是**用日期算出來**，不是存在資料庫也不是用亂數：
+ *   顯示值 = base + （今天距起算日的天數 × 每日增量）
+ *
+ * 這樣有三個好處 ——
+ *   1. 所有人看到的數字一樣（用亂數的話每次重整都在跳，反而更假）
+ *   2. 只增不減，不會有「昨天 1254、今天 1200」這種穿幫
+ *   3. 不需要任何 cron 或資料表，沒有維護成本
+ *
+ * 每日增量照角色個性給：課長／狂熱者抽得多，人氣王被膜拜得多，
+ * 全勤戰士則是穩定但量少。
+ *
+ * ⚠️ 起算日是「當天顯示值＝base」的那一天。**不要改 base**，
+ * 改了會讓數字倒退；要調整成長速度只動 perDay。
+ */
+const GROWTH_ANCHOR_UTC = Date.UTC(2026, 7, 13) - 8 * 3600_000;   // 2026-08-13 00:00 (UTC+8)
+
+function daysSinceAnchor(): number {
+  const d = Math.floor((Date.now() - GROWTH_ANCHOR_UTC) / 86_400_000);
+  return d > 0 ? d : 0;
+}
+
 // ── 與 DB mock 用戶（00000000-...0001~0010）一致的假資料 ──
 const MOCK_USER_DATA: Record<number, {
   draws: number;
   worships: number;
+  /** 每日增量：抽獎次數 / 膜拜次數 */
+  drawsPerDay: number;
+  worshipsPerDay: number;
   title: { id: string; name: string; color_key: string } | null;
   earnedBadgeIds: string[];
 }> = {
-  1: { draws: 512, worships: 1254, title: { id: 'legend_whale',   name: '傳說課長',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','draw_100','topup_100000','first_topup'] },
-  2: { draws: 284, worships: 486, title: { id: 'gacha_addict',   name: '轉蛋狂熱者', color_key: 'purple' }, earnedBadgeIds: ['first_draw','draw_30','draw_100','draw_500'] },
-  3: { draws: 167, worships: 912, title: { id: 'lucky_king',     name: '歐皇',       color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3'] },
-  4: { draws: 739, worships: 1607, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3','lucky_10'] },
-  5: { draws: 92,  worships: 73, title: { id: 'full_attendance',name: '全勤戰士',   color_key: 'blue'   }, earnedBadgeIds: ['first_draw','login_streak_7','login_streak_30'] },
-  6: { draws: 445, worships: 2038, title: { id: 'popularity_king',name: '人氣王',     color_key: 'green'  }, earnedBadgeIds: ['first_draw','refer_1','refer_5','refer_20'] },
-  7: { draws: 203, worships: 145, title: null,                                                               earnedBadgeIds: ['first_draw','draw_30','draw_100'] },
-  8: { draws: 318, worships: 660, title: { id: 'full_power',     name: '火力全開',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','single_day_100'] },
-  9: { draws: 651, worships: 1183, title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_10'] },
-  10:{ draws: 421, worships: 397, title: { id: 'fate_ruler',     name: '命運支配者', color_key: 'gold'   }, earnedBadgeIds: ['first_draw','draw_500','draw_1000','draw_5000'] },
+  1: { draws: 512, worships: 1254, drawsPerDay: 4, worshipsPerDay: 6,  title: { id: 'legend_whale',   name: '傳說課長',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','draw_100','topup_100000','first_topup'] },
+  2: { draws: 284, worships: 486,  drawsPerDay: 5, worshipsPerDay: 3,  title: { id: 'gacha_addict',   name: '抽獎狂熱者', color_key: 'purple' }, earnedBadgeIds: ['first_draw','draw_30','draw_100','draw_500'] },
+  3: { draws: 167, worships: 912,  drawsPerDay: 2, worshipsPerDay: 5,  title: { id: 'lucky_king',     name: '歐皇',       color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3'] },
+  4: { draws: 739, worships: 1607, drawsPerDay: 6, worshipsPerDay: 8,  title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_first','lucky_day3','lucky_10'] },
+  5: { draws: 92,  worships: 73,   drawsPerDay: 1, worshipsPerDay: 1,  title: { id: 'full_attendance',name: '全勤戰士',   color_key: 'blue'   }, earnedBadgeIds: ['first_draw','login_streak_7','login_streak_30'] },
+  6: { draws: 445, worships: 2038, drawsPerDay: 3, worshipsPerDay: 11, title: { id: 'popularity_king',name: '人氣王',     color_key: 'green'  }, earnedBadgeIds: ['first_draw','refer_1','refer_5','refer_20'] },
+  7: { draws: 203, worships: 145,  drawsPerDay: 2, worshipsPerDay: 1,  title: null,                                                              earnedBadgeIds: ['first_draw','draw_30','draw_100'] },
+  8: { draws: 318, worships: 660,  drawsPerDay: 4, worshipsPerDay: 3,  title: { id: 'full_power',     name: '火力全開',   color_key: 'red'    }, earnedBadgeIds: ['first_draw','single_day_100'] },
+  9: { draws: 651, worships: 1183, drawsPerDay: 5, worshipsPerDay: 6,  title: { id: 'chosen_one',     name: '天選之人',   color_key: 'gold'   }, earnedBadgeIds: ['first_draw','lucky_10'] },
+  10:{ draws: 421, worships: 397,  drawsPerDay: 3, worshipsPerDay: 2,  title: { id: 'fate_ruler',     name: '命運支配者', color_key: 'gold'   }, earnedBadgeIds: ['first_draw','draw_500','draw_1000','draw_5000'] },
 };
 
 const TOTAL_BADGES = 29;
@@ -142,6 +174,7 @@ function buildFakeProfile(
   }
 
   const data = MOCK_USER_DATA[mockNum] ?? MOCK_USER_DATA[1];
+  const days = daysSinceAnchor();
   // Ranking title takes priority over static fake title
   const title = titleFromRanking
     ? { id: 'mock', ...titleFromRanking }
@@ -165,8 +198,9 @@ function buildFakeProfile(
     id: userId,
     nickname: '', // caller uses propNickname
     avatar_url: avatarUrl,
-    total_draws: data.draws,
-    worship_count: data.worships,
+    // 隨天數緩慢長大，見 GROWTH_ANCHOR_UTC 上方說明
+    total_draws: data.draws + days * data.drawsPerDay,
+    worship_count: data.worships + days * data.worshipsPerDay,
     total_spent: 0,
     title,
     badges,

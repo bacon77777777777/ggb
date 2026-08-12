@@ -594,7 +594,6 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
       Promise.allSettled([
         supabase.rpc('track_mission_event', { p_event_type: 'draw_count', p_data: { count: drawCount } }),
         supabase.rpc('track_mission_event', { p_event_type: 'spend_amount', p_data: { amount: drawCount } }),
-        supabase.rpc('check_achievements', { p_user_id: user.id }),
       ]).catch(() => {});
 
       const baseResults = (data as unknown as PlayIchibanResult[]).map((r) => ({

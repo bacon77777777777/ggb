@@ -121,7 +121,6 @@ export default function TopupPage() {
           Promise.allSettled([
             supabase.rpc('track_mission_event', { p_event_type: 'recharge' }),
             supabase.rpc('track_mission_event', { p_event_type: 'recharge_amount', p_data: { amount: selectedPlan.amount } }),
-            supabase.rpc('check_achievements', { p_user_id: user.id }),
           ]).catch(() => {});
         }
 

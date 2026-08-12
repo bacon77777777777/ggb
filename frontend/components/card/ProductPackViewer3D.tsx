@@ -109,11 +109,26 @@ export function ProductPackViewer3D({
   const handlePointerUp   = (e: React.PointerEvent<HTMLDivElement>) => { if (interactive) { e.stopPropagation(); resetTilt(); } };
 
   return (
-    <div className="w-full max-w-[375px] h-[463px] mx-auto flex items-center justify-center pointer-events-none">
+    /*
+     * 這兩層都要 preserve-3d，不能讓它們把 3D 情境壓平。
+     *
+     * 這支元件是放在輪播的圓柱上的，外層每張卡都有 rotateY。中間只要有一層
+     * 沒有 preserve-3d（或自己開了 perspective），卡包就會被「壓平成一張圖」
+     * 貼在旋轉的平面上 —— 轉過 90° 之後看到的不是卡背，而是**鏡像的正面**，
+     * 也就是老闆說的「正面反了」。
+     *
+     * perspective 統一由輪播容器提供（item 頁的 perspective: 1200）。
+     * 這裡原本自己開 perspective: 1000，那會另起一個 3D 情境，
+     * 等於把外層的旋轉切斷 —— 不要加回來。
+     */
+    <div
+      className="w-full max-w-[375px] h-[463px] mx-auto flex items-center justify-center pointer-events-none"
+      style={{ transformStyle: 'preserve-3d' }}
+    >
       <div
         ref={containerRef}
         className="relative pointer-events-auto w-fit h-fit"
-        style={{ perspective: 1000 }}
+        style={{ transformStyle: 'preserve-3d' }}
         onMouseMove={interactive ? handleMouseMove : undefined}
         onMouseLeave={interactive ? resetTilt : undefined}
         onTouchStart={interactive ? handleTouchStart : undefined}

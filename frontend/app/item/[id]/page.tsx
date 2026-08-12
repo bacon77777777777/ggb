@@ -352,7 +352,9 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
                   zIndex,
                 }}
               >
-                <div className="relative">
+                {/* preserve-3d 不能拿掉：少了它這層會把卡包壓平，
+                    輪播轉到後面時看到的會是鏡像的正面而不是卡背 */}
+                <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
                   <ProductPackViewer3D
                     packImage={`/images/card/pack/${packStyles[index] ?? '01'}a.webp`}
                     backImage={`/images/card/pack/${packStyles[index] ?? '01'}b.webp`}
