@@ -4,6 +4,46 @@
 
 ---
 
+## v2026.08.12p｜2026-08-12｜🔴 修：STG 的前台事件追蹤整條是壞的（user_events 一直是 0 筆）
+
+做商品搜尋／瀏覽排行時發現 STG 完全沒有事件資料，追下去發現**每一次
+`trackEvent()` 在 STG 都失敗**，而且完全沒有跡象 —— 那支是刻意 silent fail 的
+（追蹤不該弄壞前台）。實測 STG `user_events` **0 筆**、PROD 同期 **7,455 筆**。
+
+兩個各自獨立的 schema 漂移疊在一起：
+
+**① 缺 `path` 欄位與 6 參數版 RPC（致命，migration 535）**
+
+前台這樣呼叫：
+
+```ts
+supabase.rpc('track_user_event', { p_event_type, p_product_id, p_series,
+                                   p_session_id, p_meta, p_path })
+```
+
+六個參數。但 STG 只有五參數那一版（沒有 `p_path`），PostgREST 找不到相符的函式
+就回錯。**所有事件、所有型別，全軍覆沒。**
+
+**② 過期的 event_type CHECK（次要，migration 534）**
+
+STG 上這個 constraint 只允許 `product_view / product_click / search / draw /
+series_click` 五種，但前台的事件表早就長到二十幾種（`page_view`、`page_exit`、
+`scroll_depth`、`search_query`、`banner_click`、`news_*`…）。就算 ① 修好，
+不在名單裡的還是會被擋掉。
+
+對齊做法是**拿掉**而不是補新名單：事件種類會一直長，名單型 constraint
+每加一種就要記得改，忘了就再靜默掉一批 —— 這次就是這樣壞的。
+分析頁本來就會忽略不認得的 event_type，不需要資料庫把關。PROD 早就沒有這個 constraint。
+
+**PROD 沒有搜尋事件則不是 bug** —— `page_view` 的路徑分布裡根本沒有 `/search`，
+就是還沒有人用過搜尋頁。
+
+**驗證**：兩支 migration 都在 STG／PROD 執行（PROD 為 no-op）。
+修正後用**前台真正的呼叫方式**（anon key 打 RPC、六個參數）測 STG，
+`page_view`／`search_query`／`product_view` 三種都回 204 並確實落庫，
+`path` 與 `meta.query` 都正確；廠商分析的搜尋排行也讀得到。
+測試資料已刪除，`user_events` 回到 0 筆。
+
 ## v2026.08.12o｜2026-08-12｜銷售成數改看區間；敏感操作告警加上環境判斷
 
 ### ⓪ 排行榜改三張、全部標題加藍色驚嘆號說明
@@ -22,10 +62,9 @@
 搜尋事件**只有關鍵字、沒有 product_id**，所以只能拿關鍵字比對商品名稱做近似歸因
 （搜「星之卡比」會同時命中同系列的多件商品）。tooltip 已寫明這點。
 
-**另外發現前台送了一個資料庫擋掉的事件型別**：`app/search/page.tsx` 送
-`search_query`，但 `user_events_event_type_check` 只允許
-`product_view / product_click / search / draw / series_click` —— `search_query`
-根本進不了庫。API 這邊只收 `search`。⚠️ 前台那行要不要改成 `search`，待處理。
+**追查後發現 STG 的事件追蹤整條是壞的**（見下方 migration 534／535）。
+API 兩種搜尋事件都收：`search` 是打字停頓 1.5 秒觸發、`search_query` 是按下送出，
+同一次搜尋可能兩種都記到，但對「排名」沒有影響（每件商品都同樣被放大）。
 
 版面同時把**每個標題都加上藍色驚嘆號說明**（共 8 顆）：四張 KPI 卡、
 銷售走勢、銷售類別佔比、三張排行。`StatCard` 新增 `titleExtra` 插槽、

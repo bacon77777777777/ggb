@@ -222,21 +222,19 @@ export async function GET(req: NextRequest) {
      * 瀏覽排行與搜尋排行都從 `user_events` 來（前台 trackEvent 寫的）：
      *
      *   product_view  ── 進入商品頁，帶 product_id，直接依商品分組
-     *   search        ── 只有 meta.query 這個關鍵字，**沒有 product_id**，
+     *   search / search_query ── 只有 meta.query 這個關鍵字，**沒有 product_id**，
      *                     所以只能拿關鍵字去比對這家廠商的商品名稱
      *                     （玩家搜「蠟筆小新」對到「[90]蠟筆小新 BIG公仔2」）。
      *                     一個關鍵字可能同時命中同系列的多件商品，是近似歸因不是精確歸因。
      *
-     * ⚠️ 只收 'search'。前台 `app/search/page.tsx` 另外還送一種 'search_query'，
-     * 但 `user_events_event_type_check` 只允許
-     * product_view / product_click / search / draw / series_click ——
-     * 'search_query' 會被資料庫擋掉、根本進不來。
+     * 兩種都收：`search` 是打字停頓 1.5 秒觸發、`search_query` 是按下送出。
+     * 同一次搜尋可能兩種都記到，對「排名」沒有影響（每件商品都同樣被放大）。
      *
      * ⚠️ 2026-08-12 實測 PROD：product_view 387 筆可用，
      * 但 search 事件是 **0 筆**（還沒人搜過），所以搜尋排行目前會是空的。
      */
     const evSel = 'event_type, product_id, meta, created_at'
-    const evScoped = () => db.from('user_events').select(evSel).in('event_type', ['product_view', 'search'])
+    const evScoped = () => db.from('user_events').select(evSel).in('event_type', ['product_view', 'search', 'search_query'])
     const [evCur, evPrev] = await Promise.all([
       fetchAllRows<any>(() => inR(evScoped(), curStart, curEnd)),
       fetchAllRows<any>(() => inR(evScoped(), prevStart, curStart)),
@@ -262,7 +260,7 @@ export async function GET(req: NextRequest) {
       const m: Record<string, number> = {}
       const lowered = products.map(p => [String(p.id), String(p.name ?? '').toLowerCase()] as const)
       for (const r of rows) {
-        if (r.event_type !== 'search') continue
+        if (r.event_type !== 'search' && r.event_type !== 'search_query') continue
         const q = String(r.meta?.query ?? '').trim().toLowerCase()
         if (q.length < 2) continue           // 一個字太容易誤中
         for (const [id, name] of lowered) {

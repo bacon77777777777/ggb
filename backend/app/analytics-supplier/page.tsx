@@ -275,7 +275,7 @@ export default function SupplierAnalyticsPage() {
               <RankingList
                 title="商品搜尋排行 TOP 15"
                 limit={15}
-                extra={<InfoIcon text={'玩家搜尋的關鍵字對到這家廠商商品名稱的次數。\n⚠️ 搜尋事件只有關鍵字、沒有商品 id，這裡是拿關鍵字比對商品名稱的近似歸因。\n數字是命中次數，百分比為與前一個等長區間相比。'} />}
+                extra={<InfoIcon text={'玩家搜尋的關鍵字對到這家廠商商品名稱的次數（打字停頓與按下送出都算）。\n⚠️ 搜尋事件只有關鍵字、沒有商品 id，這裡是拿關鍵字比對商品名稱的近似歸因，\n一個關鍵字會同時命中同系列的多件商品。\n百分比為與前一個等長區間相比。'} />}
                 data={(c?.topSearched ?? []).map(x => ({ name: x.name, value: x.value, change: x.growth }))}
               />
               <RankingList
