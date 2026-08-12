@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyCheckMacValue } from '@/lib/ecpay'
 import { isAlreadyProcessed, logWebhookEvent } from '@/lib/webhookIdempotency'
 import { rechargeRiskCounter } from '@/lib/ratelimit'
+import { calcEcpayFee } from '@/lib/ecpayFees'
 
 const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN ?? ''
 const NOTIFY_ID  = process.env.NOTIFY_TARGET_ID ?? ''
@@ -24,15 +25,6 @@ const IMMEDIATE = ['Credit_CreditCard', 'WebATM', 'TWQR_TWQR']
 
 function isImmediatePayment(paymentType: string): boolean {
   return IMMEDIATE.some(t => paymentType.startsWith(t.split('_')[0]))
-}
-
-function calcEcpayFee(paymentType: string, amount: number): number {
-  const t = paymentType.toUpperCase()
-  if (t.startsWith('WEBATM') || t.startsWith('ATM')) return Math.min(Math.round(amount * 0.01), 15)
-  if (t.startsWith('CVS'))     return 31
-  if (t.startsWith('BARCODE')) return 16
-  // 信用卡 / Apple Pay / 銀聯：2.75% + 1元處理費
-  return Math.round(amount * 0.0275) + 1
 }
 
 export async function POST(req: Request) {

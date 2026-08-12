@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import SelectField from '@/components/ui/SelectField'
+import { useAdmin } from '@/contexts/AdminContext'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -11,13 +12,15 @@ interface PeriodData {
   supplierName: string
   products: ProductRow[]
   totalG: number
-  totalPlatformG: number
-  consumptionShare: number       // 0~1，廠商消費佔全平台比例
-  rechargeTotal: number          // 參考用：期間平台儲值總額
-  rechargeCount: number          // 參考用：儲值筆數
+  totalPlatformG?: number        // 全平台同期消費 G（僅平台管理員）
+  // 以下平台級數字廠商帳號拿不到（API 端就不回），型別一律 optional
+  consumptionShare?: number      // 0~1，廠商消費佔全平台比例
+  rechargeTotal?: number         // 參考用：期間平台儲值總額
+  rechargeCount?: number         // 參考用：儲值筆數
+  effectiveFeeRate: number | null // 平台實際混合費率（0.0275 = 2.75%），撈不到為 null
   hasActualFee: boolean
   allocatedActualFee: number | null  // 分攤後的實際手續費
-  platformTotalFee: number | null    // 平台手續費總額（參考）
+  platformTotalFee?: number | null   // 平台手續費總額（僅平台管理員）
   dismantleTotal: number         // 分解退代幣（廠商吸收）
   couponTotal: number            // 折價券折抵總額（雙方各吸收一半）
   shippingTotal: number          // 運費總額（雙方各吸收一半）
@@ -41,7 +44,7 @@ function InfoTooltip({ text }: { text: string }) {
         !
       </div>
       {show && (
-        <div className="absolute left-0 top-5 w-64 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
+        <div className="absolute left-0 top-5 w-64 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none">
           {text}
         </div>
       )}
@@ -90,6 +93,10 @@ function fmt(n: number) {
 
 
 export default function SettlementPage() {
+  // 廠商帳號：隱藏費率設定與所有平台級數字。伺服器端也不回那些欄位，
+  // 這裡只是不要畫出空欄位；真正的牆在 API
+  const { user: adminUser } = useAdmin()
+  const isSupplier = adminUser?.role === 'supplier'
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [selectedSupplierId, setSelectedSupplierId] = useState('')
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(1) // default 上月
@@ -157,7 +164,7 @@ export default function SettlementPage() {
 
   // 結算基底：廠商商品消費 G（1G = NT$1）
   const totalTWD = data?.totalG ?? 0
-  const sharePercent = Math.round((data?.consumptionShare ?? 1) * 100)
+  const totalDrawCount = data?.products.reduce((s, p) => s + p.drawCount, 0) ?? 0
   const dismantleTotal = Math.round(data?.dismantleTotal ?? 0)
   const couponTotal = Math.round(data?.couponTotal ?? 0)
   const shippingTotal = Math.round(data?.shippingTotal ?? 0)
@@ -166,10 +173,18 @@ export default function SettlementPage() {
   const shippingSupplierShare = Math.round(shippingTotal * 0.5)
   const pointsSupplierShare = pointsMode === 'A' ? Math.round(pointsTotal * 0.5) : 0
 
-  // 手續費：有實際資料時用分攤後值，否則用費率估算
-  const ecpayFee = data?.hasActualFee && data.allocatedActualFee != null
+  /*
+   * 手續費一律是「本廠商消費 × 費率」，差別只在費率哪來：
+   * 有實際帳就用平台實付算出來的混合費率（API 的 effectiveFeeRate），
+   * 撈不到才用下面手動設定的估算值。
+   * 兩條路都只用到廠商自己的消費，對帳單不需要出現任何平台總量。
+   */
+  const ecpayFee = data?.allocatedActualFee != null
     ? data.allocatedActualFee
     : Math.round(totalTWD * (ecpayRate / 100))
+  const effectiveRatePercent = data?.effectiveFeeRate != null
+    ? (data.effectiveFeeRate * 100).toFixed(2)
+    : null
 
   const netRevenue = totalTWD - ecpayFee
   const withholding = Math.round(netRevenue * (withholdingRate / 100))
@@ -183,47 +198,72 @@ export default function SettlementPage() {
   // 最後扣除分解退代幣（廠商全吸收）
   const supplierNet = Math.max(0, supplierGross - dismantleTotal)
 
-  // 匯出對帳單 CSV
-  const handleExport = () => {
+  /*
+   * 匯出對帳單（XLSX，兩個頁籤）
+   *
+   * 老闆指定改橫式：以前是「項目／金額」一列一項的直式，要一路往下捲才讀得完，
+   * 也沒辦法跟別期並排比較。改成一列一期、欄位橫著展開，貼進試算表就能疊。
+   *
+   *   頁籤 1「N月結算」  ── 一行到底的結算結果
+   *   頁籤 2「消費明細」  ── 逐商品的抽獎次數與消費
+   *
+   * 用 xlsx 而不是 CSV：CSV 沒有頁籤這回事，兩張表塞同一個檔只能上下疊，
+   * 又回到要往下捲的問題。
+   */
+  const handleExport = async () => {
     if (!data || !period) return
-    const BOM = '﻿'
-    const rows: string[][] = [
-      [`廠商結算對帳單`],
-      [`廠商`, data.supplierName],
-      [`結算期間`, `${period.startDate} ~ ${period.endDate}`],
-      [`結算日`, period.settlementDate],
-      [],
-      [`商品名稱`, `單價(G)`, `抽獎次數`, `消費代幣(G)`],
-      ...(data.products.map(p => [p.name, String(p.price), String(p.drawCount), String(p.totalG)])),
-      [],
-      [`項目`, `金額(TWD)`],
-      [`廠商商品消費（${data.products.reduce((s,p)=>s+p.drawCount,0)}次，1G=NT$1）`, String(totalTWD)],
-      [`綠界手續費${data.hasActualFee ? '（實際分攤）' : `（估算${ecpayRate}%）`}`, String(-ecpayFee)],
-      [`淨收入`, String(netRevenue)],
-      ...(withholdingRate > 0 ? [[`代扣稅款(${withholdingRate}%)`, String(-withholding)]] : []),
-      ...(withholdingRate > 0 ? [[`稅後淨收入`, String(netAfterTax)]] : []),
-      [`折價券（廠商吸收50%，共${couponTotal}）`, String(-couponSupplierShare)],
-      [`運費（廠商吸收50%，共${shippingTotal}）`, String(-shippingSupplierShare)],
-      ...(pointsMode === 'A' ? [[`積分補償（廠商吸收50%，共${pointsTotal}）`, String(pointsSupplierShare)]] : [[`積分補償（平台全吸收，不計入）`, `${pointsTotal} G`]]),
-      [`可分潤基礎`, String(distributableBase)],
-      [`廠商分潤(${supplierShare}%)`, String(supplierGross)],
-      [`平台留存(${100 - supplierShare}%)`, String(platformShare)],
-      [`分解退代幣（廠商吸收100%）`, `-${dismantleTotal}`],
-      [`實際應付廠商`, String(supplierNet)],
-      [],
-      [`--- 參考 ---`, ``],
-      [`期間平台儲值`, String(data.rechargeTotal)],
-      [`儲值筆數`, String(data.rechargeCount)],
-      ...(data.hasActualFee ? [[`平台綠界手續費總額`, String(data.platformTotalFee ?? 0)]] : []),
-    ]
-    const csv = BOM + rows.map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    const XLSX = await import('xlsx')
+
+    const feeLabel = effectiveRatePercent ? `綠界手續費(實際費率${effectiveRatePercent}%)` : `綠界手續費(估算${ecpayRate}%)`
+
+    // 頁籤 1：橫式，欄名一列、數值一列
+    const summary: Record<string, string | number> = {
+      廠商: data.supplierName,
+      結算期間: `${period.startDate} ~ ${period.endDate}`,
+      結算日: period.settlementDate,
+      抽獎次數: totalDrawCount,
+      '消費代幣(G)': totalTWD,
+      '消費金額(TWD)': totalTWD,
+      [feeLabel]: -ecpayFee,
+      淨收入: netRevenue,
+      ...(withholdingRate > 0 ? { [`代扣稅款(${withholdingRate}%)`]: -withholding, 稅後淨收入: netAfterTax } : {}),
+      [`折價券(廠商吸收50%，共${couponTotal})`]: -couponSupplierShare,
+      [`運費(廠商吸收50%，共${shippingTotal})`]: -shippingSupplierShare,
+      [pointsMode === 'A' ? `積分補償(廠商吸收50%，共${pointsTotal})` : `積分補償(平台全吸收，共${pointsTotal}G)`]:
+        pointsMode === 'A' ? pointsSupplierShare : 0,
+      可分潤基礎: distributableBase,
+      [`廠商分潤(${supplierShare}%)`]: supplierGross,
+      [`平台留存(${100 - supplierShare}%)`]: platformShare,
+      '分解退代幣(廠商吸收100%)': -dismantleTotal,
+      實際應付廠商: supplierNet,
+      // 平台級數字只給平台管理員，廠商那份完全不帶（API 也不會回）
+      ...(isSupplier ? {} : {
+        '【平台】期間儲值': data.rechargeTotal ?? 0,
+        '【平台】儲值筆數': data.rechargeCount ?? 0,
+        ...(data.hasActualFee ? { '【平台】綠界手續費總額': data.platformTotalFee ?? 0 } : {}),
+      }),
+    }
+
+    const detail = data.products.map(p => ({
+      商品名稱: p.name,
+      '單價(G)': p.price,
+      抽獎次數: p.drawCount,
+      '消費代幣(G)': p.totalG,
+    }))
+
+    const wb = XLSX.utils.book_new()
+    const wsSummary = XLSX.utils.json_to_sheet([summary])
+    // 欄寬照欄名長度給，不然中文欄名全部擠成 ###
+    wsSummary['!cols'] = Object.keys(summary).map(k => ({ wch: Math.max(12, k.length * 2 + 2) }))
+    // 頁籤名稱有 31 字上限，且不能含 : \\ / ? * [ ]
+    const monthLabel = `${Number(period.startDate.slice(5, 7))}月結算`
+    XLSX.utils.book_append_sheet(wb, wsSummary, monthLabel)
+
+    const wsDetail = XLSX.utils.json_to_sheet(detail.length ? detail : [{ 商品名稱: '本期無消費紀錄', '單價(G)': '', 抽獎次數: '', '消費代幣(G)': '' }])
+    wsDetail['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 14 }]
+    XLSX.utils.book_append_sheet(wb, wsDetail, '消費明細')
+
+    XLSX.writeFile(wb, `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.xlsx`)
   }
 
   return (
@@ -260,11 +300,13 @@ export default function SettlementPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                匯出 CSV
+                匯出 Excel
               </button>
 
-              {/* 費率設定浮動 */}
+              {/* 費率設定浮動：分潤比、代扣稅率、估算費率都是平台端的商業參數，
+                  廠商不該看到更不該調 */}
               <div className="relative" ref={settingsRef}>
+                {!isSupplier && (
                 <button
                   onClick={() => setShowSettings(v => !v)}
                   className={`h-9 px-4 border rounded-lg transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap ${
@@ -280,8 +322,9 @@ export default function SettlementPage() {
                   </svg>
                   費率設定
                 </button>
+                )}
 
-                {showSettings && (
+                {!isSupplier && showSettings && (
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
@@ -425,8 +468,19 @@ export default function SettlementPage() {
               </div>
 
               {/* ① 消費基底 */}
-              <Row label={<><span className="font-semibold text-neutral-800">廠商商品消費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次・1G = NT$1</span></>} value={fmt(totalTWD)} bold />
-              <Row label={<><span className="text-neutral-600">綠界手續費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.hasActualFee ? '實際分攤' : `估算 ${ecpayRate}%`}</span></>} value={`−${fmt(ecpayFee)}`} red indent />
+              {/* 次數與換算率改掛在驚嘆號裡（老闆指定）：這兩個是「怎麼算出來的」的
+                  註解，不是結算項目本身，攤在標題旁邊會跟下面幾列的說明文字打架 */}
+              <Row
+                label={
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-neutral-800">廠商商品消費</span>
+                    <InfoTooltip text={`總次數 ${totalDrawCount.toLocaleString()} 次\n1G = NT$1`} />
+                  </div>
+                }
+                value={fmt(totalTWD)}
+                bold
+              />
+              <Row label={<><span className="text-neutral-600">綠界手續費</span><span className="text-xs text-neutral-400 ml-1.5">{effectiveRatePercent ? `實際費率 ${effectiveRatePercent}%` : `估算 ${ecpayRate}%`}</span></>} value={`−${fmt(ecpayFee)}`} red indent />
               <div className="border-t border-neutral-200 my-0.5" />
               <Row label={<span className="font-semibold text-neutral-800">淨收入</span>} value={fmt(netRevenue)} bold />
 
@@ -470,7 +524,7 @@ export default function SettlementPage() {
                 )}
               </div>
 
-              {data?.hasActualFee && (
+              {!isSupplier && data?.hasActualFee && (
                 <div className="mt-3 pt-3 border-t border-dashed border-neutral-200">
                   <div className="flex items-center justify-between text-xs text-neutral-400">
                     <span>平台綠界手續費總額</span>

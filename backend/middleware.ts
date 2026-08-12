@@ -253,7 +253,14 @@ export async function middleware(request: NextRequest) {
     const ok =
       pathname === '/products' ||
       (pathname.startsWith('/products/') && !pathname.endsWith('/verify')) ||
-      pathname === '/reports/settlement'
+      pathname === '/reports/settlement' ||
+      // 配送管理：2026-08-09 就把 /api/admin/orders 放進 API 白名單了，
+      // 但頁面路徑忘了一起加 —— 廠商點側欄「配送管理」會被這裡打回
+      // /products，看起來就是「點了沒反應」。
+      // 寫入面 route 內已經擋死（PUT 與 batch 出貨對廠商回 403、
+      // 詳情跨廠商也擋），這裡放行的只有「看」
+      pathname === '/orders' ||
+      pathname.startsWith('/orders/')
     if (!ok) return NextResponse.redirect(new URL('/products', request.url))
     return NextResponse.next()
   }
