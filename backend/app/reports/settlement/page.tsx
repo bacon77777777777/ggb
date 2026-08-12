@@ -7,6 +7,8 @@ import SelectField from '@/components/ui/SelectField'
 import { useAdmin } from '@/contexts/AdminContext'
 import { logExport } from '@/lib/logExport'
 import NumberField from '@/components/ui/NumberField'
+// 費率設定浮層貼在畫面右緣，泡泡要能自己翻邊才不會被推出視窗 —— 用分析頁那顆 fixed 版
+import { InfoIcon as InfoTooltip } from '@/components/analytics/StatCard'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -38,18 +40,17 @@ interface Period {
   isCurrent: boolean
 }
 
-function InfoTooltip({ text }: { text: string }) {
-  const [show, setShow] = useState(false)
+/**
+ * 費率設定浮層裡的欄位標題（文字 + 藍色驚嘆號）
+ *
+ * 原本每個欄位下面掛一行小灰字說明，浮層被撐長、字又擠。改成統一掛在驚嘆號裡，
+ * 滑過去才看得到 —— 跟分析頁的做法一致。
+ */
+function FeeLabel({ text, tip }: { text: string; tip: string }) {
   return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
-        !
-      </div>
-      {show && (
-        <div className="absolute left-0 top-5 w-64 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none">
-          {text}
-        </div>
-      )}
+    <div className="flex items-center gap-1.5 min-w-0">
+      <label className="text-sm text-neutral-600 whitespace-nowrap">{text}</label>
+      <InfoTooltip text={tip} width={280} />
     </div>
   )
 }
@@ -295,21 +296,30 @@ export default function SettlementPage() {
                 小螢幕（< lg）：整條佔滿一行往下折，寬度不夠時自己橫向捲；
                 大螢幕：跟廠商選擇、匯出擠同一行。
                 按鈕本身 shrink-0 + 文字不換行 —— 不然窄的時候「2026年08月」會被壓成兩行 */}
-            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 flex gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0 justify-end">
-              {periods.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedPeriodIdx(i)}
-                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                    selectedPeriodIdx === i
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
-                  }`}
-                >
-                  {p.label}
-                  {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
-                </button>
-              ))}
+            {/*
+              期間 bar。對齊靠內層的 `w-max ml-auto`，不要在捲動容器上寫 justify-end ——
+              那樣塞不下時內容是往「左邊」溢出的，捲軸捲不回去，
+              排在最前面的當月（進行中）就永遠看不到，老闆截圖到的正是這個。
+              換成 auto margin：塞得下照樣靠右貼著匯出鈕，塞不下時 auto 自動歸零變靠左，
+              scrollLeft = 0 第一眼就是當月，其餘往右捲。
+            */}
+            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 overflow-x-auto scrollbar-hide min-w-0">
+              <div className="flex gap-1.5 items-center w-max ml-auto">
+                {periods.map((p, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedPeriodIdx(i)}
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      selectedPeriodIdx === i
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    {p.label}
+                    {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 匯出 + 費率設定 */}
@@ -350,46 +360,56 @@ export default function SettlementPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
-                      {/* 綠界手續費：有實際資料時顯示分攤後實際值 */}
-                      <div>
-                        <div className="flex items-center justify-between gap-3">
-                          <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
-                          {data?.hasActualFee ? (
-                            <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
-                              <span className="text-sm text-neutral-500">% 估算</span>
-                            </div>
-                          )}
+                      {/*
+                        綠界手續費永遠是這一格可填的估算比例，不隨月份切換變成唯讀金額。
+                        原本有實際扣款的月份會換成「NT$ x 實際分攤」，切個月份設定欄位就長不一樣，
+                        看起來像設定被改掉了 —— 這裡是「設定」，本來就該長期固定；
+                        某個月有沒有採用它，寫在驚嘆號裡講就好。
+                      */}
+                      <div className="flex items-center justify-between gap-3">
+                        <FeeLabel
+                          text="綠界手續費"
+                          tip={
+                            '玩家儲值時被金流公司抽走的錢。\n' +
+                            '這裡填的是估算比例，只有在該月份沒有綠界實際扣款紀錄時才會拿來算。\n' +
+                            '有實際紀錄的月份，結算一律照綠界真的扣走的金額分攤，不受這格影響。'
+                          }
+                        />
+                        {/* 「估算」放輸入框左邊：先讀到這是估的，再看數字（老闆指定） */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-sm text-neutral-500">估算</span>
+                          <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
+                          <span className="text-sm text-neutral-500">%</span>
                         </div>
-                        {/* 說明為什麼這一格不能填：有實際扣款就沒有「要設定」的東西了 */}
-                        <p className="text-xs text-neutral-400 mt-0.5">
-                          {data?.hasActualFee
-                            ? '綠界實際扣了多少就是多少，不用設定'
-                            : '這期沒有綠界的實際扣款資料，先用這個比例估算'}
-                        </p>
                       </div>
                       {[
                         // 上限 100：自家廠商（吉吉比）可能整筆都算自己的，不該被 99 卡住
-                        { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 0, max: 100 },
-                        { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
+                        {
+                          label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 0, max: 100,
+                          tip: '扣掉手續費、稅金、折價券與運費分攤之後，剩下的錢有多少比例要付給廠商。\n填 70 就是廠商拿七成、平台留三成。自家廠商可以填到 100。',
+                        },
+                        {
+                          label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30,
+                          tip: '廠商是個人或工作室、沒有公司統編時，錢不能整筆匯出去，\n平台要先幫他把稅扣下來、之後代為繳給國稅局。\n有統編、開發票請款的廠商填 0。',
+                        },
                       ].map(f => (
                         <div key={f.label} className="flex items-center justify-between gap-3">
-                          <label className="text-sm text-neutral-600 whitespace-nowrap">{f.label}</label>
-                          <div className="flex items-center gap-1">
+                          <FeeLabel text={f.label} tip={f.tip} />
+                          <div className="flex items-center gap-1 shrink-0">
                             <NumberField value={f.value} onChange={f.setter} min={f.min} max={f.max} className="w-16" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>
                       ))}
-                      <div className="flex items-start justify-between gap-3 pt-2 border-t border-neutral-100">
-                        <div>
-                          <label className="text-sm text-neutral-600 whitespace-nowrap">積分扣除模式</label>
-                          <p className="text-xs text-neutral-400 mt-0.5">
-                            {pointsMode === 'A' ? '廠商獲補償 50%（共 ' + pointsTotal.toLocaleString() + ' G）' : '平台全吸收，不計入結算'}
-                          </p>
-                        </div>
+                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-neutral-100">
+                        <FeeLabel
+                          text="積分扣除模式"
+                          tip={
+                            '玩家用積分折抵掉的那部分，這筆損失要不要算進結算。\n' +
+                            `計入：平台補一半給廠商（這期共 ${pointsTotal.toLocaleString()} G）。\n` +
+                            '不計：平台自己全部吸收，結算完全不算這筆。'
+                          }
+                        />
                         <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-xs font-medium shrink-0">
                           <button
                             onClick={() => setPointsMode('A')}
