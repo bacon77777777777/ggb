@@ -7,7 +7,6 @@ import DateRangePicker from '@/components/DateRangePicker'
 import SelectField from '@/components/ui/SelectField'
 import { StatCard, GrowthTag, InfoIcon } from '@/components/analytics/StatCard'
 import { RankingList } from '@/components/analytics/RankingList'
-import { useAdmin } from '@/contexts/AdminContext'
 
 /*
  * 廠商分析
@@ -64,8 +63,6 @@ const mondayOf = (d: Date) => { const x = new Date(d); const w = (x.getDay() + 6
 const sundayOf = (d: Date) => { const x = mondayOf(d); x.setDate(x.getDate() + 6); return x }
 
 export default function SupplierAnalyticsPage() {
-  const { user } = useAdmin()
-  const isSupplier = user?.role === 'supplier'
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState('')
@@ -129,19 +126,22 @@ export default function SupplierAnalyticsPage() {
       <div className="space-y-5">
 
         {/* 工具列：廠商下拉擺最左邊（老闆指定），其餘沿用分析頁 */}
+        {/* 不用 flex-wrap：廠商選擇＋四顆期間鈕＋日期選擇器＋刷新在 1500px 會被折成兩行，
+            老闆要一整行。改成不換行，寬度不夠時由日期選擇器讓步 */}
         <div className="flex items-center gap-2">
-          <div className="w-56">
+          {/* 廠商選擇：外觀與交互跟「廠商結算」那頁一致（老闆指定），
+              連 className 都照抄，不要兩頁長不一樣 */}
+          <div className="flex items-center gap-2 mr-auto">
+            <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
             <SelectField
               value={supplierId}
               onChange={e => setSupplierId(e.target.value)}
-              disabled={isSupplier || suppliers.length <= 1}
+              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px]"
             >
-              {suppliers.length === 0 && <option value="">載入中…</option>}
               {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+              {suppliers.length === 0 && <option value="">載入中…</option>}
             </SelectField>
           </div>
-
-          <div className="flex-1" />
 
           {PRESETS.map(p => (
             <button key={p.label}
@@ -155,6 +155,7 @@ export default function SupplierAnalyticsPage() {
               {p.label}
             </button>
           ))}
+          <div className="min-w-0 shrink">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -162,6 +163,7 @@ export default function SupplierAnalyticsPage() {
             onEndDateChange={setEndDate}
             placeholder="自訂日期"
           />
+          </div>
           <button
             onClick={fetchData}
             className="h-9 w-9 flex items-center justify-center border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"

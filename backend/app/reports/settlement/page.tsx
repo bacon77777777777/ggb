@@ -200,24 +200,19 @@ export default function SettlementPage() {
   const supplierNet = Math.max(0, supplierGross - dismantleTotal)
 
   /*
-   * 匯出對帳單（XLSX，兩個頁籤）
+   * 匯出對帳單（CSV）
    *
-   * 老闆指定改橫式：以前是「項目／金額」一列一項的直式，要一路往下捲才讀得完，
-   * 也沒辦法跟別期並排比較。改成一列一期、欄位橫著展開，貼進試算表就能疊。
+   * 老闆指定用 CSV。**CSV 沒有頁籤這回事**，所以原本 xlsx 的兩個分頁改成上下兩段：
+   * 上面是一列到底的結算摘要（橫式，欄名一列、數值一列，貼進試算表可以把各期疊起來比），
+   * 空一行之後接逐商品的消費明細。
    *
-   *   頁籤 1「N月結算」  ── 一行到底的結算結果
-   *   頁籤 2「消費明細」  ── 逐商品的抽獎次數與消費
-   *
-   * 用 xlsx 而不是 CSV：CSV 沒有頁籤這回事，兩張表塞同一個檔只能上下疊，
-   * 又回到要往下捲的問題。
+   * 橫式是重點 —— 最早的版本是「項目／金額」一列一項的直式，要一路往下捲才讀得完。
    */
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!data || !period) return
-    const XLSX = await import('xlsx')
 
     const feeLabel = effectiveRatePercent ? `綠界手續費(實際費率${effectiveRatePercent}%)` : `綠界手續費(估算${ecpayRate}%)`
 
-    // 頁籤 1：橫式，欄名一列、數值一列
     const summary: Record<string, string | number> = {
       廠商: data.supplierName,
       結算期間: `${period.startDate} ~ ${period.endDate}`,
@@ -245,26 +240,26 @@ export default function SettlementPage() {
       }),
     }
 
-    const detail = data.products.map(p => ({
-      商品名稱: p.name,
-      '單價(G)': p.price,
-      抽獎次數: p.drawCount,
-      '消費代幣(G)': p.totalG,
-    }))
+    // 欄名與商品名都可能含逗號或引號，一律加引號並跳脫
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const rows: string[] = [
+      Object.keys(summary).map(esc).join(','),
+      Object.values(summary).map(esc).join(','),
+      '',
+      ['商品名稱', '單價(G)', '抽獎次數', '消費代幣(G)'].map(esc).join(','),
+      ...(data.products.length
+        ? data.products.map(p => [p.name, p.price, p.drawCount, p.totalG].map(esc).join(','))
+        : [['本期無消費紀錄', '', '', ''].map(esc).join(',')]),
+    ]
 
-    const wb = XLSX.utils.book_new()
-    const wsSummary = XLSX.utils.json_to_sheet([summary])
-    // 欄寬照欄名長度給，不然中文欄名全部擠成 ###
-    wsSummary['!cols'] = Object.keys(summary).map(k => ({ wch: Math.max(12, k.length * 2 + 2) }))
-    // 頁籤名稱有 31 字上限，且不能含 : \\ / ? * [ ]
-    const monthLabel = `${Number(period.startDate.slice(5, 7))}月結算`
-    XLSX.utils.book_append_sheet(wb, wsSummary, monthLabel)
-
-    const wsDetail = XLSX.utils.json_to_sheet(detail.length ? detail : [{ 商品名稱: '本期無消費紀錄', '單價(G)': '', 抽獎次數: '', '消費代幣(G)': '' }])
-    wsDetail['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 14 }]
-    XLSX.utils.book_append_sheet(wb, wsDetail, '消費明細')
-
-    XLSX.writeFile(wb, `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.xlsx`)
+    const BOM = '\ufeff'   // 少了 BOM，Excel 開中文會變亂碼
+    const blob = new Blob([BOM + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
     void logExport('廠商結算', `${data.supplierName}｜${period.startDate}~${period.endDate}｜應付 ${supplierNet}`)
   }
 
@@ -276,6 +271,7 @@ export default function SettlementPage() {
 
         {/* 頂部控制列 */}
         <div className="space-y-2">
+          {/* 第一列：廠商選擇 + 期間（老闆指定時間移到上面）*/}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
@@ -292,6 +288,27 @@ export default function SettlementPage() {
               </SelectField>
             </div>
 
+            {/* 期間按鈕 */}
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              {periods.map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedPeriodIdx(i)}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                    selectedPeriodIdx === i
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                  }`}
+                >
+                  {p.label}
+                  {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 第二列：匯出與費率設定（老闆指定匯出移到下面）*/}
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {/* 匯出 + 費率設定 */}
             <div className="flex items-center gap-2">
               <button
@@ -302,7 +319,7 @@ export default function SettlementPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                匯出 Excel
+                匯出 CSV
               </button>
 
               {/* 費率設定浮動：分潤比、代扣稅率、估算費率都是平台端的商業參數，
@@ -385,25 +402,6 @@ export default function SettlementPage() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* 期間按鈕 */}
-          <div className="flex gap-1.5 flex-wrap justify-end">
-            {periods.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedPeriodIdx(i)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  selectedPeriodIdx === i
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
-                }`}
-              >
-                {p.label}
-                {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
-                {p.isClosed && !p.isCurrent && <span className="ml-1 text-xs opacity-60">✓</span>}
-              </button>
-            ))}
           </div>
         </div>
 

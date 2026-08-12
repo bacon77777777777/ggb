@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
+// 驚嘆號說明改用共用元件：本地那顆是 absolute 定位，會被卡片的 overflow-hidden 裁掉
+import { InfoIcon } from '@/components/analytics/StatCard'
 
 // ── Dynamic chart imports (Canvas, no SSR) ────────────────────────────────────
 
@@ -78,22 +80,6 @@ function GrowthTag({ value, label, style }: { value: number; label?: string; sty
       <span style={{ marginLeft: 4, color: up ? '#f5222d' : '#52c41a' }}>
         {up ? '▲' : '▼'}
       </span>
-    </div>
-  )
-}
-
-// ── Info icon (藍色驚嘆號 tooltip) ────────────────────────────────────────────
-
-function InfoIcon({ text }: { text: string }) {
-  const [show, setShow] = React.useState(false)
-  return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
-      {show && (
-        <div className="absolute right-0 top-5 w-56 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-normal pointer-events-none">
-          {text}
-        </div>
-      )}
     </div>
   )
 }
@@ -239,7 +225,8 @@ export default function AnalyticsOverviewPage() {
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
-              總儲值金額
+              <span className="flex-1 min-w-0 truncate">總儲值金額</span>
+              <InfoIcon text={'這段期間玩家儲值進來的總金額（台幣）。\n只算付款成功的，已扣掉機器人帳號。\n周同比＝跟前一段同樣長度的期間相比；日同比＝今天跟昨天相比。'} />
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
               <div className="relative w-full">
@@ -268,7 +255,8 @@ export default function AnalyticsOverviewPage() {
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
-              總銷售額
+              <span className="flex-1 min-w-0 truncate">總銷售額</span>
+              <InfoIcon text={'這段期間玩家抽獎花掉的代幣總額（1G = 1 元）。\n跟儲值不一樣：儲值是把錢放進來，這裡是實際花掉的。\n已扣掉機器人帳號。'} />
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
               <div className="relative w-full">
@@ -297,7 +285,8 @@ export default function AnalyticsOverviewPage() {
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
-              消費筆數
+              <span className="flex-1 min-w-0 truncate">消費筆數</span>
+              <InfoIcon text={'這段期間的抽獎次數，抽一次算一筆。\n藍色柱子是各時段的筆數分布。\n轉化率＝消費筆數 ÷ 訪問量，代表來看的人有多少比例真的抽了。'} />
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
               <div className="relative w-full">
@@ -333,7 +322,8 @@ export default function AnalyticsOverviewPage() {
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
               style={{ color: 'rgba(0,0,0,0.88)' }}>
-              訪問量
+              <span className="flex-1 min-w-0 truncate">訪問量</span>
+              <InfoIcon text={'這段期間全站被瀏覽的次數。\n同一個人重複進來會重複計算。\n紫色曲線是各時段的起伏。'} />
             </div>
             <div style={{ padding: '20px 24px 8px' }}>
               <div className="relative w-full">
@@ -374,7 +364,7 @@ export default function AnalyticsOverviewPage() {
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
             <div style={{ minHeight: 56, padding: '0 24px', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span>儲值與消耗對比</span>
-              <InfoIcon text="同時展示儲值金額與代幣消耗量。儲值高於消耗代表用戶在囤幣；消耗高於儲值代表用戶在花存量。" />
+              <InfoIcon text={'同一張圖比較「玩家儲值進來的錢」與「實際花掉的代幣」。\n儲值高於消耗＝玩家在存錢還沒花；消耗高於儲值＝玩家在花以前存的。'} />
             </div>
             <div style={{ padding: '24px 0 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
               {/* 圖例 */}
@@ -421,7 +411,8 @@ export default function AnalyticsOverviewPage() {
           {/* 銷售類別佔比 */}
           <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
             <div style={{ minHeight: 56, padding: '0 24px', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
-              銷售類別佔比
+              <span className="flex-1 min-w-0 truncate">銷售類別佔比</span>
+              <InfoIcon text={'這段期間各類型商品的銷售額佔比（一番賞／盒玩／轉蛋／抽卡／自製賞）。\n看得出玩家的錢主要花在哪一類。'} />
             </div>
             <div style={{ padding: 24 }}>
               <span style={{ fontSize: 14, color: 'rgba(0,0,0,0.85)' }}>銷售額</span>
@@ -530,8 +521,9 @@ export default function AnalyticsOverviewPage() {
 
             {/* Ranking */}
             <div style={{ padding: '0 32px 32px 32px' }}>
-              <h4 style={{ margin: '24px 0 0', fontSize: 14, fontWeight: 500, color: 'rgba(0,0,0,0.85)' }}>
-                廠商銷售額排名
+              <h4 style={{ margin: '24px 0 0', fontSize: 14, fontWeight: 500, color: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center' }}>
+                <span style={{ flex: 1, minWidth: 0 }}>廠商銷售額排名</span>
+                <InfoIcon text={'這段期間各廠商的銷售額由高到低排。\n長條的長度是相對於第一名的比例。'} />
               </h4>
               {loading ? (
                 <div style={{ marginTop: 25 }} className="space-y-4">
@@ -577,7 +569,8 @@ export default function AnalyticsOverviewPage() {
 
           {/* Header */}
           <div style={{ minHeight: 56, padding: '0 24px', fontSize: 16, fontWeight: 600, color: 'rgba(0,0,0,0.88)', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
-            廠商轉化率
+            <span className="flex-1 min-w-0 truncate">廠商轉化率</span>
+            <InfoIcon text={'各廠商的抽獎次數佔全站的比重，換算成相對的轉化表現。\n數字高代表看的人比較容易真的抽下去。'} />
           </div>
 
           {/* Supplier rings — horizontal scroll */}
