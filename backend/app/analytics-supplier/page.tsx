@@ -47,6 +47,7 @@ interface Payload {
     totalSales: number; totalDraws: number
     activeProducts: number; totalProducts: number; avgPerDraw: number
     todaySales: number; todayDraws: number
+    sellThrough: number; prizeSold: number; prizeTotal: number; prizeItems: number
     bars: { label: string; sales: number; draws: number }[]
     spark: { x: number; date: string; sales: number; draws: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
@@ -212,11 +213,16 @@ export default function SupplierAnalyticsPage() {
                 footerLabel="平均客單" footerValue={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
               />
 
+              {/* 銷售成數是庫存快照（remaining 只有現在這一個值），不隨上方日期區間變動，
+                  所以中段標「累計」避免跟其他三張卡的期間統計混淆 */}
               <StatCard
-                title="上架中商品" loading={loading} skeletonWidth="w-12"
-                value={(c?.activeProducts ?? 0).toLocaleString()}
-                mid={g && <GrowthTag value={g.draws} label="消費筆數期間同比" />}
-                footerLabel="商品總數" footerValue={(c?.totalProducts ?? 0).toLocaleString()}
+                title="銷售成數" loading={loading} skeletonWidth="w-16"
+                value={`${(c?.sellThrough ?? 0).toLocaleString()}%`}
+                mid={<div className="text-sm" style={{ color: 'rgba(0,0,0,0.45)' }}>
+                  累計已售出 {(c?.prizeSold ?? 0).toLocaleString()} / 總數量 {(c?.prizeTotal ?? 0).toLocaleString()}
+                </div>}
+                footerLabel="上架中商品"
+                footerValue={`${(c?.activeProducts ?? 0).toLocaleString()} / ${(c?.totalProducts ?? 0).toLocaleString()} 件・品項 ${(c?.prizeItems ?? 0).toLocaleString()}`}
               />
             </div>
 

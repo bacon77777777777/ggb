@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 /**
  * 廠商分析
@@ -71,34 +72,53 @@ export async function GET(req: NextRequest) {
 
   try {
     // 先取這家廠商的商品，之後所有統計都只認這批 id
-    const { data: prodRows } = await db
+    const products = await fetchAllRows<any>(() => db
       .from('products')
       .select('id, name, type, status, price')
-      .eq('supplier_id', supplierId)
-    const products = prodRows ?? []
+      .eq('supplier_id', supplierId))
     const productIds = products.map(p => p.id)
+
+    /*
+     * 銷售成數＝已售出品項 ÷ 總品項數（老闆指定）。
+     *
+     * 用 `product_prizes` 的 total／remaining 算：total 是這個品項備了幾份、
+     * remaining 是還剩幾份，相減就是賣掉的。
+     *
+     * ⚠️ 這是**庫存快照、不隨日期區間變動** —— remaining 只有「現在」這一個值，
+     * 沒有歷史軌跡可以還原任一時點的剩餘量。所以它回答的是
+     * 「這家廠商備的貨到目前為止出掉幾成」，跟上面幾張卡的期間統計不同。
+     */
+    let prizeTotal = 0, prizeSold = 0, prizeItems = 0
+    if (productIds.length > 0) {
+      const prizeRows = await fetchAllRows<any>(() => db
+        .from('product_prizes')
+        .select('total, remaining')
+        .in('product_id', productIds))
+      for (const r of prizeRows) {
+        prizeItems++
+        prizeTotal += r.total ?? 0
+        prizeSold += Math.max(0, (r.total ?? 0) - (r.remaining ?? 0))
+      }
+    }
+    const sellThrough = prizeTotal > 0 ? Math.round(prizeSold * 1000 / prizeTotal) / 10 : 0
     const supplierName = (await db.from('suppliers').select('name').eq('id', supplierId).single()).data?.name ?? ''
 
     if (productIds.length === 0) {
       return NextResponse.json({
         supplierName, empty: true,
-        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, bars: [], spark: [], categories: [], topProducts: [] },
+        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, sellThrough: 0, prizeSold: 0, prizeTotal: 0, prizeItems: 0, bars: [], spark: [], categories: [], topProducts: [] },
         growth: { sales: 0, draws: 0, salesToday: 0, drawsToday: 0 },
       })
     }
 
     const drawSel = 'id, created_at, product_id, product:products(name, price, type)'
     const scoped = () => noBot(db.from('draw_records').select(drawSel).in('product_id', productIds))
-    const [cur, prev, todayRes, yestRes] = await Promise.all([
-      inR(scoped(), curStart, curEnd),
-      inR(scoped(), prevStart, curStart),
-      inR(scoped(), ts, te),
-      inR(scoped(), ys, ye),
+    const [draws, prevDraws, todayDraws, yestDraws] = await Promise.all([
+      fetchAllRows<any>(() => inR(scoped(), curStart, curEnd)),
+      fetchAllRows<any>(() => inR(scoped(), prevStart, curStart)),
+      fetchAllRows<any>(() => inR(scoped(), ts, te)),
+      fetchAllRows<any>(() => inR(scoped(), ys, ye)),
     ])
-    const draws: any[] = cur.data ?? []
-    const prevDraws: any[] = prev.data ?? []
-    const todayDraws: any[] = todayRes.data ?? []
-    const yestDraws: any[] = yestRes.data ?? []
 
     const amountOf = (r: any) => r.product?.price ?? 0
     const totalSales = draws.reduce((s, r) => s + amountOf(r), 0)
@@ -213,6 +233,7 @@ export async function GET(req: NextRequest) {
         avgPerDraw: totalDraws > 0 ? Math.round(totalSales / totalDraws) : 0,
         todaySales: todayDraws.reduce((s, r) => s + amountOf(r), 0),
         todayDraws: todayDraws.length,
+        sellThrough, prizeSold, prizeTotal, prizeItems,
         bars, spark, categories, topProducts,
       },
       growth: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminSession } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 const TW = 8 * 3600_000
 
@@ -58,38 +59,39 @@ export async function GET(req: NextRequest) {
     q.gte(f, a.toISOString()).lt(f, b.toISOString())
 
   try {
-    const [drCur, drPrev, rcCur, rcPrev, drToday, drYest, visCur, visPrev, visToday, visYest, kwCur, kwPrev, rcToday, rcYest] =
+    /*
+     * 凡是「撈回來自己 reduce 加總」的都要走 fetchAllRows。
+     * PostgREST 預設只回 1000 列且靜默截斷 —— 實測全站整年消費筆數 2,896
+     * 被截成 1,000、銷售額 114,940 變成 32,950，圖表與 KPI 全數偏低。
+     * visit_logs 用的是 head+count，資料庫端算好只回數字，不受此限。
+     */
+    const [draws, prevDraws, rcCurRows, rcPrevRows, todayDraws, yesterdayDraws, visCur, visPrev, visToday, visYest, kwCurRows, kwPrevRows, rcTodayRows, rcYestRows] =
       await Promise.all([
-        inR(noBot(db.from('draw_records').select('id, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd),
-        inR(noBot(db.from('draw_records').select('id, product:products(price)')), prevStart, prevEnd),
-        inR(noBot(db.from('recharge_records').select('amount, created_at').eq('status', 'success')), curStart, curEnd),
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd),
-        inR(noBot(db.from('draw_records').select('id, product:products(price)')), ts, te),
-        inR(noBot(db.from('draw_records').select('id, product:products(price)')), ys, ye),
+        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, created_at, product:products(price, type, supplier:suppliers(id, name))')), curStart, curEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, product:products(price)')), prevStart, prevEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount, created_at').eq('status', 'success')), curStart, curEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), prevStart, prevEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, product:products(price)')), ts, te)),
+        fetchAllRows<any>(() => inR(noBot(db.from('draw_records').select('id, product:products(price)')), ys, ye)),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), curStart, curEnd),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), prevStart, prevEnd),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ts, te),
         inR(db.from('visit_logs').select('id', { count: 'exact', head: true }), ys, ye),
-        inR(db.from('search_logs').select('keyword'), curStart, curEnd),
-        inR(db.from('search_logs').select('keyword'), prevStart, prevEnd),
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ts, te),
-        inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ys, ye),
+        fetchAllRows<any>(() => inR(db.from('search_logs').select('keyword'), curStart, curEnd)),
+        fetchAllRows<any>(() => inR(db.from('search_logs').select('keyword'), prevStart, prevEnd)),
+        fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ts, te)),
+        fetchAllRows<any>(() => inR(noBot(db.from('recharge_records').select('amount').eq('status', 'success')), ys, ye)),
       ])
-
-    const draws: any[] = drCur.data ?? []
-    const prevDraws: any[] = drPrev.data ?? []
-    const todayDraws: any[] = drToday.data ?? []
-    const yesterdayDraws: any[] = drYest.data ?? []
 
     const price = (d: any) => d.product?.price ?? 0
     const totalSales = draws.reduce((acc: number, d: any) => acc + price(d), 0)
     const prevSales = prevDraws.reduce((acc: number, d: any) => acc + price(d), 0)
     const totalDrawCount = draws.length
     const prevDrawCount = prevDraws.length
-    const totalRecharges = (rcCur.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
-    const prevRecharges = (rcPrev.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
-    const todayRecharges = (rcToday.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
-    const yesterdayRecharges = (rcYest.data ?? []).reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const totalRecharges = rcCurRows.reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const prevRecharges = rcPrevRows.reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const todayRecharges = rcTodayRows.reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
+    const yesterdayRecharges = rcYestRows.reduce((acc: number, r: any) => acc + Number(r.amount ?? 0), 0)
     const todaySales = todayDraws.reduce((acc: number, d: any) => acc + price(d), 0)
     const yesterdaySales = yesterdayDraws.reduce((acc: number, d: any) => acc + price(d), 0)
     const todayDrawCount = todayDraws.length
@@ -133,7 +135,7 @@ export async function GET(req: NextRequest) {
 
     // Recharge breakdown for 儲值與消耗對比 chart
     const rechargeByKey: Record<string, number> = {}
-    ;(rcCur.data ?? []).forEach((r: any) => {
+    ;rcCurRows.forEach((r: any) => {
       const key = dtKey(r.created_at)
       rechargeByKey[key] = (rechargeByKey[key] ?? 0) + Number(r.amount ?? 0)
     })
@@ -197,8 +199,8 @@ export async function GET(req: NextRequest) {
     // Keywords
     const kwMap: Record<string, number> = {}
     const kwPrevMap: Record<string, number> = {}
-    ;(kwCur.data ?? []).forEach((r: any) => { kwMap[r.keyword] = (kwMap[r.keyword] ?? 0) + 1 })
-    ;(kwPrev.data ?? []).forEach((r: any) => { kwPrevMap[r.keyword] = (kwPrevMap[r.keyword] ?? 0) + 1 })
+    ;kwCurRows.forEach((r: any) => { kwMap[r.keyword] = (kwMap[r.keyword] ?? 0) + 1 })
+    ;kwPrevRows.forEach((r: any) => { kwPrevMap[r.keyword] = (kwPrevMap[r.keyword] ?? 0) + 1 })
     const keywords = Object.entries(kwMap)
       .sort(([, a], [, b]) => b - a).slice(0, 8)
       .map(([keyword, count], i) => ({
