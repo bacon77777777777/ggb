@@ -6,6 +6,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import { useAdmin } from '@/contexts/AdminContext'
 import { logExport } from '@/lib/logExport'
+import NumberField from '@/components/ui/NumberField'
+// 費率設定浮層貼在畫面右緣，泡泡要能自己翻邊才不會被推出視窗 —— 用分析頁那顆 fixed 版
+import { InfoIcon as InfoTooltip } from '@/components/analytics/StatCard'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -37,18 +40,17 @@ interface Period {
   isCurrent: boolean
 }
 
-function InfoTooltip({ text }: { text: string }) {
-  const [show, setShow] = useState(false)
+/**
+ * 費率設定浮層裡的欄位標題（文字 + 藍色驚嘆號）
+ *
+ * 原本每個欄位下面掛一行小灰字說明，浮層被撐長、字又擠。改成統一掛在驚嘆號裡，
+ * 滑過去才看得到 —— 跟分析頁的做法一致。
+ */
+function FeeLabel({ text, tip }: { text: string; tip: string }) {
   return (
-    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">
-        !
-      </div>
-      {show && (
-        <div className="absolute left-0 top-5 w-64 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none">
-          {text}
-        </div>
-      )}
+    <div className="flex items-center gap-1.5 min-w-0">
+      <label className="text-sm text-neutral-600 whitespace-nowrap">{text}</label>
+      <InfoTooltip text={tip} width={280} />
     </div>
   )
 }
@@ -200,24 +202,19 @@ export default function SettlementPage() {
   const supplierNet = Math.max(0, supplierGross - dismantleTotal)
 
   /*
-   * 匯出對帳單（XLSX，兩個頁籤）
+   * 匯出對帳單（CSV）
    *
-   * 老闆指定改橫式：以前是「項目／金額」一列一項的直式，要一路往下捲才讀得完，
-   * 也沒辦法跟別期並排比較。改成一列一期、欄位橫著展開，貼進試算表就能疊。
+   * 老闆指定用 CSV。**CSV 沒有頁籤這回事**，所以原本 xlsx 的兩個分頁改成上下兩段：
+   * 上面是一列到底的結算摘要（橫式，欄名一列、數值一列，貼進試算表可以把各期疊起來比），
+   * 空一行之後接逐商品的消費明細。
    *
-   *   頁籤 1「N月結算」  ── 一行到底的結算結果
-   *   頁籤 2「消費明細」  ── 逐商品的抽獎次數與消費
-   *
-   * 用 xlsx 而不是 CSV：CSV 沒有頁籤這回事，兩張表塞同一個檔只能上下疊，
-   * 又回到要往下捲的問題。
+   * 橫式是重點 —— 最早的版本是「項目／金額」一列一項的直式，要一路往下捲才讀得完。
    */
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!data || !period) return
-    const XLSX = await import('xlsx')
 
     const feeLabel = effectiveRatePercent ? `綠界手續費(實際費率${effectiveRatePercent}%)` : `綠界手續費(估算${ecpayRate}%)`
 
-    // 頁籤 1：橫式，欄名一列、數值一列
     const summary: Record<string, string | number> = {
       廠商: data.supplierName,
       結算期間: `${period.startDate} ~ ${period.endDate}`,
@@ -245,26 +242,26 @@ export default function SettlementPage() {
       }),
     }
 
-    const detail = data.products.map(p => ({
-      商品名稱: p.name,
-      '單價(G)': p.price,
-      抽獎次數: p.drawCount,
-      '消費代幣(G)': p.totalG,
-    }))
+    // 欄名與商品名都可能含逗號或引號，一律加引號並跳脫
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const rows: string[] = [
+      Object.keys(summary).map(esc).join(','),
+      Object.values(summary).map(esc).join(','),
+      '',
+      ['商品名稱', '單價(G)', '抽獎次數', '消費代幣(G)'].map(esc).join(','),
+      ...(data.products.length
+        ? data.products.map(p => [p.name, p.price, p.drawCount, p.totalG].map(esc).join(','))
+        : [['本期無消費紀錄', '', '', ''].map(esc).join(',')]),
+    ]
 
-    const wb = XLSX.utils.book_new()
-    const wsSummary = XLSX.utils.json_to_sheet([summary])
-    // 欄寬照欄名長度給，不然中文欄名全部擠成 ###
-    wsSummary['!cols'] = Object.keys(summary).map(k => ({ wch: Math.max(12, k.length * 2 + 2) }))
-    // 頁籤名稱有 31 字上限，且不能含 : \\ / ? * [ ]
-    const monthLabel = `${Number(period.startDate.slice(5, 7))}月結算`
-    XLSX.utils.book_append_sheet(wb, wsSummary, monthLabel)
-
-    const wsDetail = XLSX.utils.json_to_sheet(detail.length ? detail : [{ 商品名稱: '本期無消費紀錄', '單價(G)': '', 抽獎次數: '', '消費代幣(G)': '' }])
-    wsDetail['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 14 }]
-    XLSX.utils.book_append_sheet(wb, wsDetail, '消費明細')
-
-    XLSX.writeFile(wb, `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.xlsx`)
+    const BOM = '\ufeff'   // 少了 BOM，Excel 開中文會變亂碼
+    const blob = new Blob([BOM + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
     void logExport('廠商結算', `${data.supplierName}｜${period.startDate}~${period.endDate}｜應付 ${supplierNet}`)
   }
 
@@ -276,7 +273,10 @@ export default function SettlementPage() {
 
         {/* 頂部控制列 */}
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* 一整列：廠商選擇（靠左）＋ 期間 ＋ 匯出 ＋ 費率設定（靠右）
+              老闆指定併成同一行。期間那組不換行、寬度不夠時自己橫向捲，
+              才不會把右邊的匯出與費率設定擠掉 */}
+          <div className="flex flex-wrap items-center gap-2">
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
@@ -292,6 +292,36 @@ export default function SettlementPage() {
               </SelectField>
             </div>
 
+            {/* 期間按鈕
+                小螢幕（< lg）：整條佔滿一行往下折，寬度不夠時自己橫向捲；
+                大螢幕：跟廠商選擇、匯出擠同一行。
+                按鈕本身 shrink-0 + 文字不換行 —— 不然窄的時候「2026年08月」會被壓成兩行 */}
+            {/*
+              期間 bar。對齊靠內層的 `w-max ml-auto`，不要在捲動容器上寫 justify-end ——
+              那樣塞不下時內容是往「左邊」溢出的，捲軸捲不回去，
+              排在最前面的當月（進行中）就永遠看不到，老闆截圖到的正是這個。
+              換成 auto margin：塞得下照樣靠右貼著匯出鈕，塞不下時 auto 自動歸零變靠左，
+              scrollLeft = 0 第一眼就是當月，其餘往右捲。
+            */}
+            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 overflow-x-auto scrollbar-hide min-w-0">
+              <div className="flex gap-1.5 items-center w-max ml-auto">
+                {periods.map((p, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedPeriodIdx(i)}
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      selectedPeriodIdx === i
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    {p.label}
+                    {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 匯出 + 費率設定 */}
             <div className="flex items-center gap-2">
               <button
@@ -302,7 +332,7 @@ export default function SettlementPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                匯出 Excel
+                匯出 CSV
               </button>
 
               {/* 費率設定浮動：分潤比、代扣稅率、估算費率都是平台端的商業參數，
@@ -330,53 +360,68 @@ export default function SettlementPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-neutral-200 rounded-xl shadow-lg p-4 min-w-[260px]">
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
-                      {/* 綠界手續費：有實際資料時顯示分攤後實際值 */}
+                      {/*
+                        綠界手續費永遠是這一格可填的估算比例，不隨月份切換變成唯讀金額。
+                        原本有實際扣款的月份會換成「NT$ x 實際分攤」，切個月份設定欄位就長不一樣，
+                        看起來像設定被改掉了 —— 這裡是「設定」，本來就該長期固定；
+                        某個月有沒有採用它，寫在驚嘆號裡講就好。
+                      */}
                       <div className="flex items-center justify-between gap-3">
-                        <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
-                        {data?.hasActualFee ? (
-                          <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
-                              onChange={e => setEcpayRate(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
-                            <span className="text-sm text-neutral-500">% 估算</span>
-                          </div>
-                        )}
+                        <FeeLabel
+                          text="綠界手續費"
+                          tip={
+                            '玩家儲值時被金流公司抽走的錢。\n' +
+                            '這裡填的是估算比例，只有在該月份沒有綠界實際扣款紀錄時才會拿來算。\n' +
+                            '有實際紀錄的月份，結算一律照綠界真的扣走的金額分攤，不受這格影響。'
+                          }
+                        />
+                        {/* 「估算」放輸入框左邊：先讀到這是估的，再看數字（老闆指定） */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-sm text-neutral-500">估算</span>
+                          <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
+                          <span className="text-sm text-neutral-500">%</span>
+                        </div>
                       </div>
                       {[
-                        { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 1, max: 99 },
-                        { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
+                        // 上限 100：自家廠商（吉吉比）可能整筆都算自己的，不該被 99 卡住
+                        {
+                          label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 0, max: 100,
+                          tip: '扣掉手續費、稅金、折價券與運費分攤之後，剩下的錢有多少比例要付給廠商。\n填 70 就是廠商拿七成、平台留三成。自家廠商可以填到 100。',
+                        },
+                        {
+                          label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30,
+                          tip: '廠商是個人或工作室、沒有公司統編時，錢不能整筆匯出去，\n平台要先幫他把稅扣下來、之後代為繳給國稅局。\n有統編、開發票請款的廠商填 0。',
+                        },
                       ].map(f => (
                         <div key={f.label} className="flex items-center justify-between gap-3">
-                          <label className="text-sm text-neutral-600 whitespace-nowrap">{f.label}</label>
-                          <div className="flex items-center gap-1">
-                            <input type="number" value={f.value} min={f.min} max={f.max}
-                              onChange={e => f.setter(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                          <FeeLabel text={f.label} tip={f.tip} />
+                          <div className="flex items-center gap-1 shrink-0">
+                            <NumberField value={f.value} onChange={f.setter} min={f.min} max={f.max} className="w-16" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>
                       ))}
-                      <div className="flex items-start justify-between gap-3 pt-2 border-t border-neutral-100">
-                        <div>
-                          <label className="text-sm text-neutral-600 whitespace-nowrap">積分扣除模式</label>
-                          <p className="text-xs text-neutral-400 mt-0.5">
-                            {pointsMode === 'A' ? '廠商獲補償 50%（共 ' + pointsTotal.toLocaleString() + ' G）' : '平台全吸收，不計入結算'}
-                          </p>
-                        </div>
+                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-neutral-100">
+                        <FeeLabel
+                          text="積分扣除模式"
+                          tip={
+                            '玩家用積分折抵掉的那部分，這筆損失要不要算進結算。\n' +
+                            `計入：平台補一半給廠商（這期共 ${pointsTotal.toLocaleString()} G）。\n` +
+                            '不計：平台自己全部吸收，結算完全不算這筆。'
+                          }
+                        />
                         <div className="flex rounded-lg border border-neutral-200 overflow-hidden text-xs font-medium shrink-0">
                           <button
                             onClick={() => setPointsMode('A')}
                             className={`px-3 py-1.5 transition-colors ${pointsMode === 'A' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
                           >
-                            A 計入
+                            計入
                           </button>
                           <button
                             onClick={() => setPointsMode('B')}
                             className={`px-3 py-1.5 transition-colors border-l border-neutral-200 ${pointsMode === 'B' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
                           >
-                            B 不計
+                            不計
                           </button>
                         </div>
                       </div>
@@ -385,25 +430,6 @@ export default function SettlementPage() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* 期間按鈕 */}
-          <div className="flex gap-1.5 flex-wrap justify-end">
-            {periods.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedPeriodIdx(i)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  selectedPeriodIdx === i
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
-                }`}
-              >
-                {p.label}
-                {p.isCurrent && <span className="ml-1 text-xs opacity-75">進行中</span>}
-                {p.isClosed && !p.isCurrent && <span className="ml-1 text-xs opacity-60">✓</span>}
-              </button>
-            ))}
           </div>
         </div>
 

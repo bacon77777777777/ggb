@@ -7,7 +7,6 @@ import DateRangePicker from '@/components/DateRangePicker'
 import SelectField from '@/components/ui/SelectField'
 import { StatCard, GrowthTag, InfoIcon } from '@/components/analytics/StatCard'
 import { RankingList } from '@/components/analytics/RankingList'
-import { useAdmin } from '@/contexts/AdminContext'
 
 /*
  * 廠商分析
@@ -64,13 +63,12 @@ const mondayOf = (d: Date) => { const x = new Date(d); const w = (x.getDay() + 6
 const sundayOf = (d: Date) => { const x = mondayOf(d); x.setDate(x.getDate() + 6); return x }
 
 export default function SupplierAnalyticsPage() {
-  const { user } = useAdmin()
-  const isSupplier = user?.role === 'supplier'
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierId, setSupplierId] = useState('')
   const today = useMemo(() => new Date(), [])
-  const [startDate, setStartDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
+  // 預設今日（老闆指定）—— 廠商多半是想看「今天賣得怎樣」，不是月累計
+  const [startDate, setStartDate] = useState(toDS(today))
   const [endDate, setEndDate] = useState(toDS(today))
   const [data, setData] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(false)
@@ -128,19 +126,22 @@ export default function SupplierAnalyticsPage() {
       <div className="space-y-5">
 
         {/* 工具列：廠商下拉擺最左邊（老闆指定），其餘沿用分析頁 */}
+        {/* 不用 flex-wrap：廠商選擇＋四顆期間鈕＋日期選擇器＋刷新在 1500px 會被折成兩行，
+            老闆要一整行。改成不換行，寬度不夠時由日期選擇器讓步 */}
         <div className="flex items-center gap-2">
-          <div className="w-56">
+          {/* 廠商選擇：外觀與交互跟「廠商結算」那頁一致（老闆指定），
+              連 className 都照抄，不要兩頁長不一樣 */}
+          <div className="flex items-center gap-2 mr-auto">
+            <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
             <SelectField
               value={supplierId}
               onChange={e => setSupplierId(e.target.value)}
-              disabled={isSupplier || suppliers.length <= 1}
+              className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px]"
             >
-              {suppliers.length === 0 && <option value="">載入中…</option>}
               {suppliers.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+              {suppliers.length === 0 && <option value="">載入中…</option>}
             </SelectField>
           </div>
-
-          <div className="flex-1" />
 
           {PRESETS.map(p => (
             <button key={p.label}
@@ -154,6 +155,7 @@ export default function SupplierAnalyticsPage() {
               {p.label}
             </button>
           ))}
+          <div className="min-w-0 shrink">
           <DateRangePicker
             startDate={startDate}
             endDate={endDate}
@@ -161,6 +163,7 @@ export default function SupplierAnalyticsPage() {
             onEndDateChange={setEndDate}
             placeholder="自訂日期"
           />
+          </div>
           <button
             onClick={fetchData}
             className="h-9 w-9 flex items-center justify-center border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
@@ -182,7 +185,7 @@ export default function SupplierAnalyticsPage() {
             <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="銷售額" loading={loading} skeletonWidth="w-32"
-                titleExtra={<InfoIcon text={'本區間這家廠商所有商品的抽獎消費總額（1G = NT$1）。\n已排除機器人帳號。\n期間同比＝與前一個等長區間相比；日同比＝今日與昨日相比。'} />}
+                titleExtra={<InfoIcon text={'這段期間，玩家在這家廠商所有商品上花掉的金額（1G = 1 元）。\n已扣掉機器人帳號。\n期間同比＝跟前一段同樣長度的期間相比；日同比＝今天跟昨天相比。'} />}
                 value={`${(c?.totalSales ?? 0).toLocaleString()} G幣`}
                 mid={g && <>
                   <GrowthTag value={g.sales} label="期間同比" />
@@ -193,7 +196,7 @@ export default function SupplierAnalyticsPage() {
 
               <StatCard
                 title="消費筆數" loading={loading} skeletonWidth="w-16"
-                titleExtra={<InfoIcon text={'本區間這家廠商商品的抽獎次數，一抽算一筆。\n已排除機器人帳號。\n藍柱是各時段的筆數分布。'} />}
+                titleExtra={<InfoIcon text={'這段期間，玩家抽這家廠商商品的次數，抽一次算一筆。\n已扣掉機器人帳號。\n藍色柱子是各時段的筆數分布。'} />}
                 value={(c?.totalDraws ?? 0).toLocaleString()}
                 mid={!loading && spark.some(s => s.draws > 0) ? (
                   <TinyColumn data={spark} xField="x" yField="draws"
@@ -207,7 +210,7 @@ export default function SupplierAnalyticsPage() {
 
               <StatCard
                 title="銷售走勢" loading={loading} skeletonWidth="w-24"
-                titleExtra={<InfoIcon text={'大數字是平均客單＝銷售額 ÷ 消費筆數，代表每抽平均花多少。\n紫色面積圖是本區間各時段的銷售額走勢。'} />}
+                titleExtra={<InfoIcon text={'大數字是平均客單＝銷售額 ÷ 消費筆數，也就是玩家平均抽一次花多少。\n紫色曲線是這段期間各時段的銷售額起伏。'} />}
                 value={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
                 mid={!loading && spark.some(s => s.sales > 0) ? (
                   <TinyArea data={spark} xField="x" yField="sales"
@@ -223,7 +226,7 @@ export default function SupplierAnalyticsPage() {
                   分子分母原本用小灰字寫在卡片中段，老闆指定改成標題旁的藍色驚嘆號 */}
               <StatCard
                 title="銷售成數" loading={loading} skeletonWidth="w-16"
-                titleExtra={<InfoIcon text={`本期售出 ${(c?.periodSold ?? 0).toLocaleString()} / 總備貨 ${(c?.prizeTotal ?? 0).toLocaleString()}\n本區間抽掉的份數 ÷ 總備貨量，一抽出一份。\n會跟著上方日期區間變動。`} />}
+                titleExtra={<InfoIcon text={`這段期間抽掉 ${(c?.periodSold ?? 0).toLocaleString()} 份 / 總備貨 ${(c?.prizeTotal ?? 0).toLocaleString()} 份\n成數＝抽掉的份數 ÷ 總備貨量（抽一次出一份）。\n會跟著上方選的日期期間變動。`} />}
                 value={`${(c?.sellThrough ?? 0).toLocaleString()}%`}
                 mid={g && <GrowthTag value={g.sellThrough} label="期間同比" />}
                 footerLabel="累計售出"
@@ -234,10 +237,10 @@ export default function SupplierAnalyticsPage() {
             {/* ── 銷售走勢 + 類別佔比 ────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-6">
               <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
-                <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
-                  銷售走勢
-                  <InfoIcon text={'本區間各時段的銷售額。\n沒有資料的時段照樣列出、值為 0，才看得出哪幾天是零。\n刻度：今日看小時、1–7 天看日、8–90 天看週、超過 90 天看月。'} />
+                  <span className="flex-1 min-w-0 truncate">銷售走勢</span>
+                  <InfoIcon text={'這段期間各時段的銷售額。\n沒有成交的時段一樣會列出來、顯示 0，才看得出哪幾天是掛零的。\n橫軸：選今日看每小時、一週內看每天、三個月內看每週、更長看每月。'} />
                 </div>
                 <div className="p-6">
                   {hasData ? (
@@ -251,10 +254,10 @@ export default function SupplierAnalyticsPage() {
               </div>
 
               <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
-                <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
-                  銷售類別佔比
-                  <InfoIcon text={'本區間各商品類型的銷售額佔比（一番賞／盒玩／轉蛋／抽卡／自製賞）。\n只含這家廠商的商品。'} />
+                  <span className="flex-1 min-w-0 truncate">銷售類別佔比</span>
+                  <InfoIcon text={'這段期間各類型商品的銷售額佔比（一番賞／盒玩／轉蛋／抽卡／自製賞）。\n只計算這家廠商的商品。'} />
                 </div>
                 <div className="p-6">
                   {hasData && c!.categories.length > 0 ? (
@@ -275,19 +278,19 @@ export default function SupplierAnalyticsPage() {
               <RankingList
                 title="商品搜尋排行 TOP 15"
                 limit={15}
-                extra={<InfoIcon text={'玩家搜尋的關鍵字對到這家廠商商品名稱的次數（打字停頓與按下送出都算）。\n⚠️ 搜尋事件只有關鍵字、沒有商品 id，這裡是拿關鍵字比對商品名稱的近似歸因，\n一個關鍵字會同時命中同系列的多件商品。\n百分比為與前一個等長區間相比。'} />}
+                extra={<InfoIcon text={'玩家在搜尋框打的字，對到這家廠商商品名稱的次數。\n⚠️ 系統只記得玩家打了什麼字，沒有記到他想找哪一件，\n所以這裡是拿關鍵字去比對商品名稱，屬於推估。\n搜「星之卡比」會同時算進同系列的每一件商品。\n百分比是跟前一段同樣長度的期間相比。'} />}
                 data={(c?.topSearched ?? []).map(x => ({ name: x.name, value: x.value, change: x.growth }))}
               />
               <RankingList
                 title="商品瀏覽排行 TOP 15"
                 limit={15}
-                extra={<InfoIcon text={'進入商品頁的次數（前台 product_view 事件）。\n同一個人重複進入會重複計算。\n百分比為與前一個等長區間相比的成長率。'} />}
+                extra={<InfoIcon text={'玩家點進商品頁的次數。\n同一個人重複進去會重複計算。\n百分比是跟前一段同樣長度的期間相比的成長率。'} />}
                 data={(c?.topViewed ?? []).map(x => ({ name: x.name, value: x.value, change: x.growth }))}
               />
               <RankingList
                 title="商品銷售排行 TOP 15"
                 limit={15}
-                extra={<InfoIcon text={'依本區間銷售額由高到低排序。\n數字是銷售額（G幣），百分比為與前一個等長區間相比的成長率。\n不足 15 名以「-」補滿。'} />}
+                extra={<InfoIcon text={'依這段期間的銷售額由高到低排。\n數字是銷售額（G幣），百分比是跟前一段同樣長度的期間相比的成長率。\n不到 15 名的用「-」補滿。'} />}
                 data={(c?.topProducts ?? []).map(p => ({ name: p.name, value: p.sales, change: p.growth }))}
               />
             </div>
