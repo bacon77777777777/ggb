@@ -17,6 +17,20 @@ export async function GET(request: NextRequest) {
     : searchParams.get('supplierId')
   const productType = searchParams.get('type')
 
+  /*
+   * 廠商帳號只能看結算，其他分頁一律 403。
+   *
+   * middleware 為了結算頁把整個 /api/admin/reports 放行給廠商，但這支
+   * route 底下還有 overview／behavior／products 等分頁，回的是**全平台**
+   * 數字（總儲值、總消費、總會員、漏斗…）而且完全沒有依 supplier 限縮 ——
+   * 廠商換個 tab 參數就全看到了，比從結算頁反推平台營收還直接。
+   *
+   * 白名單只能管到路徑，管不到 query，所以這一層要在 route 自己擋。
+   */
+  if (scope.isSupplier && tab !== 'settlement') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = getSupabaseAdmin()
 
   // 取得機器人 user_id，所有財務/行為數據查詢排除機器人
@@ -359,12 +373,33 @@ export async function GET(request: NextRequest) {
       const rechargeTotal = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
       const rechargeCount = successRecharges.length
 
-      // 實際藍新手續費 → 按消費佔比分攤給廠商
+      /*
+       * 綠界手續費：算「這家廠商自己的消費 × 有效費率」，不再用平台總額分攤。
+       *
+       * 舊算法是 `平台實際總手續費 × 消費佔比`。數字沒錯，但那張對帳單要能被
+       * 廠商驗算，就得同時把「平台總手續費」與「消費佔比」印上去 ——
+       * 廠商拿自己的消費 G 除以佔比，就反推出全平台營收。
+       *
+       * 改成乘上一個「率」之後，攤在對帳單上的只剩費率本身（≈2.75%，
+       * 綠界公開牌價，沒有敏感性），廠商用自己的數字就能算完整條，
+       * 而平台的量體一個都不用露。
+       *
+       * 有效費率取自實際帳：平台實付手續費 ÷ 平台儲值總額，
+       * 這樣仍然反映真實的混合費率（信用卡／ATM／超商比重不同會浮動），
+       * 只是不再需要知道分子分母各是多少。撈不到實際資料時回 null，
+       * 由前端用手動設定的估算費率。
+       *
+       * 差額（儲值與消費不同期造成的）由平台吸收 —— 手續費本來就是
+       * 平台與綠界之間的事，廠商不該為別人的儲值時點負責。
+       */
       const rechargesWithFee = successRecharges.filter(r => r.payment_fee != null)
       const platformTotalFee = rechargesWithFee.reduce((s, r) => s + (r.payment_fee || 0), 0)
-      const hasActualFee = rechargesWithFee.length > 0
-      const allocatedActualFee = hasActualFee
-        ? Math.round(platformTotalFee * consumptionShare)
+      const feeBaseAmount = rechargesWithFee.reduce((s, r) => s + (r.amount || 0), 0)
+      const hasActualFee = rechargesWithFee.length > 0 && feeBaseAmount > 0
+      const effectiveFeeRate = hasActualFee ? platformTotalFee / feeBaseAmount : null
+      // 1G = NT$1，所以廠商消費 G 直接當台幣基數
+      const allocatedActualFee = effectiveFeeRate != null
+        ? Math.round(totalG * effectiveFeeRate)
         : null
 
       // 分解退代幣（廠商須吸收，從結算中扣除）
@@ -391,21 +426,36 @@ export async function GET(request: NextRequest) {
         // column not yet added; return 0
       }
 
-      return NextResponse.json({
+      /*
+       * 平台級數字一律不回給廠商帳號。
+       *
+       * 只在畫面上隱藏是不夠的 —— 這些值原本就躺在 API 回應裡，
+       * 開 DevTools 看 response 就有。尤其 `totalPlatformG` 就是
+       * 全平台同期抽獎營收本身，等於直接送出去。
+       *
+       * `effectiveFeeRate` 可以給：那是一個率、不含量體。
+       */
+      const body = {
         supplierName: (supplierRes.data as any)?.name ?? '',
         products,
         totalG,
-        totalPlatformG,
-        consumptionShare,
-        rechargeTotal,
-        rechargeCount,
         hasActualFee,
+        effectiveFeeRate,
         allocatedActualFee,
-        platformTotalFee: hasActualFee ? platformTotalFee : null,
         dismantleTotal,
         couponTotal,
         shippingTotal,
         pointsTotal,
+      }
+      if (scope.isSupplier) return NextResponse.json(body)
+
+      return NextResponse.json({
+        ...body,
+        totalPlatformG,
+        consumptionShare,
+        rechargeTotal,
+        rechargeCount,
+        platformTotalFee: hasActualFee ? platformTotalFee : null,
       })
     }
 

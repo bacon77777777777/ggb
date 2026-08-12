@@ -44,10 +44,17 @@ async function calcSupplierSettlement(supabase: any, supplierId: number, start: 
   const successRecharges   = recharges.filter(r => r.status === 'success')
   const rechargeTotal      = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
   const rechargeCount      = successRecharges.length
+  /*
+   * 手續費算「本廠商消費 × 有效費率」，跟 /api/admin/reports 的結算頁同一套。
+   * 兩邊算法要一致，否則月結快照跟畫面上看到的金額會對不起來。
+   * 不用平台總額分攤的理由見 reports/route.ts 的註解（會讓廠商反推平台營收）。
+   */
   const rechargesWithFee   = successRecharges.filter(r => r.payment_fee != null)
   const platformTotalFee   = rechargesWithFee.reduce((s, r) => s + (r.payment_fee || 0), 0)
-  const hasActualFee       = rechargesWithFee.length > 0
-  const allocatedActualFee = hasActualFee ? Math.round(platformTotalFee * consumptionShare) : null
+  const feeBaseAmount      = rechargesWithFee.reduce((s, r) => s + (r.amount || 0), 0)
+  const hasActualFee       = rechargesWithFee.length > 0 && feeBaseAmount > 0
+  const effectiveFeeRate   = hasActualFee ? platformTotalFee / feeBaseAmount : null
+  const allocatedActualFee = effectiveFeeRate != null ? Math.round(totalG * effectiveFeeRate) : null
   const ecpayFee           = allocatedActualFee ?? Math.round(totalG * (ECPAY_RATE / 100))
 
   const dismantleTotal  = (recycleRes.data ?? [])
