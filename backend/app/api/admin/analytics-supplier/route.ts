@@ -49,9 +49,15 @@ export async function GET(req: NextRequest) {
   const dur = curEnd.getTime() - curStart.getTime()
   const prevStart = new Date(curStart.getTime() - dur)
 
+  /*
+   * 分桶模式與分析頁 (`/api/admin/analytics-overview`) 完全一致，
+   * 兩頁選同一個區間才會畫出同樣的刻度。
+   */
   const days = dur / 86400000
-  const isHourly = days <= 1
-  const isMonthly = days > 90
+  const isHourly = days <= 1                                   // 今日：0–23 時
+  const isShortRange = !isHourly && days <= 7                   // 本週：逐日
+  const isMonthly = days > 90                                   // 本年：逐月
+  const isWeekly = !isHourly && !isShortRange && !isMonthly     // 8–90 天：逐週（週一）
 
   // 今日／昨日：KPI 卡的「日同比」與「日銷售額」用
   const ts = twDate(y, mo, d), te = twDate(y, mo, d + 1)
@@ -99,24 +105,68 @@ export async function GET(req: NextRequest) {
     const totalDraws = draws.length
     const prevSales = prevDraws.reduce((s, r) => s + amountOf(r), 0)
 
-    // 走勢：跟分析頁同一套分桶規則（今日看小時、超過 90 天看月、其餘看日）
-    const keyOf = (iso: string) => {
-      const t = new Date(new Date(iso).getTime() + TW)
-      if (isHourly) return String(t.getUTCHours())
-      if (isMonthly) return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}`
-      return `${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
+    // 走勢分桶：key 的算法與分析頁一字不差
+    const dtKey = (createdAt: string) => {
+      const dt = new Date(new Date(createdAt).getTime() + TW)
+      if (isHourly) return `${dt.toISOString().split('T')[0]} ${String(dt.getUTCHours()).padStart(2, '0')}`
+      if (isMonthly) return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+      if (isWeekly) {
+        const day = dt.getUTCDay()
+        const daysBack = day === 0 ? 6 : day - 1
+        return new Date(dt.getTime() - daysBack * 86400_000).toISOString().split('T')[0]
+      }
+      return dt.toISOString().split('T')[0]
     }
     const barMap: Record<string, { sales: number; draws: number }> = {}
     draws.forEach(r => {
-      const k = keyOf(r.created_at)
+      const k = dtKey(r.created_at)
       if (!barMap[k]) barMap[k] = { sales: 0, draws: 0 }
       barMap[k].sales += amountOf(r)
       barMap[k].draws++
     })
-    const bars = Object.entries(barMap)
-      .map(([label, v]) => ({ label, ...v }))
-      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
-    // 迷你圖只取最後 14 段，跟分析頁一樣
+
+    /*
+     * **走完整個區間把每一格都排出來，沒資料的補 0**（老闆指定）。
+     * 只用有紀錄的 key 去組，中間空檔會整格消失 —— 例如本週只有兩天有單，
+     * 圖上就只剩兩根柱子、看不出其他五天是零。
+     */
+    const barsWithKey: { key: string; label: string; sales: number; draws: number }[] = []
+    const push = (key: string, label: string) =>
+      barsWithKey.push({ key, label, sales: barMap[key]?.sales ?? 0, draws: barMap[key]?.draws ?? 0 })
+
+    if (isHourly) {
+      for (let h = 0; h <= 23; h++) push(`${startStr} ${String(h).padStart(2, '0')}`, String(h))
+    } else if (isMonthly) {
+      const cur = new Date(curStart)
+      while (cur < curEnd) {
+        const dt = new Date(cur.getTime() + TW)
+        const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+        const label = `${dt.getUTCMonth() + 1}月`
+        if (!barsWithKey.find(b => b.label === label)) push(key, label)
+        cur.setDate(cur.getDate() + 28)
+      }
+    } else if (isWeekly) {
+      const startDt = new Date(curStart.getTime() + TW)
+      const sDay = startDt.getUTCDay()
+      const firstMon = new Date(curStart.getTime() - (sDay === 0 ? 6 : sDay - 1) * 86400_000)
+      const cur = new Date(firstMon)
+      while (cur < curEnd) {
+        const dt = new Date(cur.getTime() + TW)
+        const key = dt.toISOString().split('T')[0]
+        push(key, `${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`)
+        cur.setUTCDate(cur.getUTCDate() + 7)
+      }
+    } else {
+      const cur = new Date(curStart)
+      while (cur < curEnd) {
+        const dt = new Date(cur.getTime() + TW)
+        const key = dt.toISOString().split('T')[0]
+        push(key, `${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`)
+        cur.setDate(cur.getDate() + 1)
+      }
+    }
+    const bars = barsWithKey.map(({ key: _k, ...rest }) => rest)
+    // 迷你圖：今日給滿 24 點，其餘取最後 14 段（同分析頁）
     const spark = (isHourly ? bars : bars.slice(-14)).map((b, i) => ({ x: i, date: b.label, sales: b.sales, draws: b.draws }))
 
     // 類別佔比（只含這家廠商的商品類型）
