@@ -164,6 +164,7 @@ export default function SettlementPage() {
 
   // 結算基底：廠商商品消費 G（1G = NT$1）
   const totalTWD = data?.totalG ?? 0
+  const totalDrawCount = data?.products.reduce((s, p) => s + p.drawCount, 0) ?? 0
   const dismantleTotal = Math.round(data?.dismantleTotal ?? 0)
   const couponTotal = Math.round(data?.couponTotal ?? 0)
   const shippingTotal = Math.round(data?.shippingTotal ?? 0)
@@ -213,7 +214,6 @@ export default function SettlementPage() {
     if (!data || !period) return
     const XLSX = await import('xlsx')
 
-    const drawCount = data.products.reduce((s, p) => s + p.drawCount, 0)
     const feeLabel = effectiveRatePercent ? `綠界手續費(實際費率${effectiveRatePercent}%)` : `綠界手續費(估算${ecpayRate}%)`
 
     // 頁籤 1：橫式，欄名一列、數值一列
@@ -221,7 +221,7 @@ export default function SettlementPage() {
       廠商: data.supplierName,
       結算期間: `${period.startDate} ~ ${period.endDate}`,
       結算日: period.settlementDate,
-      抽獎次數: drawCount,
+      抽獎次數: totalDrawCount,
       '消費代幣(G)': totalTWD,
       '消費金額(TWD)': totalTWD,
       [feeLabel]: -ecpayFee,
@@ -468,7 +468,18 @@ export default function SettlementPage() {
               </div>
 
               {/* ① 消費基底 */}
-              <Row label={<><span className="font-semibold text-neutral-800">廠商商品消費</span><span className="text-xs text-neutral-400 ml-1.5">{data?.products.reduce((s,p)=>s+p.drawCount,0) ?? 0} 次・1G = NT$1</span></>} value={fmt(totalTWD)} bold />
+              {/* 次數與換算率改掛在驚嘆號裡（老闆指定）：這兩個是「怎麼算出來的」的
+                  註解，不是結算項目本身，攤在標題旁邊會跟下面幾列的說明文字打架 */}
+              <Row
+                label={
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-neutral-800">廠商商品消費</span>
+                    <InfoTooltip text={`總次數 ${totalDrawCount.toLocaleString()} 次\n1G = NT$1`} />
+                  </div>
+                }
+                value={fmt(totalTWD)}
+                bold
+              />
               <Row label={<><span className="text-neutral-600">綠界手續費</span><span className="text-xs text-neutral-400 ml-1.5">{effectiveRatePercent ? `實際費率 ${effectiveRatePercent}%` : `估算 ${ecpayRate}%`}</span></>} value={`−${fmt(ecpayFee)}`} red indent />
               <div className="border-t border-neutral-200 my-0.5" />
               <Row label={<span className="font-semibold text-neutral-800">淨收入</span>} value={fmt(netRevenue)} bold />
