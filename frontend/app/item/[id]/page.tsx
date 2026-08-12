@@ -65,9 +65,19 @@ import GradeBadge from '@/components/ui/GradeBadge';
  */
 const FAIR_ENGINE_TYPES = ['ichiban', 'card', 'custom'];
 
+/**
+ * 卡包外觀的款數。素材在 `public/images/card/pack/`，
+ * 每款兩張：`NNa.webp` 正面、`NNb.webp` 背面。
+ *
+ * 加新款時：圖丟進那個資料夾（沿用 519×758、轉 WebP），然後把這個數字加一。
+ * 之前這個 5 是直接寫在 Math.random() 裡的，加圖的人很容易漏改，
+ * 結果新款躺在資料夾裡永遠抽不到。
+ */
+const PACK_STYLE_COUNT = 6;
+
 function getRandomPackStyles(): string[] {
   return Array.from({ length: 9 }, () =>
-    String(Math.floor(Math.random() * 5) + 1).padStart(2, '0')
+    String(Math.floor(Math.random() * PACK_STYLE_COUNT) + 1).padStart(2, '0')
   );
 }
 
@@ -344,8 +354,8 @@ const PackSelectionCarousel = forwardRef<PackSelectionCarouselHandle, PackSelect
               >
                 <div className="relative">
                   <ProductPackViewer3D
-                    packImage={`/images/card/pack/${packStyles[index] ?? '01'}a.png`}
-                    backImage={`/images/card/pack/${packStyles[index] ?? '01'}b.png`}
+                    packImage={`/images/card/pack/${packStyles[index] ?? '01'}a.webp`}
+                    backImage={`/images/card/pack/${packStyles[index] ?? '01'}b.webp`}
                     interactive={isActive}
                     showSSRGlare={false}
                   />
@@ -1813,7 +1823,7 @@ export default function ProductDetailPage() {
               <CardDrawAnimation
                 isOpen={isVideoOpen}
                 prizes={wonPrizes}
-                packImage={`/images/card/pack/${activePackStyle}a.png`}
+                packImage={`/images/card/pack/${activePackStyle}a.webp`}
                 onGoToWarehouse={handleVideoEnd}
                 onContinue={handleCardContinue}
               />
