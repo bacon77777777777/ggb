@@ -29,11 +29,13 @@ const TEMPLATE_BG = '/images/bg.webp';
 const NEW_ARRIVAL_BG = '/images/new_item.png';
 
 /**
- * 外框裡那塊白板的位置，用 sharp 量原圖（922×1371）得到：
- * 白色不透明區域最長的連續區段落在 y 382~1366、x 66~859。
- * 內容再往內縮一點，不要壓到圓角。
+ * 外框裡那塊白板的內容區。
+ *
+ * 2026-08-12 換圖：新的外框是 800×1189（與公告模板 bg.webp 同尺寸），
+ * 白板幾乎滿版 —— sharp 量原圖得 top 28.01% / bottom 0.25% / 左右各約 0.25%。
+ * 這裡再往內縮出留白：上緣避開粉紅漸層、左右不要貼著圓角。
  */
-const PANEL = { top: '30.5%', bottom: '3.5%', left: '11%', right: '10.5%' };
+const PANEL = { top: '30.5%', bottom: '3%', left: '6%', right: '6%' };
 
 /** 商品頁網址：與 ProductCard 同一套規則，不要兩邊各寫一份 */
 const productHref = (p: NewArrivalProduct) =>
@@ -143,7 +145,8 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
           >
             {/* 最新上架：外框已經畫好標題與狗狗，中間白板放商品格 */}
             {isNewArrival ? (
-              <div className="relative w-full" style={{ aspectRatio: '922 / 1371' }}>
+              /* 比例綁死 800/1189（與公告模板同尺寸），下面 PANEL 的百分比才對得上 */
+              <div className="relative w-full" style={{ aspectRatio: '800 / 1189' }}>
                 <Image
                   src={NEW_ARRIVAL_BG}
                   alt=""
@@ -153,9 +156,10 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   unoptimized
                 />
                 <div className="absolute flex flex-col" style={PANEL}>
-                  {/* 條列式：小圖 ＋ 類別膠囊 ＋ 名稱／價格，版型比照「恭喜獲得」彈窗（老闆指定）。
-                      白板放得下六列，超過就自己捲 */}
-                  <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto pr-0.5">
+                  {/* 條列式：小圖 ＋ 類別膠囊 ＋ 名稱／價格。
+                      每列不再有自己的卡片外框（老闆指定移除），改用淡分隔線隔開 ——
+                      白板本身就是白的，再套一層淺灰卡片只是把版面切得更碎 */}
+                  <div className="flex-1 min-h-0 divide-y divide-neutral-100 overflow-y-auto">
                     {(promo.products ?? []).map(p => {
                       const cat = categoryFlagKey(p.type)
                       return (
@@ -163,16 +167,20 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                           key={p.id}
                           href={productHref(p)}
                           onClick={go(productHref(p))}
-                          className="flex w-full items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50/90 p-1.5 text-left transition-transform active:scale-[0.99]"
+                          className="flex w-full items-center gap-2.5 py-2 text-left transition-transform active:scale-[0.99]"
                         >
                           {/* object-contain 不裁切：商品主圖直式橫式都有，cover 會把海報標題切掉 */}
-                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white">
+                          {/* 不加白底：外框上緣是粉紅漸層，白色方塊會浮出來
+                              （容器已經照老闆指定拿掉了，縮圖也不該自己帶一塊底） */}
+                          <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg">
                             {p.image_url
                               ? <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
                               : <span className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">無圖</span>}
                           </span>
+                          {/* 膠囊固定寬度：兩字（抽卡）與三字（自製賞）才會等寬，
+                              後面的商品名也才對得齊 */}
                           {cat && (
-                            <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-neutral-200 px-1.5 py-0.5 text-[11px] font-black leading-none text-neutral-600">
+                            <span className="inline-flex w-[46px] shrink-0 items-center justify-center rounded-md bg-neutral-100 py-1 text-[11px] font-black leading-none text-neutral-500">
                               {CATEGORY_LABELS[cat]}
                             </span>
                           )}
