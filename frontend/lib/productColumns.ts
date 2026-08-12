@@ -24,6 +24,12 @@
  * 型別檔不等於資料表，要對 information_schema 驗。
  */
 
-export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, machine_theme, box_image_url, created_at'
+/*
+ * `sealed_at` 一定要留著：商品頁的公平性區塊靠它判斷「這一檔封存了沒」
+ * （`isSealed`）。少了它，`txid_hash` 明明有值也會被當成沒封存，
+ * 驗證碼欄位顯示「這一檔沒有封存對照表」，但點進 /fairness/[id]
+ * （走 get_ticket_seal RPC）又看得到那串碼 —— 兩邊說法不一致。
+ */
+export const PRODUCT_PUBLIC_COLUMNS = 'id, product_code, name, description, image_url, category, type, status, price, total_count, remaining, remaining_count, is_hot, txid_hash, sealed_at, is_preorder, preorder_available_at, distributor, series, barcode, supplier_id, machine_theme, box_image_url, created_at'
 
 export const PRIZE_PUBLIC_COLUMNS = 'id, product_id, level, name, image_url, total, remaining, probability, created_at'

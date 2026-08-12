@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useMotionValue, useTransform, animate } from '
 import Image from 'next/image';
 import type { Prize } from '@/components/GachaMachine';
 import BoosterPackOpenEffect from './BoosterPackOpenEffect';
+import SoundToggle from '@/components/ui/SoundToggle';
 
 type CardDrawAnimationProps = {
   isOpen: boolean;
@@ -238,6 +239,9 @@ export default function CardDrawAnimation({
 
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex flex-col items-center justify-center overflow-hidden">
+      {/* 掛在最外層而不是各 phase 裡面：開卡包與滑卡是兩個會互相切換的區塊，
+          放進去會跟著 AnimatePresence 一起淡出淡入，位置也會被裡層的 transform 帶跑 */}
+      <SoundToggle className="absolute top-4 right-4 z-[1300]" />
       <AnimatePresence mode="wait">
         {/* ── Phase 1: Pack opening ── */}
         {phase === 'pack' && (

@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
+import SoundToggle from '@/components/ui/SoundToggle';
+import { isSoundMuted } from '@/lib/soundPrefs';
 
 const ITEM_DEFAULT_IMG = '/images/item_defaulet.webp';
 
@@ -109,6 +111,8 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
   }, []);
 
   const playTearSound = useCallback(() => {
+    // 這兩個音效是 new Audio()，不經過 lib/sfx，得自己看全站靜音偏好
+    if (isSoundMuted()) return;
     const audio = tearSoundRef.current;
     if (!audio) return;
     audio.currentTime = 0;
@@ -189,6 +193,7 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
   useEffect(() => {
     if (!showLastOneCelebration && !showAPrizePopup) return;
+    if (isSoundMuted()) return;
     const audio = resultSoundRef.current;
     if (!audio) return;
     audio.currentTime = 0;
@@ -1179,6 +1184,10 @@ export function TicketSelectionFlow({ trial = false, isModal = false, onClose, o
 
     return (
       <div className="fixed inset-0 z-[2000] bg-neutral-900 flex flex-col items-center justify-center p-3 pb-safe overflow-hidden pt-1 md:pt-12">
+        {/* 開籤畫面：撕紙聲與中獎音效都在這裡響。z 值壓在中獎彈窗（2500）之下，
+            彈窗跳出來時不會有一顆按鈕浮在上面 */}
+        <SoundToggle className="absolute top-3 right-3 z-[2100]" />
+
         <AnimatePresence>
           {showLastOneCelebration && lastOnePrize && (
             <LastOneCelebrationModal
