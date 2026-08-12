@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import { useAdmin } from '@/contexts/AdminContext'
 import { logExport } from '@/lib/logExport'
+import NumberField from '@/components/ui/NumberField'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -274,7 +275,7 @@ export default function SettlementPage() {
           {/* 一整列：廠商選擇（靠左）＋ 期間 ＋ 匯出 ＋ 費率設定（靠右）
               老闆指定併成同一行。期間那組不換行、寬度不夠時自己橫向捲，
               才不會把右邊的匯出與費率設定擠掉 */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* 廠商選擇 */}
             <div className="flex items-center gap-2 mr-auto">
               <span className="text-sm text-neutral-500 whitespace-nowrap">廠商</span>
@@ -290,13 +291,16 @@ export default function SettlementPage() {
               </SelectField>
             </div>
 
-            {/* 期間按鈕 */}
-            <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0 justify-end flex-1">
+            {/* 期間按鈕
+                小螢幕（< lg）：整條佔滿一行往下折，寬度不夠時自己橫向捲；
+                大螢幕：跟廠商選擇、匯出擠同一行。
+                按鈕本身 shrink-0 + 文字不換行 —— 不然窄的時候「2026年08月」會被壓成兩行 */}
+            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 flex gap-1.5 items-center overflow-x-auto scrollbar-hide min-w-0 justify-end">
               {periods.map((p, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedPeriodIdx(i)}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                     selectedPeriodIdx === i
                       ? 'bg-primary text-white border-primary'
                       : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
@@ -353,23 +357,20 @@ export default function SettlementPage() {
                           <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <input type="number" value={ecpayRate} min={0} max={10} step={0.05}
-                              onChange={e => setEcpayRate(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                            <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
                             <span className="text-sm text-neutral-500">% 估算</span>
                           </div>
                         )}
                       </div>
                       {[
-                        { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 1, max: 99 },
+                        // 上限 100：自家廠商（吉吉比）可能整筆都算自己的，不該被 99 卡住
+                        { label: '廠商分潤比', value: supplierShare, setter: setSupplierShare, unit: '%', min: 0, max: 100 },
                         { label: '代扣稅率', value: withholdingRate, setter: setWithholdingRate, unit: '%', min: 0, max: 30 },
                       ].map(f => (
                         <div key={f.label} className="flex items-center justify-between gap-3">
                           <label className="text-sm text-neutral-600 whitespace-nowrap">{f.label}</label>
                           <div className="flex items-center gap-1">
-                            <input type="number" value={f.value} min={f.min} max={f.max}
-                              onChange={e => f.setter(Number(e.target.value))}
-                              className="w-16 text-sm border border-neutral-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-primary/20" />
+                            <NumberField value={f.value} onChange={f.setter} min={f.min} max={f.max} className="w-16" />
                             <span className="text-sm text-neutral-500">{f.unit}</span>
                           </div>
                         </div>
@@ -386,13 +387,13 @@ export default function SettlementPage() {
                             onClick={() => setPointsMode('A')}
                             className={`px-3 py-1.5 transition-colors ${pointsMode === 'A' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
                           >
-                            A 計入
+                            計入
                           </button>
                           <button
                             onClick={() => setPointsMode('B')}
                             className={`px-3 py-1.5 transition-colors border-l border-neutral-200 ${pointsMode === 'B' ? 'bg-primary text-white' : 'bg-white text-neutral-500 hover:bg-neutral-50'}`}
                           >
-                            B 不計
+                            不計
                           </button>
                         </div>
                       </div>
