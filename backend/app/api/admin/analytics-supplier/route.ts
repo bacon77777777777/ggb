@@ -53,6 +53,10 @@ export async function GET(req: NextRequest) {
   const isHourly = days <= 1
   const isMonthly = days > 90
 
+  // 今日／昨日：KPI 卡的「日同比」與「日銷售額」用
+  const ts = twDate(y, mo, d), te = twDate(y, mo, d + 1)
+  const ys = twDate(y, mo, d - 1), ye = ts
+
   const db = getSupabaseAdmin()
   const { data: bots } = await db.from('users').select('id').eq('is_bot', true)
   const botIds = (bots ?? []).map((r: any) => r.id as string)
@@ -72,18 +76,23 @@ export async function GET(req: NextRequest) {
     if (productIds.length === 0) {
       return NextResponse.json({
         supplierName, empty: true,
-        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, avgPerDraw: 0, bars: [], categories: [], topProducts: [] },
-        growth: { sales: 0, draws: 0 },
+        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, bars: [], spark: [], categories: [], topProducts: [] },
+        growth: { sales: 0, draws: 0, salesToday: 0, drawsToday: 0 },
       })
     }
 
     const drawSel = 'id, created_at, product_id, product:products(name, price, type)'
-    const [cur, prev] = await Promise.all([
-      inR(noBot(db.from('draw_records').select(drawSel).in('product_id', productIds)), curStart, curEnd),
-      inR(noBot(db.from('draw_records').select(drawSel).in('product_id', productIds)), prevStart, curStart),
+    const scoped = () => noBot(db.from('draw_records').select(drawSel).in('product_id', productIds))
+    const [cur, prev, todayRes, yestRes] = await Promise.all([
+      inR(scoped(), curStart, curEnd),
+      inR(scoped(), prevStart, curStart),
+      inR(scoped(), ts, te),
+      inR(scoped(), ys, ye),
     ])
     const draws: any[] = cur.data ?? []
     const prevDraws: any[] = prev.data ?? []
+    const todayDraws: any[] = todayRes.data ?? []
+    const yestDraws: any[] = yestRes.data ?? []
 
     const amountOf = (r: any) => r.product?.price ?? 0
     const totalSales = draws.reduce((s, r) => s + amountOf(r), 0)
@@ -107,6 +116,8 @@ export async function GET(req: NextRequest) {
     const bars = Object.entries(barMap)
       .map(([label, v]) => ({ label, ...v }))
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
+    // 迷你圖只取最後 14 段，跟分析頁一樣
+    const spark = (isHourly ? bars : bars.slice(-14)).map((b, i) => ({ x: i, date: b.label, sales: b.sales, draws: b.draws }))
 
     // 類別佔比（只含這家廠商的商品類型）
     const catMap: Record<string, { count: number; amount: number }> = {}
@@ -150,11 +161,15 @@ export async function GET(req: NextRequest) {
         activeProducts: products.filter(p => p.status === 'active').length,
         totalProducts: products.length,
         avgPerDraw: totalDraws > 0 ? Math.round(totalSales / totalDraws) : 0,
-        bars, categories, topProducts,
+        todaySales: todayDraws.reduce((s, r) => s + amountOf(r), 0),
+        todayDraws: todayDraws.length,
+        bars, spark, categories, topProducts,
       },
       growth: {
         sales: pct(totalSales, prevSales),
         draws: pct(totalDraws, prevDraws.length),
+        salesToday: pct(todayDraws.reduce((s, r) => s + amountOf(r), 0), yestDraws.reduce((s, r) => s + amountOf(r), 0)),
+        drawsToday: pct(todayDraws.length, yestDraws.length),
       },
     })
   } catch (err: any) {

@@ -5,20 +5,31 @@ import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import SelectField from '@/components/ui/SelectField'
+import { StatCard, GrowthTag } from '@/components/analytics/StatCard'
+import { RankingList } from '@/components/analytics/RankingList'
 import { useAdmin } from '@/contexts/AdminContext'
 
 /*
  * 廠商分析
  *
- * 版面照著「分析頁」(`/analytics-overview`) 走，差別是所有數字都只算一家廠商，
- * 而且工具列最左邊多一顆廠商下拉（老闆指定）。
+ * UI 沿用「分析頁」那一套（老闆指定）：AntD Pro 風格的 KPI 卡、迷你圖、
+ * 儀表板的 TOP 15 排行卡、外標籤甜甜圈。卡片與排行卡已抽成
+ * `components/analytics/`，不再各頁抄一份。
  *
- * 沒有做成「分析頁加一個廠商篩選」：那支頁面上有總儲值、訪問量、轉換率、
- * 全站熱門搜尋、廠商排行 —— 全是平台量體，廠商帳號一個都不能看。
- * 與其在同一頁到處加角色判斷（漏一個就外洩），不如另開一頁，
- * 資料源也另開（`/api/admin/analytics-supplier`），結構上就沒有平台數字。
+ * 資料源另開 `/api/admin/analytics-supplier`，整支只算單一廠商 ——
+ * 分析頁上的總儲值、訪問量、轉換率、全站熱門搜尋、廠商排行都是平台量體，
+ * 廠商一個都不能看，與其在同一頁到處加角色判斷（漏一個就外洩），
+ * 不如資料源就不含那些東西。
  */
 
+const TinyColumn = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Tiny.Column })),
+  { ssr: false },
+)
+const TinyArea = dynamic(
+  () => import('@ant-design/charts').then(m => ({ default: m.Tiny.Area })),
+  { ssr: false },
+)
 const PieChart = dynamic(
   () => import('@ant-design/charts').then(m => ({ default: m.Pie })),
   { ssr: false },
@@ -32,49 +43,21 @@ interface Supplier { id: number | string; name: string }
 interface TopProduct { rank: number; id: string; name: string; type: string; label: string; draws: number; sales: number; growth: number }
 interface Payload {
   supplierName: string
-  empty?: boolean
   current: {
     totalSales: number; totalDraws: number
-    activeProducts: number; totalProducts?: number; avgPerDraw: number
+    activeProducts: number; totalProducts: number; avgPerDraw: number
+    todaySales: number; todayDraws: number
     bars: { label: string; sales: number; draws: number }[]
+    spark: { x: number; date: string; sales: number; draws: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     topProducts: TopProduct[]
   }
-  growth: { sales: number; draws: number }
+  growth: { sales: number; draws: number; salesToday: number; drawsToday: number }
 }
 
-const toDS = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const toDS = (d: Date) => d.toLocaleDateString('sv')
 const mondayOf = (d: Date) => { const x = new Date(d); const w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x }
 const sundayOf = (d: Date) => { const x = mondayOf(d); x.setDate(x.getDate() + 6); return x }
-
-/** 成長率標記：正紅負綠，跟分析頁一致（紅漲綠跌是台股習慣） */
-function Delta({ value }: { value: number }) {
-  if (!value) return <span className="text-xs text-neutral-400">0%</span>
-  const up = value > 0
-  return (
-    <span className={`text-xs font-medium ${up ? 'text-red-500' : 'text-green-600'}`}>
-      {up ? '▲' : '▼'} {Math.abs(value)}%
-    </span>
-  )
-}
-
-function KpiCard({ title, value, unit, delta, sub }: {
-  title: string; value: number | string; unit?: string; delta?: number; sub?: string
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-4">
-      <p className="text-sm font-semibold text-neutral-700 mb-3">{title}</p>
-      <p className="text-3xl font-bold text-neutral-900 tabular-nums">
-        {typeof value === 'number' ? value.toLocaleString() : value}
-        {unit && <span className="text-base font-normal text-neutral-500 ml-1">{unit}</span>}
-      </p>
-      <div className="mt-2 flex items-center gap-2">
-        {delta !== undefined && <><span className="text-xs text-neutral-400">較上期</span><Delta value={delta} /></>}
-        {sub && <span className="text-xs text-neutral-400">{sub}</span>}
-      </div>
-    </div>
-  )
-}
 
 export default function SupplierAnalyticsPage() {
   const { user } = useAdmin()
@@ -132,7 +115,9 @@ export default function SupplierAnalyticsPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const c = data?.current
-  const hasData = !!c && c.totalDraws > 0
+  const g = data?.growth
+  const spark = c?.spark ?? []
+  const hasData = (c?.totalDraws ?? 0) > 0
 
   return (
     <AdminLayout pageTitle="廠商分析">
@@ -189,81 +174,101 @@ export default function SupplierAnalyticsPage() {
 
         {!error && (
           <>
-            {/* KPI */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard title="銷售額" value={c?.totalSales ?? 0} unit="幣" delta={data?.growth.sales} />
-              <KpiCard title="消費筆數" value={c?.totalDraws ?? 0} delta={data?.growth.draws} />
-              <KpiCard title="平均客單" value={c?.avgPerDraw ?? 0} unit="幣" sub="每抽平均消費" />
-              <KpiCard title="上架中商品" value={c?.activeProducts ?? 0} sub={`共 ${c?.totalProducts ?? 0} 件`} />
+            {/* ── KPI（分析頁同款卡片）───────────────────────────────────── */}
+            <div className="grid grid-cols-4 gap-6">
+              <StatCard
+                title="銷售額" loading={loading} skeletonWidth="w-32"
+                value={`${(c?.totalSales ?? 0).toLocaleString()} 幣`}
+                mid={g && <>
+                  <GrowthTag value={g.sales} label="期間同比" />
+                  <GrowthTag value={g.salesToday} label="日同比" />
+                </>}
+                footerLabel="日銷售額" footerValue={(c?.todaySales ?? 0).toLocaleString()}
+              />
+
+              <StatCard
+                title="消費筆數" loading={loading} skeletonWidth="w-16"
+                value={(c?.totalDraws ?? 0).toLocaleString()}
+                mid={!loading && spark.some(s => s.draws > 0) ? (
+                  <TinyColumn data={spark} xField="x" yField="draws"
+                    height={46} autoFit
+                    style={{ fill: '#1677ff', opacity: 0.85 } as any}
+                    axis={false} padding={0}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '消費筆數' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="日消費筆數" footerValue={(c?.todayDraws ?? 0).toLocaleString()}
+              />
+
+              <StatCard
+                title="銷售走勢" loading={loading} skeletonWidth="w-24"
+                value={`${(c?.avgPerDraw ?? 0).toLocaleString()} 幣`}
+                mid={!loading && spark.some(s => s.sales > 0) ? (
+                  <TinyArea data={spark} xField="x" yField="sales"
+                    height={46} autoFit
+                    style={{ fill: 'rgba(114,46,209,0.25)', stroke: '#722ed1', lineWidth: 2, shape: 'smooth' } as any}
+                    axis={false} padding={[2, 0, 0, 0]}
+                    tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '銷售額' }] } as any} />
+                ) : <div className="w-full h-full" />}
+                footerLabel="平均客單" footerValue={`${(c?.avgPerDraw ?? 0).toLocaleString()} 幣`}
+              />
+
+              <StatCard
+                title="上架中商品" loading={loading} skeletonWidth="w-12"
+                value={(c?.activeProducts ?? 0).toLocaleString()}
+                mid={g && <GrowthTag value={g.draws} label="消費筆數期間同比" />}
+                footerLabel="商品總數" footerValue={(c?.totalProducts ?? 0).toLocaleString()}
+              />
             </div>
 
-            {/* 走勢 + 類別佔比 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 p-4">
-                <p className="text-sm font-semibold text-neutral-700 mb-3">銷售走勢</p>
-                {hasData ? (
-                  <ColumnChart
-                    height={260}
-                    data={c!.bars}
-                    xField="label"
-                    yField="sales"
-                    autoFit
-                    axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }}
-                  />
-                ) : (
-                  <div className="h-[260px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
-                )}
+            {/* ── 銷售走勢 + 類別佔比 ────────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
+                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  銷售走勢
+                </div>
+                <div className="p-6">
+                  {hasData ? (
+                    <ColumnChart height={280} data={c!.bars} xField="label" yField="sales" autoFit
+                      style={{ fill: '#1677ff', opacity: 0.85 } as any}
+                      axis={{ y: { labelFormatter: (v: number) => v.toLocaleString() } }} />
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
+                  )}
+                </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-neutral-200 p-4">
-                <p className="text-sm font-semibold text-neutral-700 mb-3">銷售類別佔比</p>
-                {hasData && c!.categories.length > 0 ? (
-                  <PieChart
-                    height={260}
-                    data={c!.categories.map(x => ({ type: x.label, value: x.amount }))}
-                    angleField="value"
-                    colorField="type"
-                    innerRadius={0.6}
-                    autoFit
-                    label={{ text: (item: any) => `${item.type}: ${item.value.toLocaleString()}`, position: 'outside' }}
-                    legend={false}
-                  />
-                ) : (
-                  <div className="h-[260px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
-                )}
+              <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
+                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                  style={{ color: 'rgba(0,0,0,0.88)' }}>
+                  銷售類別佔比
+                </div>
+                <div className="p-6">
+                  {hasData && c!.categories.length > 0 ? (
+                    <PieChart height={280}
+                      data={c!.categories.map(x => ({ type: x.label, value: x.amount }))}
+                      angleField="value" colorField="type" innerRadius={0.6} autoFit
+                      label={{ text: (item: any) => `${item.type}: ${item.value.toLocaleString()}`, position: 'outside' }}
+                      legend={false} />
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* 熱門商品 */}
-            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-neutral-100">
-                <p className="text-sm font-semibold text-neutral-700">熱門商品 TOP 15</p>
-              </div>
-              {hasData ? (
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50">
-                    <tr>
-                      {['#', '商品', '類別', '抽獎次數', '銷售額', '較上期'].map((h, i) => (
-                        <th key={h} className={`py-2 px-3 text-xs font-semibold text-neutral-500 whitespace-nowrap ${i >= 3 ? 'text-right' : 'text-left'}`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {c!.topProducts.map(p => (
-                      <tr key={p.id} className="hover:bg-neutral-50">
-                        <td className="py-2 px-3 text-neutral-400 tabular-nums w-10">{p.rank}</td>
-                        <td className="py-2 px-3 text-neutral-800">{p.name}</td>
-                        <td className="py-2 px-3 text-neutral-500 whitespace-nowrap">{p.label}</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-neutral-600">{p.draws.toLocaleString()}</td>
-                        <td className="py-2 px-3 text-right tabular-nums font-semibold text-neutral-800">{p.sales.toLocaleString()}</td>
-                        <td className="py-2 px-3 text-right"><Delta value={p.growth} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="py-12 text-center text-sm text-neutral-400">本期無消費紀錄</div>
-              )}
+            {/* ── 排行（儀表板同款卡片）──────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-6">
+              <RankingList
+                title="熱門商品 TOP 15"
+                limit={15}
+                data={(c?.topProducts ?? []).map(p => ({ name: p.name, value: p.sales, change: p.growth }))}
+              />
+              <RankingList
+                title="銷售類別 TOP 15"
+                limit={15}
+                data={(c?.categories ?? []).map(x => ({ name: x.label, value: x.amount }))}
+              />
             </div>
           </>
         )}
