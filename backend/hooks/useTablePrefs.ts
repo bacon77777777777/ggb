@@ -50,14 +50,18 @@ export function useTablePrefs<C extends Record<string, boolean>>(
       const parsed = JSON.parse(saved)
       if (parsed.density) setTableDensityState(parsed.density)
       if (parsed.columns) setVisibleColumnsState(prev => ({ ...prev, ...parsed.columns } as C))
-    } catch {}
+    } catch {
+      // 存壞了就照預設值走 —— 表格偏好壞掉不該讓整頁掛掉
+    }
   }, [storageKey])
 
   const save = (density: Density, columns: C) => {
     if (!storageKey) return
     try {
       localStorage.setItem(storageKey, JSON.stringify({ density, columns }))
-    } catch {}
+    } catch {
+      // 無痕模式／配額滿了會丟例外，記不起來就算了，不影響當下操作
+    }
   }
 
   const setTableDensity = (d: Density) => {

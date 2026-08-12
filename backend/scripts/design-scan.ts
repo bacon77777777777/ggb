@@ -42,7 +42,7 @@ const HANDROLLED = [
   { type: '手刻 button',   regex: /<button[^>]*className="[^"]*\bbg-(?:primary|neutral-100)\b/g,   fix: '改用 <Button variant=...>' },
   // 只抓原生 confirm（參數是字串）—— 專案已有 useConfirmDialog()，
   // 它的呼叫形式是 confirm({ ... })，不算違規
-  { type: '原生 confirm',  regex: /(?:window\.)?confirm\(\s*['"\`]/g,                   fix: '改用 useConfirmDialog()' },
+  { type: '原生 confirm',  regex: /(?:window\.)?confirm\(\s*['"`]/g,                   fix: '改用 useConfirmDialog()' },
   // 要有半透明底色才算彈窗遮罩；純 fixed inset-0 多半是關閉用的點擊區
   { type: '自製 overlay',  regex: /className="[^"]*fixed inset-0[^"]*bg-black\//g,      fix: '改用 <Modal>' },
 ]

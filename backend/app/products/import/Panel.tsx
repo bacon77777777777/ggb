@@ -1,6 +1,5 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AdminLayout, PageCard, DataTable, type Column } from '@/components'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
