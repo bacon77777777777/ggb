@@ -77,6 +77,7 @@ const SUPPLIER_API_ALLOW: string[] = [
   '/api/admin/upload',            // 上傳商品圖
   '/api/admin/suppliers',         // 結算頁的廠商下拉（route 內只回自己那家）
   '/api/admin/reports',           // 廠商結算（route 內強制蓋成自己的 supplierId）
+  '/api/admin/analytics-supplier',// 廠商分析（同上，且整支只算單一廠商的數字）
   // 配送申請（老闆 2026-08-09）：route 內依 supplier_id 限縮＋玩家個資遮罩，
   // 出貨/改單（PUT、batch）在 route 內對廠商回 403 —— 這裡只放行「看」
   '/api/admin/orders',
@@ -105,7 +106,8 @@ const SUPPLIER_API_DENY_SUFFIX: string[] = ['/seal', '/seal-now', '/close-out', 
 
 // Path prefix → required permission
 // Built from MENU_PATH_ORDER + additional sub-paths that share permissions
-const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
+// permission 可給陣列＝任一符合即可（例如廠商分析：營運看報表、廠商看自己的結算，兩邊都該進得去）
+const PATH_PERMISSIONS: Array<{ prefix: string; permission: string | string[] }> = [
   // 營運總覽
   { prefix: '/dashboard',           permission: 'dashboard' },
   { prefix: '/reports/overview',    permission: 'reports_overview' },
@@ -172,6 +174,7 @@ const PATH_PERMISSIONS: Array<{ prefix: string; permission: string }> = [
   { prefix: '/ai-usage',               permission: 'tools' },
   // 維護頁本身不需要權限 —— 它就是給被擋下來的人看的
   { prefix: '/analytics-overview',     permission: 'reports_overview' },
+  { prefix: '/analytics-supplier',     permission: ['reports_overview', 'reports_settlement'] },
   { prefix: '/design-system',          permission: 'tools' },
   { prefix: '/frontend-design-system', permission: 'tools' },
   // 父層保底：/reports/xxx 各自的規則前綴更長，會優先命中
@@ -260,7 +263,9 @@ export async function middleware(request: NextRequest) {
       // 寫入面 route 內已經擋死（PUT 與 batch 出貨對廠商回 403、
       // 詳情跨廠商也擋），這裡放行的只有「看」
       pathname === '/orders' ||
-      pathname.startsWith('/orders/')
+      pathname.startsWith('/orders/') ||
+      // 廠商分析：頁面與 API 都只算自己那家（route 內把 supplierId 蓋成自己的）
+      pathname === '/analytics-supplier'
     if (!ok) return NextResponse.redirect(new URL('/products', request.url))
     return NextResponse.next()
   }
@@ -277,7 +282,8 @@ export async function middleware(request: NextRequest) {
     .filter((rule) => pathname === rule.prefix || pathname.startsWith(rule.prefix + '/') || pathname.startsWith(rule.prefix + '?'))
     .sort((a, b) => b.prefix.length - a.prefix.length)[0]
 
-  if (match && !session.permissions.includes(match.permission)) {
+  const needed = match ? (Array.isArray(match.permission) ? match.permission : [match.permission]) : []
+  if (match && !needed.some(pm => session.permissions!.includes(pm))) {
     const target = firstAccessiblePath(session.permissions, session.role)
     // Prevent redirect loop if target is also blocked (shouldn't happen, but guard anyway)
     if (target !== pathname) {
