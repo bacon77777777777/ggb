@@ -49,3 +49,49 @@ export function shouldShow(promoId: string, mode: DismissMode, dismissDays: numb
   if (mode === 'never') return false
   return Date.now() - at >= dismissDays * 24 * 60 * 60 * 1000
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 首頁彈窗的「今日不再顯示」
+ *
+ * 2026-08-12 起首頁彈窗改成：**預設每次進首頁都跳**，要不要少看一次由玩家決定 ——
+ * 每則彈窗下方一個「今日不再顯示」勾選，按叉叉時一起存起來。
+ * 後台不再有「對象」與「關閉後」兩個全站設定（老闆指定拿掉）。
+ *
+ * 與上面那組 mode 版分開放，因為底部警語列（NoticeBar）還在用 mode 那套 ——
+ * 它的規則不一樣（登入與否給不同天數），共用一個 key 會互相蓋掉。
+ *
+ * 存「台灣時間的日期字串」而不是時間戳：「今日」對玩家的意思是日曆上的今天，
+ * 存 epoch 再算 24 小時的話，晚上 11 點勾起來會壓到隔天晚上，跟字面對不起來。
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const TODAY_KEY = 'ggb:promo:hiddenToday'
+
+/** 台灣時間的今天（YYYY-MM-DD） */
+function twToday(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+}
+
+function readToday(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(TODAY_KEY)
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/** 勾了「今日不再顯示」再關閉時呼叫 */
+export function hideForToday(promoId: string) {
+  const map = readToday()
+  map[promoId] = twToday()
+  try {
+    localStorage.setItem(TODAY_KEY, JSON.stringify(map))
+    window.dispatchEvent(new CustomEvent('ggb:promoDismissed'))
+  } catch { /* 私密模式寫不進去就當作沒勾，最多是下次再看到一次 */ }
+}
+
+/** 今天是不是已經被關掉了 */
+export function isHiddenToday(promoId: string): boolean {
+  return readToday()[promoId] === twToday()
+}

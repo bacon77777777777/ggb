@@ -35,6 +35,16 @@ const CAT: Record<string, string> = {
   other: '已刪除商品',
 }
 
+/**
+ * 「類別分析」固定列出的六類，順序也照這個排（老闆指定）。
+ *
+ * 沒有消費的類別一樣要出現、顯示 0 —— 跟走勢圖「空的區間也要畫」同一個道理：
+ * 整列消失的話看起來像那一類不存在，而不是那一類沒人買。
+ *
+ * 「已刪除商品」不在名單裡：那是抽獎紀錄指到已刪商品的殘留，不是一種類別。
+ */
+const CATEGORY_ORDER = ['ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot'] as const
+
 function twDate(y: number, m: number, d: number) {
   return new Date(Date.UTC(y, m, d) - TW)
 }
@@ -298,17 +308,18 @@ export async function GET(req: NextRequest) {
       g.spend += amt(r)
       if (r.user_id) g.players.add(String(r.user_id))
     })
-    const playTypes = Object.entries(byType)
-      .map(([type, v]) => ({
+    const playTypes = CATEGORY_ORDER.map(type => {
+      const v = byType[type]
+      return {
         type,
         label: CAT[type] ?? type,
-        draws: v.draws,
-        spend: v.spend,
-        players: v.players.size,
-        sharePct: ratio(v.spend, spend),
-        marginPct: marginPct(v.spend, feeRate),
-      }))
-      .sort((a, b) => b.spend - a.spend)
+        draws: v?.draws ?? 0,
+        spend: v?.spend ?? 0,
+        players: v?.players.size ?? 0,
+        sharePct: ratio(v?.spend ?? 0, spend),
+        marginPct: marginPct(v?.spend ?? 0, feeRate),
+      }
+    })
 
     // ── 熱門賞池 ──────────────────────────────────────────────────────────
     /** 每件商品的備貨與剩餘（`product_prizes` 加總，最後賞也算在庫存裡） */

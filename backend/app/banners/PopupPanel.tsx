@@ -36,11 +36,16 @@ interface Promo {
   created_at?: string
 }
 
-/** 全站統一的投放規則（platform_settings），逐則不再各自設定 */
+/**
+ * 全站設定（platform_settings）
+ *
+ * 原本這裡還有「對象」與「關閉後」兩個下拉，2026-08-12 拿掉（老闆指定）：
+ * 那兩個一改就是全站一起改，粒度太粗。現在規則固定成
+ * **每次進首頁都跳**，要不要少看一次由玩家自己在彈窗上勾「今日不再顯示」。
+ */
 interface Rules {
-  promo_audience: 'all' | 'logged_in' | 'logged_out'
-  promo_dismiss_mode: 'always' | 'days' | 'never'
-  promo_dismiss_days: string
+  /** 最新上架彈窗：'1' 開、'0' 關（migration 537），週期同樣是一天 */
+  promo_new_arrival_enabled: '0' | '1'
 }
 
 const EMPTY: Omit<Promo, 'id'> = {
@@ -68,9 +73,7 @@ export default function PopupPanel() {
   // 排序用字串存，不直接綁 number：
   //   綁 number 時清空欄位會被 Number('') 轉成 0 又寫回去，退位鍵等於無效；
   //   而 React 對 type=number 在「數值相等」時不會覆蓋 DOM，所以 0 前面打 7 會留成 07。
-  const [rules, setRules] = useState<Rules>({
-    promo_audience: 'all', promo_dismiss_mode: 'always', promo_dismiss_days: '7',
-  })
+  const [rules, setRules] = useState<Rules>({ promo_new_arrival_enabled: '0' })
   const [savingRules, setSavingRules] = useState(false)
   const [dismissInput, setDismissInput] = useState('')
 
@@ -137,9 +140,7 @@ export default function PopupPanel() {
     fetch('/api/admin/settings')
       .then(r => r.json())
       .then((d: Record<string, string>) => setRules(prev => ({
-        promo_audience:     (d.promo_audience as Rules['promo_audience']) || prev.promo_audience,
-        promo_dismiss_mode: (d.promo_dismiss_mode as Rules['promo_dismiss_mode']) || prev.promo_dismiss_mode,
-        promo_dismiss_days: d.promo_dismiss_days || prev.promo_dismiss_days,
+        promo_new_arrival_enabled: (d.promo_new_arrival_enabled as Rules['promo_new_arrival_enabled']) || prev.promo_new_arrival_enabled,
       })))
       .catch(() => {})
   }, [])
@@ -281,44 +282,22 @@ export default function PopupPanel() {
     },
   ]
 
-  // 投放規則為全站共用，逐則各設一次只會讓每次新增都要重想；
-  // 塞進 ListTableCard 工具列（新增鈕右側），不再另起一行
+  /*
+   * 工具列右側只剩最新上架彈窗的開關。
+   *
+   * 原本還有「對象」與「關閉後」兩個下拉，老闆指定拿掉 —— 那兩個一改就是
+   * 全站所有彈窗一起改。現在規則固定：每次進首頁都跳，玩家可以在彈窗上
+   * 勾「今日不再顯示」自己少看一次（隔天照跳）。最新上架彈窗吃同一套。
+   */
   const ruleControls = (
-    <>
-      <SelectField
-        className="w-auto"
-        value={rules.promo_audience}
+    <label className="flex items-center gap-2 pl-1 text-sm text-neutral-500 whitespace-nowrap cursor-pointer">
+      最新上架彈窗
+      <Switch
+        checked={rules.promo_new_arrival_enabled === '1'}
         disabled={savingRules}
-        onChange={e => saveRules({ promo_audience: e.target.value as Rules['promo_audience'] })}
-      >
-        <option value="all">對象：全部</option>
-        <option value="logged_in">對象：已登入</option>
-        <option value="logged_out">對象：未登入</option>
-      </SelectField>
-
-      <SelectField
-        className="w-auto"
-        value={rules.promo_dismiss_mode}
-        disabled={savingRules}
-        onChange={e => saveRules({ promo_dismiss_mode: e.target.value as Rules['promo_dismiss_mode'] })}
-      >
-        <option value="always">關閉後：每次都出現</option>
-        <option value="days">關閉後：隔幾天</option>
-        <option value="never">關閉後：不再出現</option>
-      </SelectField>
-
-      {rules.promo_dismiss_mode === 'days' && (
-        <Input
-          inputMode="numeric"
-          fullWidth={false}
-          className="w-16 text-center"
-          value={rules.promo_dismiss_days}
-          placeholder="天"
-          onChange={e => setRules(r => ({ ...r, promo_dismiss_days: e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }))}
-          onBlur={e => saveRules({ promo_dismiss_days: e.target.value || '7' })}
-        />
-      )}
-    </>
+        onCheckedChange={v => saveRules({ promo_new_arrival_enabled: v ? '1' : '0' })}
+      />
+    </label>
   )
 
   return (

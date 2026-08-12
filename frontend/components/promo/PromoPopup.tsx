@@ -15,25 +15,44 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePromos, type SitePromo } from './usePromos';
-import { dismiss } from '@/lib/promoDismiss';
+import { usePromos, type SitePromo, type NewArrivalProduct } from './usePromos';
+import { hideForToday } from '@/lib/promoDismiss';
 import { useRouteTransition } from '@/components/ui/RouteTransition';
 
 /** 卡片版的統一模板底圖（含外框、緞帶、喇叭與按鈕），版位百分比由此圖量測而來 */
 const TEMPLATE_BG = '/images/bg.webp';
+
+/** 最新上架彈窗的外框（含「最新上架」字樣與狗狗），中間留白給商品 */
+const NEW_ARRIVAL_BG = '/images/new_item.png';
+
+/**
+ * 外框裡那塊白板的位置，用 sharp 量原圖（922×1371）得到：
+ * 白色不透明區域最長的連續區段落在 y 382~1366、x 66~859。
+ * 內容再往內縮一點，不要壓到圓角。
+ */
+const PANEL = { top: '30.5%', bottom: '3.5%', left: '11%', right: '10.5%' };
+
+/** 商品頁網址：與 ProductCard 同一套規則，不要兩邊各寫一份 */
+const productHref = (p: NewArrivalProduct) =>
+  p.type === 'blindbox' ? `/blindbox/${p.id}`
+    : p.type === 'gacha' ? `/gacha/${p.id}`
+      : p.type === 'card' ? `/card/${p.id}`
+        : `/item/${p.id}`;
 
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
 const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
 const EXIT_MS         = 220;   // 與退場動畫時間相當
 
 export default function PromoPopup({ placement = 'home' }: { placement?: string }) {
-  const { promos, rules, isLoaded } = usePromos(placement);
+  const { promos, isLoaded } = usePromos(placement);
   const { navigate } = useRouteTransition();
   const [closedIds, setClosedIds] = useState<string[]>([]);
   const [current, setCurrent] = useState<SitePromo | null>(null);
   const [visible, setVisible] = useState(false);
+  /** 「今日不再顯示」的勾選狀態。每換一則就歸零，不要沿用上一則的選擇 */
+  const [hideToday, setHideToday] = useState(false);
 
   const shownOnceRef = useRef(false);
 
@@ -53,6 +72,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   useEffect(() => {
     if (!current) return;
     const delay = shownOnceRef.current ? NEXT_DELAY_MS : APPEAR_DELAY_MS;
+    setHideToday(false);
     const t = setTimeout(() => { shownOnceRef.current = true; setVisible(true); }, delay);
     return () => clearTimeout(t);
   }, [current]);
@@ -77,16 +97,21 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
    * 只呼叫 close() 的話，彈窗會先收起、畫面停在舊頁等路由切換，
    * 看起來像按了沒反應。
    */
+  const isNewArrival = promo.layout === 'new_arrival';
+
+  /*
+   * 點內容就是要去看，不算「不想再看到」——只有按叉叉時才把勾選存起來。
+   * （老闆指定：按叉叉＝儲存並關閉）
+   */
   const go = (href: string | null) => (e: React.MouseEvent) => {
     e.preventDefault();
-    dismiss(promo.id, rules.dismissMode);
     if (href) navigate(href);
     else setVisible(false);
   };
 
   const close = () => {
     setVisible(false);
-    dismiss(promo.id, rules.dismissMode);
+    if (hideToday) hideForToday(promo.id);
     const id = promo.id;
     setTimeout(() => {
       setClosedIds(prev => [...prev, id]);
@@ -115,8 +140,60 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             exit={{ scale: 0.94, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
           >
-            {/* 純圖片版：文案已經畫在圖裡，整張圖就是按鈕，比例由圖片自己決定 */}
-            {isImageOnly ? (
+            {/* 最新上架：外框已經畫好標題與狗狗，中間白板放商品格 */}
+            {isNewArrival ? (
+              <div className="relative w-full" style={{ aspectRatio: '922 / 1371' }}>
+                <Image
+                  src={NEW_ARRIVAL_BG}
+                  alt=""
+                  fill
+                  priority
+                  className="object-contain select-none pointer-events-none"
+                  unoptimized
+                />
+                <div className="absolute flex flex-col" style={PANEL}>
+                  {/*
+                    只有一件時單獨占滿，兩件以上走 2×2 —— 一件卻用格子排
+                    會在右邊留一個空洞，看起來像圖沒載出來。
+
+                    高度分配是「文字固定、圖片吃剩下的」：
+                    圖片如果綁 aspect-square，兩排加起來會超出白板，
+                    第二排的商品名就被切在白板下緣（看起來像壞掉，不像可以捲）。
+                    改成 grid-rows 平分高度、圖片 flex-1，塞幾件都剛好貼齊。
+                  */}
+                  <div
+                    className={`flex-1 min-h-0 grid gap-2.5 ${
+                      (promo.products?.length ?? 0) === 1
+                        ? 'grid-cols-1 grid-rows-1'
+                        : (promo.products?.length ?? 0) <= 2
+                          ? 'grid-cols-2 grid-rows-1'
+                          : 'grid-cols-2 grid-rows-2'
+                    }`}
+                  >
+                    {(promo.products ?? []).map(p => (
+                      <Link
+                        key={p.id}
+                        href={productHref(p)}
+                        onClick={go(productHref(p))}
+                        className="flex flex-col min-h-0 active:scale-[0.97] transition-transform"
+                      >
+                        {/* object-contain 不裁切：商品主圖有直式也有橫式，
+                            用 cover 會把直式海報的標題切掉 */}
+                        <span className="relative flex-1 min-h-0 w-full rounded-xl overflow-hidden bg-white">
+                          {p.image_url
+                            ? <img src={p.image_url} alt={p.name} className="absolute inset-0 w-full h-full object-contain" />
+                            : <span className="absolute inset-0 flex items-center justify-center text-[11px] text-neutral-400">無圖</span>}
+                        </span>
+                        <span className="mt-1 shrink-0 text-[12px] font-bold leading-[1.25] text-neutral-800 truncate">{p.name}</span>
+                        {p.price != null && (
+                          <span className="shrink-0 text-[12px] font-black leading-[1.25] text-[#e0357f]">{p.price.toLocaleString()} G</span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : isImageOnly ? (
               /* 與卡片版同比例，多則排隊時尺寸才不會忽大忽小。
                  比例不符用 fill 拉伸而不裁切：banner 的文案是畫在圖裡的，
                  裁掉的很可能就是標題，變形至少看得出來要換圖。 */
@@ -190,11 +267,31 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
             )}
           </motion.div>
 
+          {/* 今日不再顯示：放在卡片與叉叉之間。
+              勾了之後按叉叉才會存起來 —— 只是勾一下就生效的話，
+              玩家還沒決定要不要關就已經被記住了 */}
+          <label className="mt-5 flex items-center gap-2 text-[13px] text-white/85 select-none cursor-pointer">
+            <span
+              className={`w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center transition-colors ${
+                hideToday ? 'bg-white border-white' : 'border-white/60'
+              }`}
+            >
+              {hideToday && <Check className="w-3 h-3 text-neutral-800" strokeWidth={3} />}
+            </span>
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={hideToday}
+              onChange={e => setHideToday(e.target.checked)}
+            />
+            今日不再顯示
+          </label>
+
           <button
             type="button"
             onClick={close}
             aria-label="關閉"
-            className="mt-6 w-10 h-10 rounded-full border border-white/50 flex items-center justify-center text-white/90 active:scale-95 transition-transform"
+            className="mt-4 w-10 h-10 rounded-full border border-white/50 flex items-center justify-center text-white/90 active:scale-95 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>

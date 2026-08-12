@@ -398,16 +398,14 @@ export default function DashboardPage() {
               </Panel>
 
               <Panel
-                title="玩法分析"
+                title="類別分析"
                 tip={'玩家的錢花在哪一種玩法上。長條的長度是消費金額佔比。\n每種玩法的毛利率都由「廠商分潤比」決定、彼此一樣，所以不逐列列出 —— 看「平台健康度」那一欄就好。'}
               >
                 {loading ? (
                   <div className="space-y-4">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-neutral-50 rounded animate-pulse" />)}</div>
-                ) : !data?.playTypes.length ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-neutral-400">本期無消費紀錄</div>
                 ) : (
                   <div className="space-y-4">
-                    {data.playTypes.map(p => (
+                    {(data?.playTypes ?? []).map(p => (
                       <div key={p.type}>
                         <div className="flex items-center gap-3 mb-1">
                           <span className="text-sm text-neutral-700 w-16 shrink-0">{p.label}</span>
