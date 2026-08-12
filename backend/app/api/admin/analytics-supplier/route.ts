@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     if (productIds.length === 0) {
       return NextResponse.json({
         supplierName, empty: true,
-        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, sellThrough: 0, periodSold: 0, cumulativeSold: 0, prizeTotal: 0, prizeItems: 0, bars: [], spark: [], categories: [], topProducts: [] },
+        current: { totalSales: 0, totalDraws: 0, activeProducts: 0, totalProducts: 0, avgPerDraw: 0, todaySales: 0, todayDraws: 0, sellThrough: 0, periodSold: 0, cumulativeSold: 0, prizeTotal: 0, prizeItems: 0, bars: [], spark: [], categories: [], topProducts: [], topViewed: [], topSearched: [] },
         growth: { sales: 0, draws: 0, salesToday: 0, drawsToday: 0, sellThrough: 0 },
       })
     }
@@ -218,6 +218,76 @@ export async function GET(req: NextRequest) {
       const k = String(r.product_id)
       prevByProduct[k] = (prevByProduct[k] ?? 0) + amountOf(r)
     })
+    /*
+     * 瀏覽排行與搜尋排行都從 `user_events` 來（前台 trackEvent 寫的）：
+     *
+     *   product_view  ── 進入商品頁，帶 product_id，直接依商品分組
+     *   search        ── 只有 meta.query 這個關鍵字，**沒有 product_id**，
+     *                     所以只能拿關鍵字去比對這家廠商的商品名稱
+     *                     （玩家搜「蠟筆小新」對到「[90]蠟筆小新 BIG公仔2」）。
+     *                     一個關鍵字可能同時命中同系列的多件商品，是近似歸因不是精確歸因。
+     *
+     * ⚠️ 只收 'search'。前台 `app/search/page.tsx` 另外還送一種 'search_query'，
+     * 但 `user_events_event_type_check` 只允許
+     * product_view / product_click / search / draw / series_click ——
+     * 'search_query' 會被資料庫擋掉、根本進不來。
+     *
+     * ⚠️ 2026-08-12 實測 PROD：product_view 387 筆可用，
+     * 但 search 事件是 **0 筆**（還沒人搜過），所以搜尋排行目前會是空的。
+     */
+    const evSel = 'event_type, product_id, meta, created_at'
+    const evScoped = () => db.from('user_events').select(evSel).in('event_type', ['product_view', 'search'])
+    const [evCur, evPrev] = await Promise.all([
+      fetchAllRows<any>(() => inR(evScoped(), curStart, curEnd)),
+      fetchAllRows<any>(() => inR(evScoped(), prevStart, curStart)),
+    ])
+
+    const nameById = new Map<string, string>(products.map(p => [String(p.id), p.name as string]))
+    const idSet = new Set(productIds.map(String))
+
+    /** 進入商品頁次數，只算這家廠商的商品 */
+    const countViews = (rows: any[]) => {
+      const m: Record<string, number> = {}
+      for (const r of rows) {
+        if (r.event_type !== 'product_view') continue
+        const k = String(r.product_id ?? '')
+        if (!idSet.has(k)) continue
+        m[k] = (m[k] ?? 0) + 1
+      }
+      return m
+    }
+
+    /** 搜尋關鍵字對到商品名稱的次數（近似歸因，見上方註解） */
+    const countSearches = (rows: any[]) => {
+      const m: Record<string, number> = {}
+      const lowered = products.map(p => [String(p.id), String(p.name ?? '').toLowerCase()] as const)
+      for (const r of rows) {
+        if (r.event_type !== 'search') continue
+        const q = String(r.meta?.query ?? '').trim().toLowerCase()
+        if (q.length < 2) continue           // 一個字太容易誤中
+        for (const [id, name] of lowered) {
+          if (name.includes(q)) m[id] = (m[id] ?? 0) + 1
+        }
+      }
+      return m
+    }
+
+    const viewCur = countViews(evCur), viewPrev = countViews(evPrev)
+    const searchCur = countSearches(evCur), searchPrev = countSearches(evPrev)
+
+    /** 共用：把 {productId: 次數} 轉成排行卡要的格式 */
+    const toRanking = (cur: Record<string, number>, prev: Record<string, number>) =>
+      Object.entries(cur)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([id, value], i) => ({
+          rank: i + 1, id, name: nameById.get(id) ?? `#${id}`,
+          value, growth: pct(value, prev[id] ?? 0),
+        }))
+
+    const topViewed = toRanking(viewCur, viewPrev)
+    const topSearched = toRanking(searchCur, searchPrev)
+
     const topProducts = Object.entries(byProduct)
       .sort((a, b) => b[1].sales - a[1].sales)
       .slice(0, 15)
@@ -238,7 +308,7 @@ export async function GET(req: NextRequest) {
         todaySales: todayDraws.reduce((s, r) => s + amountOf(r), 0),
         todayDraws: todayDraws.length,
         sellThrough, periodSold: totalDraws, cumulativeSold, prizeTotal, prizeItems,
-        bars, spark, categories, topProducts,
+        bars, spark, categories, topProducts, topViewed, topSearched,
       },
       growth: {
         sales: pct(totalSales, prevSales),

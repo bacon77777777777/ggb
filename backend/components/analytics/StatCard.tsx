@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 
 /**
  * 分析頁系列的 KPI 卡（AntD Pro 風格）
@@ -15,8 +15,10 @@ import React from 'react'
  *   mid    ── 46px 高，放同比標籤或迷你圖（兩者擇一，高度一樣所以卡片等高）
  *   footer ── 上方一條淡分隔線，「標籤 + 值」一行
  */
-export function StatCard({ title, value, loading, skeletonWidth = 'w-24', mid, footerLabel, footerValue }: {
+export function StatCard({ title, titleExtra, value, loading, skeletonWidth = 'w-24', mid, footerLabel, footerValue }: {
   title: string
+  /** 標題右側，通常放 <InfoIcon> */
+  titleExtra?: React.ReactNode
   value: React.ReactNode
   loading?: boolean
   /** 載入中骨架的寬度，讓不同量級的數字看起來不會忽大忽小 */
@@ -28,9 +30,10 @@ export function StatCard({ title, value, loading, skeletonWidth = 'w-24', mid, f
 }) {
   return (
     <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white">
-      <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+      <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
         style={{ color: 'rgba(0,0,0,0.88)' }}>
         {title}
+        {titleExtra}
       </div>
       <div style={{ padding: '20px 24px 8px' }}>
         <div className="relative w-full">
@@ -72,3 +75,23 @@ export function GrowthTag({ value, label, style }: { value: number; label?: stri
 }
 
 export default StatCard
+
+/**
+ * 藍色驚嘆號說明（分析頁那顆）
+ *
+ * `whitespace-pre-line` 而不是 `normal` —— 說明常常是多行（用 \n 分段），
+ * normal 會把換行當空白吃掉、擠成一整段。分析頁與結算頁都踩過這個。
+ */
+export function InfoIcon({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative flex-shrink-0" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <div className="w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold cursor-help select-none leading-none">!</div>
+      {show && (
+        <div className="absolute left-0 top-5 w-56 bg-neutral-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl z-50 leading-relaxed whitespace-pre-line pointer-events-none font-normal">
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}

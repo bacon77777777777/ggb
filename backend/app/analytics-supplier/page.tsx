@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import DateRangePicker from '@/components/DateRangePicker'
 import SelectField from '@/components/ui/SelectField'
-import { StatCard, GrowthTag } from '@/components/analytics/StatCard'
+import { StatCard, GrowthTag, InfoIcon } from '@/components/analytics/StatCard'
 import { RankingList } from '@/components/analytics/RankingList'
 import { useAdmin } from '@/contexts/AdminContext'
 
@@ -41,6 +41,7 @@ const ColumnChart = dynamic(
 
 interface Supplier { id: number | string; name: string }
 interface TopProduct { rank: number; id: string; name: string; type: string; label: string; draws: number; sales: number; growth: number }
+interface RankRow { rank: number; id: string; name: string; value: number; growth: number }
 interface Payload {
   supplierName: string
   current: {
@@ -52,6 +53,8 @@ interface Payload {
     spark: { x: number; date: string; sales: number; draws: number }[]
     categories: { type: string; label: string; count: number; amount: number }[]
     topProducts: TopProduct[]
+    topViewed: RankRow[]
+    topSearched: RankRow[]
   }
   growth: { sales: number; draws: number; salesToday: number; drawsToday: number; sellThrough: number }
 }
@@ -179,6 +182,7 @@ export default function SupplierAnalyticsPage() {
             <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="銷售額" loading={loading} skeletonWidth="w-32"
+                titleExtra={<InfoIcon text={'本區間這家廠商所有商品的抽獎消費總額（1G = NT$1）。\n已排除機器人帳號。\n期間同比＝與前一個等長區間相比；日同比＝今日與昨日相比。'} />}
                 value={`${(c?.totalSales ?? 0).toLocaleString()} G幣`}
                 mid={g && <>
                   <GrowthTag value={g.sales} label="期間同比" />
@@ -189,6 +193,7 @@ export default function SupplierAnalyticsPage() {
 
               <StatCard
                 title="消費筆數" loading={loading} skeletonWidth="w-16"
+                titleExtra={<InfoIcon text={'本區間這家廠商商品的抽獎次數，一抽算一筆。\n已排除機器人帳號。\n藍柱是各時段的筆數分布。'} />}
                 value={(c?.totalDraws ?? 0).toLocaleString()}
                 mid={!loading && spark.some(s => s.draws > 0) ? (
                   <TinyColumn data={spark} xField="x" yField="draws"
@@ -202,6 +207,7 @@ export default function SupplierAnalyticsPage() {
 
               <StatCard
                 title="銷售走勢" loading={loading} skeletonWidth="w-24"
+                titleExtra={<InfoIcon text={'大數字是平均客單＝銷售額 ÷ 消費筆數，代表每抽平均花多少。\n紫色面積圖是本區間各時段的銷售額走勢。'} />}
                 value={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
                 mid={!loading && spark.some(s => s.sales > 0) ? (
                   <TinyArea data={spark} xField="x" yField="sales"
@@ -214,16 +220,12 @@ export default function SupplierAnalyticsPage() {
               />
 
               {/* 銷售成數＝本區間抽掉的份數 ÷ 總備貨量，會跟著上方日期切換而變。
-                  頁尾另附累計值，方便對照「這檔到目前為止總共出了幾成」 */}
+                  分子分母原本用小灰字寫在卡片中段，老闆指定改成標題旁的藍色驚嘆號 */}
               <StatCard
                 title="銷售成數" loading={loading} skeletonWidth="w-16"
+                titleExtra={<InfoIcon text={`本期售出 ${(c?.periodSold ?? 0).toLocaleString()} / 總備貨 ${(c?.prizeTotal ?? 0).toLocaleString()}\n本區間抽掉的份數 ÷ 總備貨量，一抽出一份。\n會跟著上方日期區間變動。`} />}
                 value={`${(c?.sellThrough ?? 0).toLocaleString()}%`}
-                mid={<>
-                  {g && <GrowthTag value={g.sellThrough} label="期間同比" />}
-                  <div className="text-sm" style={{ color: 'rgba(0,0,0,0.45)' }}>
-                    本期售出 {(c?.periodSold ?? 0).toLocaleString()} / 總備貨 {(c?.prizeTotal ?? 0).toLocaleString()}
-                  </div>
-                </>}
+                mid={g && <GrowthTag value={g.sellThrough} label="期間同比" />}
                 footerLabel="累計售出"
                 footerValue={`${(c?.cumulativeSold ?? 0).toLocaleString()} / ${(c?.prizeTotal ?? 0).toLocaleString()}・品項 ${(c?.prizeItems ?? 0).toLocaleString()}`}
               />
@@ -232,9 +234,10 @@ export default function SupplierAnalyticsPage() {
             {/* ── 銷售走勢 + 類別佔比 ────────────────────────────────────── */}
             <div className="grid grid-cols-2 gap-6">
               <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
-                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   銷售走勢
+                  <InfoIcon text={'本區間各時段的銷售額。\n沒有資料的時段照樣列出、值為 0，才看得出哪幾天是零。\n刻度：今日看小時、1–7 天看日、8–90 天看週、超過 90 天看月。'} />
                 </div>
                 <div className="p-6">
                   {hasData ? (
@@ -248,9 +251,10 @@ export default function SupplierAnalyticsPage() {
               </div>
 
               <div className="rounded-lg border border-[#f0f0f0] overflow-hidden bg-white flex flex-col">
-                <div className="flex items-center min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
+                <div className="flex items-center gap-1.5 min-h-[56px] px-6 font-semibold text-base border-b border-[#f0f0f0]"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   銷售類別佔比
+                  <InfoIcon text={'本區間各商品類型的銷售額佔比（一番賞／盒玩／轉蛋／抽卡／自製賞）。\n只含這家廠商的商品。'} />
                 </div>
                 <div className="p-6">
                   {hasData && c!.categories.length > 0 ? (
@@ -267,16 +271,24 @@ export default function SupplierAnalyticsPage() {
             </div>
 
             {/* ── 排行（儀表板同款卡片）──────────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-3 gap-6">
               <RankingList
-                title="熱門商品 TOP 15"
+                title="商品搜尋排行 TOP 15"
                 limit={15}
-                data={(c?.topProducts ?? []).map(p => ({ name: p.name, value: p.sales, change: p.growth }))}
+                extra={<InfoIcon text={'玩家搜尋的關鍵字對到這家廠商商品名稱的次數。\n⚠️ 搜尋事件只有關鍵字、沒有商品 id，這裡是拿關鍵字比對商品名稱的近似歸因。\n數字是命中次數，百分比為與前一個等長區間相比。'} />}
+                data={(c?.topSearched ?? []).map(x => ({ name: x.name, value: x.value, change: x.growth }))}
               />
               <RankingList
-                title="銷售類別 TOP 15"
+                title="商品瀏覽排行 TOP 15"
                 limit={15}
-                data={(c?.categories ?? []).map(x => ({ name: x.label, value: x.amount }))}
+                extra={<InfoIcon text={'進入商品頁的次數（前台 product_view 事件）。\n同一個人重複進入會重複計算。\n百分比為與前一個等長區間相比的成長率。'} />}
+                data={(c?.topViewed ?? []).map(x => ({ name: x.name, value: x.value, change: x.growth }))}
+              />
+              <RankingList
+                title="商品銷售排行 TOP 15"
+                limit={15}
+                extra={<InfoIcon text={'依本區間銷售額由高到低排序。\n數字是銷售額（G幣），百分比為與前一個等長區間相比的成長率。\n不足 15 名以「-」補滿。'} />}
+                data={(c?.topProducts ?? []).map(p => ({ name: p.name, value: p.sales, change: p.growth }))}
               />
             </div>
           </>

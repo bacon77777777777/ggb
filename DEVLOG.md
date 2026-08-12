@@ -6,6 +6,35 @@
 
 ## v2026.08.12o｜2026-08-12｜銷售成數改看區間；敏感操作告警加上環境判斷
 
+### ⓪ 排行榜改三張、全部標題加藍色驚嘆號說明
+
+排行從「熱門商品／銷售類別」兩張改成三張（老闆指定）：
+**商品搜尋排行、商品瀏覽排行、商品銷售排行**。
+
+資料源盤點（2026-08-12 實測 PROD）：
+
+| 排行 | 來源 | 現況 |
+|------|------|------|
+| 瀏覽 | `user_events` `product_view`（帶 product_id） | 387 筆可用 |
+| 銷售 | `draw_records` × 商品單價 | 有資料 |
+| 搜尋 | `user_events` `search` 的 `meta.query` | **0 筆**，還沒人搜過 |
+
+搜尋事件**只有關鍵字、沒有 product_id**，所以只能拿關鍵字比對商品名稱做近似歸因
+（搜「星之卡比」會同時命中同系列的多件商品）。tooltip 已寫明這點。
+
+**另外發現前台送了一個資料庫擋掉的事件型別**：`app/search/page.tsx` 送
+`search_query`，但 `user_events_event_type_check` 只允許
+`product_view / product_click / search / draw / series_click` —— `search_query`
+根本進不了庫。API 這邊只收 `search`。⚠️ 前台那行要不要改成 `search`，待處理。
+
+版面同時把**每個標題都加上藍色驚嘆號說明**（共 8 顆）：四張 KPI 卡、
+銷售走勢、銷售類別佔比、三張排行。`StatCard` 新增 `titleExtra` 插槽、
+`InfoIcon` 一併抽進 `components/analytics/`。銷售成數原本寫在卡片中段的小灰字
+（分子分母）也改進驚嘆號裡。
+
+驗證：8 顆驚嘆號皆為 `rgb(59,130,246)`、hover 都跳出 2～3 行 `pre-line` 說明、無 console error。
+排行以 STG 暫時寫入 7 筆測試事件端到端驗證（瀏覽 3/1 與預期相符），**測完已刪除、user_events 回到 0 筆**。
+
 ### ① 銷售成數改成「該區間的售出比例」
 
 上一版做成庫存快照（`total - remaining`），不隨日期切換。老闆要的是區間比例，
