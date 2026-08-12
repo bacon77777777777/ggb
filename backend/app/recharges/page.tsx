@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import { ECPAY_FEE_RULES } from '@/lib/ecpayFees'
+import { logExport } from '@/lib/logExport'
 
 interface RechargeRecord {
   id: number
@@ -306,6 +307,7 @@ export default function RechargesPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `儲值明細_${new Date().toISOString().split('T')[0]}.csv`
+    void logExport('儲值明細', `儲值明細_${new Date().toISOString().split('T')[0]}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }

@@ -28,9 +28,11 @@ const PERMISSION_GROUPS = [
   {
     title: '營運總覽',
     items: [
-      { id: 'dashboard',        label: '儀表板' },
-      { id: 'reports_overview', label: '轉換分析' },
-      { id: 'reports_behavior', label: '點擊分析' },
+      { id: 'dashboard',          label: '儀表板' },
+      { id: 'analytics_overview', label: '分析頁' },
+      { id: 'analytics_supplier', label: '廠商分析' },
+      { id: 'reports_overview',   label: '轉換分析' },
+      { id: 'reports_behavior',   label: '點擊分析' },
     ],
   },
   {
@@ -50,6 +52,7 @@ const PERMISSION_GROUPS = [
     items: [
       { id: 'products',          label: '商品管理' },
       { id: 'slot',              label: '挑戰機台' },
+      { id: 'slot_reports',      label: '機台報表' },
       { id: 'draws',             label: '抽獎紀錄' },
       { id: 'orders',            label: '配送管理' },
       { id: 'coupons',           label: '折價券管理' },

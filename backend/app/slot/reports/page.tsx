@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminLayout, Modal, DateRangePicker, ListTableCard, RowAction, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/contexts/ToastContext'
+import { logExport } from '@/lib/logExport'
 
 interface ReportRow {
   machine_id: number
@@ -60,6 +61,7 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  void logExport('機台報表', `${filename}（${rows.length} 筆）`)
   URL.revokeObjectURL(url)
 }
 

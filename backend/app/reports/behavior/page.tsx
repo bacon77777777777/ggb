@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
+import { logExport } from '@/lib/logExport'
 
 interface ProductView { product_id: number; product_name: string; count: number }
 interface ButtonClick { event_type: string; label: string; count: number }
@@ -69,6 +70,7 @@ function exportCSV(data: BehaviorData, start: string, end: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = `behavior_${start}_${end}.csv`
+  void logExport('用戶行為報表', `behavior_${start}_${end}.csv`)
   a.click()
   URL.revokeObjectURL(url)
 }

@@ -3,6 +3,7 @@
 import AdminLayout from '@/components/AdminLayout'
 import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { format } from 'date-fns'
+import { RankingList } from '@/components/analytics/RankingList'
 
 // Types
 interface DashboardStats {
@@ -831,49 +832,6 @@ function PieChart({ title, data, colors, tooltip }: {
 }
 
 // 排名列表組件
-function RankingList({ title, data, limit = 10, tooltip }: { title: string, data: Array<{ name: string, value: number | string, change?: number }>, limit?: number, tooltip?: string }) {
-  const displayData = Array(limit).fill(null).map((_, index) => {
-    return data[index] || { name: '-', value: '-', change: undefined }
-  })
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </div>
-      <div className="space-y-1">
-        {displayData.map((item, index) => (
-          <div key={index} className="flex items-center justify-between py-1.5 border-b border-neutral-100 last:border-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                index < 3 ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-600'
-              }`}>
-                {index + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium line-clamp-2 ${item.name === '-' ? 'text-neutral-400' : 'text-neutral-900'}`}>{item.name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-10 flex-shrink-0">
-              {item.change !== undefined && (
-                <div className={`text-xs text-right w-16 ${item.change >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {item.change >= 0 ? '+' : ''}{item.change}%
-                </div>
-              )}
-              <div className="text-right w-20">
-                <p className={`text-sm font-semibold ${item.value === '-' ? 'text-neutral-400' : 'text-neutral-900'}`}>
-                  {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [cardPeriod, setCardPeriod] = useState('日')
@@ -1447,9 +1405,9 @@ export default function DashboardPage() {
 
         {/* 排名列表 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} tooltip="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />
-          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} tooltip="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />
-          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} tooltip="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />
+          <RankingList title="最多點擊系列 TOP 15" data={topSeries} limit={15} extra={<InfoTooltip text="用戶最常點擊的商品系列（IP/品牌），反映哪些系列最受歡迎，可作為採購與上架優先順序參考。" />} />
+          <RankingList title="熱門商品 TOP 15" data={topProducts} limit={15} extra={<InfoTooltip text="抽獎次數最多的單一商品，反映最具吸引力的商品。可作為選品、補貨與主頁推薦的依據。" />} />
+          <RankingList title="熱門搜尋字 TOP 15" data={topKeywords} limit={15} extra={<InfoTooltip text="用戶最常搜尋的關鍵字，反映需求缺口與熱門話題。搜尋量高但無商品代表潛在上架機會。" />} />
         </div>
 
       </div>

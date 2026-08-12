@@ -626,7 +626,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
   }
 
   // path → required permission (undefined = all authenticated users)
-  const PATH_PERMISSION_MAP: Record<string, string> = {
+  // 值可給陣列＝任一權限符合即可
+  const PATH_PERMISSION_MAP: Record<string, string | string[]> = {
     // 營運總覽
     '/dashboard': 'dashboard',
     '/reports/overview': 'reports_overview',
@@ -646,7 +647,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/products': 'products',
     // 挑戰機台
     '/slot': 'slot',
-    '/slot/reports': 'slot',
+    '/slot/reports': 'slot_reports',
     '/slot/[id]': 'slot',
     '/draws': 'draws',
     '/orders': 'orders',
@@ -696,7 +697,8 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     '/competitor-intel': 'competitor_intel',
     '/content-drafts': 'content_drafts',
     '/ai-usage': 'ai_usage',
-    '/analytics-overview': 'reports_overview',
+    '/analytics-overview': 'analytics_overview',
+    '/analytics-supplier': 'analytics_supplier',
     '/design-system': 'tools',
     '/frontend-design-system': 'tools',
   }
@@ -710,7 +712,9 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 忘了補權限對應，那一項就對所有角色可見 —— 廠商帳號因此看得到
     // 「分析頁」和「其他黑科技」整組。漏掉的後果應該是「看不到」而不是「都看得到」。
     if (!perm) return false
-    return (user.permissions || []).includes(perm)
+    // perm 可為陣列＝任一符合即可
+    const needed = Array.isArray(perm) ? perm : [perm]
+    return needed.some(pm => (user.permissions || []).includes(pm))
   }
 
   const menuGroups = useMemo(
@@ -721,6 +725,7 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
         items: [
           { name: '儀表板', path: '/dashboard', icon: IconDashboard },
           { name: '分析頁', path: '/analytics-overview', icon: IconLineChart },
+          { name: '廠商分析', path: '/analytics-supplier', icon: IconLineChart },
           { name: '轉換分析', path: '/reports/overview', icon: IconConversion },
           { name: '點擊分析', path: '/reports/behavior', icon: IconClick },
         ],

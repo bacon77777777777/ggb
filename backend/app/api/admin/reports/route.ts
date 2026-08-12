@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireAdminScope } from '@/lib/requireAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export async function GET(request: NextRequest) {
   const scope = await requireAdminScope()
@@ -322,30 +323,47 @@ export async function GET(request: NextRequest) {
     if (tab === 'settlement') {
       if (!supplierId) return NextResponse.json({ error: 'supplierId required' }, { status: 400 })
 
-      const [supplierRes, drawRes, rechargeRes, recycleRes, ordersRes] = await Promise.all([
+      /*
+       * 全部走 fetchAllRows —— PostgREST 預設只回 1000 列且靜默截斷，
+       * 這些資料是拿來加總算廠商分潤的，過千就會少算。
+       * 實測某廠商整年 totalG 應為 114,940，截斷後只剩 32,950（少 71%），
+       * 等於分潤基底被砍掉七成。
+       */
+      const [supplierRes, drawRows, rechargeRows, recycleRows, orderRows] = await Promise.all([
         supabase.from('suppliers').select('id, name').eq('id', supplierId).single(),
-        applyDateFilter(
+        fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('draw_records')
             .select('product_id, created_at, product:products(id, name, price, supplier_id, type)'))
-        ),
-        applyDateFilter(
+        )),
+        fetchAllRows<any>(() => applyDateFilter(
           excBot(supabase.from('recharge_records').select('amount, status, created_at, payment_fee'))
-        ),
-        applyDateFilter(
+        )),
+        fetchAllRows<any>(() => applyDateFilter(
           supabase.from('admin_recycle_pool')
             .select('recycle_value, product:products(supplier_id)')
-        ),
-        applyDateFilter(
+        )),
+        /*
+         * orders 這支容錯：STG 與 PROD 的 orders schema 不一樣 ——
+         * PROD 有 coupon_discount／total_amount／supplier_id，STG 沒有（只有 shipping_fee）。
+         * 以前錯誤被靜默吞掉（原本只檢查 drawRes／rechargeRes 的 error），
+         * 所以 STG 上折價券與運費一直是 0 卻沒人發現；
+         * 改用會拋錯的 fetchAllRows 之後，這支就會把整個結算 API 打成 500。
+         *
+         * 這裡吞掉並記一筆 warn：schema 對不齊是另一件事，不該讓結算頁開不起來。
+         * ⚠️ 兩環境的 orders 結構要不要對齊，待老闆決定。
+         */
+        fetchAllRows<any>(() => applyDateFilter(
           supabase.from('orders')
             .select('coupon_discount, total_amount')
             .eq('supplier_id', supplierId)
-        ),
+        )).catch((e: any) => {
+          console.warn('[settlement] orders 查詢失敗，折價券／運費以 0 計：', e?.message)
+          return [] as any[]
+        }),
       ])
-      if (drawRes.error) throw drawRes.error
-      if (rechargeRes.error) throw rechargeRes.error
 
       // 消費明細：只算該廠商商品
-      const draws: any[] = (drawRes.data ?? []).filter((d: any) => d.product?.type !== 'slot')
+      const draws: any[] = drawRows.filter((d: any) => d.product?.type !== 'slot')
       const supplierDraws = draws.filter(d => String(d.product?.supplier_id) === supplierId)
 
       const byProduct: Record<number, { name: string; price: number; drawCount: number; totalG: number }> = {}
@@ -368,7 +386,7 @@ export async function GET(request: NextRequest) {
       const consumptionShare = totalPlatformG > 0 ? totalG / totalPlatformG : 1
 
       // 儲值資料（僅作參考，不作結算基底）
-      const recharges: any[] = rechargeRes.data ?? []
+      const recharges: any[] = rechargeRows
       const successRecharges = recharges.filter(r => r.status === 'success')
       const rechargeTotal = successRecharges.reduce((s, r) => s + (r.amount || 0), 0)
       const rechargeCount = successRecharges.length
@@ -403,12 +421,12 @@ export async function GET(request: NextRequest) {
         : null
 
       // 分解退代幣（廠商須吸收，從結算中扣除）
-      const dismantleTotal = (recycleRes.data ?? [])
+      const dismantleTotal = recycleRows
         .filter((r: any) => String(r.product?.supplier_id) === supplierId)
         .reduce((s: number, r: any) => s + (r.recycle_value || 0), 0)
 
       // 折價券 & 運費（雙方各吸收一半）
-      const supplierOrders: any[] = ordersRes.data ?? []
+      const supplierOrders: any[] = orderRows
       const couponTotal = supplierOrders.reduce((s, r) => s + (r.coupon_discount || 0), 0)
       const shippingTotal = supplierOrders.reduce((s, r) => s + (r.total_amount || 0), 0)
 

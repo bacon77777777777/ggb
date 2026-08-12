@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { formatDateTime } from '@/utils/dateFormat'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { DataTable, type Column } from '@/components'
+import { logExport } from '@/lib/logExport'
 
 interface LogisticsRecord {
   id: number
@@ -50,6 +51,7 @@ function exportCSV(filename: string, headers: string[], rows: (string | number)[
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  void logExport('物流報表', `${filename}（${rows.length} 筆）`)
   URL.revokeObjectURL(url)
 }
 
