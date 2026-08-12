@@ -213,8 +213,19 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
     out.toBlob(b => { if (b) onConfirm(b) }, 'image/webp', 0.9)
   }
 
+  /*
+   * 手機吃滿螢幕、電腦上收成一個有邊界的面板。
+   *
+   * 原本一律 `fixed inset-0`，在桌機就是一整片全螢幕黑幕 —— 裁一張頭像不需要
+   * 佔掉整個視窗。手機仍維持全螢幕（小螢幕要留給裁切框），所以斷點以上才收。
+   *
+   * canvas 是掛載時依外層容器的 boundingRect 算尺寸的，容器變小它自己會跟著小，
+   * 裁切框（短邊的 78%）也照比例縮，不用另外調。
+   */
   return (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col select-none">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black md:bg-black/70">
+      <div className="relative flex h-full w-full select-none flex-col bg-black
+                      md:h-[600px] md:max-h-[88vh] md:w-[420px] md:rounded-2xl md:shadow-modal md:overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
         <button
@@ -257,7 +268,7 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
       {/* Shape toggle + hint */}
       <div className="flex-shrink-0 pb-safe">
         <p className="text-white/50 text-xs text-center mt-3 mb-2">拖曳移動・雙指縮放</p>
-        <div className="flex items-center justify-center gap-3 pb-6">
+        <div className="flex items-center justify-center gap-3 pb-6 md:pb-4">
           {(['circle', 'square'] as const).map(s => (
             <button
               key={s}
@@ -270,6 +281,7 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   )

@@ -26,20 +26,7 @@ function getCardImage(prize: Prize) {
   return '/images/card/00004.webp';
 }
 
-function getRarity(prize: Prize) {
-  const raw = (prize.grade || prize.rarity || '').toUpperCase();
-  if (raw.includes('SSR') || raw.includes('超稀有')) return 'SSR';
-  if (raw.includes('SR')) return 'SR';
-  if (raw.includes('R') || raw.includes('稀有')) return 'R';
-  return 'N';
-}
-
-const RARITY_STYLE = {
-  SSR: { label: 'SSR', bg: '#FFD700', text: '#000', glow: 'rgba(255,215,0,0.5)' },
-  SR:  { label: 'SR',  bg: '#C084FC', text: '#fff', glow: 'rgba(192,132,252,0.45)' },
-  R:   { label: 'R',   bg: '#60A5FA', text: '#fff', glow: 'rgba(96,165,250,0.4)' },
-  N:   { label: 'N',   bg: '#475569', text: '#fff', glow: 'rgba(71,85,105,0.3)' },
-};
+// 稀有度配色與 SSR 光效已移除 —— 卡片改成只顯示品項原圖，不加任何外框與疊層。
 
 // Scene design coords at DW=393 base (same scene as charge screen)
 const DW = 393;
@@ -52,24 +39,89 @@ const H1_TOP = 230;  // hand1 top
 const H1_W = 490;    // hand1 width
 
 // ── Draggable top card ────────────────────────────────────────────────────────
+/**
+ * 把卡框縮到剛好貼合圖片比例
+ *
+ * 卡框是固定的 63:88，但品項圖什麼比例都有（PSA 鑑定卡是細長的 0.60）。
+ * 用 object-contain 雖然不裁切，卻會在兩側留白 —— 留白墊底色就是黑邊、
+ * 不墊底色就透出後面的店舖場景，兩個都難看。
+ *
+ * 所以不要留白：量出圖片實際比例，把框縮成一樣的比例。回傳的 offX/offY
+ * 是為了讓縮小後的卡片**維持在原本卡框的中心點**，不然它會從手掌上偏掉。
+ *
+ * 圖還沒載到就先照原本的框走，載完再收合，中途不會跳位（中心點不變）。
+ */
+type FittedBox = { w: number; h: number; offX: number; offY: number };
+
+function useFittedBox(src: string, boxW: number, boxH: number): FittedBox {
+  const [ratio, setRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const probe = new window.Image();
+    probe.onload = () => {
+      if (alive && probe.naturalHeight > 0) setRatio(probe.naturalWidth / probe.naturalHeight);
+    };
+    probe.src = src;
+    return () => { alive = false; };
+  }, [src]);
+
+  if (!ratio) return { w: boxW, h: boxH, offX: 0, offY: 0 };
+  const tall = ratio < boxW / boxH;             // 圖比框瘦 → 以高為準
+  const w = tall ? boxH * ratio : boxW;
+  const h = tall ? boxH : boxW / ratio;
+  return { w, h, offX: (boxW - w) / 2, offY: (boxH - h) / 2 };
+}
+
+/**
+ * 疊在最上面那張後面的兩張卡（只是視覺厚度，不能點）
+ *
+ * 抽成獨立元件是因為 useFittedBox 是 hook，不能在 .map() 的 callback 裡呼叫。
+ */
+function DepthCard({ prize, depth, s, fit }: { prize: Prize; depth: number; s: number; fit: FittedBox }) {
+  return (
+    <motion.div
+      style={{
+        position: 'absolute',
+        top: (CY + depth * 6) * s + fit.offY,
+        left: (CX - depth * 8) * s + fit.offX,
+        width: fit.w,
+        height: fit.h,
+        /* 圖層順序（同一個場景裡）：
+         *   hand1 手掌 = 1 ／ 後排卡 = 9、8 ／ 最上面那張 = 12 ／ hand2 手指 = 20
+         * 原本後排卡是 `2 - depth`，算出來是 0 和 1 —— 跟手掌同層甚至更後面，
+         * 卡就會從手掌邊緣露出來，看起來像獎項圖跑到手的後面。
+         * 全部提到手掌之上、手指之下，才是「拿在手裡」該有的層次。 */
+        zIndex: 10 - depth,
+        pointerEvents: 'none',
+        rotate: CR + depth * 4,
+        scale: 1 - depth * 0.04,
+        opacity: 1 - depth * 0.22,
+      }}
+      animate={{ scale: 1 - depth * 0.04, opacity: 1 - depth * 0.22 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+    >
+      <Image src={getCardImage(prize)} alt="" fill className="object-contain" unoptimized draggable={false} />
+    </motion.div>
+  );
+}
+
 interface TopCardProps {
   prize: Prize;
   current: number;
   onSwiped: () => void;
   s: number;
+  fit: FittedBox;
 }
 
-function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
+function TopCard({ prize, current, onSwiped, s, fit }: TopCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 0, 200], [CR - 12, CR, CR + 12]);
-  const rarity = getRarity(prize);
-  const rs = RARITY_STYLE[rarity];
-  const isSSR = rarity === 'SSR';
   // Track drag distance to distinguish real click from drag-end
   const dragDeltaRef = useRef(0);
 
-  const cardW = CW * s;
-  const cardH = CH * s;
+  const cardW = fit.w;
+  const cardH = fit.h;
 
   const handleDragEnd = useCallback(
     (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
@@ -101,8 +153,9 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
         x,
         rotate,
         position: 'absolute',
-        top: CY * s,
-        left: CX * s,
+        // 加 offset 讓收合後的卡片維持在原本卡框的中心，才不會從手掌上偏掉
+        top: CY * s + fit.offY,
+        left: CX * s + fit.offX,
         zIndex: 12,
         touchAction: 'none',
         userSelect: 'none',
@@ -116,34 +169,12 @@ function TopCard({ prize, current, onSwiped, s }: TopCardProps) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="cursor-pointer"
     >
-      <div
-        style={{
-          width: cardW,
-          height: cardH,
-          borderRadius: 14 * s,
-          overflow: 'hidden',
-          position: 'relative',
-          // 品項圖用 contain 不裁切，比例對不上時露出的邊要有底色，
-          // 不然會直接透出後面的場景，看起來像卡片破圖
-          background: '#101014',
-          boxShadow: isSSR
-            ? `0 0 12px ${rs.glow}, 0 0 5px ${rs.glow}, 0 6px 15px rgba(0,0,0,0.85)`
-            : `0 0 6px ${rs.glow}, 0 5px 12px rgba(0,0,0,0.8)`,
-        }}
-      >
-        {/* object-contain：卡框是固定的 63:88（205×286），但品項圖什麼比例都有
-            —— PSA 鑑定卡是細長的，用 cover 會把上面的鑑定標籤和左右邊整個切掉 */}
+      {/* 就只顯示品項原圖：不加圓角、不加陰影、不加底色、不疊光效。
+          品項圖本身多半是去背 PNG，任何外框或底色都會在圖的外緣露出一圈方形，
+          比不加還醜。框的尺寸由 useFittedBox 收成與圖同比例，所以 contain
+          剛好填滿、不會有留白。 */}
+      <div style={{ width: cardW, height: cardH, position: 'relative' }}>
         <Image src={getCardImage(prize)} alt={prize.name} fill className="object-contain" unoptimized priority />
-
-        {isSSR && (
-          <motion.div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(135deg, rgba(255,215,0,0.15), transparent 60%)' }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        )}
-
       </div>
 
     </motion.div>
@@ -203,6 +234,19 @@ export default function CardDrawAnimation({
   const swipeSceneRef = useRef<HTMLDivElement>(null);
   const [sceneDimW, setSceneDimW] = useState(DW);
   const s = sceneDimW / DW;
+
+  /*
+   * 整疊卡共用一個尺寸，由「目前最上面那張」的圖片比例決定。
+   *
+   * 卡框固定 63:88，但品項圖什麼比例都有，直接套框會裁掉內容；讓每張各自
+   * 貼合自己的圖又會讓後排比前排大、整張露到手掌外面。折衷是整疊統一用
+   * 最上面那張的尺寸 —— 後排本來就幾乎全被手掌與前一張擋住，比例差一點看不出來。
+   */
+  const deckFit = useFittedBox(
+    prizes.length ? getCardImage(prizes[Math.min(swipeIndex, prizes.length - 1)]) : '',
+    CW * s,
+    CH * s,
+  );
 
   useEffect(() => {
     if (phase !== 'swipe') return;
@@ -325,48 +369,14 @@ export default function CardDrawAnimation({
                 }}
               />
 
-              {/* Depth cards — fanned slightly behind top card */}
+              {/* Depth cards — fanned slightly behind top card
+                  三張卡共用最上面那張算出來的尺寸（deckFit）。
+                  之前讓每張各自貼合自己的圖，結果後排的圖比較寬就整張超出手掌
+                  輪廓露在外面，看起來像有張獎項圖跑到手的後面。 */}
               {[2, 1].map(depth => {
                 const idx = swipeIndex + depth;
                 if (idx >= prizes.length) return null;
-                return (
-                  <motion.div
-                    key={`depth-${idx}`}
-                    style={{
-                      position: 'absolute',
-                      top: (CY + depth * 6) * s,
-                      left: (CX - depth * 8) * s,
-                      width: CW * s,
-                      height: CH * s,
-                      borderRadius: 14 * s,
-                      overflow: 'hidden',
-                      background: '#101014',   // 同上：contain 露出的邊要有底
-                      zIndex: 2 - depth,
-                      pointerEvents: 'none',
-                      rotate: CR + depth * 4,
-                      scale: 1 - depth * 0.04,
-                      opacity: 1 - depth * 0.22,
-                    }}
-                    animate={{
-                      scale: 1 - depth * 0.04,
-                      opacity: 1 - depth * 0.22,
-                    }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-                  >
-                    <Image
-                      src={getCardImage(prizes[idx])}
-                      alt=""
-                      fill
-                      className="object-contain"
-                      unoptimized
-                      draggable={false}
-                    />
-                    <div
-                      className="absolute inset-0"
-                      style={{ background: `rgba(0,0,0,${depth * 0.25})` }}
-                    />
-                  </motion.div>
-                );
+                return <DepthCard key={`depth-${idx}`} prize={prizes[idx]} depth={depth} s={s} fit={deckFit} />;
               })}
 
               {/* Top draggable card */}
@@ -377,6 +387,7 @@ export default function CardDrawAnimation({
                   current={swipeIndex}
                   onSwiped={handleSwiped}
                   s={s}
+                  fit={deckFit}
                 />
               </AnimatePresence>
 

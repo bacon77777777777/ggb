@@ -78,7 +78,14 @@ interface Box {
   mats: THREE.MeshStandardMaterial[];
   shadow: THREE.Mesh;
   body: Matter.Body | null;
-  slot: { x: number; y: number; floorY: number; row: number; z0: number; startAt: number; pushMs: number };
+  /** col/design：這一格在第幾欄、目前擺哪一款外觀。
+   *  款式記在格子上而不是盒子上，補貨時才知道要補同一款 */
+  slot: {
+    x: number; y: number; floorY: number; row: number; col: number;
+    design: number; z0: number; startAt: number; pushMs: number;
+  };
+  /** 這盒用第幾款外觀（0~4）。掉到取物口要換補光材質時得知道拿哪一套 */
+  design: number;
   depth: number;
   won: boolean;
   fadeT: number; fadeIn: boolean; advSolo: boolean;
@@ -109,7 +116,7 @@ export function BlindboxMachineMode5({
   const sceneRef = useRef<{
     renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera;
     engine: Matter.Engine; boxes: Box[]; layers: THREE.Mesh[]; cta: THREE.Mesh;
-    matsLit: THREE.MeshStandardMaterial[]; boxGeo: THREE.BoxGeometry; shadowTex: THREE.Texture;
+    matsLitSets: THREE.MeshStandardMaterial[][]; boxGeo: THREE.BoxGeometry; shadowTex: THREE.Texture;
     camZ: number; raf: number; shake: number; acc: number; last: number;
     dropping: boolean; ctaOn: boolean; ctaDinged: boolean; ctaFade: number; pendingDone: boolean; busy: boolean;
   } | null>(null);
@@ -119,7 +126,7 @@ export function BlindboxMachineMode5({
   /** 撞擊音效 45ms 冷卻：十顆盒子同時落地時聲音會密但不糊 */
   const lastSfx = useRef(0);
   const resetRef = useRef<(() => void) | null>(null);
-  const refillRef = useRef<(() => void) | null>(null);
+  const refillRef = useRef<((reshuffle?: boolean) => void) | null>(null);
 
   useEffect(() => { paramsRef.current = params; }, [params]);
 
@@ -257,12 +264,54 @@ export function BlindboxMachineMode5({
     })();
 
     const boxGeo = new THREE.BoxGeometry(BW, BH, BD);
-    const faceTex = ['f3', 'f5', 'f1', 'f2', 'f4', 'f6'].map(n => tex(`${ASSETS}/${n}.webp`));
-    const matsDim = faceTex.map(t => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 }));
-    const matsLit = faceTex.map(t => new THREE.MeshStandardMaterial({
-      map: t, roughness: 0.85, metalness: 0,
-      emissive: 0xffffff, emissiveMap: t, emissiveIntensity: DEFAULTS.lit,
-    }));
+    /*
+     * 盒子六面放在同一張組圖 `box.webp`（3 欄 × 2 列，每格 100×133）。
+     *
+     * 格子順序就是 Three.js BoxGeometry 的材質順序 —— 右 左 上 ／ 下 前 後。
+     * 換圖時只要照這個順序排版即可，程式不用動；格子大小由圖寬高除以 3×2
+     * 推算，所以整張放大重繪也不會壞。
+     *
+     * 用一張組圖而不是六個檔案：六個檔各發一次請求，組圖只要一次。
+     * 這裡走 canvas 切片而不是改 UV —— 改 UV 只需一張 GPU 貼圖比較省，
+     * 但格子邊界在 mipmap 取樣下會互相吃到對方的像素（texture bleeding），
+     * 得再補間隙與半像素內縮。切片沒有這個問題，六張小貼圖的成本可以忽略。
+     */
+    /** 五款盒子外觀，架上隨機擺。換一批（resetBoxes）會重抽 */
+    const DESIGNS = [1, 2, 3, 4, 5].map(n => `${ASSETS}/box${n}.webp`);
+
+    const loadAtlas = (src: string) => {
+      const t6 = Array.from({ length: 6 }, () => {
+        const t = new THREE.Texture();
+        t.encoding = THREE.sRGBEncoding;
+        t.anisotropy = 4;
+        return t;
+      });
+      const COLS = 3, ROWS = 2;
+      const atlas = new window.Image();
+      atlas.onload = () => {
+        const cw = atlas.width / COLS, ch = atlas.height / ROWS;
+        t6.forEach((t, i) => {
+          const c = document.createElement('canvas');
+          c.width = cw; c.height = ch;
+          c.getContext('2d')?.drawImage(
+            atlas, (i % COLS) * cw, Math.floor(i / COLS) * ch, cw, ch, 0, 0, cw, ch,
+          );
+          t.image = c;
+          t.needsUpdate = true;
+        });
+      };
+      atlas.src = src;
+      return t6;
+    };
+
+    const faceTexSets = DESIGNS.map(loadAtlas);
+    const matsDimSets = faceTexSets.map(set =>
+      set.map(t => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 })));
+    const matsLitSets = faceTexSets.map(set =>
+      set.map(t => new THREE.MeshStandardMaterial({
+        map: t, roughness: 0.85, metalness: 0,
+        emissive: 0xffffff, emissiveMap: t, emissiveIntensity: DEFAULTS.lit,
+      })));
 
     const engine = M.Engine.create({ enableSleeping: true });
     engine.gravity.y = DEFAULTS.gravity;
@@ -286,7 +335,7 @@ export function BlindboxMachineMode5({
 
     const S_ = {
       renderer, scene, camera, engine, boxes: [] as Box[], layers, cta,
-      matsLit, boxGeo, shadowTex, camZ: 1, raf: 0, shake: 0, acc: 0,
+      matsLitSets, boxGeo, shadowTex, camZ: 1, raf: 0, shake: 0, acc: 0,
       last: performance.now(), dropping: false, ctaOn: false, ctaDinged: false, ctaFade: 0,
       pendingDone: false, busy: false,
     };
@@ -348,9 +397,9 @@ export function BlindboxMachineMode5({
         paramsRef.current.shadow ? (d ? 0.28 : 0.42) : 0;
     };
 
-    const makeBox = (slot: Box['slot'], depth: number): Box => {
+    const makeBox = (slot: Box['slot'], depth: number, design: number): Box => {
       const group = new THREE.Group();
-      const mats = matsDim.map(m => m.clone());
+      const mats = matsDimSets[design].map(m => m.clone());
       const mesh = new THREE.Mesh(boxGeo, mats);
       mesh.rotation.y = (Math.random() - 0.5) * 0.3;
       group.add(mesh);
@@ -361,7 +410,7 @@ export function BlindboxMachineMode5({
       sh.scale.set(BW * 1.5, BD * 0.9, 1);
       scene.add(group); scene.add(sh);
       const b: Box = {
-        group, mesh, mats, shadow: sh, body: null, slot, depth, won: false,
+        group, mesh, mats, shadow: sh, body: null, slot, design, depth, won: false,
         fadeT: 0, fadeIn: false, advSolo: false,
         jx: (Math.random() - 0.5) * 14, z0: 0, zBase: 0, restY: 0, floorY: 0, zCur: 0,
         phase: 'stock', queued: false, startAt: 0, pushMs: 400, pushT: 0, advT: 0, outT: 0,
@@ -374,6 +423,15 @@ export function BlindboxMachineMode5({
 
     const slotsRef: Box['slot'][] = [];
 
+    /**
+     * 抽五欄的外觀，上下兩排共用同一款
+     *
+     * 老闆指定第二排要跟第一排一樣圖，所以隨機是「每欄一次」而不是「每格一次」——
+     * 畫面上橫看是五款隨機、直看上下成對。換一批會重抽，抽完自動補貨不會。
+     */
+    const rollColDesigns = () =>
+      Array.from({ length: SLOT_XS.length }, () => Math.floor(Math.random() * matsDimSets.length));
+
     /** 擺盒：機台永遠擺滿十格（庫存展示用）。抽幾盒是掉的時候才決定 */
     const resetBoxes = () => {
       S_.boxes.forEach(b => {
@@ -383,16 +441,20 @@ export function BlindboxMachineMode5({
       S_.boxes = [];
       const stock = paramsRef.current.stock;
       slotsRef.length = 0;
+
+      const colDesign = rollColDesigns();
       for (let r = 0; r < 2; r++) {
         for (let c = 0; c < 5; c++) {
           slotsRef.push({
             x: SLOT_XS[c], y: ROW_FLOOR[r] - BH / 2 - 2, floorY: ROW_FLOOR[r],
-            row: r, z0: (Math.random() - 0.5) * 12, startAt: 0, pushMs: 400,
+            row: r, col: c, design: colDesign[c],
+            z0: (Math.random() - 0.5) * 12, startAt: 0, pushMs: 400,
           });
         }
       }
       slotsRef.forEach(slot => {
-        for (let d = stock; d >= 0; d--) S_.boxes.push(makeBox(slot, d));
+        // 同一格往深處疊的庫存也用同一款，不然推出來會變成另一個花色
+        for (let d = stock; d >= 0; d--) S_.boxes.push(makeBox(slot, d, slot.design));
       });
       S_.dropping = false; S_.ctaOn = false; S_.ctaDinged = false; S_.pendingDone = false;
       setReadyToPick(false);
@@ -498,7 +560,7 @@ export function BlindboxMachineMode5({
       M.Body.setVelocity(body, { x: (Math.random() - 0.5) * 1.2, y: -vyUp / 60 });
       M.Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.09);
       b.body = body; b.phase = 'phys'; b.zCur = b.group.position.z;
-      b.mesh.material = matsLit;   // 取物口只透 25%，換補光材質
+      b.mesh.material = matsLitSets[b.design];   // 取物口只透 25%，換補光材質（要拿這盒自己那款）
       sfxClack();
       setShadow(b, 0, 1);
       M.Composite.add(engine.world, body);
@@ -614,7 +676,7 @@ export function BlindboxMachineMode5({
       // 演出中（機台在動／CTA 亮著）把背景音樂壓低，讓機械聲出得來
       setDucking(S_.busy || S_.ctaOn);
       setMachineMotion(moving > 0, pushing > 0);
-      matsLit.forEach(m => { m.emissiveIntensity = P.lit; });
+      matsLitSets.forEach(set => set.forEach(m => { m.emissiveIntensity = P.lit; }));
       engine.gravity.y = P.gravity;
 
       if (S_.shake > 0.01) {
@@ -640,8 +702,17 @@ export function BlindboxMachineMode5({
      * 補貨：把每格補回「前排 1 + 備貨 N」的滿載狀態，新盒從最後方淡入。
      * 掉完盒、換一批之後都要補，不然機台會越玩越空。
      */
-    const refillSlots = () => {
+    /**
+     * 補貨。reshuffle=true 代表這是「換一批」——重抽每欄的外觀；
+     * 抽完自動補貨傳 false，維持原本的款式（不然每抽一次架上花色就全變，
+     * 玩家會以為自己看錯）。
+     */
+    const refillSlots = (reshuffle = false) => {
       const stock = paramsRef.current.stock;
+      if (reshuffle) {
+        const colDesign = rollColDesigns();
+        slotsRef.forEach(slot => { slot.design = colDesign[slot.col]; });
+      }
       const want = stock + 1;
       const bySlot = new Map<Box['slot'], Box[]>();
       S_.boxes.forEach(b => {
@@ -662,7 +733,7 @@ export function BlindboxMachineMode5({
         // 缺幾盒就從最後方往前補：正在遞補的盒子會停在前面的深度，
         // 新盒一律生在最深處淡入
         for (let i = 0; i < want - live; i++) {
-          const nb = makeBox(slot, stock - i);
+          const nb = makeBox(slot, stock - i, slot.design);
           nb.phase = 'fade'; nb.fadeIn = true; nb.fadeT = 0;
           setBoxOpacity(nb, 0);
           (nb.shadow.material as THREE.MeshBasicMaterial).opacity = 0;
@@ -739,7 +810,7 @@ export function BlindboxMachineMode5({
       if (b.depth === 0) { b.phase = 'fade'; b.fadeIn = false; b.fadeT = 0; }
       else { b.phase = 'advance'; b.advT = 0; b.advSolo = true; }
     });
-    refillRef.current?.();
+    refillRef.current?.(true);   // 換一批 → 重抽外觀
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restockSignal]);
 
