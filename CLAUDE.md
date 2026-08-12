@@ -11,6 +11,28 @@ GGB（吉吉比）是台灣線上轉蛋平台。廠商供貨、平台出貨。�
 
 資料庫：Supabase（PostgreSQL）。直連字串：`postgresql://postgres.akdqleelvqvjhjnfkpfq:...@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres`
 
+## ⚠️ 工作目錄只有一個：`/Users/bacon/ggb`
+
+**一律直接在 `/Users/bacon/ggb` 作業。不要另外 clone 到別的目錄。**
+（老闆的每一台電腦都適用，不是只有其中一台。）
+
+老闆說「clone dev 最新版本下來，並保留本地 env」時，要做的是**把現有目錄拉到最新**，
+不是 `git clone` 到新資料夾：
+
+```bash
+cd /Users/bacon/ggb
+git fetch origin && git reset --hard origin/dev
+```
+
+`.env.local` 沒有被 git 追蹤，這樣拉更新**不會碰到它**，所以「保留本地 env」自然成立
+（不放心就先備份再比對，但不需要為了它另開目錄）。未追蹤的本地素材（切圖、zip 等）
+也會原地保留 —— 但**不要跑 `git clean`**，那會把它們清掉。
+
+**為什麼寫這條**：2026-08-12 我把那句話照字面做成 `git clone` 到 `/Users/bacon/ggb-dev`，
+整天的工作與 dev server 都跑在那邊，結果變成兩份要同步的複本，老闆打開 VSCode
+看到的還是舊的那份。多開目錄沒有任何好處，只會製造「改到一半發現改錯地方」。
+該目錄已於 2026-08-13 刪除。
+
 ## Commands
 
 ```bash
