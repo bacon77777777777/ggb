@@ -60,3 +60,6 @@ backend/public/*.csv
 
 # 匯入測試圖，不隨前台部署
 frontend/public/images/test/
+
+# 匯入／驗證用的暫存腳本（CLAUDE.md 規定放這裡，不進版控）
+backend/.tmp/
