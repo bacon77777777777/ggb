@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, Fragment } from 'react'
+import { logExport } from '@/lib/logExport'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,7 @@ const downloadCsv = (items: WorkItem[]) => {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = '商品匯入範本_競品工具.csv'
+  void logExport('商品匯入範本', '商品匯入範本_競品工具.csv')
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

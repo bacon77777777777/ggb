@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminLayout, DateRangePicker, ListTableCard, type ListColumn } from '@/components'
 import { useToast } from '@/contexts/ToastContext'
+import { logExport } from '@/lib/logExport'
 
 /**
  * AI 用量
@@ -57,6 +58,7 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
   const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8;' }))
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
+  void logExport('AI 用量', `${filename}（${rows.length} 筆）`)
   URL.revokeObjectURL(url)
 }
 

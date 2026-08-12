@@ -5,6 +5,7 @@ import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { DataTable, type Column } from '@/components'
+import { logExport } from '@/lib/logExport'
 
 interface PointRow {
   id: string
@@ -109,6 +110,7 @@ export default function PointsReportPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `積分明細_${startDate}_${endDate}.csv`
+    void logExport('積分明細', `積分明細_${startDate}_${endDate}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }

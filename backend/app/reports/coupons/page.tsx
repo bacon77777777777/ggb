@@ -6,6 +6,7 @@ import DateRangePicker from '@/components/DateRangePicker'
 import { useState, useEffect, useCallback } from 'react'
 import { CardSkeleton } from '@/components/ui/Skeleton'
 import { DataTable, type Column } from '@/components'
+import { logExport } from '@/lib/logExport'
 
 interface CouponRow {
   id: string
@@ -147,6 +148,7 @@ export default function CouponsReportPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `折價券明細_${startDate}_${endDate}.csv`
+    void logExport('折價券明細', `折價券明細_${startDate}_${endDate}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }

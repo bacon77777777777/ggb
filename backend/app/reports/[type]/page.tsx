@@ -12,6 +12,7 @@ import Badge from '@/components/ui/Badge'
 import SelectField from '@/components/ui/SelectField'
 import SortableTableHeader from '@/components/SortableTableHeader'
 import { DataTable, type Column } from '@/components'
+import { logExport } from '@/lib/logExport'
 
 type ReportType = 'overview' | 'products' | 'recharge' | 'consumption' | 'behavior'
 
@@ -55,6 +56,7 @@ function exportCSV(filename: string, headers: string[], rows: string[][]) {
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  void logExport('報表', `${filename}（${rows.length} 筆）`)
   URL.revokeObjectURL(url)
 }
 

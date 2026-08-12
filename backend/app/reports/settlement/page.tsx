@@ -5,6 +5,7 @@ import { CardSkeleton } from '@/components/ui/Skeleton'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import SelectField from '@/components/ui/SelectField'
 import { useAdmin } from '@/contexts/AdminContext'
+import { logExport } from '@/lib/logExport'
 
 interface Supplier { id: number; name: string }
 interface ProductRow { id: number; name: string; price: number; drawCount: number; totalG: number }
@@ -264,6 +265,7 @@ export default function SettlementPage() {
     XLSX.utils.book_append_sheet(wb, wsDetail, '消費明細')
 
     XLSX.writeFile(wb, `結算對帳單_${data.supplierName}_${period.startDate}_${period.endDate}.xlsx`)
+    void logExport('廠商結算', `${data.supplierName}｜${period.startDate}~${period.endDate}｜應付 ${supplierNet}`)
   }
 
   return (

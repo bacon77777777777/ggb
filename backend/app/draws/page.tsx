@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge'
 import { useState, useEffect, useMemo } from 'react'
 import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { formatDateTime } from '@/utils/dateFormat'
+import { logExport } from '@/lib/logExport'
 
 interface DrawRecord {
   id: number
@@ -377,6 +378,7 @@ export default function DrawsPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `抽獎紀錄_${new Date().toISOString().split('T')[0]}.csv`
+    void logExport('抽獎紀錄', `抽獎紀錄_${new Date().toISOString().split('T')[0]}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }

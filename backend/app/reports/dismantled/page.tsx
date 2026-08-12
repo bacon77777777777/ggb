@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SelectField from '@/components/ui/SelectField'
 import { DataTable, type Column } from '@/components'
+import { logExport } from '@/lib/logExport'
 
 interface Supplier { id: number; name: string }
 interface DismantleRow {
@@ -142,6 +143,7 @@ export default function DismantledReportPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `分解明細_${startDate}_${endDate}.csv`
+    void logExport('分解明細', `分解明細_${startDate}_${endDate}.csv`)
     a.click()
     URL.revokeObjectURL(url)
   }
