@@ -707,15 +707,52 @@ export default function ProductDetailPage() {
 
     setIsLoadingResults(true);
     try {
-      const { data, error } = await supabase
-        .from('draw_records')
-        .select('ticket_number, prize_level, prize_name, prize_image_url, is_last_one')
-        .eq('product_id', product.id)
-        .order('ticket_number', { ascending: true });
+      /*
+       * 整檔的開獎結果要走 `get_ticket_seal`，不能直接查 `draw_records`。
+       *
+       * `draw_records` 的 RLS 是「只看得到自己的」（`auth.uid() = user_id`），
+       * 而且**濾掉的部分不會報錯**，所以直接查會安安靜靜只回自己抽過的那幾支 ——
+       * 皮克敏那一檔（298 籤）實測只顯示 30+1 張，玩家會以為整檔只賣了 30 支。
+       *
+       * `get_ticket_seal` 是 SECURITY DEFINER，而且本來就管好了公平性：
+       * 還在賣的時候只給承諾值（整張表這時給出去等於公開答案），
+       * 賣完或封檔才回完整的籤號→賞等對照。跟 /fairness/[id] 同一個資料源，
+       * 兩頁不會各說各話。
+       */
+      const { data: seal } = await supabase.rpc('get_ticket_seal', { p_product_id: product.id });
 
-      if (error) throw error;
-      
-      let rows = data || [];
+      let rows: {
+        ticket_number: number; prize_level: string; prize_name: string;
+        prize_image_url: string; is_last_one: boolean;
+      }[] = [];
+
+      const sealText: string | undefined = seal?.revealed ? seal?.seal_text : undefined;
+      if (sealText) {
+        // seal_text 是「籤號:賞等」逐行，前面幾行是 header（product/tickets/salt）
+        rows = sealText
+          .split('\n')
+          .map((line: string) => line.match(/^(\d+):(.+)$/))
+          .filter((m: RegExpMatchArray | null): m is RegExpMatchArray => m !== null)
+          .map((m: RegExpMatchArray) => ({
+            ticket_number: Number(m[1]),
+            prize_level: m[2].trim(),
+            prize_name: m[2].trim(),   // 這張表只有賞等，格子上也只顯示賞等
+            prize_image_url: '',
+            is_last_one: false,
+          }));
+      }
+
+      // 沒有封存表的舊商品（migration 之前上架的）退回原本的作法，
+      // 至少還看得到自己抽過的部分，不要整張空白
+      if (rows.length === 0) {
+        const { data, error } = await supabase
+          .from('draw_records')
+          .select('ticket_number, prize_level, prize_name, prize_image_url, is_last_one')
+          .eq('product_id', product.id)
+          .order('ticket_number', { ascending: true });
+        if (error) throw error;
+        rows = (data || []) as typeof rows;
+      }
       const hasLastOneRow = rows.some(
         r => r.is_last_one || r.prize_level.includes('Last One') || r.prize_level.includes('LAST ONE') || r.prize_level.includes('最後賞') || r.ticket_number === 0
       );
