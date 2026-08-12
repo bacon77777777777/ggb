@@ -351,16 +351,24 @@ export default function SettlementPage() {
                     <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">費率設定</p>
                     <div className="space-y-3">
                       {/* 綠界手續費：有實際資料時顯示分攤後實際值 */}
-                      <div className="flex items-center justify-between gap-3">
-                        <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
-                        {data?.hasActualFee ? (
-                          <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
-                            <span className="text-sm text-neutral-500">% 估算</span>
-                          </div>
-                        )}
+                      <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <label className="text-sm text-neutral-600 whitespace-nowrap">綠界手續費</label>
+                          {data?.hasActualFee ? (
+                            <span className="text-sm font-medium text-green-600">{fmt(data.allocatedActualFee ?? 0)} 實際分攤</span>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <NumberField value={ecpayRate} onChange={setEcpayRate} min={0} max={10} step={0.05} className="w-16" />
+                              <span className="text-sm text-neutral-500">% 估算</span>
+                            </div>
+                          )}
+                        </div>
+                        {/* 說明為什麼這一格不能填：有實際扣款就沒有「要設定」的東西了 */}
+                        <p className="text-xs text-neutral-400 mt-0.5">
+                          {data?.hasActualFee
+                            ? '綠界實際扣了多少就是多少，不用設定'
+                            : '這期沒有綠界的實際扣款資料，先用這個比例估算'}
+                        </p>
                       </div>
                       {[
                         // 上限 100：自家廠商（吉吉比）可能整筆都算自己的，不該被 99 卡住
