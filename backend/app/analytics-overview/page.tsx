@@ -275,7 +275,7 @@ export default function AnalyticsOverviewPage() {
                 <div className="h-[38px] text-[30px] leading-[38px] overflow-hidden whitespace-nowrap"
                   style={{ color: 'rgba(0,0,0,0.88)' }}>
                   {loading ? <span className="inline-block w-32 h-7 bg-neutral-100 rounded animate-pulse" /> :
-                    `${(c?.totalSales ?? 0).toLocaleString()} 幣`}
+                    `${(c?.totalSales ?? 0).toLocaleString()} G幣`}
                 </div>
               </div>
               <div className="relative w-full mb-3" style={{ height: 46 }}>

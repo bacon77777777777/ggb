@@ -178,7 +178,7 @@ export default function SupplierAnalyticsPage() {
             <div className="grid grid-cols-4 gap-6">
               <StatCard
                 title="銷售額" loading={loading} skeletonWidth="w-32"
-                value={`${(c?.totalSales ?? 0).toLocaleString()} 幣`}
+                value={`${(c?.totalSales ?? 0).toLocaleString()} G幣`}
                 mid={g && <>
                   <GrowthTag value={g.sales} label="期間同比" />
                   <GrowthTag value={g.salesToday} label="日同比" />
@@ -201,7 +201,7 @@ export default function SupplierAnalyticsPage() {
 
               <StatCard
                 title="銷售走勢" loading={loading} skeletonWidth="w-24"
-                value={`${(c?.avgPerDraw ?? 0).toLocaleString()} 幣`}
+                value={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
                 mid={!loading && spark.some(s => s.sales > 0) ? (
                   <TinyArea data={spark} xField="x" yField="sales"
                     height={46} autoFit
@@ -209,7 +209,7 @@ export default function SupplierAnalyticsPage() {
                     axis={false} padding={[2, 0, 0, 0]}
                     tooltip={{ title: (d: any) => d.date, items: [{ channel: 'y', name: '銷售額' }] } as any} />
                 ) : <div className="w-full h-full" />}
-                footerLabel="平均客單" footerValue={`${(c?.avgPerDraw ?? 0).toLocaleString()} 幣`}
+                footerLabel="平均客單" footerValue={`${(c?.avgPerDraw ?? 0).toLocaleString()} G幣`}
               />
 
               <StatCard
