@@ -34,8 +34,9 @@ const NEW_ARRIVAL_BG = '/images/new_item.png';
  * 2026-08-12 換圖：新的外框是 800×1189（與公告模板 bg.webp 同尺寸），
  * 白板幾乎滿版 —— sharp 量原圖得 top 28.01% / bottom 0.25% / 左右各約 0.25%。
  * 這裡再往內縮出留白：上緣避開粉紅漸層、左右不要貼著圓角。
+ * 上下留得比較緊（29% / 1.5%），把高度盡量讓給清單。
  */
-const PANEL = { top: '30.5%', bottom: '3%', left: '6%', right: '6%' };
+const PANEL = { top: '29%', bottom: '1.5%', left: '6%', right: '6%' };
 
 /** 商品頁網址：與 ProductCard 同一套規則，不要兩邊各寫一份 */
 const productHref = (p: NewArrivalProduct) =>
@@ -43,6 +44,11 @@ const productHref = (p: NewArrivalProduct) =>
     : p.type === 'gacha' ? `/gacha/${p.id}`
       : p.type === 'card' ? `/card/${p.id}`
         : `/item/${p.id}`;
+
+/** 最新上架清單一次露出幾筆（捲到底再露一頁，直到全部顯示完） */
+const NEW_ARRIVAL_PAGE = 10;
+/** 距離底部幾 px 就算「捲到底」，提早一點載入才不會頓一下 */
+const LOAD_MORE_THRESHOLD_PX = 48;
 
 const APPEAR_DELAY_MS = 700;   // 首則：等首頁載入動畫跑完
 const NEXT_DELAY_MS   = 260;   // 後續：讓上一則退場後再進場，不要疊在一起
@@ -56,6 +62,8 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
   const [visible, setVisible] = useState(false);
   /** 「今日不再顯示」的勾選狀態。每換一則就歸零，不要沿用上一則的選擇 */
   const [hideToday, setHideToday] = useState(false);
+  /** 最新上架清單目前露出幾筆，捲到底再加一頁 */
+  const [visibleCount, setVisibleCount] = useState(NEW_ARRIVAL_PAGE);
 
   const shownOnceRef = useRef(false);
 
@@ -76,6 +84,7 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
     if (!current) return;
     const delay = shownOnceRef.current ? NEXT_DELAY_MS : APPEAR_DELAY_MS;
     setHideToday(false);
+    setVisibleCount(NEW_ARRIVAL_PAGE);
     const t = setTimeout(() => { shownOnceRef.current = true; setVisible(true); }, delay);
     return () => clearTimeout(t);
   }, [current]);
@@ -159,8 +168,17 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                   {/* 條列式：小圖 ＋ 類別膠囊 ＋ 名稱／價格。
                       每列不再有自己的卡片外框（老闆指定移除），改用淡分隔線隔開 ——
                       白板本身就是白的，再套一層淺灰卡片只是把版面切得更碎 */}
-                  <div className="flex-1 min-h-0 divide-y divide-neutral-100 overflow-y-auto">
-                    {(promo.products ?? []).map(p => {
+                  <div
+                    className="flex-1 min-h-0 divide-y divide-neutral-100 overflow-y-auto"
+                    /* 捲到接近底部就再露一頁。用 scroll 事件而不是 IntersectionObserver：
+                       這裡只有一個容器、清單也不長，多掛一個 observer 不划算 */
+                    onScroll={e => {
+                      const el = e.currentTarget;
+                      if (el.scrollHeight - el.scrollTop - el.clientHeight > LOAD_MORE_THRESHOLD_PX) return;
+                      setVisibleCount(c => Math.min(c + NEW_ARRIVAL_PAGE, promo.products?.length ?? c));
+                    }}
+                  >
+                    {(promo.products ?? []).slice(0, visibleCount).map(p => {
                       const cat = categoryFlagKey(p.type)
                       return (
                         <Link
@@ -203,6 +221,12 @@ export default function PromoPopup({ placement = 'home' }: { placement?: string 
                       )
                     })}
                   </div>
+                  {/* 底部淡出：清單超出內容區時的「還有更多」提示。
+                      初始畫面常常剛好停在某一列的結尾，沒有這道漸層看不出來可以捲。
+                      pointer-events-none 才不會擋到最後一列的點擊 */}
+                  {visibleCount < (promo.products?.length ?? 0) && (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-white to-transparent" />
+                  )}
                 </div>
               </div>
             ) : isImageOnly ? (
