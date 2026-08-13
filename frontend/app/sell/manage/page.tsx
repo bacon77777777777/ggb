@@ -10,6 +10,12 @@ import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar from '@/components/sell/MarketTabBar';
+import MarketSheet from '@/components/sell/MarketSheet';
+import SellFormContent from '@/components/sell/SellFormContent';
+import AdCenterContent from '@/components/sell/AdCenterContent';
+import DepositRulesContent from '@/components/sell/DepositRulesContent';
+import PayoutSettingsContent from '@/components/sell/PayoutSettingsContent';
+import ProUpgradeContent from '@/components/sell/ProUpgradeContent';
 
 /*
  * 我的賣場 —— 照原型 vMe() 的 .mehd / .mecard / .mlist / .mine 結構。
@@ -76,6 +82,12 @@ export default function SellManagePage() {
   const [payMethod, setPayMethod] = useState('尚未設定');
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  /*
+   * 「我的」底下的功能全部走彈層（照原型：這些在原型裡都是 sheet，不是分頁）。
+   * 對應的路由仍保留，當深連結與分享用 —— 但站內動線一律不換頁。
+   */
+  const [sheet, setSheet] = useState<null | { kind: 'sell' | 'ads' | 'deposit' | 'payout' | 'pro'; editId?: number }>(null);
+  const closeSheet = () => setSheet(null);
 
   useEffect(() => {
     if (!authLoading && !user?.id) router.replace('/login');
@@ -220,7 +232,7 @@ export default function SellManagePage() {
         <div className="upsell">
           <b>升級官方認證商家</b>
           <p>認證徽章 · 店鋪頁 · 自家商品置頂 · 單件售價上限提高一級</p>
-          <button type="button" className="go" onClick={() => router.push('/sell/pro')}>
+          <button type="button" className="go" onClick={() => setSheet({ kind: 'pro' })}>
             1,200G／月　立即升級
           </button>
         </div>
@@ -228,20 +240,20 @@ export default function SellManagePage() {
 
       {/* ── 功能列 ── */}
       <div className="mlist">
-        <button type="button" className="mrow" onClick={() => router.push('/sell/new')}>
+        <button type="button" className="mrow" onClick={() => setSheet({ kind: 'sell' })}>
           我要上架
           <span className="ar">上架不扣 ›</span>
         </button>
-        <button type="button" className="mrow" onClick={() => router.push('/sell/ads')}>
+        <button type="button" className="mrow" onClick={() => setSheet({ kind: 'ads' })}>
           廣告中心
           <span className="hot">6 種版位</span>
           <span className="ar">›</span>
         </button>
-        <button type="button" className="mrow" onClick={() => router.push('/sell/deposit')}>
+        <button type="button" className="mrow" onClick={() => setSheet({ kind: 'deposit' })}>
           保證金規則
           <span className="ar">賣出才收 ›</span>
         </button>
-        <button type="button" className="mrow" onClick={() => router.push('/sell/settings')}>
+        <button type="button" className="mrow" onClick={() => setSheet({ kind: 'payout' })}>
           收款設定
           <span className="ar">{payMethod} ›</span>
         </button>
@@ -303,7 +315,7 @@ export default function SellManagePage() {
                       <button type="button" disabled={busyId === l.id} onClick={() => setStatus(l, 'removed')}>
                         下架
                       </button>
-                      <button type="button" className="on" onClick={() => router.push('/sell/ads')}>
+                      <button type="button" className="on" onClick={() => setSheet({ kind: 'ads' })}>
                         推廣
                       </button>
                     </>
@@ -313,7 +325,7 @@ export default function SellManagePage() {
                     </button>
                   ) : (
                     <>
-                      <button type="button" onClick={() => router.push(`/sell/new?edit=${l.id}`)}>
+                      <button type="button" onClick={() => setSheet({ kind: 'sell', editId: l.id })}>
                         修改
                       </button>
                       <button
@@ -334,6 +346,53 @@ export default function SellManagePage() {
       </div>
 
       <MarketTabBar active="me" />
+
+      {/* ── 「我的」底下的功能全部是彈層（照原型）── */}
+      <MarketSheet
+        open={sheet?.kind === 'sell'}
+        title={sheet?.editId ? '修改上架' : '我要上架'}
+        onClose={closeSheet}
+      >
+        {sheet?.kind === 'sell' && (
+          <SellFormContent
+            editId={sheet.editId ?? null}
+            onDone={() => {
+              closeSheet();
+              void load();
+            }}
+          />
+        )}
+      </MarketSheet>
+
+      <MarketSheet open={sheet?.kind === 'ads'} title="廣告中心" onClose={closeSheet}>
+        {sheet?.kind === 'ads' && <AdCenterContent onDone={closeSheet} />}
+      </MarketSheet>
+
+      <MarketSheet open={sheet?.kind === 'deposit'} title="保證金規則" onClose={closeSheet}>
+        {sheet?.kind === 'deposit' && <DepositRulesContent />}
+      </MarketSheet>
+
+      <MarketSheet open={sheet?.kind === 'payout'} title="收款設定" onClose={closeSheet}>
+        {sheet?.kind === 'payout' && (
+          <PayoutSettingsContent
+            onDone={() => {
+              closeSheet();
+              void load();
+            }}
+          />
+        )}
+      </MarketSheet>
+
+      <MarketSheet open={sheet?.kind === 'pro'} title="官方認證商家" onClose={closeSheet}>
+        {sheet?.kind === 'pro' && (
+          <ProUpgradeContent
+            onDone={() => {
+              closeSheet();
+              void load();
+            }}
+          />
+        )}
+      </MarketSheet>
     </div>
   );
 }
