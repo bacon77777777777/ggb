@@ -164,6 +164,40 @@ migration 裡改用 `DROP FUNCTION` + `CREATE` 並**補回 `GRANT EXECUTE`**
 
 ---
 
+## v2026.08.13b｜2026-08-13｜分享卡片換正式主視覺；邀請連結有自己的圖
+
+老闆回報 LINE 分享出去的邀請連結「沒圖」。實際上**有圖，那張圖本身就是佔位圖** ——
+`og:image` 指到 `banner_defaulet.png`，是一張 1200×400 的灰階 logo，
+而 metadata 宣告 630、檔案只有 400，LINE 自己補白，卡片就變成一塊灰。
+
+| | 之前 | 現在 |
+|---|---|---|
+| 全站預設 | `banner_defaulet.png` 1200×400 灰階佔位 | `line_default.png` 1200×630 |
+| 邀請連結 | 同上（跟全站一樣） | `invite/invite_banner.png` 1200×630 |
+
+**壓縮**：老闆給的原檔 1.52MB / 1.72MB，爬蟲抓圖有時間限制、太肥會抓不到。
+扁平化到白底後重壓 PNG（OG 卡片不需要透明度）：**400KB / 477KB**，尺寸不變。
+
+**邀請連結的圖怎麼帶**：`app/login/page.tsx` 是 client component 不能 export metadata，
+新增 `app/login/layout.tsx`（server）帶。layout 拿不到 searchParams，
+所以是「整個 `/login` 都套邀請圖」而不是只有帶 `?invite=` 的那種 —— 這是刻意的：
+
+- 會被貼到聊天室的 `/login` 網址幾乎都是邀請連結，一般分享平台會貼首頁
+- **老闆已經發出去的邀請連結不用重發就會換成新圖**。若改成另開
+  `/invite/[code]` 專屬路由，那些舊連結只能繼續吃預設圖
+
+文案與 `lib/inviteMessage.ts` 對齊（綁 LINE 送 300 積分是 migration 505 真的有的獎勵）。
+
+`banner_defaulet.png` 沒有刪 —— 它還是 news-agent 抓不到圖時的 fallback（見 CLAUDE.md）。
+
+**驗證**（本機）：`/` 回 `line_default.png`、`/login` 與 `/login?invite=XXX` 回
+`invite_banner.png`，三者的 `og:image:width/height` 都是 1200×630，兩張圖 200 且大小正確。
+
+⚠️ **LINE 會用網址當 key 快取 OG 資料**，推正後既有的連結不會馬上換圖。
+要立刻看到新圖，在網址後面加個參數（例如 `&v=2`）產生新的 key。
+
+---
+
 ## v2026.08.13a｜2026-08-13｜盒玩五款盒子隨機擺、抽卡演出只留原圖、頭像裁切收成面板
 
 ### 盒玩 mode5：盒子改吃組圖，五款隨機

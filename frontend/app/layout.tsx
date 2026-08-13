@@ -51,7 +51,17 @@ const websiteJsonLd = {
 // 分享到 LINE／FB 時的預覽圖。原本指 banner.png，但 repo 裡從來沒有這個檔案，
 // 等於全站分享都沒有預覽圖。改用實際存在的 banner_defaulet.png（檔名 typo 是原本就有的）。
 // 這張刻意保持 PNG 不轉 WebP —— 各家爬蟲對 OG 圖的 WebP 支援不一致。
-const OG_IMAGE = `${siteUrl}/images/banner_defaulet.png`
+/*
+ * 分享卡片的預設圖（LINE / FB / Threads 讀 og:image）。
+ *
+ * 原本指到 `banner_defaulet.png` —— 那是一張 1200×400 的灰階佔位圖，
+ * 而且 metadata 宣告 630、實際檔案 400，LINE 自己補白，卡片就變成一塊灰。
+ * 那個檔案還是 news-agent 抓不到圖時的 fallback（見 CLAUDE.md），所以留著，
+ * 只是不再拿它當分享圖。
+ *
+ * 換成 1200×630（1.91:1，各家通吃）的正式主視覺。
+ */
+const OG_IMAGE = `${siteUrl}/images/line_default.png`
 
 export const metadata: Metadata = {
   title: {
