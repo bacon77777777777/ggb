@@ -333,7 +333,6 @@ export default function SellPage() {
       {/* ── 輪播（沒人買廣告就不出現，不用最新商品硬湊）── */}
       {heroItems.length > 0 && (
         <div className="heroC">
-          <span className="adtag">廣告 · {isOfficial ? '官方頁輪播' : '首頁輪播'}</span>
           {heroItems.map((it, i) => (
             <button
               type="button"
@@ -346,9 +345,7 @@ export default function SellPage() {
               </span>
               <span className="htx">
                 <h3>{it.title}</h3>
-                <p>
-                  {it.seller_name} · 已售 {it.sold_count}
-                </p>
+                <p>{isOfficial ? '官方直送 · 48 小時出貨' : `${it.seller_name} · 已售 ${it.sold_count}`}</p>
                 <span className="hprice">NT${nt(it.price)}</span>
               </span>
             </button>
@@ -361,7 +358,8 @@ export default function SellPage() {
         </div>
       )}
 
-      {/* ── 分類 ── */}
+      {/* ── 分類（只有 C2C 有；原型的 vOfficial 沒有這一列）── */}
+      {!isOfficial && (
       <div className="cats">
         {CATS.map((c, i) => (
           <button key={c.key || 'all'} type="button" aria-pressed={seg === c.key} onClick={() => setSeg(c.key)}>
@@ -374,12 +372,12 @@ export default function SellPage() {
           </button>
         ))}
       </div>
+      )}
 
       {/* ── 官方頁專屬：新品首發 / 品牌專區 / 熱賣排行（照原型 vOfficial）── */}
       {isOfficial && rows.length > 0 && (
         <>
           <div className="strip">
-            <span className="adtag">廣告 · 新品首發</span>
             <div className="striphd">
               <b>新品首發</b>
               <button
@@ -394,7 +392,6 @@ export default function SellPage() {
           </div>
 
           <div className="strip">
-            <span className="adtag">廣告 · 品牌專區</span>
             <div className="striphd">
               <b>品牌專區</b>
             </div>
@@ -449,7 +446,6 @@ export default function SellPage() {
       {/* ── 分類首排（選了分類才出現）── */}
       {!isOfficial && catItems.length > 0 && (
         <div className="strip">
-          <span className="adtag">廣告 · 分類首排</span>
           <div className="striphd">
             <b>{seg ? `${CATS.find((c) => c.key === seg)?.label} 分類首排` : '分類首排'}</b>
           </div>
@@ -460,7 +456,6 @@ export default function SellPage() {
       {/* ── 專題 ── */}
       {!isOfficial && topicItems.length > 0 && (
         <div className="strip">
-          <span className="adtag">廣告 · 專題位</span>
           <div className="striphd">
             <b>本週一番賞精選</b>
             <button
@@ -569,7 +564,6 @@ export default function SellPage() {
 
       {!isOfficial && doneItems.length > 0 && (
         <div className="strip">
-          <span className="adtag">廣告 · 完成頁推薦</span>
           <div className="striphd">
             <b>猜你喜歡</b>
           </div>
