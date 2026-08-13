@@ -22,6 +22,7 @@ import { categoryState } from '@/lib/categoryFlags';
 import { trackPageView, trackScrollDepth, trackEvent } from '@/lib/trackEvent';
 import { filterBannersBySchedule } from '@/lib/schedule';
 import PromoPopup from '@/components/promo/PromoPopup';
+import FanMenu from '@/components/home/FanMenu';
 import NoticeBar from '@/components/promo/NoticeBar';
 import { PRODUCT_PUBLIC_COLUMNS } from '@/lib/productColumns'
 import { useSwipeTabs } from '@/lib/useSwipeTabs';
@@ -2034,6 +2035,29 @@ export default function Home() {
       </div>
 
       <NoticeBar />
+      {/*
+        扇形懸浮選單（原型）。主鈕與三顆子鈕都是老闆提供的正方形 PNG，
+        目前先用預設商品圖佔位 —— 換圖只要改下面四個 icon 路徑。
+
+        還沒接上真正的頁面：三個 href 先指 `#`，等老闆決定是哪三頁再換。
+        顯示／隱藏由後台「功能開關 → 類別 → 首頁懸浮選單」控制（旗標 `home_fab`，
+        migration 539，預設關）。旗標還沒載完不顯示，理由同上面那排 FloatingEntry：
+        寧可晚半秒出現，也不要讓關掉的東西先閃出來被點到。
+
+        ⚠️ 這顆與上面那排 FloatingEntry 目前共用右下角。四個旗標現在全是 off
+        所以看不到，等它們開了要二選一（見 DEVLOG）。
+      */}
+      {!isFlagsLoading && flagStates.home_fab === 'on' && (
+      <FanMenu
+        mainIcon="/images/item_defaulet.webp"
+        items={[
+          { icon: '/images/item_defaulet.webp', label: '入口一', href: '#' },
+          { icon: '/images/item_defaulet.webp', label: '入口二', href: '#' },
+          { icon: '/images/item_defaulet.webp', label: '入口三', href: '#' },
+        ]}
+      />
+      )}
+
       <PromoPopup placement="home" />
     </div>
   );

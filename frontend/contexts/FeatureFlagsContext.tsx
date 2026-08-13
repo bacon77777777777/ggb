@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge';
+export type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge' | 'home_fab';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
@@ -37,6 +37,8 @@ const DEFAULT_FLAGS: FeatureFlags = {
   exchange: false,
   market: false,
   sell_escrow: false,
+  // 跟其他入口同一個原則：開了才顯示。旗標還沒載完不要先閃出來被點到
+  home_fab: false,
 };
 
 const SAFE_FALLBACK_FLAGS: FeatureFlags = {

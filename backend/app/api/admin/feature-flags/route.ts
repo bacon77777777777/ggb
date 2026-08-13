@@ -8,7 +8,7 @@ import path from 'path'
 // 沒列在這裡的 key 會被 PUT 默默濾掉，而且回傳的 flags 也不含它 ——
 // 前端拿回傳值蓋回 state，看起來就是「按了又自己彈回開啟」。
 // 新增開關時務必同步加進來
-const FEATURE_KEYS = ['sell', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot', 'exchange', 'market', 'sell_escrow', 'recharge'] as const
+const FEATURE_KEYS = ['sell', 'ichiban', 'blindbox', 'gacha', 'card', 'custom', 'slot', 'exchange', 'market', 'sell_escrow', 'recharge', 'home_fab'] as const
 type FeatureKey = (typeof FEATURE_KEYS)[number]
 
 const normalizeBool = (v: unknown) => v === true || v === 'true' || v === 1 || v === '1'
