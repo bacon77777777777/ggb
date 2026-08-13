@@ -143,6 +143,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
+      /*
+       * 帳號狀態檢查。
+       *
+       * 後台的「停用」開關與「凍結」原本只是寫欄位 —— 前台、DB 函式沒有任何一處
+       * 在看它，被停用的人照樣能登入、儲值、抽獎（2026-08-14 查證）。
+       * 這裡是所有登入路徑的必經點（初次登入、換頁還原 session、refreshProfile
+       * 都會走到），擋在這裡最省。
+       *
+       * 導到 /404 是老闆指定：不告訴對方「你被停權了」，避免他換帳號重來。
+       * 站上沒有 /404 這條路由，Next 會直接渲染 app/not-found.tsx。
+       */
+      if (data && data.status && data.status !== 'active') {
+        await supabase.auth.signOut();
+        setSupabaseUser(null);
+        setUser(null);
+        setIsLoading(false);
+        router.replace('/404');
+        return null;
+      }
+
       if (data) {
         return {
           id: data.id,
