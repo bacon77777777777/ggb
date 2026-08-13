@@ -99,7 +99,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     await logAdminAction({
       adminId: session.adminId,
-      action: '修改販售訂單',
+      action: '修改商城訂單',
       targetType: 'sell_order',
       targetId: String(id),
       detail: { body },

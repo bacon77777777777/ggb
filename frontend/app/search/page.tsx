@@ -326,7 +326,7 @@ export default function SearchPage() {
 
   const primaryTabs = useMemo(() => {
     const base: { id: PrimaryTabId; label: string }[] = [{ id: 'all', label: '精選' }];
-    if (flags.sell) base.push({ id: 'sell', label: '販售' });
+    if (flags.sell) base.push({ id: 'sell', label: '商城' });
     if (flags.ichiban) base.push({ id: 'ichiban', label: '一番賞' });
     if (flags.blindbox) base.push({ id: 'blindbox', label: '盒玩' });
     if (flags.gacha) base.push({ id: 'gacha', label: '轉蛋' });
@@ -656,7 +656,7 @@ export default function SearchPage() {
           ) : activePrimaryTab === 'sell' ? (
             filteredSellListings.length === 0 && !isLoading ? (
               <div className="py-10 text-center text-[13px] text-neutral-400 font-bold">
-                {trimmedQuery ? '找不到相關販售，試試其他關鍵字' : '目前沒有販售'}
+                {trimmedQuery ? '找不到相關商品，試試其他關鍵字' : '目前沒有商城商品'}
               </div>
             ) : (
               <>
@@ -676,7 +676,7 @@ export default function SearchPage() {
                         <div className="mb-1 h-[2.75rem]">
                           <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
                             <span className="inline align-[2px] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
-                              販售
+                              商城
                             </span>
                             <span className="inline">{listing.title}</span>
                           </h3>
@@ -758,7 +758,7 @@ export default function SearchPage() {
                                 <div className="mb-1 h-[2.75rem]">
                                   <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
                                     <span className="inline align-[2px] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
-                                      販售
+                                      商城
                                     </span>
                                     <span className="inline">{listing.title}</span>
                                   </h3>

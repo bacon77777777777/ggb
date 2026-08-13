@@ -50,7 +50,7 @@ export async function POST() {
 
     await logAdminAction({
       adminId: session.adminId,
-      action: '產生販售示範資料',
+      action: '產生商城示範資料',
       targetType: 'sell_listing',
     })
 

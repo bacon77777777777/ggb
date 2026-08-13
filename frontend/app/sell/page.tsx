@@ -149,7 +149,7 @@ export default function SellListPage() {
             createdAt: String(r?.created_at || ''),
             price: minPrice,
             product: {
-              name: title || (items[0]?.name ? String(items[0].name) : '販售商品'),
+              name: title || (items[0]?.name ? String(items[0].name) : '商城商品'),
               grade: items[0]?.grade ? String(items[0].grade) : '',
               series: items[0]?.series ? String(items[0].series) : '',
               image: mainImage,
@@ -209,7 +209,7 @@ export default function SellListPage() {
       <div className="fixed top-0 left-0 right-0 z-[100] bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 md:hidden">
         <div className="max-w-7xl mx-auto px-2 relative">
           <div className="flex items-center gap-3 h-[57px]">
-            <div className="text-[18px] font-black text-neutral-900 dark:text-white">販售</div>
+            <div className="text-[18px] font-black text-neutral-900 dark:text-white">商城</div>
             <form
               className="flex-1 flex items-center gap-2"
               onSubmit={(e) => {
@@ -221,7 +221,7 @@ export default function SellListPage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜尋販售"
+                  placeholder="搜尋商城"
                   className={cn(
                     "w-full h-9 rounded-full pl-9 pr-9 text-[13px] font-black",
                     "bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white",
@@ -257,14 +257,14 @@ export default function SellListPage() {
 
       <div className="pt-[57px] md:pt-6 max-w-7xl mx-auto px-2">
         <div className="hidden md:flex items-center gap-3 mb-4">
-          <div className="text-[22px] font-black text-neutral-900 dark:text-white">販售</div>
+          <div className="text-[22px] font-black text-neutral-900 dark:text-white">商城</div>
           <form className="flex-1 flex items-center gap-2" onSubmit={(e) => e.preventDefault()}>
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜尋販售"
+                placeholder="搜尋商城"
                 className={cn(
                   "w-full h-10 rounded-full pl-10 pr-10 text-[13px] font-black",
                   "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white",
@@ -334,7 +334,7 @@ export default function SellListPage() {
               </div>
             ))
           ) : (
-            <div className="py-20 text-center text-[13px] font-black text-neutral-400">目前沒有販售</div>
+            <div className="py-20 text-center text-[13px] font-black text-neutral-400">目前沒有商品</div>
           )}
         </div>
 

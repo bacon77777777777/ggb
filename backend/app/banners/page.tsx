@@ -26,7 +26,7 @@ const HOME_TABS = [
   { id: 'gacha',    label: '轉蛋' },
   { id: 'card',     label: '抽卡' },
   { id: 'custom',   label: '自製賞' },
-  { id: 'sell',     label: '販售' },
+  { id: 'sell',     label: '商城' },
 ]
 
 /** 連結目標三擇一，存進 DB 的還是 link_url / event_id，這個只是編輯時的模式 */

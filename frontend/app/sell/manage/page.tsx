@@ -17,6 +17,7 @@ type SellerListing = {
   title: string;
   price: number;
   status: string;
+  reviewNote: string;
   created_at: string | null;
   image: string;
 };
@@ -75,7 +76,7 @@ export default function SellManagePage() {
         const [{ data: listingRows, error: listingError }, { data: orderRows, error: orderError }] = await Promise.all([
           supabase
             .from('sell_listings')
-            .select('id, title, price, status, created_at, images, items')
+            .select('id, title, price, status, review_note, created_at, images, items')
             .eq('seller_id', user.id)
             .order('created_at', { ascending: false })
             .limit(200),
@@ -111,9 +112,10 @@ export default function SellManagePage() {
           const image = images[0] || firstItemImage || '/images/item_defaulet.webp';
           return {
             id: toNum(r?.id),
-            title: String(r?.title || '').trim() || (String(items[0]?.name || '').trim() || '販售商品'),
+            title: String(r?.title || '').trim() || (String(items[0]?.name || '').trim() || '商城商品'),
             price: toNum(r?.price),
-            status: String(r?.status || 'active'),
+            status: String(r?.status || 'pending'),
+            reviewNote: String(r?.review_note || ''),
             created_at: r?.created_at ? String(r.created_at) : null,
             image,
           };
@@ -278,7 +280,18 @@ export default function SellManagePage() {
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">{l.title}</div>
                     <div className="mt-1 text-[12px] font-black text-neutral-400 truncate">
-                      {formatDate(l.created_at)} · {l.status === 'active' ? '上架中' : l.status === 'sold' ? '已售出' : '已下架'}
+                      {formatDate(l.created_at)} ·{' '}
+                      {l.status === 'pending' ? '審核中'
+                        : l.status === 'active' ? '上架中'
+                        : l.status === 'rejected' ? '已退回'
+                        : l.status === 'sold' ? '已售出'
+                        : '已下架'}
+                      {/* 退回原因一定要看得到，不然賣家只會原封不動再送一次 */}
+                      {l.status === 'rejected' && l.reviewNote && (
+                        <span className="block mt-1 text-[11px] font-bold text-red-500 leading-relaxed">
+                          退回原因：{l.reviewNote}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
@@ -303,7 +316,7 @@ export default function SellManagePage() {
                   String(items[o.item_index]?.image || '').trim() ||
                   '/images/item_defaulet.webp';
                 const total = Math.max(0, o.unit_price) * Math.max(1, o.quantity);
-                const subtitle = optionName ? optionName : listingTitle || '販售商品';
+                const subtitle = optionName ? optionName : listingTitle || '商城商品';
                 const statusText = o.step === 1 ? '待付款' : o.step === 2 || o.step === 3 ? '待出貨' : o.step === 4 ? '待收貨' : '完成';
                 return (
                   <button

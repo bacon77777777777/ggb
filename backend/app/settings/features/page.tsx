@@ -5,12 +5,21 @@ import { useEffect, useState } from 'react'
 import Textarea from '@/components/ui/Textarea'
 import { useAdmin } from '@/contexts/AdminContext'
 import ConfirmDialog from '@/components/ConfirmDialog'
-import InfoDot from '@/components/ui/InfoDot'
+// 版型元件與「商城設定」頁共用，改一次兩頁一起變
+import {
+  SettingsShell,
+  SettingsNav,
+  SectionHead,
+  SettingsRow as Row,
+  Segmented,
+} from '@/components/settings/SettingsSection'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useToast } from '@/contexts/ToastContext'
 import ThemePanel from './ThemePanel'
 
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'sell_escrow' | 'recharge'
+// `sell_escrow`（商城平台代收，接藍新 MPL）已於 2026-08-13 移除：
+// 玩家商城定調雙方自理，平台不碰錢，這個旗標永遠是關的。
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -76,8 +85,8 @@ const CATEGORY_ITEMS: { key: FeatureKey; label: string; desc?: string }[] = [
   { key: 'card',     label: '抽卡' },
   { key: 'custom',   label: '自製賞' },
   { key: 'slot',     label: '機台',   desc: '絕頂RUSH 這類的老虎機台。關閉後挑戰入口與機台頁都會消失。' },
-  // 前面五個看名字就知道是什麼，販售不是 —— 它賣的是玩家的東西，不是平台的
-  { key: 'sell',     label: '販售', desc: '像露天拍賣：玩家自己上架商品掛賣，收的是真錢，賣什麼也不限於站上抽到的東西。收款方式在「金流」那一區設定。' },
+  // 前面五個看名字就知道是什麼，商城不是 —— 它賣的是玩家的東西，不是平台的
+  { key: 'sell',     label: '商城', desc: '像露天拍賣：玩家自己上架商品掛賣，收的是真錢。付款由買賣雙方自行完成，平台不經手款項。誰能上架、開放哪些類別、交易期限與免責聲明都在「商城 → 商城設定」。' },
 ]
 
 const TRADE_ITEMS: { key: FeatureKey; label: string; desc: string }[] = [
@@ -98,7 +107,6 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   slot: true,
   exchange: true,
   market: false,
-  sell_escrow: false,
 }
 
 export default function FeatureFlagsPage() {
@@ -145,12 +153,8 @@ export default function FeatureFlagsPage() {
     { on: 0, maintenance: 0, off: 0 } as Record<FlagState, number>,
   )
 
-  const toggleFlag = (key: FeatureKey, checked: boolean) => {
-    if (!flags) return
-    const next = { ...flags, [key]: checked }
-    setFlags(next)
-    save({ flags: next })
-  }
+  // 原本這裡有 toggleFlag（布林旗標用），唯一的使用者是已移除的「販售收款」那列。
+  // 這頁現在只剩三態的 setState，留著沒人用的函式只會讓下一個人以為還有布林旗標要維護。
 
   const setState = (key: FeatureKey, v: FlagState, label: string) => {
     if (!states || states[key] === v) return
@@ -432,31 +436,9 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
         )}
 
         <PageCard>
-          {/* 密度與字級照 Ant Design Pro 的個人設定頁：
-              導覽項目 40 高、內容標題 20px、每列 14px 標題配 14px 灰色說明。
-              後台其他頁面偏小偏粗，但這一頁的重點是看得懂，不是塞得多 */}
-          <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
-            {/* 分區導覽。手機上橫向捲動，桌機才靠左直排 */}
-            <nav className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:w-56 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-r lg:border-neutral-100 lg:px-0 lg:pb-0 lg:pr-6">
-              {SECTIONS.map(sc => {
-                const active = section === sc.key
-                return (
-                  <button
-                    key={sc.key}
-                    type="button"
-                    onClick={() => setSection(sc.key)}
-                    className={`flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-4 text-left text-sm transition-colors lg:px-6 ${
-                      active
-                        ? 'bg-primary/5 font-medium text-primary'
-                        : 'text-neutral-600 hover:bg-neutral-50'
-                    }`}
-                  >
-                    {sc.label}
-                  </button>
-                )
-              })}
-            </nav>
-
+          <SettingsShell
+            nav={<SettingsNav sections={SECTIONS} value={section} onChange={setSection} />}
+          >
             <div className="min-w-0 flex-1">
               {section === 'maintenance' && (
                 <>
@@ -588,33 +570,12 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                     info="錢怎麼走。已經完成的交易與已購買的代幣都不受這裡影響。"
                   />
                   <div className="divide-y divide-neutral-100">
-                    {/* 販售收款這一列刻意不用開關：兩個選項都是具名的收款方式，
-                        不是「開／關」。用開關的話關掉之後錢跑哪去就看不出來了 */}
-                    <Row
-                      // 販售類別不開的時候這個設定其實沒作用：整列變淡並鎖住，
-                      // 標題也直接說原因 —— 不然改了半天不知道為什麼前台沒反應
-                      dimmed={states?.sell !== 'on'}
-                      title={
-                        states?.sell === 'maintenance' ? '販售收款（販售維護中）'
-                          : states?.sell === 'off' ? '販售收款（販售關閉中）'
-                            : '販售收款'
-                      }
-                      desc={<>
-                        平台代收：錢先由平台保管，賣家出貨、買家確認後才撥款，有糾紛平台介入得了。<br />
-                        雙方自理：買家自己選轉帳或私下交易，平台不碰錢，也管不到糾紛。
-                      </>}
-                      state={flags?.sell_escrow ? 'on' : 'off'}
-                    >
-                      <Segmented
-                        value={flags?.sell_escrow ? 'on' : 'off'}
-                        disabled={!ready || isSaving || states?.sell !== 'on'}
-                        options={[
-                          { v: 'on', label: '平台代收', tone: 'on' },
-                          { v: 'off', label: '雙方自理', tone: 'off' },
-                        ]}
-                        onChange={(v) => toggleFlag('sell_escrow', v === 'on')}
-                      />
-                    </Row>
+                    {/*
+                      這裡原本有一列「販售收款：平台代收／雙方自理」（flag `sell_escrow`，
+                      接的是藍新 MPL）。2026-08-13 老闆定調玩家商城一律**雙方自理** ——
+                      買家直接把錢匯給賣家，平台完全不碰錢，所以不再有可切換的選項，整列移除。
+                      商城的其他規則（誰能上架、類別、期限、免責）都在「商城 → 商城設定」。
+                    */}
                     <Row
                       title="儲值"
                       desc="跟站台維護無關，可以單獨停。維護時綠界建單直接斷開，玩家在儲值頁看到維護提示；已購買的代幣、抽獎與出貨都不受影響，出貨運費照樣付得了。"
@@ -691,7 +652,7 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
               {section === 'theme' && <ThemePanel />}
 
             </div>
-          </div>
+          </SettingsShell>
         </PageCard>
       </div>
 
@@ -709,12 +670,6 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
       />
     </AdminLayout>
   )
-}
-
-const STATE_TONE: Record<FlagState, string> = {
-  on: 'bg-green-500',
-  maintenance: 'bg-amber-400',
-  off: 'bg-neutral-300',
 }
 
 /**
@@ -753,102 +708,6 @@ function SummaryBar({ ready, scope, rechargeOn, counts }: {
           <span className={p.warn ? 'text-amber-600' : 'text-neutral-500'}>{p.text}</span>
         </span>
       ))}
-    </div>
-  )
-}
-
-/** 分區的標題與說明。說明直接寫在畫面上，不收進 hover —— 這一頁的重點就是看得懂 */
-/**
- * 分區的標題。
- *
- * 說明收進標題旁的圓點，不鋪在畫面上 —— 分區層級的說明是「這一區在講什麼」，
- * 每次進來都讀一次沒有意義，但每一列自己的說明是操作前要看的，那個留在畫面上。
- */
-function SectionHead({ title, info, right }: { title: string; info: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2 text-xl font-medium text-neutral-900">
-        {title}
-        {/* 往下推 1px：中文字在行框裡本來就偏下，幾何置中會看起來偏上 */}
-        <span className="inline-flex translate-y-px">
-          <InfoDot>{info}</InfoDot>
-        </span>
-      </h2>
-      {right}
-    </div>
-  )
-}
-
-/**
- * 一列設定：左邊名稱與說明，右邊控制項。
- *
- * 說明放得下一整句，所以不必再用 hover 圓點 —— 要滑過去才看得到的說明，
- * 等於沒寫給不知道要滑的人看。
- * state 給了就在名稱前面點一個狀態圓點，不讀字也掃得出哪一列不是開放。
- */
-function Row({ title, desc, state, dimmed, children }: {
-  title: React.ReactNode
-  desc?: React.ReactNode
-  state?: FlagState
-  /** 這一列現在沒作用（上游關著）。整列變淡，控制項由呼叫端一併鎖住 */
-  dimmed?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className={`flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 ${
-      dimmed ? 'opacity-40' : ''
-    }`}>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          {state && <span className={`h-2 w-2 shrink-0 rounded-full ${STATE_TONE[state]}`} />}
-          <span className="text-sm text-neutral-900">{title}</span>
-        </div>
-        {desc && <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-neutral-400">{desc}</p>}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  )
-}
-
-/**
- * 分段按鈕。
- *
- * 全頁統一用它，不用 Switch。開關只表達得了「開」跟「不開」，
- * 講不出不開的時候是什麼 —— 類別是三態，販售收款的兩個選項是兩種收款方式，
- * 這些用開關根本表達不了。剩下的即使真的只有開/關，
- * 把字寫出來也比讓人從顏色推語意可靠，順便讓整頁只有一種控制項。
- */
-function Segmented({ value, options, disabled, onChange, className = '' }: {
-  value: string
-  options: { v: string; label: string; tone: 'on' | 'warn' | 'off' }[]
-  disabled: boolean
-  onChange: (v: string) => void
-  className?: string
-}) {
-  return (
-    <div className={`flex w-fit shrink-0 divide-x divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 ${className}`}>
-      {options.map(o => {
-        const active = value === o.v
-        return (
-          <button
-            key={o.v}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(o.v)}
-            className={`flex-1 whitespace-nowrap px-3.5 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-              active
-                ? o.tone === 'on'
-                  ? 'bg-primary font-medium text-white'
-                  : o.tone === 'warn'
-                    ? 'bg-amber-400 font-medium text-amber-950'
-                    : 'bg-neutral-600 font-medium text-white'
-                : 'bg-white text-neutral-500 hover:bg-neutral-50'
-            }`}
-          >
-            {o.label}
-          </button>
-        )
-      })}
     </div>
   )
 }

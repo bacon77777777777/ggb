@@ -40,6 +40,33 @@ export default function SellNewPage() {
   const [pendingImageSlotIndex, setPendingImageSlotIndex] = useState<number | null>(null);
   const [pendingItemIndex, setPendingItemIndex] = useState<number | null>(null);
   const [pendingItemImageDraft, setPendingItemImageDraft] = useState('');
+  /**
+   * 類別白名單來自後台「商城設定」。
+   * DB trigger `sell_guard_listing()` 會擋掉不在白名單內的類別 —— 前台一定要用同一份清單，
+   * 不然玩家填完整頁才被拒絕，而且看不出是哪裡錯。
+   */
+  const [categories, setCategories] = useState<string[]>([]);
+  const [category, setCategory] = useState('');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient()
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'sell_category_whitelist')
+        .maybeSingle();
+      if (cancelled) return;
+      try {
+        const parsed = JSON.parse(String((data as any)?.value || '[]'));
+        if (Array.isArray(parsed)) setCategories(parsed.map(String).filter(Boolean));
+      } catch {
+        setCategories([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -58,6 +85,7 @@ export default function SellNewPage() {
       setTitle(String(parsed?.title || ''));
       setPrice(String(parsed?.price || ''));
       setNote(String(parsed?.note || ''));
+      setCategory(String(parsed?.category || ''));
       setImages(Array.isArray(parsed?.images) ? parsed.images.map((x: any) => String(x || '')) : ['', '', '']);
       setListingItems(
         Array.isArray(parsed?.listingItems) && parsed.listingItems.length > 0
@@ -82,12 +110,13 @@ export default function SellNewPage() {
           title,
           price,
           note,
+          category,
           images,
           listingItems,
         })
       );
     } catch {}
-  }, [images, listingItems, note, price, title]);
+  }, [category, images, listingItems, note, price, title]);
 
   const firstItemImage = useMemo(() => {
     const byItem = listingItems.map((x) => String(x.image || '').trim()).find(Boolean) || '';
@@ -108,6 +137,7 @@ export default function SellNewPage() {
     if (!Number.isFinite(p) || p <= 0) return false;
     const t = title.trim();
     if (!t) return false;
+    if (!category.trim()) return false;
     const cleanCount = listingItems.filter((it) => String(it.name || '').trim()).length;
     if (cleanCount <= 0) return false;
     const allQtyOk = listingItems
@@ -118,7 +148,7 @@ export default function SellNewPage() {
       });
     if (!allQtyOk) return false;
     return true;
-  }, [listingItems, price, title, user?.id]);
+  }, [category, listingItems, price, title, user?.id]);
 
   const totalQuantity = useMemo(() => {
     return listingItems
@@ -198,6 +228,7 @@ export default function SellNewPage() {
           status: 'active',
           title: title.trim(),
           note: note.trim(),
+          category: category.trim(),
           images: cleanImages,
           items: cleanItems,
         } as any)
@@ -212,7 +243,7 @@ export default function SellNewPage() {
         return;
       }
 
-      showToast('已上架販售', 'plain');
+      showToast('已送出，審核通過後就會出現在商城', 'plain');
       router.replace(`/sell/${String(insertedId)}`);
     } catch (e) {
       console.error('Failed to create listing:', e);
@@ -281,6 +312,46 @@ export default function SellNewPage() {
             maxLength={60}
             className="mt-2 w-full h-10 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl px-3 text-[14px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4">
+          <button
+            type="button"
+            onClick={() => setIsCategoryOpen((v) => !v)}
+            className="w-full h-12 flex items-center justify-between gap-3"
+          >
+            <div className="text-[14px] font-black text-neutral-900 dark:text-white">類別</div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`text-[14px] font-black truncate ${category ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-500'}`}>
+                {category || '請選擇'}
+              </span>
+              <ChevronRight className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${isCategoryOpen ? 'rotate-90' : ''}`} />
+            </div>
+          </button>
+          {isCategoryOpen && (
+            <div className="pb-3 flex flex-wrap gap-2">
+              {categories.length === 0 ? (
+                <div className="text-[12px] font-bold text-neutral-400">
+                  目前沒有開放的類別，暫時無法上架
+                </div>
+              ) : (
+                categories.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setCategory(c); setIsCategoryOpen(false); }}
+                    className={`h-9 px-3 rounded-xl text-[13px] font-black transition-colors ${
+                      category === c
+                        ? 'bg-primary text-white'
+                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">

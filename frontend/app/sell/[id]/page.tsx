@@ -12,7 +12,6 @@ import ProductCard from '@/components/ProductCard';
 import { AlertTriangle, X, Minus, Plus, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +34,6 @@ export default function SellDetailPage() {
   const id = String(params?.id || '');
   const { user, isLoading: isAuthLoading } = useAuth();
   const { showToast } = useToast();
-  const { flags } = useFeatureFlags();
-  const escrowEnabled = Boolean(flags.sell_escrow);
 
   const [listing, setListing] = useState<SaleListing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +47,14 @@ export default function SellDetailPage() {
   const [isSkuOpen, setIsSkuOpen] = useState(false);
   const [selectedPrizeIndex, setSelectedPrizeIndex] = useState(0);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'private' | 'escrow'>('transfer');
+  /**
+   * 賣家的收款方式，由賣家自己在「商城收款設定」選一種，買家不能挑（老闆定調：那是賣家的自由）。
+   * 讀的是 `sell_seller_public` —— 只有方式、沒有帳號；帳號要成立訂單後才看得到。
+   * 先讓買家知道要用什麼付款，免得下單了才發現自己沒有 LINE Pay Money 轉不了帳。
+   */
+  const [sellerPayout, setSellerPayout] = useState<'bank' | 'linepay' | null>(null);
+  /** 後台「商城設定」裡的免責聲明。平台不碰錢，這段是唯一的界線，一定要讓買家看到 */
+  const [disclaimer, setDisclaimer] = useState('');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const lastViewPingRef = useRef<{ id: string; at: number } | null>(null);
 
@@ -162,13 +166,31 @@ export default function SellDetailPage() {
           title: rawTitle,
           items,
           product: {
-            name: rawTitle || (items[0]?.name ? String(items[0]?.name) : '販售商品'),
+            name: rawTitle || (items[0]?.name ? String(items[0]?.name) : '商城商品'),
             grade: items[0]?.grade ? String(items[0]?.grade) : '',
             series: items[0]?.series ? String(items[0]?.series) : '',
             image: primaryImage,
             type,
           },
         };
+
+        // 賣家收款方式（只有方式、沒有帳號）與商城免責聲明。
+        // 這兩個抓失敗不該讓整頁掛掉 —— 商品本身還是看得到，所以各自吞掉錯誤。
+        if (sellerId) {
+          const { data: pub } = await supabase
+            .from('sell_seller_public')
+            .select('payout_method')
+            .eq('seller_id', sellerId)
+            .maybeSingle();
+          const m = String((pub as any)?.payout_method || '');
+          if (!cancelled) setSellerPayout(m === 'linepay' ? 'linepay' : m === 'bank' ? 'bank' : null);
+        }
+        const { data: st } = await supabase
+          .from('platform_settings')
+          .select('value')
+          .eq('key', 'sell_disclaimer')
+          .maybeSingle();
+        if (!cancelled) setDisclaimer(String((st as any)?.value || '').trim());
 
         if (cancelled) return;
         setListing(mapped);
@@ -286,7 +308,7 @@ export default function SellDetailPage() {
             title: rawTitle,
             items,
             product: {
-              name: rawTitle || (items[0]?.name ? String(items[0]?.name) : '販售商品'),
+              name: rawTitle || (items[0]?.name ? String(items[0]?.name) : '商城商品'),
               grade: items[0]?.grade ? String(items[0]?.grade) : '',
               series: items[0]?.series ? String(items[0]?.series) : '',
               image: primaryImage,
@@ -311,8 +333,8 @@ export default function SellDetailPage() {
   }, [listing?.id]);
 
   const pageTitle = useMemo(() => {
-    if (!listing) return '販售';
-    return listing.title || listing.product.name || '販售';
+    if (!listing) return '商城';
+    return listing.title || listing.product.name || '商城';
   }, [listing]);
 
   const prizes = useMemo(() => {
@@ -399,30 +421,23 @@ export default function SellDetailPage() {
     setIsPurchasing(true);
     try {
       const supabase = createClient();
-      const methodForOrder = escrowEnabled ? 'escrow' : paymentMethod;
+      // 收款方式由賣家檔案決定，這裡不傳 —— 傳了 DB 也會忽略，
+      // 免得前後端各有一份「這筆是怎麼付的」而且對不起來
       const { data, error } = await supabase.rpc('create_sell_order', {
         p_listing_id: listingIdNum,
         p_item_index: selectedPrizeIndex,
         p_quantity: selectedQuantity,
-        p_payment_method: methodForOrder,
       });
       if (error) throw error;
-      const ok = Boolean((data as any)?.success);
-      if (!ok) {
-        const msg = String((data as any)?.message || '下單失敗');
-        if (msg === 'invalid_payment_method' && escrowEnabled) {
-          showToast('販售金流尚未初始化，請到後台「功能開關」頁刷新一次再試', 'plain');
-        } else {
-          showToast(msg, 'plain');
-        }
+      if (!Boolean((data as any)?.success)) {
+        // DB 回的訊息本來就是寫給玩家看的中文，直接顯示
+        showToast(String((data as any)?.message || '下單失敗'), 'plain');
         return;
       }
       const orderId = String((data as any)?.order_id || '');
       showToast('已建立訂單', 'plain');
-      if (!ok) return;
       setIsSkuOpen(false);
-      if (escrowEnabled && orderId) router.push(`/sell-orders/${encodeURIComponent(orderId)}`);
-      else if (orderId) router.push(`/sell-orders/${orderId}`);
+      if (orderId) router.push(`/sell-orders/${orderId}`);
       else setReloadSeq((s) => s + 1);
     } catch (e) {
       console.error('Failed to purchase listing item:', e);
@@ -444,7 +459,7 @@ export default function SellDetailPage() {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-14 pb-24 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="text-[13px] font-black text-neutral-400">找不到此販售商品</div>
+          <div className="text-[13px] font-black text-neutral-400">找不到此商城商品</div>
           <button
             type="button"
             onClick={() => router.push('/')}
@@ -731,7 +746,7 @@ export default function SellDetailPage() {
                   ))}
                 </div>
               ) : (
-                <div className="py-10 text-center text-[13px] font-black text-neutral-400">目前沒有其他販售商品</div>
+                <div className="py-10 text-center text-[13px] font-black text-neutral-400">目前沒有其他商城商品</div>
               )}
             </div>
           </div>
@@ -811,18 +826,34 @@ export default function SellDetailPage() {
               })}
             </div>
 
-            {!escrowEnabled && (
-              <div className="mt-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">交易方式</div>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="h-9 px-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="transfer">轉帳</option>
-                    <option value="private">私下交易</option>
-                  </select>
+            {/*
+              收款方式是**看的、不是選的**：由賣家自己設定一種，買家照著付。
+              先讓買家看到，是因為 LINE Pay 個人轉帳需要 LINE Pay Money 帳戶，
+              不是每個人都有 —— 下單後才發現轉不了帳，雙方都白忙。
+              帳號要成立訂單後才會出現在訂單頁（賣家帳號不公開在商品頁）。
+            */}
+            <div className="mt-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">付款方式</div>
+                <div className="text-[13px] font-black text-neutral-900 dark:text-white">
+                  {sellerPayout === 'linepay' ? 'LINE Pay 轉帳'
+                    : sellerPayout === 'bank' ? '銀行轉帳'
+                      : '賣家尚未設定'}
+                </div>
+              </div>
+              <div className="mt-1 text-[11px] font-bold leading-relaxed text-neutral-400">
+                {sellerPayout === 'linepay'
+                  ? '下單後在訂單頁看到賣家的 LINE Pay 資訊，直接轉給賣家'
+                  : sellerPayout === 'bank'
+                    ? '下單後在訂單頁看到賣家的銀行帳戶，直接匯給賣家'
+                    : '賣家還沒設定收款方式，目前無法下單'}
+              </div>
+            </div>
+
+            {disclaimer && (
+              <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                <div className="text-[11px] font-bold leading-relaxed text-amber-700 dark:text-amber-500">
+                  {disclaimer}
                 </div>
               </div>
             )}
@@ -873,7 +904,7 @@ export default function SellDetailPage() {
                 onClick={purchase}
                 disabled={isPurchasing || isSoldOut || !selectedPrize}
               >
-                {isPurchasing ? '處理中…' : escrowEnabled ? '去付款' : '確認下單'}
+                {isPurchasing ? '處理中…' : '確認下單'}
               </Button>
             </div>
           </div>

@@ -552,7 +552,7 @@ export default function Home() {
       { id: 'card',     label: '抽卡',   type: 'card' },
       { id: 'custom',   label: '自製賞', type: 'custom' },
     ];
-    if (flags.sell) base.push({ id: 'sell', label: '販售' });
+    if (flags.sell) base.push({ id: 'sell', label: '商城' });
     for (const t of CATEGORY_TABS) {
       if (categoryState(t.type, flagStates, false) === 'off') continue;
       base.push({ id: t.id, label: t.label });
@@ -1116,7 +1116,7 @@ export default function Home() {
             price: minPrice,
             viewCount: Math.max(0, Math.floor(Number(row?.view_count ?? 0) || 0)),
             product: {
-              name: title || (items[0]?.name ? String(items[0].name) : '販售商品'),
+              name: title || (items[0]?.name ? String(items[0].name) : '商城商品'),
               grade: items[0]?.grade ? String(items[0].grade) : '',
               series: items[0]?.series ? String(items[0].series) : '',
               image:
@@ -1405,7 +1405,7 @@ export default function Home() {
                         <div className="mb-1 h-[2.75rem]">
                           <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
                             <span className="inline align-[2px] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
-                              販售
+                              商城
                             </span>
                             {listing.product.type && (
                               <ProductBadge type={listing.product.type} className="inline align-[2px] mr-1 py-[3px] backdrop-blur-none" />
@@ -1434,7 +1434,7 @@ export default function Home() {
                   ))
                 ) : (
                   <div className="col-span-2 py-20 text-center">
-                    <p className="text-[13px] text-neutral-400 font-bold">目前沒有販售</p>
+                    <p className="text-[13px] text-neutral-400 font-bold">目前沒有商城商品</p>
                   </div>
                 )}
               </div>
@@ -1512,7 +1512,7 @@ export default function Home() {
                             <div className="mb-1 h-[2.75rem]">
                               <h3 className="text-[14px] font-normal text-neutral-900 dark:text-white line-clamp-2 leading-[1.25] break-all">
                                 <span className="inline align-[2px] mr-1 px-1 py-[3px] text-[8px] font-medium text-white rounded-[4px] shadow-lg uppercase tracking-wider bg-opacity-90 bg-primary shadow-primary/20">
-                                  販售
+                                  商城
                                 </span>
                                 <span className="inline">{listing.product.name}</span>
                               </h3>
@@ -1983,7 +1983,7 @@ export default function Home() {
         <Link
           href="/sell/new"
           className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--promo-notice-h,0px))] z-40 w-12 h-12 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 grid place-items-center active:scale-95 transition-transform"
-          aria-label="上架販售"
+          aria-label="商城上架"
         >
           <Plus className="w-6 h-6 stroke-[2]" />
         </Link>
@@ -2011,7 +2011,7 @@ export default function Home() {
       {!isFlagsLoading && (() => {
         const entries = [
           { feature: 'slot',     icon: '/images/menu/4.webp',   label: '機台',     href: '/challenge' },
-          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '販售',     href: '/sell' },
+          { feature: 'sell',     icon: '/images/menu/2.webp',   label: '商城',     href: '/sell' },
           { feature: 'exchange', icon: '/images/menu/3.webp',   label: '卡牌交換', href: '/exchange' },
           { feature: 'market',   icon: '/images/menu/1.webp',   label: '交易所',   href: '/market' },
         ] as const;

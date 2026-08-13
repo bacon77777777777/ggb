@@ -142,7 +142,7 @@ export async function POST(req: Request) {
       amt = Math.max(0, qty * unitPrice)
       if (!amt) return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
 
-      itemName = `吉吉比販售訂單 ${orderNumber}`
+      itemName = `吉吉比商城訂單 ${orderNumber}`
       clientBackUrl = `${FrontendUrl}/sell-orders/${orderId}`
     } else {
       return NextResponse.json({ error: 'Invalid kind' }, { status: 400 })

@@ -220,7 +220,7 @@ export default function PurchasesPage() {
                   String(items[o.item_index]?.image || '').trim() ||
                   '/images/item_defaulet.webp';
                 const total = Math.max(0, o.unit_price) * Math.max(1, o.quantity);
-                const subtitle = optionName ? optionName : listingTitle || '販售商品';
+                const subtitle = optionName ? optionName : listingTitle || '商城商品';
                 const status = getStatusConfig(o.step, o.cancelled);
 
                 return (

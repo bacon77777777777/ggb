@@ -296,7 +296,7 @@ function NavbarInner() {
     if (pathname === '/exchange/new') return '創建交換';
     if (pathname === '/sell/new') return '上架商品';
     if (pathname === '/sell/new/specs') return '新增規格';
-    if (pathname === '/sell/manage') return '販售管理';
+    if (pathname === '/sell/manage') return '商城管理';
     if (pathname === '/purchases') return '購買清單';
     if (pathname.startsWith('/sell-orders/')) return '訂單詳情';
     if (pathname === '/exchange/manage') return exchangeManageView === 'orders' ? '交換紀錄' : '交換管理';
@@ -325,7 +325,7 @@ function NavbarInner() {
     if (pathname.startsWith('/fairness')) return productName || '';
     if (pathname.endsWith('/select')) return '選擇籤號';
     if (pathname.endsWith('/confirm')) return '確認購買';
-    if (isSellDetailPage) return productName || '販售';
+    if (isSellDetailPage) return productName || '商城';
     if (pathname.startsWith('/item/') || pathname.startsWith('/blindbox/') || pathname.startsWith('/gacha/') || pathname.startsWith('/card/')) return productName || '商品詳情';
     if (isNewsDetailPage) return '';
     if (pathname === '/topup') return '儲值代幣';

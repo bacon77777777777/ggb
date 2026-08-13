@@ -66,7 +66,7 @@ export default function SellOrderDetailPage() {
   const [trackingNumber, setTrackingNumber] = useState('')
   const [cancelReason, setCancelReason] = useState('')
 
-  const listingTitle = useMemo(() => String(order?.listing?.title || order?.listing_id || '').trim() || '販售商品', [order?.listing?.title, order?.listing_id])
+  const listingTitle = useMemo(() => String(order?.listing?.title || order?.listing_id || '').trim() || '商城商品', [order?.listing?.title, order?.listing_id])
 
   const selectedItem = useMemo(() => {
     const items = Array.isArray(order?.listing?.items) ? (order?.listing?.items as any[]) : []
@@ -145,7 +145,7 @@ export default function SellOrderDetailPage() {
 
   if (isLoading && !order) {
     return (
-      <AdminLayout pageTitle="販售訂單">
+      <AdminLayout pageTitle="商城訂單">
         <CardSkeleton rows={4} />
       </AdminLayout>
     )
@@ -153,7 +153,7 @@ export default function SellOrderDetailPage() {
 
   if (!order) {
     return (
-      <AdminLayout pageTitle="販售訂單">
+      <AdminLayout pageTitle="商城訂單">
         <div className="p-6">
           <PageCard>
             <div className="py-10 text-center text-neutral-500">找不到此訂單</div>
@@ -170,9 +170,9 @@ export default function SellOrderDetailPage() {
 
   return (
     <AdminLayout
-      pageTitle="販售訂單"
+      pageTitle="商城訂單"
       breadcrumbs={[
-        { label: '販售訂單', href: '/sell-orders' },
+        { label: '商城訂單', href: '/sell-orders' },
         { label: `#${order.id}` },
       ]}
     >
@@ -217,7 +217,7 @@ export default function SellOrderDetailPage() {
               <div className="text-neutral-900 font-bold break-words">{listingTitle}</div>
               <div className="flex gap-2">
                 <Link href={`/sell`} className="text-primary hover:text-blue-800 text-sm font-medium">
-                  回販售管理
+                  回商城商品
                 </Link>
               </div>
             </div>

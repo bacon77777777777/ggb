@@ -96,8 +96,8 @@ const PERMISSION_GROUPS = [
   {
     title: '商品買賣',
     items: [
-      { id: 'sell',        label: '販售商品管理' },
-      { id: 'sell_orders', label: '販售訂單' },
+      { id: 'sell',        label: '商城商品' },
+      { id: 'sell_orders', label: '商城訂單' },
     ],
   },
   {

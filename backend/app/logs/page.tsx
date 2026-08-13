@@ -74,7 +74,7 @@ const TARGET_LABEL: Record<string, string> = {
   refund_request: '退款申請', settlement_snapshot: '月結快照', content_draft: 'AI 文案',
   agent_event: '事件中心', cs_ticket: '客服工單', competitor_post: '競品貼文',
   market_intel: '競品情報', event: '活動頁', event_section: '活動區塊',
-  sell_listing: '販售商品', sell_order: '販售訂單', marketplace_listing: '市集商品',
+  sell_listing: '商城商品', sell_order: '商城訂單', marketplace_listing: '市集商品',
   exchange_offer: '交換委託', exchange_order: '交換訂單', admins: '管理員',
   dev_logs: '開發日誌', meeting_logs: '會議記錄', storage: '儲存空間',
   leaderboard_bots: '排行榜機器人', theme: '主題色',

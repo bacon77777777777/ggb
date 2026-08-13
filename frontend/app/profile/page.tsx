@@ -6674,7 +6674,7 @@ function ProfileContent() {
                   ? ([
                       {
                         id: 'sell-manage',
-                        label: '販售管理',
+                        label: '商城管理',
                         icon: Box,
                         color: 'text-accent-red',
                         onClick: () => router.push('/sell/manage'),
@@ -6942,7 +6942,7 @@ function ProfileContent() {
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group text-left text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
                     >
                       <Box className="w-5 h-5 stroke-[2.5] text-neutral-300 group-hover:text-primary transition-colors" />
-                      <span className="truncate">販售管理</span>
+                      <span className="truncate">商城管理</span>
                       <ChevronRight className="ml-auto w-4 h-4 transition-transform hidden sm:block text-neutral-200 group-hover:text-neutral-400" />
                     </button>
                   </div>

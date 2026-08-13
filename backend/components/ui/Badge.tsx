@@ -30,6 +30,9 @@ export const statusVariantMap: Record<string, BadgeVariant> = {
   sold: 'info',
   draft: 'default',
   hidden: 'default',
+  // 玩家商城的上架狀態（migration 552）。
+  // 'rejected' 下面「退款申請狀態」那組已經有了，一樣是 danger，不重複定義。
+  removed: 'default',
   // 用戶狀態
   frozen: 'danger',
   // 付款/結算

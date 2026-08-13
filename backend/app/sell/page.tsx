@@ -2,6 +2,9 @@
 
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import Badge from '@/components/ui/Badge'
+import Modal from '@/components/Modal'
+import Button from '@/components/ui/Button'
+import Textarea from '@/components/ui/Textarea'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { useConfirmDialog } from '@/hooks/useConfirmDialog'
 import { formatDateTime } from '@/utils/dateFormat'
@@ -14,6 +17,9 @@ import { TableEmpty } from '@/components/ui/EmptyState'
 interface SellListing {
   id: number
   status: string
+  category?: string | null
+  review_note?: string | null
+  reviewed_at?: string | null
   title: string
   view_count: number
   created_at: string
@@ -33,7 +39,19 @@ interface SellListing {
   }>
 }
 
-type StatusFilter = 'all' | 'draft' | 'active' | 'sold' | 'hidden'
+/**
+ * 對齊 `sell_listings_status_check`（migration 552）。
+ * 舊值 'draft' / 'hidden' 已不存在 —— 玩家上架一律進 'pending'，下架是 'removed'。
+ */
+type StatusFilter = 'all' | 'pending' | 'active' | 'rejected' | 'sold' | 'removed'
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: '待審核',
+  active: '上架中',
+  rejected: '已退回',
+  sold: '已售出',
+  removed: '已下架',
+}
 
 export default function SellAdminPage() {
   const { toast } = useToast()
@@ -47,6 +65,8 @@ export default function SellAdminPage() {
   const [isClearing, setIsClearing] = useState(false)
   const [isSeeding, setIsSeeding] = useState(false)
   const [expandedListings, setExpandedListings] = useState<Set<number>>(new Set())
+  const [rejectTarget, setRejectTarget] = useState<SellListing | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const [selectedListings, setSelectedListings] = useState<Set<number>>(new Set())
   const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000').replace('127.0.0.1', 'localhost')
 
@@ -62,12 +82,12 @@ export default function SellAdminPage() {
     const bootstrapRes = await fetch('/api/admin/sell/bootstrap', { method: 'POST', credentials: 'include' })
     if (!bootstrapRes.ok) {
       const data = await bootstrapRes.json().catch(() => null)
-      toast(data?.error || '初始化販售資料表失敗', 'error')
+      toast(data?.error || '初始化商城資料表失敗', 'error')
       return false
     }
     const data = await bootstrapRes.json().catch(() => null)
     if (!data?.success) {
-      toast(data?.error || '初始化販售資料表失敗', 'error')
+      toast(data?.error || '初始化商城資料表失敗', 'error')
       return false
     }
     return true
@@ -93,7 +113,10 @@ export default function SellAdminPage() {
       const mapped: SellListing[] = (data || []).map((row) => ({
         id: row.id,
         status: row.status,
-        title: row.title || '販售商品',
+        category: row.category ?? null,
+        review_note: row.review_note ?? null,
+        reviewed_at: row.reviewed_at ?? null,
+        title: row.title || '商城商品',
         view_count: Number(row.view_count || 0),
         created_at: row.created_at,
         updated_at: row.updated_at,
@@ -128,8 +151,8 @@ export default function SellAdminPage() {
 
   const handleClear = () => {
     confirm({
-      title: '清空販售資料',
-      message: '此操作會清空所有販售上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？',
+      title: '清空商城資料',
+      message: '此操作會清空所有商城上架資料（含訂單/私聊將因 FK cascade 一起刪除），確定要繼續嗎？',
       type: 'danger',
       onConfirm: async () => {
         try {
@@ -159,7 +182,7 @@ export default function SellAdminPage() {
   const handleSeed = () => {
     confirm({
       title: '建立假資料',
-      message: '此操作會新增「寶可夢實體卡」販售假資料（含多規格/多圖），確定要繼續嗎？',
+      message: '此操作會新增「寶可夢實體卡」商城假資料（含多規格/多圖），確定要繼續嗎？',
       type: 'warning',
       onConfirm: async () => {
         try {
@@ -234,12 +257,12 @@ export default function SellAdminPage() {
     })
   }
 
-  const updateStatus = async (id: number, status: string) => {
+  const updateStatus = async (id: number, status: string, reviewNote?: string) => {
     const res = await fetch('/api/admin/sell/listings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ id, status }),
+      body: JSON.stringify({ id, status, reviewNote }),
     })
     if (!res.ok) {
       const data = await res.json().catch(() => null)
@@ -247,10 +270,46 @@ export default function SellAdminPage() {
     }
   }
 
+  /** 核准上架 */
+  const approveListing = async (item: SellListing) => {
+    try {
+      await updateStatus(item.id, 'active')
+      setListings((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: 'active', review_note: null } : x)))
+      toast('已核准上架')
+    } catch (e: any) {
+      toast(e?.message || '核准失敗', 'error')
+    }
+  }
+
+  /** 退回。一定要填原因 —— 賣家看得到，沒原因他只會原封不動再送一次 */
+  const rejectListing = (item: SellListing) => {
+    setRejectTarget(item)
+    setRejectReason('')
+  }
+
+  const submitReject = async () => {
+    if (!rejectTarget) return
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast('請填寫退回原因', 'error')
+      return
+    }
+    try {
+      await updateStatus(rejectTarget.id, 'rejected', reason)
+      setListings((prev) =>
+        prev.map((x) => (x.id === rejectTarget.id ? { ...x, status: 'rejected', review_note: reason } : x))
+      )
+      toast('已退回')
+      setRejectTarget(null)
+    } catch (e: any) {
+      toast(e?.message || '退回失敗', 'error')
+    }
+  }
+
   const deleteListing = (id: number, title: string) => {
     confirm({
       title: '刪除上架',
-      message: `確定要刪除販售上架「${title || id}」嗎？此動作無法復原。`,
+      message: `確定要刪除商城上架「${title || id}」嗎？此動作無法復原。`,
       type: 'danger',
       onConfirm: async () => {
         const res = await fetch(`/api/admin/sell/listings?id=${encodeURIComponent(String(id))}`, {
@@ -273,13 +332,15 @@ export default function SellAdminPage() {
     const total = listings.length
     const active = listings.filter((x) => x.status === 'active').length
     const sold = listings.filter((x) => x.status === 'sold').length
-    return { total, active, sold }
+    const pending = listings.filter((x) => x.status === 'pending').length
+    return { total, active, sold, pending }
   }, [listings])
 
   return (
-    <AdminLayout pageTitle="販售管理" pageSubtitle="自由上架寶可夢實體卡（與市集分開）">
+    <AdminLayout pageTitle="商城商品" pageSubtitle="自由上架寶可夢實體卡（與市集分開）">
       <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatsCard title="待審核" value={stats.pending} />
         <StatsCard title="總上架" value={stats.total} />
         <StatsCard title="上架中" value={stats.active} />
         <StatsCard title="已售出" value={stats.sold} />
@@ -294,7 +355,7 @@ export default function SellAdminPage() {
               disabled={isSeeding}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSeeding ? '建立中…' : '建立販售假資料'}
+              {isSeeding ? '建立中…' : '建立商城假資料'}
             </button>
             <button
               type="button"
@@ -309,7 +370,7 @@ export default function SellAdminPage() {
               disabled={isClearing}
               className="px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isClearing ? '清除中…' : '清除販售測試資料'}
+              {isClearing ? '清除中…' : '清除商城測試資料'}
             </button>
           </div>
         </div>
@@ -324,16 +385,7 @@ export default function SellAdminPage() {
               {
                 key: 'status',
                 label: '狀態',
-                value:
-                  statusFilter === 'all'
-                    ? '全部'
-                    : statusFilter === 'draft'
-                    ? '草稿'
-                    : statusFilter === 'active'
-                    ? '上架中'
-                    : statusFilter === 'sold'
-                    ? '已售出'
-                    : '已下架',
+                value: statusFilter === 'all' ? '全部' : STATUS_LABEL[statusFilter] ?? '全部',
                 color: 'primary',
                 onRemove: () => setStatusFilter('all'),
               },
@@ -366,6 +418,7 @@ export default function SellAdminPage() {
                 <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   狀態
                 </SortableTableHeader>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">審核</th>
                 <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架</th>
                 <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
                   建立時間
@@ -379,7 +432,7 @@ export default function SellAdminPage() {
               {isLoading ? (
                 <TableSkeleton rows={5} cols={9} />
               ) : sortedListings.length === 0 ? (
-                <TableEmpty colSpan={9} message="目前沒有符合條件的販售上架資料" />
+                <TableEmpty colSpan={10} message="目前沒有符合條件的商城上架資料" />
               ) : (
                 sortedListings.map((item) => {
                   const items = Array.isArray(item.items) ? item.items : []
@@ -387,9 +440,11 @@ export default function SellAdminPage() {
                   const totalQty = items.reduce((sum, it) => sum + Math.max(0, Number(it?.quantity) || 0), 0)
                   const isExpanded = expandedListings.has(item.id)
                   const isVisible = item.status === 'active'
-                  const disableToggle = item.status === 'sold'
-                  const statusLabel =
-                    item.status === 'active' ? '上架中' : item.status === 'sold' ? '已售出' : item.status === 'draft' ? '草稿' : '已下架'
+                  const isPending = item.status === 'pending'
+                  // 待審不給用切換：核准要留下審核紀錄（誰審的、什麼時候），
+                  // 一鍵切上架會跳過那段，之後查不出來是誰放行的
+                  const disableToggle = item.status === 'sold' || isPending
+                  const statusLabel = STATUS_LABEL[item.status] ?? item.status
 
                   return (
                     <Fragment key={item.id}>
@@ -429,7 +484,39 @@ export default function SellAdminPage() {
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{item.seller_name}</td>
                         <td className="py-3 px-4">
-                          <Badge status={item.status}>{statusLabel}</Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge status={item.status}>{statusLabel}</Badge>
+                            {item.category && (
+                              <span className="text-xs text-neutral-400 whitespace-nowrap">{item.category}</span>
+                            )}
+                            {item.status === 'rejected' && item.review_note && (
+                              <span className="max-w-[180px] text-xs text-red-500" title={item.review_note}>
+                                {item.review_note}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {isPending ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => approveListing(item)}
+                                className="px-3 py-1.5 text-xs text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
+                              >
+                                核准
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => rejectListing(item)}
+                                className="px-3 py-1.5 text-xs text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
+                              >
+                                退回
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-neutral-300">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -437,7 +524,7 @@ export default function SellAdminPage() {
                             disabled={disableToggle}
                             onClick={async () => {
                               if (disableToggle) return
-                              const nextStatus = isVisible ? 'hidden' : 'active'
+                              const nextStatus = isVisible ? 'removed' : 'active'
                               try {
                                 await updateStatus(item.id, nextStatus)
                                 setListings((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: nextStatus } : x)))
@@ -492,7 +579,7 @@ export default function SellAdminPage() {
                       </tr>
                       {isExpanded && (
                         <tr key={`expanded:${item.id}`} className="bg-neutral-50">
-                          <td colSpan={8} className="py-4 px-4">
+                          <td colSpan={9} className="py-4 px-4">
                             <div className="pl-8 space-y-3">
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="text-sm text-neutral-700">
@@ -562,6 +649,32 @@ export default function SellAdminPage() {
       </PageCard>
       </div>
           {dialogProps && <ConfirmDialog {...dialogProps} />}
+
+      <Modal
+        isOpen={rejectTarget !== null}
+        onClose={() => setRejectTarget(null)}
+        title={`退回「${rejectTarget?.title || ''}」`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-500">
+            這段文字會顯示給賣家看，請寫清楚要改什麼，他才知道怎麼重送。
+          </p>
+          <Textarea
+            rows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="例如：商品照片看不出實際狀況，請補拍正反面清楚照片"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setRejectTarget(null)}>
+              取消
+            </Button>
+            <Button onClick={submitReject} disabled={!rejectReason.trim()}>
+              確認退回
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   )
 }

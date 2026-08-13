@@ -16,6 +16,10 @@ export async function GET() {
           id,
           price,
           status,
+          category,
+          review_note,
+          reviewed_at,
+          reviewed_by,
           title,
           note,
           images,
@@ -45,28 +49,48 @@ export async function PATCH(req: Request) {
     const session = await requireAdminSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = (await req.json().catch(() => null)) as null | { id?: number | string; status?: string }
+    const body = (await req.json().catch(() => null)) as null | {
+      id?: number | string
+      status?: string
+      reviewNote?: string
+    }
     const idRaw = body?.id
     const status = String(body?.status || '').trim()
     const id = Number(idRaw)
 
-    if (!Number.isFinite(id) || !status) {
+    const ALLOWED = ['pending', 'active', 'rejected', 'sold', 'removed']
+    if (!Number.isFinite(id) || !ALLOWED.includes(status)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    const supabaseAdmin = getSupabaseAdmin()
-    const { error } = await supabaseAdmin.from('sell_listings').update({ status }).eq('id', id)
-    if (!error) {
-      await logAdminAction({
-        adminId: session.adminId,
-        action: '修改販售商品狀態',
-        targetType: 'sell_listing',
-        targetId: String(id),
-        detail: { status },
-        ip: getClientIp(req),
-      })
+    // 退回一定要講原因 —— 賣家看得到這段字，沒有原因他只會重送一模一樣的東西
+    const reviewNote = String(body?.reviewNote || '').trim()
+    if (status === 'rejected' && !reviewNote) {
+      return NextResponse.json({ error: '退回時必須填寫原因' }, { status: 400 })
     }
+
+    // 審核結果只在「核准／退回」時蓋章。單純下架不算審核過，
+    // 不然下架再重新送審會顯示成「已審過」。
+    const isReview = status === 'active' || status === 'rejected'
+    const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() }
+    if (isReview) {
+      patch.review_note = status === 'rejected' ? reviewNote : null
+      patch.reviewed_at = new Date().toISOString()
+      patch.reviewed_by = session.adminId
+    }
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const { error } = await supabaseAdmin.from('sell_listings').update(patch).eq('id', id)
     if (error) throw error
+
+    await logAdminAction({
+      adminId: session.adminId,
+      action: status === 'active' ? '核准商城商品' : status === 'rejected' ? '退回商城商品' : '修改商城商品狀態',
+      targetType: 'sell_listing',
+      targetId: String(id),
+      detail: status === 'rejected' ? { status, reason: reviewNote } : { status },
+      ip: getClientIp(req),
+    })
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
@@ -91,7 +115,7 @@ export async function DELETE(req: Request) {
     if (!error) {
       await logAdminAction({
         adminId: session.adminId,
-        action: '刪除販售商品',
+        action: '刪除商城商品',
         targetType: 'sell_listing',
         targetId: String(id),
         ip: getClientIp(req),

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +20,7 @@ type Order = {
   itemIndex: number;
   quantity: number;
   unitPrice: number;
-  paymentMethod: 'transfer' | 'private' | 'escrow';
+  paymentMethod: 'bank' | 'linepay';
   step: number;
   cancelled: boolean;
   trackingNumber: string;
@@ -39,10 +39,11 @@ type Listing = {
 };
 
 type SellerProfile = {
-  transfer_bank: string;
-  transfer_account: string;
-  transfer_name: string;
-  private_trade_note: string;
+  payoutMethod: 'bank' | 'linepay';
+  transferBank: string;
+  transferAccount: string;
+  transferName: string;
+  linepayId: string;
 };
 
 export default function SellOrderDetailPage() {
@@ -63,21 +64,36 @@ export default function SellOrderDetailPage() {
   const [trackingNumberDraft, setTrackingNumberDraft] = useState('');
   const [proofUrls, setProofUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [escrowPayMethod, setEscrowPayMethod] = useState<'credit_card' | 'webatm' | 'vacc'>('credit_card');
-  const [isPayMethodOpen, setIsPayMethodOpen] = useState(false);
-  const [paymentData, setPaymentData] = useState<{
-    action: string;
-    fields: Record<string, string>;
-  } | null>(null);
-  const [isPaying, setIsPaying] = useState(false);
-  const formRef = useRef<HTMLFormElement | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  /**
+   * 付款期限（小時），來自後台「商城設定」。
+   * 一定要跟排程用的是同一個值 —— 之前這裡寫死 2 小時、排程卻是 48 小時，
+   * 畫面倒數歸零了訂單還在，玩家只會覺得系統壞了。
+   */
+  const [payDeadlineHours, setPayDeadlineHours] = useState(48);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetail, setReportDetail] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+  /** 商城免責聲明，後台「商城設定」維護。平台不碰錢，這段是唯一的界線 */
+  const [disclaimer, setDisclaimer] = useState('');
 
   useEffect(() => {
-    if (paymentData && formRef.current) {
-      formRef.current.submit();
-    }
-  }, [paymentData]);
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient()
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['sell_pay_deadline_hours', 'sell_disclaimer']);
+      const rows = Array.isArray(data) ? data : [];
+      const get = (k: string) => String(rows.find((r: any) => r?.key === k)?.value ?? '').trim();
+      const n = Number(get('sell_pay_deadline_hours'));
+      if (cancelled) return;
+      if (Number.isFinite(n) && n > 0) setPayDeadlineHours(n);
+      setDisclaimer(get('sell_disclaimer'));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -118,12 +134,8 @@ export default function SellOrderDetailPage() {
           itemIndex: Number((o as any).item_index || 0),
           quantity: Math.max(1, Math.round(Number((o as any).quantity) || 1)),
           unitPrice: Math.max(1, Math.round(Number((o as any).unit_price) || 1)),
-          paymentMethod: (() => {
-            const raw = String((o as any).payment_method || 'transfer');
-            if (raw === 'private') return 'private';
-            if (raw === 'escrow') return 'escrow';
-            return 'transfer';
-          })(),
+          // 玩家商城一律雙方自理，收款方式由賣家設定，只會是這兩種
+          paymentMethod: String((o as any).payment_method || 'bank') === 'linepay' ? 'linepay' : 'bank',
           step: Math.max(1, Math.round(Number((o as any).step) || 1)),
           cancelled: Boolean((o as any).cancelled),
           trackingNumber: String((o as any).tracking_number || ''),
@@ -172,7 +184,7 @@ export default function SellOrderDetailPage() {
 
         const { data: p, error: profileError } = await supabase
           .from('sell_seller_profiles')
-          .select('transfer_bank, transfer_account, transfer_name, private_trade_note')
+          .select('payout_method, transfer_bank, transfer_account, transfer_name, linepay_id')
           .eq('seller_id', nextOrder.sellerId)
           .maybeSingle();
 
@@ -183,13 +195,15 @@ export default function SellOrderDetailPage() {
         setSellerAvatar(displayAvatar);
         setTrackingNumberDraft(String(nextOrder.trackingNumber || ''));
         setProofUrls(nextOrder.paymentProofUrls);
+        if (profileError) console.error('Failed to load seller payout info:', profileError);
         setSellerProfile(
           p
             ? {
-                transfer_bank: String((p as any).transfer_bank || ''),
-                transfer_account: String((p as any).transfer_account || ''),
-                transfer_name: String((p as any).transfer_name || ''),
-                private_trade_note: String((p as any).private_trade_note || ''),
+                payoutMethod: String((p as any).payout_method || 'bank') === 'linepay' ? 'linepay' : 'bank',
+                transferBank: String((p as any).transfer_bank || ''),
+                transferAccount: String((p as any).transfer_account || ''),
+                transferName: String((p as any).transfer_name || ''),
+                linepayId: String((p as any).linepay_id || ''),
               }
             : null
         );
@@ -213,26 +227,23 @@ export default function SellOrderDetailPage() {
   const isBuyer = user?.id === order?.buyerId;
   const isSeller = user?.id === order?.sellerId;
 
-  const showEscrowPay = Boolean(order && isBuyer && order.paymentMethod === 'escrow' && order.step === 1 && !order.cancelled);
+  /**
+   * 買家還沒回報付款的階段。倒數顯示的是「商城設定」裡的付款期限，
+   * 逾時由排程自動取消訂單、把庫存放回架上。
+   */
+  const showPayCountdown = Boolean(order && isBuyer && order.step === 1 && !order.cancelled);
 
   useEffect(() => {
-    if (!showEscrowPay) return;
+    if (!showPayCountdown) return;
     const t = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [showEscrowPay]);
-
-  const escrowMethodLabel = useMemo(() => {
-    if (escrowPayMethod === 'credit_card') return '信用卡 / 金融卡';
-    if (escrowPayMethod === 'webatm') return 'WebATM';
-    if (escrowPayMethod === 'vacc') return 'ATM 轉帳';
-    return '信用卡 / 金融卡';
-  }, [escrowPayMethod]);
+  }, [showPayCountdown]);
 
   const payDeadlineText = useMemo(() => {
     if (!order?.createdAt) return '';
     const created = Date.parse(order.createdAt);
     const base = Number.isFinite(created) ? created : nowMs;
-    const deadline = base + 2 * 60 * 60 * 1000;
+    const deadline = base + payDeadlineHours * 60 * 60 * 1000;
     const left = Math.max(0, deadline - nowMs);
     const totalSec = Math.floor(left / 1000);
     const h = Math.floor(totalSec / 3600);
@@ -240,7 +251,7 @@ export default function SellOrderDetailPage() {
     const s = totalSec % 60;
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
-  }, [nowMs, order?.createdAt]);
+  }, [nowMs, order?.createdAt, payDeadlineHours]);
 
   const pickedItem = useMemo(() => {
     if (!order || !listing) return null;
@@ -276,58 +287,6 @@ export default function SellOrderDetailPage() {
     }
   };
 
-  const startEscrowPay = async () => {
-    if (!order) return;
-    if (order.paymentMethod !== 'escrow') return;
-    if (user?.id !== order.buyerId) return;
-    if (order.step !== 1 || order.cancelled) return;
-    if (isPaying) return;
-    setIsPaying(true);
-    try {
-      const supabase = createClient();
-      const { data: sess } = await supabase.auth.getSession();
-      if (!sess?.session) {
-        showToast('找不到有效登入狀態，請重新登入後再試', 'plain');
-        return;
-      }
-
-      let apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') apiUrl = 'http://127.0.0.1:3001';
-        else apiUrl = 'http://127.0.0.1:3001';
-      }
-      if (apiUrl.includes('localhost')) apiUrl = apiUrl.replace('localhost', '127.0.0.1');
-
-      const res = await fetch(`${apiUrl}/api/payment/ecpay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sess.session.access_token}`,
-        },
-        body: JSON.stringify({
-          kind: 'sell_escrow',
-          orderId: Number(order.id),
-          paymentMethod: escrowPayMethod,
-        }),
-      });
-
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.indexOf('application/json') !== -1) {
-        const pay = await res.json();
-        if (!res.ok) throw new Error(String(pay?.error || 'Payment initialization failed'));
-        setPaymentData(pay);
-        return;
-      }
-      const text = await res.text();
-      console.error('API Error (Non-JSON response):', text);
-      throw new Error(`連線失敗 (${res.status})：請檢查後端 API URL 設定`);
-    } catch (e) {
-      console.error('Init escrow payment failed:', e);
-      showToast('付款初始化失敗', 'plain');
-    } finally {
-      setIsPaying(false);
-    }
-  };
 
   const uploadImage = async (file: File) => {
     if (!user?.id) throw new Error('login_required');
@@ -465,19 +424,13 @@ export default function SellOrderDetailPage() {
     if (order.cancelled) return null;
 
     if (isBuyer && order.step === 1) {
-      if (order.paymentMethod === 'escrow') {
-        return {
-          left: { label: '取消訂單', onClick: cancelOrder, disabled: isCancelling },
-          right: { label: '直接付款', onClick: startEscrowPay, disabled: isPaying },
-        };
-      }
       return {
         left: { label: '取消訂單', onClick: cancelOrder, disabled: isCancelling },
         right: { label: '我已付款', onClick: markPaid, disabled: isActing },
       };
     }
 
-    if (isSeller && order.step === 2 && order.paymentMethod !== 'escrow') {
+    if (isSeller && order.step === 2) {
       return { left: null, right: { label: '確認收款', onClick: confirmPayment, disabled: isActing } };
     }
 
@@ -497,12 +450,10 @@ export default function SellOrderDetailPage() {
     isActing,
     isBuyer,
     isCancelling,
-    isPaying,
     isSeller,
     markPaid,
     markShipped,
     order,
-    startEscrowPay,
   ]);
 
   if (isAuthLoading || isLoading) {
@@ -520,6 +471,38 @@ export default function SellOrderDetailPage() {
       </div>
     );
   }
+
+  const submitReport = async () => {
+    if (!user?.id || !order) return;
+    const reason = reportReason.trim();
+    if (!reason) {
+      showToast('請選擇檢舉原因', 'plain');
+      return;
+    }
+    setIsReporting(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('sell_reports').insert({
+        reporter_id: user.id,
+        target_type: 'order',
+        order_id: Number(order.id),
+        listing_id: Number(order.listingId) || null,
+        seller_id: order.sellerId,
+        reason,
+        detail: reportDetail.trim() || null,
+      } as any);
+      if (error) throw error;
+      showToast('已送出檢舉，平台會盡快處理', 'plain');
+      setIsReportOpen(false);
+      setReportReason('');
+      setReportDetail('');
+    } catch (e) {
+      console.error('Submit sell report failed:', e);
+      showToast('檢舉送出失敗', 'plain');
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   const orderNoText = order.orderNumber ? order.orderNumber : `#${order.id}`;
   const recipientName = '王小明';
@@ -545,56 +528,67 @@ export default function SellOrderDetailPage() {
         actionBar ? 'pb-[calc(88px+env(safe-area-inset-bottom))]' : 'pb-24'
       )}
     >
-      {showEscrowPay && (
+      {/* 付款倒數。時間來自後台「商城設定」，跟排程自動取消用的是同一個值 */}
+      {showPayCountdown && (
         <div className="bg-primary text-white px-4 py-2 text-[13px] font-black">
-          請於 <span className="font-amount">{payDeadlineText}</span> 前完成付款
+          請於 <span className="font-amount">{payDeadlineText}</span> 內完成付款並回報，逾時訂單會自動取消
         </div>
       )}
 
       <div className="space-y-2">
-        {order.paymentMethod === 'escrow' && (
+
+        {/*
+          賣家收款資訊。平台不經手款項，買家是直接把錢付給賣家，
+          所以這塊是整筆交易能不能成立的關鍵 —— 訂單成立後才顯示（RLS 也是這樣擋的）。
+        */}
+        {isBuyer && !order.cancelled && order.step <= 2 && (
           <div className="bg-white dark:bg-neutral-900 border-y border-neutral-100 dark:border-neutral-800 md:rounded-3xl md:border md:shadow-card">
             <div className="px-3 py-3 sm:px-6 sm:py-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 grid place-items-center text-neutral-500 font-black">
-                    $
+              <div className="text-[13px] font-black text-neutral-900 dark:text-white">
+                付款給賣家
+              </div>
+              {!sellerProfile ? (
+                <div className="mt-3 text-[13px] font-bold text-neutral-400">
+                  賣家尚未提供收款資訊，請先用下方訊息與賣家聯繫
+                </div>
+              ) : sellerProfile.payoutMethod === 'linepay' ? (
+                <div className="mt-3 space-y-1.5 text-[13px] font-bold text-neutral-700 dark:text-neutral-200">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">收款方式</span>
+                    <span className="font-black">LINE Pay 轉帳</span>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">
-                      以{escrowMethodLabel}完成付款
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">LINE Pay</span>
+                    <span className="font-black font-amount break-all">{sellerProfile.linepayId || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">應付金額</span>
+                    <span className="font-black font-amount">{(order.unitPrice * order.quantity).toLocaleString()}</span>
                   </div>
                 </div>
-                {showEscrowPay && (
-                  <button
-                    type="button"
-                    onClick={() => setIsPayMethodOpen((v) => !v)}
-                    className="h-8 px-3 rounded-lg border border-neutral-200 dark:border-neutral-800 text-[12px] font-black text-neutral-700 dark:text-neutral-200 bg-white dark:bg-neutral-950 whitespace-nowrap shrink-0"
-                  >
-                    更改
-                  </button>
-                )}
-              </div>
-
-              {showEscrowPay && isPayMethodOpen && (
-                <div className="mt-3 flex items-center gap-2">
-                  <select
-                    value={escrowPayMethod}
-                    onChange={(e) => setEscrowPayMethod(e.target.value as any)}
-                    className="flex-1 h-10 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="credit_card">信用卡 / 金融卡</option>
-                    <option value="webatm">WebATM</option>
-                    <option value="vacc">ATM 轉帳</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsPayMethodOpen(false)}
-                    className="h-10 px-3 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[13px] font-black"
-                  >
-                    完成
-                  </button>
+              ) : (
+                <div className="mt-3 space-y-1.5 text-[13px] font-bold text-neutral-700 dark:text-neutral-200">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">銀行</span>
+                    <span className="font-black">{sellerProfile.transferBank || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">帳號</span>
+                    <span className="font-black font-amount break-all">{sellerProfile.transferAccount || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">戶名</span>
+                    <span className="font-black">{sellerProfile.transferName || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-neutral-400 dark:text-neutral-500">應付金額</span>
+                    <span className="font-black font-amount">{(order.unitPrice * order.quantity).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+              {disclaimer && (
+                <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-[11px] font-bold leading-relaxed text-amber-700 dark:text-amber-500">
+                  {disclaimer}
                 </div>
               )}
             </div>
@@ -740,9 +734,74 @@ export default function SellOrderDetailPage() {
               <div className="text-[13px] font-black text-neutral-900 dark:text-white">幫助中心</div>
               <ChevronRight className="w-4 h-4 text-neutral-400" />
             </button>
+            {/* 買家才需要檢舉入口 —— 平台不碰錢，出事時這是買家唯一的求助管道 */}
+            {isBuyer && (
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(true)}
+                className="w-full flex items-center justify-between text-left py-2"
+              >
+                <div className="text-[13px] font-black text-red-500">檢舉此交易</div>
+                <ChevronRight className="w-4 h-4 text-neutral-400" />
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {isReportOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-end md:items-center md:justify-center" onClick={() => setIsReportOpen(false)}>
+          <div
+            className="w-full md:max-w-md bg-white dark:bg-neutral-900 rounded-t-3xl md:rounded-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[15px] font-black text-neutral-900 dark:text-white">檢舉此交易</div>
+            <div className="mt-1 text-[11px] font-bold leading-relaxed text-neutral-400">
+              檢舉會連同這筆訂單的完整紀錄一起送給平台。若賣家確認違規，平台會停止他在商城的交易資格。
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['付款後未出貨', '商品與描述不符', '疑似詐騙', '其他'].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setReportReason(r)}
+                  className={`h-9 px-3 rounded-xl text-[13px] font-black transition-colors ${
+                    reportReason === r
+                      ? 'bg-red-500 text-white'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reportDetail}
+              onChange={(e) => setReportDetail(e.target.value.slice(0, 500))}
+              rows={3}
+              placeholder="補充說明（選填）：發生了什麼事、跟賣家聯繫的結果…"
+              className="mt-3 w-full bg-neutral-100 dark:bg-neutral-800 rounded-xl px-3 py-2 text-[13px] font-black text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(false)}
+                className="flex-1 h-[44px] rounded-xl border border-neutral-200 dark:border-neutral-800 text-[15px] font-black text-neutral-800 dark:text-neutral-200"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={submitReport}
+                disabled={isReporting || !reportReason}
+                className="flex-1 h-[44px] rounded-xl bg-red-500 text-white text-[15px] font-black disabled:opacity-50"
+              >
+                {isReporting ? '送出中…' : '送出檢舉'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {actionBar && (
         <div className="fixed left-0 right-0 bottom-0 z-[60] bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 pb-[env(safe-area-inset-bottom)]">
@@ -778,13 +837,6 @@ export default function SellOrderDetailPage() {
         </div>
       )}
 
-      {paymentData && (
-        <form ref={formRef} action={paymentData.action} method="POST" className="hidden">
-          {Object.entries(paymentData.fields).map(([k, v]) => (
-            <input key={k} type="hidden" name={k} value={v} />
-          ))}
-        </form>
-      )}
     </div>
   );
 }

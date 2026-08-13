@@ -492,17 +492,23 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
     </svg>
   )
-  // 販售商品管理（店面）
+  // 商城商品（店面）
   const IconStorefront = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 22V12h6v10" />
     </svg>
   )
-  // 販售訂單（待辦清單）
+  // 商城訂單（待辦清單）
   const IconClipboard = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+  )
+  // 商城檢舉（警告三角）
+  const IconAlert = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m0 3.75h.008M10.34 3.94l-8.1 14.02A1.5 1.5 0 003.54 20.2h16.92a1.5 1.5 0 001.3-2.24l-8.1-14.02a1.5 1.5 0 00-2.6 0z" />
     </svg>
   )
   // 交換紀錄（時鐘/歷史）
@@ -606,9 +612,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
     // 客服
     '/cs-management/tickets': 'cs_tickets',
     '/cs-management/sop': 'cs_sop',
-    // 販售
+    // 商城（玩家商城 sell_*，不是交易所 marketplace_* 也不是卡牌交換 exchange_*）
     '/sell': 'sell',
     '/sell-orders': 'sell_orders',
+    // 商城設定與檢舉沿用 sell 權限：能管商品的人就能處理糾紛與改規則，不另外開權限碼
+    '/sell/settings': 'sell',
+    '/sell/reports': 'sell',
     // 交換
     '/exchange': 'exchange',
     '/exchange-orders': 'exchange_orders',
@@ -744,10 +753,12 @@ export default function AdminLayout({ children, pageTitle, pageSubtitle, breadcr
       },
       {
         id: 'sell',
-        title: '商品買賣',
+        title: '商城',
         items: [
-          { name: '販售商品管理', path: '/sell', icon: IconStorefront },
-          { name: '販售訂單', path: '/sell-orders', icon: IconClipboard },
+          { name: '商城商品', path: '/sell', icon: IconStorefront },
+          { name: '商城訂單', path: '/sell-orders', icon: IconClipboard },
+          { name: '商城檢舉', path: '/sell/reports', icon: IconAlert },
+          { name: '商城設定', path: '/sell/settings', icon: IconSliders },
         ],
       },
       {

@@ -74,7 +74,7 @@ export default function SellOrdersAdminPage() {
         return {
           id: Number(row.id || 0),
           listing_id: listingId,
-          listing_title: listingTitle || '販售商品',
+          listing_title: listingTitle || '商城商品',
           item_name: itemName || '品項',
           item_index: itemIndex,
           quantity: qty,
@@ -182,7 +182,7 @@ export default function SellOrdersAdminPage() {
   }, [orders])
 
   return (
-    <AdminLayout pageTitle="販售訂單">
+    <AdminLayout pageTitle="商城訂單">
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatsCard title="全部" value={counts.total} />
@@ -266,7 +266,7 @@ export default function SellOrdersAdminPage() {
                 {isLoading ? (
                   <TableSkeleton rows={6} cols={9} />
                 ) : sortedOrders.length === 0 ? (
-                  <TableEmpty colSpan={9} message="目前沒有符合條件的販售訂單" />
+                  <TableEmpty colSpan={9} message="目前沒有符合條件的商城訂單" />
                 ) : (
                   sortedOrders.map((o) => {
                     const isCompleted = Boolean(o.completed_at) && !o.cancelled
