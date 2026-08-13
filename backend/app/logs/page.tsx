@@ -1,6 +1,6 @@
 'use client'
 
-import { AdminLayout, StatsCard, ListTableCard, type ListColumn } from '@/components'
+import { AdminLayout, StatsCard, ListTableCard, Modal, type ListColumn } from '@/components'
 import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
 import { useState, useEffect, useRef, useMemo } from 'react'
@@ -14,6 +14,9 @@ interface LogEntry {
   action: string
   target: string
   details: string
+  /** 後端寫的原始 jsonb，點「詳情」時在彈窗裡顯示 */
+  rawDetail: Record<string, any> | null
+  targetType: string | null
   ip: string
   status: 'success' | 'failed'
 }
@@ -88,24 +91,83 @@ const DETAIL_KEY: Record<string, string> = {
   jp_price_yen: '日幣定價', supplier_id: '廠商',
 }
 
-/** 把 jsonb 的 detail 攤成一行人看得懂的字 */
-function formatDetail(detail: unknown): string {
+/** 這幾種值只有工程師看得懂，白話版一律略過（點進彈窗才看得到） */
+const isTechy = (v: unknown) =>
+  typeof v === 'string' &&
+  (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v)          // uuid
+    || /^[A-Z]+-[A-Z0-9]{6,}$/.test(v))          // MANUAL-XXXX 這種交易編號
+
+/** 付款方式的代號→人話 */
+const PAY_METHOD: Record<string, string> = {
+  test: '測試', promotion: '行銷贈送', compensation: '補償',
+  manual_transfer: '手動匯款', cash: '現金', line_pay: 'LINE Pay',
+}
+
+/** 平台設定的 key→人話 */
+const SETTING_KEY: Record<string, string> = {
+  promo_new_arrival_enabled: '最新上架彈窗',
+  promo_audience: '彈窗對象', promo_dismiss_mode: '彈窗關閉後',
+  promo_dismiss_days: '彈窗間隔天數', promo_cost_bearer: '促銷成本歸屬',
+  free_shipping_threshold: '免運門檻',
+}
+
+const num = (v: unknown) => typeof v === 'number' ? v.toLocaleString() : String(v)
+
+/**
+ * 把 jsonb 的 detail 講成一句人話。
+ *
+ * 這一欄是給營運看的，不該出現 `body：{"amount":1000000,"user_id":"5016…"}`
+ * 這種東西（老闆指定）。原始內容改放在點下去的彈窗裡。
+ *
+ * 常見的幾種操作各自寫一句；沒對到的走通用邏輯：
+ * 攤平一層巢狀（後端很多是包在 `body` 裡）、代號翻中文、數字加千分位、
+ * uuid 與交易編號直接略過。
+ */
+function humanDetail(action: string, detail: unknown): string {
   if (!detail || typeof detail !== 'object') return ''
+  const d = detail as Record<string, any>
+  const body = (d.body && typeof d.body === 'object' ? d.body : {}) as Record<string, any>
+
+  // ── 講得出完整句子的幾種 ──
+  if (action === '手動儲值') {
+    const amt = body.amount ?? d.amount
+    const method = PAY_METHOD[body.payment_method ?? ''] ?? body.payment_method
+    const after = d.tokens_after
+    return [
+      amt != null ? `補了 ${num(amt)} G` : '',
+      method ? `（${method}）` : '',
+      after != null ? `，補完餘額 ${num(after)} G` : '',
+    ].join('')
+  }
+  if (action === '新增會員') {
+    const t = d.tokens
+    return `建立會員「${d.name ?? '—'}」` + (t ? `，一併給了 ${num(t)} G` : '')
+  }
+  if (action === '編輯會員資料' && d.tokens !== undefined) {
+    return `把代幣改成 ${num(d.tokens)} G`
+  }
+  if (action === '更新平台設定' && Array.isArray(d.keys)) {
+    return '改了：' + d.keys.map((k: string) => SETTING_KEY[k] ?? k).join('、')
+  }
+  if (action === '登入失敗') return `帳號「${d.username ?? '—'}」密碼錯誤`
+
+  // ── 通用 ──
   const parts: string[] = []
-  for (const [k, v] of Object.entries(detail as Record<string, unknown>)) {
-    if (v === null || v === undefined || v === '') continue
+  for (const [k, v] of Object.entries({ ...d, ...body })) {
+    if (k === 'body' || v === null || v === undefined || v === '') continue
+    if (isTechy(v)) continue
     let text: string
     if (Array.isArray(v)) {
-      // 一長串 id 沒有閱讀價值，只講幾筆
-      text = v.length > 3 ? `${v.length} 筆` : v.map(x => String(x)).join('、')
+      const shown = v.filter(x => !isTechy(x))
+      text = shown.length === 0 ? `${v.length} 筆` : shown.length > 3 ? `${v.length} 筆` : shown.map(String).join('、')
     } else if (typeof v === 'object') {
-      text = JSON.stringify(v)
+      continue                                   // 巢狀物件只在彈窗裡看
     } else if (typeof v === 'boolean') {
       text = v ? '是' : '否'
     } else {
-      text = String(v)
+      text = num(v)
     }
-    if (text.length > 60) text = text.slice(0, 60) + '…'
+    if (text.length > 40) text = text.slice(0, 40) + '…'
     parts.push(`${DETAIL_KEY[k] ?? k}：${text}`)
   }
   return parts.join('｜')
@@ -123,6 +185,8 @@ export default function LogsPage() {
   const [selectedAction, setSelectedAction] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [displayCount, setDisplayCount] = useState(50)
+  /** 點「詳情」打開的那一筆（彈窗裡放原始 jsonb 這類技術內容） */
+  const [detailLog, setDetailLog] = useState<LogEntry | null>(null)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const observerTarget = useRef<HTMLDivElement>(null)
 
@@ -234,7 +298,9 @@ export default function LogsPage() {
           // 字串欄位優先（前端 addLog 寫的，本來就是給人看的）；
           // 沒有就把後端寫的 target_type / detail 翻成人話
           target: log.target || TARGET_LABEL[log.target_type] || log.target_type || '',
-          details: log.details || formatDetail(log.detail),
+          details: log.details || humanDetail(log.action, log.detail),
+          rawDetail: log.detail ?? null,
+          targetType: log.target_type ?? null,
           ip: log.ip || '',
           status: (log.status as 'success' | 'failed') || 'success'
         })))
@@ -288,7 +354,24 @@ export default function LogsPage() {
     },
     {
       key: 'details', label: '詳情',
-      render: log => <>{log.details}</>,
+      /*
+       * 表格上只放人話；原始 jsonb、target_type 這些技術內容點進彈窗才看
+       * （老闆指定）。沒有可展開的內容時就純文字，不要給一個點了沒反應的連結。
+       */
+      render: log => {
+        const hasRaw = !!log.rawDetail && Object.keys(log.rawDetail).length > 0
+        if (!hasRaw) return <span className="text-neutral-400">{log.details || '—'}</span>
+        return (
+          <button
+            type="button"
+            onClick={() => setDetailLog(log)}
+            className="text-left text-primary hover:underline"
+            title="看技術細節"
+          >
+            {log.details || '查看內容'}
+          </button>
+        )
+      },
     },
     {
       key: 'ip', label: 'IP',
@@ -490,6 +573,38 @@ export default function LogsPage() {
           </>
         )}
       </div>
+      <Modal
+        isOpen={!!detailLog}
+        onClose={() => setDetailLog(null)}
+        title="操作明細"
+      >
+        {detailLog && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-[5rem_1fr] gap-y-2">
+              <span className="text-neutral-500">時間</span>
+              <span className="font-mono">{formatDateTime(detailLog.timestamp)}</span>
+              <span className="text-neutral-500">操作者</span>
+              <span>{detailLog.user}（{detailLog.role}）</span>
+              <span className="text-neutral-500">操作</span>
+              <span>{detailLog.action}</span>
+              <span className="text-neutral-500">目標</span>
+              <span>{detailLog.target || '—'}</span>
+              <span className="text-neutral-500">說明</span>
+              <span>{detailLog.details || '—'}</span>
+            </div>
+
+            {/* 以下是技術內容：原始欄位名與值，出事時要拿這個對 */}
+            <div>
+              <p className="mb-1 text-xs text-neutral-400">
+                原始紀錄（工程用；欄位名稱與值與資料庫一致）
+              </p>
+              <pre className="max-h-80 overflow-auto rounded-lg bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-700 whitespace-pre-wrap break-all">
+{JSON.stringify({ target_type: detailLog.targetType, detail: detailLog.rawDetail }, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AdminLayout>
   )
 }

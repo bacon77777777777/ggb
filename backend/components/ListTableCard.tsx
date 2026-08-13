@@ -84,6 +84,14 @@ interface ListTableCardProps<T> {
    * 自己吐 <td>；元件負責外框樣式與欄位對齊，排序時不會被打亂。
    */
   summaryRow?: (shownColumns: ListColumn<T>[]) => ReactNode
+  /**
+   * 沒有資料時也要顯示置頂列。
+   *
+   * 合計列在空表時沒有意義，所以預設不顯示；但拿這一列來放「固定存在、
+   * 不可刪改的系統項目」時（例：首頁彈窗的最新上架開關），
+   * 清單是空的它也必須在，不然唯一的開關會跟著消失。
+   */
+  summaryRowWhenEmpty?: boolean
 }
 
 export default function ListTableCard<T>({
@@ -111,6 +119,7 @@ export default function ListTableCard<T>({
   onExpandChange,
   renderExpanded,
   summaryRow,
+  summaryRowWhenEmpty = false,
 }: ListTableCardProps<T>) {
   const [sortField, setSortField] = useState(defaultSortField)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection)
@@ -253,7 +262,7 @@ export default function ListTableCard<T>({
             </tr>
           </thead>
           <tbody>
-            {!isLoading && summaryRow && sorted.length > 0 && (
+            {!isLoading && summaryRow && (sorted.length > 0 || summaryRowWhenEmpty) && (
               <tr className="border-b border-neutral-100 bg-neutral-50 font-semibold">
                 {summaryRow(shownColumns)}
               </tr>

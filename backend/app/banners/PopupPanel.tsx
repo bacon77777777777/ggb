@@ -283,22 +283,45 @@ export default function PopupPanel() {
   ]
 
   /*
-   * 工具列右側只剩最新上架彈窗的開關。
+   * 最新上架彈窗做成表格的**置頂列**（老闆指定）：固定第一筆、不能編輯也不能刪除。
    *
-   * 原本還有「對象」與「關閉後」兩個下拉，老闆指定拿掉 —— 那兩個一改就是
-   * 全站所有彈窗一起改。現在規則固定：每次進首頁都跳，玩家可以在彈窗上
-   * 勾「今日不再顯示」自己少看一次（隔天照跳）。最新上架彈窗吃同一套。
+   * 它跟下面那些彈窗不是同一種東西 —— 內容是即時從 products 撈最新商品組出來的，
+   * 沒有可編輯的文案或圖片，所以不塞進 site_promos 當一筆資料（那還要處理
+   * 「這筆不能編輯」的例外），只有一個開關存在 platform_settings。
+   *
+   * 用 ListTableCard 的 summaryRow：它是置頂的，而且**排序時不會被打亂**。
+   * 清單空的時候也要顯示（summaryRowWhenEmpty），不然唯一的開關會跟著消失。
    */
-  const ruleControls = (
-    <label className="flex items-center gap-2 pl-1 text-sm text-neutral-500 whitespace-nowrap cursor-pointer">
-      最新上架彈窗
-      <Switch
-        checked={rules.promo_new_arrival_enabled === '1'}
-        disabled={savingRules}
-        onCheckedChange={v => saveRules({ promo_new_arrival_enabled: v ? '1' : '0' })}
-      />
-    </label>
-  )
+  const newArrivalRow = (shown: ListColumn<Promo>[]) => shown.map(col => {
+    if (col.key === 'layout') {
+      return <td key={col.key} className="py-2 px-2"><Badge color="green">系統</Badge></td>
+    }
+    if (col.key === 'body') {
+      return (
+        <td key={col.key} className="py-2 px-2">
+          <div className="max-w-md whitespace-normal font-normal">
+            <div className="font-medium text-neutral-900">最新上架</div>
+            <div className="text-neutral-500">
+              進首頁時跳出最近 30 天上架的商品，點了直接進商品頁。內容自動更新，不用編輯。
+            </div>
+          </div>
+        </td>
+      )
+    }
+    if (col.key === 'status') {
+      return (
+        <td key={col.key} className="py-2 px-2">
+          <Switch
+            checked={rules.promo_new_arrival_enabled === '1'}
+            disabled={savingRules}
+            onCheckedChange={v => saveRules({ promo_new_arrival_enabled: v ? '1' : '0' })}
+          />
+        </td>
+      )
+    }
+    // 排序與操作留白：這一列固定在最上面，也不給編輯／刪除
+    return <td key={col.key} className="py-2 px-2 text-neutral-300">—</td>
+  })
 
   return (
     <>
@@ -315,7 +338,8 @@ export default function PopupPanel() {
         onSearchChange={setSearchQuery}
         addButtonText="+ 新增彈窗"
         onAddClick={() => openEditor({ ...EMPTY })}
-        toolbarChildren={ruleControls}
+        summaryRow={newArrivalRow}
+        summaryRowWhenEmpty
       />
 
       <Modal
