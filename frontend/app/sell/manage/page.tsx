@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Settings, ChevronRight, Package, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,7 @@ export default function SellManagePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
+  const { showToast } = useToast();
 
   const viewFromUrl = useMemo(() => {
     const raw = String(searchParams.get('tab') || '').trim();
@@ -60,6 +62,27 @@ export default function SellManagePage() {
   useEffect(() => {
     setView(viewFromUrl);
   }, [viewFromUrl]);
+
+  /**
+   * 賣家自己的上架操作。改的是自己那列（RLS 擋別人的），
+   * 狀態轉換的合法性由 DB trigger 把關：上架中→下架、已下架→重新送審，其餘擋掉。
+   */
+  const setListingStatus = async (id: number, status: 'removed' | 'pending', doneMsg: string) => {
+    try {
+      const { error } = await createClient()
+        .from('sell_listings')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('seller_id', String(user?.id || ''));
+      if (error) throw error;
+      setListings((prev) => prev.map((x) => (x.id === id ? { ...x, status } : x)));
+      showToast(doneMsg, 'plain');
+    } catch (e: any) {
+      console.error('Update listing status failed:', e);
+      const msg = String(e?.message || '');
+      showToast(/[\u4e00-\u9fff]/.test(msg) ? msg : '操作失敗', 'plain');
+    }
+  };
 
   useEffect(() => {
     if (isLoading) return;
@@ -268,11 +291,16 @@ export default function SellManagePage() {
               <div className="py-10 text-center text-[13px] font-black text-neutral-400">目前沒有上架</div>
             ) : (
               listings.map((l) => (
-                <button
+                <div
                   key={l.id}
-                  type="button"
+                  className="w-full bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3"
+                >
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => router.push(`/sell/${l.id}`)}
-                  className="w-full bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3 flex items-center gap-3 text-left"
+                  onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/sell/${l.id}`); }}
+                  className="flex items-center gap-3 text-left cursor-pointer"
                 >
                   <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 flex-shrink-0">
                     <Image src={l.image} alt={l.title} fill className="object-cover" unoptimized />
@@ -299,7 +327,50 @@ export default function SellManagePage() {
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-neutral-300 flex-shrink-0" />
-                </button>
+                </div>
+
+                {/* 狀態對應的操作。待審/已售出沒有可做的事，就不放按鈕 */}
+                {(l.status === 'active' || l.status === 'rejected' || l.status === 'removed') && (
+                  <div className="mt-2 pt-2 border-t border-neutral-50 dark:border-neutral-800 flex justify-end gap-2">
+                    {l.status === 'active' && (
+                      <button
+                        type="button"
+                        onClick={() => setListingStatus(l.id, 'removed', '已下架')}
+                        className="h-9 px-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-600 dark:text-neutral-300 active:scale-95 transition-transform"
+                      >
+                        下架
+                      </button>
+                    )}
+                    {l.status === 'rejected' && (
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/sell/new?edit=${l.id}`)}
+                        className="h-9 px-4 rounded-xl bg-primary text-[13px] font-black text-white active:scale-95 transition-transform"
+                      >
+                        修改後重新送審
+                      </button>
+                    )}
+                    {l.status === 'removed' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/sell/new?edit=${l.id}`)}
+                          className="h-9 px-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-600 dark:text-neutral-300 active:scale-95 transition-transform"
+                        >
+                          修改
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setListingStatus(l.id, 'pending', '已送出審核，通過後就會恢復上架')}
+                          className="h-9 px-4 rounded-xl bg-primary text-[13px] font-black text-white active:scale-95 transition-transform"
+                        >
+                          重新上架
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                </div>
               ))
             )
           ) : orders.length === 0 ? (

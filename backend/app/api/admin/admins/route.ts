@@ -28,6 +28,7 @@ export async function GET() {
         id,
         username,
         nickname,
+        password_hash,
         role_id,
         supplier_id,
         status,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, ImagePlus, X } from 'lucide-react';
 import { ActionBar, Button } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,8 +23,21 @@ const DRAFT_KEY = 'sell:new:draft:v1';
 
 export default function SellNewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading } = useAuth();
   const { showToast } = useToast();
+
+  /**
+   * 編輯模式（`?edit=<id>`）：同一張表單拿來改被退回／已下架的上架單。
+   * 商城管理的「修改後重新送審」會帶這個參數進來。
+   * 送出時走 UPDATE；若原狀態是 rejected / removed 會一併改回 pending 重新送審
+   * （active 不用帶 —— DB 的防換餌 trigger 看到內容變了會自己退回待審）。
+   */
+  const editId = (() => {
+    const n = Number(searchParams.get('edit'));
+    return Number.isInteger(n) && n > 0 ? n : null;
+  })();
+  const [originalStatus, setOriginalStatus] = useState('');
 
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
@@ -82,6 +95,10 @@ export default function SellNewPage() {
       const raw = sessionStorage.getItem(DRAFT_KEY) || '';
       if (!raw) return;
       const parsed = JSON.parse(raw) as any;
+      // 草稿跟目前模式對不上就不吃：編輯 A 的草稿不能出現在編輯 B 或新上架的表單裡
+      const draftEditId = Number(parsed?.editId || 0) || null;
+      if (draftEditId !== editId) return;
+      setOriginalStatus(String(parsed?.originalStatus || ''));
       setTitle(String(parsed?.title || ''));
       setPrice(String(parsed?.price || ''));
       setNote(String(parsed?.note || ''));
@@ -107,6 +124,8 @@ export default function SellNewPage() {
       sessionStorage.setItem(
         DRAFT_KEY,
         JSON.stringify({
+          editId,
+          originalStatus,
           title,
           price,
           note,
@@ -116,7 +135,52 @@ export default function SellNewPage() {
         })
       );
     } catch {}
-  }, [category, images, listingItems, note, price, title]);
+  }, [category, editId, images, listingItems, note, originalStatus, price, title]);
+
+  useEffect(() => {
+    if (!editId || !user?.id) return;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY) || '';
+      if (raw && (Number(JSON.parse(raw)?.editId || 0) || null) === editId) return; // 草稿就是這筆，別覆蓋
+    } catch {}
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient()
+        .from('sell_listings')
+        .select('title, price, note, category, status, images, items')
+        .eq('id', editId)
+        .eq('seller_id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!data) {
+        showToast('找不到這筆上架', 'plain');
+        router.replace('/sell/manage');
+        return;
+      }
+      setTitle(String((data as any).title || ''));
+      setPrice(String((data as any).price ?? ''));
+      setNote(String((data as any).note || ''));
+      setCategory(String((data as any).category || ''));
+      setOriginalStatus(String((data as any).status || ''));
+      const imgs = (Array.isArray((data as any).images) ? (data as any).images : [])
+        .map((x: any) => String(x || '').trim());
+      while (imgs.length < 3) imgs.push('');
+      setImages(imgs.slice(0, 8));
+      const its = Array.isArray((data as any).items) ? (data as any).items : [];
+      setListingItems(
+        its.length > 0
+          ? its.map((x: any) => ({
+              name: String(x?.name || ''),
+              series: String(x?.series || ''),
+              grade: String(x?.grade || ''),
+              image: String(x?.image || ''),
+              quantity: String(x?.quantity ?? '1'),
+            }))
+          : [{ name: '', series: '', grade: '', image: '', quantity: '1' }]
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [editId, router, showToast, user?.id]);
 
   const firstItemImage = useMemo(() => {
     const byItem = listingItems.map((x) => String(x.image || '').trim()).find(Boolean) || '';
@@ -220,6 +284,33 @@ export default function SellNewPage() {
         .filter((it) => it.name)
         .slice(0, 50);
 
+      if (editId) {
+        const patch: Record<string, unknown> = {
+          price: p,
+          title: title.trim(),
+          note: note.trim(),
+          category: category.trim(),
+          images: cleanImages,
+          items: cleanItems,
+          updated_at: new Date().toISOString(),
+        };
+        // 被退回／已下架的改完要重新送審；上架中的不帶 status ——
+        // DB 防換餌 trigger 看到內容變了會自己退回待審
+        if (originalStatus === 'rejected' || originalStatus === 'removed') patch.status = 'pending';
+
+        const { error } = await supabase
+          .from('sell_listings')
+          .update(patch as any)
+          .eq('id', editId)
+          .eq('seller_id', user.id);
+        if (error) throw error;
+
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+        showToast('已重新送審，審核通過後就會恢復上架', 'plain');
+        router.replace('/sell/manage');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('sell_listings')
         .insert({
@@ -243,11 +334,14 @@ export default function SellNewPage() {
         return;
       }
 
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
       showToast('已送出，審核通過後就會出現在商城', 'plain');
       router.replace(`/sell/${String(insertedId)}`);
-    } catch (e) {
-      console.error('Failed to create listing:', e);
-      showToast('上架失敗', 'plain');
+    } catch (e: any) {
+      console.error('Failed to save listing:', e);
+      // DB trigger 的錯誤訊息本來就是寫給玩家看的中文（停權/類別/上限…），直接顯示
+      const msg = String(e?.message || '');
+      showToast(/[\u4e00-\u9fff]/.test(msg) ? msg : '上架失敗', 'plain');
     } finally {
       setIsSaving(false);
     }
@@ -421,7 +515,7 @@ export default function SellNewPage() {
           className="w-full h-[44px] text-base font-black rounded-xl"
           variant="danger"
         >
-          {isSaving ? '上架中…' : '上架'}
+          {isSaving ? '送出中…' : editId ? '儲存並重新送審' : '上架'}
         </Button>
       </ActionBar>
 

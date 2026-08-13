@@ -18,6 +18,8 @@ interface Admin {
   id: number
   username: string
   nickname: string
+  /** 明文密碼（欄位名是歷史遺留，實際就是登入用的字串）。編輯彈窗直接顯示 */
+  password_hash?: string
   role_id: number
   supplier_id: number | null
   status: 'active' | 'inactive'
@@ -192,7 +194,8 @@ export default function AdminsPage() {
       role_id: admin.role_id,
       supplier_id: admin.supplier_id ?? 0,
       status: admin.status,
-      password: '' // 不回填密碼
+      // 直接回填當前密碼（老闆指定要看得到；admins 密碼本來就是明文存）
+      password: admin.password_hash || ''
     })
     setIsEditModalOpen(true)
   }
@@ -399,12 +402,15 @@ export default function AdminsPage() {
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 密碼
               </label>
+               {/* 明文顯示（老闆指定）：編輯時看得到當前密碼，不做眼睛開關。
+                   type=text + autoComplete=off，免得瀏覽器把它當登入密碼欄搶著填 */}
                <input
-                 type="password"
+                 type="text"
+                 autoComplete="off"
                  value={formData.password}
                  onChange={e => setFormData({ ...formData, password: e.target.value })}
                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary"
-                 placeholder={isEditModalOpen ? "不修改請留空" : "請設定密碼"}
+                 placeholder="請設定密碼"
                />
              </div>
              <div>
