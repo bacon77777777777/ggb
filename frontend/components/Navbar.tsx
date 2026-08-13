@@ -549,13 +549,9 @@ function NavbarInner() {
    * 商城整區自成一個 app（老闆指定：「把商城當作新的頁面」）——
    * 自帶橘色 header 與四格底部導航，照原型移植。
    * 疊上全域 Navbar 會變成兩個搜尋入口、兩排導航。
-   * 只有 /sell/new（上架表單）例外：那是從商城跳出去的填寫流程，
-   * 需要全域 Navbar 的返回鍵。
+   * 每一頁都有自己的返回鍵（.hdr.plain），所以整區都不需要全域 Navbar。
    */
-  if (
-    (pathname === '/sell' || pathname.startsWith('/sell/') || pathname.startsWith('/official/')) &&
-    pathname !== '/sell/new'
-  )
+  if (pathname === '/sell' || pathname.startsWith('/sell/') || pathname.startsWith('/official/'))
     return null;
 
   const handleBack = () => {

@@ -1,5 +1,7 @@
 'use client';
 
+import '../market.css';
+
 /**
  * 商城收款設定（賣家自己填）
  *
@@ -23,6 +25,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui';
+import { ArrowLeft } from 'lucide-react';
+import MarketTabBar from '@/components/sell/MarketTabBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,112 +129,84 @@ export default function SellSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pt-14 md:pt-0 pb-24">
-      <div className="max-w-3xl mx-auto px-2 py-2 sm:py-6">
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-          <div className="p-3 sm:p-4 border-b border-neutral-50 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-800/30">
-            <div className="text-[15px] font-black text-neutral-900 dark:text-white">商城收款設定</div>
-            <div className="mt-1 text-[11px] font-bold leading-relaxed text-neutral-400 dark:text-neutral-500">
-              買家會直接把錢付給你，平台不經手款項、也不收成交手續費。
-              下單成立後，買家才看得到你的收款資訊。
-            </div>
-          </div>
+    <div className="mk min-h-screen pb-[calc(64px+env(safe-area-inset-bottom))]">
+      <div className="hdr plain sticky top-0 z-40 flex items-center gap-2">
+        <button type="button" onClick={() => router.back()} aria-label="返回">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="flex-1">收款設定</h1>
+      </div>
 
-          <div className="p-3 sm:p-6 space-y-5">
-            <div className="space-y-2">
-              <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">收款方式</div>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  { v: 'bank' as const, label: '銀行轉帳' },
-                  { v: 'linepay' as const, label: 'LINE Pay' },
-                ]).map((o) => (
-                  <button
-                    key={o.v}
-                    type="button"
-                    disabled={isFetching}
-                    onClick={() => setMethod(o.v)}
-                    className={`h-11 rounded-xl text-[13px] font-black transition-colors disabled:opacity-50 ${
-                      method === o.v
-                        ? 'bg-primary text-white'
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-              <div className="text-[11px] font-bold leading-relaxed text-neutral-400 dark:text-neutral-500">
-                只能選一種，買家不能自己挑。
-                {method === 'linepay' &&
-                  ' LINE Pay 個人轉帳需要買賣雙方都有 LINE Pay Money（原一卡通）帳戶，只綁信用卡的一般 LINE Pay 轉不了帳。'}
-              </div>
-            </div>
+      <div className="blk first">
+        <div className="secttl">收款方式</div>
+        <p className="hint" style={{ margin: '0 0 10px' }}>
+          買家會直接把錢付給你，平台不經手款項、也不收成交手續費。下單成立後，買家才看得到你的收款資訊。
+        </p>
 
-            {method === 'bank' ? (
-              <>
-                <div className="space-y-2">
-                  <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">轉帳銀行</div>
-                  <input
-                    value={bank}
-                    onChange={(e) => setBank(e.target.value)}
-                    placeholder="例如：玉山銀行"
-                    className={FIELD_CLASS}
-                    disabled={isFetching}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">轉帳帳號</div>
-                  <input
-                    value={account}
-                    onChange={(e) => setAccount(e.target.value)}
-                    inputMode="numeric"
-                    placeholder="例如：012345678901"
-                    className={FIELD_CLASS}
-                    disabled={isFetching}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">戶名</div>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="例如：王小明"
-                    maxLength={30}
-                    className={FIELD_CLASS}
-                    disabled={isFetching}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-[13px] font-black text-neutral-500 dark:text-neutral-400">
-                  LINE Pay 收款手機號 / ID
-                </div>
-                <input
-                  value={linepayId}
-                  onChange={(e) => setLinepayId(e.target.value)}
-                  placeholder="例如：0912345678"
-                  maxLength={50}
-                  className={FIELD_CLASS}
-                  disabled={isFetching}
-                />
-              </div>
-            )}
-
-            <Button
+        {/*
+          原型寫「可複選」，但 migration 552 已把收款方式定成單選
+          （payout_method 只存一個值，買家不能自己挑）—— 依 DB 為準。
+        */}
+        <div className="two">
+          {([
+            ['bank', '銀行轉帳', '匯款到你的帳戶'],
+            ['linepay', 'LINE Pay', '需雙方都有 LINE Pay Money'],
+          ] as const).map(([v, label, sub]) => (
+            <button
+              key={v}
               type="button"
-              variant="danger"
-              className="w-full h-[44px] text-base font-black rounded-xl"
-              onClick={save}
-              disabled={isSaving || isFetching}
+              className="pick"
+              aria-pressed={method === v}
+              onClick={() => setMethod(v)}
             >
-              {isSaving ? '儲存中…' : '儲存'}
-            </Button>
-          </div>
+              <span className="ck" />
+              {label}
+              <small>{sub}</small>
+            </button>
+          ))}
         </div>
       </div>
+
+      {method === 'bank' ? (
+        <div className="blk">
+          <div className="secttl">轉帳資訊</div>
+          <label className="f">轉帳銀行</label>
+          <input className="fin" value={bank} onChange={(e) => setBank(e.target.value)} placeholder="例如：玉山銀行" />
+          <label className="f" style={{ marginTop: 12 }}>轉帳帳號</label>
+          <input
+            className="fin"
+            inputMode="numeric"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
+            placeholder="例如：012345678901"
+          />
+          <label className="f" style={{ marginTop: 12 }}>戶名</label>
+          <input className="fin" value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：王小明" />
+        </div>
+      ) : (
+        <div className="blk">
+          <div className="secttl">LINE Pay</div>
+          <label className="f">收款手機號或 ID</label>
+          <input
+            className="fin"
+            value={linepayId}
+            onChange={(e) => setLinepayId(e.target.value)}
+            placeholder="例如：0912345678"
+          />
+          <p className="hint">LINE Pay 轉帳需要雙方都完成 LINE Pay Money 驗證，否則買家付不了款。</p>
+        </div>
+      )}
+
+      <div className="blk">
+        <button type="button" className="btn" disabled={isSaving || isFetching} onClick={save}>
+          {isSaving ? '儲存中…' : '儲存'}
+        </button>
+        <button type="button" className="btn2" onClick={() => router.back()}>
+          取消
+        </button>
+      </div>
+
+      <MarketTabBar active="me" />
     </div>
   );
 }

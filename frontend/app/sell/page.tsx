@@ -179,6 +179,8 @@ export default function SellPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [detail, setDetail] = useState<FeedRow | null>(null);
+  // 「更多 ›」開列表彈層（原型 moreSheet），不是換頁
+  const [more, setMore] = useState<{ title: string; sub: string; list: FeedRow[]; label: string } | null>(null);
   const [isBuying, setIsBuying] = useState(false);
 
   const isOfficial = tab === 'official';
@@ -373,6 +375,13 @@ export default function SellPage() {
             <span className="adtag">廣告 · 新品首發</span>
             <div className="striphd">
               <b>新品首發</b>
+              <button
+                type="button"
+                className="more"
+                onClick={() => setMore({ title: '新品首發', sub: '供應商推廣 · 廣告', list: rows, label: '首發' })}
+              >
+                更多 ›
+              </button>
             </div>
             <div className="srow">{scards(rows.slice(0, 8), '首發')}</div>
           </div>
@@ -396,6 +405,20 @@ export default function SellPage() {
           <div className="strip">
             <div className="striphd">
               <b>熱賣排行</b>
+              <button
+                type="button"
+                className="more"
+                onClick={() =>
+                  setMore({
+                    title: '熱賣排行',
+                    sub: '官方旗艦店',
+                    list: [...rows].sort((a, b) => b.sold_count - a.sold_count),
+                    label: '熱賣',
+                  })
+                }
+              >
+                更多 ›
+              </button>
             </div>
             <div className="srow">
               {[...rows]
@@ -432,7 +455,11 @@ export default function SellPage() {
         <div className="strip">
           <div className="striphd">
             <b>本週精選</b>
-            <button type="button" className="more" onClick={() => setSeg('一番賞')}>
+            <button
+              type="button"
+              className="more"
+              onClick={() => setMore({ title: '本週精選', sub: '編輯策展 · 專題位', list: topicItems, label: '專題' })}
+            >
               更多 ›
             </button>
           </div>
@@ -673,6 +700,51 @@ export default function SellPage() {
               </div>
             )}
           </>
+        )}
+      </MarketSheet>
+
+      {/* ── 更多列表彈層（照原型 moreSheet）── */}
+      <MarketSheet open={!!more} title={more?.title || ''} onClose={() => setMore(null)}>
+        {more && (
+          <div className="blk first">
+            <div className="secttl">{more.sub}</div>
+            {more.list.map((it, i) => (
+              <button
+                key={`more-${it.id}`}
+                type="button"
+                className="orow"
+                style={{ padding: '11px 0', borderBottom: '1px solid var(--line)' }}
+                onClick={() => {
+                  setMore(null);
+                  setDetail(it);
+                }}
+              >
+                <div className="th" style={{ background: '#F5F5F5', position: 'relative', overflow: 'hidden' }}>
+                  <Image src={imgOf(it)} alt={it.title} fill style={{ objectFit: 'cover' }} sizes="62px" />
+                  <span className={`mini${more.label === '熱賣' ? ' rank' : ''}`}>
+                    {more.label === '熱賣' ? i + 1 : more.label}
+                  </span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ptitle">{it.title}</div>
+                  <div className="pprice" style={{ marginTop: 4 }}>
+                    <i>NT$</i>
+                    <b style={{ fontSize: 17 }}>{nt(it.price)}</b>
+                    {isOfficial ? (
+                      <span className="dep off">官方出貨</span>
+                    ) : (
+                      <span className="dep">保證金 {nt(it.deposit)}G</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--sub)', marginTop: 3 }}>
+                    {isOfficial
+                      ? `已售 ${nt(it.sold_count)} · ${it.shipping_fee ? `運費 ${nt(it.shipping_fee)}` : '免運費'}`
+                      : `${it.seller_name} · ${it.shipping_fee ? `運費 ${nt(it.shipping_fee)}` : '免運費'}`}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </MarketSheet>
     </div>
