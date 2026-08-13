@@ -142,12 +142,37 @@ function withAds(list: FeedRow[], pool: FeedRow[]): { row: FeedRow; ad: boolean 
     return null;
   };
 
+  /*
+   * 第一張固定插在 index 1（右欄第一格，照原型）；之後的間隔改成 7～10 隨機。
+   *
+   * 原本固定每 8 格插一次 —— 8 是偶數，所以每一張廣告都落在同一欄，
+   * 整頁看下來廣告排成一直線，很明顯。間隔混入奇數才會左右交錯。
+   *
+   * ⚠️ 亂數必須由商品 id 推導，不能用 Math.random()：
+   * 這個函式在每次 render 都會跑（雖然有 useMemo，但 rows 一變就重算），
+   * 用真亂數會讓廣告在載入更多時整頁跳位。
+   */
+  /*
+   * 用「間隔」去控制欄位太間接（間隔的奇偶才決定欄位，很容易整串都落在同一邊）。
+   * 改成直接指定要落在哪一欄：由 id 的雜湊決定 side，再往後找第一個
+   * 符合該奇偶、且距離上一張至少 7 格的位置。兩欄版面下 index 為奇數＝右欄。
+   */
+  const hash = (id: number) => Math.abs(Math.imul(id, 2654435761));
+  const nextSlot = (from: number, id: number) => {
+    const side = (hash(id) >> 3) & 1; // 0=左欄(偶) 1=右欄(奇)
+    let n = from + 7;
+    while (n % 2 !== side) n += 1;
+    return n;
+  };
+  let nextAt = 1;
+
   list.forEach((it) => {
-    if (pool.length && (out.length === 1 || (out.length > 1 && (out.length - 1) % 8 === 0))) {
+    if (pool.length && out.length === nextAt) {
       const ad = pick();
       if (ad) {
         out.push({ row: ad, ad: true });
         seen.push(ad.id);
+        nextAt = nextSlot(out.length, ad.id);
       }
     }
     out.push({ row: it, ad: false });
@@ -173,6 +198,12 @@ export default function SellPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hero, setHero] = useState(0);
+  /*
+   * 橫列（輪播／分類首排／專題／猜你喜歡）用的資料獨立抓一份，不套分類篩選。
+   * 它們是策展與廣告內容 —— 原型的 catStrip 也是 `該分類商品 + 廣告池`，
+   * 不是「只從目前分類裡挑」。綁在已篩過的 rows 上，一切到分類就整排消失。
+   */
+  const [adRows, setAdRows] = useState<FeedRow[]>([]);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // 商品詳情走彈層而不是換頁（照原型）：關掉就回到剛才捲到的位置，
@@ -229,6 +260,23 @@ export default function SellPage() {
   }, [isOfficial, seg, page]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await createClient().rpc('sell_feed', {
+        p_official: isOfficial,
+        p_category: null,
+        p_search: null,
+        p_limit: 40,
+        p_offset: 0,
+      });
+      if (!cancelled) setAdRows((data || []) as FeedRow[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOfficial]);
+
+  useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasMore || isLoading || isFetchingMore) return;
     const io = new IntersectionObserver(
@@ -242,8 +290,13 @@ export default function SellPage() {
   }, [hasMore, isLoading, isFetchingMore]);
 
   // 廣告池＝有買版位的商品；輪播吃前三張（照原型 pool.slice(0,3)）
+  // 插進瀑布流的廣告仍從已載入的 rows 取（要跟著分類走）；
+  // 輪播與橫列則用不篩分類的 adRows
   const pool = useMemo(() => rows.filter((r) => (r.ad_slots || []).length > 0), [rows]);
-  const heroItems = useMemo(() => pool.slice(0, 3), [pool]);
+  const heroItems = useMemo(
+    () => adRows.filter((r) => (r.ad_slots || []).includes(isOfficial ? 'b_hero' : 'hero')).slice(0, 3),
+    [adRows, isOfficial]
+  );
 
   // 輪播自動切換，3.6 秒一張（原型 startHero 的間隔）
   useEffect(() => {
@@ -264,8 +317,8 @@ export default function SellPage() {
    * 結果沒有一番賞商品時整條專題列就消失，跟原型對不起來。
    */
   const adOf = useCallback(
-    (slot: string) => rows.filter((r) => (r.ad_slots || []).includes(slot)),
-    [rows]
+    (slot: string) => adRows.filter((r) => (r.ad_slots || []).includes(slot)),
+    [adRows]
   );
   const topicItems = useMemo(() => adOf('topic').slice(0, 8), [adOf]);
   const catItems = useMemo(() => adOf('cat').slice(0, 8), [adOf]);
@@ -388,7 +441,7 @@ export default function SellPage() {
       )}
 
       {/* ── 官方頁專屬：新品首發 / 品牌專區 / 熱賣排行（照原型 vOfficial）── */}
-      {isOfficial && rows.length > 0 && (
+      {isOfficial && adRows.length > 0 && (
         <>
           <div className="strip">
             <div className="striphd">
@@ -401,7 +454,7 @@ export default function SellPage() {
                 更多 ›
               </button>
             </div>
-            <div className="srow">{scards(rows.slice(0, 8), '首發')}</div>
+            <div className="srow">{scards(adOf('b_new').concat(adRows).slice(0, 8), '首發')}</div>
           </div>
 
           <div className="strip">
@@ -438,7 +491,7 @@ export default function SellPage() {
               </button>
             </div>
             <div className="srow">
-              {[...rows]
+              {[...adRows]
                 .sort((a, b) => b.sold_count - a.sold_count)
                 .slice(0, 8)
                 .map((it, i) => (
@@ -457,10 +510,11 @@ export default function SellPage() {
       )}
 
       {/* ── 分類首排（選了分類才出現）── */}
-      {!isOfficial && catItems.length > 0 && (
+      {/* 分類首排只在選了分類時出現（原型：catStrip = seg!=="all" ? … : ""） */}
+      {!isOfficial && seg && (rows.length > 0 || catItems.length > 0) && (
         <div className="strip">
           <div className="striphd">
-            <b>{seg ? `${CATS.find((c) => c.key === seg)?.label} 分類首排` : '分類首排'}</b>
+            <b>{CATS.find((c) => c.key === seg)?.label} 分類首排</b>
           </div>
           <div className="srow">{scards(catItems, '推廣')}</div>
         </div>

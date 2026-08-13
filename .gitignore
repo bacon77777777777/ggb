@@ -63,3 +63,7 @@ frontend/public/images/test/
 
 # 匯入／驗證用的暫存腳本（CLAUDE.md 規定放這裡，不進版控）
 backend/.tmp/
+
+# Next.js 的 TS 增量編譯快取，會隨每次 build 變動，不該進版控
+frontend/tsconfig.tsbuildinfo
+backend/tsconfig.tsbuildinfo
