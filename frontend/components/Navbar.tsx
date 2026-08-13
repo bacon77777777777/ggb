@@ -843,7 +843,29 @@ function NavbarInner() {
               </div>
             )}
 
-            {/* 公告：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標左邊 */}
+            {/*
+              首頁的搜尋圖標。老闆指定與鈴鐺互換位置，所以排在公告（鈴鐺）前面。
+
+              未登入時維持只在手機顯示（`md:hidden`）—— 桌機未登入的搜尋入口
+              本來就不在這裡，把它放出來等於多長一顆。
+              未登入在**非首頁**的搜尋圖標另外放在登入鈕旁邊（見下方 auth 區塊），
+              那顆的條件不同（排除商品內頁等），不要跟這顆合併。
+            */}
+            {isHomePage && (
+              <Link
+                href="/search?focus=1"
+                onClick={startKeyboardRelay}
+                className={cn(
+                  "p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform",
+                  !isAuthenticated && "md:hidden",
+                )}
+                aria-label="搜尋"
+              >
+                <Search className="w-5 h-5 stroke-[2]" />
+              </Link>
+            )}
+
+            {/* 公告：手機僅首頁顯示；桌機取代原本的文字連結，固定在搜尋圖標右邊 */}
             {!isProductDetailPage && !isAnnouncementDetailPage && (
               <Link
                 href="/announcements"
@@ -873,18 +895,6 @@ function NavbarInner() {
                 全部已讀
               </button>
             )}
-
-            {isAuthenticated && isHomePage && (
-              <Link
-                href="/search?focus=1"
-                onClick={startKeyboardRelay}
-                className="p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
-                aria-label="搜尋"
-              >
-                <Search className="w-5 h-5 stroke-[2]" />
-              </Link>
-            )}
-
 
             {isLoading || isForcingLoading || (isAuthenticated && !user) ? (
               <div className="relative ml-1 hidden md:flex items-center gap-2 pl-1 pr-1.5 py-1">
@@ -1012,15 +1022,19 @@ function NavbarInner() {
             ) : (
               !['/login', '/register', '/forgot-password', '/update-password'].includes(pathname) && !isProductDetailPage && !isExchangeDetailPage && !isMessagesDetailPage && !isNewsDetailPage && (
                 <>
-                  {/* 未登入搜尋圖標（手機，登入按鈕左邊） */}
-                  <Link
-                    href="/search?focus=1"
-                    onClick={startKeyboardRelay}
-                    className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
-                    aria-label="搜尋"
-                  >
-                    <Search className="w-5 h-5 stroke-[2]" />
-                  </Link>
+                  {/* 未登入搜尋圖標（手機，登入按鈕左邊）。
+                      首頁不放這顆 —— 首頁的搜尋已經排在鈴鐺前面了，
+                      兩顆都渲染會變成一列有兩個放大鏡 */}
+                  {!isHomePage && (
+                    <Link
+                      href="/search?focus=1"
+                      onClick={startKeyboardRelay}
+                      className="md:hidden p-2 rounded-xl text-neutral-600 dark:text-neutral-400 active:scale-90 transition-transform"
+                      aria-label="搜尋"
+                    >
+                      <Search className="w-5 h-5 stroke-[2]" />
+                    </Link>
+                  )}
                   {/* Mobile login button: 細膠囊線框 */}
                   <Link
                     href="/login"

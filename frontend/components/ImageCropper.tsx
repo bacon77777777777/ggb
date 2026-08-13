@@ -17,8 +17,6 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
   const wrapRef   = useRef<HTMLDivElement>(null)
   const imgRef    = useRef<HTMLImageElement | null>(null)
   const [ready, setReady]   = useState(false)
-  const [shape, setShape]   = useState<'circle' | 'square'>('circle')
-  const shapeRef = useRef<'circle' | 'square'>('circle')
 
   // Transform: center of image on canvas (canvas px, already DPR-scaled)
   const tx  = useRef(0)
@@ -83,37 +81,16 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
     // 2. dark overlay with crop hole (even-odd)
     ctx.beginPath()
     ctx.rect(0, 0, w, h)
-    if (shapeRef.current === 'circle') {
-      ctx.arc(crop.x + crop.size / 2, crop.y + crop.size / 2, crop.size / 2, 0, Math.PI * 2, true)
-    } else {
-      // rect in opposite winding via moveTo trick
-      ctx.moveTo(crop.x + crop.size, crop.y)
-      ctx.lineTo(crop.x, crop.y)
-      ctx.lineTo(crop.x, crop.y + crop.size)
-      ctx.lineTo(crop.x + crop.size, crop.y + crop.size)
-      ctx.closePath()
-    }
+    ctx.arc(crop.x + crop.size / 2, crop.y + crop.size / 2, crop.size / 2, 0, Math.PI * 2, true)
     ctx.fillStyle = 'rgba(0,0,0,0.55)'
     ctx.fill('evenodd')
 
-    // 3. crop border
+    // 3. crop border（只有圓形，老闆指定拿掉正方形）
     ctx.strokeStyle = 'rgba(255,255,255,0.9)'
     ctx.lineWidth   = 2
-    if (shapeRef.current === 'circle') {
-      ctx.beginPath()
-      ctx.arc(crop.x + crop.size / 2, crop.y + crop.size / 2, crop.size / 2, 0, Math.PI * 2)
-      ctx.stroke()
-    } else {
-      ctx.strokeRect(crop.x, crop.y, crop.size, crop.size)
-      // grid lines
-      ctx.lineWidth = 0.5
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'
-      const third = crop.size / 3
-      for (let i = 1; i < 3; i++) {
-        ctx.beginPath(); ctx.moveTo(crop.x + third * i, crop.y); ctx.lineTo(crop.x + third * i, crop.y + crop.size); ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(crop.x, crop.y + third * i); ctx.lineTo(crop.x + crop.size, crop.y + third * i); ctx.stroke()
-      }
-    }
+    ctx.beginPath()
+    ctx.arc(crop.x + crop.size / 2, crop.y + crop.size / 2, crop.size / 2, 0, Math.PI * 2)
+    ctx.stroke()
   }, [])
 
   // ── init canvas & image ───────────────────────────────────────────────
@@ -169,8 +146,6 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
 
   useEffect(() => { if (ready) draw() }, [ready, draw])
 
-  // sync shape ref and redraw
-  useEffect(() => { shapeRef.current = shape; if (ready) draw() }, [shape, ready, draw])
 
   // ── touch / mouse events ──────────────────────────────────────────────
   function getPos(e: MouseEvent | Touch) {
@@ -300,22 +275,9 @@ export default function ImageCropper({ src, onConfirm, onCancel }: Props) {
         )}
       </div>
 
-      {/* Shape toggle + hint */}
+      {/* 只有圓形，所以沒有形狀切換（老闆指定移除），底部只留操作提示 */}
       <div className="flex-shrink-0 pb-safe">
-        <p className="text-white/50 text-xs text-center mt-3 mb-2">拖曳移動・雙指縮放</p>
-        <div className="flex items-center justify-center gap-3 pb-6 md:pb-4">
-          {(['circle', 'square'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setShape(s)}
-              className={`px-5 py-2 rounded-full text-sm font-bold transition-colors ${
-                shape === s ? 'bg-white text-black' : 'bg-white/15 text-white'
-              }`}
-            >
-              {s === 'circle' ? '圓形' : '正方形'}
-            </button>
-          ))}
-        </div>
+        <p className="text-white/50 text-xs text-center py-4">拖曳移動・雙指縮放</p>
       </div>
       </div>
     </div>
