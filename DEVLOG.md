@@ -4,6 +4,56 @@
 
 ---
 
+## v2026.08.14c｜2026-08-14｜停用帳號不能登入；商城版位與版型收尾
+
+**🔴 帳號停用／凍結原本完全沒有作用**
+
+風控警報帶出來的：後台的「停用」開關與「凍結」只寫 `users.status` 欄位，
+前台、DB 函式沒有任何一處在看它 —— 被停用的人照樣登入、儲值、抽獎、上架
+（查證：frontend 全域搜尋 `'inactive'`／`'frozen'` 零結果；DB 只有三支函式
+提到 inactive，但講的都是「商品／機台」未啟用，不是用戶）。
+
+修法：`AuthContext.fetchProfile` 攔截 —— 那是所有登入路徑的必經點（初次登入、
+換頁還原 session、refreshProfile 都會經過），`status !== 'active'` 就 signOut
+並導向 `/404`（老闆指定不告知原因，避免對方換帳號重來；站上沒有 /404 路由，
+Next 會渲染 not-found.tsx）。
+
+⚠️ **這是前端層攔截**。直接呼叫 RPC（play_lottery、create_sell_order）目前仍
+不看 status，要根治得在 DB 函式加檢查 —— 尚未做。
+
+**商城**
+
+- 商品詳情、更多列表、訂單詳情、我要上架、廣告中心、保證金規則、收款設定、
+  官方認證商家 —— 八個畫面全部改成彈層（原型裡它們都是 sheet），
+  內容抽成 `components/sell/*Content.tsx`，路由保留為深連結薄殼共用同一份
+- 專題位／分類首排／完成頁推薦改由**廣告版位**驅動。先前寫成用 category 篩，
+  那是誤解 —— 誰買了 topic/cat/done 才會出現在那一列
+- 分類首排回到原型條件：只在選了分類時出現。橫列改用不篩分類的 adRows，
+  否則一切到分類就整排消失
+- 官方頁不放分類列（原型 vOfficial 沒有 catRow）、輪播副標改「官方直送 · 48 小時出貨」
+- header：「吉吉比」改「商城」，最左加返回鍵（導回首頁而不是 back()）
+- 精選插卡改成左右交錯：原本固定每 8 格插一次，8 是偶數所以永遠落在同一欄，
+  整頁廣告排成一直線。改成由商品 id 雜湊直接決定欄位（不能用 Math.random，
+  rows 一變就重算會讓廣告跳位）
+- 移除首頁與官方頁左上角的 .adtag 廣告標籤（卡片右下的 .adlbl 浮水印保留）
+
+**migration 565–567**（PROD／STG 都已套用）
+
+- 565/566 `sell_feed` 補 pay_method、done_count、avg_ship_minutes、note、
+  phone_verified —— 這些在 sell_seller_stats 裡，但該 view join 的表都有 RLS，
+  前台直接查會被濾成空的
+- 567 交易評價：原型「我的」四格有「好評率」但站上沒有資料來源，把介面補起來。
+  二元好評／負評不做五星（玩家給星會集中在 5 顆，分不出好壞）
+
+**其他**
+
+- JSON-LD 加 `suppressHydrationWarning`：某些瀏覽器擴充套件會在 React 載入前
+  把那顆 script 換掉（type 改 text/javascript、塞 chrome-extension src），
+  每次進站都噴 hydration mismatch。用 addInitScript 模擬竄改驗證過修正有效
+- 後台會員管理預設排序 userId(UUID) → registerDate desc
+
+---
+
 ## v2026.08.14b｜2026-08-14｜商城全面照原型移植（版型／互動／欄位）
 
 老闆指定「不要自創 UI，直接複製貼上過來」「交互都要按照原型」「欄位都要一樣，
