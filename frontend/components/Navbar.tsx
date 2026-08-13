@@ -545,6 +545,9 @@ function NavbarInner() {
   if (/^\/challenge\/[^/]+$/.test(pathname)) return null;
   // 邀請頁用文章內頁式浮動導航（返回＋分享蓋在 hero 上），隱藏全域 Navbar
   if (pathname === '/invite') return null;
+  // 商城首頁自帶橘色 header（logo + 搜尋列，照原型），
+  // 再疊一條全域 Navbar 會變成上下兩個搜尋入口
+  if (pathname === '/sell') return null;
 
   const handleBack = () => {
     // 1. Handle special paths
