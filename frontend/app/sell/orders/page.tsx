@@ -3,13 +3,13 @@
 import '../market.css';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar from '@/components/sell/MarketTabBar';
+import OrderSheet, { type OrderLite } from '@/components/sell/OrderSheet';
 
 /*
  * 商城訂單 —— 照原型 vOrders() 的 .olist / .ocard / .ohd / .orow 結構。
@@ -31,6 +31,14 @@ type Row = {
   stepLabel: string;
   href: string;
   createdAt: string;
+  step: number;
+  cancelled: boolean;
+  paymentStatus?: string;
+  depositAmount?: number;
+  overdueNotified?: boolean;
+  trackingNumber?: string | null;
+  isBuyer: boolean;
+  payDeadlineHours?: number;
 };
 
 // C2C 比原型多一步「賣家確認收款」—— 平台不碰錢，收到款只有賣家知道
@@ -51,6 +59,9 @@ export default function SellOrdersPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // 訂單詳情走彈層（照原型 openOrder），不換頁
+  const [opened, setOpened] = useState<OrderLite | null>(null);
+  const [payHours, setPayHours] = useState(48);
 
   useEffect(() => {
     if (!authLoading && !user?.id) router.replace('/login');
@@ -64,7 +75,7 @@ export default function SellOrdersPage() {
       const [{ data: c2c }, { data: b2c }] = await Promise.all([
         supabase
           .from('sell_orders')
-          .select('id, order_number, listing_id, seller_id, buyer_id, quantity, unit_price, shipping_fee, step, cancelled, created_at')
+          .select('id, order_number, listing_id, seller_id, buyer_id, quantity, unit_price, shipping_fee, deposit_amount, step, cancelled, overdue_notified_at, tracking_number, created_at')
           .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
           .order('created_at', { ascending: false })
           .limit(50),
@@ -108,6 +119,12 @@ export default function SellOrdersPage() {
             stepLabel: o.cancelled ? '已取消' : C2C_STEPS[Math.max(0, Number(o.step) - 1)] || '處理中',
             href: `/sell-orders/${o.id}`,
             createdAt: String(o.created_at),
+            step: Number(o.step) || 1,
+            cancelled: !!o.cancelled,
+            depositAmount: Number(o.deposit_amount) || 0,
+            overdueNotified: !!o.overdue_notified_at,
+            trackingNumber: o.tracking_number ?? null,
+            isBuyer: String(o.buyer_id) === user.id,
           };
         }),
         ...(b2c || []).map((o: any) => {
@@ -129,9 +146,21 @@ export default function SellOrdersPage() {
                   : B2C_STEPS[Math.max(0, Number(o.step) - 1)] || '處理中',
             href: `/shop-orders/${o.id}`,
             createdAt: String(o.created_at),
+            step: Number(o.step) || 1,
+            cancelled: o.payment_status === 'failed',
+            paymentStatus: String(o.payment_status || ''),
+            trackingNumber: null,
+            isBuyer: true,
           };
         }),
       ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+      const { data: setting } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'sell_pay_deadline_hours')
+        .maybeSingle();
+      setPayHours(Number((setting as any)?.value) || 48);
 
       setRows(mapped);
       setIsLoading(false);
@@ -154,7 +183,12 @@ export default function SellOrdersPage() {
       ) : (
         <div className="olist">
           {rows.map((r) => (
-            <Link key={r.key} href={r.href} className="ocard">
+            <button
+              key={r.key}
+              type="button"
+              className="ocard"
+              onClick={() => setOpened({ ...r, payDeadlineHours: payHours })}
+            >
               <div className="ohd">
                 <span>{r.shop}</span>
                 <span className="ost" style={{ marginLeft: 'auto' }}>
@@ -176,10 +210,12 @@ export default function SellOrdersPage() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       )}
+
+      <OrderSheet order={opened} onClose={() => setOpened(null)} onChanged={() => window.location.reload()} />
 
       <MarketTabBar active="orders" />
     </div>

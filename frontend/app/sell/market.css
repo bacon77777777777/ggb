@@ -1026,3 +1026,64 @@
   font-size: 14px;
   background: #fff;
 }
+
+/* ── 訂單步驟條（原型 .steps / .stp，行號 190-197）── */
+.mk .steps { display: flex; padding: 4px 0 2px; }
+.mk .stp {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  font-size: 10px;
+  color: var(--mute);
+  padding-top: 20px;
+}
+.mk .stp::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ddd;
+  z-index: 2;
+}
+.mk .stp::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #e6e6e6;
+}
+.mk .stp:first-child::after { display: none; }
+.mk .stp.dn { color: var(--sub); }
+.mk .stp.dn::before { background: var(--orange); }
+.mk .stp.dn::after { background: var(--orange); }
+.mk .stp.nw { color: var(--red); font-weight: 700; }
+.mk .stp.nw::before { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 0, 54, 0.15); }
+
+/* ── 付款倒數（原型 .cdown）── */
+.mk .cdown { text-align: center; padding: 12px 0 4px; }
+.mk .cdown .t { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 30px; color: var(--red); }
+.mk .cdown .l { font-size: 11.5px; color: var(--sub); }
+
+/* ── 收款方式切換（原型 .swch）── */
+.mk .swch { display: flex; gap: 8px; margin-bottom: 10px; }
+.mk .swch button {
+  flex: 1;
+  padding: 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line2);
+  font-size: 13px;
+  background: #fff;
+  color: var(--sub);
+}
+.mk .swch button[aria-pressed='true'] {
+  border-color: var(--red);
+  color: var(--red);
+  background: #fff4f5;
+  font-weight: 700;
+}
