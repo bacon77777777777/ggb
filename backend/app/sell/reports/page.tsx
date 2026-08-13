@@ -14,7 +14,7 @@
  * 那些交易錢可能已經付了，強制中斷只會讓買家更難處理。
  */
 
-import { AdminLayout, PageCard, StatsCard, CopyableID } from '@/components'
+import { AdminLayout, PageCard, SearchToolbar, StatsCard, FilterTags, CopyableID } from '@/components'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/Modal'
@@ -25,6 +25,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { useToast } from '@/contexts/ToastContext'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 
 interface SellReport {
   id: number
@@ -57,13 +58,39 @@ const TARGET_LABEL: Record<SellReport['target_type'], string> = {
   seller: '賣家',
 }
 
-type Filter = 'open' | 'all'
+type Filter = 'all' | 'open' | 'resolved' | 'dismissed'
+
+const FILTER_LABEL: Record<Filter, string> = {
+  all: '全部',
+  open: '待處理',
+  resolved: '已處理',
+  dismissed: '已駁回',
+}
 
 export default function SellReportsPage() {
   const { toast } = useToast()
   const [reports, setReports] = useState<SellReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('open')
+  const [searchQuery, setSearchQuery] = useState('')
+  // 表格偏好照「商品管理」的配方：密度與欄位開關記在 localStorage（per 管理員）
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('sell_reports', 'compact', {
+    target: true,
+    reason: true,
+    reporter: true,
+    seller: true,
+    status: true,
+    createdAt: true,
+    operations: true,
+  })
+
+  const getDensityClasses = () => {
+    switch (tableDensity) {
+      case 'compact': return 'py-2 px-2'
+      case 'normal': return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  }
 
   /** 處理檢舉（結案／駁回）的彈窗 */
   const [handleTarget, setHandleTarget] = useState<{ report: SellReport; next: 'resolved' | 'dismissed' } | null>(null)
@@ -88,10 +115,26 @@ export default function SellReportsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const shown = useMemo(
-    () => (filter === 'open' ? reports.filter(r => r.status === 'open') : reports),
-    [filter, reports]
-  )
+  const shown = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return reports.filter(r => {
+      if (filter !== 'all' && r.status !== filter) return false
+      if (!q) return true
+      const src = [
+        r.reason,
+        r.detail || '',
+        r.reporter?.name || '',
+        r.reporter?.email || '',
+        r.seller?.name || '',
+        r.seller?.email || '',
+        r.seller_id || '',
+        r.listing?.title || '',
+        String(r.listing_id || ''),
+        String(r.order_id || ''),
+      ].join(' ').toLowerCase()
+      return src.includes(q)
+    })
+  }, [filter, reports, searchQuery])
 
   const stats = useMemo(() => ({
     open: reports.filter(r => r.status === 'open').length,
@@ -143,6 +186,8 @@ export default function SellReportsPage() {
     }
   }
 
+  const densityClasses = getDensityClasses()
+
   return (
     <AdminLayout pageTitle="商城檢舉" pageSubtitle="玩家商城的糾紛處理與賣家停權">
       <div className="space-y-6">
@@ -153,33 +198,80 @@ export default function SellReportsPage() {
         </div>
 
         <PageCard>
-          <div className="mb-4 flex items-center gap-2">
-            {([
-              { v: 'open' as const, label: `待處理（${stats.open}）` },
-              { v: 'all' as const, label: '全部' },
-            ]).map(o => (
-              <button
-                key={o.v}
-                type="button"
-                onClick={() => setFilter(o.v)}
-                className={`rounded-lg px-4 py-2 text-sm transition-colors ${
-                  filter === o.v ? 'bg-primary font-medium text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <SearchToolbar
+            searchPlaceholder="搜尋原因、會員、商品、訂單編號..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showColumnToggle={true}
+            columns={[
+              { key: 'target', label: '檢舉對象', visible: visibleColumns.target },
+              { key: 'reason', label: '原因', visible: visibleColumns.reason },
+              { key: 'reporter', label: '檢舉人', visible: visibleColumns.reporter },
+              { key: 'seller', label: '被檢舉賣家', visible: visibleColumns.seller },
+              { key: 'status', label: '狀態', visible: visibleColumns.status },
+              { key: 'createdAt', label: '時間', visible: visibleColumns.createdAt },
+              { key: 'operations', label: '操作', visible: visibleColumns.operations },
+            ]}
+            onColumnToggle={(key, visible) => setVisibleColumns({ ...visibleColumns, [key]: visible })}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: '狀態',
+                type: 'select',
+                value: filter,
+                onChange: setFilter,
+                options: (Object.keys(FILTER_LABEL) as Filter[]).map(k => ({ value: k, label: FILTER_LABEL[k] })),
+              },
+            ]}
+          />
 
-          <div className="overflow-x-auto">
+          {filter !== 'all' && (
+            <div className="mt-3">
+              <FilterTags
+                tags={[
+                  {
+                    key: 'status',
+                    label: '狀態',
+                    value: FILTER_LABEL[filter],
+                    color: 'primary',
+                    onRemove: () => setFilter('all'),
+                  },
+                ]}
+              />
+            </div>
+          )}
+
+          <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[1000px] text-sm">
-              <thead className="bg-neutral-50">
+              <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  {['檢舉對象', '原因', '檢舉人', '被檢舉賣家', '狀態', '時間', '操作'].map(h => (
-                    <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-neutral-500">
-                      {h}
+                  {visibleColumns.target && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>檢舉對象</th>
+                  )}
+                  {visibleColumns.reason && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>原因</th>
+                  )}
+                  {visibleColumns.reporter && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>檢舉人</th>
+                  )}
+                  {visibleColumns.seller && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>被檢舉賣家</th>
+                  )}
+                  {visibleColumns.status && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>狀態</th>
+                  )}
+                  {visibleColumns.createdAt && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>時間</th>
+                  )}
+                  {visibleColumns.operations && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap`}>
+                      操作
                     </th>
-                  ))}
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -189,8 +281,9 @@ export default function SellReportsPage() {
                   <TableEmpty colSpan={7} message={filter === 'open' ? '目前沒有待處理的檢舉' : '目前沒有檢舉紀錄'} />
                 ) : (
                   shown.map(r => (
-                    <tr key={r.id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="px-4 py-3 align-top">
+                    <tr key={r.id} className="group border-b border-neutral-100 hover:bg-neutral-50">
+                      {visibleColumns.target && (
+                      <td className={`${densityClasses} align-top`}>
                         <div className="flex flex-col gap-1">
                           <Badge variant="default">{TARGET_LABEL[r.target_type]}</Badge>
                           {r.listing_id && (
@@ -205,7 +298,9 @@ export default function SellReportsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="max-w-[280px] px-4 py-3 align-top">
+                      )}
+                      {visibleColumns.reason && (
+                      <td className={`${densityClasses} max-w-[280px] align-top`}>
                         <div className="text-sm text-neutral-900">{r.reason}</div>
                         {r.detail && <div className="mt-1 text-xs leading-relaxed text-neutral-500">{r.detail}</div>}
                         {r.images?.length > 0 && (
@@ -218,17 +313,23 @@ export default function SellReportsPage() {
                           </div>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top text-sm text-neutral-700">
+                      )}
+                      {visibleColumns.reporter && (
+                      <td className={`${densityClasses} whitespace-nowrap align-top text-sm text-neutral-700`}>
                         {r.reporter?.name || '—'}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top">
+                      )}
+                      {visibleColumns.seller && (
+                      <td className={`${densityClasses} whitespace-nowrap align-top`}>
                         <div className="flex flex-col gap-1">
                           <span className="text-sm text-neutral-700">{r.seller?.name || '—'}</span>
                           {r.seller_id && <CopyableID id={r.seller_id} />}
                           {r.seller_suspended && <Badge variant="danger">停權中</Badge>}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top">
+                      )}
+                      {visibleColumns.status && (
+                      <td className={`${densityClasses} whitespace-nowrap align-top`}>
                         <div className="flex flex-col gap-1">
                           <Badge status={r.status === 'open' ? 'pending' : r.status === 'resolved' ? 'active' : 'removed'}>
                             {STATUS_LABEL[r.status]}
@@ -240,10 +341,14 @@ export default function SellReportsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top text-sm text-neutral-600">
+                      )}
+                      {visibleColumns.createdAt && (
+                      <td className={`${densityClasses} whitespace-nowrap align-top text-sm text-neutral-600`}>
                         {formatDateTime(r.created_at)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 align-top">
+                      )}
+                      {visibleColumns.operations && (
+                      <td className={`${densityClasses} whitespace-nowrap align-top sticky right-0 bg-white group-hover:bg-neutral-50 z-20 border-l border-neutral-200`}>
                         <div className="flex flex-col gap-2">
                           {r.status === 'open' && (
                             <div className="flex gap-2">
@@ -285,6 +390,7 @@ export default function SellReportsPage() {
                           )}
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}

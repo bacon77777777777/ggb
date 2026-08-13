@@ -1,11 +1,20 @@
 'use client'
 
+/**
+ * 商城訂單（玩家商城 sell_orders，不是抽獎出貨的 orders）
+ *
+ * 表格照「商品管理」的標準配方：SearchToolbar（搜尋＋篩選＋密度＋欄位開關）
+ * ＋ FilterTags ＋ SortableTableHeader ＋ 靠右釘住的操作欄。
+ * 篩選收在工具列的漏斗裡，不做自製膠囊列 —— 全後台同一套操作習慣。
+ */
+
 import Link from 'next/link'
 import { AdminLayout, PageCard, SearchToolbar, SortableTableHeader, StatsCard, FilterTags, CopyableID } from '@/components'
 import { TableEmpty } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import Badge from '@/components/ui/Badge'
 import { formatDateTime } from '@/utils/dateFormat'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { useEffect, useMemo, useState } from 'react'
 
 type StatusFilter = 'all' | 'in_progress' | 'completed' | 'cancelled'
@@ -42,6 +51,17 @@ const stepLabel = (step: number) => {
   return '完成'
 }
 
+/** 玩家商城只有這兩種（雙方自理）；舊資料的 transfer 一併顯示成銀行轉帳 */
+const paymentLabel = (m: string) =>
+  m === 'linepay' ? 'LINE Pay' : m === 'bank' || m === 'transfer' ? '銀行轉帳' : m || '—'
+
+const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
+  all: '全部',
+  in_progress: '進行中',
+  completed: '已完成',
+  cancelled: '已取消',
+}
+
 export default function SellOrdersAdminPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -49,6 +69,26 @@ export default function SellOrdersAdminPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortField, setSortField] = useState<string>('created_at')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('sell_orders', 'compact', {
+    order: true,
+    listing: true,
+    totalPrice: true,
+    payment: true,
+    progress: true,
+    buyer: true,
+    seller: true,
+    createdAt: true,
+    operations: true,
+  })
+
+  const getDensityClasses = () => {
+    switch (tableDensity) {
+      case 'compact': return 'py-2 px-2'
+      case 'normal': return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  }
 
   const fetchOrders = async () => {
     try {
@@ -181,6 +221,8 @@ export default function SellOrdersAdminPage() {
     return { total: orders.length, inProgress, completed, cancelled }
   }, [orders])
 
+  const densityClasses = getDensityClasses()
+
   return (
     <AdminLayout pageTitle="商城訂單">
       <div className="space-y-6">
@@ -196,70 +238,93 @@ export default function SellOrdersAdminPage() {
             searchPlaceholder="搜尋訂單 ID、上架單、會員、品項..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showColumnToggle={true}
+            columns={[
+              { key: 'order', label: '訂單', visible: visibleColumns.order },
+              { key: 'listing', label: '上架單', visible: visibleColumns.listing },
+              { key: 'totalPrice', label: '金額(G)', visible: visibleColumns.totalPrice },
+              { key: 'payment', label: '付款', visible: visibleColumns.payment },
+              { key: 'progress', label: '進度', visible: visibleColumns.progress },
+              { key: 'buyer', label: '買家', visible: visibleColumns.buyer },
+              { key: 'seller', label: '賣家', visible: visibleColumns.seller },
+              { key: 'createdAt', label: '建立時間', visible: visibleColumns.createdAt },
+              { key: 'operations', label: '操作', visible: visibleColumns.operations },
+            ]}
+            onColumnToggle={(key, visible) => setVisibleColumns({ ...visibleColumns, [key]: visible })}
+            showFilter={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: '狀態',
+                type: 'select',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: (Object.keys(STATUS_FILTER_LABEL) as StatusFilter[]).map((k) => ({
+                  value: k,
+                  label: STATUS_FILTER_LABEL[k],
+                })),
+              },
+            ]}
           />
 
-          <div className="mt-3">
-            <FilterTags
-              tags={[
-                {
-                  key: 'status',
-                  label: '狀態',
-                  value:
-                    statusFilter === 'all'
-                      ? '全部'
-                      : statusFilter === 'in_progress'
-                      ? '進行中'
-                      : statusFilter === 'completed'
-                      ? '已完成'
-                      : '已取消',
-                  color: 'primary',
-                  onRemove: () => setStatusFilter('all'),
-                },
-              ]}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {([
-              { key: 'all' as const, label: '全部' },
-              { key: 'in_progress' as const, label: '進行中' },
-              { key: 'completed' as const, label: '已完成' },
-              { key: 'cancelled' as const, label: '已取消' },
-            ] as const).map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setStatusFilter(t.key)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  statusFilter === t.key ? 'bg-primary text-white border-primary' : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {statusFilter !== 'all' && (
+            <div className="mt-3">
+              <FilterTags
+                tags={[
+                  {
+                    key: 'status',
+                    label: '狀態',
+                    value: STATUS_FILTER_LABEL[statusFilter],
+                    color: 'primary',
+                    onRemove: () => setStatusFilter('all'),
+                  },
+                ]}
+              />
+            </div>
+          )}
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[1200px] text-sm">
               <thead className="bg-neutral-50 border-b border-neutral-200">
                 <tr>
-                  <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                    訂單
-                  </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架單</th>
-                  <SortableTableHeader sortKey="total_price" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                    金額(G)
-                  </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">付款</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">進度</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">買家</th>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">賣家</th>
-                  <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                    建立時間
-                  </SortableTableHeader>
-                  <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
-                    操作
-                  </th>
+                  {visibleColumns.order && (
+                    <SortableTableHeader sortKey="id" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                      訂單
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.listing && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>上架單</th>
+                  )}
+                  {visibleColumns.totalPrice && (
+                    <SortableTableHeader sortKey="total_price" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                      金額(G)
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.payment && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>付款</th>
+                  )}
+                  {visibleColumns.progress && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>進度</th>
+                  )}
+                  {visibleColumns.buyer && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>買家</th>
+                  )}
+                  {visibleColumns.seller && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>賣家</th>
+                  )}
+                  {visibleColumns.createdAt && (
+                    <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                      建立時間
+                    </SortableTableHeader>
+                  )}
+                  {visibleColumns.operations && (
+                    <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap`}>
+                      操作
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
@@ -274,44 +339,62 @@ export default function SellOrdersAdminPage() {
 
                     return (
                       <tr key={o.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-neutral-900">#{o.id}</span>
-                            <span className="text-xs text-neutral-500">
-                              <CopyableID id={String(o.id)} />
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col min-w-0">
-                            <div className="text-sm font-medium text-neutral-900 truncate">{o.listing_title}</div>
-                            <div className="text-xs text-neutral-500 truncate">
-                              {o.item_name} × {o.quantity}（{o.unit_price.toLocaleString()}）
+                        {visibleColumns.order && (
+                          <td className={`${densityClasses} whitespace-nowrap`}>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-neutral-900">#{o.id}</span>
+                              <span className="text-xs text-neutral-500">
+                                <CopyableID id={String(o.id)} />
+                              </span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-semibold text-neutral-900 whitespace-nowrap">
-                          {o.total_price.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
-                          {o.payment_method === 'transfer' ? '轉帳' : o.payment_method === 'private' ? '私下' : o.payment_method}
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Badge status={statusText}>{statusText}</Badge>
-                            <span className="text-xs text-neutral-500">{stepLabel(o.step)}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{o.buyer_name}</td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{o.seller_name}</td>
-                        <td className="py-3 px-4 text-sm text-neutral-500 whitespace-nowrap">
-                          {formatDateTime(o.created_at)}
-                        </td>
-                        <td className="py-3 px-4 sticky right-0 bg-white border-l border-neutral-200 whitespace-nowrap">
-                          <Link href={`/sell-orders/${o.id}`} className="text-primary hover:text-blue-800 text-sm font-medium">
-                            查看
-                          </Link>
-                        </td>
+                          </td>
+                        )}
+                        {visibleColumns.listing && (
+                          <td className={densityClasses}>
+                            <div className="flex flex-col min-w-0">
+                              <div className="text-sm font-medium text-neutral-900 truncate">{o.listing_title}</div>
+                              <div className="text-xs text-neutral-500 truncate">
+                                {o.item_name} × {o.quantity}（{o.unit_price.toLocaleString()}）
+                              </div>
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.totalPrice && (
+                          <td className={`${densityClasses} text-sm font-semibold text-neutral-900 whitespace-nowrap`}>
+                            {o.total_price.toLocaleString()}
+                          </td>
+                        )}
+                        {visibleColumns.payment && (
+                          <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>
+                            {paymentLabel(o.payment_method)}
+                          </td>
+                        )}
+                        {visibleColumns.progress && (
+                          <td className={`${densityClasses} whitespace-nowrap`}>
+                            <div className="flex items-center gap-2">
+                              <Badge status={statusText}>{statusText}</Badge>
+                              <span className="text-xs text-neutral-500">{stepLabel(o.step)}</span>
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.buyer && (
+                          <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>{o.buyer_name}</td>
+                        )}
+                        {visibleColumns.seller && (
+                          <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>{o.seller_name}</td>
+                        )}
+                        {visibleColumns.createdAt && (
+                          <td className={`${densityClasses} text-sm text-neutral-500 whitespace-nowrap`}>
+                            {formatDateTime(o.created_at)}
+                          </td>
+                        )}
+                        {visibleColumns.operations && (
+                          <td className={`${densityClasses} sticky right-0 bg-white border-l border-neutral-200 whitespace-nowrap`}>
+                            <Link href={`/sell-orders/${o.id}`} className="text-primary hover:text-blue-800 text-sm font-medium">
+                              查看
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     )
                   })
@@ -324,4 +407,3 @@ export default function SellOrdersAdminPage() {
     </AdminLayout>
   )
 }
-

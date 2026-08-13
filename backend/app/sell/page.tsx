@@ -11,6 +11,7 @@ import { formatDateTime } from '@/utils/dateFormat'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useToast } from '@/contexts/ToastContext'
+import { useTablePrefs } from '@/hooks/useTablePrefs'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { TableEmpty } from '@/components/ui/EmptyState'
 
@@ -68,6 +69,27 @@ export default function SellAdminPage() {
   const [rejectTarget, setRejectTarget] = useState<SellListing | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [selectedListings, setSelectedListings] = useState<Set<number>>(new Set())
+  // 表格偏好照「商品管理」的配方：密度與欄位開關記在 localStorage（per 管理員）
+  const { tableDensity, setTableDensity, visibleColumns, setVisibleColumns } = useTablePrefs('sell', 'compact', {
+    image: true,
+    title: true,
+    specs: true,
+    viewCount: true,
+    seller: true,
+    status: true,
+    review: true,
+    visibility: true,
+    createdAt: true,
+    operations: true,
+  })
+
+  const getDensityClasses = () => {
+    switch (tableDensity) {
+      case 'compact': return 'py-2 px-2'
+      case 'normal': return 'py-3 px-4'
+      case 'comfortable': return 'py-4 px-6'
+    }
+  }
   const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000').replace('127.0.0.1', 'localhost')
 
   const maybeBootstrap = async (errorText: string) => {
@@ -336,8 +358,10 @@ export default function SellAdminPage() {
     return { total, active, sold, pending }
   }, [listings])
 
+  const densityClasses = getDensityClasses()
+
   return (
-    <AdminLayout pageTitle="商城商品" pageSubtitle="自由上架寶可夢實體卡（與市集分開）">
+    <AdminLayout pageTitle="商城商品" pageSubtitle="玩家自由上架（與交易所、卡牌交換分開）">
       <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard title="待審核" value={stats.pending} />
@@ -376,28 +400,69 @@ export default function SellAdminPage() {
         </div>
 
         <div className="mt-4">
-          <SearchToolbar searchPlaceholder="搜尋標題、賣家名稱、Email、UUID..." searchValue={searchQuery} onSearchChange={setSearchQuery} />
-        </div>
-
-        <div className="mt-3">
-          <FilterTags
-            tags={[
+          <SearchToolbar
+            searchPlaceholder="搜尋標題、賣家名稱、Email、UUID..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            showDensity={true}
+            density={tableDensity}
+            onDensityChange={setTableDensity}
+            showColumnToggle={true}
+            columns={[
+              { key: 'image', label: '主圖', visible: visibleColumns.image },
+              { key: 'title', label: '標題', visible: visibleColumns.title },
+              { key: 'specs', label: '規格', visible: visibleColumns.specs },
+              { key: 'viewCount', label: '瀏覽', visible: visibleColumns.viewCount },
+              { key: 'seller', label: '賣家', visible: visibleColumns.seller },
+              { key: 'status', label: '狀態', visible: visibleColumns.status },
+              { key: 'review', label: '審核', visible: visibleColumns.review },
+              { key: 'visibility', label: '上架', visible: visibleColumns.visibility },
+              { key: 'createdAt', label: '建立時間', visible: visibleColumns.createdAt },
+              { key: 'operations', label: '操作', visible: visibleColumns.operations },
+            ]}
+            onColumnToggle={(key, visible) => setVisibleColumns({ ...visibleColumns, [key]: visible })}
+            showFilter={true}
+            filterOptions={[
               {
                 key: 'status',
                 label: '狀態',
-                value: statusFilter === 'all' ? '全部' : STATUS_LABEL[statusFilter] ?? '全部',
-                color: 'primary',
-                onRemove: () => setStatusFilter('all'),
+                type: 'select',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [
+                  { value: 'all', label: '全部狀態' },
+                  { value: 'pending', label: '待審核' },
+                  { value: 'active', label: '上架中' },
+                  { value: 'rejected', label: '已退回' },
+                  { value: 'sold', label: '已售出' },
+                  { value: 'removed', label: '已下架' },
+                ],
               },
             ]}
           />
         </div>
 
+        {statusFilter !== 'all' && (
+          <div className="mt-3">
+            <FilterTags
+              tags={[
+                {
+                  key: 'status',
+                  label: '狀態',
+                  value: STATUS_LABEL[statusFilter] ?? '全部',
+                  color: 'primary',
+                  onRemove: () => setStatusFilter('all'),
+                },
+              ]}
+            />
+          </div>
+        )}
+
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[1100px] text-sm">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                <th className="py-3 px-4 text-left">
+                <th className={`${densityClasses} text-left`}>
                   <input
                     type="checkbox"
                     checked={selectedListings.size === sortedListings.length && sortedListings.length > 0}
@@ -405,40 +470,65 @@ export default function SellAdminPage() {
                     className="w-4 h-4 text-primary focus:ring-primary rounded"
                   />
                 </th>
-                <SortableTableHeader sortKey="title" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                  標題
-                </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">規格</th>
-                <SortableTableHeader sortKey="view_count" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                  瀏覽
-                </SortableTableHeader>
-                <SortableTableHeader sortKey="seller_name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                  賣家
-                </SortableTableHeader>
-                <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                  狀態
-                </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">審核</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 whitespace-nowrap">上架</th>
-                <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="py-3 px-4">
-                  建立時間
-                </SortableTableHeader>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap">
-                  操作
-                </th>
+                {visibleColumns.image && (
+                  <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>主圖</th>
+                )}
+                {visibleColumns.title && (
+                  <SortableTableHeader sortKey="title" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                    標題
+                  </SortableTableHeader>
+                )}
+                {visibleColumns.specs && (
+                  <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>規格</th>
+                )}
+                {visibleColumns.viewCount && (
+                  <SortableTableHeader sortKey="view_count" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                    瀏覽
+                  </SortableTableHeader>
+                )}
+                {visibleColumns.seller && (
+                  <SortableTableHeader sortKey="seller_name" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                    賣家
+                  </SortableTableHeader>
+                )}
+                {visibleColumns.status && (
+                  <SortableTableHeader sortKey="status" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                    狀態
+                  </SortableTableHeader>
+                )}
+                {visibleColumns.review && (
+                  <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>審核</th>
+                )}
+                {visibleColumns.visibility && (
+                  <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 whitespace-nowrap`}>上架</th>
+                )}
+                {visibleColumns.createdAt && (
+                  <SortableTableHeader sortKey="created_at" currentSortField={sortField} sortDirection={sortDirection} onSort={handleSort} className={densityClasses}>
+                    建立時間
+                  </SortableTableHeader>
+                )}
+                {visibleColumns.operations && (
+                  <th className={`${densityClasses} text-left text-xs font-semibold text-neutral-500 sticky right-0 bg-neutral-50 z-20 border-l border-neutral-200 whitespace-nowrap`}>
+                    操作
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
               {isLoading ? (
-                <TableSkeleton rows={5} cols={9} />
+                <TableSkeleton rows={5} cols={11} />
               ) : sortedListings.length === 0 ? (
-                <TableEmpty colSpan={10} message="目前沒有符合條件的商城上架資料" />
+                <TableEmpty colSpan={11} message="目前沒有符合條件的商城上架資料" />
               ) : (
                 sortedListings.map((item) => {
                   const items = Array.isArray(item.items) ? item.items : []
                   const itemCount = items.length
                   const totalQty = items.reduce((sum, it) => sum + Math.max(0, Number(it?.quantity) || 0), 0)
                   const isExpanded = expandedListings.has(item.id)
+                  const coverImage =
+                    (item.images || []).map((x) => String(x || '').trim()).find(Boolean) ||
+                    items.map((it) => String(it?.image || '').trim()).find(Boolean) ||
+                    ''
                   const isVisible = item.status === 'active'
                   const isPending = item.status === 'pending'
                   // 待審不給用切換：核准要留下審核紀錄（誰審的、什麼時候），
@@ -452,7 +542,7 @@ export default function SellAdminPage() {
                         onClick={() => toggleExpand(item.id)}
                         className={`group border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-all duration-300 ${isExpanded ? 'bg-neutral-50' : ''}`}
                       >
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        <td className={densityClasses} onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={selectedListings.has(item.id)}
@@ -460,7 +550,19 @@ export default function SellAdminPage() {
                             className="w-4 h-4 text-primary focus:ring-primary rounded"
                           />
                         </td>
-                        <td className="py-3 px-4">
+                        {visibleColumns.image && (
+                          <td className={densityClasses}>
+                            <div className="w-10 h-10 rounded-lg bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center">
+                              {coverImage ? (
+                                <img src={coverImage} alt={item.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs text-neutral-300">無圖</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.title && (
+                        <td className={densityClasses}>
                           <div className="flex items-center gap-2">
                             <svg
                               className={`w-4 h-4 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180 text-primary' : 'text-neutral-400'}`}
@@ -476,14 +578,22 @@ export default function SellAdminPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
+                        )}
+                        {visibleColumns.specs && (
+                        <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>
                           {itemCount > 0 ? `${itemCount}項 / ${totalQty}件` : '-'}
                         </td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">
+                        )}
+                        {visibleColumns.viewCount && (
+                        <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>
                           {Number(item.view_count || 0).toLocaleString()}
                         </td>
-                        <td className="py-3 px-4 text-sm text-neutral-700 whitespace-nowrap">{item.seller_name}</td>
-                        <td className="py-3 px-4">
+                        )}
+                        {visibleColumns.seller && (
+                        <td className={`${densityClasses} text-sm text-neutral-700 whitespace-nowrap`}>{item.seller_name}</td>
+                        )}
+                        {visibleColumns.status && (
+                        <td className={densityClasses}>
                           <div className="flex flex-col gap-1">
                             <Badge status={item.status}>{statusLabel}</Badge>
                             {item.category && (
@@ -496,7 +606,9 @@ export default function SellAdminPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        )}
+                        {visibleColumns.review && (
+                        <td className={`${densityClasses} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                           {isPending ? (
                             <div className="flex items-center gap-2">
                               <button
@@ -518,7 +630,9 @@ export default function SellAdminPage() {
                             <span className="text-xs text-neutral-300">—</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        )}
+                        {visibleColumns.visibility && (
+                        <td className={`${densityClasses} whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             disabled={disableToggle}
@@ -544,9 +658,13 @@ export default function SellAdminPage() {
                             />
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-sm text-neutral-600 whitespace-nowrap">{formatDateTime(item.created_at)}</td>
+                        )}
+                        {visibleColumns.createdAt && (
+                        <td className={`${densityClasses} text-sm text-neutral-600 whitespace-nowrap`}>{formatDateTime(item.created_at)}</td>
+                        )}
+                        {visibleColumns.operations && (
                         <td
-                          className={`py-3 px-4 sticky right-0 z-20 border-l border-neutral-200 whitespace-nowrap ${
+                          className={`${densityClasses} sticky right-0 z-20 border-l border-neutral-200 whitespace-nowrap ${
                             isExpanded ? 'bg-neutral-50' : 'bg-white group-hover:bg-neutral-50'
                           }`}
                           onClick={(e) => e.stopPropagation()}
@@ -576,10 +694,11 @@ export default function SellAdminPage() {
                             </button>
                           </div>
                         </td>
+                        )}
                       </tr>
                       {isExpanded && (
                         <tr key={`expanded:${item.id}`} className="bg-neutral-50">
-                          <td colSpan={9} className="py-4 px-4">
+                          <td colSpan={10} className="py-4 px-4">
                             <div className="pl-8 space-y-3">
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div className="text-sm text-neutral-700">
