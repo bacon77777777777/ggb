@@ -371,39 +371,33 @@ export default function SellAdminPage() {
       </div>
 
       <PageCard>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSeed}
-              disabled={isSeeding}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSeeding ? '建立中…' : '建立商城假資料'}
-            </button>
-            <button
-              type="button"
-              onClick={fetchListings}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
-            >
-              重新整理
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={isClearing}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isClearing ? '清除中…' : '清除商城測試資料'}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <SearchToolbar
+        {/* 按鈕跟搜尋同一排，照商品管理的版：主要動作在最左、搜尋吃剩餘寬度、右邊三顆圖示 */}
+        <SearchToolbar
             searchPlaceholder="搜尋標題、賣家名稱、Email、UUID..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
+            showAddButton={true}
+            addButtonText={isSeeding ? '建立中…' : '建立商城假資料'}
+            onAddClick={handleSeed}
+            children={
+              <>
+                <button
+                  type="button"
+                  onClick={fetchListings}
+                  className="h-9 px-4 bg-white border border-neutral-200 rounded-lg hover:border-neutral-300 transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  重新整理
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  disabled={isClearing}
+                  className="h-9 px-4 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {isClearing ? '清除中…' : '清除商城測試資料'}
+                </button>
+              </>
+            }
             showDensity={true}
             density={tableDensity}
             onDensityChange={setTableDensity}
@@ -440,7 +434,6 @@ export default function SellAdminPage() {
               },
             ]}
           />
-        </div>
 
         {statusFilter !== 'all' && (
           <div className="mt-3">
