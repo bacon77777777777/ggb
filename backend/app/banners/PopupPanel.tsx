@@ -171,6 +171,7 @@ export default function PopupPanel() {
 
   const save = async () => {
     if (!editing) return
+    if (!isImagePopup && !(editing.title ?? '').trim()) { toast('公告的標題不可空白', 'error'); return }
     if (!editing.body.trim()) { toast(isImagePopup ? '請填圖片說明' : '內容不可空白', 'error'); return }
     if (isImagePopup && !imageFile && !editing.image_url) { toast('純圖片版需要上傳圖片', 'error'); return }
 
@@ -245,15 +246,19 @@ export default function PopupPanel() {
       ),
     },
     {
+      // 圖片獨立成一欄（老闆指定）。原本縮圖跟說明文字擠在「內容」裡，
+      // 純圖片與公告兩種版型的排版長得不一樣，一整排看下來很亂
+      key: 'image', label: '圖片',
+      render: p => p.image_url
+        ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
+        : p.layout === 'image'
+          ? <span className="text-red-500 text-xs">尚未設定</span>
+          : <span className="text-neutral-300">—</span>,
+    },
+    {
       key: 'body', label: '內容',
-      render: p => p.layout === 'image' ? (
-        <div className="flex items-center gap-2">
-          {p.image_url
-            ? <img src={p.image_url} alt="" className="w-10 h-10 rounded object-cover border border-neutral-200" />
-            : <span className="text-red-500 text-xs">尚未設定圖片</span>}
-          <span className="text-neutral-400 text-xs line-clamp-1 whitespace-normal">{p.body}</span>
-        </div>
-      ) : (
+      // 兩種版型共用同一組樣式（老闆指定：純圖片的小灰字要跟公告一樣）
+      render: p => (
         <div className="max-w-md whitespace-normal">
           {p.title && <div className="font-medium text-neutral-900">{p.title}</div>}
           <div className="text-neutral-500 line-clamp-2">{p.body}</div>
@@ -293,13 +298,25 @@ export default function PopupPanel() {
    * 清單空的時候也要顯示（summaryRowWhenEmpty），不然唯一的開關會跟著消失。
    */
   const newArrivalRow = (shown: ListColumn<Promo>[]) => shown.map(col => {
+    /*
+     * 跟一般資料列同一組 cell 樣式。
+     *
+     * `summaryRow` 是由呼叫端自己吐 `<td>`，元件不會幫忙套 —— 少了 `text-sm`
+     * 就會繼承 16px，看起來比其他列大一號（老闆回報）。
+     * `font-normal` 是為了抵銷 `<tr>` 上的 `font-semibold`（那是合計列的預設樣式）。
+     */
+    const cell = 'py-2 px-2 text-sm font-normal text-neutral-700'
     if (col.key === 'layout') {
-      return <td key={col.key} className="py-2 px-2"><Badge color="green">系統</Badge></td>
+      return <td key={col.key} className={cell}><Badge color="green">系統</Badge></td>
+    }
+    if (col.key === 'image') {
+      // 最新上架的圖是即時從商品撈的，沒有可設定的縮圖
+      return <td key={col.key} className={`${cell} text-neutral-300`}>—</td>
     }
     if (col.key === 'body') {
       return (
-        <td key={col.key} className="py-2 px-2">
-          <div className="max-w-md whitespace-normal font-normal">
+        <td key={col.key} className={cell}>
+          <div className="max-w-md whitespace-normal">
             <div className="font-medium text-neutral-900">最新上架</div>
             <div className="text-neutral-500">
               進首頁時跳出最近 30 天上架的商品，點了直接進商品頁。內容自動更新，不用編輯。
@@ -310,7 +327,7 @@ export default function PopupPanel() {
     }
     if (col.key === 'status') {
       return (
-        <td key={col.key} className="py-2 px-2">
+        <td key={col.key} className={cell}>
           <Switch
             checked={rules.promo_new_arrival_enabled === '1'}
             disabled={savingRules}
@@ -320,7 +337,7 @@ export default function PopupPanel() {
       )
     }
     // 排序與操作留白：這一列固定在最上面，也不給編輯／刪除
-    return <td key={col.key} className="py-2 px-2 text-neutral-300">—</td>
+    return <td key={col.key} className={`${cell} text-neutral-300`}>—</td>
   })
 
   return (
@@ -378,13 +395,17 @@ export default function PopupPanel() {
               </div>
             </div>
 
-            {editing.layout === 'card' && (
-              <div>
-                <label className="block text-sm text-neutral-600 mb-1">標題</label>
-                <Input value={editing.title ?? ''}
-                  onChange={e => setEditing({ ...editing, title: e.target.value })} />
-              </div>
-            )}
+            {/* 兩種版型都能填標題：公告必填、純圖片選填（老闆指定）。
+                純圖片的標題只出現在後台清單，用來辨識這是哪一檔活動 —— 
+                前台那版的文案是畫在圖裡的，不會另外疊字上去 */}
+            <div>
+              <label className="block text-sm text-neutral-600 mb-1">
+                標題{isImagePopup ? '' : ' *'}
+              </label>
+              <Input value={editing.title ?? ''}
+                placeholder={isImagePopup ? '選填，只顯示在後台清單' : ''}
+                onChange={e => setEditing({ ...editing, title: e.target.value })} />
+            </div>
 
             {isImagePopup ? (
               <div>
