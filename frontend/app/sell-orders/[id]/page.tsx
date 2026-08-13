@@ -20,6 +20,10 @@ type Order = {
   itemIndex: number;
   quantity: number;
   unitPrice: number;
+  shippingFee: number;
+  depositAmount: number;
+  sellerConfirmedAt: string | null;
+  overdueNotifiedAt: string | null;
   paymentMethod: 'bank' | 'linepay';
   step: number;
   cancelled: boolean;
@@ -114,7 +118,7 @@ export default function SellOrderDetailPage() {
         const { data: o, error: orderError } = await supabase
           .from('sell_orders')
           .select(
-            'id, order_number, listing_id, seller_id, buyer_id, item_index, quantity, unit_price, payment_method, step, cancelled, tracking_number, paid_at, shipped_at, received_at, payment_proof_urls, created_at'
+            'id, order_number, listing_id, seller_id, buyer_id, item_index, quantity, unit_price, shipping_fee, deposit_amount, payment_method, step, cancelled, tracking_number, paid_at, shipped_at, received_at, payment_proof_urls, seller_confirmed_at, overdue_notified_at, created_at'
           )
           .eq('id', rawOrderId as any)
           .maybeSingle();
@@ -134,6 +138,10 @@ export default function SellOrderDetailPage() {
           itemIndex: Number((o as any).item_index || 0),
           quantity: Math.max(1, Math.round(Number((o as any).quantity) || 1)),
           unitPrice: Math.max(1, Math.round(Number((o as any).unit_price) || 1)),
+          shippingFee: Math.max(0, Math.round(Number((o as any).shipping_fee) || 0)),
+          depositAmount: Math.max(0, Math.round(Number((o as any).deposit_amount) || 0)),
+          sellerConfirmedAt: (o as any).seller_confirmed_at ?? null,
+          overdueNotifiedAt: (o as any).overdue_notified_at ?? null,
           // 玩家商城一律雙方自理，收款方式由賣家設定，只會是這兩種
           paymentMethod: String((o as any).payment_method || 'bank') === 'linepay' ? 'linepay' : 'bank',
           step: Math.max(1, Math.round(Number((o as any).step) || 1)),
@@ -258,10 +266,15 @@ export default function SellOrderDetailPage() {
     return listing.items[order.itemIndex] || null;
   }, [listing, order]);
 
-  const totalPrice = useMemo(() => {
-    if (!order) return 0;
-    return Math.round(order.unitPrice) * Math.max(1, order.quantity);
-  }, [order]);
+  // 買家要匯的是「貨款 + 運費」。原本只算貨款，賣家收到的錢會少一筆運費
+  const goodsPrice = useMemo(
+    () => (order ? Math.round(order.unitPrice) * Math.max(1, order.quantity) : 0),
+    [order]
+  );
+  const totalPrice = useMemo(
+    () => goodsPrice + (order?.shippingFee || 0),
+    [goodsPrice, order?.shippingFee]
+  );
 
   const cancelOrder = async () => {
     if (!order) return;
@@ -419,6 +432,35 @@ export default function SellOrderDetailPage() {
     }
   };
 
+  /*
+   * 逾時未出貨的補償申訴。
+   *
+   * 刻意由買家主動按，不自動賠付 —— 逾時一小時就自動罰錢，對只是晚一天
+   * 出貨的賣家太重，而且東西可能已經在路上。由受害的一方決定要不要動用。
+   * 期限與金額都由 DB 判定（sell_order_claim_compensation），前台不自己算。
+   */
+  const claimCompensation = async () => {
+    if (!order || isActing) return;
+    setIsActing(true);
+    try {
+      const { data, error } = await createClient().rpc('sell_order_claim_compensation', {
+        p_order_id: Number(order.id),
+      });
+      if (error) throw error;
+      const r = data as any;
+      if (!r?.success) {
+        showToast(r?.message || '目前無法申訴', 'plain');
+        return;
+      }
+      showToast(`已補償 ${Number(r.compensation).toLocaleString('zh-TW')} G幣到你的帳戶`, 'plain');
+      router.refresh();
+    } catch (e: any) {
+      showToast(e?.message || '申訴失敗', 'plain');
+    } finally {
+      setIsActing(false);
+    }
+  };
+
   const actionBar = useMemo(() => {
     if (!order) return null;
     if (order.cancelled) return null;
@@ -563,7 +605,7 @@ export default function SellOrderDetailPage() {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-neutral-400 dark:text-neutral-500">應付金額</span>
-                    <span className="font-black font-amount">{(order.unitPrice * order.quantity).toLocaleString()}</span>
+                    <span className="font-black font-amount">NT${totalPrice.toLocaleString()}</span>
                   </div>
                 </div>
               ) : (
@@ -582,7 +624,7 @@ export default function SellOrderDetailPage() {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-neutral-400 dark:text-neutral-500">應付金額</span>
-                    <span className="font-black font-amount">{(order.unitPrice * order.quantity).toLocaleString()}</span>
+                    <span className="font-black font-amount">NT${totalPrice.toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -655,11 +697,26 @@ export default function SellOrderDetailPage() {
               </div>
             </div>
 
-            <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-              <div className="text-[13px] font-black text-neutral-900 dark:text-white">訂單金額</div>
-              <div className="flex items-center gap-1.5">
-                <Image src="/images/gcoin.webp" alt="G" width={14} height={14} className="object-contain" />
-                <span className="text-[16px] font-black font-amount text-primary">{totalPrice.toLocaleString()}</span>
+            {/*
+              這筆是買家匯給賣家的**新台幣**（銀行轉帳或 LINE Pay），不是 G幣。
+              原本這裡放 G幣圖示，會讓買家以為可以用站內餘額付。
+            */}
+            <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 space-y-1">
+              <div className="flex items-center justify-between text-[12px] font-black text-neutral-400">
+                <span>商品</span>
+                <span className="font-amount">NT${goodsPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between text-[12px] font-black text-neutral-400">
+                <span>運費</span>
+                <span className="font-amount">
+                  {order.shippingFee ? `NT$${order.shippingFee.toLocaleString()}` : '免運費'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <div className="text-[13px] font-black text-neutral-900 dark:text-white">訂單金額</div>
+                <span className="text-[16px] font-black font-amount text-primary">
+                  NT${totalPrice.toLocaleString()}
+                </span>
               </div>
             </div>
 
@@ -734,6 +791,41 @@ export default function SellOrderDetailPage() {
               <div className="text-[13px] font-black text-neutral-900 dark:text-white">幫助中心</div>
               <ChevronRight className="w-4 h-4 text-neutral-400" />
             </button>
+            {/*
+              保證金：買家最在意「賣家跑了我拿得回什麼」，所以直接寫金額。
+              step 3（待出貨）且系統已標記逾時，才出現申訴按鈕 ——
+              overdue_notified_at 是排程寫的，等於 DB 已經認定超過出貨期限。
+            */}
+            {order.depositAmount > 0 && (
+              <div className="py-2 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-black text-neutral-900 dark:text-white">
+                    賣家保證金
+                  </span>
+                  <span className="text-[13px] font-black text-primary font-amount">
+                    {order.depositAmount.toLocaleString()} G
+                  </span>
+                </div>
+                <p className="mt-1 text-[11.5px] font-black text-neutral-400 leading-relaxed">
+                  {order.step >= 5
+                    ? '交易完成，保證金已退還賣家'
+                    : order.cancelled
+                      ? '訂單已結束'
+                      : '賣家已押在平台。你確認收貨後退還；若賣家沒出貨，這筆會賠給你'}
+                </p>
+                {isBuyer && !order.cancelled && order.step === 3 && order.overdueNotifiedAt && (
+                  <button
+                    type="button"
+                    disabled={isActing}
+                    onClick={claimCompensation}
+                    className="mt-2 w-full h-11 rounded-2xl bg-red-500 text-white text-[14px] font-black disabled:opacity-50 active:scale-[0.99] transition-transform"
+                  >
+                    賣家逾時未出貨 · 申請補償 {order.depositAmount.toLocaleString()}G
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* 買家才需要檢舉入口 —— 平台不碰錢，出事時這是買家唯一的求助管道 */}
             {isBuyer && (
               <button
