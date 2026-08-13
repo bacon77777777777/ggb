@@ -1,503 +1,339 @@
 'use client';
 
+import '../market.css';
+
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Settings, ChevronRight, Package, ClipboardList } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import MarketTabBar from '@/components/sell/MarketTabBar';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { useFeatureGate } from '@/lib/useFeatureGate';
+import MarketTabBar from '@/components/sell/MarketTabBar';
 
-export const dynamic = 'force-dynamic';
+/*
+ * 我的賣場 —— 照原型 vMe() 的 .mehd / .mecard / .mlist / .mine 結構。
+ *
+ * 儀表數字（等級、成交率、保證金鎖定）走 sell_my_dashboard RPC 一次拿完：
+ * 等級規則與保證金比例都在 DB，前台只負責顯示，不重算。
+ */
 
-type View = 'listings' | 'orders';
+type Dash = {
+  tier: { k: number; name: string; ratio: number; max_price: number };
+  done_count: number;
+  failed_count: number;
+  success_rate: number;
+  avg_ship_minutes: number;
+  good_rate: number;
+  locked_deposit: number;
+  is_pro: boolean;
+  tokens: number;
+};
 
-type SellerListing = {
+type MyListing = {
   id: number;
   title: string;
   price: number;
+  shipping_fee: number;
   status: string;
-  reviewNote: string;
-  created_at: string | null;
-  image: string;
+  review_note: string | null;
+  images: string[] | null;
+  items: any;
+  view_count: number;
 };
 
-type SellerOrder = {
-  id: number;
-  created_at: string | null;
-  step: number;
-  cancelled: boolean;
-  quantity: number;
-  unit_price: number;
-  item_index: number;
-  listing: {
-    id: number;
-    title: string | null;
-    images: string[] | null;
-    items: any[] | null;
-  } | null;
-  buyer: { id: string; name: string; avatar: string };
+const ST: Record<string, [string, string]> = {
+  active: ['上架中', '#3FA34D'],
+  pending: ['待審核', '#E08B2C'],
+  rejected: ['已退回', '#FF0036'],
+  sold: ['已售出', '#8C8C8C'],
+  removed: ['已下架', '#8C8C8C'],
 };
 
-const toNum = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
+
+const pickImage = (l: MyListing) => {
+  const imgs = Array.isArray(l.images) ? l.images.filter(Boolean) : [];
+  if (imgs[0]) return imgs[0];
+  const items = Array.isArray(l.items) ? l.items : [];
+  return items.map((x: any) => String(x?.image || '').trim()).filter(Boolean)[0] || '/images/item_defaulet.webp';
+};
+
+const stockOf = (l: MyListing) =>
+  (Array.isArray(l.items) ? l.items : []).reduce((a: number, i: any) => a + (Number(i?.quantity) || 0), 0);
 
 export default function SellManagePage() {
+  useFeatureGate('sell');
+
   const router = useRouter();
-
-  /*
-   * 賣家儀表：等級、成交率、保證金鎖定金額。
-   * 走 sell_my_dashboard RPC 一次拿完 —— 等級規則與保證金比例都在 DB，
-   * 前台只負責顯示，不重算。
-   */
-  const [dash, setDash] = useState<{
-    tier: { name: string; ratio: number; max_price: number };
-    done_count: number;
-    success_rate: number;
-    locked_deposit: number;
-    is_pro: boolean;
-    tokens: number;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { data } = await createClient().rpc('sell_my_dashboard');
-      if (cancelled || !data || !(data as any).success) return;
-      const d = data as any;
-      setDash({
-        tier: {
-          name: String(d.tier?.name || '新手'),
-          ratio: Number(d.tier?.ratio) || 100,
-          max_price: Number(d.tier?.max_price) || 3000,
-        },
-        done_count: Number(d.done_count) || 0,
-        success_rate: Number(d.success_rate) || 100,
-        locked_deposit: Number(d.locked_deposit) || 0,
-        is_pro: !!d.is_pro,
-        tokens: Number(d.tokens) || 0,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const searchParams = useSearchParams();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { showToast } = useToast();
 
-  const viewFromUrl = useMemo(() => {
-    const raw = String(searchParams.get('tab') || '').trim();
-    if (raw === 'orders') return 'orders';
-    return 'listings';
-  }, [searchParams]);
-
-  const [view, setView] = useState<View>(viewFromUrl);
-  const [listings, setListings] = useState<SellerListing[]>([]);
-  const [orders, setOrders] = useState<SellerOrder[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [dash, setDash] = useState<Dash | null>(null);
+  const [rows, setRows] = useState<MyListing[]>([]);
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [payMethod, setPayMethod] = useState('尚未設定');
+  const [isLoading, setIsLoading] = useState(true);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
-    setView(viewFromUrl);
-  }, [viewFromUrl]);
+    if (!authLoading && !user?.id) router.replace('/login');
+  }, [authLoading, router, user?.id]);
 
-  /**
-   * 賣家自己的上架操作。改的是自己那列（RLS 擋別人的），
-   * 狀態轉換的合法性由 DB trigger 把關：上架中→下架、已下架→重新送審，其餘擋掉。
-   */
-  const setListingStatus = async (id: number, status: 'removed' | 'pending', doneMsg: string) => {
+  const load = useCallback(async () => {
+    if (!user?.id) return;
+    const supabase = createClient();
+    const [{ data: d }, { data: mine }, { data: me }, { data: profile }] = await Promise.all([
+      supabase.rpc('sell_my_dashboard'),
+      supabase
+        .from('sell_listings')
+        .select('id, title, price, shipping_fee, status, review_note, images, items, view_count')
+        .eq('seller_id', user.id)
+        .eq('is_official', false)
+        .order('created_at', { ascending: false }),
+      supabase.from('users').select('name, avatar_url').eq('id', user.id).maybeSingle(),
+      supabase.from('sell_seller_profiles').select('payout_method').eq('seller_id', user.id).maybeSingle(),
+    ]);
+
+    if ((d as any)?.success) {
+      const t = (d as any).tier || {};
+      setDash({
+        tier: {
+          k: Number(t.k) || 1,
+          name: String(t.name || '新手'),
+          ratio: Number(t.ratio) || 100,
+          max_price: Number(t.max_price) || 3000,
+        },
+        done_count: Number((d as any).done_count) || 0,
+        failed_count: Number((d as any).failed_count) || 0,
+        success_rate: Number((d as any).success_rate) || 100,
+        avg_ship_minutes: Number((d as any).avg_ship_minutes) || 0,
+        good_rate: Number((d as any).good_rate) || 100,
+        locked_deposit: Number((d as any).locked_deposit) || 0,
+        is_pro: !!(d as any).is_pro,
+        tokens: Number((d as any).tokens) || 0,
+      });
+    }
+    setRows((mine || []) as MyListing[]);
+    setName(String((me as any)?.name || '玩家'));
+    setAvatar(String((me as any)?.avatar_url || ''));
+    const pm = String((profile as any)?.payout_method || '');
+    setPayMethod(pm === 'linepay' ? 'LINE Pay' : pm === 'bank' ? '銀行轉帳' : '尚未設定');
+    setIsLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const counts = useMemo(
+    () => ({
+      active: rows.filter((r) => r.status === 'active').length,
+      pending: rows.filter((r) => r.status === 'pending').length,
+    }),
+    [rows]
+  );
+
+  // 升到下一級還差幾單（金牌 100 / 銀牌 10，照 platform_settings.sell_tiers）
+  const gap = dash ? (dash.tier.k === 3 ? 0 : dash.tier.k === 2 ? 100 - dash.done_count : 10 - dash.done_count) : 0;
+
+  const setStatus = async (l: MyListing, next: 'removed' | 'pending') => {
+    if (!user?.id) return;
+    setBusyId(l.id);
     try {
       const { error } = await createClient()
         .from('sell_listings')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('seller_id', String(user?.id || ''));
+        .update({ status: next, updated_at: new Date().toISOString() } as any)
+        .eq('id', l.id)
+        .eq('seller_id', user.id);
       if (error) throw error;
-      setListings((prev) => prev.map((x) => (x.id === id ? { ...x, status } : x)));
-      showToast(doneMsg, 'plain');
+      showToast(next === 'removed' ? '已下架' : '已重新送審', 'plain');
+      await load();
     } catch (e: any) {
-      console.error('Update listing status failed:', e);
-      const msg = String(e?.message || '');
-      showToast(/[\u4e00-\u9fff]/.test(msg) ? msg : '操作失敗', 'plain');
+      showToast(e?.message || '操作失敗', 'plain');
+    } finally {
+      setBusyId(null);
     }
   };
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user?.id) router.replace('/login?redirect=%2Fsell%2Fmanage');
-  }, [isLoading, router, user?.id]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!user?.id) return;
-      setIsLoadingData(true);
-      try {
-        const supabase = createClient();
-        const [{ data: listingRows, error: listingError }, { data: orderRows, error: orderError }] = await Promise.all([
-          supabase
-            .from('sell_listings')
-            .select('id, title, price, status, review_note, created_at, images, items')
-            .eq('seller_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(200),
-          supabase
-            .from('sell_orders')
-            .select(
-              `
-                id,
-                created_at,
-                step,
-                cancelled,
-                quantity,
-                unit_price,
-                item_index,
-                buyer_id,
-                sell_listings ( id, title, images, items )
-              `
-            )
-            .eq('seller_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(200),
-        ]);
-
-        if (listingError) throw listingError;
-        if (orderError) throw orderError;
-
-        const mappedListings: SellerListing[] = (Array.isArray(listingRows) ? listingRows : []).map((r: any) => {
-          const rawImages = r?.images ?? null;
-          const images = Array.isArray(rawImages) ? rawImages.map((x: any) => String(x || '').trim()).filter(Boolean) : [];
-          const rawItems = r?.items ?? [];
-          const items = Array.isArray(rawItems) ? rawItems : [];
-          const firstItemImage = String(items[0]?.image || '').trim();
-          const image = images[0] || firstItemImage || '/images/item_defaulet.webp';
-          return {
-            id: toNum(r?.id),
-            title: String(r?.title || '').trim() || (String(items[0]?.name || '').trim() || '商城商品'),
-            price: toNum(r?.price),
-            status: String(r?.status || 'pending'),
-            reviewNote: String(r?.review_note || ''),
-            created_at: r?.created_at ? String(r.created_at) : null,
-            image,
-          };
-        });
-
-        const list = Array.isArray(orderRows) ? orderRows : [];
-        const buyerIds = Array.from(new Set(list.map((r: any) => String(r?.buyer_id || '')).filter(Boolean)));
-        const displayById = new Map<string, { name: string; avatar_url: string }>();
-        if (buyerIds.length > 0) {
-          const { data: displays, error: displayError } = await supabase.rpc('get_user_displays', { p_ids: buyerIds });
-          if (!displayError) {
-            for (const d of Array.isArray(displays) ? displays : []) {
-              const id = String((d as any)?.id || '');
-              if (!id) continue;
-              displayById.set(id, { name: String((d as any)?.name || 'user'), avatar_url: String((d as any)?.avatar_url || '/images/avatar.webp') });
-            }
-          }
-        }
-
-        const mappedOrders: SellerOrder[] = list.map((r: any) => {
-          const buyerId = String(r?.buyer_id || '');
-          const display = displayById.get(buyerId) || { name: 'user', avatar_url: '/images/avatar.webp' };
-          const listing = r?.sell_listings || null;
-          return {
-            id: toNum(r?.id),
-            created_at: r?.created_at ? String(r.created_at) : null,
-            step: toNum(r?.step),
-            cancelled: Boolean(r?.cancelled),
-            quantity: Math.max(1, toNum(r?.quantity) || 1),
-            unit_price: Math.max(0, toNum(r?.unit_price)),
-            item_index: toNum(r?.item_index),
-            listing: listing
-              ? {
-                  id: toNum(listing?.id),
-                  title: listing?.title ? String(listing.title) : null,
-                  images: Array.isArray(listing?.images) ? (listing.images as any[]).map((x) => String(x || '')).filter(Boolean) : null,
-                  items: Array.isArray(listing?.items) ? listing.items : null,
-                }
-              : null,
-            buyer: { id: buyerId, name: display.name, avatar: display.avatar_url },
-          };
-        });
-
-        if (cancelled) return;
-        setListings(mappedListings);
-        setOrders(mappedOrders);
-      } catch (e) {
-        console.error('Failed to load sell manage:', e);
-        if (!cancelled) {
-          setListings([]);
-          setOrders([]);
-        }
-      } finally {
-        if (!cancelled) setIsLoadingData(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  const orderCounts = useMemo(() => {
-    const base = orders.filter((o) => !o.cancelled);
-    const toPay = base.filter((o) => o.step === 1).length;
-    const toShip = base.filter((o) => o.step === 2 || o.step === 3).length;
-    const toReceive = base.filter((o) => o.step === 4).length;
-    const done = base.filter((o) => o.step >= 5).length;
-    return { toPay, toShip, toReceive, done };
-  }, [orders]);
-
-  const setNextView = (next: View) => {
-    setView(next);
-    const qs = new URLSearchParams(searchParams.toString());
-    if (next === 'orders') qs.set('tab', 'orders');
-    else qs.set('tab', 'listings');
-    router.replace(`/sell/manage?${qs.toString()}`);
-  };
-
-  const formatDate = (raw: string | null) => (raw ? raw.slice(0, 10) : '');
-
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 pb-[calc(64px+env(safe-area-inset-bottom))] pt-14">
-      <div className="max-w-7xl mx-auto px-2">
-        {dash && (
-          <div className="mb-3 rounded-2xl bg-gradient-to-r from-primary to-primary-dark text-white p-4">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full bg-white/20 text-[11px] font-black">
-                {dash.tier.name}賣家
-              </span>
-              {dash.is_pro && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-300 text-amber-900 text-[11px] font-black">
-                  官方認證商家
-                </span>
-              )}
-              <span className="ml-auto text-[11.5px] font-black text-white/80">
-                保證金 售價 {dash.tier.ratio}%
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-              {[
-                ['完成單數', dash.done_count.toLocaleString('zh-TW')],
-                ['成交率', `${dash.success_rate}%`],
-                ['保證金鎖定', `${dash.locked_deposit.toLocaleString('zh-TW')}G`],
-                ['單件上限', dash.tier.max_price.toLocaleString('zh-TW')],
-              ].map(([label, val]) => (
-                <div key={label}>
-                  <div className="text-[15px] font-black">{val}</div>
-                  <div className="text-[10.5px] font-black text-white/70">{label}</div>
-                </div>
-              ))}
+    <div className="mk min-h-screen pb-[calc(64px+env(safe-area-inset-bottom))]">
+      {/* ── 頭部 ── */}
+      <div className="mehd">
+        <div className="meid">
+          <div className="meav">
+            {avatar ? (
+              <Image src={avatar} alt={name} fill style={{ objectFit: 'cover' }} sizes="46px" />
+            ) : (
+              (name[0] || 'U').toUpperCase()
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b>{name}</b>
+            <div className="mebadges">
+              <span className="bdg gold">{dash?.tier.name || '新手'}賣家</span>
+              <span className="bdg verify">實名認證</span>
+              {dash?.is_pro && <span className="bdg gold">官方認證商家</span>}
+              <span className="bdg">完成 {nt(dash?.done_count || 0)} 單</span>
             </div>
           </div>
-        )}
-
-        <div className="flex items-center gap-2 mb-3">
-          <button
-            type="button"
-            onClick={() => router.push('/sell/new')}
-            className="h-10 px-3 rounded-2xl bg-primary text-white text-[13px] font-black flex items-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-transform"
-          >
-            <Plus className="w-4 h-4" />
-            上架
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/sell/settings')}
-            className="h-10 px-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-[13px] font-black text-neutral-700 dark:text-neutral-200 flex items-center gap-2 active:scale-95 transition-transform"
-          >
-            <Settings className="w-4 h-4" />
-            收款設定
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/sell/ads')}
-            className="h-10 px-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-[13px] font-black text-neutral-700 dark:text-neutral-200 flex items-center gap-2 active:scale-95 transition-transform"
-          >
-            廣告中心
-          </button>
         </div>
 
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden">
-          <div className="grid grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setNextView('listings')}
-              className={cn(
-                'h-11 text-[13px] font-black border-b',
-                view === 'listings' ? 'text-primary border-primary' : 'text-neutral-500 dark:text-neutral-400 border-neutral-100 dark:border-neutral-800'
-              )}
-            >
-              我的上架
-            </button>
-            <button
-              type="button"
-              onClick={() => setNextView('orders')}
-              className={cn(
-                'h-11 text-[13px] font-black border-b',
-                view === 'orders' ? 'text-primary border-primary' : 'text-neutral-500 dark:text-neutral-400 border-neutral-100 dark:border-neutral-800'
-              )}
-            >
-              訂單
-            </button>
+        <div className="repbar">
+          <div className="l">
+            <span>信譽分數</span>
+            <span>{dash?.good_rate ?? 100} / 100</span>
           </div>
+          <div className="track">
+            <div className="fill" style={{ width: `${Math.min(100, Number(dash?.good_rate ?? 100))}%` }} />
+          </div>
+          <div className="l" style={{ margin: '7px 0 0' }}>
+            <span>{dash?.tier.k === 3 ? '已達最高等級' : `再完成 ${Math.max(0, gap)} 單升級`}</span>
+            <span>保證金 {dash?.tier.ratio ?? 100}%</span>
+          </div>
+        </div>
+      </div>
 
-          {view === 'orders' && (
-            <div className="grid grid-cols-4 gap-2 px-3 py-3 border-b border-neutral-50 dark:border-neutral-800">
-              {[
-                { label: '待付款', value: orderCounts.toPay },
-                { label: '待出貨', value: orderCounts.toShip },
-                { label: '待收貨', value: orderCounts.toReceive },
-                { label: '完成', value: orderCounts.done },
-              ].map((it) => (
-                <div key={it.label} className="rounded-2xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 py-2 text-center">
-                  <div className="text-[16px] font-black text-neutral-900 dark:text-white">{it.value}</div>
-                  <div className="text-[12px] font-black text-neutral-500 dark:text-neutral-300">{it.label}</div>
-                </div>
-              ))}
-            </div>
+      {/* ── 四格統計 ── */}
+      <div className="mecard">
+        <div>
+          <div className="n">{dash?.success_rate ?? 100}%</div>
+          <div className="c">成交率</div>
+        </div>
+        <div>
+          <div className="n">{dash?.avg_ship_minutes ?? 0} 分</div>
+          <div className="c">平均出貨</div>
+        </div>
+        <div>
+          <div className="n">{dash?.good_rate ?? 100}%</div>
+          <div className="c">好評率</div>
+        </div>
+        <div>
+          <div className="n">{nt(dash?.locked_deposit || 0)}</div>
+          <div className="c">保證金鎖定</div>
+        </div>
+      </div>
+
+      {/* ── 升級官方認證商家 ── */}
+      {dash && !dash.is_pro && (
+        <div className="upsell">
+          <b>升級官方認證商家</b>
+          <p>認證徽章 · 店鋪頁 · 自家商品置頂 · 單件售價上限提高一級</p>
+          <button type="button" className="go" onClick={() => router.push('/sell/pro')}>
+            1,200G／月　立即升級
+          </button>
+        </div>
+      )}
+
+      {/* ── 功能列 ── */}
+      <div className="mlist">
+        <button type="button" className="mrow" onClick={() => router.push('/sell/new')}>
+          我要上架
+          <span className="ar">上架不扣 ›</span>
+        </button>
+        <button type="button" className="mrow" onClick={() => router.push('/sell/ads')}>
+          廣告中心
+          <span className="hot">6 種版位</span>
+          <span className="ar">›</span>
+        </button>
+        <button type="button" className="mrow" onClick={() => router.push('/sell/deposit')}>
+          保證金規則
+          <span className="ar">賣出才收 ›</span>
+        </button>
+        <button type="button" className="mrow" onClick={() => router.push('/sell/settings')}>
+          收款設定
+          <span className="ar">{payMethod} ›</span>
+        </button>
+      </div>
+
+      {/* ── 我的商品 ── */}
+      <div className="mine">
+        <div className="minehd">
+          <b>我的商品</b>
+          {rows.length > 0 && (
+            <span className="ar">
+              {counts.active} 上架中 · {counts.pending} 待審
+            </span>
           )}
         </div>
 
-        <div className="mt-3 space-y-2">
-          {isLoadingData ? (
-            <div className="py-10 text-center text-[13px] font-black text-neutral-400">載入中</div>
-          ) : view === 'listings' ? (
-            listings.length === 0 ? (
-              <div className="py-10 text-center text-[13px] font-black text-neutral-400">目前沒有上架</div>
-            ) : (
-              listings.map((l) => (
-                <div
-                  key={l.id}
-                  className="w-full bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3"
-                >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/sell/${l.id}`)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/sell/${l.id}`); }}
-                  className="flex items-center gap-3 text-left cursor-pointer"
-                >
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 flex-shrink-0">
-                    <Image src={l.image} alt={l.title} fill className="object-cover" unoptimized />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">{l.title}</div>
-                    <div className="mt-1 text-[12px] font-black text-neutral-400 truncate">
-                      {formatDate(l.created_at)} ·{' '}
-                      {l.status === 'pending' ? '審核中'
-                        : l.status === 'active' ? '上架中'
-                        : l.status === 'rejected' ? '已退回'
-                        : l.status === 'sold' ? '已售出'
-                        : '已下架'}
-                      {/* 退回原因一定要看得到，不然賣家只會原封不動再送一次 */}
-                      {l.status === 'rejected' && l.reviewNote && (
-                        <span className="block mt-1 text-[11px] font-bold text-red-500 leading-relaxed">
-                          退回原因：{l.reviewNote}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
-                      <div className="text-[16px] font-black text-accent-red font-amount">{Math.round(l.price).toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-300 flex-shrink-0" />
+        {isLoading ? (
+          <p className="hint" style={{ padding: '14px 0 18px', textAlign: 'center' }}>
+            載入中
+          </p>
+        ) : rows.length === 0 ? (
+          <p className="hint" style={{ padding: '14px 0 18px', textAlign: 'center' }}>
+            還沒有上架的商品
+          </p>
+        ) : (
+          rows.map((l) => {
+            const st = ST[l.status] || ['處理中', '#8C8C8C'];
+            const deposit = Math.ceil((l.price * (dash?.tier.ratio ?? 100)) / 100);
+            return (
+              <div key={l.id} className="mrowi">
+                <div className="mth" style={{ background: '#F5F5F5' }}>
+                  <Image src={pickImage(l)} alt={l.title} fill style={{ objectFit: 'cover' }} sizes="52px" />
                 </div>
-
-                {/* 狀態對應的操作。待審/已售出沒有可做的事，就不放按鈕 */}
-                {(l.status === 'active' || l.status === 'rejected' || l.status === 'removed') && (
-                  <div className="mt-2 pt-2 border-t border-neutral-50 dark:border-neutral-800 flex justify-end gap-2">
-                    {l.status === 'active' && (
-                      <button
-                        type="button"
-                        onClick={() => setListingStatus(l.id, 'removed', '已下架')}
-                        className="h-9 px-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-600 dark:text-neutral-300 active:scale-95 transition-transform"
-                      >
+                <div className="mmeta">
+                  <div className="mt">
+                    {l.title}
+                    <span className="stpill" style={{ color: st[1] }}>
+                      {st[0]}
+                    </span>
+                  </div>
+                  <div className="mp">NT${nt(l.price)}</div>
+                  <div className="ms">
+                    {l.shipping_fee ? `運費 ${nt(l.shipping_fee)}` : '免運費'} · 庫存 {stockOf(l)} · 瀏覽{' '}
+                    {nt(l.view_count)}
+                  </div>
+                  <div className="ms">
+                    {l.status === 'rejected' && l.review_note
+                      ? `退回原因：${l.review_note}`
+                      : `賣出收 ${nt(deposit)}G`}
+                  </div>
+                </div>
+                <div className="mact">
+                  {l.status === 'pending' ? (
+                    <button type="button" disabled>
+                      審核中
+                    </button>
+                  ) : l.status === 'active' ? (
+                    <>
+                      <button type="button" disabled={busyId === l.id} onClick={() => setStatus(l, 'removed')}>
                         下架
                       </button>
-                    )}
-                    {l.status === 'rejected' && (
+                      <button type="button" className="on" onClick={() => router.push('/sell/ads')}>
+                        推廣
+                      </button>
+                    </>
+                  ) : l.status === 'sold' ? (
+                    <button type="button" disabled>
+                      已售出
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => router.push(`/sell/new?edit=${l.id}`)}>
+                        修改
+                      </button>
                       <button
                         type="button"
-                        onClick={() => router.push(`/sell/new?edit=${l.id}`)}
-                        className="h-9 px-4 rounded-xl bg-primary text-[13px] font-black text-white active:scale-95 transition-transform"
+                        className="on"
+                        disabled={busyId === l.id}
+                        onClick={() => setStatus(l, 'pending')}
                       >
-                        修改後重新送審
+                        重新送審
                       </button>
-                    )}
-                    {l.status === 'removed' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/sell/new?edit=${l.id}`)}
-                          className="h-9 px-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[13px] font-black text-neutral-600 dark:text-neutral-300 active:scale-95 transition-transform"
-                        >
-                          修改
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setListingStatus(l.id, 'pending', '已送出審核，通過後就會恢復上架')}
-                          className="h-9 px-4 rounded-xl bg-primary text-[13px] font-black text-white active:scale-95 transition-transform"
-                        >
-                          重新上架
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                    </>
+                  )}
                 </div>
-              ))
-            )
-          ) : orders.length === 0 ? (
-            <div className="py-10 text-center text-[13px] font-black text-neutral-400">目前沒有訂單</div>
-          ) : (
-            orders
-              .filter((o) => !o.cancelled)
-              .map((o) => {
-                const listingTitle = String(o.listing?.title || '').trim();
-                const items = Array.isArray(o.listing?.items) ? (o.listing?.items as any[]) : [];
-                const optionName = String(items[o.item_index]?.name || '').trim();
-                const img =
-                  (Array.isArray(o.listing?.images) ? (o.listing?.images as string[])[0] : '') ||
-                  String(items[o.item_index]?.image || '').trim() ||
-                  '/images/item_defaulet.webp';
-                const total = Math.max(0, o.unit_price) * Math.max(1, o.quantity);
-                const subtitle = optionName ? optionName : listingTitle || '商城商品';
-                const statusText = o.step === 1 ? '待付款' : o.step === 2 || o.step === 3 ? '待出貨' : o.step === 4 ? '待收貨' : '完成';
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => router.push(`/sell-orders/${o.id}`)}
-                    className="w-full bg-white dark:bg-neutral-900 rounded-2xl shadow-card border border-neutral-100 dark:border-neutral-800 overflow-hidden p-3 flex items-center gap-3 text-left"
-                  >
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 flex-shrink-0">
-                      <Image src={img} alt={subtitle} fill className="object-cover" unoptimized />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[13px] font-black text-neutral-900 dark:text-white truncate">{subtitle}</div>
-                        <div className="text-[12px] font-black text-neutral-500 dark:text-neutral-300 flex items-center gap-1.5 flex-shrink-0">
-                          {statusText}
-                          {view === 'orders' ? <Package className="w-3.5 h-3.5" /> : <ClipboardList className="w-3.5 h-3.5" />}
-                        </div>
-                      </div>
-                      <div className="mt-1 text-[12px] font-black text-neutral-400 truncate">
-                        {formatDate(o.created_at)} · x{o.quantity} · {o.buyer.name}
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Image src="/images/gcoin.webp" alt="G Coin" width={16} height={16} className="w-4 h-4 object-contain" />
-                        <div className="text-[16px] font-black text-accent-red font-amount">{Math.round(total).toLocaleString()}</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-neutral-300 flex-shrink-0" />
-                  </button>
-                );
-              })
-          )}
-        </div>
+              </div>
+            );
+          })
+        )}
       </div>
+
       <MarketTabBar active="me" />
-      </div>
+    </div>
   );
 }

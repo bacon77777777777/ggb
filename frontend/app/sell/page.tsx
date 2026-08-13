@@ -9,6 +9,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useFeatureGate } from '@/lib/useFeatureGate';
 import MarketTabBar, { type MarketTab } from '@/components/sell/MarketTabBar';
+import MarketSheet from '@/components/sell/MarketSheet';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 
 /*
  * 商城首頁 —— 版型直接沿用老闆提供的原型
@@ -36,6 +39,10 @@ type FeedRow = {
   tier_name: string | null;
   tier_key: number | null;
   success_rate: number | null;
+  done_count: number | null;
+  avg_ship_minutes: number | null;
+  note: string | null;
+  phone_verified: boolean;
   deposit: number;
   is_pro: boolean;
   pay_method: string | null;
@@ -92,6 +99,15 @@ const CATS: { key: string; label: string; icon: string }[] = [
 ];
 
 const CAT_BG = ['#FFF0E6', '#FFE9EC', '#EAF4FF', '#EAF8F1', '#F3EDFF', '#FFF6E0'];
+
+// 品牌專區（照原型 BRANDS）。目前是展示用的固定清單 ——
+// 真正要賣這個版位時再改成從 sell_ad_bookings 的供應商檔期讀
+const BRANDS = [
+  { n: 'BANPRESTO', d: '一番賞總代理' },
+  { n: 'POP MART', d: '盒玩品牌' },
+  { n: 'TOMY', d: '扭蛋機台' },
+  { n: 'Re-ment', d: '食玩微縮' },
+];
 
 const nt = (n: number) => Math.round(n || 0).toLocaleString('zh-TW');
 
@@ -157,6 +173,13 @@ export default function SellPage() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hero, setHero] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // 商品詳情走彈層而不是換頁（照原型）：關掉就回到剛才捲到的位置，
+  // 逛街動線不會被打斷
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const [detail, setDetail] = useState<FeedRow | null>(null);
+  const [isBuying, setIsBuying] = useState(false);
 
   const isOfficial = tab === 'official';
 
@@ -228,7 +251,9 @@ export default function SellPage() {
 
   const feed = useMemo(() => withAds(rows, pool), [rows, pool]);
 
-  const detailHref = (r: FeedRow) => (isOfficial ? `/official/${r.id}` : `/sell/${r.id}`);
+  // 官方商品的結帳要填收件資訊、跳綠界，流程太長，仍走獨立頁；
+  // C2C 則整條龍都在彈層裡完成（照原型）
+  const officialHref = (r: FeedRow) => `/official/${r.id}`;
 
   const topicItems = useMemo(
     () => rows.filter((r) => (r.category || '').includes('一番賞') || r.category === '公仔模型').slice(0, 8),
@@ -236,16 +261,47 @@ export default function SellPage() {
   );
   const segItems = useMemo(() => (seg ? rows.slice(0, 4) : []), [rows, seg]);
 
+  const buyC2C = async () => {
+    if (!detail) return;
+    if (!user?.id) {
+      router.push('/login');
+      return;
+    }
+    setIsBuying(true);
+    try {
+      // 買第一個還有庫存的規格 —— 原型的商品卡就是單一規格的概念
+      const items = Array.isArray(detail.items) ? (detail.items as any[]) : [];
+      const idx = items.findIndex((x) => (Number(x?.quantity) || 0) > 0);
+      const { data, error } = await createClient().rpc('create_sell_order', {
+        p_listing_id: detail.id,
+        p_item_index: idx < 0 ? 0 : idx,
+        p_quantity: 1,
+      });
+      if (error) throw error;
+      const r = data as any;
+      if (!r?.success) {
+        showToast(r?.message || '下單失敗', 'plain');
+        return;
+      }
+      showToast('下單成功', 'plain');
+      router.push(`/sell-orders/${r.order_id}`);
+    } catch (e: any) {
+      showToast(e?.message || '下單失敗', 'plain');
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
   const scards = (list: FeedRow[], label: string) =>
     list.map((it) => (
-      <Link key={`${label}-${it.id}`} href={detailHref(it)} className="scard">
+      <button type="button" key={`${label}-${it.id}`} onClick={() => setDetail(it)} className="scard">
         <div className="si" style={{ background: '#F5F5F5' }}>
           <Image src={imgOf(it)} alt={it.title} fill style={{ objectFit: 'cover' }} sizes="104px" />
           <span className="mini">{label}</span>
         </div>
         <div className="st">{it.title}</div>
         <div className="sp">NT${nt(it.price)}</div>
-      </Link>
+      </button>
     ));
 
   return (
@@ -270,7 +326,12 @@ export default function SellPage() {
         <div className="heroC">
           <span className="adtag">廣告 · {isOfficial ? '官方頁輪播' : '首頁輪播'}</span>
           {heroItems.map((it, i) => (
-            <Link key={it.id} href={detailHref(it)} className={`hslide${i === hero ? ' on' : ''}`}>
+            <button
+              type="button"
+              key={it.id}
+              onClick={() => setDetail(it)}
+              className={`hslide${i === hero ? ' on' : ''}`}
+            >
               <span className="hart" style={{ background: '#F5F5F5' }}>
                 <Image src={imgOf(it)} alt={it.title} fill style={{ objectFit: 'cover' }} sizes="100px" />
               </span>
@@ -281,7 +342,7 @@ export default function SellPage() {
                 </p>
                 <span className="hprice">NT${nt(it.price)}</span>
               </span>
-            </Link>
+            </button>
           ))}
           <span className="hdots">
             {heroItems.map((_, i) => (
@@ -305,6 +366,56 @@ export default function SellPage() {
         ))}
       </div>
 
+      {/* ── 官方頁專屬：新品首發 / 品牌專區 / 熱賣排行（照原型 vOfficial）── */}
+      {isOfficial && rows.length > 0 && (
+        <>
+          <div className="strip">
+            <span className="adtag">廣告 · 新品首發</span>
+            <div className="striphd">
+              <b>新品首發</b>
+            </div>
+            <div className="srow">{scards(rows.slice(0, 8), '首發')}</div>
+          </div>
+
+          <div className="strip">
+            <span className="adtag">廣告 · 品牌專區</span>
+            <div className="striphd">
+              <b>品牌專區</b>
+            </div>
+            <div className="srow">
+              {BRANDS.map((b) => (
+                <div key={b.n} className="bcard">
+                  <span className="bmark">{b.n[0]}</span>
+                  <span className="bn">{b.n}</span>
+                  <span className="bd">{b.d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="strip">
+            <div className="striphd">
+              <b>熱賣排行</b>
+            </div>
+            <div className="srow">
+              {[...rows]
+                .sort((a, b) => b.sold_count - a.sold_count)
+                .slice(0, 8)
+                .map((it, i) => (
+                  <button type="button" key={`hot-${it.id}`} onClick={() => setDetail(it)} className="scard">
+                    <div className="si" style={{ background: '#F5F5F5' }}>
+                      <Image src={imgOf(it)} alt={it.title} fill style={{ objectFit: 'cover' }} sizes="104px" />
+                      <span className="mini rank">{i + 1}</span>
+                    </div>
+                    <div className="st">{it.title}</div>
+                    <div className="sp">NT${nt(it.price)}</div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── 分類首排（選了分類才出現）── */}
       {seg && segItems.length > 0 && (
         <div className="strip">
@@ -317,7 +428,7 @@ export default function SellPage() {
       )}
 
       {/* ── 專題 ── */}
-      {topicItems.length > 0 && (
+      {!isOfficial && topicItems.length > 0 && (
         <div className="strip">
           <div className="striphd">
             <b>本週精選</b>
@@ -348,7 +459,12 @@ export default function SellPage() {
       ) : (
         <div className="grid">
           {feed.map(({ row: r, ad }, idx) => (
-            <Link key={`${ad ? 'ad' : 'it'}-${r.id}-${idx}`} href={detailHref(r)} className={`pcard${ad ? ' ft' : ''}`}>
+            <button
+              type="button"
+              key={`${ad ? 'ad' : 'it'}-${r.id}-${idx}`}
+              onClick={() => setDetail(r)}
+              className={`pcard${ad ? ' ft' : ''}`}
+            >
               <div className="pimg" style={{ background: '#F5F5F5' }}>
                 <Image src={imgOf(r)} alt={r.title} fill style={{ objectFit: 'cover' }} sizes="(max-width:640px) 50vw, 200px" />
                 {ad ? (
@@ -409,7 +525,7 @@ export default function SellPage() {
                   )}
                 </div>
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       )}
@@ -421,6 +537,144 @@ export default function SellPage() {
       )}
 
       <MarketTabBar active={tab} onSelect={setTab} />
+
+      {/* ── 商品詳情彈層（照原型 itemC2C / itemB2C）── */}
+      <MarketSheet
+        open={!!detail}
+        title="商品詳情"
+        onClose={() => setDetail(null)}
+        footer={
+          detail && (
+            <div className="abar">
+              {isOfficial ? (
+                <button
+                  type="button"
+                  className="buy dark"
+                  onClick={() => router.push(officialHref(detail))}
+                >
+                  刷卡結帳 · NT${nt(detail.price + detail.shipping_fee)}
+                </button>
+              ) : (
+                <button type="button" className="buy" disabled={isBuying} onClick={buyC2C}>
+                  {isBuying ? '處理中…' : `立即購買 · NT$${nt(detail.price + detail.shipping_fee)}`}
+                </button>
+              )}
+            </div>
+          )
+        }
+      >
+        {detail && (
+          <>
+            <div className="hero">
+              <Image src={imgOf(detail)} alt={detail.title} fill style={{ objectFit: 'cover' }} sizes="100vw" />
+            </div>
+
+            <div className={`pricebar${isOfficial ? ' dark' : ''}`}>
+              <span className="s">NT$</span>
+              <span className="n">{nt(detail.price)}</span>
+              <span className="r">
+                {detail.shipping_fee ? `運費 ${nt(detail.shipping_fee)}` : '免運費'}
+                <br />
+                已售 {detail.sold_count} 件
+              </span>
+            </div>
+
+            <div className="blk">
+              <div className="ttl">{detail.title}</div>
+            </div>
+
+            <div className="blk">
+              <div className="shoprow">
+                <span className="dot" style={{ background: '#E5E5E5' }}>
+                  {!isOfficial && (
+                    <Image
+                      src={detail.seller_avatar || '/images/avatar.webp'}
+                      alt={detail.seller_name}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="34px"
+                    />
+                  )}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <b>{detail.seller_name}</b>
+                  <div style={{ fontSize: '11.5px', color: 'var(--sub)', marginTop: 2 }}>
+                    {isOfficial ? '平台自營 · 開立電子發票' : detail.phone_verified ? '已完成手機實名' : '尚未實名'}
+                  </div>
+                </div>
+                {isOfficial ? (
+                  <span className="tg tg--off">官方</span>
+                ) : (
+                  detail.tier_name && (
+                    <span
+                      className={`lvl${detail.tier_key === 2 ? ' g2' : detail.tier_key === 1 ? ' g1' : ''}`}
+                    >
+                      {detail.tier_name}
+                    </span>
+                  )
+                )}
+              </div>
+
+              {!isOfficial && (
+                <div className="mstat">
+                  <div>
+                    成交率<b>{detail.success_rate ?? 100}%</b>
+                  </div>
+                  <div>
+                    平均出貨<b>{detail.avg_ship_minutes ?? 0} 分</b>
+                  </div>
+                  <div>
+                    完成單數<b>{nt(Number(detail.done_count || 0))}</b>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="blk">
+              {isOfficial ? (
+                <>
+                  <div className="kv">
+                    <span>出貨</span>
+                    <span>付款後 48 小時內</span>
+                  </div>
+                  <div className="kv">
+                    <span>付款</span>
+                    <span>信用卡 / 分期</span>
+                  </div>
+                  <div className="kv">
+                    <span>退換</span>
+                    <span>7 天鑑賞期，原路退刷</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="kv">
+                    <span>收款方式</span>
+                    <span>{payLabel(detail.pay_method) || '賣家尚未設定'}</span>
+                  </div>
+                  <div className="kv">
+                    <span>運送</span>
+                    <span>{detail.shipping_fee ? `買家付 ${nt(detail.shipping_fee)}` : '賣家吸收'}</span>
+                  </div>
+                  <div className="kv">
+                    <span>買家保障</span>
+                    <span style={{ color: 'var(--red)' }}>賣家保證金 {nt(detail.deposit)}G</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {detail.note && (
+              <div className="blk">
+                <div className="secttl">商品說明</div>
+                <p className="hint" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                  {detail.note}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </MarketSheet>
     </div>
   );
 }

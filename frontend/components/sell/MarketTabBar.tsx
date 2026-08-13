@@ -34,7 +34,7 @@ const ITEMS: { key: MarketTab; label: string; href: string; icon: React.ReactNod
   {
     key: 'orders',
     label: '訂單',
-    href: '/purchases?tab=sell',
+    href: '/sell/orders',
     icon: (
       <>
         <path d="M6.5 3L4 6.5V20a1 1 0 001 1h14a1 1 0 001-1V6.5L17.5 3z" />
