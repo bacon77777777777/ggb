@@ -151,15 +151,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        * 這裡是所有登入路徑的必經點（初次登入、換頁還原 session、refreshProfile
        * 都會走到），擋在這裡最省。
        *
-       * 導到 /404 是老闆指定：不告訴對方「你被停權了」，避免他換帳號重來。
-       * 站上沒有 /404 這條路由，Next 會直接渲染 app/not-found.tsx。
+       * 帶回登入頁彈提示窗（老闆 2026-08-14 改的：原本是丟 404 裝死，
+       * 但被停用的人看到 404 只會以為站掛了，一直重試還是進不來）。
        */
       if (data && data.status && data.status !== 'active') {
         await supabase.auth.signOut();
         setSupabaseUser(null);
         setUser(null);
         setIsLoading(false);
-        router.replace('/404');
+        router.replace('/login?disabled=1');
         return null;
       }
 

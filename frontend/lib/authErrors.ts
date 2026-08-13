@@ -29,6 +29,8 @@ const ERROR_MAP: Array<{ match: RegExp | string; code: string; msg: string }> = 
   { match: /user is banned/i,                               code: 'A041', msg: '此帳號已被停用' },
   { match: /account.*disabled/i,                            code: 'A041', msg: '此帳號已被停用' },
   { match: /signup.*disabled/i,                             code: 'A042', msg: '目前暫停開放註冊' },
+  // shouldCreateUser=false 且信箱沒帳號時，Supabase 回的是這句
+  { match: /signups? not allowed/i,                         code: 'A042', msg: '目前暫停開放新帳號註冊，請稍後再試' },
   // session / token
   { match: /auth session missing/i,                         code: 'A051', msg: '登入狀態已失效，請重新登入' },
   { match: /session.*expired/i,                             code: 'A051', msg: '登入已過期，請重新登入' },

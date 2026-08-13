@@ -19,7 +19,7 @@ import ThemePanel from './ThemePanel'
 
 // `sell_escrow`（商城平台代收，接藍新 MPL）已於 2026-08-13 移除：
 // 玩家商城定調雙方自理，平台不碰錢，這個旗標永遠是關的。
-type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge'
+type FeatureKey = 'sell' | 'ichiban' | 'blindbox' | 'gacha' | 'card' | 'custom' | 'slot' | 'exchange' | 'market' | 'recharge' | 'register'
 
 type LinePushKey =
   | 'line_push_daily' | 'line_push_cfo' | 'line_push_cmo' | 'line_push_supply'
@@ -98,6 +98,7 @@ const DEFAULT_FLAGS: Record<FeatureKey, boolean> = {
   // 儲值預設開啟。關掉會直接斷開綠界建單（見 /api/payment/ecpay），
   // 玩家在儲值頁看到「儲值維護中」。已購買的代幣、抽獎與出貨都不受影響
   recharge: true,
+  register: true,
   sell: true,
   ichiban: true,
   blindbox: true,
@@ -478,6 +479,21 @@ const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://www.ggb.co
                           { v: 'maintenance', label: '維護', tone: 'warn' },
                         ]}
                         onChange={(v) => requestMaint('back', v === 'maintenance')}
+                      />
+                    </Row>
+                    <Row
+                      title="新帳號註冊"
+                      desc="登入頁是「登入即註冊」，維護時只關掉自動開戶那一半：已經有帳號的照常登入，沒註冊過的信箱會看到「目前暫停開放新帳號註冊」。沒有永久關閉的選項 —— 平台不可能不收新玩家，只會臨時停一下。"
+                      state={states?.register === 'maintenance' ? 'maintenance' : 'on'}
+                    >
+                      <Segmented
+                        value={states?.register === 'maintenance' ? 'maintenance' : 'on'}
+                        disabled={!ready || isSaving}
+                        options={[
+                          { v: 'on', label: '開放', tone: 'on' },
+                          { v: 'maintenance', label: '維護', tone: 'warn' },
+                        ]}
+                        onChange={(v) => setState('register', v as FlagState, '新帳號註冊')}
                       />
                     </Row>
                   </div>

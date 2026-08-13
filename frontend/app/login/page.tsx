@@ -9,6 +9,8 @@ import { Input } from '@/components/ui'
 import Button from '@/components/ui/Button'
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons'
 import { useAuth } from '@/contexts/AuthContext'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
+import { useAlert } from '@/components/ui/AlertDialog'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { translateAuthError } from '@/lib/authErrors'
@@ -35,6 +37,8 @@ function AuthContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
+  const { states } = useFeatureFlags()
+  const { showAlert } = useAlert()
   const messageParam = searchParams.get('message')
   // 登入完要回哪裡。使用者多半是為了某個動作（按讚、留言）才被導來這裡，
   // 登完丟他回首頁等於要他自己找回原本那一頁。
@@ -44,6 +48,19 @@ function AuthContent() {
     return raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
   })()
   const errorParam = searchParams.get('error')
+  /** 被停用的帳號登入時，AuthContext 會登出並帶 ?disabled=1 回來，這裡負責把話講清楚 */
+  const disabledParam = searchParams.get('disabled') === '1'
+
+  useEffect(() => {
+    if (!disabledParam) return
+    showAlert({
+      type: 'error',
+      title: '帳號已停用',
+      message: '這個帳號目前已被停用，無法登入。如有疑問請聯繫客服。',
+    })
+    // 把參數吃掉：重新整理或再次登入失敗時才不會疊出第二個視窗
+    router.replace('/login')
+  }, [disabledParam, router, showAlert])
 
   const [view, setView] = useState<View>('main')
   const [email, setEmail] = useState('')
@@ -119,10 +136,12 @@ function AuthContent() {
     }
     setIsLoading(true)
     const supabase = createClient()
-    // shouldCreateUser: 有帳號=寄登入碼、沒帳號=自動開戶 —— 登入與註冊在這裡合而為一
+    // shouldCreateUser: 有帳號=寄登入碼、沒帳號=自動開戶 —— 登入與註冊在這裡合而為一。
+    // 後台「功能開關」的可註冊設為維護時只關掉自動開戶那一半：
+    // 既有帳號照常收驗證碼，沒註冊過的信箱會被 Supabase 擋下（訊息在 authErrors 轉成中文）
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: states?.register !== 'maintenance' },
     })
     if (error) {
       handleError(error)
